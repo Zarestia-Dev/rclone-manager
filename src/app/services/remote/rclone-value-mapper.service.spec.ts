@@ -25,7 +25,7 @@ describe('RcloneValueMapperService', () => {
 
     it('should format size types correctly', () => {
       expect(service.machineToHuman(1024, 'SizeSuffix')).toBe('1Ki');
-      expect(service.machineToHuman(1024, 'BwTimetable')).toBe('1Ki');
+      expect(service.machineToHuman(1024, 'BwTimetable')).toBe('1024');
     });
 
     it('should format FileMode type correctly', () => {

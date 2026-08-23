@@ -11,8 +11,6 @@ import {
   ElementRef,
   DestroyRef,
   ChangeDetectionStrategy,
-  Injector,
-  afterNextRender,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -78,7 +76,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly injector = inject(Injector);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -873,11 +870,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   /** Schedules editor initialization after the next render, swallowing init errors. */
   private safeInitEditor(readOnly: boolean, content: string): void {
-    afterNextRender(
-      () => {
-        void this.initEditor(readOnly, content).catch(e => console.error('initEditor failed', e));
-      },
-      { injector: this.injector }
-    );
+    requestAnimationFrame(() => {
+      void this.initEditor(readOnly, content).catch(e => console.error('initEditor failed', e));
+    });
   }
 }

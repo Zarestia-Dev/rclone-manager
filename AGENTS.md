@@ -20,6 +20,11 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
 1. **Keep Changes Minimal & Elegant**: Work to make the smallest, most effective change possible. Avoid unneeded refactoring, re-ordering of imports, or restyling surrounding code.
 2. **Backwards Compatibility**: PRs should preserve existing behavior across desktop, web server (headless), and mobile targets.
 3. **Verify Before Proposing**: AI agents must run build, lint, and formatting verification commands before declaring success. **Frontend changes must produce a warning-free build** (see §Build, Test & Lint Commands).
+4. **Automated Testing & Test Coverage (CRITICAL)**:
+   - Just like upstream Rclone and best practices, whenever adding or refactoring business logic, services, utilities, parsers, or mappings, AI agents **MUST** write or update accompanying automated unit tests.
+   - **Frontend**: Unit tests (`*.spec.ts`) are placed in the same directory alongside their corresponding implementation files.
+   - **Backend**: Rust unit tests (`#[cfg(test)]`) are placed inside source files or under test modules.
+   - Verify tests cover both normal operation and edge cases (null inputs, empty values, special characters, error paths).
 
 ---
 
@@ -50,6 +55,17 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
    - **Frontend Static Asset Serving**: Angular loads translations via `MultiFileLoader` from static assets (`assets/i18n/...` mapped in `angular.json`).
    - **Backend Minimal Memory Footprint**: The Rust backend (`src-tauri/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`).
    - **Language-Agnostic Backend Errors**: Rust code must **never** pre-translate error messages. Always use `localized_error!("backendErrors.<category>.<key>", ...)` or `localized_success!("backendSuccess.<category>.<key>", ...)`, producing structured `{ key, params }` JSON or raw keys for `BackendTranslationService` on the frontend.
+
+7. **Platform & Tauri Target Abstraction (CRITICAL)**
+   - **TauriBaseService & `this.isTauri`**:
+     - All backend-communicating services should extend `TauriBaseService`.
+     - Inside classes extending `TauriBaseService`, **always** use the inherited `this.isTauri` property (`!isHeadlessMode()`) rather than re-importing or calling `isHeadlessMode()`.
+     - In standalone components/functions where inheritance is not used, import and call `isHeadlessMode()` from `api-client.service`.
+     - **NEVER** use redundant double-checks like `!this.isTauri || isHeadlessMode()` or call native Tauri APIs without guarding with `this.isTauri`.
+
+8. **Automated Unit Testing & Spec Maintenance**
+   - New utility functions, data transformers, flag parsers, state machines, and business services should always have corresponding unit test suites.
+   - Ensure tests cover both happy paths and edge cases (e.g. empty strings, null values, invalid inputs, error handling).
 
 ---
 
@@ -84,6 +100,9 @@ npx prettier --write "**/*.{ts,html,scss,json}"
 
 # Auto-fix lint & formatting issues across project
 npm run fix:all
+
+# Run frontend unit tests
+npm run test:ci
 ```
 
 > **Frontend Build Rule (CRITICAL)**:
@@ -110,6 +129,9 @@ cd src-tauri && cargo clippy --features mobile --no-default-features -- -D warni
 
 # 4. Rust formatting check
 cd src-tauri && cargo fmt -- --check
+
+# 5. Run backend unit tests
+cd src-tauri && cargo test --features desktop --no-default-features
 ```
 
 ### 3. Local Development

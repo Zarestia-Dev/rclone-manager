@@ -1,10 +1,9 @@
 import { Injectable } from '@angular/core';
-import { isHeadlessMode } from './api-client.service';
 import { openUrl, openPath } from '@tauri-apps/plugin-opener';
+import { TauriBaseService } from './tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
-export class OpenerService {
-  private readonly isTauri = !isHeadlessMode();
+export class OpenerService extends TauriBaseService {
   private interceptorInitialized = false;
 
   /**

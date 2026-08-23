@@ -47,6 +47,7 @@ import {
   PathGroup,
   PathInspectionStatus,
 } from 'src/app/services/infrastructure/platform/path.service';
+import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
@@ -102,6 +103,7 @@ export class OperationConfigComponent {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly pathService = inject(PathService);
+  private readonly pathInspectionService = inject(PathInspectionService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -606,6 +608,10 @@ export class OperationConfigComponent {
   getPathStatus(item: PathItem): PathInspectionStatus | null {
     const type = this.operationType();
     if (type !== 'mount' && type !== 'bisync') return null;
-    return this.pathService.getPathStatus(item.pathControl.value, type, this.currentRemoteName());
+    return this.pathInspectionService.getPathStatus(
+      item.pathControl.value,
+      type,
+      this.currentRemoteName()
+    );
   }
 }

@@ -1,10 +1,7 @@
 import {
   Component,
   ElementRef,
-  Injector,
-  afterNextRender,
   effect,
-  inject,
   input,
   output,
   viewChild,
@@ -52,12 +49,10 @@ export class SearchContainerComponent {
 
   searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
-  private readonly injector = inject(Injector);
-
   constructor() {
     effect(() => {
       if (this.visible()) {
-        afterNextRender(() => this.focus(), { injector: this.injector });
+        requestAnimationFrame(() => this.focus());
       }
     });
   }

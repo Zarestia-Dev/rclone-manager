@@ -8,9 +8,7 @@ import {
   effect,
   computed,
   TemplateRef,
-  Injector,
   signal,
-  afterNextRender,
   afterRenderEffect,
   ChangeDetectionStrategy,
   HostListener,
@@ -50,7 +48,6 @@ export class NautilusToolbarComponent {
   protected readonly nautilusService = inject(NautilusService);
   protected readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
-  private readonly injector = inject(Injector);
   protected readonly isMobileOS = isMobileOS;
 
   // --- Inputs ---
@@ -112,18 +109,13 @@ export class NautilusToolbarComponent {
 
     effect(() => {
       if (this.isEditingPath()) {
-        afterNextRender(() => this.pathInput()?.nativeElement.select(), {
-          injector: this.injector,
-        });
+        requestAnimationFrame(() => this.pathInput()?.nativeElement.select());
       } else if (this.isSearchMode()) {
-        afterNextRender(
-          () => {
-            const el = this.searchInput()?.nativeElement;
-            el?.focus();
-            el?.select();
-          },
-          { injector: this.injector }
-        );
+        requestAnimationFrame(() => {
+          const el = this.searchInput()?.nativeElement;
+          el?.focus();
+          el?.select();
+        });
       }
     });
   }

@@ -1,10 +1,9 @@
-import { DestroyRef, effect, inject, Injectable, Injector, signal } from '@angular/core';
+import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 
 export type ResizeDirection =
   'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
@@ -15,8 +14,7 @@ export type ResizeDirection =
 export class WindowService extends TauriBaseService {
   private readonly _theme = signal<Theme>('system');
   public readonly theme = this._theme.asReadonly();
-  appSettingsService = inject(AppSettingsService);
-  private readonly injector = inject(Injector);
+  private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -45,23 +43,35 @@ export class WindowService extends TauriBaseService {
       this.systemThemeQuery.removeEventListener('change', handleSystemThemeChange);
     });
 
-    this.initWindowListeners();
-    this.initLinuxResizeHandles();
-  }
-
-  private async initWindowListeners(): Promise<void> {
     if (this.isTauri) {
-      this.checkMaximizedState();
-      this.listenToEvent('tauri://resize')
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => {
-          this.checkMaximizedState();
-        });
+      effect(() => {
+        const isMax = this.isMaximized();
+        const container = document.getElementById('linux-resize-handles');
+        if (container) {
+          container.style.display = isMax ? 'none' : 'block';
+        }
+      });
+
+      this.initWindowListeners();
+      this.initLinuxResizeHandles();
     }
   }
 
+  private async initWindowListeners(): Promise<void> {
+    this.checkMaximizedState();
+    this.listenToEvent('tauri://resize')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.checkMaximizedState();
+      });
+  }
+
   private initLinuxResizeHandles(): void {
-    if (!this.isTauri || isHeadlessMode() || platform() !== 'linux') return;
+    try {
+      if (platform() !== 'linux') return;
+    } catch {
+      return;
+    }
 
     const createHandles = (): void => {
       if (document.getElementById('linux-resize-handles')) return;
@@ -70,6 +80,7 @@ export class WindowService extends TauriBaseService {
 
       const container = document.createElement('div');
       container.id = 'linux-resize-handles';
+      container.style.display = this.isMaximized() ? 'none' : 'block';
 
       const directions: ResizeDirection[] = [
         'North',
@@ -105,13 +116,6 @@ export class WindowService extends TauriBaseService {
       }
 
       targetContainer.appendChild(container);
-
-      effect(
-        () => {
-          container.style.display = this.isMaximized() ? 'none' : 'block';
-        },
-        { injector: this.injector }
-      );
     };
 
     if (document.readyState === 'loading') {

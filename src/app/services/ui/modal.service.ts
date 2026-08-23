@@ -5,7 +5,6 @@ import {
   MatDialogRef,
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
-import { TranslateService } from '@ngx-translate/core';
 import { Subject, Observable, from, switchMap } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -21,11 +20,8 @@ import {
   TemplateCategory,
   PrimaryActionType,
 } from '@app/types';
-import {
-  ApiClientService,
-  isHeadlessMode,
-  isMobile,
-} from '../infrastructure/platform/api-client.service';
+import { isMobile } from '../infrastructure/platform/api-client.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
@@ -133,10 +129,8 @@ export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
 }
 
 @Injectable({ providedIn: 'root' })
-export class ModalService {
+export class ModalService extends TauriBaseService {
   private readonly dialog = inject(MatDialog);
-  private readonly translate = inject(TranslateService);
-  private readonly apiClient = inject(ApiClientService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
 
@@ -150,6 +144,9 @@ export class ModalService {
   dialogInjector?: Injector;
 
   constructor() {
+    super();
+    if (!isMobile()) return;
+
     window.addEventListener('popstate', () => {
       if (this.dialog.openDialogs.length > 0) {
         const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
@@ -306,7 +303,8 @@ export class ModalService {
 
   private get standaloneEnabled(): boolean {
     return (
-      (!isHeadlessMode() || !isMobile()) &&
+      this.isTauri &&
+      !isMobile() &&
       this.appSettings.options()?.['general.standalone_dialogs']?.value === true
     );
   }

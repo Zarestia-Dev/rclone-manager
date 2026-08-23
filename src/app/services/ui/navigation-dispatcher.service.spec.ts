@@ -12,13 +12,21 @@ import {
   QuickRun,
   DEFAULT_JOB_STATS,
 } from '@app/types';
+import { vi, describe, beforeEach, it, expect } from 'vitest';
 
 describe('NavigationDispatcherService', () => {
   let service: NavigationDispatcherService;
-  let mockUiStateService: jasmine.SpyObj<UiStateService>;
-  let mockRemoteFacade: { activeRemotes: jasmine.Spy };
-  let mockPathService: jasmine.SpyObj<PathService>;
-  let mockQuickRunService: { quickRuns: jasmine.Spy; select: jasmine.Spy };
+  let mockUiStateService: {
+    setMainView: ReturnType<typeof vi.fn>;
+    setTab: ReturnType<typeof vi.fn>;
+    setSelectedRemote: ReturnType<typeof vi.fn>;
+  };
+  let mockRemoteFacade: { activeRemotes: ReturnType<typeof vi.fn> };
+  let mockPathService: { getRemoteNameFromFs: ReturnType<typeof vi.fn> };
+  let mockQuickRunService: {
+    quickRuns: ReturnType<typeof vi.fn>;
+    select: ReturnType<typeof vi.fn>;
+  };
 
   const mockRemote = {
     name: 'test-remote',
@@ -37,19 +45,21 @@ describe('NavigationDispatcherService', () => {
     createdAt: '2026-01-01',
   } as unknown as QuickRun;
 
-  beforeEach(() => {
-    mockUiStateService = jasmine.createSpyObj('UiStateService', [
-      'setMainView',
-      'setTab',
-      'setSelectedRemote',
-    ]);
-    mockRemoteFacade = {
-      activeRemotes: jasmine.createSpy('activeRemotes').and.returnValue([mockRemote]),
+  beforeEach((): void => {
+    mockUiStateService = {
+      setMainView: vi.fn(),
+      setTab: vi.fn(),
+      setSelectedRemote: vi.fn(),
     };
-    mockPathService = jasmine.createSpyObj('PathService', ['getRemoteNameFromFs']);
+    mockRemoteFacade = {
+      activeRemotes: vi.fn().mockReturnValue([mockRemote]),
+    };
+    mockPathService = {
+      getRemoteNameFromFs: vi.fn(),
+    };
     mockQuickRunService = {
-      quickRuns: jasmine.createSpy('quickRuns').and.returnValue([mockQuickRun]),
-      select: jasmine.createSpy('select'),
+      quickRuns: vi.fn().mockReturnValue([mockQuickRun]),
+      select: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -65,12 +75,12 @@ describe('NavigationDispatcherService', () => {
     service = TestBed.inject(NavigationDispatcherService);
   });
 
-  it('should be created', () => {
+  it('should be created', (): void => {
     expect(service).toBeTruthy();
   });
 
   describe('navigateToJob', () => {
-    it('should navigate to flow when origin is quickrun', () => {
+    it('should navigate to flow when origin is quickrun', (): void => {
       const job: JobInfo = {
         jobid: 1,
         execute_id: 'exec-1',
@@ -91,7 +101,7 @@ describe('NavigationDispatcherService', () => {
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
 
-    it('should navigate to operations tab for standard job', () => {
+    it('should navigate to operations tab for standard job', (): void => {
       const job: JobInfo = {
         jobid: 1,
         execute_id: 'exec-1',
@@ -112,7 +122,7 @@ describe('NavigationDispatcherService', () => {
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
     });
 
-    it('should navigate to mount tab for mount job', () => {
+    it('should navigate to mount tab for mount job', (): void => {
       const job: JobInfo = {
         jobid: 2,
         execute_id: 'exec-2',
@@ -132,8 +142,8 @@ describe('NavigationDispatcherService', () => {
   });
 
   describe('navigateToServe', () => {
-    it('should navigate to serve tab when remote is found from fs', () => {
-      mockPathService.getRemoteNameFromFs.and.returnValue('test-remote');
+    it('should navigate to serve tab when remote is found from fs', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue('test-remote');
       const serve: ServeListItem = {
         id: 'serve-1',
         addr: 'localhost:8080',
@@ -149,7 +159,7 @@ describe('NavigationDispatcherService', () => {
   });
 
   describe('navigateToAutomation', () => {
-    it('should navigate to operations tab for remote automation', () => {
+    it('should navigate to operations tab for remote automation', (): void => {
       const automation = {
         id: 'auto-1',
         automationType: 'sync',

@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Flow Overlay & Automation Hub**: Added a dedicated Flow overlay system accessible from the sidebar navigation for streamlined automation, Quick Run execution, and template management.
+- **Flow Overlay & Automation Hub**: Added a dedicated Flow overlay system accessible from the sidebar navigation for streamlined automation, Quick Run execution, and template management. Workflow editor is planned to be added in a future release.
 - **Quick Run Execution & Management System**:
   - **One-Click Operation Execution**: Launch predefined or custom Rclone operations (Sync, Copy, Move, Mount, Serve, Bisync, Check, etc.) with a single click.
   - **Real-Time Job Tracking & State Reflection**: Live progress indicators, execution status, and dynamic state updates on Quick Run cards with instant stop/cancellation controls.

@@ -19,10 +19,7 @@ import { Location, LocationStrategy, PathLocationStrategy } from '@angular/commo
 import { PathNavigationService } from './path-navigation.service';
 import { PathService } from './path.service';
 import { BackendService } from '../system/backend.service';
-import { ApiClientService } from './api-client.service';
-import { AppSettingsService } from '../../settings/app-settings.service';
-import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
-import { Injector, signal } from '@angular/core';
+import { signal } from '@angular/core';
 
 function setupBackend(os: 'linux' | 'windows'): {
   backend: Record<string, unknown>;
@@ -42,10 +39,6 @@ function setupBackend(os: 'linux' | 'windows'): {
   };
 }
 
-function stubService(): Record<string, unknown> {
-  return {};
-}
-
 describe('PathNavigationService', () => {
   let service: PathNavigationService;
   let pathService: PathService;
@@ -59,10 +52,6 @@ describe('PathNavigationService', () => {
         PathService,
         PathNavigationService,
         { provide: BackendService, useValue: mock.backend },
-        { provide: ApiClientService, useValue: stubService() },
-        { provide: AppSettingsService, useValue: stubService() },
-        { provide: RemoteFileOperationsService, useValue: stubService() },
-        { provide: Injector, useValue: { get: (): Record<string, unknown> => stubService() } },
       ],
     });
     service = TestBed.inject(PathNavigationService);

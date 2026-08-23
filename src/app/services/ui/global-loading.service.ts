@@ -1,4 +1,4 @@
-import { ComponentRef, DestroyRef, Injectable, inject, Injector } from '@angular/core';
+import { ComponentRef, DestroyRef, Injectable, inject } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
@@ -10,11 +10,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   providedIn: 'root',
 })
 export class GlobalLoadingService {
-  private overlay = inject(Overlay);
-  private injector = inject(Injector);
-  private eventListenersService = inject(EventListenersService);
-  private translateService = inject(TranslateService);
-  private destroyRef = inject(DestroyRef);
+  private readonly overlay = inject(Overlay);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly translateService = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
   private overlayRef: OverlayRef | null = null;
   private componentRef: ComponentRef<LoadingOverlayComponent> | null = null;
   private shutdownListenerInitialized = false;
@@ -47,7 +46,7 @@ export class GlobalLoadingService {
     }
 
     if (!this.overlayRef.hasAttached()) {
-      const portal = new ComponentPortal(LoadingOverlayComponent, null, this.injector);
+      const portal = new ComponentPortal(LoadingOverlayComponent);
       this.componentRef = this.overlayRef.attach(portal);
     }
 

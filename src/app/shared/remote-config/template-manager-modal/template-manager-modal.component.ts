@@ -8,8 +8,6 @@ import {
   ElementRef,
   effect,
   DestroyRef,
-  afterNextRender,
-  Injector,
   untracked,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
@@ -98,7 +96,6 @@ export class TemplateManagerModalComponent {
   private readonly dialogRef = inject(MatDialogRef<TemplateManagerModalComponent>);
   readonly data = inject<TemplateManagerModalData>(MAT_DIALOG_DATA, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
-  private readonly injector = inject(Injector);
 
   readonly availableCategories = TEMPLATE_CATEGORIES;
 
@@ -203,9 +200,7 @@ export class TemplateManagerModalComponent {
       const el = container();
       const isJsonView = viewMode() === 'json';
       if (el && isJsonView) {
-        afterNextRender(() => this.initEditor(which, el.nativeElement), {
-          injector: this.injector,
-        });
+        requestAnimationFrame(() => this.initEditor(which, el.nativeElement));
       } else if (which === 'save') {
         this.saveEditorView?.destroy();
         this.saveEditorView = null;

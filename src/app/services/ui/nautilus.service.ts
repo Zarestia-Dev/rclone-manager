@@ -29,7 +29,7 @@ import {
   ExplorerRoot,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
+import { isMobile } from '../infrastructure/platform/api-client.service';
 import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
 
 @Injectable({
@@ -244,7 +244,7 @@ export class NautilusService extends TauriBaseService {
 
   private get isStandaloneEnabled(): boolean {
     const opts = this.appSettingsService.options();
-    return !isHeadlessMode() && !isMobile() && opts?.['general.standalone_dialogs']?.value === true;
+    return this.isTauri && !isMobile() && opts?.['general.standalone_dialogs']?.value === true;
   }
 
   async newNautilusWindow(
@@ -332,9 +332,6 @@ export class NautilusService extends TauriBaseService {
 
   closeBrowserOverlay(): void {
     this._isBrowserOverlayOpen.set(false);
-    if (!this._isStandaloneWindow()) {
-      this.pathNav.replaceCurrent(null, null);
-    }
     this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
     this.browserComponentRef = null;
     this.browserOverlayRef = null;
@@ -397,9 +394,6 @@ export class NautilusService extends TauriBaseService {
     });
 
     this._filePickerState.set({ isOpen: false });
-    if (!this._isStandaloneWindow()) {
-      this.pathNav.replaceCurrent(null, null);
-    }
     this.animateAndDisposeOverlay(this.pickerComponentRef, this.pickerOverlayRef);
     this.pickerComponentRef = null;
     this.pickerOverlayRef = null;

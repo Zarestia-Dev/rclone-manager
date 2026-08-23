@@ -3,10 +3,7 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { EditorView } from 'codemirror';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import {
-  isHeadlessMode,
-  isMobile,
-} from 'src/app/services/infrastructure/platform/api-client.service';
+import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 
 export interface DebugInfo {
   logsDir: string;
@@ -66,7 +63,7 @@ export class DebugService extends TauriBaseService {
   }
 
   async openDevTools(): Promise<void> {
-    if (isHeadlessMode()) return;
+    if (!this.isTauri) return;
     try {
       await this.invokeCommand<string>('open_devtools');
     } catch (err) {
@@ -183,7 +180,7 @@ export class DebugService extends TauriBaseService {
       );
     }
 
-    if (isDevMode() && !isHeadlessMode() && !selectedText) {
+    if (isDevMode() && this.isTauri && !selectedText) {
       items.push({
         label: this.t('developerTools.openDevTools'),
         action: () => void this.openDevTools(),
@@ -283,7 +280,7 @@ export class DebugService extends TauriBaseService {
   }
 
   private async readClipboard(): Promise<string> {
-    if (isHeadlessMode()) return navigator.clipboard.readText();
+    if (!this.isTauri) return navigator.clipboard.readText();
     const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
     return readText();
   }

@@ -2,10 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  Injector,
   OnInit,
-  afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -57,7 +56,6 @@ export class LogsModalComponent implements OnInit {
   private readonly loggingService = inject(LoggingService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
-  private readonly injector = inject(Injector);
 
   public readonly logLevels = LOG_LEVELS;
 
@@ -117,6 +115,14 @@ export class LogsModalComponent implements OnInit {
 
   readonly terminalLogArea = viewChild<ElementRef<HTMLDivElement>>('terminalLogArea');
 
+  constructor() {
+    effect(() => {
+      if (this.logs().length > 0) {
+        requestAnimationFrame(() => this.scrollToBottom());
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.loadLogs();
   }
@@ -128,7 +134,6 @@ export class LogsModalComponent implements OnInit {
         this.data.remoteName
       )) as unknown as RemoteLogEntry[];
       this.logs.set(fetchedLogs);
-      afterNextRender(() => this.scrollToBottom(), { injector: this.injector });
     } catch {
       const message = this.translate.instant('modals.logs.fetchError');
       this.snackBar.open(message, undefined, { duration: 3000 });

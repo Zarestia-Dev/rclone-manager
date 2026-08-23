@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
 import { Location } from '@angular/common';
 import { Subject } from 'rxjs';
-import { PathSegment, PathService, PathStyle } from './path.service';
+import { PathService, PathStyle } from './path.service';
 
 export interface NautilusLocation {
   /** Remote name as it appears in `ExplorerRoot.name` (e.g. `C:`, `/`, `googledrive`). */
@@ -228,32 +228,11 @@ export class PathNavigationService implements OnDestroy {
     this._currentPath.set(url);
   }
 
-  normalizePath(p: string): string {
-    return this.pathService.normalizePath(p);
-  }
-
-  joinPath(...segments: string[]): string {
-    return this.pathService.joinPath(...segments);
-  }
-
-  getParentPath(path: string, pathStyle?: PathStyle): string {
-    return this.pathService.getParentPath(path, pathStyle);
-  }
-
-  getPathSegments(path: string): PathSegment[] {
-    return this.pathService.getPathSegments(path);
-  }
-
-  splitSegments(path: string): string[] {
-    return this.pathService.splitSegments(path);
-  }
-
   toCanonicalSeparators(p: string): string {
     return p ? p.replace(/\\/g, '/') : p;
   }
 
   toNativeDisplay(canonicalPath: string, pathStyle: PathStyle = 'posix'): string {
-    if (!canonicalPath) return canonicalPath;
-    return pathStyle === 'windows' ? canonicalPath.replace(/\//g, '\\') : canonicalPath;
+    return this.pathService.normalizeForPlatform(canonicalPath, pathStyle);
   }
 }

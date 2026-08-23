@@ -134,6 +134,15 @@ export class NautilusComponent implements OnInit {
   private readonly filePickerState = this.nautilusService.filePickerState;
 
   protected readonly isPickerMode = computed(() => this.filePickerState().isOpen);
+  protected readonly isPrimaryRoutedView = computed(() => {
+    if (this.isPickerMode() || this.nautilusService.isBrowserOverlayOpen()) {
+      return false;
+    }
+    return (
+      this.nautilusService.isStandaloneWindow() ||
+      this.uiStateService.selectedMainView() === 'nautilus'
+    );
+  });
   protected readonly pickerOptions = computed(
     (): FilePickerConfig => this.filePickerState().options ?? DEFAULT_PICKER_OPTIONS
   );
@@ -403,13 +412,18 @@ export class NautilusComponent implements OnInit {
         });
       }
     });
+    // Sync browser URL with active remote + path when Nautilus is the primary routed view.
+    // In picker mode or overlay mode we do not mutate the browser URL.
     effect(() => {
+      if (!this.isPrimaryRoutedView()) {
+        return;
+      }
+
       const remote = this.tabSvc.activeRemote();
       const path = this.tabSvc.activePath();
-      const activeFile = this.fileViewerSvc.activeFileName();
 
       untracked(() => {
-        const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
+        const displayPath = path;
 
         const remoteName = remote?.name ?? null;
         const desiredPath = this.pathNav.buildRelativeNautilusPath(
@@ -442,13 +456,12 @@ export class NautilusComponent implements OnInit {
     });
 
     this.pathNav.locationChanges$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(loc => {
+      if (!this.isPrimaryRoutedView()) {
+        return;
+      }
+
       const remote = loc.remote;
       if (!remote) {
-        if (this.nautilusService.isBrowserOverlayOpen()) {
-          this.closeOverlay.emit(null);
-        } else if (this.isPickerMode()) {
-          this.nautilusService.closeFilePicker(null);
-        }
         return;
       }
 

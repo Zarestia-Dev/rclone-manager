@@ -35,6 +35,7 @@ import {
   OPERATION_PATH_MAPPINGS,
 } from './utils/remote-config.utils';
 import { PathService } from '../infrastructure/platform/path.service';
+import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '../ui/notification.service';
 import { JobManagementService } from '../operations/job-management.service';
@@ -142,8 +143,9 @@ export class RemoteConfigStateService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
+  private readonly pathInspectionService = inject(PathInspectionService);
+  private readonly translate = inject(TranslateService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly presetsService = inject(RemotePresetsService);
@@ -701,7 +703,7 @@ export class RemoteConfigStateService {
     pathCtrl: unknown
   ): void {
     const token = ++this.pathResolveTokens[type];
-    this.pathService
+    this.pathInspectionService
       .resolveDefaultPath(remoteName, type)
       .then(defaultPath => {
         if (token !== this.pathResolveTokens[type]) return;
@@ -1296,7 +1298,7 @@ export class RemoteConfigStateService {
       await this.appSettingsService.saveRemoteSettings(remote, updatedConfig);
       await this.remoteFacade.loadRemotes();
       try {
-        await this.pathService.createRequiredDirectories(updatedConfig);
+        await this.pathInspectionService.createRequiredDirectories(updatedConfig);
       } catch (err) {
         console.error('Failed to create required directories:', err);
       }
@@ -1813,7 +1815,7 @@ export class RemoteConfigStateService {
     const destVal = vals['dest'] as { path?: string } | undefined;
     if ((type === 'mount' || type === 'bisync') && !destVal?.path) {
       const opType = type as 'mount' | 'bisync';
-      void this.pathService.resolveDefaultPath(rName, opType).then(defaultPath => {
+      void this.pathInspectionService.resolveDefaultPath(rName, opType).then(defaultPath => {
         if (generation !== this.getGeneration(type)) return;
         if (!dstCtrl.get('path')?.value) {
           dstCtrl.patchValue({ type: 'local', path: defaultPath });

@@ -69,6 +69,7 @@ import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
+import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -129,8 +130,9 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly remotePresetsService = inject(RemotePresetsService);
   private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
+  private readonly pathInspectionService = inject(PathInspectionService);
+  private readonly translate = inject(TranslateService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
@@ -668,7 +670,7 @@ export class QuickRunEditorComponent implements OnInit {
 
     if (destGroup && pathCtrl && (!pathCtrl.value || pathCtrl.pristine)) {
       const gen = ++this.destPathGeneration;
-      void this.pathService
+      void this.pathInspectionService
         .resolveDefaultPath(remoteName, opType as DefaultPathOp)
         .then(defaultPath => {
           if (gen !== this.destPathGeneration) return;

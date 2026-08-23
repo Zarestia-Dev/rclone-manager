@@ -2,10 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { PathService } from './path.service';
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { BackendService } from '../system/backend.service';
-import { ApiClientService } from './api-client.service';
-import { AppSettingsService } from '../../settings/app-settings.service';
-import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
-import { Injector } from '@angular/core';
 import { signal } from '@angular/core';
 
 /**
@@ -38,16 +34,6 @@ function mockBackend(initialOs: 'linux' | 'windows' | 'darwin' = 'linux'): {
   };
 }
 
-/**
- * PathService injects five services (BackendService, ApiClientService,
- * AppSettingsService, RemoteFileOperationsService, Injector). Only
- * BackendService.isWindows is exercised by the path-style tests; the others
- * are stubbed so TestBed can construct the service.
- */
-function stubService(): Record<string, unknown> {
-  return {};
-}
-
 describe('PathService', () => {
   let service: PathService;
   let setEngineOs: (os: string) => void;
@@ -56,14 +42,7 @@ describe('PathService', () => {
     const mock = mockBackend('linux');
     setEngineOs = mock.setOs;
     TestBed.configureTestingModule({
-      providers: [
-        PathService,
-        { provide: BackendService, useValue: mock.backend },
-        { provide: ApiClientService, useValue: stubService() },
-        { provide: AppSettingsService, useValue: stubService() },
-        { provide: RemoteFileOperationsService, useValue: stubService() },
-        { provide: Injector, useValue: { get: (): Record<string, unknown> => stubService() } },
-      ],
+      providers: [PathService, { provide: BackendService, useValue: mock.backend }],
     });
     service = TestBed.inject(PathService);
   });
