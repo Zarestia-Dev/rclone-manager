@@ -1594,7 +1594,9 @@
       "openNative": "Harici Uygulamada Aç",
       "openNativeTooltip": "Sistemin varsayılan harici uygulamasında aç",
       "openingNative": "{{name}} harici uygulamada açılıyor...",
-      "errorOpenNative": "Dosya harici uygulamada açılamadı"
+      "errorOpenNative": "Dosya harici uygulamada açılamadı",
+      "showRawText": "Ham Metni Göster",
+      "showPreview": "Önizlemeyi Göster"
     }
   },
   "dashboard": {
@@ -2437,7 +2439,8 @@
         "newName": "Yeni ad",
         "counter": "Sayaç",
         "date": "Tarih",
-        "extension": "Uzantı"
+        "extension": "Uzantı",
+        "duplicateOrInvalid": "Yinelenen veya geçersiz ad"
       }
     },
     "errors": {
@@ -2508,7 +2511,9 @@
     },
     "view": {
       "iconSize": "Simge Boyutu",
-      "showHidden": "Gizli Dosyaları Göster"
+      "showHidden": "Gizli Dosyaları Göster",
+      "toggleLayout": "Düzeni Değiştir",
+      "viewOptions": "Görünüm Seçenekleri"
     },
     "notifications": {
       "mkdirFailed": "Klasör oluşturulamadı: {{path}}",

@@ -1594,7 +1594,9 @@
       "openNative": "在外部应用中打开",
       "openNativeTooltip": "在默认外部应用中打开",
       "openingNative": "正在外部应用中打开 {{name}}...",
-      "errorOpenNative": "在外部应用中打开文件失败"
+      "errorOpenNative": "在外部应用中打开文件失败",
+      "showRawText": "显示原始内容",
+      "showPreview": "显示预览"
     }
   },
   "dashboard": {
@@ -2437,7 +2439,8 @@
         "newName": "新名称",
         "counter": "计数器",
         "date": "日期",
-        "extension": "扩展名"
+        "extension": "扩展名",
+        "duplicateOrInvalid": "重复或无效的名称"
       }
     },
     "errors": {
@@ -2508,7 +2511,9 @@
     },
     "view": {
       "iconSize": "图标大小",
-      "showHidden": "显示隐藏文件"
+      "showHidden": "显示隐藏文件",
+      "toggleLayout": "切换布局",
+      "viewOptions": "视图选项"
     },
     "notifications": {
       "mkdirFailed": "创建目录失败: {{path}}",

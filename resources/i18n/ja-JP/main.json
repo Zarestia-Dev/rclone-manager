@@ -1594,7 +1594,9 @@
       "openNative": "外部アプリで開く",
       "openNativeTooltip": "デフォルトの外部アプリケーションで開く",
       "openingNative": "外部アプリで {{name}} を開いています...",
-      "errorOpenNative": "外部アプリでファイルを開けませんでした"
+      "errorOpenNative": "外部アプリでファイルを開けませんでした",
+      "showRawText": "元のテキストを表示",
+      "showPreview": "プレビューを表示"
     }
   },
   "dashboard": {
@@ -2437,7 +2439,8 @@
         "newName": "新しい名前",
         "counter": "連番",
         "date": "日付",
-        "extension": "拡張子"
+        "extension": "拡張子",
+        "duplicateOrInvalid": "重複しているか無効な名前です"
       }
     },
     "errors": {
@@ -2508,7 +2511,9 @@
     },
     "view": {
       "iconSize": "アイコンサイズ",
-      "showHidden": "隠しファイルを表示"
+      "showHidden": "隠しファイルを表示",
+      "toggleLayout": "レイアウトの切り替え",
+      "viewOptions": "表示オプション"
     },
     "notifications": {
       "mkdirFailed": "ディレクトリの作成に失敗しました: {{path}}",

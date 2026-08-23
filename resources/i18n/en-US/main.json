@@ -1594,7 +1594,9 @@
       "openNative": "Open in External App",
       "openNativeTooltip": "Open in default external application",
       "openingNative": "Opening {{name}} in external viewer...",
-      "errorOpenNative": "Failed to open file in external app"
+      "errorOpenNative": "Failed to open file in external app",
+      "showRawText": "Show Raw Text",
+      "showPreview": "Show Preview"
     }
   },
   "dashboard": {
@@ -2437,7 +2439,8 @@
         "newName": "New name",
         "counter": "Counter",
         "date": "Date",
-        "extension": "Extension"
+        "extension": "Extension",
+        "duplicateOrInvalid": "Duplicate or invalid name"
       }
     },
     "errors": {
@@ -2508,7 +2511,9 @@
     },
     "view": {
       "iconSize": "Icon Size",
-      "showHidden": "Show Hidden Files"
+      "showHidden": "Show Hidden Files",
+      "toggleLayout": "Toggle Layout",
+      "viewOptions": "View Options"
     },
     "notifications": {
       "mkdirFailed": "Failed to create directory: {{path}}",

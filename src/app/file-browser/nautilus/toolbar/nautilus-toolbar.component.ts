@@ -13,6 +13,7 @@ import {
   afterNextRender,
   afterRenderEffect,
   ChangeDetectionStrategy,
+  HostListener,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -125,6 +126,22 @@ export class NautilusToolbarComponent {
         );
       }
     });
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.isEditingPath() && !this.isSearchMode()) return;
+
+    const target = event.target as HTMLElement | null;
+    const clickedInside = target?.closest('.path-container');
+    if (!clickedInside) {
+      if (this.isEditingPath()) {
+        this.isEditingPathChange.emit(false);
+      }
+      if (this.isSearchMode() && !this.searchFilter().trim()) {
+        this.isSearchModeChange.emit(false);
+      }
+    }
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {

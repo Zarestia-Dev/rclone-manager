@@ -1594,7 +1594,9 @@
       "openNative": "Abrir em aplicativo externo",
       "openNativeTooltip": "Abrir no aplicativo externo padrão",
       "openingNative": "Abrindo {{name}} no visualizador externo...",
-      "errorOpenNative": "Falha ao abrir o arquivo no aplicativo externo"
+      "errorOpenNative": "Falha ao abrir o arquivo no aplicativo externo",
+      "showRawText": "Mostrar texto bruto",
+      "showPreview": "Mostrar pré-visualização"
     }
   },
   "dashboard": {
@@ -2437,7 +2439,8 @@
         "newName": "Novo nome",
         "counter": "Contador",
         "date": "Data",
-        "extension": "Extensão"
+        "extension": "Extensão",
+        "duplicateOrInvalid": "Nome duplicado ou inválido"
       }
     },
     "errors": {
@@ -2508,7 +2511,9 @@
     },
     "view": {
       "iconSize": "Tamanho do Ícone",
-      "showHidden": "Mostrar Arquivos Ocultos"
+      "showHidden": "Mostrar Arquivos Ocultos",
+      "toggleLayout": "Alternar layout",
+      "viewOptions": "Opções de visualização"
     },
     "notifications": {
       "mkdirFailed": "Falha ao criar diretório: {{path}}",

@@ -230,12 +230,10 @@ export class NautilusKeyboardDirective {
         this.nautilusService.closeFilePicker(null);
         return true;
       }
-      if (this.tabSvc.activePaneIndex() === 0) {
-        if (this.tabSvc.selectedItems().size > 0) this.callbacks.clearSelection();
-        else this.fileOps.clearClipboard();
+      if (this.tabSvc.activeSelection().size > 0) {
+        this.callbacks.clearSelection();
       } else {
-        if (this.tabSvc.selectedItemsRight().size > 0) this.callbacks.clearSelection();
-        else this.fileOps.clearClipboard();
+        this.fileOps.clearClipboard();
       }
       return true;
     }

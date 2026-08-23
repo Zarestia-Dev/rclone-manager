@@ -88,6 +88,7 @@
       class="path-input"
       [value]="fullPathInput()"
       (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
+      (keydown.escape)="isEditingPathChange.emit(false); pathInput.blur()"
       (blur)="isEditingPathChange.emit(false)"
     />
   }

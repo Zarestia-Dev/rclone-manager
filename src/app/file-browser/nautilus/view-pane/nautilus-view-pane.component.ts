@@ -96,7 +96,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   private _autoScrollRafId: number | null = null;
   private _lassoRafId: number | null = null;
 
-  private readonly _gridRenderLimit = signal(200);
+  private readonly _renderLimit = signal(200);
   private static readonly GRID_RENDER_BATCH = 200;
 
   // --- Computeds ---
@@ -106,21 +106,21 @@ export class NautilusViewPaneComponent implements OnDestroy {
   );
 
   /** Grid items to actually render (progressive: slice of `files()`). */
-  protected readonly gridFiles = computed(() => this.files().slice(0, this._gridRenderLimit()));
+  protected readonly gridFiles = computed(() => this.files().slice(0, this._renderLimit()));
 
   /** True when the grid has more items to render than currently shown. */
-  protected readonly gridHasMore = computed(() => this._gridRenderLimit() < this.files().length);
+  protected readonly gridHasMore = computed(() => this._renderLimit() < this.files().length);
 
   /** List items to actually render (progressive: slice of `files()`). */
-  protected readonly listFiles = computed(() => this.files().slice(0, this._gridRenderLimit()));
+  protected readonly listFiles = computed(() => this.files().slice(0, this._renderLimit()));
 
   /** True when the list has more items to render than currently shown. */
-  protected readonly listHasMore = computed(() => this._gridRenderLimit() < this.files().length);
+  protected readonly listHasMore = computed(() => this._renderLimit() < this.files().length);
 
   constructor() {
     effect(() => {
       this.files();
-      this._gridRenderLimit.set(NautilusViewPaneComponent.GRID_RENDER_BATCH);
+      this._renderLimit.set(NautilusViewPaneComponent.GRID_RENDER_BATCH);
     });
   }
 
@@ -148,7 +148,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     const dy = Math.abs(event.clientY - this._pendingPointerDrag.startY);
 
     if (!this._pendingPointerDrag.started) {
-      if (dx < 4 && dy < 4) return;
+      if (dx < 8 && dy < 8) return;
 
       this._pendingPointerDrag.started = true;
       this._draggedItemPath.set(this._pendingPointerDrag.item.entry.Path);
@@ -178,7 +178,11 @@ export class NautilusViewPaneComponent implements OnDestroy {
       setTimeout(() => {
         this._ignoreNextItemClick = false;
       }, 0);
-      await this.dragDrop.commitInternalPointerDrag({ x: event.clientX, y: event.clientY });
+      try {
+        await this.dragDrop.commitInternalPointerDrag({ x: event.clientX, y: event.clientY });
+      } catch (err) {
+        console.error('[NautilusViewPane] Error committing internal pointer drag:', err);
+      }
     } else {
       this._draggedItemPath.set(null);
     }
@@ -262,7 +266,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   protected onItemKeydown(event: Event, item: FileBrowserItem, index: number): void {
     this.itemClick.emit({ item, event, index });
-    this.navigateTo.emit(item);
+    if (item.entry.IsDir) {
+      this.navigateTo.emit(item);
+    }
     event.preventDefault();
     event.stopPropagation();
   }
@@ -287,6 +293,14 @@ export class NautilusViewPaneComponent implements OnDestroy {
   // Lasso Selection
   // ---------------------------------------------------------------------------
 
+  private _cachedItemRects: {
+    key: string;
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }[] = [];
+
   protected onMouseDown(event: MouseEvent): void {
     // Emit pane switch on any left-click before any early returns.
     if (event.button === 0) {
@@ -295,7 +309,6 @@ export class NautilusViewPaneComponent implements OnDestroy {
     if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
 
     const target = event.target as HTMLElement;
-    // CHANGED: use _activeContainer getter instead of inline ternary.
     const container = this._activeContainer;
     if (!container) return;
 
@@ -320,6 +333,21 @@ export class NautilusViewPaneComponent implements OnDestroy {
       x: event.clientX - rect.left + container.scrollLeft,
       y: event.clientY - rect.top + container.scrollTop,
     };
+
+    // Cache item positions in container coordinates on start to avoid layout thrashing
+    const selector = this.layout() === 'grid' ? '.grid-item' : 'tr.mat-mdc-row';
+    const items = container.querySelectorAll(selector);
+    this._cachedItemRects = Array.from(items).map(itemEl => {
+      const key = (itemEl as HTMLElement).getAttribute('data-item-key') || '';
+      const r = itemEl.getBoundingClientRect();
+      return {
+        key,
+        left: r.left - rect.left + container.scrollLeft,
+        top: r.top - rect.top + container.scrollTop,
+        right: r.right - rect.left + container.scrollLeft,
+        bottom: r.bottom - rect.top + container.scrollTop,
+      };
+    });
 
     this._isLassoing = false;
     this._lassoJustFinished = false;
@@ -365,7 +393,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     let currentX = event.clientX - rect.left + container.scrollLeft;
     let currentY = event.clientY - rect.top + container.scrollTop;
 
-    currentX = Math.max(0, Math.min(currentX, container.clientWidth));
+    currentX = Math.max(0, Math.min(currentX, container.scrollWidth));
     currentY = Math.max(0, Math.min(currentY, container.scrollHeight));
 
     const width = Math.abs(this._lassoStart.x - currentX);
@@ -389,6 +417,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     }
     this.lassoActive.set(false);
     this._lastMoveEvent = undefined;
+    this._cachedItemRects = [];
     this._stopAutoScroll();
 
     if (this._lassoRafId !== null) {
@@ -432,36 +461,23 @@ export class NautilusViewPaneComponent implements OnDestroy {
   }
 
   private _updateLassoSelection(): void {
-    const container = this._activeContainer;
-    if (!container) return;
-
-    const containerRect = container.getBoundingClientRect();
+    if (this._cachedItemRects.length === 0) return;
     const lasso = this.lassoRect();
-
-    const lassoViewport = {
-      left: lasso.left - container.scrollLeft + containerRect.left,
-      top: lasso.top - container.scrollTop + containerRect.top,
-      right: lasso.left - container.scrollLeft + containerRect.left + lasso.width,
-      bottom: lasso.top - container.scrollTop + containerRect.top + lasso.height,
-    };
+    const lassoRight = lasso.left + lasso.width;
+    const lassoBottom = lasso.top + lasso.height;
 
     const newSelection = new Set<string>();
-    const selector = this.layout() === 'grid' ? '.grid-item' : 'tr.mat-mdc-row';
-    const items = container.querySelectorAll(selector);
 
-    items.forEach((itemEl: Element) => {
-      const itemKey = (itemEl as HTMLElement).getAttribute('data-item-key');
-      if (!itemKey) return;
-
-      const itemRect = itemEl.getBoundingClientRect();
+    for (const item of this._cachedItemRects) {
+      if (!item.key) continue;
       const intersects =
-        lassoViewport.left <= itemRect.right &&
-        lassoViewport.right >= itemRect.left &&
-        lassoViewport.top <= itemRect.bottom &&
-        lassoViewport.bottom >= itemRect.top;
+        lasso.left <= item.right &&
+        lassoRight >= item.left &&
+        lasso.top <= item.bottom &&
+        lassoBottom >= item.top;
 
-      if (intersects) newSelection.add(itemKey);
-    });
+      if (intersects) newSelection.add(item.key);
+    }
 
     const current = this.selection();
     const isDifferent =
@@ -484,7 +500,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     const el = event.target as HTMLElement;
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
     if (nearBottom && this.gridHasMore()) {
-      this._gridRenderLimit.update(v => v + NautilusViewPaneComponent.GRID_RENDER_BATCH);
+      this._renderLimit.update(v => v + NautilusViewPaneComponent.GRID_RENDER_BATCH);
     }
   }
 }

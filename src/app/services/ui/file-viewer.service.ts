@@ -5,7 +5,6 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
 import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
-import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathNavigationService } from '../infrastructure/platform/path-navigation.service';
 import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
@@ -37,7 +36,6 @@ function supportsCustomUrlScheme(): boolean {
 })
 export class FileViewerService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
-  private readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly pathNavigationService = inject(PathNavigationService);
 
@@ -92,10 +90,6 @@ export class FileViewerService extends TauriBaseService {
       .backdropClick()
       .pipe(take(1))
       .subscribe(() => cleanup());
-  }
-
-  async getFileType(item: Entry, _remoteName: string, _isLocal: boolean): Promise<string> {
-    return this.iconService.getFileTypeCategory(item);
   }
 
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {

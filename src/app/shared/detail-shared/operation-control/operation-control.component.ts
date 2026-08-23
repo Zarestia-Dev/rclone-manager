@@ -302,8 +302,8 @@ export class OperationControlComponent {
     return (
       operationType === 'mount' &&
       isActive &&
-      !!destination &&
-      !destination.includes('Not configured')
+      pathConfig.hasDestination &&
+      destination.trim().length > 0
     );
   });
 

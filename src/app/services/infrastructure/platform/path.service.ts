@@ -140,6 +140,11 @@ export class PathService {
     return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 
+  normalizeExplorerRoot(remote?: ExplorerRoot | null): string {
+    if (!remote) return '';
+    return remote.isLocal ? remote.name : this.normalizeRemoteForRclone(remote.name);
+  }
+
   normalizeRemoteName(remoteName?: string, pathStyle: PathStyle = this.enginePathStyle()): string {
     if (!remoteName) return '';
     if (pathStyle === 'windows' && /^[a-zA-Z]:$/.test(remoteName)) {

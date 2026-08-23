@@ -1,6 +1,10 @@
 <div class="nautilus-bottom-bar" [class.picker-mode]="isPickerMode()" data-tauri-drag-region>
   <div class="bar-left">
-    <button class="nav-button" (click)="toggleSidebar.emit()" title="Toggle Sidebar">
+    <button
+      class="nav-button"
+      (click)="toggleSidebar.emit()"
+      [attr.title]="'sidebar.toggleSidebar' | translate"
+    >
       <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
   </div>
@@ -23,12 +27,16 @@
       <button
         class="nav-button"
         (click)="popOutToWindow.emit()"
-        [title]="'nautilus.contextMenu.openNewWindow' | translate"
+        [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
       >
         <mat-icon svgIcon="open-link"></mat-icon>
       </button>
     }
-    <button class="nav-button" (click)="setLayout.emit(oppositeLayout())" title="Toggle Layout">
+    <button
+      class="nav-button"
+      (click)="setLayout.emit(oppositeLayout())"
+      [attr.title]="'nautilus.view.toggleLayout' | translate"
+    >
       <mat-icon [svgIcon]="oppositeLayout()"></mat-icon>
     </button>
     <button
@@ -44,7 +52,7 @@
           offsetX: -6,
         },
       ]"
-      title="View Options"
+      [attr.title]="'nautilus.view.viewOptions' | translate"
     >
       <mat-icon svgIcon="chevron-up"></mat-icon>
     </button>

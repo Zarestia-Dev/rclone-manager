@@ -132,51 +132,61 @@ export class NautilusService extends TauriBaseService {
 
   async loadRemoteData(): Promise<void> {
     try {
-      const [remotesRes, drivesRes, configsRes] = await Promise.allSettled([
-        this.remoteManagement.getRemotes(),
-        this.remoteManagement.getLocalDrives(),
-        this.remoteManagement.getAllRemoteConfigs(),
-      ]);
+      const loadCloud = (async (): Promise<void> => {
+        try {
+          const [remotesRes, configsRes] = await Promise.allSettled([
+            this.remoteManagement.getRemotes(),
+            this.remoteManagement.getAllRemoteConfigs(),
+          ]);
 
-      const remoteNames = remotesRes.status === 'fulfilled' ? remotesRes.value : [];
-      const drives = drivesRes.status === 'fulfilled' ? drivesRes.value : [];
-      const configs =
-        configsRes.status === 'fulfilled'
-          ? (configsRes.value as Record<string, { type?: string; Type?: string }>)
-          : {};
+          const remoteNames = remotesRes.status === 'fulfilled' ? remotesRes.value : [];
+          const configs =
+            configsRes.status === 'fulfilled'
+              ? (configsRes.value as Record<string, { type?: string; Type?: string }>)
+              : {};
 
-      if (drivesRes.status === 'rejected') {
-        console.warn('[NautilusService] Failed to load local drives:', drivesRes.reason);
-      }
-      if (remotesRes.status === 'rejected') {
-        console.warn('[NautilusService] Failed to load remote names:', remotesRes.reason);
-      }
+          if (remotesRes.status === 'rejected') {
+            console.warn('[NautilusService] Failed to load remote names:', remotesRes.reason);
+          }
 
-      this._localDrives.set(
-        drives.map(drive => ({
-          name: drive.name,
-          label: drive.label || drive.name,
-          type: 'hard-drive',
-          isLocal: true,
-          showName: drive.show_name,
-          totalSpace: drive.total_space,
-          availableSpace: drive.available_space,
-          fileSystem: drive.file_system,
-          isRemovable: drive.is_removable,
-        }))
-      );
+          this._cloudRemotes.set(
+            remoteNames.map(name => {
+              const config = configs[name];
+              return {
+                name,
+                label: name,
+                type: config?.type ?? config?.Type ?? 'cloud',
+                isLocal: false,
+              };
+            })
+          );
+        } catch (err) {
+          console.warn('[NautilusService] Error loading cloud remotes:', err);
+        }
+      })();
 
-      this._cloudRemotes.set(
-        remoteNames.map(name => {
-          const config = configs[name];
-          return {
-            name,
-            label: name,
-            type: config?.type ?? config?.Type ?? 'cloud',
-            isLocal: false,
-          };
-        })
-      );
+      const loadDrives = (async (): Promise<void> => {
+        try {
+          const drives = await this.remoteManagement.getLocalDrives();
+          this._localDrives.set(
+            drives.map(drive => ({
+              name: drive.name,
+              label: drive.label || drive.name,
+              type: 'hard-drive',
+              isLocal: true,
+              showName: drive.show_name,
+              totalSpace: drive.total_space,
+              availableSpace: drive.available_space,
+              fileSystem: drive.file_system,
+              isRemovable: drive.is_removable,
+            }))
+          );
+        } catch (err) {
+          console.warn('[NautilusService] Failed to load local drives:', err);
+        }
+      })();
+
+      await Promise.allSettled([loadCloud, loadDrives]);
     } catch (e) {
       console.error('[NautilusService] Failed to load remote data:', e);
     }
@@ -214,12 +224,10 @@ export class NautilusService extends TauriBaseService {
   }
 
   setWindowTitle(title: string): void {
-    setTimeout(async () => {
-      if (this.isTauri) {
-        await this.getCurrentTauriWindow()?.setTitle(title);
-      }
-      this.titleService.setTitle(title);
-    }, 0);
+    if (this.isTauri) {
+      void this.getCurrentTauriWindow()?.setTitle(title);
+    }
+    this.titleService.setTitle(title);
   }
 
   getNautilusUrl(remote: string | null, path: string | null): string {
@@ -235,7 +243,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   private get isStandaloneEnabled(): boolean {
-    const opts = this.appSettingsService.options() as Record<string, any> | null;
+    const opts = this.appSettingsService.options();
     return !isHeadlessMode() && !isMobile() && opts?.['general.standalone_dialogs']?.value === true;
   }
 
@@ -284,7 +292,7 @@ export class NautilusService extends TauriBaseService {
   async openBrowserOverlay(remote: string | null, path: string | null): Promise<void> {
     if (this.browserOverlayRef) {
       if (remote) {
-        const remoteRoot = this.lookupRemote(remote);
+        const remoteRoot = this.lookupRemoteByName(remote);
         if (path && remoteRoot) {
           this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, path));
         } else {
@@ -296,10 +304,8 @@ export class NautilusService extends TauriBaseService {
     if (this.isBrowserOpening) return;
     this.isBrowserOpening = true;
 
-    this._isBrowserOverlayOpen.set(true);
-
     if (remote) {
-      const remoteRoot = this.lookupRemote(remote);
+      const remoteRoot = this.lookupRemoteByName(remote);
       if (path && remoteRoot) {
         this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, path));
       } else {
@@ -315,6 +321,10 @@ export class NautilusService extends TauriBaseService {
       );
       this.browserOverlayRef = overlayRef;
       this.browserComponentRef = componentRef;
+      this._isBrowserOverlayOpen.set(true);
+    } catch (err) {
+      console.error('[NautilusService] Failed to open browser overlay:', err);
+      this._isBrowserOverlayOpen.set(false);
     } finally {
       this.isBrowserOpening = false;
     }
@@ -350,12 +360,15 @@ export class NautilusService extends TauriBaseService {
   async openFilePicker(options: FilePickerConfig): Promise<void> {
     if (this.pickerOverlayRef || this.isPickerOpening) return;
     this.isPickerOpening = true;
-    this._filePickerState.set({
-      isOpen: true,
-      options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
-    });
     try {
+      this._filePickerState.set({
+        isOpen: true,
+        options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
+      });
       await this.createPickerOverlay();
+    } catch (err) {
+      console.error('[NautilusService] Failed to open file picker:', err);
+      this._filePickerState.set({ isOpen: false });
     } finally {
       this.isPickerOpening = false;
     }
@@ -369,8 +382,14 @@ export class NautilusService extends TauriBaseService {
       cancelled: result === null,
       items,
       paths: items.map(i => {
+        const remoteRoot = this.lookupRemote(i.meta.remote);
         return this.pathService.getFullDisplayPath(
-          { name: i.meta.remote, isLocal: i.meta.isLocal, label: i.meta.remote, type: '' },
+          remoteRoot ?? {
+            name: i.meta.remote,
+            isLocal: i.meta.isLocal,
+            label: i.meta.remote,
+            type: i.meta.remoteType ?? '',
+          },
           i.entry.Path
         );
       }),
@@ -454,17 +473,18 @@ export class NautilusService extends TauriBaseService {
   /**
    * Resolve a parsed remote name to its `ExplorerRoot` from the engine-populated
    * registry (local drives + cloud remotes). Returns `null` if the remote is
-   * not currently registered — callers should treat that as "no display path
-   * available" rather than guessing `isLocal` from the name's shape.
+   * not currently registered.
    */
-  private lookupRemote(remoteName: string): ExplorerRoot | null {
+  lookupRemoteByName(remoteName: string): ExplorerRoot | null {
     const all = this.allRemotesLookup();
     const byName = all.find(r => r.name === remoteName);
     if (byName) return byName;
-    // `parseLocation` returns remote names like `C:` for drive roots and `/`
-    // for POSIX roots — match those against the registry by normalized name.
     const normalized = this.pathService.normalizeRemoteName(remoteName);
     return all.find(r => this.pathService.normalizeRemoteName(r.name) === normalized) ?? null;
+  }
+
+  private lookupRemote(remoteName: string): ExplorerRoot | null {
+    return this.lookupRemoteByName(remoteName);
   }
 
   private setupBrowseListener(): void {
@@ -493,20 +513,25 @@ export class NautilusService extends TauriBaseService {
       let rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
       if (!Array.isArray(rawItems)) rawItems = [];
 
-      const items: FileBrowserItem[] = rawItems.map((item: unknown) => {
+      const items: FileBrowserItem[] = [];
+      for (const item of rawItems) {
+        if (!item || typeof item !== 'object') continue;
         const rec = item as Record<string, unknown>;
-        if (rec && 'remote' in rec && 'entry' in rec) {
-          return {
-            entry: rec['entry'] as FileBrowserItem['entry'],
-            meta: {
-              remote: (rec['remote'] as string) || '',
-              isLocal: false,
-              remoteType: undefined,
-            },
-          };
+        if (rec['entry'] && typeof rec['entry'] === 'object') {
+          const entry = rec['entry'] as Record<string, unknown>;
+          if (typeof entry['Path'] === 'string' && typeof entry['Name'] === 'string') {
+            const meta = (rec['meta'] ?? {}) as Record<string, unknown>;
+            items.push({
+              entry: entry as unknown as FileBrowserItem['entry'],
+              meta: {
+                remote: (meta['remote'] as string) || (rec['remote'] as string) || '',
+                isLocal: meta['isLocal'] === true,
+                remoteType: meta['remoteType'] as string | undefined,
+              },
+            });
+          }
         }
-        return rec as unknown as FileBrowserItem;
-      });
+      }
 
       config.signal.set(items.filter(i => i.meta?.remote && i.entry?.Path));
     } catch (e) {
@@ -574,9 +599,32 @@ export class NautilusService extends TauriBaseService {
     componentRef: ComponentRef<unknown> | null,
     overlayRef: OverlayRef | null
   ): void {
-    componentRef?.location.nativeElement.classList.add('slide-overlay-leave');
-    if (overlayRef) {
-      setTimeout(() => overlayRef.dispose(), 200);
+    if (!overlayRef) return;
+    const element = componentRef?.location?.nativeElement as HTMLElement | undefined;
+    if (element) {
+      element.classList.add('slide-overlay-leave');
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const onEnd = (): void => {
+        if (timer !== null) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        element.removeEventListener('animationend', onEnd);
+        if (overlayRef.hasAttached()) {
+          overlayRef.dispose();
+        }
+      };
+      element.addEventListener('animationend', onEnd);
+      timer = setTimeout(() => {
+        element.removeEventListener('animationend', onEnd);
+        if (overlayRef.hasAttached()) {
+          overlayRef.dispose();
+        }
+      }, 250);
+    } else {
+      if (overlayRef.hasAttached()) {
+        overlayRef.dispose();
+      }
     }
   }
 }

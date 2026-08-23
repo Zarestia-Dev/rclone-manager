@@ -1,4 +1,4 @@
-import { effect, signal } from '@angular/core';
+import { effect, Injector, signal } from '@angular/core';
 
 /**
  * Shared logic for the sliding context menu used in Nautilus-style components.
@@ -9,22 +9,33 @@ export class SlideMenuController {
   readonly contextMenuHeight = signal<number | null>(null);
   private readonly _menuOpenedTrigger = signal(0);
 
-  constructor(private containerSelector: string) {
+  constructor(
+    private containerSelector: string,
+    private rootResolver?: () => HTMLElement | null | undefined,
+    injector?: Injector
+  ) {
     // Track context menu page height for the sliding animation.
-    effect(() => {
+    const effectFn = (): void => {
       this.currentMenuView();
       this._menuOpenedTrigger();
 
       // setTimeout defers the DOM read until after the next render cycle.
       setTimeout(() => {
-        const activePage = document.querySelector(
-          `${this.containerSelector} .menu-page.active-page`
-        );
+        const root = this.rootResolver?.() ?? document;
+        const activePage =
+          root.querySelector(`${this.containerSelector} .menu-page.active-page`) ??
+          document.querySelector(`${this.containerSelector} .menu-page.active-page`);
         if (activePage) {
           this.contextMenuHeight.set((activePage as HTMLElement).offsetHeight);
         }
       }, 0);
-    });
+    };
+
+    if (injector) {
+      effect(effectFn, { injector });
+    } else {
+      effect(effectFn);
+    }
   }
 
   /** Resets the menu to the main page and triggers a height recalculation. */

@@ -6,6 +6,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
@@ -83,6 +84,7 @@ export class NautilusDragDropService {
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly fileOps = inject(NautilusFileOperationsService);
+  private readonly nautilusService = inject(NautilusService);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly _isInternalDragging = signal(false);
@@ -208,18 +210,32 @@ export class NautilusDragDropService {
         };
         el.popover = 'manual';
         el.showPopover?.();
-      } catch {
-        // Popover fallback
+      } catch (e) {
+        console.debug('[NautilusDragDrop] Popover API not supported, falling back:', e);
       }
     }
     this._updateDragGhostPosition(point.x + 12, point.y + 12);
+  }
+
+  private _moveRafId: number | null = null;
+  private _lastMovePoint: { x: number; y: number } | null = null;
+
+  private _scheduleMove(point: { x: number; y: number }): void {
+    this._lastMovePoint = point;
+    if (this._moveRafId !== null) return;
+    this._moveRafId = requestAnimationFrame(() => {
+      this._moveRafId = null;
+      if (this._lastMovePoint) {
+        this._onMove(this._lastMovePoint);
+      }
+    });
   }
 
   updateInternalPointerDrag(point: { x: number; y: number }): void {
     if (!this._internalPointerDrag) return;
     this._internalPointerDrag.lastPoint = point;
     this._updateDragGhostPosition(point.x + 12, point.y + 12);
-    this._onMove(point);
+    this._scheduleMove(point);
   }
 
   private _createDragGhost(items: FileBrowserItem[], svgIcon: SVGElement | null): HTMLElement {
@@ -328,9 +344,6 @@ export class NautilusDragDropService {
       await this._processInternalItemsDrop(this._internalPointerDrag.items, target);
     } finally {
       this.cancelInternalPointerDrag();
-      if (ctx.activeRemote) {
-        this._cb.refresh(ctx.activeRemote.name, ctx.activePath);
-      }
     }
   }
 
@@ -341,6 +354,11 @@ export class NautilusDragDropService {
   }
 
   endDrag(): void {
+    if (this._moveRafId !== null) {
+      cancelAnimationFrame(this._moveRafId);
+      this._moveRafId = null;
+    }
+    this._lastMovePoint = null;
     this._isInternalDragging.set(false);
     this._isExternalDragging.set(false);
     this._counter = 0;
@@ -362,7 +380,7 @@ export class NautilusDragDropService {
     if (event.dataTransfer?.types.includes('application/x-nautilus-tab')) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    this._onMove({ x: event.clientX, y: event.clientY });
+    this._scheduleMove({ x: event.clientX, y: event.clientY });
   }
 
   onContainerDragEnter(_event: DragEvent): void {
@@ -430,13 +448,7 @@ export class NautilusDragDropService {
 
   async dropToBookmark(event: DragEvent, bookmark: FileBrowserItem): Promise<void> {
     event.stopPropagation();
-    const { allRemotesLookup } = this._cb.getContext();
-    const targetRemote =
-      allRemotesLookup.find(
-        r =>
-          this.pathService.normalizeRemoteName(r.name) ===
-          this.pathService.normalizeRemoteName(bookmark.meta.remote)
-      ) ?? null;
+    const targetRemote = this.nautilusService.lookupRemoteByName(bookmark.meta.remote);
     const fsEntries = event.dataTransfer ? this._snapshotEntries(event.dataTransfer.items) : [];
     await this._processDrop(event, { remote: targetRemote, path: bookmark.entry.Path }, fsEntries);
   }
@@ -598,14 +610,13 @@ export class NautilusDragDropService {
 
     if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
 
-    const sourceParentPath = items[0].entry.Path.substring(
-      0,
-      items[0].entry.Path.lastIndexOf(items[0].entry.Name)
-    ).replace(/\/$/, '');
+    const normalizedTargetRemote = this.pathService.normalizeRemoteName(target.remote.name);
+    const isSameRemote = items.every(
+      item =>
+        this.pathService.normalizeRemoteName(item.meta.remote ?? '') === normalizedTargetRemote
+    );
 
-    const isSameRemote =
-      this.pathService.normalizeRemoteName(items[0].meta.remote ?? '') ===
-      this.pathService.normalizeRemoteName(target.remote.name);
+    const sourceParentPath = this.pathService.getParentPath(items[0].entry.Path);
 
     if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
 
@@ -765,11 +776,7 @@ export class NautilusDragDropService {
         const bmPath = sidebarItem.replace('bookmark:', '');
         const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
         if (bm) {
-          const remote = ctx.allRemotesLookup.find(
-            r =>
-              this.pathService.normalizeRemoteName(r.name) ===
-              this.pathService.normalizeRemoteName(bm.meta.remote ?? '')
-          );
+          const remote = this.nautilusService.lookupRemoteByName(bm.meta.remote ?? '');
           if (remote) return { remote, path: bm.entry.Path };
         }
       }
@@ -782,11 +789,7 @@ export class NautilusDragDropService {
 
       if (folder?.entry.IsDir) {
         const folderRemote =
-          ctx.allRemotesLookup.find(
-            r =>
-              this.pathService.normalizeRemoteName(r.name) ===
-              this.pathService.normalizeRemoteName(folder.meta.remote)
-          ) ?? pane.remote;
+          this.nautilusService.lookupRemoteByName(folder.meta.remote) ?? pane.remote;
         return { remote: folderRemote, path: folder.entry.Path };
       }
 
@@ -828,16 +831,22 @@ export class NautilusDragDropService {
   private _readDirEntries(entry: FileSystemDirectoryEntry): Promise<FileSystemEntry[]> {
     const reader = entry.createReader();
     const all: FileSystemEntry[] = [];
-    return new Promise((res, rej) => {
+    return new Promise(res => {
       const readBatch = (): void => {
-        reader.readEntries(batch => {
-          if (!batch.length) {
+        reader.readEntries(
+          batch => {
+            if (!batch.length) {
+              res(all);
+              return;
+            }
+            all.push(...batch);
+            readBatch();
+          },
+          err => {
+            console.warn(`Failed to read directory entries for ${entry.name}:`, err);
             res(all);
-            return;
           }
-          all.push(...batch);
-          readBatch();
-        }, rej);
+        );
       };
       readBatch();
     });
@@ -872,6 +881,6 @@ export class NautilusDragDropService {
   }
 
   private _normalizeRemote(remote: ExplorerRoot): string {
-    return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
+    return this.pathService.normalizeExplorerRoot(remote);
   }
 }

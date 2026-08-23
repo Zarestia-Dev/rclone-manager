@@ -26,6 +26,9 @@ export class NautilusSettingsService {
   private readonly _sortColumn = signal<'name' | 'size' | 'modified'>('name');
   private readonly _sortAscending = signal(true);
 
+  readonly sortColumn = this._sortColumn.asReadonly();
+  readonly sortAscending = this._sortAscending.asReadonly();
+
   // ── Computeds ───────────────────────────────────────────────────────────────
   readonly sortKey = computed(
     () => `${this._sortColumn()}-${this._sortAscending() ? 'asc' : 'desc'}`
