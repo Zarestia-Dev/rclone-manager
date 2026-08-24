@@ -21,7 +21,7 @@
       height: 68px;
       border-radius: var(--radius-md);
       background: color-mix(in srgb, var(--accent-color) 10%, var(--card-bg-color));
-      box-shadow: 0 0 1px var(--accent-color);
+      box-shadow: 0 0 0 2px var(--accent-color);
 
       .remote-logo-icon {
         width: 40px;

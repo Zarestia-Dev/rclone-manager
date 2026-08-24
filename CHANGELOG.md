@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [v0.3.2] - 2026-08-24
 
 ### Added
 - **Flow Overlay & Automation Hub**: Added a dedicated Flow overlay system accessible from the sidebar navigation for streamlined automation, Quick Run execution, and template management. Workflow editor is planned to be added in a future release.
