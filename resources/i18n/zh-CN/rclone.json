@@ -1207,6 +1207,10 @@
     "title": "NFS 挂载",
     "help": "使用 NFS 协议挂载"
   },
+  "mount_type_saf": {
+    "title": "存储访问框架 (SAF)",
+    "help": "Android 原生存储访问框架挂载"
+  },
   "serve_type_http": {
     "title": "HTTP 服务器",
     "help": "通过 HTTP 服务远程存储"
