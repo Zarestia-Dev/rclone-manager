@@ -33,6 +33,11 @@ services:
       - PGID=1000
       # - PGIDS=1000,3000 # Optional: Supplementary group IDs (comma-separated) for NFSv4 ACLs / ZFS mounts
 
+      # --- Optional: Master Secret / rcman Encrypted Credentials ---
+      # Master password for rcman encrypted credentials store (remote passwords, tokens).
+      # - RCLONE_MANAGER_SECRET=MySuperSecretPassword123!
+      # - RCLONE_MANAGER_SECRET_PATH=/data/.secret # Path to secret file (must exist before starting container)
+
       # --- Optional: Basic Authentication ---
       # Uncomment and fill in to password-protect the web UI.
       # Most users behind a reverse proxy (NPM, Traefik) don't need this.

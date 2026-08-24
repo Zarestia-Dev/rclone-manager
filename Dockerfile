@@ -114,9 +114,9 @@ COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/l
 # Copy the built frontend assets
 # The destination path is critical: it must exactly match the `productName` defined in tauri.conf.headless.json
 COPY --from=builder \
-    ["/app/src-tauri/target/release/browser", "/usr/lib/RClone Manager Headless/browser/"]
+    ["/app/dist/rclone-manager/browser", "/usr/lib/RClone Manager Headless/browser/"]
 COPY --from=builder \
-    ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
+    ["/app/resources/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Copy and setup the runtime entrypoint script
 # Moving this to the end ensures that changes to entrypoint.sh don't invalidate
@@ -147,9 +147,7 @@ ENV DISPLAY=:99 \
     RCLONE_CONFIG=/config/rclone.conf \
     RCLONE_MANAGER_DATA_DIR=/data \
     RCLONE_MANAGER_LOG_DIR=/data/logs \
-    RCLONE_MANAGER_CACHE_DIR=/data/cache \
-    RCLONE_MANAGER_SECRET=${RCLONE_MANAGER_SECRET:-} \
-    RCLONE_MANAGER_SECRET_PATH=${RCLONE_MANAGER_SECRET_PATH:-}
+    RCLONE_MANAGER_CACHE_DIR=/data/cache
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []

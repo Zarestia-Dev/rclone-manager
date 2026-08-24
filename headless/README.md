@@ -42,26 +42,26 @@ docker run -d \
   --name rclone-manager \
   --restart=unless-stopped \
   -p 8080:8080 \
-  -v rclone-config:/home/rclone-manager/.config/rclone \
-  -v rclone-manager-data:/home/rclone-manager/.local/share/com.rclone.manager.headless \
+  -v rclone-config:/config \
+  -v rclone-manager-data:/data \
   ghcr.io/zarestia-dev/rclone-manager:latest
-
 ```
 
 - **Web UI:** `http://YOUR_IP:8080`
-- **OAuth Redirect:** Port `53682` (Required for Google Drive/OneDrive auth).
+- **Volumes:** `/data` (app data & binaries) and `/config` (`rclone.conf`).
+- **OAuth / Cloud Auth:** Use `--net=host` or SSH port forwarding (`ssh -L 53682:127.0.0.1:53682 user@host`) for Google Drive/OneDrive 1-click OAuth.
 
-> 🔐 **Need Authentication or HTTPS?**
-> Check the **[Configuration Guide](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless)** for enabling password protection and TLS.
+> 🔐 **Need Authentication, Secret Keys, or HTTPS?**
+> Check the **[Configuration Guide](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-headless)** for enabling password protection, encrypted secrets, and TLS.
 
 ---
 
 ## 📦 Downloads
 
-| Repository                 | Version                                                                                                                                                                                               | Install Command                                                                                                                                                                          |
-| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AUR**                    | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-headless?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-headless)                                | `yay -S rclone-manager-headless`                                                                                                                                                         |
-| **Direct Download**        | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/tag/headless-v0.2.1) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/tag/headless-v0.2.1"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
+| Repository                 | Version                                                                                                                                                                                                          | Install Command                                                                                                                                                                          |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**                    | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-headless?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-headless)                                          | `yay -S rclone-manager-headless`                                                                                                                                                         |
+| **Direct Download**        | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/tag/headless-v0.3.2)             | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/tag/headless-v0.3.2"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 | **GitHub Packages (GHCR)** | [![GitHub Container Registry](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/pkgs/container/rclone-manager) | `docker pull ghcr.io/zarestia-dev/rclone-manager:latest`                                                                                                                                 |
 
 ---
