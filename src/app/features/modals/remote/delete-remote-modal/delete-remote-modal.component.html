@@ -118,8 +118,8 @@
         @for (qr of quickRunsList(); track qr.id) {
           <div class="app-pill {{ getOpPillClass(qr.operationType) }}">
             <mat-icon [svgIcon]="getOpIcon(qr.operationType)"></mat-icon>
-            <span>{{ qr.name }}</span>
-            <span class="app-pill p-dim">{{ qr.operationType | titlecase }}</span>
+            <span class="profile-type">{{ qr.name }}:</span>
+            <span class="profile-name">{{ qr.operationType | titlecase }}</span>
           </div>
         }
       </div>

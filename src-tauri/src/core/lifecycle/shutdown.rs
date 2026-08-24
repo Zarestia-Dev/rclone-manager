@@ -85,7 +85,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
-    #[cfg(not(feature = "librclone"))]
     let engine_result = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
         let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
         engine_state.lock().await.shutdown(&app_clone).await;
@@ -93,29 +92,21 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     })
     .await;
 
-    #[cfg(feature = "librclone")]
-    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
-        let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
-        engine_state.lock().await.shutdown(&app_clone).await;
-        Ok::<(), String>(())
-    })
-    .await;
-
-    #[cfg(not(feature = "librclone"))]
-    {
-        match engine_result {
-            Ok(Ok(())) => info!("Engine shutdown completed."),
-            Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
-            Err(_) => {
-                error!("Engine shutdown timed out — force-killing rclone processes");
-                let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
-                if let Err(e) = crate::utils::process::process_manager::kill_all_rclone_processes(
-                    force_kill_port,
-                ) {
-                    error!("Force kill failed: {e}");
-                }
+    match engine_result {
+        Ok(Ok(())) => info!("Engine shutdown completed."),
+        Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
+        #[cfg(not(feature = "librclone"))]
+        Err(_) => {
+            error!("Engine shutdown timed out — force-killing rclone processes");
+            let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
+            if let Err(e) =
+                crate::utils::process::process_manager::kill_all_rclone_processes(force_kill_port)
+            {
+                error!("Force kill failed: {e}");
             }
         }
+        #[cfg(feature = "librclone")]
+        Err(_) => {}
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.

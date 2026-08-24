@@ -120,12 +120,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String]);
             (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
-            #[cfg(not(feature = "librclone"))]
-            (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
             (get_remote_paths, $crate::rclone::queries::get_remote_paths, [remote: String, path: Option<String>, options: Option<$crate::utils::types::remotes::ListOptions>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (run_garbage_collector, $crate::rclone::commands::system::run_garbage_collector, []);
             (get_fscache_entries, $crate::rclone::commands::system::get_fscache_entries, []);
             (clear_fscache, $crate::rclone::commands::system::clear_fscache, []);
+            #[cfg(not(feature = "librclone"))]
+            (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
 
             // FILESYSTEM COMMANDS
             (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
