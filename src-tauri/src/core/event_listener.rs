@@ -23,12 +23,15 @@ use crate::{
     },
 };
 
-#[cfg(all(target_os = "linux", feature = "flatpak"))]
-use crate::utils::app::platform::manage_flatpak_background_portal;
+#[cfg(any(
+    feature = "tray",
+    all(desktop, not(any(target_os = "android", target_os = "ios")))
+))]
+use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
+
 #[cfg(feature = "tray")]
 use crate::utils::types::events::{
-    BACKEND_SWITCHED, JOB_CACHE_CHANGED, JobChangeEvent, MOUNT_STATE_CHANGED,
-    REMOTE_SETTINGS_CHANGED, SERVE_STATE_CHANGED, UPDATE_TRAY_MENU,
+    BACKEND_SWITCHED, JOB_CACHE_CHANGED, JobChangeEvent, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
 };
 
 #[cfg(feature = "tray")]
@@ -123,6 +126,10 @@ fn handle_settings_changed(app: &AppHandle) {
                         handle_tray_visibility_change(&app, enabled);
                     }
                 }
+                #[cfg(feature = "tray")]
+                ("general", "tray_icon_theme") => {
+                    trigger_tray_update(app.clone());
+                }
                 ("general", "restrict") => {
                     if let Some(restrict) = change.value.as_bool() {
                         handle_restrict_mode_change(&app, restrict);
@@ -132,6 +139,13 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(lang) = change.value.as_str() {
                         crate::utils::i18n::apply_language_change(&app, lang);
                     }
+                }
+                #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+                ("general", "prevent_sleep") => {
+                    let app_clone = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        crate::core::power::update_power_inhibition(&app_clone).await;
+                    });
                 }
                 ("core", "bandwidth_limit") => {
                     handle_bandwidth_limit_change(&app, &change.value);
@@ -230,7 +244,9 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     #[cfg(all(target_os = "linux", feature = "flatpak"))]
     {
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = manage_flatpak_background_portal(enabled).await {
+            if let Err(e) =
+                crate::utils::app::platform::manage_flatpak_background_portal(enabled).await
+            {
                 error!("Failed to update flatpak autostart: {e}");
             }
         });
@@ -335,9 +351,25 @@ fn register_tray_refresh_listeners(app: &AppHandle) {
     }
 }
 
+#[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+fn register_operation_state_listeners(app: &AppHandle) {
+    for event in [SERVE_STATE_CHANGED, MOUNT_STATE_CHANGED] {
+        let app_clone = app.clone();
+        app.listen(event, move |_| {
+            let app = app_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                crate::core::power::update_power_inhibition(&app).await;
+            });
+        });
+    }
+}
+
 pub fn setup_event_listener(app: &AppHandle) {
     #[cfg(feature = "tray")]
     register_tray_refresh_listeners(app);
+
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    register_operation_state_listeners(app);
 
     handle_ctrl_c(app);
     handle_rclone_password_stored(app);

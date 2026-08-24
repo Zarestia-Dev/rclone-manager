@@ -30,6 +30,16 @@ export interface MultiRenameData {
   remote: ExplorerRoot;
 }
 
+export interface MultiRenameFormValue {
+  template?: string;
+  counterStart?: number;
+  counterStep?: number;
+  counterPadding?: number;
+  findText?: string;
+  replaceWith?: string;
+  caseSensitive?: boolean;
+}
+
 @Component({
   selector: 'app-multi-rename-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -192,7 +202,7 @@ export class MultiRenameModalComponent {
     item: FileBrowserItem,
     index: number,
     currentMode: 'template' | 'replace',
-    val: any
+    val: MultiRenameFormValue
   ): string {
     const filename = item.entry.Name;
     const { base, ext } = this.getBaseAndExt(filename);

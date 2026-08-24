@@ -1,6 +1,6 @@
 //! `RClone` Backend Settings Manager (using rcman sub-settings single-file mode)
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use log::{debug, info};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager};
 use crate::rclone::engine::lifecycle::restart_for_config_change;
 
 /// Load all `RClone` backend options from rcman sub-settings (single file)
-#[tauri::command]
+#[bridge]
 pub async fn load_rclone_backend_options(app: AppHandle) -> Result<serde_json::Value, String> {
     debug!("Loading RClone backend options via rcman sub-settings");
     let manager = app.state::<AppSettingsManager>();
@@ -30,7 +30,7 @@ pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Va
 }
 
 /// Save all `RClone` backend options
-#[tauri::command]
+#[bridge]
 pub async fn save_rclone_backend_options(
     app: AppHandle,
     options: serde_json::Value,
@@ -54,7 +54,7 @@ pub async fn save_rclone_backend_options(
 }
 
 /// Save a single `RClone` backend option (block.option format)
-#[tauri::command]
+#[bridge]
 pub async fn save_rclone_backend_option(
     app: AppHandle,
     block: String,
@@ -86,7 +86,7 @@ pub async fn save_rclone_backend_option(
 }
 
 /// Reset `RClone` backend options to defaults (delete all) and restart engine
-#[tauri::command]
+#[bridge]
 pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> {
     debug!("Resetting RClone backend options");
     let manager = app.state::<AppSettingsManager>();
@@ -109,7 +109,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 }
 
 /// Remove a single `RClone` backend option
-#[tauri::command]
+#[bridge]
 pub async fn remove_rclone_backend_option(
     app: AppHandle,
     block: String,
@@ -147,7 +147,7 @@ pub async fn remove_rclone_backend_option(
 }
 
 /// Get `RClone` backend store path for backup/export
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_backend_store_path(app: AppHandle) -> Result<String, String> {
     let manager = app.state::<AppSettingsManager>();
     let sub = manager

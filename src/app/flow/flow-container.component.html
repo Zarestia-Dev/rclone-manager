@@ -1,0 +1,91 @@
+<div class="flow-main-wrapper">
+  <!-- Top Flow Header -->
+  <app-titlebar
+    overlayType="flow"
+    [customAddMenu]="addMenu"
+    [showHome]="hasDetailOpen()"
+    (homeClick)="goHome()"
+    data-tauri-drag-region
+  ></app-titlebar>
+
+  <app-banner></app-banner>
+
+  <ng-template #addMenu>
+    <div class="material-context-menu" cdkMenu>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newRemote()" class="menu-item">
+        <mat-icon svgIcon="server"></mat-icon>
+        <span>{{ 'flow.quickRun.editor.remote' | translate }}</span>
+      </button>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newQuickRun()" class="menu-item">
+        <mat-icon svgIcon="quick-run"></mat-icon>
+        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+      </button>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newWorkflow()" class="menu-item">
+        <mat-icon svgIcon="workflow"></mat-icon>
+        <span>{{ 'flow.tabs.workflow' | translate }}</span>
+      </button>
+    </div>
+  </ng-template>
+
+  <!-- Main Body with Sidenav Container (Visible across all tabs) -->
+  <mat-sidenav-container class="flow-sidenav-container">
+    <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+    <mat-sidenav
+      #sidenav
+      [opened]="isSidebarOpen()"
+      (openedStart)="setSidebarOpen(true)"
+      (closedStart)="setSidebarOpen(false)"
+      (openedChange)="setSidebarOpen($event)"
+      [mode]="sidebarMode()"
+      class="flow-sidenav"
+    >
+      <app-sidebar mode="flow" (itemSelected)="onItemSelected()"></app-sidebar>
+    </mat-sidenav>
+
+    <!-- ── Mode Content View ────────────────────────────────────────────────── -->
+    <mat-sidenav-content class="flow-body">
+      <!-- Sidebar Toggle Button (matches HomeComponent pattern) -->
+      <button
+        matIconButton
+        class="sidebar-button"
+        [class.is-open]="isSidebarOpen()"
+        (click)="sidenav.toggle()"
+        [attr.title]="'flow.toggleSidebar' | translate"
+        [attr.aria-label]="'flow.toggleSidebar' | translate"
+      >
+        <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
+      </button>
+
+      @switch (activeSubMode()) {
+        @case ('quick_run') {
+          <app-quick-run-workspace></app-quick-run-workspace>
+        }
+        @case ('builder') {
+          <!-- Workflow Builder placeholder — "working on it" -->
+          <div class="workflow-placeholder">
+            <mat-icon svgIcon="workflow" class="placeholder-icon"></mat-icon>
+            <h2>{{ 'flow.builder.placeholderTitle' | translate }}</h2>
+            <p>{{ 'flow.builder.placeholderMessage' | translate }}</p>
+            <a
+              href="https://github.com/Zarestia-Dev/rclone-manager/issues/232"
+              target="_blank"
+              rel="noopener"
+              class="placeholder-link"
+            >
+              <mat-icon svgIcon="open-link" class="link-icon"></mat-icon>
+              <span>{{ 'flow.builder.viewRoadmap' | translate }}</span>
+            </a>
+          </div>
+        }
+      }
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+
+  <app-tabs
+    [customTabs]="tabs"
+    [activeTab]="activeSubMode()"
+    (activeTabChange)="setSubMode($event)"
+    [mobileHidden]="isSidebarOver() && isSidebarOpen()"
+    data-tauri-drag-region
+  ></app-tabs>
+</div>

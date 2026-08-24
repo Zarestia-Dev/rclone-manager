@@ -17,8 +17,9 @@ use crate::core::tray::actions::handle_browse_remote;
 #[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
     actions::{
-        handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
-        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
+        handle_mount_profile, handle_serve_profile, handle_start_job_profile,
+        handle_start_quick_run, handle_stop_all_jobs, handle_stop_job_profile,
+        handle_stop_quick_run, handle_stop_serve_profile, handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
@@ -208,16 +209,10 @@ pub fn run() {
                         crate::utils::app::platform::update_macos_dock_visibility(app_handle);
                     } else {
                         api.prevent_close();
-                        let window_ = _window.clone();
+                        let app_handle_clone = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            window_
-                                .app_handle()
-                                .state::<RcloneState>()
-                                .set_shutting_down();
-                            let _ = core::lifecycle::shutdown::shutdown_app(
-                                window_.app_handle().clone(),
-                            )
-                            .await;
+                            let _ = crate::utils::app::platform::request_app_exit(app_handle_clone)
+                                .await;
                         });
                     }
                 }
@@ -334,6 +329,9 @@ fn setup_app(
         unsafe {
             std::env::set_var("HOME", &app_paths.config_dir);
             std::env::set_var("XDG_CONFIG_HOME", &app_paths.config_dir);
+            std::env::set_var("XDG_CACHE_HOME", &app_paths.cache_dir);
+            std::env::set_var("TMPDIR", &app_paths.cache_dir);
+            std::env::set_var("TMP", &app_paths.cache_dir);
         }
     }
 
@@ -404,8 +402,6 @@ fn setup_app(
         client: reqwest::Client::new(),
         transport,
         is_shutting_down: AtomicBool::new(false),
-        #[cfg(not(feature = "librclone"))]
-        oauth_process: tokio::sync::Mutex::new(None),
         poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
         initial_startup: AtomicBool::new(true),
@@ -422,6 +418,10 @@ fn setup_app(
     app.manage(utils::types::updater::AppUpdaterState::default());
     #[cfg(feature = "updater")]
     app.manage(utils::types::updater::RcloneUpdaterState::default());
+    app.manage(utils::types::provision::ProvisionState::default());
+
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    app.manage(crate::core::power::PowerInhibitorState::new());
 
     #[cfg(all(desktop, feature = "tray"))]
     app.manage(crate::core::tray::TrayMenuState::default());
@@ -595,6 +595,12 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             }
             _ => {}
         },
+        TrayAction::StartQuickRun(id) => {
+            handle_start_quick_run(app.clone(), id);
+        }
+        TrayAction::StopQuickRun(id) => {
+            handle_stop_quick_run(app.clone(), id);
+        }
         TrayAction::Browse(_remote, _profile) => {
             #[cfg(not(feature = "web-server"))]
             handle_browse_remote(app, &_remote, &_profile);
@@ -666,8 +672,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::Quit => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
-                app_clone.state::<RcloneState>().set_shutting_down();
-                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
+                let _ = crate::utils::app::platform::request_app_exit(app_clone).await;
             });
         }
     }

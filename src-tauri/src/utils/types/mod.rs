@@ -5,6 +5,7 @@ pub mod jobs;
 pub mod logs;
 pub mod monitoring;
 pub mod origin;
+pub mod provision;
 pub mod rclone;
 pub mod remotes;
 pub mod state;

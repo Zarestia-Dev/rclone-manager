@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    core::automation::engine::get_next_run,
+    core::{automation::engine::get_next_run, bridge},
     rclone::{
         backend::{BackendError, BackendManager},
         state::automations::AutomationsCache,
@@ -25,6 +25,7 @@ use crate::{
 };
 
 use super::common::redact_value;
+use super::job_parser::{JobOutcome, parse_job_response, resolve_job_outcome};
 use super::system::RcloneError;
 
 const JOB_POLL_INTERVAL_MS: u64 = 500;
@@ -46,9 +47,84 @@ pub struct JobMetadata {
     pub dry_run: bool,
     #[serde(default)]
     pub parent_job_id: Option<u64>,
+    #[serde(default)]
+    pub quick_run_id: Option<String>,
+    #[serde(default)]
+    pub execute_id: Option<String>,
 }
 
 impl JobMetadata {
+    #[must_use]
+    pub fn new(
+        remote_name: impl Into<String>,
+        job_type: JobType,
+        source: Vec<String>,
+        destination: impl Into<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source,
+            destination: destination.into(),
+            profile: None,
+            origin: None,
+            group: None,
+            no_cache: false,
+            dry_run: false,
+            parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_origin(mut self, origin: Option<Origin>) -> Self {
+        self.origin = origin;
+        self
+    }
+
+    #[must_use]
+    pub fn with_group(mut self, group: Option<String>) -> Self {
+        self.group = group;
+        self
+    }
+
+    #[must_use]
+    pub fn with_profile(mut self, profile: Option<String>) -> Self {
+        self.profile = profile;
+        self
+    }
+
+    #[must_use]
+    pub fn with_execute_id(mut self, execute_id: Option<String>) -> Self {
+        self.execute_id = execute_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
+        self.quick_run_id = quick_run_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
+        self
+    }
+
+    #[must_use]
+    pub fn with_no_cache(mut self, no_cache: bool) -> Self {
+        self.no_cache = no_cache;
+        self
+    }
+
+    #[must_use]
+    pub fn with_parent_job_id(mut self, parent_job_id: Option<u64>) -> Self {
+        self.parent_job_id = parent_job_id;
+        self
+    }
+
     #[must_use]
     pub fn for_query(
         remote_name: impl Into<String>,
@@ -68,6 +144,8 @@ impl JobMetadata {
             no_cache: true,
             dry_run: false,
             parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
         }
     }
 
@@ -96,6 +174,8 @@ impl JobMetadata {
             no_cache: false,
             dry_run: false,
             parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
         }
     }
 
@@ -242,8 +322,12 @@ async fn initialize_and_register_job(
         ));
     }
 
-    let (jobid, response_json, execute_id) =
-        send_job_request(app, endpoint, payload, &metadata).await?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
+
+    let (jobid, response_json) = send_job_request(app, endpoint, payload, &metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active().await.name;
@@ -252,7 +336,6 @@ async fn initialize_and_register_job(
         add_job_to_cache(
             &backend_manager.job_cache,
             jobid,
-            execute_id.clone(),
             &metadata,
             &backend_name,
             Some(app),
@@ -271,17 +354,22 @@ async fn send_job_request(
     endpoint: &str,
     payload: Value,
     metadata: &JobMetadata,
-) -> Result<(u64, Value, Option<String>), String> {
+) -> Result<(u64, Value), String> {
     let mut payload = payload;
-    crate::rclone::commands::common::ensure_group(&mut payload, &metadata.group_name());
+    let group = metadata.group_name();
+    crate::rclone::commands::common::ensure_group(&mut payload, &group);
 
     let transport = crate::rclone::commands::common::transport(app);
+    let _ = transport
+        .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
+        .await;
+
     let response_json = transport
         .rpc(endpoint, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    let jobid = parse_job_response(&response_json)?;
 
     let redacted_payload = redact_value(&payload, app);
 
@@ -291,88 +379,42 @@ async fn send_job_request(
         Some(metadata.job_type.to_string()),
         format!(
             "{} started with ID {} (ExecuteID: {:?})",
-            metadata.job_type, jobid, execute_id
+            metadata.job_type, jobid, metadata.execute_id
         ),
         Some(json!({
             "jobid": jobid,
-            "executeId": execute_id,
+            "executeId": metadata.execute_id,
             "arguments": redacted_payload,
         })),
     );
 
-    Ok((jobid, response_json, execute_id))
-}
-
-fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), String> {
-    let jobid = response_json
-        .get("jobid")
-        .and_then(serde_json::Value::as_u64)
-        .or_else(|| {
-            response_json
-                .get("id")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u64>().ok())
-        })
-        .ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.serve.parseFailed",
-                "error" => "missing job id in response"
-            )
-        })?;
-
-    let execute_id = response_json
-        .get("executeId")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-
-    Ok((jobid, execute_id))
+    Ok((jobid, response_json))
 }
 
 async fn add_job_to_cache(
     job_cache: &JobCache,
     jobid: u64,
-    execute_id: Option<String>,
     metadata: &JobMetadata,
     backend_name: &str,
     app: Option<&AppHandle>,
 ) {
     job_cache
-        .create_job(
-            jobid,
-            execute_id,
-            metadata.clone(),
-            backend_name.to_string(),
-            app,
-        )
+        .create_job(jobid, metadata.clone(), backend_name.to_string(), app)
         .await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app.state::<BackendManager>().job_cache.get_jobs().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     info!("Deleting job with ID: {jobid}");
     app.state::<BackendManager>()
         .job_cache
         .delete_job(jobid, Some(&app))
         .await
-}
-
-#[tauri::command]
-pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
-    Ok(app.state::<BackendManager>().job_cache.get_job(jobid).await)
-}
-
-#[tauri::command]
-pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
-    Ok(app
-        .state::<BackendManager>()
-        .job_cache
-        .get_active_jobs()
-        .await)
 }
 
 pub async fn monitor_job(
@@ -524,336 +566,197 @@ pub async fn handle_job_completion(
     app: &AppHandle,
     last_stats: Option<Value>,
 ) -> Result<Value, RcloneError> {
-    let job_cache = &app.state::<BackendManager>().job_cache;
-    let automations_cache = app.state::<AutomationsCache>();
-    let mut success = job_status
-        .get("success")
-        .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-    let stopped = job_status
-        .get("stopped")
-        .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-    let mut error_msg = job_status
-        .get("error")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .trim()
-        .to_string();
+    let outcome = resolve_job_outcome(&job_status, &metadata.job_type, &metadata.source);
 
-    let mut cryptcheck_output = None;
-
-    // Special handling for rclone jobs where rclone reports success: true
-    // but individual items failed (batch) or the command failed (core/command).
-    if success && let Some(output) = job_status.get("output") {
-        if metadata.job_type == JobType::CryptCheck
-            && let Some(result_str) = output.get("result").and_then(|v| v.as_str())
-        {
-            let parsed = parse_cryptcheck_output(result_str);
-            let first_result = parsed
-                .get("results")
-                .and_then(|r| r.as_array())
-                .and_then(|a| a.first());
-            let check_success = first_result
-                .and_then(|r| r.get("success"))
-                .and_then(Value::as_bool)
-                .unwrap_or(true);
-            let check_status = first_result
-                .and_then(|r| r.get("status"))
-                .and_then(Value::as_str)
-                .unwrap_or("OK")
-                .to_string();
-
-            let has_parsed_issues = first_result
-                .and_then(|r| r.get("differ"))
-                .and_then(|a| a.as_array())
-                .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("missingOnDst"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("missingOnSrc"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty())
-                || first_result
-                    .and_then(|r| r.get("error"))
-                    .and_then(|a| a.as_array())
-                    .is_some_and(|a| !a.is_empty());
-
-            if has_parsed_issues {
-                success = check_success;
-                if !success {
-                    error_msg = check_status;
-                }
-            } else if output
-                .get("error")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-            {
-                success = false;
-                error_msg = result_str.trim().to_string();
-            } else {
-                success = true;
-                error_msg = String::new();
-            }
-            cryptcheck_output = Some(parsed);
-        }
-
-        // 1. Check for operations/batch results
-        if let Some(results) = output.get("results").and_then(|v| v.as_array()) {
-            for res in results {
-                let has_error = res.get("success").and_then(serde_json::Value::as_bool)
-                    == Some(false)
-                    || res
-                        .get("status")
-                        .and_then(serde_json::Value::as_i64)
-                        .is_some_and(|s| s >= 400)
-                    || res.get("error").is_some_and(|e| match e {
-                        Value::Null => false,
-                        Value::Bool(b) => *b,
-                        Value::String(s) => !s.trim().is_empty(),
-                        Value::Array(arr) => !arr.is_empty(),
-                        Value::Object(obj) => !obj.is_empty(),
-                        _ => true,
-                    });
-
-                if has_error {
-                    success = false;
-                    let err = if let Some(e) = res.get("error") {
-                        let formatted = match e {
-                            Value::String(s) => s.clone(),
-                            Value::Array(arr) => arr
-                                .iter()
-                                .filter_map(|v| v.as_str())
-                                .collect::<Vec<_>>()
-                                .join(", "),
-                            _ => e.to_string(),
-                        };
-                        if formatted.trim().is_empty() {
-                            if metadata.job_type == JobType::Check {
-                                res.get("status")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("Differences found")
-                                    .to_string()
-                            } else {
-                                "Unknown error".to_string()
-                            }
-                        } else {
-                            formatted
-                        }
-                    } else if metadata.job_type == JobType::Check {
-                        res.get("status")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("Differences found")
-                            .to_string()
-                    } else {
-                        "Unknown error".to_string()
-                    };
-
-                    if !err.is_empty() {
-                        let source_str = metadata.source.join(", ");
-                        let item_name = res
-                            .get("input")
-                            .and_then(|i| {
-                                i.get("srcRemote")
-                                    .or_else(|| i.get("remote"))
-                                    .or_else(|| i.get("dstRemote"))
-                                    .or_else(|| i.get("path1"))
-                                    .or_else(|| i.get("path2"))
-                            })
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(&source_str);
-
-                        let full_err = format!("{item_name}: {err}");
-                        if error_msg.is_empty() {
-                            error_msg = full_err;
-                        } else if !error_msg.contains(&full_err) {
-                            error_msg = format!("{error_msg}; {full_err}");
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Check for individual command error (e.g. core/command)
-        if success
-            && output
-                .get("error")
-                .and_then(serde_json::Value::as_bool)
-                .unwrap_or(false)
-        {
-            success = false;
-            if let Some(result) = output.get("result").and_then(|v| v.as_str())
-                && !result.trim().is_empty()
-            {
-                error_msg = result.trim().to_string();
-            }
-        }
-
-        // 3. Check for check operation results (e.g. operations/check)
-        if success && metadata.job_type == JobType::Check {
-            let check_obj = if let Some(results) = output.get("results").and_then(|v| v.as_array())
-            {
-                results.first()
-            } else {
-                Some(output)
-            };
-            if let Some(check_obj) = check_obj
-                && let Some(check_success) = check_obj
-                    .get("success")
-                    .and_then(serde_json::Value::as_bool)
-                && !check_success
-            {
-                success = false;
-                error_msg = check_obj
-                    .get("status")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("Differences found")
-                    .to_string();
-            }
-        }
+    if !metadata.no_cache {
+        persist_final_job_state(
+            app,
+            jobid,
+            metadata,
+            &outcome,
+            last_stats,
+            job_status.get("output"),
+        )
+        .await;
+    } else {
+        spawn_stats_cleanup(app, metadata);
     }
 
+    update_associated_automation(app, jobid, &outcome).await?;
+
+    dispatch_job_completion_effects(app, &backend_name, jobid, metadata, &outcome, &job_status)?;
+
+    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
+}
+
+async fn persist_final_job_state(
+    app: &AppHandle,
+    jobid: u64,
+    metadata: &JobMetadata,
+    outcome: &JobOutcome,
+    last_stats: Option<Value>,
+    raw_output: Option<&Value>,
+) {
+    let job_cache = &app.state::<BackendManager>().job_cache;
+    let mut final_stats = collect_final_stats(app, metadata, last_stats).await;
+    if final_stats.is_null() || final_stats == json!({}) {
+        final_stats = json!({});
+    }
+    if let Some(obj) = final_stats.as_object_mut() {
+        if metadata.job_type == JobType::Check
+            && let Some(output) = raw_output
+        {
+            obj.insert("checkOutput".to_string(), output.clone());
+        } else if metadata.job_type == JobType::CryptCheck
+            && let Some(parsed) = &outcome.cryptcheck_output
+        {
+            obj.insert("checkOutput".to_string(), parsed.clone());
+        }
+    }
+    if !final_stats.is_null() && final_stats != json!({}) {
+        let _ = job_cache.update_job_stats(jobid, final_stats).await;
+    }
+
+    let _ = job_cache
+        .complete_job(
+            jobid,
+            outcome.success,
+            outcome.error_msg.clone(),
+            if outcome.stopped { None } else { Some(app) },
+        )
+        .await;
+}
+
+async fn update_associated_automation(
+    app: &AppHandle,
+    jobid: u64,
+    outcome: &JobOutcome,
+) -> Result<(), RcloneError> {
+    let automations_cache = app.state::<AutomationsCache>();
     let automation = automations_cache
         .get_automation_by_job_id(jobid.to_string())
         .await;
-    let next_run = automation.as_ref().and_then(|t| {
-        t.cron_expression
-            .as_ref()
-            .and_then(|expr| get_next_run(expr).ok())
-    });
 
-    if !metadata.no_cache {
-        let mut final_stats = collect_final_stats(app, metadata, last_stats).await;
-        if final_stats.is_null() || final_stats == serde_json::json!({}) {
-            final_stats = serde_json::json!({});
-        }
-        if let Some(obj) = final_stats.as_object_mut() {
-            if metadata.job_type == JobType::Check
-                && let Some(output) = job_status.get("output")
-            {
-                obj.insert("checkOutput".to_string(), output.clone());
-            } else if metadata.job_type == JobType::CryptCheck
-                && let Some(parsed) = &cryptcheck_output
-            {
-                obj.insert("checkOutput".to_string(), parsed.clone());
-            }
-        }
-        if !final_stats.is_null() && final_stats != serde_json::json!({}) {
-            let _ = job_cache.update_job_stats(jobid, final_stats).await;
-        }
+    let Some(automation) = automation else {
+        return Ok(());
+    };
 
-        spawn_stats_cleanup(app, metadata);
+    let next_run = automation
+        .cron_expression
+        .as_ref()
+        .and_then(|expr| get_next_run(expr).ok());
+    let automation_name = automation.log_name();
+    info!("Job {jobid} associated with automation '{automation_name}', updating status.");
 
-        let _ = job_cache
-            .complete_job(
-                jobid,
-                success,
-                (!error_msg.is_empty()).then(|| error_msg.clone()),
-                if stopped { None } else { Some(app) },
+    if outcome.success {
+        automations_cache
+            .update_automation(
+                &automation.id,
+                |t| {
+                    t.mark_success();
+                    t.next_run = next_run;
+                },
+                Some(app),
             )
-            .await;
+            .await
+            .map_err(RcloneError::JobError)?;
+
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Completed {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+            }),
+        );
+    } else if outcome.stopped {
+        automations_cache
+            .update_automation(
+                &automation.id,
+                |t| {
+                    t.mark_stopped();
+                    t.next_run = next_run;
+                },
+                Some(app),
+            )
+            .await
+            .map_err(RcloneError::JobError)?;
+
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Stopped {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+            }),
+        );
+    } else {
+        let err = outcome.error_msg.clone().unwrap_or_default();
+        automations_cache
+            .update_automation(
+                &automation.id,
+                |t| {
+                    t.mark_failure(err.clone());
+                    t.next_run = next_run;
+                },
+                Some(app),
+            )
+            .await
+            .map_err(RcloneError::JobError)?;
+
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Failed {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+                error: err,
+            }),
+        );
     }
 
-    if let Some(automation) = automation {
-        let automation_name = automation.log_name();
+    Ok(())
+}
 
-        info!("Job {jobid} associated with automation '{automation_name}', updating status.");
-
-        if success {
-            automations_cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.mark_success();
-                        t.next_run = next_run;
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?;
-
-            notify(
-                app,
-                NotificationEvent::Automation(AutomationStage::Completed {
-                    backend: automation.backend_name.clone(),
-                    remote: automation.remote_name.clone(),
-                    profile: automation.profile_name.clone(),
-                    automation_name: automation.display_name(),
-                    automation_type: automation.automation_type,
-                }),
-            );
-        } else if stopped {
-            automations_cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.mark_stopped();
-                        t.next_run = next_run;
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?;
-
-            notify(
-                app,
-                NotificationEvent::Automation(AutomationStage::Stopped {
-                    backend: automation.backend_name.clone(),
-                    remote: automation.remote_name.clone(),
-                    profile: automation.profile_name.clone(),
-                    automation_name: automation.display_name(),
-                    automation_type: automation.automation_type,
-                }),
-            );
-        } else {
-            automations_cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.mark_failure(error_msg.clone());
-                        t.next_run = next_run;
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?;
-
-            notify(
-                app,
-                NotificationEvent::Automation(AutomationStage::Failed {
-                    backend: automation.backend_name.clone(),
-                    remote: automation.remote_name.clone(),
-                    profile: automation.profile_name.clone(),
-                    automation_name: automation.display_name(),
-                    automation_type: automation.automation_type,
-                    error: error_msg.clone(),
-                }),
-            );
-        }
-    }
-
-    if stopped {
+fn dispatch_job_completion_effects(
+    app: &AppHandle,
+    backend_name: &str,
+    jobid: u64,
+    metadata: &JobMetadata,
+    outcome: &JobOutcome,
+    job_status: &Value,
+) -> Result<(), RcloneError> {
+    if outcome.stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
         if !metadata.no_cache {
-            notify(app, metadata.stopped_event(backend_name.clone()));
+            notify(app, metadata.stopped_event(backend_name.to_string()));
         }
-        return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
+        return Ok(());
     }
 
-    if !success {
+    if !outcome.success {
+        let raw_err = outcome.error_msg.as_deref().unwrap_or("Job failed");
+        let mapped_err = crate::rclone::engine::error_mapper::map_or_wrap_job_error(raw_err);
         if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
                 Some(metadata.job_type.to_string()),
-                format!("{} Job {jobid} failed: {error_msg}", metadata.job_type),
+                format!("{} Job {jobid} failed: {raw_err}", metadata.job_type),
                 Some(json!({"jobid": jobid, "status": job_status})),
             );
-            notify(app, metadata.failed_event(backend_name.clone(), &error_msg));
+            notify(
+                app,
+                metadata.failed_event(backend_name.to_string(), &mapped_err),
+            );
         }
-        return Err(RcloneError::JobError(error_msg));
+        return Err(RcloneError::JobError(raw_err.to_string()));
     }
 
     if !metadata.no_cache {
@@ -865,11 +768,11 @@ pub async fn handle_job_completion(
             Some(json!({"jobid": jobid, "status": job_status})),
         );
         if metadata.job_type != JobType::Mount {
-            notify(app, metadata.completed_event(backend_name.clone()));
+            notify(app, metadata.completed_event(backend_name.to_string()));
         }
     }
 
-    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
+    Ok(())
 }
 
 async fn collect_final_stats(
@@ -918,17 +821,10 @@ async fn collect_final_stats(
 }
 
 fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
-    let transport = app.state::<RcloneState>().transport.clone();
-    let group = metadata.group_name();
-
-    tauri::async_runtime::spawn(async move {
-        let _ = transport
-            .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
-            .await;
-    });
+    crate::rclone::state::job::spawn_stats_cleanup_by_group(app, &metadata.group_name());
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
@@ -982,7 +878,7 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
@@ -1026,7 +922,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn submit_batch_job(
     app: AppHandle,
     inputs: Vec<Value>,
@@ -1062,12 +958,21 @@ pub async fn submit_batch_job(
         "inputs": modified_inputs,
     });
 
+    let _ = transport
+        .rpc(core::STATS_DELETE, Some(&json!({ "group": &batch_group })))
+        .await;
+
     let response_json: Value = transport
         .rpc(job::BATCH, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
+
+    let jobid = parse_job_response(&response_json)?;
 
     let backend_name = backend_manager.get_active_name().await;
 
@@ -1075,7 +980,6 @@ pub async fn submit_batch_job(
         add_job_to_cache(
             &backend_manager.job_cache,
             jobid,
-            execute_id.clone(),
             &metadata,
             &backend_name,
             Some(&app),
@@ -1105,7 +1009,7 @@ pub async fn submit_batch_job(
     Ok(jobid.to_string())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn register_preparing_job(
     app: tauri::AppHandle,
     jobid: u64,
@@ -1119,21 +1023,16 @@ pub async fn register_preparing_job(
     let backend_name = backend_manager.get_active().await.name;
     let job_cache = &backend_manager.job_cache;
 
-    let metadata = JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Upload,
-        source: vec!["preparing".to_string()],
+    let metadata = JobMetadata::new(
+        remote,
+        JobType::Upload,
+        vec!["preparing".to_string()],
         destination,
-        profile: None,
-        origin,
-        group: None,
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    )
+    .with_origin(origin);
 
     job_cache
-        .create_job(jobid, None, metadata, backend_name, Some(&app))
+        .create_job(jobid, metadata, backend_name, Some(&app))
         .await;
 
     let stats = json!({
@@ -1150,7 +1049,7 @@ pub async fn register_preparing_job(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_job_stats(
     app: tauri::AppHandle,
     jobid: u64,
@@ -1163,125 +1062,14 @@ pub async fn update_job_stats(
         .await
 }
 
-fn parse_cryptcheck_output(raw_result: &str) -> Value {
-    let mut differ = Vec::new();
-    let mut missing_on_dst = Vec::new();
-    let mut missing_on_src = Vec::new();
-    let mut error_list = Vec::new();
-    let mut success = true;
-    let mut status = "OK".to_string();
-
-    for line in raw_result.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        let is_error = line.contains("ERROR :") || line.contains("ERROR:");
-        let is_notice = line.contains("NOTICE:") || line.contains("NOTICE :");
-
-        if is_error {
-            let pos = line
-                .find("ERROR :")
-                .map(|p| p + 7)
-                .or_else(|| line.find("ERROR:").map(|p| p + 6));
-            if let Some(start_idx) = pos {
-                let rest = &line[start_idx..];
-                if let Some(colon_pos) = rest.find(':') {
-                    let path = rest[..colon_pos].trim().to_string();
-                    let msg = rest[colon_pos + 1..].trim();
-
-                    if msg.contains("file not in Encrypted drive") {
-                        missing_on_dst.push(path);
-                    } else if msg.contains("file not in") {
-                        missing_on_src.push(path);
-                    } else if msg.to_lowercase().contains("differ") {
-                        differ.push(path);
-                    } else {
-                        error_list.push(format!("{}: {}", path, msg));
-                    }
-                }
-            }
-        } else if is_notice {
-            let pos = line
-                .find("NOTICE :")
-                .map(|p| p + 8)
-                .or_else(|| line.find("NOTICE:").map(|p| p + 7));
-            if let Some(start_idx) = pos {
-                let rest = &line[start_idx..];
-                if rest.contains("Skipping undecryptable dir name") {
-                    if let Some(colon_pos) = rest.find(':') {
-                        let path = rest[..colon_pos].trim().to_string();
-                        let msg = rest[colon_pos + 1..].trim();
-                        error_list.push(format!("{}: {}", path, msg));
-                    }
-                } else if rest.contains("differences found")
-                    || (status == "OK"
-                        && (rest.contains("errors while checking")
-                            || rest.contains("files missing")))
-                {
-                    status = rest.trim().to_string();
-                    success = false;
-                }
-            }
-        }
-    }
-
-    let has_issues = !differ.is_empty()
-        || !missing_on_dst.is_empty()
-        || !missing_on_src.is_empty()
-        || !error_list.is_empty();
-    if has_issues {
-        success = false;
-        if status == "OK" {
-            let mut parts = Vec::new();
-            if !differ.is_empty() {
-                parts.push(format!("{} differences", differ.len()));
-            }
-            if !missing_on_dst.is_empty() {
-                parts.push(format!("{} missing on destination", missing_on_dst.len()));
-            }
-            if !missing_on_src.is_empty() {
-                parts.push(format!("{} missing on source", missing_on_src.len()));
-            }
-            if !error_list.is_empty() {
-                parts.push(format!("{} errors", error_list.len()));
-            }
-            status = format!("{} found", parts.join(", "));
-        }
-    }
-
-    json!({
-        "results": [
-            {
-                "success": success,
-                "status": status,
-                "differ": differ,
-                "missingOnDst": missing_on_dst,
-                "missingOnSrc": missing_on_src,
-                "error": error_list,
-            }
-        ]
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn make_meta(origin: Option<Origin>, profile: Option<&str>) -> JobMetadata {
-        JobMetadata {
-            remote_name: "gdrive:".to_string(),
-            job_type: JobType::Sync,
-            source: vec!["src".to_string()],
-            destination: "dst".to_string(),
-            profile: profile.map(str::to_string),
-            origin,
-            group: None,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-        }
+        JobMetadata::new("gdrive:", JobType::Sync, vec!["src".to_string()], "dst")
+            .with_origin(origin)
+            .with_profile(profile.map(str::to_string))
     }
 
     #[test]
@@ -1350,73 +1138,5 @@ mod tests {
             }
             _ => panic!("expected JobStage::Failed"),
         }
-    }
-
-    #[test]
-    fn test_parse_job_response_numeric_and_execute() {
-        let v = json!({"jobid": 123, "executeId": "exec-1"});
-        let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 123);
-        assert_eq!(res.1, Some("exec-1".to_string()));
-    }
-
-    #[test]
-    fn test_parse_job_response_string_id() {
-        let v = json!({"id": "456"});
-        let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 456);
-        assert_eq!(res.1, None);
-    }
-
-    #[test]
-    fn test_parse_job_response_missing_id_returns_err() {
-        let v = json!({"executeId": "no-job"});
-        assert!(super::parse_job_response(&v).is_err());
-    }
-
-    #[test]
-    fn test_parse_cryptcheck_output() {
-        let raw = r#"
-2026/06/19 21:38:00 NOTICE: Atatürk Üniversitesi: Skipping undecryptable dir name: illegal base32 data at input byte 4
-2026/06/19 21:38:00 ERROR : bookmarks_6_18_26.html: file not in Encrypted drive 'crypt:'
-2026/06/19 21:38:00 ERROR : Atatürk Üniversitesi/BITIRMEPROJESI.docx: file not in Encrypted drive 'crypt:'
-2026/06/19 21:38:00 ERROR : source_missing.txt: file not in local directory
-2026/06/19 21:38:00 ERROR : diff_file.txt: hashes differ
-2026/06/19 21:38:00 ERROR : read_err.txt: read error: permission denied
-2026/06/19 21:38:00 NOTICE: Encrypted drive 'crypt:': 283 files missing
-2026/06/19 21:38:00 NOTICE: Encrypted drive 'crypt:': 283 differences found
-2026/06/19 21:38:00 NOTICE: Encrypted drive 'crypt:': 283 errors while checking
-2026/06/19 21:38:00 NOTICE: Failed to cryptcheck with 283 errors: last error was: 283 differences found
-"#;
-        let parsed = super::parse_cryptcheck_output(raw);
-        let first_res = &parsed["results"][0];
-        assert_eq!(first_res["success"].as_bool(), Some(false));
-        assert!(
-            first_res["status"]
-                .as_str()
-                .unwrap()
-                .contains("283 differences found")
-        );
-
-        let missing_dst = first_res["missingOnDst"].as_array().unwrap();
-        assert_eq!(missing_dst.len(), 2);
-        assert_eq!(missing_dst[0], "bookmarks_6_18_26.html");
-        assert_eq!(missing_dst[1], "Atatürk Üniversitesi/BITIRMEPROJESI.docx");
-
-        let missing_src = first_res["missingOnSrc"].as_array().unwrap();
-        assert_eq!(missing_src.len(), 1);
-        assert_eq!(missing_src[0], "source_missing.txt");
-
-        let differ = first_res["differ"].as_array().unwrap();
-        assert_eq!(differ.len(), 1);
-        assert_eq!(differ[0], "diff_file.txt");
-
-        let errors = first_res["error"].as_array().unwrap();
-        assert_eq!(errors.len(), 2);
-        assert_eq!(
-            errors[0],
-            "Atatürk Üniversitesi: Skipping undecryptable dir name: illegal base32 data at input byte 4"
-        );
-        assert_eq!(errors[1], "read_err.txt: read error: permission denied");
     }
 }

@@ -218,7 +218,6 @@ export class AboutModalComponent implements OnInit {
   ];
 
   readonly bottomNavItems: { label: string; viewId: ViewId; icon: string }[] = [
-    { label: 'modals.about.donate', viewId: 'donate', icon: 'chevron-right' },
     { label: 'modals.about.credits', viewId: 'credits', icon: 'chevron-right' },
     { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];

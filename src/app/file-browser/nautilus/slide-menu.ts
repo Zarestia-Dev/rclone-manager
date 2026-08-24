@@ -9,21 +9,24 @@ export class SlideMenuController {
   readonly contextMenuHeight = signal<number | null>(null);
   private readonly _menuOpenedTrigger = signal(0);
 
-  constructor(private containerSelector: string) {
+  constructor(
+    private containerSelector: string,
+    private rootResolver?: () => HTMLElement | null | undefined
+  ) {
     // Track context menu page height for the sliding animation.
     effect(() => {
       this.currentMenuView();
       this._menuOpenedTrigger();
 
-      // setTimeout defers the DOM read until after the next render cycle.
-      setTimeout(() => {
-        const activePage = document.querySelector(
-          `${this.containerSelector} .menu-page.active-page`
-        );
+      requestAnimationFrame(() => {
+        const root = this.rootResolver?.() ?? document;
+        const activePage =
+          root.querySelector(`${this.containerSelector} .menu-page.active-page`) ??
+          document.querySelector(`${this.containerSelector} .menu-page.active-page`);
         if (activePage) {
           this.contextMenuHeight.set((activePage as HTMLElement).offsetHeight);
         }
-      }, 0);
+      });
     });
   }
 

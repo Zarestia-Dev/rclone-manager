@@ -58,42 +58,33 @@ impl Translations {
         };
 
         if let Some(path) = base_path {
-            let lang_dir = path.join(lang);
-            let mut merged_translations = serde_json::Map::new();
+            let main_file = path.join(lang).join("main.json");
+            let mut backend_translations = serde_json::Map::new();
 
-            if lang_dir.exists() && lang_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&lang_dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                            match std::fs::read_to_string(&path) {
-                                Ok(content) => match serde_json::from_str::<Value>(&content) {
-                                    Ok(Value::Object(map)) => {
-                                        merged_translations.extend(map);
-                                    }
-                                    Ok(_) => {
-                                        log::warn!("Skipping non-object JSON file: {path:?}");
-                                    }
-                                    Err(e) => {
-                                        log::warn!("Failed to parse {path:?}: {e}");
-                                    }
-                                },
-                                Err(e) => {
-                                    log::warn!("Failed to read {path:?}: {e}");
+            if main_file.exists() {
+                match std::fs::read_to_string(&main_file) {
+                    Ok(content) => match serde_json::from_str::<Value>(&content) {
+                        Ok(Value::Object(map)) => {
+                            for key in ["tray", "notification", "powerInhibitor", "alerts"] {
+                                if let Some(val) = map.get(key) {
+                                    backend_translations.insert(key.to_string(), val.clone());
                                 }
                             }
                         }
-                    }
+                        Ok(_) => log::warn!("Skipping non-object JSON file: {main_file:?}"),
+                        Err(e) => log::warn!("Failed to parse {main_file:?}: {e}"),
+                    },
+                    Err(e) => log::warn!("Failed to read {main_file:?}: {e}"),
                 }
             } else {
-                log::warn!("Language directory not found: {lang_dir:?}");
+                log::warn!("Translation file not found: {main_file:?}");
             }
 
-            if !merged_translations.is_empty() {
+            if !backend_translations.is_empty() {
                 match self.cache.write() {
                     Ok(mut cache) => {
-                        cache.insert(lang.to_string(), Value::Object(merged_translations));
-                        log::info!("🌐 Loaded translations for: {lang}");
+                        cache.insert(lang.to_string(), Value::Object(backend_translations));
+                        log::info!("🌐 Loaded backend translations for: {lang}");
                         return true;
                     }
                     Err(_) => {
@@ -151,19 +142,12 @@ impl Translations {
             DEFAULT_LANG.to_string()
         };
 
-        let cache = if let Ok(c) = self.cache.read() {
-            c
-        } else {
-            log::error!("❌ i18n cache lock poisoned in resolve");
-            return key.to_string();
-        };
-
-        let dict = match cache.get(&lang).or_else(|| cache.get(DEFAULT_LANG)) {
+        let dict = match self.get_dict(&lang) {
             Some(d) => d,
             None => return key.to_string(),
         };
 
-        let mut current = dict;
+        let mut current = &dict;
         for part in key.split('.') {
             match current.get(part) {
                 Some(v) => current = v,
@@ -238,17 +222,6 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
-/// Get the full translation map for a language (merged from all JSON files)
-pub fn get_language_map(lang: &str) -> Option<Value> {
-    TRANSLATIONS.get_dict(lang)
-}
-
-/// Return the merged translations for a language (desktop invoke)
-#[tauri::command]
-pub fn get_i18n(lang: String) -> Result<Value, String> {
-    get_language_map(&lang).ok_or_else(|| format!("Translations not found for: {lang}"))
-}
-
 /// Macro for ergonomic translations
 ///
 /// # Usage
@@ -286,10 +259,15 @@ macro_rules! t {
 #[macro_export]
 macro_rules! localized_error {
     ($key:expr) => {
-        $crate::t!($key)
+        $key.to_string()
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        $crate::t!($key, $($param_key => $param_value),+)
+        serde_json::json!({
+            "key": $key,
+            "params": {
+                $($param_key: $param_value.to_string()),+
+            }
+        }).to_string()
     }};
 }
 
@@ -297,10 +275,15 @@ macro_rules! localized_error {
 #[macro_export]
 macro_rules! localized_success {
     ($key:expr) => {
-        $crate::t!($key)
+        $key.to_string()
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        $crate::t!($key, $($param_key => $param_value),+)
+        serde_json::json!({
+            "key": $key,
+            "params": {
+                $($param_key: $param_value.to_string()),+
+            }
+        }).to_string()
     }};
 }
 
@@ -322,9 +305,10 @@ mod tests {
             "remote" => remote
         );
 
-        // Since translation files are not loaded in tests, it falls back to the key
-        // Params are ignored in fallback if the key doesn't contain placeholders (which it doesn't here)
-        assert_eq!(error, "backendErrors.mount.alreadyInUse");
+        let parsed: serde_json::Value = serde_json::from_str(&error).unwrap();
+        assert_eq!(parsed["key"], "backendErrors.mount.alreadyInUse");
+        assert_eq!(parsed["params"]["mountPoint"], "/mnt/drive");
+        assert_eq!(parsed["params"]["remote"], "gdrive");
     }
 
     #[test]

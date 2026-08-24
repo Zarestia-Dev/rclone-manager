@@ -59,13 +59,12 @@ export class BackendService extends TauriBaseService {
 
   // Legacy API support for components expecting a Promise
   async loadBackends(): Promise<void> {
-    this.backendData.reload();
+    await this.backendData.reload();
   }
 
   async runStartupChecks(): Promise<void> {
     await this.backendData.reload();
-    await this.checkStartupConnectivity();
-    await this.checkAllBackends();
+    await Promise.all([this.checkStartupConnectivity(), this.checkAllBackends()]);
   }
 
   async getActiveBackend(): Promise<string> {
@@ -110,8 +109,6 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.configPassword,
         configPath: config.configPath,
-        oauthPort: config.oauthPort,
-        oauthHost: config.oauthHost,
         copyBackendFrom: copyBackendFrom ?? null,
         copyRemotesFrom: copyRemotesFrom ?? null,
       },
@@ -129,8 +126,6 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.configPassword,
         configPath: config.configPath,
-        oauthPort: config.oauthPort,
-        oauthHost: config.oauthHost,
       },
     });
     this.backendData.reload();
@@ -141,6 +136,24 @@ export class BackendService extends TauriBaseService {
     // Optimistic UI update
     this.backendData.update(current => (current ?? []).filter(b => b.name !== name));
     await this.appSettingsService.removeBackendLayout(name);
+  }
+
+  async updateLocalBackendConfigPath(configPath: string | undefined): Promise<void> {
+    let localBackend = this.backends().find(b => b.name === 'Local');
+    if (!localBackend) {
+      await this.loadBackends();
+      localBackend = this.backends().find(b => b.name === 'Local');
+    }
+    if (!localBackend) return;
+    await this.updateBackend({
+      name: 'Local',
+      host: localBackend.host,
+      port: localBackend.port,
+      isLocal: true,
+      username: localBackend.username,
+      password: localBackend.password,
+      configPath: configPath || undefined,
+    });
   }
 
   async testConnection(name: string): Promise<TestConnectionResult> {
@@ -169,7 +182,7 @@ export class BackendService extends TauriBaseService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: this.backendTranslation.translateBackendMessage(error),
       };
     }
   }
@@ -190,7 +203,7 @@ export class BackendService extends TauriBaseService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: this.backendTranslation.translateBackendMessage(error),
       };
     }
   }
@@ -252,8 +265,6 @@ export class BackendService extends TauriBaseService {
       password: formValue.has_auth ? (formValue.password ?? '') : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 
@@ -267,8 +278,6 @@ export class BackendService extends TauriBaseService {
       password: formValue.has_auth ? formValue.password || undefined : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 }

@@ -1,6 +1,7 @@
 use log::debug;
 use serde_json::Value;
 
+use crate::core::bridge;
 use crate::utils::{rclone::endpoints::serve, types::remotes::ServeInstance};
 
 /// Parse serves list from API JSON response
@@ -11,16 +12,11 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
         .map(|arr| {
             arr.iter()
                 .filter_map(|item| {
-                    let id = item.get("id")?.as_str()?.to_string();
-                    let addr = item.get("addr")?.as_str()?.to_string();
+                    let id = item.get("id")?.as_str()?;
+                    let addr = item.get("addr")?.as_str()?;
                     let params = item.get("params")?.clone();
 
-                    Some(ServeInstance {
-                        id,
-                        addr,
-                        params,
-                        profile: None,
-                    })
+                    Some(ServeInstance::new(id, addr, params))
                 })
                 .collect()
         })
@@ -28,7 +24,7 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 }
 
 /// Get all supported serve types from rclone
-#[tauri::command]
+#[bridge]
 pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::TYPES, None)
@@ -47,7 +43,7 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
     Ok(serve_types)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::LIST, None)

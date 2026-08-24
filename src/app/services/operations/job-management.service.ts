@@ -87,6 +87,7 @@ export class JobManagementService extends TauriBaseService {
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
     this._jobs.set(jobs);
+    console.log('[JobManagementService] refreshJobs:', jobs);
     return jobs;
   }
 

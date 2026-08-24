@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.3.0"
+version = "0.3.2"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -19,6 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+bridge-macro = { path = "crates/bridge-macro" }
 tauri = { version = "2", features = [] }
 
 serde = { version = "1", features = ["derive"] }
@@ -40,7 +41,6 @@ netstat2 = "0.11"
 sysinfo = "0.38"
 tokio-cron-scheduler = "0.15"
 croner = "3"
-sevenz-rust2 = "0.21"
 clap = { version = "4", features = ["derive", "env"] }
 lofty = "0.24"
 base64 = "0.22"
@@ -53,7 +53,6 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 sys-locale = "0.3"
 
 
-tauri-plugin-shell = { version = "2", optional = true, default-features = false }
 tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
 tauri-plugin-clipboard-manager = { version = "2", optional = true, default-features = false }
 tauri-plugin-notification = { version = "2", optional = true, default-features = false }
@@ -86,6 +85,10 @@ zbus = "5"
 futures-lite = "2"
 notify-rust = "4"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"] }
+
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = "0.1"
 jni = "0.22"
@@ -93,9 +96,8 @@ rustls-platform-verifier = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
-shellexpand = "3"
 winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
@@ -114,7 +116,7 @@ web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "up
 # Container
 container = ["web-server"]
 
-shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-shell", "tauri-plugin-os", "tauri-plugin-opener"]
+shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
 desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri"]

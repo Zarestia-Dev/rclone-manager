@@ -1,14 +1,52 @@
 import { TestBed } from '@angular/core/testing';
+import { provideTranslateService } from '@ngx-translate/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { CliFlagMapperService, ParsedCLI } from './cli-flag-mapper.service';
-import { PathService } from '../infrastructure/platform/path.service';
-import { RcConfigOption } from '@app/types';
+import { FlagConfigService } from './flag-config.service';
+import { RemoteManagementService } from './remote-management.service';
+import { RcloneValueMapperService } from './rclone-value-mapper.service';
+import { RcConfigOption, SharedProfileType } from '@app/types';
+
+// The spec exercises the pure-logic methods (tokenize / parse / classify /
+// buildLookupTable). None of them touch the network, so we stub out the two
+// dependencies that would otherwise pull in HttpClient + TranslateService +
+// MatSnackBar + MatDialog.
+function stubFlagConfig(): Partial<FlagConfigService> {
+  return {
+    loadAllFlagFields: () => Promise.resolve({} as Record<string, RcConfigOption[]>),
+  };
+}
+
+function stubRemoteManagement(): Partial<RemoteManagementService> {
+  return {
+    getRemoteConfigFields: () => Promise.resolve([]),
+  };
+}
+
+// `buildLookupTable` expects a Record over all SharedProfileType keys, but the
+// tests only need to supply the ones they exercise. Treat partial input as
+// full records — the missing keys just yield no entries.
+function fields(
+  input: Partial<Record<SharedProfileType, RcConfigOption[]>>
+): Record<SharedProfileType, RcConfigOption[]> {
+  return input as Record<SharedProfileType, RcConfigOption[]>;
+}
 
 describe('CliFlagMapperService', () => {
   let service: CliFlagMapperService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [CliFlagMapperService, PathService],
+      providers: [
+        CliFlagMapperService,
+        RcloneValueMapperService,
+        provideTranslateService(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: FlagConfigService, useValue: stubFlagConfig() },
+        { provide: RemoteManagementService, useValue: stubRemoteManagement() },
+      ],
     });
     service = TestBed.inject(CliFlagMapperService);
   });
@@ -50,15 +88,15 @@ describe('CliFlagMapperService', () => {
 
   describe('hasMacro', () => {
     it('should detect $(...) macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_$(date +%Y-%m-%d)')).toBeTrue();
+      expect(service.hasMacro('dest:/archive/pCloud_$(date +%Y-%m-%d)')).toBe(true);
     });
 
     it('should detect `...` macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_`date`')).toBeTrue();
+      expect(service.hasMacro('dest:/archive/pCloud_`date`')).toBe(true);
     });
 
     it('should return false for strings without macros', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_normal')).toBeFalse();
+      expect(service.hasMacro('dest:/archive/pCloud_normal')).toBe(false);
     });
   });
 
@@ -169,27 +207,27 @@ describe('CliFlagMapperService', () => {
 
   describe('classify', () => {
     // Note: rclone RC API uses underscores in Name (e.g. "max_delete"), CLI uses hyphens (--max-delete)
-    const mockFields: Record<string, RcConfigOption[]> = {
-      sync: [
-        {
-          Name: 'max_delete',
-          FieldName: 'MaxDelete',
-          Type: 'int',
-          DefaultStr: '-1',
-          Help: '',
-        },
-        {
-          Name: 'track_renames',
-          FieldName: 'TrackRenames',
-          Type: 'bool',
-          DefaultStr: 'false',
-          Help: '',
-        },
-      ],
-    };
-
     it('should match --max-delete (hyphen) against max_delete (underscore) from RC API', () => {
-      const lookupTable = service.buildLookupTable(mockFields as any);
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            {
+              Name: 'max_delete',
+              FieldName: 'MaxDelete',
+              Type: 'int',
+              DefaultStr: '-1',
+              Help: '',
+            },
+            {
+              Name: 'track_renames',
+              FieldName: 'TrackRenames',
+              Type: 'bool',
+              DefaultStr: 'false',
+              Help: '',
+            },
+          ],
+        })
+      );
       const parsed: ParsedCLI = {
         verb: 'sync',
         sourcePath: 'src:',
@@ -208,22 +246,30 @@ describe('CliFlagMapperService', () => {
       expect(result.destPath).toBe('dst:');
 
       expect(result.classified[0].status).toBe('mapped');
-      expect(result.classified[0].fieldName).toBe('MaxDelete');
+      expect(result.classified[0].fieldName).toBe('max_delete');
       expect(result.classified[0].coercedValue).toBe(50);
 
       expect(result.classified[1].status).toBe('mapped');
-      expect(result.classified[1].fieldName).toBe('TrackRenames');
+      expect(result.classified[1].fieldName).toBe('track_renames');
 
       expect(result.classified[2].status).toBe('unknown');
     });
 
     it('should coerce uint and float types', () => {
-      const lookupTable = service.buildLookupTable({
-        sync: [
-          { Name: 'tpslimit', FieldName: 'TpsLimit', Type: 'float64' } as any,
-          { Name: 'tpslimit-burst', FieldName: 'TpsLimitBurst', Type: 'uint32' } as any,
-        ],
-      } as any);
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'tpslimit', FieldName: 'TpsLimit', Type: 'float64', Help: '', DefaultStr: '' },
+            {
+              Name: 'tpslimit-burst',
+              FieldName: 'TpsLimitBurst',
+              Type: 'uint32',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
 
       const parsed: ParsedCLI = {
         verb: 'sync',
@@ -241,26 +287,27 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should match runtimeRemote specific prefixed options if remoteType is provided', () => {
-      const mockFieldsWithRuntime: Record<string, RcConfigOption[]> = {
-        runtimeRemote: [
-          {
-            Name: 'provider',
-            FieldName: 'Provider',
-            Type: 'string',
-            DefaultStr: '',
-            Help: '',
-          },
-          {
-            Name: 'chunk_size',
-            FieldName: 'ChunkSize',
-            Type: 'string',
-            DefaultStr: '',
-            Help: '',
-          },
-        ],
-      };
-
-      const lookupTable = service.buildLookupTable(mockFieldsWithRuntime as any, 's3');
+      const lookupTable = service.buildLookupTable(
+        fields({
+          runtimeRemote: [
+            {
+              Name: 'provider',
+              FieldName: 'Provider',
+              Type: 'string',
+              DefaultStr: '',
+              Help: '',
+            },
+            {
+              Name: 'chunk_size',
+              FieldName: 'ChunkSize',
+              Type: 'string',
+              DefaultStr: '',
+              Help: '',
+            },
+          ],
+        }),
+        's3'
+      );
       const parsed: ParsedCLI = {
         verb: 'serve',
         flags: [
@@ -271,11 +318,11 @@ describe('CliFlagMapperService', () => {
 
       const result = service.classify(parsed, lookupTable);
       expect(result.classified[0].status).toBe('mapped');
-      expect(result.classified[0].fieldName).toBe('Provider');
+      expect(result.classified[0].fieldName).toBe('provider');
       expect(result.classified[0].coercedValue).toBe('AWS');
 
       expect(result.classified[1].status).toBe('mapped');
-      expect(result.classified[1].fieldName).toBe('ChunkSize');
+      expect(result.classified[1].fieldName).toBe('chunk_size');
       expect(result.classified[1].coercedValue).toBe('64M');
     });
 
@@ -331,6 +378,201 @@ describe('CliFlagMapperService', () => {
         value: true,
         hasMacro: false,
       });
+    });
+
+    it('should parse check, delete, copyurl and other rclone verbs correctly', () => {
+      const parsedCheck = service.parse('rclone check remote:path /local/path', new Set());
+      expect(parsedCheck.verb).toBe('check');
+      expect(parsedCheck.sourcePath).toBe('remote:path');
+      expect(parsedCheck.destPath).toBe('/local/path');
+
+      const parsedDelete = service.parse('rclone delete remote:path/folder', new Set());
+      expect(parsedDelete.verb).toBe('delete');
+      expect(parsedDelete.sourcePath).toBe('remote:path/folder');
+
+      const parsedCopyurl = service.parse(
+        'rclone copyurl https://example.com/file.zip remote:path',
+        new Set()
+      );
+      expect(parsedCopyurl.verb).toBe('copyurl');
+      expect(parsedCopyurl.sourcePath).toBe('https://example.com/file.zip');
+      expect(parsedCopyurl.destPath).toBe('remote:path');
+
+      const parsedPurge = service.parse('rclone purge remote:path/trash', new Set());
+      expect(parsedPurge.verb).toBe('delete');
+      expect(parsedPurge.sourcePath).toBe('remote:path/trash');
+    });
+
+    it('should strip wrapper commands and binary paths like sudo, /usr/bin/rclone, wsl', () => {
+      const parsedSudo = service.parse('sudo /usr/bin/rclone sync src: dst:', new Set());
+      expect(parsedSudo.verb).toBe('sync');
+      expect(parsedSudo.sourcePath).toBe('src:');
+      expect(parsedSudo.destPath).toBe('dst:');
+
+      const parsedWsl = service.parse('wsl rclone copy src: dst:', new Set());
+      expect(parsedWsl.verb).toBe('copy');
+      expect(parsedWsl.sourcePath).toBe('src:');
+      expect(parsedWsl.destPath).toBe('dst:');
+    });
+
+    it('should map short flag aliases such as -P, -v, -n, -u, -L, -c, -I', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'progress', FieldName: 'Progress', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'verbose', FieldName: 'Verbose', Type: 'int', Help: '', DefaultStr: '' },
+            { Name: 'dry_run', FieldName: 'DryRun', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'update', FieldName: 'Update', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'copy_links', FieldName: 'CopyLinks', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'ignore_times',
+              FieldName: 'IgnoreTimes',
+              Type: 'bool',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse('rclone sync src: dst: -P -v -n -u -L -c -I', new Set());
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified.length).toBe(7);
+      expect(result.classified.every(f => f.status === 'mapped')).toBe(true);
+      expect(result.classified[0].fieldName).toBe('progress');
+      expect(result.classified[1].fieldName).toBe('verbose');
+      expect(result.classified[2].fieldName).toBe('dry_run');
+      expect(result.classified[3].fieldName).toBe('update');
+      expect(result.classified[4].fieldName).toBe('copy_links');
+      expect(result.classified[5].fieldName).toBe('checksum');
+      expect(result.classified[6].fieldName).toBe('ignore_times');
+    });
+
+    it('should support negated flags (--no-traverse -> traverse = false)', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'traverse', FieldName: 'Traverse', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'check_certificate',
+              FieldName: 'CheckCertificate',
+              Type: 'bool',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --no-traverse --no-check-certificate',
+        new Set()
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified.length).toBe(2);
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].fieldName).toBe('traverse');
+      expect(result.classified[0].coercedValue).toBe(false);
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].fieldName).toBe('check_certificate');
+      expect(result.classified[1].coercedValue).toBe(false);
+    });
+
+    it('should parse explicit boolean values like --fast-list=false and --dry-run=true', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          backend: [
+            { Name: 'fast_list', FieldName: 'FastList', Type: 'bool', Help: '', DefaultStr: '' },
+          ],
+          sync: [{ Name: 'dry_run', FieldName: 'DryRun', Type: 'bool', Help: '', DefaultStr: '' }],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --fast-list=false --dry-run=true',
+        new Set()
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].coercedValue).toBe(false);
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].coercedValue).toBe(true);
+    });
+
+    it('should parse non-bool flag followed by hyphenated value such as --suffix -bak', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [{ Name: 'suffix', FieldName: 'Suffix', Type: 'string', Help: '', DefaultStr: '' }],
+        })
+      );
+
+      const parsed = service.parse('rclone sync src: dst: --suffix -bak', new Set());
+      expect(parsed.flags.length).toBe(1);
+      expect(parsed.flags[0].key).toBe('suffix');
+      expect(parsed.flags[0].value).toBe('-bak');
+
+      const result = service.classify(parsed, lookupTable);
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].fieldName).toBe('suffix');
+      expect(result.classified[0].coercedValue).toBe('-bak');
+    });
+
+    it('should resolve shared Copy group flags to the active or detected verb (e.g. sync)', () => {
+      // Both copy and sync define checksum and backup_dir
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+          copy: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+          move: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --checksum --backup-dir dst:_backup',
+        new Set(['checksum'])
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].flagType).toBe('sync');
+      expect(result.classified[0].fieldName).toBe('checksum');
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].flagType).toBe('sync');
+      expect(result.classified[1].fieldName).toBe('backup_dir');
     });
   });
 });

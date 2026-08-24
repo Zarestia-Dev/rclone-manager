@@ -8,11 +8,10 @@ import {
   effect,
   computed,
   TemplateRef,
-  Injector,
   signal,
-  afterNextRender,
   afterRenderEffect,
   ChangeDetectionStrategy,
+  HostListener,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,6 +24,10 @@ import { ExplorerRoot } from '@app/types';
 import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
+import { isMobile as isMobileOS } from 'src/app/services/infrastructure/platform/api-client.service';
+
 @Component({
   selector: 'app-nautilus-toolbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +38,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
     CdkMenuModule,
     WindowControlsComponent,
     ScrollShadowDirective,
+    AppMenuComponent,
   ],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrl: './nautilus-toolbar.component.scss',
@@ -42,8 +46,9 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
   protected readonly nautilusService = inject(NautilusService);
+  protected readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
-  private readonly injector = inject(Injector);
+  protected readonly isMobileOS = isMobileOS;
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -104,20 +109,31 @@ export class NautilusToolbarComponent {
 
     effect(() => {
       if (this.isEditingPath()) {
-        afterNextRender(() => this.pathInput()?.nativeElement.select(), {
-          injector: this.injector,
-        });
+        requestAnimationFrame(() => this.pathInput()?.nativeElement.select());
       } else if (this.isSearchMode()) {
-        afterNextRender(
-          () => {
-            const el = this.searchInput()?.nativeElement;
-            el?.focus();
-            el?.select();
-          },
-          { injector: this.injector }
-        );
+        requestAnimationFrame(() => {
+          const el = this.searchInput()?.nativeElement;
+          el?.focus();
+          el?.select();
+        });
       }
     });
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.isEditingPath() && !this.isSearchMode()) return;
+
+    const target = event.target as HTMLElement | null;
+    const clickedInside = target?.closest('.path-container');
+    if (!clickedInside) {
+      if (this.isEditingPath()) {
+        this.isEditingPathChange.emit(false);
+      }
+      if (this.isSearchMode() && !this.searchFilter().trim()) {
+        this.isSearchModeChange.emit(false);
+      }
+    }
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {

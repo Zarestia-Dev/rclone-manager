@@ -55,10 +55,10 @@ pub async fn check_local_connectivity_retrying(
     let check_local = async {
         let mut attempts = 0u32;
         loop {
+            attempts += 1;
             match check_connectivity(manager, LOCAL_BACKEND_NAME, transport, None).await {
                 Ok(info) => return Ok(info),
                 Err(e) => {
-                    attempts += 1;
                     if attempts.is_multiple_of(2) {
                         debug!("Local backend check attempt {attempts} failed: {e}");
                     }
@@ -89,24 +89,24 @@ pub async fn ensure_connectivity(
             "Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
-        return if check_local_connectivity_retrying(manager, transport, timeout)
-            .await
-            .is_ok()
-        {
-            info!("Local backend is reachable and runtime info loaded");
-            Ok(())
-        } else {
-            warn!(
-                "Local backend timed out after {}s. Marking connected; runtime info may be missing.",
-                timeout.as_secs()
-            );
-            manager
-                .set_runtime_status(
-                    LOCAL_BACKEND_NAME,
-                    crate::rclone::backend::runtime::RuntimeStatus::Connected,
-                )
-                .await;
-            Ok(())
+        return match check_local_connectivity_retrying(manager, transport, timeout).await {
+            Ok(_) => {
+                info!("Local backend is reachable and runtime info loaded");
+                Ok(())
+            }
+            Err(e) => {
+                warn!(
+                    "Local backend runtime-info fetch failed ({e}). \
+                     Engine may still be healthy — UI will show version as unknown."
+                );
+                manager
+                    .set_runtime_status(
+                        LOCAL_BACKEND_NAME,
+                        crate::rclone::backend::runtime::RuntimeStatus::Connected,
+                    )
+                    .await;
+                Ok(())
+            }
         };
     }
 

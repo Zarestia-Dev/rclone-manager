@@ -21,9 +21,12 @@ export class AndroidShareService {
   /** Absolute local paths of files shared into the app from other apps. */
   readonly pendingSharedPaths = signal<string[]>([]);
 
+  private initialized = false;
+
   /** Call once from AppComponent to start listening for share events. */
   initialize(): void {
-    if (!isMobile()) return;
+    if (!isMobile() || this.initialized) return;
+    this.initialized = true;
 
     window.addEventListener('android-share-files', (event: Event) => {
       const detail = (event as CustomEvent<{ paths: string[] }>).detail;

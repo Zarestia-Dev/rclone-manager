@@ -60,29 +60,16 @@
 
     <div class="stacked-buttons" role="tablist">
       @for (item of bottomNavItems; track item.viewId; let last = $last) {
-        @if (item.viewId === 'donate') {
-          <a
-            matButton
-            class="about-item donate-btn-zarestia"
-            href="https://github.com/sponsors/Zarestia-Dev"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span>{{ item.label | translate }}</span>
-            <mat-icon svgIcon="heart"></mat-icon>
-          </a>
-        } @else {
-          <button
-            matButton
-            class="about-item"
-            role="tab"
-            [attr.aria-selected]="currentView().id === item.viewId"
-            (click)="navigateTo(item.viewId)"
-          >
-            <span>{{ item.label | translate }}</span>
-            <mat-icon [svgIcon]="item.icon"></mat-icon>
-          </button>
-        }
+        <button
+          matButton
+          class="about-item"
+          role="tab"
+          [attr.aria-selected]="currentView().id === item.viewId"
+          (click)="navigateTo(item.viewId)"
+        >
+          <span>{{ item.label | translate }}</span>
+          <mat-icon [svgIcon]="item.icon"></mat-icon>
+        </button>
         @if (!last) {
           <mat-divider></mat-divider>
         }
@@ -949,7 +936,7 @@
         <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
       </div>
       <div class="setting-control">
-        <mat-form-field appearance="fill" class="no-subscript">
+        <mat-form-field class="no-subscript">
           <mat-select
             [value]="channel"
             (selectionChange)="

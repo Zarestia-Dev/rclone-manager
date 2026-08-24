@@ -7,7 +7,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { JobInfo, CompletedTransfer } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
@@ -35,6 +35,7 @@ interface JobViewModel {
 @Component({
   selector: 'app-operations-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
   imports: [
     MatIconModule,
     MatButtonModule,
@@ -54,7 +55,7 @@ interface JobViewModel {
 })
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly uiStateService = inject(UiStateService);
+  private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
   protected readonly settings = inject(NautilusSettingsService);
 
@@ -128,7 +129,7 @@ export class OperationsPanelComponent {
 
     const resolvedSource = Array.isArray(job.source) ? (job.source[0] ?? '') : job.source || '';
     const path = job.destination || resolvedSource || '';
-    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination || '';
+    return this.pathService.getFilename(path) || resolvedSource || job.destination || '';
   }
 
   getJobTypeIcon(job: JobInfo): string {

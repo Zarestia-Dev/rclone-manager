@@ -117,8 +117,6 @@ export class AppSettingsService extends TauriBaseService {
 
     if (confirmed) {
       await this.invokeCommand('reset_settings');
-      this._options.set(null);
-      await this.loadSettings();
       this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
       return true;
     }

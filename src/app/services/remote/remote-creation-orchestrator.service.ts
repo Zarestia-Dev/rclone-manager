@@ -18,7 +18,7 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { NotificationService } from '../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
-import { PathService } from '../infrastructure/platform/path.service';
+import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import {
   getAppCfg,
   getRcloneCfg,
@@ -31,6 +31,17 @@ import {
   updateInteractiveAnswer,
 } from './utils/remote-config.utils';
 
+interface PendingConfig {
+  remoteData: PendingRemoteData;
+  finalConfig: RemoteConfigSections;
+}
+
+function isAnswerRequired(state: InteractiveFlowState): boolean {
+  const opt = state.question?.Option;
+  if (!opt?.Required) return false;
+  return state.answer == null || String(state.answer).trim() === '';
+}
+
 @Injectable()
 export class RemoteCreationOrchestrator {
   private readonly authStateService = inject(AuthStateService);
@@ -41,38 +52,24 @@ export class RemoteCreationOrchestrator {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly pathService = inject(PathService);
+  private readonly pathInspectionService = inject(PathInspectionService);
 
   readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
-  readonly oauthHelperUrl = computed(() =>
-    (this.authStateService.isAuthInProgress?.() ?? false) &&
-    !(this.authStateService.isAuthCancelled?.() ?? false)
-      ? (this.authStateService.oauthUrl?.() ?? null)
-      : null
-  );
+  readonly oauthHelperUrl = computed(() => {
+    const inProgress = this.authStateService.isAuthInProgress();
+    const cancelled = this.authStateService.isAuthCancelled();
+    return inProgress && !cancelled ? this.authStateService.oauthUrl() : null;
+  });
 
   readonly isInteractiveContinueDisabled = computed(() => {
     const s = this.interactiveFlowState();
-    if (s.isProcessing || (this.authStateService.isAuthCancelled?.() ?? false)) {
-      return true;
-    }
-    if (s.question?.Error) {
-      return true;
-    }
-    const opt = s.question?.Option;
-    if (opt?.Required) {
-      if (s.answer == null || String(s.answer).trim() === '') {
-        return true;
-      }
-    }
-    return false;
+    if (s.isProcessing || this.authStateService.isAuthCancelled()) return true;
+    if (s.question?.Error) return true;
+    return isAnswerRequired(s);
   });
 
-  private pendingConfig: {
-    remoteData: PendingRemoteData;
-    finalConfig: RemoteConfigSections;
-  } | null = null;
+  private pendingConfig: PendingConfig | null = null;
 
   setPendingConfig(remoteData: PendingRemoteData, finalConfig: RemoteConfigSections): void {
     this.pendingConfig = { remoteData, finalConfig };
@@ -120,7 +117,7 @@ export class RemoteCreationOrchestrator {
       if (!state.isActive || !state.question || !this.pendingConfig) return;
 
       const { name, ...paramRest } = this.pendingConfig.remoteData;
-      const processedAnswer: unknown =
+      const processedAnswer: string | number | boolean | null =
         state.question?.Option?.Type === 'bool'
           ? convertBoolAnswerToString(answer)
           : (answer ?? '');
@@ -159,7 +156,7 @@ export class RemoteCreationOrchestrator {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     try {
-      await this.pathService.createRequiredDirectories(finalConfig);
+      await this.pathInspectionService.createRequiredDirectories(finalConfig);
     } catch (err) {
       console.error('Failed to create required directories:', err);
     }
@@ -184,17 +181,26 @@ export class RemoteCreationOrchestrator {
   }
 
   async triggerAutoStartJobs(remoteName: string, finalConfig: RemoteConfigSections): Promise<void> {
-    const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
-    if (mountConfigs) {
-      for (const [profileName, config] of Object.entries(mountConfigs)) {
-        const appCfg = (getAppCfg(config) ?? config) as AppConfig;
-        const rcloneCfg = (getRcloneCfg(config) ?? config) as RcloneSubConfig;
-        if (appCfg.autoStart && rcloneCfg.mountPoint) {
-          void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
-        }
+    this.startAutoMounts(remoteName, finalConfig[REMOTE_CONFIG_KEYS.mount]);
+    this.startAutoSyncJobs(remoteName, finalConfig);
+    this.startAutoServes(remoteName, finalConfig[REMOTE_CONFIG_KEYS.serve]);
+  }
+
+  private startAutoMounts(
+    remoteName: string,
+    mountConfigs: RemoteConfigSections['mountConfigs']
+  ): void {
+    if (!mountConfigs) return;
+    for (const [profileName, config] of Object.entries(mountConfigs)) {
+      const appCfg = (getAppCfg(config) ?? config) as AppConfig;
+      const rcloneCfg = (getRcloneCfg(config) ?? config) as RcloneSubConfig;
+      if (appCfg.autoStart && rcloneCfg.mountPoint) {
+        void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
       }
     }
+  }
 
+  private startAutoSyncJobs(remoteName: string, finalConfig: RemoteConfigSections): void {
     for (const jobType of SYNC_TYPES) {
       const configs = finalConfig[REMOTE_CONFIG_KEYS[jobType]] as JobMap | undefined;
       if (!configs) continue;
@@ -211,14 +217,17 @@ export class RemoteCreationOrchestrator {
         }
       }
     }
+  }
 
-    const serveConfigs = finalConfig[REMOTE_CONFIG_KEYS.serve];
-    if (serveConfigs) {
-      for (const [profileName, config] of Object.entries(serveConfigs)) {
-        const appCfg = (getAppCfg(config) ?? config) as AppConfig;
-        if (appCfg.autoStart) {
-          void this.serveManagementService.startServeProfile(remoteName, profileName);
-        }
+  private startAutoServes(
+    remoteName: string,
+    serveConfigs: RemoteConfigSections['serveConfigs']
+  ): void {
+    if (!serveConfigs) return;
+    for (const [profileName, config] of Object.entries(serveConfigs)) {
+      const appCfg = (getAppCfg(config) ?? config) as AppConfig;
+      if (appCfg.autoStart) {
+        void this.serveManagementService.startServeProfile(remoteName, profileName);
       }
     }
   }

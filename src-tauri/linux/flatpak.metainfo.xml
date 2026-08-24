@@ -97,6 +97,42 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.2" date="2026-08-26">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Flow Overlay &amp; Automation Hub: Dedicated Flow overlay system for streamlined automation, Quick Run execution, and template management.</li>
+          <li>Quick Run Execution &amp; Management: Launch one-click operations with real-time job tracking, comprehensive Quick Run editor, card organization, tagging, and CLI command import.</li>
+          <li>Modular Dashboard Overview Panels: Modular panels with sticky headers and toolbar layout customization controls (drag-and-drop ordering and visibility toggles).</li>
+          <li>Power Inhibitor Integration: Prevents system sleep and shutdown during active file transfers (Linux systemd logind, Windows, macOS).</li>
+          <li>Android Storage Access Framework (SAF): Added native SAF tree picker, DocumentsProvider, VFS mount bridge, and background keep-alive service.</li>
+          <li>Template Management: Support for managing and applying operation templates in Quick Run Editor and Remote Config.</li>
+          <li>Subdirectory-Scoped Real-time Monitoring: Synchronize only modified subdirectories when triggered by real-time file watcher events.</li>
+          <li>Theme-Aware System Tray Icon: Added configurable tray icon theme options (Color, System Auto Monochrome, Light, Dark).</li>
+          <li>Dedicated Remote Deletion Confirmation Modal with dependency awareness and warnings.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Optimized CLI command import and flag mapping parser across Quick Run and Remote Config modals.</li>
+          <li>Standardized backend command bridge with centralized error mapping and structured localization payloads.</li>
+          <li>Automatic snake_case flat option mapping for CLI flags across operations and profiles.</li>
+          <li>Native Rclone OAuth endpoint integration (Rclone v1.75+).</li>
+          <li>Updated minimum supported Rclone version to 1.75.0.</li>
+        </ul>
+        <p>Removed</p>
+        <ul>
+          <li>Removed legacy keyring migrations, legacy 7z/zip 1.0.0 backup format restore, and sevenz-rust2 dependency.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed File Browser freeze and missing drive lists on wakeup or encountering stale/hung mounts.</li>
+          <li>Fixed premature deletion of job stats groups on operation finish or stop.</li>
+          <li>Fixed Docker entrypoint privilege dropping and supplementary groups (PGIDS) for ZFS and NFSv4 ACL datasets.</li>
+          <li>Fixed dynamic reloading of remotes list on rclone configuration and backend settings changes.</li>
+          <li>Fixed reactive system theme detection and synchronization using native matchMedia listeners.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-07-26">
       <description>
         <p>Added</p>

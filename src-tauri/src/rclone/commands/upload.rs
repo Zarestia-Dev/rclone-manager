@@ -7,12 +7,19 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::{BackendManager, TransportKind};
-use crate::rclone::commands::job::JobMetadata;
-use crate::utils::app::notification::notify;
-use crate::utils::json_helpers::build_full_path;
-use crate::utils::rclone::endpoints::operations;
-use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::{BackendManager, TransportKind},
+        commands::job::JobMetadata,
+    },
+    utils::{
+        app::notification::notify,
+        json_helpers::build_full_path,
+        rclone::endpoints::operations,
+        types::{jobs::JobType, origin::Origin, state::RcloneState},
+    },
+};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct UploadBatchParams {
@@ -275,31 +282,22 @@ pub async fn execute_upload_batch(
 
     let destination = build_full_path(&remote, &path);
     let jobid = existing_jobid.unwrap_or_else(|| chrono::Utc::now().timestamp_millis() as u64);
-    let metadata = JobMetadata {
-        remote_name: remote.clone(),
-        job_type: JobType::Upload,
-        source: local_paths.clone(),
+    let metadata = JobMetadata::new(
+        remote.clone(),
+        JobType::Upload,
+        local_paths.clone(),
         destination,
-        profile: None,
-        origin: origin.clone(),
-        group,
-        no_cache,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    )
+    .with_origin(origin.clone())
+    .with_group(group)
+    .with_no_cache(no_cache)
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let group_name = metadata.group_name();
 
     if existing_jobid.is_none() {
-        let execute_id = Some(uuid::Uuid::new_v4().to_string());
         job_cache
-            .create_job(
-                jobid,
-                execute_id,
-                metadata.clone(),
-                backend.name.clone(),
-                Some(&app),
-            )
+            .create_job(jobid, metadata.clone(), backend.name.clone(), Some(&app))
             .await;
     }
 
@@ -383,7 +381,7 @@ pub async fn execute_upload_batch(
                     .to_string();
 
                 let result = if backend.is_local
-                    || matches!(transport.kind(), TransportKind::Librclone)
+                    || matches!(transport.kind().await, TransportKind::Librclone)
                 {
                     let dst_remote = if remote_dir.is_empty() {
                         base_filename.clone()
@@ -551,7 +549,7 @@ pub async fn execute_upload_batch(
     error_msg.map_or(Ok(jobid.to_string()), Err)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn upload_local_drop_paths(
     app: AppHandle,
     remote: String,
@@ -576,7 +574,7 @@ pub async fn upload_local_drop_paths(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn upload_file(
     app: AppHandle,
     remote: String,
@@ -594,7 +592,7 @@ pub async fn upload_file(
         format!("{path}/")
     };
 
-    match transport.kind() {
+    match transport.kind().await {
         // Desktop: use reqwest::multipart to stream the file bytes directly.
         TransportKind::HttpDaemon => {
             let backend_manager = app.state::<BackendManager>();

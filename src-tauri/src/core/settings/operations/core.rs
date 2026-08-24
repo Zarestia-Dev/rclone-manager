@@ -1,6 +1,6 @@
 //! Core settings operations using rcman
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use log::{debug, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 
 /// Load all settings with metadata (for UI)
-#[tauri::command]
+#[bridge]
 pub async fn load_settings(app: AppHandle) -> Result<serde_json::Value, String> {
     let manager = app.state::<AppSettingsManager>();
     let metadata = manager
@@ -25,7 +25,7 @@ pub async fn load_settings(app: AppHandle) -> Result<serde_json::Value, String> 
 }
 
 /// Save a single setting
-#[tauri::command]
+#[bridge]
 pub async fn save_setting(
     app: AppHandle,
     category: String,
@@ -53,7 +53,7 @@ pub async fn save_setting(
 }
 
 /// Reset a single setting to its default value
-#[tauri::command]
+#[bridge]
 pub async fn reset_setting(
     app: AppHandle,
     category: String,
@@ -80,7 +80,7 @@ pub async fn reset_setting(
 }
 
 /// Reset all settings to defaults
-#[tauri::command]
+#[bridge]
 pub async fn reset_settings(app: AppHandle) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     manager.inner().reset_all().map_err(

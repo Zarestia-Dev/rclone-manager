@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
   computed,
   inject,
   signal,
@@ -109,6 +108,11 @@ export class KeyboardShortcutsModalComponent {
       keys: 'Ctrl + B',
       description: 'shortcuts.actions.toggleBrowser',
       category: 'shortcuts.categories.fileBrowser',
+    },
+    {
+      keys: 'Ctrl + Alt + F',
+      description: 'shortcuts.actions.openFlowOverlay',
+      category: 'shortcuts.categories.application',
     },
     {
       keys: 'Escape',
@@ -259,16 +263,6 @@ export class KeyboardShortcutsModalComponent {
     } else {
       this.shortcuts = [...this.defaultShortcuts];
       this.title = 'shortcuts.title';
-    }
-  }
-
-  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
-
-  @HostListener('document:keydown.control.f')
-  onF3(): void {
-    this.toggleSearch();
-    if (this.searchVisible()) {
-      this.searchContainer()?.focus();
     }
   }
 

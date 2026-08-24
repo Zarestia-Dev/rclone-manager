@@ -1,8 +1,7 @@
-use crate::core::{lifecycle::shutdown::handle_shutdown, settings::AppSettingsManager};
+use crate::core::{bridge, lifecycle::shutdown::handle_shutdown, settings::AppSettingsManager};
 use crate::utils::github_client::{OWNER, REPO};
 use crate::utils::types::{
     events::APP_EVENT,
-    state::RcloneState,
     updater::{
         AppUpdaterState, DownloadState, DownloadStatus, Result, UpdateInfo, UpdateMetadata,
         UpdateState, UpdaterError as Error,
@@ -23,7 +22,7 @@ fn emit_progress(app: &AppHandle, status: DownloadStatus) {
     );
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();
 
@@ -105,7 +104,6 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
             let app = app_exit.clone();
             warn!("Shutting down for update installation...");
             tauri::async_runtime::block_on(async move {
-                app.state::<RcloneState>().set_shutting_down();
                 handle_shutdown(app).await;
             });
         })
@@ -191,7 +189,7 @@ fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
     let state = app.state::<AppUpdaterState>();
     let data = state.data.lock();
@@ -226,7 +224,7 @@ fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bo
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn install_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
 
@@ -354,7 +352,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
     let mut data = updater_state.data.lock();
@@ -377,7 +375,7 @@ pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
 

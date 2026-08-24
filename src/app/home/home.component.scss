@@ -15,9 +15,6 @@ mat-sidenav {
 }
 
 mat-sidenav-content {
-  flex: 1;
-  height: 100%;
-
   @media (max-width: 599.98px) {
     padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;

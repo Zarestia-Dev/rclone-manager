@@ -11,6 +11,7 @@ use log::{debug, info, warn};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::core::bridge;
 use crate::core::check_binaries::read_rclone_binary;
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::backend::BackendManager;
@@ -98,7 +99,7 @@ impl From<Option<String>> for UpdateChannel {
 
 // Public API Commands
 
-#[tauri::command]
+#[bridge]
 pub async fn check_rclone_update(
     app_handle: AppHandle,
     channel: Option<String>,
@@ -191,7 +192,7 @@ pub async fn perform_check_rclone_update(
     Ok(UpdateInfo { metadata, status })
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_update_info(app_handle: AppHandle) -> Result<Option<UpdateInfo>> {
     let pending_new = find_pending_new_binary(&app_handle);
     let has_pending_new = pending_new.is_some();
@@ -262,7 +263,7 @@ fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)>
         .find(|(_, new)| new.exists())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Result<UpdateResult> {
     debug!("Starting rclone download/update process");
 
@@ -425,7 +426,7 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
 }
 
 /// Cancels an in-progress rclone update download.
-#[tauri::command]
+#[bridge]
 pub async fn cancel_rclone_update(app_handle: AppHandle) -> Result<()> {
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let mut data = updater_state.data.lock();
@@ -447,7 +448,7 @@ pub async fn cancel_rclone_update(app_handle: AppHandle) -> Result<()> {
 }
 
 /// Apply a previously downloaded rclone update and restart the engine.
-#[tauri::command]
+#[bridge]
 pub async fn apply_rclone_update(app_handle: AppHandle) -> Result<()> {
     debug!("Applying previously downloaded rclone update");
 

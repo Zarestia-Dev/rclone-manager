@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    core::bridge,
     rclone::{backend::BackendManager, state::watcher::refresh_mounts_quietly},
     utils::{
         app::notification::{MountStage, NotificationEvent, notify},
@@ -16,9 +17,7 @@ use crate::{
     },
 };
 
-use super::common::{
-    FromConfig, OperationContext, fs_value_with_runtime_overrides, parse_common_config,
-};
+use super::common::{FromConfig, OperationContext, parse_common_config};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -34,6 +33,8 @@ pub struct MountParams {
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub origin: Option<crate::utils::types::origin::Origin>,
+    pub quick_run_id: Option<String>,
+    pub execute_id: Option<String>,
     pub no_cache: Option<bool>,
 }
 
@@ -73,6 +74,8 @@ impl FromConfig for MountParams {
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
             origin: None,
+            quick_run_id: None,
+            execute_id: None,
             no_cache: None,
         })
     }
@@ -80,44 +83,17 @@ impl FromConfig for MountParams {
 
 impl MountParams {
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
-
-        // 1. Inject runtime remote overrides directly into the "fs" key
-        body.insert(
-            "fs".to_string(),
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
-        );
-
-        // 2. Merge resolved profile blocks if they exist
-        if let Some(vfs_opts) = &self.vfs_options {
-            body.insert(
-                "vfsOpt".to_string(),
-                serde_json::to_value(vfs_opts).unwrap(),
-            );
-        }
-        if let Some(filter_opts) = &self.filter_options {
-            body.insert(
-                "_filter".to_string(),
-                serde_json::to_value(filter_opts).unwrap(),
-            );
-        }
-        if let Some(backend_opts) = &self.backend_options {
-            let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
-            if !final_backend.is_empty() {
-                body.insert(
-                    "_config".to_string(),
-                    serde_json::to_value(final_backend).unwrap(),
-                );
-            }
-        }
-
-        // 3. Mark it async
-        body.insert("_async".to_string(), json!(true));
-
-        Value::Object(body)
+        crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        )
+        .insert("fs", self.source.as_str())
+        .insert("mountPoint", self.mount_point.as_str())
+        .insert("_async", true)
+        .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+        .with_vfs_options(self.vfs_options.as_ref())
+        .with_filter_options(self.filter_options.as_ref())
+        .with_backend_options(self.backend_options.as_ref())
+        .build()
     }
 }
 
@@ -129,7 +105,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     #[cfg(target_os = "android")]
     if params.mount_type == "saf" {
         let payload = params.to_rclone_body();
-        let mount_point = params.mount_point;
+        let mount_point = params.mount_point.clone();
 
         log_operation(
             LogLevel::Info,
@@ -140,17 +116,33 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 params.mount_type
             ),
             Some(json!({
-                "mount_point": mount_point,
-                "remote_name": params.remote_name,
-                "mount_type": params.mount_type,
-                "payload": payload,
+                "mount_point": &mount_point,
+                "remote_name": &params.remote_name,
+                "mount_type": &params.mount_type,
+                "payload": &payload,
             })),
         );
+
+        let transport = crate::rclone::commands::common::transport(&app);
+        if let Err(e) = transport.rpc("vfs/stream/mount", Some(&payload)).await {
+            let error_msg = format!("Failed to initialize SAF VFS stream: {e}");
+            log_operation(
+                LogLevel::Error,
+                Some(params.remote_name.clone()),
+                Some("Mount SAF remote failed".to_string()),
+                error_msg.clone(),
+                None,
+            );
+            return Err(error_msg);
+        }
 
         let mounted_remote = crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
             mount_point: mount_point.clone(),
             profile: params.profile.clone(),
+            quick_run_id: params.quick_run_id.clone(),
+            execute_id: params.execute_id.clone(),
+            origin: params.origin.clone(),
         };
 
         let mut current_mounts = cache.get_mounted_remotes().await;
@@ -158,7 +150,14 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         current_mounts.push(mounted_remote);
         cache.update_mounts_if_changed(current_mounts, &app).await;
         cache
-            .store_mount_profile(&mount_point, params.profile.clone())
+            .store_mount_profile(
+                &mount_point,
+                params.profile.clone(),
+                params.quick_run_id.clone(),
+                params.origin.clone(),
+                params.execute_id.clone(),
+                Some(&app),
+            )
             .await;
 
         crate::rclone::backend::saf_bridge::notify_roots_changed();
@@ -209,18 +208,17 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     );
 
     // Create job metadata
-    let metadata = super::job::JobMetadata {
-        remote_name: params.remote_name.clone(),
-        job_type: crate::utils::types::jobs::JobType::Mount,
-        source: vec![params.source.clone()],
-        destination: params.mount_point.clone(),
-        profile: params.profile.clone(),
-        origin: params.origin.clone(),
-        group: None,
-        no_cache: params.no_cache.unwrap_or(false),
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = super::job::JobMetadata::new(
+        params.remote_name.clone(),
+        crate::utils::types::jobs::JobType::Mount,
+        vec![params.source.clone()],
+        params.mount_point.clone(),
+    )
+    .with_profile(params.profile.clone())
+    .with_origin(params.origin.clone())
+    .with_no_cache(params.no_cache.unwrap_or(false))
+    .with_quick_run_id(params.quick_run_id.clone())
+    .with_execute_id(params.execute_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
     let _ = super::job::submit_job_with_options(
@@ -234,11 +232,19 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     )
     .await?;
 
-    // Refresh first so the entry exists in cache, then attach the profile to it.
-    refresh_mounts_quietly(&app).await;
+    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     cache
-        .store_mount_profile(&params.mount_point, params.profile.clone())
+        .preseed_mount_metadata(
+            &params.source,
+            &params.mount_point,
+            params.profile.clone(),
+            params.quick_run_id.clone(),
+            params.origin.clone(),
+            params.execute_id.clone(),
+            Some(&app),
+        )
         .await;
+    refresh_mounts_quietly(&app).await;
 
     let backend_name = backend_manager.get_active_name().await;
     notify(
@@ -255,7 +261,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
 }
 
 /// Unmount a remote filesystem
-#[tauri::command]
+#[bridge]
 pub async fn unmount_remote(
     app: AppHandle,
     mount_point: String,
@@ -286,20 +292,36 @@ pub async fn unmount_remote(
 
     #[cfg(target_os = "android")]
     if mount_point.starts_with("saf://") {
-        let profile = backend_manager
+        let mounted_entry = backend_manager
             .remote_cache
             .get_mount_by_point(&mount_point)
-            .await
-            .and_then(|m| m.profile)
+            .await;
+        let profile = mounted_entry
+            .as_ref()
+            .and_then(|m| m.profile.clone())
             .unwrap_or_default();
+        let fs_name = mounted_entry
+            .as_ref()
+            .map(|m| m.fs.clone())
+            .unwrap_or_else(|| {
+                if remote_name.ends_with(':') {
+                    remote_name.clone()
+                } else {
+                    format!("{remote_name}:")
+                }
+            });
 
         let mut current_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
-        current_mounts.retain(|m| {
-            m.mount_point != mount_point && m.fs != remote_name && m.fs != format!("{remote_name}:")
-        });
+        current_mounts
+            .retain(|m| m.mount_point != mount_point && m.fs != remote_name && m.fs != fs_name);
         backend_manager
             .remote_cache
             .update_mounts_if_changed(current_mounts, &app)
+            .await;
+
+        let transport = crate::rclone::commands::common::transport(&app);
+        let _ = transport
+            .rpc("vfs/stream/unmount", Some(&json!({ "fs": fs_name })))
             .await;
 
         crate::rclone::backend::saf_bridge::notify_roots_changed();
@@ -366,7 +388,7 @@ pub async fn unmount_remote(
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: Some(profile.clone()),
-                    error: e.to_string(),
+                    error: error_msg.clone(),
                 }),
             );
             error_msg
@@ -399,7 +421,7 @@ pub async fn unmount_remote(
 }
 
 /// Unmount all remotes
-#[tauri::command]
+#[bridge]
 pub async fn unmount_all_remotes(
     app: AppHandle,
     context: OperationContext,
@@ -408,6 +430,13 @@ pub async fn unmount_all_remotes(
     {
         info!("🗑️ Unmounting all SAF remotes");
         let backend_manager = app.state::<BackendManager>();
+        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+        let transport = crate::rclone::commands::common::transport(&app);
+        for m in &mounted {
+            let _ = transport
+                .rpc("vfs/stream/unmount", Some(&json!({ "fs": &m.fs })))
+                .await;
+        }
         backend_manager
             .remote_cache
             .update_mounts_if_changed(vec![], &app)
@@ -430,22 +459,6 @@ pub async fn unmount_all_remotes(
             .clone();
         info!("🗑️ Unmounting all remotes");
 
-        let backend_manager = app.state::<BackendManager>();
-
-        // Check current mounted remotes first.
-        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-        if mounted.is_empty() || context.is_shutdown() {
-            log::debug!("No mounted remotes to unmount — skipping API call");
-            // Refresh cache for UI consistency (unless during shutdown)
-            if !context.is_shutdown() {
-                refresh_mounts_quietly(&app).await;
-            }
-            // Silent no-op during shutdown
-            return Ok(crate::localized_success!(
-                "backendSuccess.mount.allUnmounted"
-            ));
-        }
-
         let _ = transport
             .rpc(crate::utils::rclone::endpoints::mount::UNMOUNTALL, None)
             .await
@@ -464,11 +477,10 @@ pub async fn unmount_all_remotes(
 
         if !context.is_shutdown() {
             refresh_mounts_quietly(&app).await;
+            notify(&app, NotificationEvent::Mount(MountStage::AllUnmounted));
         }
 
         info!("✅ All remotes unmounted successfully");
-
-        notify(&app, NotificationEvent::Mount(MountStage::AllUnmounted));
 
         Ok(crate::localized_success!(
             "backendSuccess.mount.allUnmounted"
@@ -478,7 +490,7 @@ pub async fn unmount_all_remotes(
 
 /// Mount a remote using a named profile
 /// Resolves all options (mount, vfs, filter, backend) from cached settings
-#[tauri::command]
+#[bridge]
 pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Result<(), String> {
     let (config, settings) = match crate::rclone::commands::common::resolve_profile_settings(
         &app,
@@ -525,7 +537,11 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
-    mount_params.origin = params.source;
+    mount_params.origin = params
+        .source
+        .or(Some(crate::utils::types::origin::Origin::Dashboard));
+    mount_params.quick_run_id = None;
+    mount_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await
@@ -597,14 +613,22 @@ mod tests {
                     "read-only": true
                 }
             }),
-            vfs_options: Some(HashMap::from([(
-                "vfs-cache-mode".to_string(),
-                json!("writes"),
-            )])),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!(".*"))])),
-            backend_options: Some(HashMap::from([("chunk-size".to_string(), json!("10M"))])),
+            vfs_options: Some(HashMap::from([
+                ("vfs-cache-mode".to_string(), json!("writes")),
+                ("CacheMode".to_string(), json!("full")),
+            ])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!(".*")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            backend_options: Some(HashMap::from([
+                ("chunk-size".to_string(), json!("10M")),
+                ("AutoConfirm".to_string(), json!(true)),
+            ])),
             runtime_remote_options: None,
             profile: Some("my_profile".to_string()),
+            quick_run_id: None,
+            execute_id: None,
             origin: None,
             no_cache: None,
         };
@@ -615,13 +639,19 @@ mod tests {
         assert_eq!(obj.get("fs").unwrap(), "pCloud:backups");
         assert_eq!(obj.get("_async").unwrap(), &json!(true));
 
+        // Flat lowercase keys placed directly at top-level body (normalized)
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "writes");
+        assert_eq!(obj.get("exclude").unwrap(), ".*");
+        assert_eq!(obj.get("chunk_size").unwrap(), "10M");
+
+        // PascalCase nested options placed into their respective blocks
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
-        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "full");
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("exclude").unwrap(), ".*");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("chunk-size").unwrap(), "10M");
+        assert_eq!(config.get("AutoConfirm").unwrap(), &json!(true));
     }
 }

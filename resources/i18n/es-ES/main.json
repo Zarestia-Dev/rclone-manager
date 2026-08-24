@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Cancelar",
     "save": "Guardar",
+    "create": "Crear",
+    "show": "Mostrar",
+    "hide": "Ocultar",
     "ok": "Aceptar",
     "close": "Cerrar",
-    "nextStep": "Siguiente paso",
+    "next": "Siguiente",
     "back": "Atrás",
     "continue": "Continuar",
     "yes": "Sí",
@@ -31,7 +34,12 @@
     "password": "Contraseña",
     "username": "Nombre de usuario",
     "selectAll": "Seleccionar todo",
-    "deselectAll": "Deseleccionar todo"
+    "deselectAll": "Deseleccionar todo",
+    "viewDetails": "Ver detalles",
+    "moreActions": "Más acciones",
+    "duplicate": "Duplicar",
+    "clearAll": "Borrar todo",
+    "acknowledge": "Confirmar"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -145,7 +153,11 @@
       "debounce": "Retardo de rebote",
       "watcherActive": "Observador activo",
       "seconds": "segundos",
-      "realtimeSchedule": "Observador de archivos en tiempo real"
+      "realtimeSchedule": "Observador de archivos en tiempo real",
+      "changedOnlyShort": "Solo subdirectorios",
+      "changedOnlyActive": "Solo subdirectorios",
+      "syncScope": "Ámbito de sincronización",
+      "realtimeChangedOnly": "Monitoreo en tiempo real (Solo subdirectorios)"
     }
   },
   "actions": {
@@ -158,11 +170,13 @@
     "delete": "Eliminar",
     "copyurl": "Copiar URL",
     "archivecreate": "Archivar",
+    "cryptcheck": "Verificación cifrada",
     "serve": "Servir",
     "start": "Iniciar",
     "stop": "Detener"
   },
   "sidebar": {
+    "toggleSidebar": "Alternar barra lateral",
     "toggleSearch": "Alternar barra de búsqueda",
     "remotes": "Remotos",
     "searchPlaceholder": "Buscar remotos...",
@@ -193,7 +207,8 @@
       "used": "Usado:",
       "free": "Libre:",
       "loading": "Cargando...",
-      "errorLoading": "Problema al cargar el uso de disco"
+      "errorLoading": "Problema al cargar el uso de disco",
+      "retry": "Reintentar carga de uso de disco"
     },
     "status": {
       "mounted": "Montado",
@@ -296,7 +311,9 @@
       "filemanager": "Gestor de archivos",
       "startup": "Inicio",
       "update": "Actualización",
-      "internal": "Interno"
+      "internal": "Interno",
+      "flow": "Espacio de Trabajo Flow",
+      "quickrun": "Ejecución Rápida"
     },
     "rule": {
       "filters": "Filtros",
@@ -318,7 +335,8 @@
       "actionRequired": "Se requiere al menos una acción.",
       "noActionsHint": "Debe crear una acción de alerta antes de poder asignarla a una regla.",
       "filtersEmptyHint": "Dejar vacío para que coincida con todos los eventos.",
-      "scopeFilters": "Filtros de Ámbito"
+      "scopeFilters": "Filtros de Ámbito",
+      "allEvents": "Todos los eventos"
     },
     "events": {
       "job": "Tareas y Operaciones de Archivos",
@@ -390,7 +408,9 @@
       "slack": "Slack",
       "headerKey": "Nombre de Cabecera",
       "headerValue": "Valor"
-    }
+    },
+    "noRulesHint": "Aún no hay reglas de alerta configuradas. Cree una regla para recibir notificaciones.",
+    "noActionsHint": "Aún no hay acciones de alerta configuradas. Cree una acción para definir cómo se entregan las alertas."
   },
   "settings": {
     "resetAll": {
@@ -406,9 +426,28 @@
         "label": "Habilitar icono de bandeja",
         "description": "Mostrar un icono en la bandeja del sistema. También habilita el servicio en segundo plano."
       },
+      "tray_icon_theme": {
+        "label": "Tema del icono de la bandeja",
+        "description": "Elige el estilo de icono para la bandeja del sistema.",
+        "options": {
+          "system": "Sistema (Monocromático automático)",
+          "color": "Color",
+          "monochrome_light": "Monocromático (Claro)",
+          "monochrome_dark": "Monocromático (Oscuro)"
+        }
+      },
       "language": {
         "label": "Idioma",
         "description": "Idioma que se utilizará para la interfaz de usuario."
+      },
+      "default_view": {
+        "label": "Vista de inicio predeterminada",
+        "description": "Seleccione la interfaz principal que se abrirá al iniciar la aplicación.",
+        "options": {
+          "main_menu": "Menú principal",
+          "nautilus": "Navegador de archivos Nautilus",
+          "flow": "Espacio de trabajo Flow"
+        }
       },
       "start_on_startup": {
         "label": "Iniciar al inicio",
@@ -416,7 +455,7 @@
       },
       "notifications": {
         "label": "Habilitar notificaciones",
-        "description": "Mostrar notificaciones para los eventos de montaje."
+        "description": "Mostrar notificaciones de escritorio para eventos de la aplicación (montajes, sincronizaciones, actualizaciones, etc.)."
       },
       "restrict": {
         "label": "Restringir valores",
@@ -425,6 +464,10 @@
       "standalone_dialogs": {
         "label": "Diálogos independientes",
         "description": "Abre cuadros de diálogo (modales) en ventanas nativas independientes del sistema operativo."
+      },
+      "prevent_sleep": {
+        "label": "Evitar suspensión / apagado del sistema",
+        "description": "Inhibe la suspensión del sistema y el apagado del SO mientras haya transferencias, montajes o servidores activos."
       }
     },
     "core": {
@@ -521,6 +564,10 @@
         "label": "Diseño del panel de control",
         "description": "Configuración de diseño personalizada para el panel de control."
       },
+      "quick_run_layout": {
+        "label": "Diseño de ejecución rápida",
+        "description": "Configuración de diseño personalizada para la vista general de ejecución rápida."
+      },
       "dashboard_card_variant": {
         "label": "Variante de tarjeta",
         "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
@@ -573,6 +620,10 @@
       "generic": {
         "title": "Error al iniciar el motor",
         "subtitle": "Consulte los registros para obtener más detalles"
+      },
+      "auth": {
+        "title": "Autenticación de Rclone requerida",
+        "subtitle": "Verifique sus credenciales o contraseña de configuración"
       }
     }
   },
@@ -611,6 +662,7 @@
       "preferences": "Preferencias",
       "flags": "Banderas de Rclone",
       "fileBrowser": "Explorador de archivos",
+      "flowWorkspace": "Espacio de trabajo Flow",
       "shortcuts": "Atajos de teclado",
       "about": "Acerca de RClone Manager",
       "quickRemote": "Remoto rápido",
@@ -645,9 +697,30 @@
         "title": "Se requiere contraseña de configuración",
         "content": "Su configuración de rclone está cifrada. Introduzca la contraseña para desbloquearla para esta sesión."
       },
+      "selectMainUi": {
+        "title": "Elegir interfaz principal",
+        "content": "Selecciona el diseño de interfaz preferido. Puedes cambiar entre interfaces en cualquier momento desde el menú o los ajustes."
+      },
       "ready": {
         "title": "¡Listo para funcionar!",
         "content": "Todo está configurado y listo para usar. RClone Manager le ayudará a gestionar su almacenamiento en la nube con facilidad. Haga clic en 'Empezar' para comenzar su viaje."
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "Panel clásico",
+        "badge": "Predeterminado",
+        "description": "Vista general con conexiones remotas, transferencias activas, acciones rápidas y estado del sistema."
+      },
+      "nautilus": {
+        "title": "Navegador de archivos (Nautilus)",
+        "badge": "Gestor de archivos",
+        "description": "Interfaz de gestión de archivos de doble panel dedicada para navegar y transferir archivos remotos."
+      },
+      "flow": {
+        "title": "Espacio de trabajo Flow",
+        "badge": "Flujos de trabajo",
+        "description": "Panel visual interactivo para orquestar tareas automatizadas, ejecuciones rápidas y pipelines."
       }
     },
     "installButton": {
@@ -668,8 +741,6 @@
       "default": "Predeterminado"
     },
     "actions": {
-      "back": "Atrás",
-      "next": "Siguiente",
       "installPlugin": "Instalar plugin",
       "installingPlugin": "Instalando...",
       "unlock": "Desbloquear",
@@ -826,7 +897,8 @@
     "actions": {
       "hide": "Ocultar",
       "show": "Mostrar",
-      "open": "Abrir"
+      "open": "Abrir",
+      "cancel": "Cancelar"
     },
     "overviewHeader": {
       "manageBackends": "Gestionar backends",
@@ -972,7 +1044,7 @@
     "jsonEditor": {
       "noFields": "No hay campos para mostrar en modo JSON",
       "parseError": "Sintaxis JSON no válida. Compruebe el formato.",
-      "cliArgumentWithSuggestion": "Los argumentos de tipo CLI (como '{{key}}') no son compatibles con rclone RC. ¿Quiso decir '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "El parámetro estilo CLI '{{key}}' se asignará automáticamente a '{{suggestion}}' al ejecutarse.",
       "camelCaseSuggestionWarning": "La opción '{{key}}' no es válida en este formato. ¿Quiso decir '{{suggestion}}'?",
       "fixSuggestion": "Cambiar a '{{suggestion}}'",
       "wrongBlockWarning": "La(s) opción(es) {{keys}} pertenece(n) al bloque de configuración '{{block}}' y es posible que no funcione(n) aquí.",
@@ -986,6 +1058,10 @@
       "required": "Se requiere contraseña",
       "remember": "Recordar contraseña",
       "keychain": "Almacenado en el llavero del sistema"
+    },
+    "validation": {
+      "required": "Este campo es obligatorio.",
+      "min": "El valor debe ser al menos {{val}}."
     }
   },
   "wizards": {
@@ -1020,7 +1096,9 @@
       "applyPatch": "Aplicar parche",
       "importSourcePath": "Importar ruta de origen",
       "importDestPath": "Importar ruta de destino",
-      "importMountPoint": "Importar punto de montaje"
+      "importMountPoint": "Importar punto de montaje",
+      "applyToTask": "Aplicar a la tarea",
+      "appliedToast": "Se importaron correctamente {{count}} opciones"
     },
     "obscure": {
       "title": "Ocultar contraseña",
@@ -1050,15 +1128,15 @@
       "switchToJson": "Cambiar a modo JSON",
       "unknownTopLevelProperty": "Advertencia: '{{key}}' no es una propiedad de nivel superior estándar para este perfil y podría ignorarse.",
       "jsonEditorInfo": {
-        "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
-        "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
-        "check": "Perfil de verificación: configure las rutas 'srcFs' y 'dstFs', los campos de nivel de perfil y coloque todas las banderas de verificación dentro de '_config'.",
-        "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y coloque todas las opciones de montaje dentro de 'mountOpt'.",
-        "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y coloque todas las opciones de servicio dentro de '_config'.",
-        "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor.",
-        "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor.",
-        "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor.",
-        "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor."
+        "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y las banderas de rclone (elimine el '--' inicial y reemplace '-' por '_').",
+        "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y las banderas de rclone (elimine el '--' inicial y reemplace '-' por '_').",
+        "check": "Perfil de verificación: configure las rutas 'srcFs' y 'dstFs', los campos de nivel de perfil y las banderas de verificación (elimine el '--' inicial y reemplace '-' por '_').",
+        "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y las opciones de montaje (elimine el '--' inicial y reemplace '-' por '_').",
+        "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y las opciones de servicio (elimine el '--' inicial y reemplace '-' por '_').",
+        "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_')."
       },
       "runtimeRemoteWarning": {
         "title": "Configuración del remoto en tiempo de ejecución",
@@ -1139,6 +1217,10 @@
       "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
       "watchDescription": "Monitoree directorios de origen locales para detectar modificaciones de archivos y sincronizar cambios automáticamente.",
       "watchDelay": "Retardo de rebote (segundos)",
+      "watchDelayHint": "Tiempo de espera tras el último cambio detectado antes de iniciar la sincronización.",
+      "watchZeroDelayWarning": "El modo instantáneo (0s) sincroniza de inmediato al detectar cambios. Para archivos grandes o múltiples ediciones, se recomiendan 3–5s.",
+      "watchChangedOnly": "Sincronizar solo subdirectorios modificados",
+      "watchChangedOnlyHint": "Cuando se activa por el monitor de archivos, sincroniza solo los subdirectorios que contienen archivos modificados en lugar de escanear todo el árbol raíz.",
       "watchRequiresLocalSource": "El monitoreo en tiempo real requiere al menos un directorio de origen local.",
       "watchRequiresLocal": "El monitoreo en tiempo real requiere al menos un directorio de origen o destino local.",
       "watchMixedSourcesNote": "Solo los directorios de origen locales se monitorearán en tiempo real. Los cambios en los orígenes remotos no activarán la sincronización automáticamente.",
@@ -1286,6 +1368,10 @@
         "title": "Primero del mes",
         "description": "Primer día a medianoche"
       }
+    },
+    "presets": {
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -1320,10 +1406,6 @@
       },
       "profiles": {
         "title": "Perfiles"
-      },
-      "legacy": {
-        "title": "Copia de seguridad antigua detectada",
-        "description": "Esta copia de seguridad se creó antes de que se introdujera el sistema de perfiles. Se restaurará al perfil 'predeterminado'."
       },
       "options": "Opciones de restauración",
       "scope": {
@@ -1512,7 +1594,9 @@
       "openNative": "Abrir con aplicación externa",
       "openNativeTooltip": "Abrir en la aplicación externa predeterminada",
       "openingNative": "Abriendo {{name}} en la aplicación externa...",
-      "errorOpenNative": "Error al abrir el archivo en la aplicación externa"
+      "errorOpenNative": "Error al abrir el archivo en la aplicación externa",
+      "showRawText": "Mostrar texto sin formato",
+      "showPreview": "Mostrar vista previa"
     }
   },
   "dashboard": {
@@ -1576,6 +1660,7 @@
       "stopping": "Deteniendo {{op}}...",
       "stop": "Detener {{op}}",
       "notConfigured": "No configurado",
+      "serve": "Servir",
       "serving": "Sirviendo",
       "accessibleVia": "Accesible a través de",
       "mounting": "Montando...",
@@ -1594,7 +1679,8 @@
       "dryRun": "Simulacro",
       "dryRunActive": "Simulacro activo: no se realizarán cambios",
       "resync": "Resincronizar",
-      "resyncActive": "Resincronización activa: realizando resincronización completa"
+      "resyncActive": "Resincronización activa: realizando resincronización completa",
+      "remoteSettings": "Ajustes de remoto"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -1640,6 +1726,7 @@
       "loadConfig": "Cargar configuración",
       "exportConfig": "Exportar configuración",
       "toggleBrowser": "Alternar explorador de archivos",
+      "openFlowOverlay": "Alternar espacio de trabajo Flow",
       "closeDialog": "Cerrar diálogo/Cancelar acción"
     },
     "categories": {
@@ -1660,7 +1747,10 @@
   "app": {
     "shutdown": {
       "title": "Cerrando",
-      "message": "Espere mientras la aplicación se cierra de forma segura..."
+      "message": "Espere mientras la aplicación se cierra de forma segura...",
+      "confirmTitle": "Tareas activas en progreso",
+      "confirmMessage": "Rclone Manager tiene tareas activas ({{jobs}} transferencias, {{mounts}} montajes, {{serves}} servidores). ¿Seguro que desea detener todo y salir?",
+      "stopAndQuit": "Detener y Salir"
     }
   },
   "modals": {
@@ -1722,7 +1812,6 @@
       "aboutRclone": "Acerca de Rclone",
       "credits": "Créditos",
       "legal": "Legal",
-      "donate": "Donar",
       "website": "Sitio web",
       "wiki": "Página Wiki",
       "reportIssues": "Informar de problemas",
@@ -1959,14 +2048,6 @@
           "label": "Contraseña",
           "placeholder": "Dejar vacío para no usar autenticación"
         },
-        "oauthHost": {
-          "label": "Host OAuth",
-          "placeholder": "127.0.0.1",
-          "description": "Host al que conectarse para las devoluciones de llamada de OAuth. Debe ser una dirección enrutable, nunca un comodín como 0.0.0.0. En Docker, establézcalo en el nombre de host accesible del contenedor."
-        },
-        "oauthPort": {
-          "label": "Puerto OAuth"
-        },
         "configPassword": {
           "label": "Contraseña de configuración",
           "description": "Contraseña para el archivo de configuración cifrado"
@@ -1984,7 +2065,6 @@
       "local": "Local",
       "name": "Nombre",
       "enableAuth": "Personalizar autenticación",
-      "oauthSettings": "Configuración de OAuth (Se eliminará en el futuro)",
       "selectConfigFile": "Seleccionar archivo de configuración",
       "activeConfigPath": "Ruta de configuración activa",
       "connectionTab": "Conexión",
@@ -2104,8 +2184,7 @@
     "oauth": {
       "manualOpenPrompt": "Si el navegador no se abrió automáticamente, use este enlace de autenticación:",
       "openLink": "Abrir enlace",
-      "copyLink": "Copiar enlace",
-      "remoteFallback": "El enlace OAuth manual no está disponible aquí para backends remotos. Revise los logs/salida del backend remoto."
+      "copyLink": "Copiar enlace"
     },
     "remoteConfig": {
       "aria": {
@@ -2154,17 +2233,12 @@
         "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
         "disabledReason": {
           "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero."
-        }
+        },
+        "duplicate": "Duplicar perfil"
       },
       "buttons": {
-        "back": "Atrás",
-        "cancel": "Cancelar",
-        "create": "Crear",
-        "save": "Guardar",
-        "next": "Siguiente",
         "cleanup": "Limpiando",
-        "processing": "Procesando...",
-        "continue": "Continuar"
+        "processing": "Procesando..."
       },
       "editMode": {
         "sections": {
@@ -2179,6 +2253,11 @@
       "errors": {
         "interactiveProcessingFailed": "Error al procesar la respuesta interactiva",
         "loadFailed": "Error al cargar la configuración remota"
+      },
+      "profileSaved": "Perfil '{{profile}}' guardado para {{remote}}",
+      "profileSaveFailed": "Error al guardar el perfil",
+      "warnings": {
+        "selectRemoteToSave": "Seleccione un remoto para guardar el perfil"
       }
     },
     "rcloneFlags": {
@@ -2360,7 +2439,8 @@
         "newName": "Nuevo nombre",
         "counter": "Contador",
         "date": "Fecha",
-        "extension": "Extensión"
+        "extension": "Extensión",
+        "duplicateOrInvalid": "Nombre duplicado o no válido"
       }
     },
     "errors": {
@@ -2431,7 +2511,9 @@
     },
     "view": {
       "iconSize": "Tamaño del ícono",
-      "showHidden": "Mostrar archivos ocultos"
+      "showHidden": "Mostrar archivos ocultos",
+      "toggleLayout": "Alternar diseño",
+      "viewOptions": "Opciones de vista"
     },
     "notifications": {
       "mkdirFailed": "Error al crear el directorio: {{path}}",
@@ -2473,8 +2555,20 @@
       "deleteRemote": "Eliminar remoto"
     },
     "deleteRemote": {
-      "title": "Confirmación de eliminación",
-      "message": "¿Está seguro de que desea eliminar '{{name}}'? Esta acción no se puede deshacer."
+      "title": "Eliminar remoto",
+      "message": "¿Está seguro de que desea eliminar '{{name}}'? Esta acción no se puede deshacer.",
+      "activeOperationsTitle": "Operaciones activas en ejecución",
+      "activeOperationsDesc": "Las siguientes operaciones activas se están ejecutando en este remoto y se finalizarán forzosamente:",
+      "willUnmount": "Se desmontará",
+      "willStop": "Se detendrá",
+      "willCancel": "Se cancelará",
+      "savedProfilesTitle": "Perfiles guardados ({{count}})",
+      "quickRunsTitle": "Quick Runs asociados ({{count}})",
+      "automationsTitle": "Automatizaciones programadas ({{count}})",
+      "types": {
+        "mount": "Punto de montaje",
+        "serve": "Servidor"
+      }
     },
     "resetRemote": {
       "title": "Restablecer configuraciones del remoto",
@@ -2485,9 +2579,7 @@
     },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
-      "openFailed": "Error al abrir {{name}}",
-      "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
-      "deleteRemoteFailed": "Error al eliminar el remoto"
+      "openFailed": "Error al abrir {{name}}"
     }
   },
   "transfer": {
@@ -2511,8 +2603,7 @@
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
       "toggleAutomationFailed": "Error al alternar automatización",
       "showDetailed": "Mostrar tarjetas detalladas",
-      "showCompact": "Mostrar tarjetas compactas",
-      "settings": "Ajustes de diseño"
+      "showCompact": "Mostrar tarjetas compactas"
     },
     "bandwidth": {
       "aria": {
@@ -2523,17 +2614,24 @@
       "retry": "Reintentar carga de ancho de banda",
       "upload": "Subida:",
       "download": "Descarga:",
-      "total": "Total:"
+      "total": "Total:",
+      "unlimited": "Ilimitado (Desactivado)",
+      "customPlaceholder": "Velocidad personalizada (p. ej. 10M, 10M:50M)",
+      "apply": "Aplicar"
     },
     "system": {
       "aria": {
         "loading": "Cargando información del sistema"
       },
       "loading": "Cargando información del sistema...",
-      "status": "Estado de Rclone:",
+      "status": "Estado del motor:",
+      "version": "Versión del motor:",
+      "platform": "Plataforma:",
+      "pid": "ID del proceso:",
+      "goVersion": "Entorno Go:",
       "totalRemotes": "Remotos totales:",
       "activeJobs": "Trabajos activos:",
-      "memoryUsage": "Uso de memoria:",
+      "memoryUsage": "Memoria del montón:",
       "uptime": "Tiempo de actividad:",
       "active": "Activo",
       "inactive": "Inactivo",
@@ -2593,31 +2691,42 @@
     "mount": {
       "pointEmpty": "El punto de montaje no puede estar vacío",
       "alreadyInUse": "El punto de montaje {{mountPoint}} ya está en uso por el remoto {{remote}}",
-      "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'"
+      "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'",
+      "directoryAlreadyMounted": "El directorio de montaje ya está en uso. Seleccione una carpeta vacía o active '--allow-non-empty' en la configuración del perfil.",
+      "directoryNotEmpty": "La carpeta seleccionada no está vacía. Elija una carpeta vacía o active '--allow-non-empty'.",
+      "winfspMissing": "WinFsp no está instalado. Instale WinFsp para montar unidades virtuales en Windows.",
+      "fuseMissing": "FUSE (fuse3) no está instalado en el sistema. Instale fuse3 para habilitar el montaje.",
+      "macfuseMissing": "macFUSE / FUSE-T no está instalado. Instale macFUSE para habilitar el montaje en macOS.",
+      "driveLetterInUse": "La letra de unidad seleccionada ya está en uso por el sistema.",
+      "permissionDenied": "Permiso denegado al intentar montar."
     },
     "operations": {
       "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
     },
     "serve": {
       "parseFailed": "Error al analizar la respuesta: {{error}}",
-      "remoteEmpty": "El nombre del remoto no puede estar vacío"
+      "remoteEmpty": "El nombre del remoto no puede estar vacío",
+      "addressAlreadyInUse": "El puerto o dirección seleccionada ya está en uso por otra aplicación. Elija un puerto diferente.",
+      "privilegedPort": "Los puertos inferiores a 1024 requieren permisos de administrador. Elija un puerto igual o superior a 1024.",
+      "tlsError": "Error al cargar o analizar el certificado SSL/TLS.",
+      "startFailed": "Error al iniciar el servidor: {{error}}",
+      "stopFailed": "Error al detener el servidor: {{error}}"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"
-    },
-    "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "No se puede seleccionar la raíz de una unidad (p. ej., D:\\) como punto de montaje. Por favor seleccione o cree una subcarpeta.",
       "folderNotEmpty": "La carpeta seleccionada no está vacía",
       "invalidPath": "Ruta inválida: la ruta no puede estar vacía.",
       "notFound": "La ruta no existe: {{path}}",
-      "failedToOpen": "Error al abrir el administrador de archivos: {{error}}"
+      "failedToOpen": "Error al abrir el administrador de archivos: {{error}}",
+      "diskFull": "El disco o unidad de destino está lleno. No hay suficiente espacio libre.",
+      "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
+      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura."
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma no soportada",
-      "downloadError": "Error desconocido al descargar Rclone",
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
@@ -2640,7 +2749,8 @@
       "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
       "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
       "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
-      "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}"
+      "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}",
+      "downloadCancelled": "Descarga cancelada por el usuario"
     },
     "security": {
       "passwordEmpty": "La contraseña no puede estar vacía",
@@ -2654,14 +2764,8 @@
       "rcloneError": "Error de Rclone: {{error}}"
     },
     "backup": {
-      "unknownFormat": "Formato de copia de seguridad desconocido",
-      "integrityFailed": "¡Falló la verificación de integridad! La copia de seguridad puede estar corrupta.",
-      "encryptedPasswordRequired": "Esta copia de seguridad está encriptada. Se requiere contraseña.",
       "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman",
       "invalidArchive": "Formato de archivo de copia de seguridad no válido",
-      "manifestParseFailed": "Error al analizar el manifiesto de copia de seguridad: {{error}}",
-      "missingManifest": "El manifiesto de copia de seguridad no se encuentra en el archivo",
-      "openFailed": "Error al abrir el archivo de copia de seguridad: {{error}}",
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
       "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña"
     },
@@ -2676,7 +2780,8 @@
     "job": {
       "notFound": "JobInfo no encontrado",
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
-      "executionFailed": "Ejecución del trabajo fallida: {{error}}"
+      "executionFailed": "Ejecución del trabajo fallida: {{error}}",
+      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
     },
     "cache": {
       "fetchRemotesFailed": "Error al obtener los remotos",
@@ -2695,12 +2800,14 @@
       "automationNotFound": "Automatización no encontrada"
     },
     "system": {
-      "themeSetFailed": "Error al establecer el tema de la aplicación: {{error}}",
-      "unlockFailed": "Desbloqueo fallido: {{error}}",
-      "killFailed": "Error al terminar el proceso: {{error}}"
+      "unlockFailed": "Desbloqueo fallido: {{error}}"
     },
     "remote": {
-      "configFailed": "Error al configurar el remoto: {{error}}"
+      "configFailed": "Error al configurar el remoto: {{error}}",
+      "authExpired": "La autenticación remota ha expirado o no es válida. Vuelva a autenticar el almacenamiento remoto.",
+      "quotaExceeded": "Límite de tasa de API o cuota de almacenamiento excedida. Inténtelo más tarde.",
+      "networkError": "No se puede conectar con el servidor remoto. Verifique su red y dirección remota.",
+      "notFound": "El directorio o archivo de destino no se encontró en el servidor remoto."
     },
     "updater": {
       "noPending": "No hay actualizaciones pendientes",
@@ -2720,7 +2827,6 @@
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
       "eventEmitFailed": "Error al emitir evento de configuraciones: {{error}}",
       "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
-      "notFound": "Configuraciones para '{{name}}' no encontradas",
       "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
     }
   },
@@ -2838,6 +2944,7 @@
     "copyurlCount": "Copiar URL [{{active}}/{{total}}]",
     "archivecreateCount": "Archivar [{{active}}/{{total}}]",
     "serveCount": "Servicio [{{active}}/{{total}}]",
+    "quickRunsCount": "Ejecuciones rápidas [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Trabajo",
     "tooltipTasks": "{{count}} Trabajos",
@@ -2845,6 +2952,12 @@
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
     "tooltipServes": "{{count}} Servicios"
+  },
+  "powerInhibitor": {
+    "reason": "Operaciones activas en curso: {{details}}",
+    "mounts": "{{count}} montaje(s)",
+    "jobs": "{{count}} tarea(s)",
+    "serves": "{{count}} servidor(es)"
   },
   "notification": {
     "title": {
@@ -2919,7 +3032,8 @@
       "engineConnectionFailed": "No se pudo conectar con el motor rclone: {{error}}",
       "engineBinaryNotFound": "Binario de rclone no encontrado, verifique su configuración.",
       "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración.",
-      "engineAuthFailed": "Error al autenticar con el motor de rclone: {{error}}"
+      "engineAuthFailed": "Error al autenticar con el motor de rclone: {{error}}",
+      "powerInhibited": "Las operaciones activas impiden la suspensión del sistema."
     }
   },
   "repairSheet": {
@@ -3042,7 +3156,119 @@
     "clearCache": "Limpiar Caché",
     "openDevTools": "Abrir Herramientas de Desarrollador",
     "openDevToolsError": "Error al abrir DevTools",
-    "openDevToolsHint": "Abrir DevTools para depuración",
     "cleared": "Datos Limpiados"
+  },
+  "flow": {
+    "title": "Flow",
+    "search": "Buscar flujos...",
+    "toggleSearch": "Alternar búsqueda",
+    "loading": "Cargando flujos...",
+    "noResults": "No se encontraron flujos coincidentes",
+    "toggleSidebar": "Alternar barra lateral de Flow",
+    "empty": {
+      "description": "Cree una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones rápidas."
+    },
+    "quickRun": {
+      "title": "Quick Runs",
+      "new": "New Quick Run",
+      "badges": {
+        "scheduled": "Scheduled Task",
+        "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
+        "autostart": "Auto-Start Enabled"
+      },
+      "status": {
+        "running": "Running"
+      },
+      "detail": {
+        "configuration": "Configuration"
+      },
+      "editor": {
+        "createTitle": "Create Quick Run",
+        "editTitle": "Edit Quick Run",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "description": "Description (optional)",
+        "remote": "Remote",
+        "noRemotes": "No remotes configured",
+        "remoteRequired": "Remote is required",
+        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "tabVfs": "VFS",
+        "tabFilter": "Filter",
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Runtime Remote"
+      },
+      "actions": {
+        "start": "Start",
+        "stop": "Stop"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total Quick Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "noRunsForRemote": "No hay ejecuciones rápidas configuradas para {{remote}}.",
+        "createForRemote": "Crear ejecución rápida para {{remote}}"
+      }
+    },
+    "tabs": {
+      "quickRun": "Ejecución rápida",
+      "workflow": "Flujo de trabajo"
+    },
+    "builder": {
+      "placeholderTitle": "Constructor de flujos de trabajo en progreso",
+      "placeholderMessage": "Próximamente habrá un lienzo visual para cadenas de tareas de rclone de varios pasos.",
+      "viewRoadmap": "Ver hoja de ruta en GitHub"
+    }
+  },
+  "templates": {
+    "title": "Plantillas",
+    "presetTitle": "Ajustes preestablecidos y plantillas",
+    "applyPresets": "Aplicar ajustes preestablecidos predeterminados",
+    "userTemplates": "Plantillas de usuario guardadas",
+    "saveAsTemplate": "Guardar configuración actual como plantilla...",
+    "manageTemplates": "Administrar plantillas...",
+    "manageTitle": "Administrar plantillas",
+    "noUserTemplates": "Aún no hay plantillas personalizadas guardadas.",
+    "newTitle": "Nueva plantilla",
+    "templateName": "Nombre de la plantilla",
+    "templateDesc": "Descripción (opcional)",
+    "selectAllKeys": "Seleccionar todas las claves",
+    "deselectAllKeys": "Deseleccionar todas las claves",
+    "addKeyToCategory": "Agregar clave a la categoría",
+    "addKey": "Agregar clave",
+    "removeKey": "Eliminar clave",
+    "deleteTemplate": "Eliminar plantilla",
+    "noCatKeys": "No hay configuraciones en {{category}} aún.",
+    "visualView": "Inspector visual",
+    "jsonView": "Editor JSON",
+    "key": "Clave",
+    "value": "Valor",
+    "namePlaceholder": "p. ej., Mi configuración rápida de respaldo S3",
+    "descPlaceholder": "Breve descripción de estos ajustes...",
+    "keyPlaceholder": "p. ej., dir_cache_time",
+    "valuePlaceholder": "p. ej., 10m",
+    "selectedCount": "{{selected}} / {{total}} seleccionados",
+    "keyCount": "{{count}} clave",
+    "keysCount": "{{count}} claves",
+    "zeroKeys": "0 claves",
+    "applySuccess": "Plantilla \"{{name}}\" aplicada correctamente.",
+    "savedSuccess": "Plantilla \"{{name}}\" guardada correctamente.",
+    "deletedSuccess": "Plantilla eliminada correctamente."
+  },
+  "navigation": {
+    "dashboard": "Panel de control"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Descargando...",
+      "verifying": "Verificando suma de comprobación...",
+      "extracting": "Extrayendo archivo...",
+      "installing": "Instalando...",
+      "completed": "Completado",
+      "cancelled": "Operación cancelada",
+      "error": "Error"
+    }
   }
 }

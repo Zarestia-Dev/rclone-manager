@@ -100,10 +100,15 @@ mod jni_impl {
             let dir_jstr = unsafe { jni::objects::JString::from_raw(env, files_dir) };
             let dir_str = dir_jstr.to_string();
             let path = std::path::PathBuf::from(&dir_str);
+            let cache_path = path.join("cache");
+            let _ = std::fs::create_dir_all(&cache_path);
 
             unsafe {
                 std::env::set_var("HOME", &path);
                 std::env::set_var("XDG_CONFIG_HOME", &path);
+                std::env::set_var("XDG_CACHE_HOME", &cache_path);
+                std::env::set_var("TMPDIR", &cache_path);
+                std::env::set_var("TMP", &cache_path);
             }
 
             rclone_ffi::initialize();
@@ -112,6 +117,10 @@ mod jni_impl {
             let _ = rclone_ffi::rpc(&serde_json::json!({
                 "_path": "config/setpath",
                 "path": conf_path.to_string_lossy().to_string(),
+            }));
+            let _ = rclone_ffi::rpc(&serde_json::json!({
+                "_path": "config/setcachedir",
+                "path": cache_path.to_string_lossy().to_string(),
             }));
 
             Ok::<(), jni::errors::Error>(())

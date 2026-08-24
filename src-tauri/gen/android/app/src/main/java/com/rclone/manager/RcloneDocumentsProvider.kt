@@ -55,6 +55,18 @@ class RcloneDocumentsProvider : DocumentsProvider() {
         DocumentsContract.Document.FLAG_SUPPORTS_RENAME or
         DocumentsContract.Document.FLAG_SUPPORTS_COPY or
         DocumentsContract.Document.FLAG_SUPPORTS_MOVE
+
+    private val proxyIoThread: HandlerThread by lazy {
+      HandlerThread("RcloneProxyIoThread").apply { start() }
+    }
+    private val proxyHandler: Handler by lazy {
+      Handler(proxyIoThread.looper)
+    }
+    private val asyncCloseExecutor: java.util.concurrent.ExecutorService by lazy {
+      java.util.concurrent.Executors.newCachedThreadPool { r ->
+        Thread(r, "RcloneAsyncCloseWorker").apply { isDaemon = true }
+      }
+    }
   }
 
   private fun isReadOnlyTarget(info: JSONObject?): Boolean {
@@ -477,8 +489,6 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val storageManager = context?.getSystemService(StorageManager::class.java)
       if (storageManager != null) {
-        val ioThread = HandlerThread("RcloneProxyFdThread-$handleId").apply { start() }
-        val handler = Handler(ioThread.looper)
         val pfdMode = ParcelFileDescriptor.parseMode(mode)
         val callback = object : ProxyFileDescriptorCallback() {
           override fun onGetSize(): Long {
@@ -501,31 +511,22 @@ class RcloneDocumentsProvider : DocumentsProvider() {
           }
 
           override fun onRelease() {
-            Thread {
-              try {
-                RcloneSafBridge.closeVfsFile(handleId)
-              } finally {
-                ioThread.quit()
-              }
-            }.start()
+            asyncCloseExecutor.execute {
+              RcloneSafBridge.closeVfsFile(handleId)
+            }
           }
         }
 
         signal?.setOnCancelListener {
-          Thread {
-            try {
-              RcloneSafBridge.closeVfsFile(handleId)
-            } finally {
-              ioThread.quit()
-            }
-          }.start()
+          asyncCloseExecutor.execute {
+            RcloneSafBridge.closeVfsFile(handleId)
+          }
         }
 
         try {
-          return storageManager.openProxyFileDescriptor(pfdMode, callback, handler)
+          return storageManager.openProxyFileDescriptor(pfdMode, callback, proxyHandler)
         } catch (e: Exception) {
           RcloneSafBridge.closeVfsFile(handleId)
-          ioThread.quit()
           throw FileNotFoundException("Failed to open proxy file descriptor for $documentId: ${e.message}")
         }
       }

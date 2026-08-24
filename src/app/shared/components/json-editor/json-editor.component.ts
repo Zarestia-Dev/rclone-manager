@@ -33,12 +33,11 @@ import {
   matchesConfigSearch,
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
-  getControlKey,
 } from 'src/app/services/remote/utils/remote-config.utils';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
-import { PathService } from '../../../services/infrastructure/platform/path.service';
+import { PathService, PathGroup } from '../../../services/infrastructure/platform/path.service';
 
+import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
 import {
   EditorView,
   keymap,
@@ -66,10 +65,6 @@ export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<JsonEditorLookupTable
   'JSON_EDITOR_LOOKUP_TABLE'
 );
 
-function toCamelCase(str: string): string {
-  return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());
-}
-
 function toSnakeCase(str: string): string {
   return str.replace(/^--?/, '').replace(/-/g, '_');
 }
@@ -91,7 +86,8 @@ function hasOptionsGroup(type: string | null): boolean {
 
 function buildRcloneCompletionSource(
   getFieldDefs: () => RcConfigOption[],
-  getFlagType: () => SharedProfileType | null
+  getFlagType: () => SharedProfileType | null,
+  getFieldKey: (f: RcConfigOption) => string = f => f.Name || f.FieldName
 ) {
   return (context: CompletionContext): CompletionResult | null => {
     const tree = syntaxTree(context.state);
@@ -99,27 +95,6 @@ function buildRcloneCompletionSource(
     const fieldDefs = getFieldDefs();
     const flagType = getFlagType();
     const isProfile = isProfileType(flagType);
-
-    // Check if we are inside the nested options object (_config or mountOpt)
-    let insideConfig = false;
-    let parent = nodeBefore.parent;
-    while (parent) {
-      if (parent.name === 'Property') {
-        const propKeyNode = parent.getChild('PropertyName') ?? parent.firstChild;
-        if (propKeyNode) {
-          const propKey = context.state
-            .sliceDoc(propKeyNode.from, propKeyNode.to)
-            .replace(/^"|"$/g, '');
-          if (propKey === '_config' || propKey === 'mountOpt') {
-            if (parent !== nodeBefore.parent) {
-              insideConfig = true;
-              break;
-            }
-          }
-        }
-      }
-      parent = parent.parent;
-    }
 
     const isPropertyName =
       nodeBefore.name === 'PropertyName' ||
@@ -139,20 +114,19 @@ function buildRcloneCompletionSource(
 
       const to = nodeBefore.name === 'String' ? nodeBefore.to - 1 : context.pos;
 
-      if (isProfile && !insideConfig && flagType) {
-        // Autocomplete top-level properties
-        let topLevelKeys = getTopLevelKeysForProfile(flagType);
-        if (flagType === 'serve') {
-          topLevelKeys = ['fs', 'type', ...fieldDefs.map(f => f.Name)];
-        }
+      if (isProfile && flagType) {
+        // Autocomplete top-level properties and option names
+        const topLevelKeys = getTopLevelKeysForProfile(flagType);
+        const optionKeys = fieldDefs.map(f => getFieldKey(f));
+        const allKeys = Array.from(new Set([...topLevelKeys, ...optionKeys]));
 
         return {
           from,
           to,
-          options: topLevelKeys.map(k => ({
+          options: allKeys.map(k => ({
             label: k,
             type: 'property',
-            detail: 'Top-Level key',
+            detail: topLevelKeys.includes(k) ? 'Top-Level key' : 'Option',
             boost: 2,
           })),
           validFor: /^[^"]*$/,
@@ -163,7 +137,7 @@ function buildRcloneCompletionSource(
           from,
           to,
           options: fieldDefs.map(f => ({
-            label: getControlKey(f, flagType || undefined),
+            label: getFieldKey(f),
             type: 'property',
             detail: f.Type,
             info: f.Help || undefined,
@@ -184,7 +158,7 @@ function buildRcloneCompletionSource(
 
     const rawKey = context.state.sliceDoc(keyNode.from, keyNode.to);
     const keyText = rawKey.replace(/^"|"$/g, '');
-    const fieldDef = fieldDefs.find(f => getControlKey(f, flagType || undefined) === keyText);
+    const fieldDef = fieldDefs.find(f => getFieldKey(f) === keyText);
     if (!fieldDef?.Examples?.length) return null;
 
     const word = context.matchBefore(/"[^"]*/) ?? context.matchBefore(/\w*/);
@@ -208,7 +182,7 @@ function buildRcloneCompletionSource(
 
 @Component({
   selector: 'app-json-editor',
-  imports: [MatIconModule, TranslatePipe, RcloneOptionTranslatePipe],
+  imports: [MatIconModule, TranslatePipe, RcloneOptionTranslatePipe, AlertBannerComponent],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -220,42 +194,32 @@ export class JsonEditorComponent {
   readonly searchQuery = input('');
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
+  readonly preferFieldName = input(false);
 
   readonly flagType = input<SharedProfileType | null>(null);
   readonly currentRemoteName = input<string>('');
   readonly existingRemotes = input<string[]>([]);
 
+  private static readonly INFO_BANNERS: Readonly<Record<string, string>> = {
+    vfs: 'wizards.remoteConfig.jsonEditorInfo.vfs',
+    filter: 'wizards.remoteConfig.jsonEditorInfo.filter',
+    backend: 'wizards.remoteConfig.jsonEditorInfo.backend',
+    runtimeRemote: 'wizards.remoteConfig.jsonEditorInfo.runtimeRemote',
+    sync: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    copy: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    move: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    bisync: 'wizards.remoteConfig.jsonEditorInfo.bisync',
+    check: 'wizards.remoteConfig.jsonEditorInfo.check',
+    mount: 'wizards.remoteConfig.jsonEditorInfo.mount',
+    serve: 'wizards.remoteConfig.jsonEditorInfo.serve',
+  };
+
   readonly infoBanner = computed(() => {
     const type = this.flagType();
-    if (!type) return null;
-    switch (type) {
-      case 'vfs':
-        return 'wizards.remoteConfig.jsonEditorInfo.vfs';
-      case 'filter':
-        return 'wizards.remoteConfig.jsonEditorInfo.filter';
-      case 'backend':
-        return 'wizards.remoteConfig.jsonEditorInfo.backend';
-      case 'runtimeRemote':
-        return 'wizards.remoteConfig.jsonEditorInfo.runtimeRemote';
-      case 'sync':
-      case 'copy':
-      case 'move':
-        return 'wizards.remoteConfig.jsonEditorInfo.sync';
-      case 'bisync':
-        return 'wizards.remoteConfig.jsonEditorInfo.bisync';
-      case 'check':
-        return 'wizards.remoteConfig.jsonEditorInfo.check';
-      case 'mount':
-        return 'wizards.remoteConfig.jsonEditorInfo.mount';
-      case 'serve':
-        return 'wizards.remoteConfig.jsonEditorInfo.serve';
-      default:
-        return null;
-    }
+    return type ? (JsonEditorComponent.INFO_BANNERS[type] ?? null) : null;
   });
 
   private readonly destroyRef = inject(DestroyRef);
-  private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
@@ -263,6 +227,10 @@ export class JsonEditorComponent {
   readonly translateService = inject(TranslateService);
 
   readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
+
+  /** Resolves the canonical key for a field definition. */
+  readonly fieldKey = (f: RcConfigOption): string =>
+    this.preferFieldName() ? f.FieldName || f.Name : f.Name || f.FieldName;
 
   readonly restrictMode = toSignal(
     this.appSettingsService
@@ -313,14 +281,14 @@ export class JsonEditorComponent {
 
     const isSafMount = type === 'mount' && value['mountType'] === 'saf';
     const baseDefs = defs.filter(f => {
-      const key = getControlKey(f, type || undefined);
+      const key = this.fieldKey(f);
       if (isSafMount && key === 'mountPoint') return false;
       return !excluded.has(prefix + key);
     });
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
     return filteredDefs.map(field => {
-      const controlKey = prefix + getControlKey(field, type || undefined);
+      const controlKey = prefix + this.fieldKey(field);
       const currentValue = value[controlKey] ?? null;
       const isChanged = !this.valueMapper.isDefaultValue(currentValue, field);
       const isActive = isChanged || explicit.has(controlKey);
@@ -343,7 +311,7 @@ export class JsonEditorComponent {
 
       return {
         controlKey,
-        displayKey: getControlKey(field, type || undefined),
+        displayKey: this.fieldKey(field),
         currentValue,
         displayValue,
         fullValue: rawDisplay,
@@ -356,9 +324,10 @@ export class JsonEditorComponent {
 
   constructor() {
     afterNextRender(() => this.initEditor());
-    effect(() => {
+    effect(onCleanup => {
       this.formValue();
-      this.pushFormToEditor();
+      const timer = setTimeout(() => this.pushFormToEditor(), 150);
+      onCleanup(() => clearTimeout(timer));
     });
 
     this.destroyRef.onDestroy(() => {
@@ -372,38 +341,26 @@ export class JsonEditorComponent {
 
     const completionSource = buildRcloneCompletionSource(
       () => this.fieldDefs(),
-      () => this.flagType()
+      () => this.flagType(),
+      f => this.fieldKey(f)
     );
 
     const rcloneLinter = linter(view => {
       const diagnostics: Diagnostic[] = [];
       const flagType = this.flagType();
-      const validFieldNames = new Set(
-        this.fieldDefs().map(f => getControlKey(f, flagType || undefined))
-      );
+      const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
       const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
       const isProfile = isProfileType(flagType);
-
-      let topLevelKeys = new Set<string>();
-      if (isProfile && flagType) {
-        if (flagType === 'serve') {
-          topLevelKeys = new Set(['fs', 'type', ...this.fieldDefs().map(f => f.Name)]);
-        } else {
-          topLevelKeys = new Set(getTopLevelKeysForProfile(flagType));
-        }
-      }
 
       const buildCliArgumentDiagnostic = (kText: string, from: number, to: number): Diagnostic => {
         const matched = this.lookupOption(kText);
         const suggestion = matched
-          ? getControlKey(matched.option, flagType || undefined)
-          : flagType === 'serve'
-            ? toSnakeCase(kText)
-            : toCamelCase(kText);
+          ? matched.option.Name || matched.option.FieldName
+          : toSnakeCase(kText);
         return {
           from,
           to,
-          severity: 'error',
+          severity: 'warning',
           message: this.translateService.instant('shared.jsonEditor.cliArgumentWithSuggestion', {
             key: kText,
             suggestion,
@@ -429,27 +386,6 @@ export class JsonEditorComponent {
             const rawKey = view.state.sliceDoc(node.from, node.to);
             const keyText = rawKey.replace(/^"|"$/g, '');
 
-            // Check if we are inside the nested options object (_config or mountOpt)
-            let insideConfig = false;
-            let parent = node.node.parent;
-            while (parent) {
-              if (parent.name === 'Property') {
-                const propKeyNode = parent.getChild('PropertyName') ?? parent.firstChild;
-                if (propKeyNode) {
-                  const propKey = view.state
-                    .sliceDoc(propKeyNode.from, propKeyNode.to)
-                    .replace(/^"|"$/g, '');
-                  if (propKey === '_config' || propKey === 'mountOpt') {
-                    if (parent !== node.node.parent) {
-                      insideConfig = true;
-                      break;
-                    }
-                  }
-                }
-              }
-              parent = parent.parent;
-            }
-
             const validateOptionKey = (kText: string, nd: { from: number; to: number }): void => {
               if (kText.startsWith('-')) {
                 diagnostics.push(buildCliArgumentDiagnostic(kText, nd.from, nd.to));
@@ -468,7 +404,7 @@ export class JsonEditorComponent {
                   });
                 } else {
                   const suggestion = matched
-                    ? getControlKey(matched.option, flagType || undefined)
+                    ? matched.option.Name || matched.option.FieldName
                     : null;
                   const message = suggestion
                     ? this.translateService.instant(
@@ -504,12 +440,15 @@ export class JsonEditorComponent {
               }
             };
 
-            if (isProfile && !insideConfig) {
+            if (isProfile) {
               const mapping = flagType ? OPERATION_PATH_MAPPINGS[flagType] : null;
               const propertyNode = node.node.parent;
               const valueNode =
                 propertyNode && propertyNode.name === 'Property' ? propertyNode.lastChild : null;
               const isArrayValue = valueNode && valueNode.name === 'Array';
+              const structuralKeys = new Set(
+                [mapping?.sourceKey, mapping?.destKey, 'mountType', 'type'].filter(Boolean)
+              );
 
               if (keyText.startsWith('-')) {
                 diagnostics.push(buildCliArgumentDiagnostic(keyText, node.from, node.to));
@@ -528,16 +467,8 @@ export class JsonEditorComponent {
                     key: keyText,
                   }),
                 });
-              } else if (!topLevelKeys.has(keyText)) {
-                diagnostics.push({
-                  from: node.from,
-                  to: node.to,
-                  severity: 'warning',
-                  message: this.translateService.instant(
-                    'wizards.remoteConfig.unknownTopLevelProperty',
-                    { key: keyText }
-                  ),
-                });
+              } else if (!structuralKeys.has(keyText)) {
+                validateOptionKey(keyText, node);
               }
             } else {
               validateOptionKey(keyText, node);
@@ -562,7 +493,7 @@ export class JsonEditorComponent {
       linter(jsonParseLinter()),
       rcloneLinter,
       autocompletion({ override: [completionSource] }),
-      EditorView.theme({}, { dark: true }),
+      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
       EditorView.updateListener.of(update => {
         if (!update.docChanged) return;
         const text = update.state.doc.toString();
@@ -577,24 +508,8 @@ export class JsonEditorComponent {
     });
   }
 
-  private checkCliArguments(obj: Record<string, any>): { key: string; suggestion: string } | null {
-    const flagType = this.flagType();
-    for (const key of Object.keys(obj)) {
-      if (key.startsWith('-')) {
-        const matched = this.lookupOption(key);
-        const suggestion = matched
-          ? getControlKey(matched.option, flagType || undefined)
-          : flagType === 'serve'
-            ? toSnakeCase(key)
-            : toCamelCase(key);
-        return { key, suggestion };
-      }
-    }
-    return null;
-  }
-
   private validateOptions(
-    options: Record<string, any>,
+    options: Record<string, unknown>,
     validFieldNames: Set<string>,
     currentBlock: string
   ): {
@@ -606,24 +521,33 @@ export class JsonEditorComponent {
     const unknown: string[] = [];
     const wrongBlocks: { key: string; block: string }[] = [];
     const suggestions: { key: string; suggestion: string }[] = [];
-    const flagType = this.flagType();
+    let cliArg: { key: string; suggestion: string } | undefined;
+
+    const type = this.flagType();
+    const isProfile = isProfileType(type);
+    const structuralKeys = new Set(isProfile && type ? getTopLevelKeysForProfile(type) : []);
 
     for (const key of Object.keys(options)) {
+      if (structuralKeys.has(key)) {
+        continue;
+      }
+
       if (key.startsWith('-')) {
-        const matched = this.lookupOption(key);
-        const suggestion = matched
-          ? getControlKey(matched.option, flagType || undefined)
-          : flagType === 'serve'
-            ? toSnakeCase(key)
-            : toCamelCase(key);
-        return { cliArg: { key, suggestion } };
+        if (!cliArg) {
+          const matched = this.lookupOption(key);
+          const suggestion = matched
+            ? matched.option.Name || matched.option.FieldName
+            : toSnakeCase(key);
+          cliArg = { key, suggestion };
+        }
+        continue;
       }
 
       if (!validFieldNames.has(key)) {
         const matched = this.lookupOption(key);
         if (matched) {
           if (this.isCompatible(matched.block, currentBlock)) {
-            const suggestion = getControlKey(matched.option, flagType || undefined);
+            const suggestion = matched.option.Name || matched.option.FieldName;
             suggestions.push({ key, suggestion });
           } else {
             wrongBlocks.push({ key, block: matched.block });
@@ -635,6 +559,7 @@ export class JsonEditorComponent {
     }
 
     return {
+      cliArg,
       suggestion: suggestions[0],
       wrongBlock: wrongBlocks[0],
       unknown,
@@ -643,15 +568,11 @@ export class JsonEditorComponent {
 
   private applyValidationResult(valRes: ReturnType<typeof this.validateOptions>): boolean {
     if (valRes.cliArg) {
-      this.parseError.set({
+      this.parseWarning.set({
         key: 'shared.jsonEditor.cliArgumentWithSuggestion',
         params: valRes.cliArg,
       });
-      this.formGroup().setErrors({ cliArgument: true });
-      return false;
-    }
-
-    if (valRes.suggestion) {
+    } else if (valRes.suggestion) {
       this.parseWarning.set({
         key: 'shared.jsonEditor.camelCaseSuggestionWarning',
         params: valRes.suggestion,
@@ -674,10 +595,11 @@ export class JsonEditorComponent {
 
   private syncFormControls(
     group: FormGroup,
-    incoming: Record<string, any>,
+    incoming: Record<string, unknown>,
     excludeFilter: (key: string) => boolean = () => false
   ): void {
     const existingControls = new Set(Object.keys(group.controls));
+    const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
     const prevCustom = new Set(this.customControlKeys());
     const nextCustom = new Set<string>();
 
@@ -687,13 +609,14 @@ export class JsonEditorComponent {
       if (!existingControls.has(controlKey)) {
         group.addControl(controlKey, new FormControl(val), { emitEvent: false });
         nextCustom.add(controlKey);
-      } else if (prevCustom.has(controlKey)) {
+      } else if (prevCustom.has(controlKey) || !validFieldNames.has(controlKey)) {
         nextCustom.add(controlKey);
       }
     }
 
-    for (const key of prevCustom) {
-      if (!nextCustom.has(key)) {
+    for (const key of Object.keys(group.controls)) {
+      if (excludeFilter(key)) continue;
+      if (!Object.prototype.hasOwnProperty.call(incoming, key) && !validFieldNames.has(key)) {
         group.removeControl(key, { emitEvent: false });
       }
     }
@@ -702,9 +625,9 @@ export class JsonEditorComponent {
   }
 
   private applyEditorChanges(text: string): void {
-    let parsed: Record<string, any>;
+    let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(text) as Record<string, any>;
+      parsed = JSON.parse(text) as Record<string, unknown>;
     } catch {
       this.parseError.set({ key: 'shared.jsonEditor.parseError' });
       this.formGroup().setErrors({ jsonParse: true });
@@ -713,27 +636,18 @@ export class JsonEditorComponent {
 
     const type = this.flagType();
     const isProfile = isProfileType(type);
-    const validFieldNames = new Set(this.fieldDefs().map(f => getControlKey(f, type || undefined)));
+    const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
     const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
 
     if (isProfile) {
-      // Validate top level keys (excluding _config/mountOpt, srcFs/dstFs, etc.)
-      const topLevelKeys =
-        type === 'serve'
-          ? new Set(['fs', 'type', ...this.fieldDefs().map(f => f.Name)])
-          : type
-            ? new Set(getTopLevelKeysForProfile(type))
-            : new Set<string>();
-
-      // Check CLI arguments at top level
-      const cliCheck = this.checkCliArguments(parsed);
-      if (cliCheck) {
-        this.parseError.set({
-          key: 'shared.jsonEditor.cliArgumentWithSuggestion',
-          params: cliCheck,
-        });
-        this.formGroup().setErrors({ cliArgument: true });
-        return;
+      // Validate top level keys
+      const topLevelKeys = type ? new Set(getTopLevelKeysForProfile(type)) : new Set<string>();
+      if (type === 'serve') {
+        topLevelKeys.add('fs');
+        topLevelKeys.add('type');
+      }
+      for (const field of this.fieldDefs()) {
+        topLevelKeys.add(this.fieldKey(field));
       }
 
       // Check for array values where they are not supported
@@ -754,33 +668,29 @@ export class JsonEditorComponent {
         }
       }
 
-      // Check unknown top level keys
-      for (const key of Object.keys(parsed)) {
-        if (!topLevelKeys.has(key)) {
-          this.parseWarning.set({
-            key: 'wizards.remoteConfig.unknownTopLevelProperty',
-            params: { key },
-          });
-          this.parseError.set(null);
-          this.formGroup().setErrors(null);
-          this.reconcileFormFromEditor(parsed);
-          return;
-        }
-      }
+      // Validate options at top level (including CLI args)
+      const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
+      this.applyValidationResult(valRes);
 
-      // Validate options inside nested object (_config or mountOpt)
-      const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
-      const nestedOptions = parsed[nestedKey] || {};
-      if (typeof nestedOptions === 'object' && nestedOptions !== null) {
-        const valRes = this.validateOptions(nestedOptions, validFieldNames, currentBlock);
-        if (!this.applyValidationResult(valRes)) return;
-      } else {
-        this.parseWarning.set(null);
+      // Check unknown top level keys (excluding CLI arguments and valid options)
+      if (!valRes.cliArg && !valRes.suggestion && !valRes.wrongBlock) {
+        for (const key of Object.keys(parsed)) {
+          if (!topLevelKeys.has(key) && !key.startsWith('-')) {
+            this.parseWarning.set({
+              key: 'wizards.remoteConfig.unknownTopLevelProperty',
+              params: { key },
+            });
+            this.parseError.set(null);
+            this.formGroup().setErrors(null);
+            this.reconcileFormFromEditor(parsed);
+            return;
+          }
+        }
       }
     } else {
       // Fallback/standard check for flat profiles
       const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
-      if (!this.applyValidationResult(valRes)) return;
+      this.applyValidationResult(valRes);
     }
 
     this.parseError.set(null);
@@ -788,7 +698,7 @@ export class JsonEditorComponent {
     this.reconcileFormFromEditor(parsed);
   }
 
-  private reconcileFormFromEditor(parsed: Record<string, any>): void {
+  private reconcileFormFromEditor(parsed: Record<string, unknown>): void {
     const type = this.flagType();
     const fg = this.formGroup();
     const currentRemote = this.currentRemoteName();
@@ -832,17 +742,17 @@ export class JsonEditorComponent {
                   })
                 );
                 const lastGroup = sourceCtrl.at(sourceCtrl.length - 1) as FormGroup;
-                const parsed = this.pathService.parseFsString(
+                const parsedPath = this.pathService.parseFsString(
                   p,
                   'currentRemote',
                   currentRemote,
                   existing
                 );
                 if (type === 'mount' || type === 'serve') {
-                  parsed.type = 'currentRemote';
-                  parsed.remote = '';
+                  parsedPath.type = 'currentRemote';
+                  parsedPath.remote = '';
                 }
-                lastGroup.patchValue(parsed);
+                lastGroup.patchValue(parsedPath);
               }
             } else {
               sourceCtrl.push(
@@ -854,17 +764,17 @@ export class JsonEditorComponent {
               );
             }
           } else if (sourceCtrl instanceof FormGroup) {
-            const parsed = this.pathService.parseFsString(
-              srcVal || '',
+            const parsedPath = this.pathService.parseFsString(
+              String(srcVal || ''),
               'currentRemote',
               currentRemote,
               existing
             );
             if (type === 'mount' || type === 'serve') {
-              parsed.type = 'currentRemote';
-              parsed.remote = '';
+              parsedPath.type = 'currentRemote';
+              parsedPath.remote = '';
             }
-            sourceCtrl.patchValue(parsed);
+            sourceCtrl.patchValue(parsedPath);
           }
         }
 
@@ -874,17 +784,17 @@ export class JsonEditorComponent {
           const dstVal = rcloneParsed[mapping.destKey];
 
           if (destCtrl instanceof FormGroup && dstVal !== undefined) {
-            const parsed = this.pathService.parseFsString(
-              dstVal || '',
+            const parsedPath = this.pathService.parseFsString(
+              String(dstVal || ''),
               'local',
               currentRemote,
               existing
             );
             if (type === 'mount') {
-              parsed.type = 'local';
-              parsed.remote = '';
+              parsedPath.type = 'local';
+              parsedPath.remote = '';
             }
-            destCtrl.patchValue(parsed);
+            destCtrl.patchValue(parsedPath);
           }
         }
       }
@@ -906,7 +816,7 @@ export class JsonEditorComponent {
       const optionsGroup = fg.get('options') as FormGroup;
       if (optionsGroup) {
         // Gather all incoming options (flat + nested)
-        const incomingOptions: Record<string, any> = {};
+        const incomingOptions: Record<string, unknown> = {};
 
         if (type === 'serve') {
           // Serve is fully flat
@@ -929,22 +839,26 @@ export class JsonEditorComponent {
             }
           }
         } else {
-          const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
-          const nestedOptions = rcloneParsed[nestedKey] || {};
+          // Pull flat options from top level of rcloneParsed
+          const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
+          const excludeKeys = new Set(
+            [mapping?.sourceKey, mapping?.destKey, 'mountType', 'type'].filter(Boolean) as string[]
+          );
 
-          const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
-          const flatOptionNames = new Set(flatDefs.map(f => getControlKey(f, type || undefined)));
+          for (const [k, v] of Object.entries(rcloneParsed)) {
+            if (excludeKeys.has(k)) continue;
 
-          // Pull flat options from top-level of rcloneParsed JSON
-          for (const name of flatOptionNames) {
-            if (rcloneParsed[name] !== undefined) {
-              incomingOptions[name] = rcloneParsed[name];
-            }
-          }
-
-          // Pull nested options
-          if (typeof nestedOptions === 'object' && nestedOptions !== null) {
-            for (const [k, v] of Object.entries(nestedOptions)) {
+            // Backward compatibility with old remote_config.ts
+            if (
+              (k === '_config' || k === 'mountOpt' || k === '_filter') &&
+              v &&
+              typeof v === 'object' &&
+              !Array.isArray(v)
+            ) {
+              for (const [nk, nv] of Object.entries(v)) {
+                incomingOptions[nk] = nv;
+              }
+            } else {
               incomingOptions[k] = v;
             }
           }
@@ -980,11 +894,11 @@ export class JsonEditorComponent {
   private serializeForm(): string {
     try {
       const type = this.flagType();
-      const raw = this.formGroup().getRawValue() as Record<string, any>;
+      const raw = this.formGroup().getRawValue() as Record<string, unknown>;
       const currentRemote = this.currentRemoteName();
 
       if (isNestedOptionsType(type)) {
-        let out: Record<string, any> = {};
+        let out: Record<string, unknown> = {};
         const optionsGroup = this.formGroup().get('options') as FormGroup;
         if (optionsGroup) {
           out = this.serializeOptions(optionsGroup.getRawValue(), '', new Set(), false);
@@ -993,17 +907,19 @@ export class JsonEditorComponent {
       }
 
       if (isProfileType(type)) {
-        const rclone: Record<string, any> = {};
+        const rclone: Record<string, unknown> = {};
 
         const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
         if (mapping) {
           // 1. Map source paths to srcFs / path1 / fs
           if (raw['source']) {
             const srcPaths = Array.isArray(raw['source'])
-              ? raw['source']
-                  .map((s: any) => this.pathService.buildPathString(s, currentRemote))
+              ? (raw['source'] as unknown[])
+                  .map(s => this.pathService.buildPathString(s as PathGroup, currentRemote))
                   .filter(Boolean)
-              : [this.pathService.buildPathString(raw['source'], currentRemote)].filter(Boolean);
+              : [
+                  this.pathService.buildPathString(raw['source'] as PathGroup, currentRemote),
+                ].filter(Boolean);
 
             rclone[mapping.sourceKey] = mapping.isSourceArray
               ? srcPaths.length > 1
@@ -1014,60 +930,38 @@ export class JsonEditorComponent {
 
           // 2. Map destination paths to dstFs / path2 / mountPoint
           if (mapping.destKey && raw['dest']) {
-            const dstPath = this.pathService.buildPathString(raw['dest'], currentRemote);
+            const dstPath = this.pathService.buildPathString(
+              raw['dest'] as PathGroup,
+              currentRemote
+            );
             rclone[mapping.destKey] = dstPath;
           }
         }
 
         // 3. Map mountType / type
         if (type === 'mount') {
-          const val = raw['options']?.['mountType'];
-          if (val && val.trim() !== '') {
+          const val = (raw['options'] as Record<string, unknown> | undefined)?.['mountType'];
+          if (typeof val === 'string' && val.trim() !== '') {
             rclone['mountType'] = val;
           }
         } else if (type === 'serve') {
-          const val = raw['options']?.['type'];
-          if (val && val.trim() !== '') {
+          const val = (raw['options'] as Record<string, unknown> | undefined)?.['type'];
+          if (typeof val === 'string' && val.trim() !== '') {
             rclone['type'] = val;
           }
         }
 
-        // 4. Map options (flat vs _config/mountOpt)
+        // 4. Map options (flat at top level)
         if (raw['options']) {
           const serialized = this.serializeOptions(
-            raw['options'],
+            raw['options'] as Record<string, unknown>,
             '',
             new Set(['mountType', 'type']),
             false
           );
 
-          if (type === 'serve') {
-            // Serve is fully flat, merge all options directly into rclone
-            Object.assign(rclone, serialized);
-          } else {
-            const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
-            const flatOptionNames = new Set(flatDefs.map(f => getControlKey(f, type || undefined)));
-
-            const flatOptions: Record<string, any> = {};
-            const nestedOptions: Record<string, any> = {};
-
-            for (const [displayKey, finalVal] of Object.entries(serialized)) {
-              if (flatOptionNames.has(displayKey)) {
-                flatOptions[displayKey] = finalVal;
-              } else {
-                nestedOptions[displayKey] = finalVal;
-              }
-            }
-
-            // Merge flat options directly into rclone
-            Object.assign(rclone, flatOptions);
-
-            // Merge nested options under _config or mountOpt
-            if (Object.keys(nestedOptions).length > 0) {
-              const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
-              rclone[nestedKey] = nestedOptions;
-            }
-          }
+          // All profiles output options flat at top level
+          Object.assign(rclone, serialized);
         }
 
         return JSON.stringify(rclone, null, 2);
@@ -1104,9 +998,8 @@ export class JsonEditorComponent {
         patch[controlKey] = val === '••••••••' ? latestRaw[controlKey] : val;
       } else if (!prefix || controlKey.startsWith(prefix)) {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-        const type = this.flagType();
-        const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
-        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? latestRaw[controlKey] ?? null;
+        const field = defs.find(f => this.fieldKey(f) === displayKey);
+        patch[controlKey] = field ? (field.Default ?? field.DefaultStr ?? null) : null;
       } else {
         patch[controlKey] = latestRaw[controlKey];
       }
@@ -1115,12 +1008,12 @@ export class JsonEditorComponent {
   }
 
   private serializeOptions(
-    rawOptions: Record<string, any>,
+    rawOptions: Record<string, unknown>,
     prefix = '',
     excluded = new Set<string>(),
     maskSensitive = false
-  ): Record<string, any> {
-    const out: Record<string, any> = {};
+  ): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
     const defs = this.fieldDefs();
     const explicit = this.explicitKeys();
 
@@ -1129,8 +1022,7 @@ export class JsonEditorComponent {
       if (excluded.has(controlKey)) continue;
 
       const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-      const type = this.flagType();
-      const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
+      const field = defs.find(f => this.fieldKey(f) === displayKey);
       const isExplicit = explicit.has(controlKey);
 
       if (field && this.valueMapper.isDefaultValue(val, field) && !isExplicit) continue;

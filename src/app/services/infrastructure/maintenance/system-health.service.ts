@@ -2,7 +2,6 @@ import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core'
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { EMPTY, firstValueFrom, from, catchError, exhaustMap, filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TranslateService } from '@ngx-translate/core';
 import { RepairSheetComponent } from '../../../features/components/repair-sheet/repair-sheet.component';
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
 import { SystemInfoService } from '../system/system-info.service';
@@ -20,7 +19,6 @@ export class SystemHealthService {
   private readonly eventListenersService = inject(EventListenersService);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly translate = inject(TranslateService);
 
   private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
   private hasReportedRclonePathError = false;

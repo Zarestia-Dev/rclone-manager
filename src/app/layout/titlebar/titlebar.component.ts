@@ -1,36 +1,39 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ChangeDetectionStrategy,
+  input,
+  output,
+  computed,
+  TemplateRef,
+} from '@angular/core';
 
 import { MatButtonModule } from '@angular/material/button';
-import { MatBadgeModule } from '@angular/material/badge';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateService, TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 // Services
-import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
-import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
-import { WindowService } from 'src/app/services/ui/window.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { ConnectionService } from 'src/app/services/infrastructure/system/connection.service';
-import { AlertService } from 'src/app/services/alerts/alert.service';
-import { Theme } from '@app/types';
+import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
+import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
+import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
+import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
 
 @Component({
   selector: 'app-titlebar',
   standalone: true,
   imports: [
     CdkMenuModule,
-    MatDividerModule,
     MatIconModule,
     MatButtonModule,
-    MatBadgeModule,
     TranslatePipe,
     WindowControlsComponent,
+    AppMenuComponent,
   ],
   templateUrl: './titlebar.component.html',
   styleUrls: ['./titlebar.component.scss'],
@@ -38,48 +41,33 @@ import { WindowControlsComponent } from 'src/app/shared/components/window-contro
 })
 export class TitlebarComponent implements OnInit {
   private readonly modalService = inject(ModalService);
-  private readonly backupRestoreUiService = inject(BackupRestoreUiService);
-  private readonly nautilusService = inject(NautilusService);
-  private readonly windowService = inject(WindowService);
-  private readonly appUpdaterService = inject(AppUpdaterService);
-  private readonly rcloneUpdateService = inject(RcloneUpdateService);
-  private readonly translateService = inject(TranslateService);
-
+  readonly mainUiOverlayService = inject(MainUiOverlayService);
+  readonly flowOverlayService = inject(FlowOverlayService);
   readonly uiStateService = inject(UiStateService);
   readonly connectionService = inject(ConnectionService);
-  readonly alertService = inject(AlertService);
+  readonly isMobile = isMobile;
 
-  // Signals for update states
-  readonly hasUpdates = this.appUpdaterService.hasUpdates;
-  readonly rcloneUpdateAvailable = this.rcloneUpdateService.hasUpdates;
-  readonly rcloneRestartRequired = this.rcloneUpdateService.readyToRestart;
-  readonly readyToRestart = this.appUpdaterService.readyToRestart;
+  readonly overlayType = input<'main' | 'flow' | 'none'>('main');
+  readonly customAddMenu = input<TemplateRef<unknown> | null>(null);
+  readonly showHome = input<boolean | null>(null);
+  readonly homeClick = output<void>();
 
-  readonly currentTheme = this.windowService.theme;
-
-  readonly updateTooltip = computed(() => {
-    const appRestart = this.readyToRestart();
-    const rcloneRestart = this.rcloneRestartRequired();
-    const appUpdate = this.hasUpdates();
-    const rcloneUpdate = this.rcloneUpdateAvailable();
-
-    if (appRestart || rcloneRestart) {
-      return this.translateService.instant('titlebar.updates.restart');
-    } else if (appUpdate && rcloneUpdate) {
-      return this.translateService.instant('titlebar.updates.all');
-    } else if (appUpdate) {
-      return this.translateService.instant('titlebar.updates.app');
-    } else if (rcloneUpdate) {
-      return this.translateService.instant('titlebar.updates.rclone');
+  readonly isOverlayOpen = computed(() => {
+    switch (this.overlayType()) {
+      case 'main':
+        return this.mainUiOverlayService.isMainUiOverlayOpen();
+      case 'flow':
+        return this.flowOverlayService.isFlowOverlayOpen();
+      default:
+        return false;
     }
-    return '';
   });
 
-  readonly themes: { id: Theme; icon: string; label: string; class: string }[] = [
-    { id: 'system', icon: 'check-circle', label: 'titlebar.menu.system', class: 'system' },
-    { id: 'light', icon: 'check-circle', label: 'titlebar.menu.light', class: 'light' },
-    { id: 'dark', icon: 'check-circle', label: 'titlebar.menu.dark', class: 'dark' },
-  ];
+  readonly isHomeVisible = computed(() => {
+    const custom = this.showHome();
+    if (custom !== null) return custom;
+    return !!this.uiStateService.selectedRemote();
+  });
 
   readonly addRemoteMenuItems = [
     {
@@ -94,56 +82,6 @@ export class TitlebarComponent implements OnInit {
     },
   ];
 
-  readonly menuItems = [
-    {
-      label: 'titlebar.menu.import',
-      shortcut: 'Ctrl + I',
-      action: (): void => this.restoreSettings(),
-      divider: true,
-    },
-    {
-      label: 'titlebar.menu.export',
-      shortcut: 'Ctrl + E',
-      action: (): void => this.openExportModal(),
-      dividerAfter: true,
-    },
-    {
-      label: 'titlebar.menu.preferences',
-      shortcut: 'Ctrl + ,',
-      action: (): void => this.openPreferencesModal(),
-    },
-    {
-      label: 'titlebar.menu.flags',
-      shortcut: 'Ctrl + .',
-      action: (): void => this.openRcloneFlagsModal(),
-      dividerAfter: true,
-    },
-    {
-      label: 'titlebar.menu.fileBrowser',
-      shortcut: 'Ctrl + B',
-      action: (): void => this.onBrowseClick(),
-      dividerAfter: true,
-    },
-    {
-      label: 'titlebar.menu.shortcuts',
-      shortcut: 'Ctrl + ?',
-      action: (): void => this.openKeyboardShortcutsModal(),
-      dividerAfter: true,
-    },
-  ];
-
-  readonly aboutMenuBadge = computed(() => {
-    const appRestart = this.readyToRestart();
-    const rcloneRestart = this.rcloneRestartRequired();
-    const appUpdate = this.hasUpdates();
-    const rcloneUpdate = this.rcloneUpdateAvailable();
-
-    if (appRestart || rcloneRestart) return '!';
-    if (appUpdate && rcloneUpdate) return '2';
-    if (appUpdate || rcloneUpdate) return '!';
-    return '';
-  });
-
   async ngOnInit(): Promise<void> {
     try {
       await this.connectionService.runInternetCheck();
@@ -152,12 +90,28 @@ export class TitlebarComponent implements OnInit {
     }
   }
 
-  async setTheme(theme: Theme, event?: MouseEvent): Promise<void> {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
+  detachOverlay(): void {
+    if (this.overlayType() === 'flow') {
+      void this.flowOverlayService.detachToStandaloneWindow();
+    } else if (this.overlayType() === 'main') {
+      void this.mainUiOverlayService.detachToStandaloneWindow();
     }
-    await this.windowService.setTheme(theme);
+  }
+
+  closeOverlay(): void {
+    if (this.overlayType() === 'flow') {
+      this.flowOverlayService.closeFlowOverlay();
+    } else if (this.overlayType() === 'main') {
+      this.mainUiOverlayService.closeMainUiOverlay();
+    }
+  }
+
+  onHomeClicked(): void {
+    if (this.showHome() !== null) {
+      this.homeClick.emit();
+    } else {
+      this.resetRemote();
+    }
   }
 
   // Modal Methods
@@ -169,40 +123,9 @@ export class TitlebarComponent implements OnInit {
     this.modalService.openRemoteConfig();
   }
 
-  openPreferencesModal(): void {
-    this.modalService.openPreferences();
-  }
-
-  openRcloneFlagsModal(): void {
-    this.modalService.openRcloneFlags();
-  }
-
-  openKeyboardShortcutsModal(): void {
-    this.modalService.openKeyboardShortcuts();
-  }
-
-  openExportModal(): void {
-    this.modalService.openExport();
-  }
-
-  openAboutModal(): void {
-    this.modalService.openAbout();
-  }
-
-  openAlertsModal(): void {
-    this.modalService.openAlerts();
-  }
-
-  // Other Methods
+  // Reset Remote Selection
   resetRemote(): void {
     this.uiStateService.resetSelectedRemote();
-  }
-
-  restoreSettings(): void {
-    this.backupRestoreUiService.launchRestoreFlow();
-  }
-
-  onBrowseClick(): void {
-    void this.nautilusService.newNautilusWindow(null, null);
+    this.uiStateService.setMainView('main_menu');
   }
 }

@@ -1,6 +1,5 @@
 import {
   Component,
-  DestroyRef,
   OnInit,
   inject,
   signal,
@@ -26,7 +25,7 @@ import {
 } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { MatRadioButton } from '@angular/material/radio';
+import { MatRadioModule } from '@angular/material/radio';
 
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -67,7 +66,7 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatSlideToggleModule,
     MatCheckboxModule,
     TranslatePipe,
-    MatRadioButton,
+    MatRadioModule,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -77,7 +76,6 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly destroyRef = inject(DestroyRef);
 
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 

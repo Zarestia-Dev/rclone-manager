@@ -60,7 +60,6 @@ interface SettingViewModel {
   key: string;
   meta: SettingMetadata | undefined;
   control: FormControl | FormArray | undefined;
-  isRowLayout: boolean;
   label: string;
   description: string;
   categoryDisplayName: string;
@@ -88,7 +87,11 @@ interface SettingViewModel {
     NumberInputComponent,
   ],
   templateUrl: './preferences-modal.component.html',
-  styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: [
+    './preferences-modal.component.scss',
+    '../../../../styles/_shared-modal.scss',
+    '../../../../shared/components/setting-control/setting-control.component.scss',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PreferencesModalComponent {
@@ -519,12 +522,6 @@ export class PreferencesModalComponent {
     return this.enrichedOptions()[`${category}.${key}`];
   }
 
-  /** Returns true for value types that render as a horizontal row (control beside label). */
-  isRowLayout(category: string, key: string): boolean {
-    const type = this.getMetadata(category, key)?.value_type;
-    return type === 'bool' || type === 'int';
-  }
-
   isControlInvalid(category: string, key: string, index?: number): boolean {
     const ctrl =
       index !== undefined
@@ -589,8 +586,6 @@ export class PreferencesModalComponent {
     const meta = this.enrichedOptions()[`${category}.${key}`];
     const control = this.settingsForm.get(category)?.get(key) as
       FormControl | FormArray | undefined;
-    const type = meta?.value_type;
-    const isRowLayout = type === 'bool' || type === 'int';
 
     const arrayItemViewModels: ArrayItemViewModel[] = [];
     if (control instanceof FormArray) {
@@ -620,7 +615,6 @@ export class PreferencesModalComponent {
       key,
       meta,
       control,
-      isRowLayout,
       label: meta ? this.getSettingLabel(category, key, meta) : key,
       description: meta ? this.getSettingDescription(category, key, meta) : '',
       categoryDisplayName: this.getCategoryDisplayName(category),
@@ -652,14 +646,6 @@ export class PreferencesModalComponent {
 
   onSearchTextChange(searchText: string): void {
     this.searchQuery.set(searchText.toLowerCase());
-  }
-
-  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
-
-  @HostListener('document:keydown.control.f', ['$event'])
-  handleCtrlF(event: Event): void {
-    event.preventDefault();
-    this.toggleSearch();
   }
 
   toggleSearch(): void {

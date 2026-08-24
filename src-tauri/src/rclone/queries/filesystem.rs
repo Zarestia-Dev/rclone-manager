@@ -8,17 +8,22 @@ use serde_json::json;
 use sysinfo::Disks;
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
-use crate::utils::json_helpers::build_full_path;
 use crate::utils::{
     json_helpers::normalize_windows_path,
     rclone::endpoints::{core, job as job_endpoints, operations},
     types::{
         jobs::{JobStatus, JobType},
-        rclone::{DiskUsage, DiskUsageSeverity},
+        rclone::DiskUsage,
         remotes::ListOptions,
     },
+};
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    },
+    utils::json_helpers::build_full_path,
 };
 
 async fn run_fs_command_as_job(
@@ -60,8 +65,8 @@ async fn run_fs_command_as_job(
 }
 
 fn create_fs_params(
-    remote: String,
-    path: Option<String>,
+    remote: &str,
+    path: Option<&str>,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut params = serde_json::Map::new();
     params.insert("fs".to_string(), json!(remote));
@@ -88,7 +93,7 @@ pub struct PublicLinkParams {
     pub expire: Option<String>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
@@ -98,7 +103,7 @@ pub async fn get_fs_info(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote.clone(), path.clone());
+    let params = create_fs_params(&remote, path.as_deref());
     let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
 
     let data = run_fs_command_as_job(
@@ -122,7 +127,7 @@ pub async fn get_fs_info(
     Ok(data)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_remote_paths(
     app: AppHandle,
     remote: String,
@@ -132,7 +137,7 @@ pub async fn get_remote_paths(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📂 Listing remote paths for remote: {remote}, path: {path:?}");
-    let mut params = create_fs_params(remote.clone(), path.clone());
+    let mut params = create_fs_params(&remote, path.as_deref());
 
     if let Some(list_options) = options {
         let opt: serde_json::Map<String, serde_json::Value> =
@@ -140,57 +145,85 @@ pub async fn get_remote_paths(
         params.insert("opt".to_string(), json!(opt));
     }
 
+    let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
+
     run_fs_command_as_job(
         app,
         operations::LIST,
         json!(params),
-        JobMetadata::for_query(
-            remote.clone(),
-            build_full_path(&remote, path.as_deref().unwrap_or("")),
-            JobType::List,
-            origin,
-            group,
-        ),
+        JobMetadata::for_query(remote, source, JobType::List, origin, group),
     )
     .await
 }
 
-#[tauri::command]
-pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
-    let response = crate::rclone::commands::common::transport(&app)
-        .rpc(core::DISKS, None)
-        .await
-        .map_err(|e| format!("❌ Failed to call {}: {e}", core::DISKS))?;
+fn detect_home_dir() -> Option<String> {
+    #[cfg(windows)]
+    {
+        std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .ok()
+            .map(|h| h.replace('/', "\\"))
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::var("HOME").ok()
+    }
+}
 
-    let disks_paths = response
-        .get("disks")
-        .and_then(|value| value.as_array())
-        .ok_or_else(|| "Invalid core/disks response: missing 'disks' array".to_string())?;
+fn normalize_drive_path(path: &str) -> String {
+    let mut p = path.to_string();
+    // Normalize Windows drive letters (e.g., "C:") to root paths (e.g., "C:\")
+    // This ensures rclone lists the root directory instead of the current working directory of the drive.
+    if p.len() == 2 && p.ends_with(':') && p.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+    {
+        p.push('\\');
+    }
+    if p == "/sdcard" {
+        p = "/storage/emulated/0".to_string();
+    } else if let Some(suffix) = p.strip_prefix("/sdcard/") {
+        p = format!("/storage/emulated/0/{suffix}");
+    }
+    p
+}
 
-    let home = std::env::var("HOME").ok();
-
-    // Refresh disk information
-    let sys_disks = Disks::new_with_refreshed_list();
-
-    // Pre-build a lookup table keyed by normalized mount point so we don't
-    // do an O(N×M) linear scan with `format!` allocations per disk path.
-    // The original code called `sys_disks.iter().find(...)` with three
-    // `format!` allocations per comparison, which is O(N×M) string allocs.
-    let sys_disk_by_mount: HashMap<String, usize> = {
-        let mut map = HashMap::with_capacity(sys_disks.len());
-        for (idx, d) in sys_disks.iter().enumerate() {
-            let mp = d.mount_point().to_string_lossy().into_owned();
-            map.insert(mp.clone(), idx);
-            // Also index with a trailing slash variant for fuzzy matching.
-            if !mp.ends_with('/') {
-                map.insert(format!("{mp}/"), idx);
-            }
+fn is_home_directory(normalized_path: &str, home: Option<&str>) -> bool {
+    let clean_path = normalized_path.trim_end_matches(['/', '\\']);
+    if let Some(h) = home {
+        let clean_home = h.trim_end_matches(['/', '\\']);
+        if clean_path.eq_ignore_ascii_case(clean_home) {
+            return true;
         }
-        map
-    };
-
+    }
+    #[cfg(windows)]
+    {
+        if clean_path.starts_with("C:\\Users\\")
+            && clean_path.split('\\').filter(|s| !s.is_empty()).count() == 3
+        {
+            return true;
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if clean_path.starts_with("/Users/")
+            && clean_path.split('/').filter(|s| !s.is_empty()).count() == 2
+        {
+            return true;
+        }
+    }
     #[cfg(target_os = "linux")]
-    let labels = {
+    {
+        if clean_path.starts_with("/home/")
+            && clean_path.split('/').filter(|s| !s.is_empty()).count() == 2
+        {
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "linux")]
+async fn fetch_linux_drive_labels() -> HashMap<String, String> {
+    tokio::task::spawn_blocking(|| {
         let mut map = HashMap::new();
         if let Ok(output) = Command::new("lsblk").args(["-no", "KNAME,LABEL"]).output() {
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -205,29 +238,96 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
             }
         }
         map
+    })
+    .await
+    .unwrap_or_default()
+}
+
+#[bridge]
+pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
+    // 1. Fetch rclone core/disks with a 3-second timeout
+    let rclone_disks_future = async {
+        crate::rclone::commands::common::transport(&app)
+            .rpc(core::DISKS, None)
+            .await
+            .ok()
+            .and_then(|resp| {
+                resp.get("disks").and_then(|v| v.as_array()).map(|arr| {
+                    arr.iter()
+                        .filter_map(|val| val.as_str().map(std::string::ToString::to_string))
+                        .collect::<Vec<String>>()
+                })
+            })
     };
 
-    let drives = disks_paths
-        .iter()
-        .filter_map(|value| value.as_str())
-        .map(|path| {
-            let normalized_path = {
-                let mut p = path.to_string();
-                // Normalize Windows drive letters (e.g., "C:") to root paths (e.g., "C:\")
-                // This ensures rclone lists the root directory instead of the current working directory of the drive.
-                if p.len() == 2
-                    && p.ends_with(':')
-                    && p.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+    // 2. Refresh sysinfo disks in a blocking task with a 3-second timeout
+    let sys_disks_future = async {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(3),
+            tokio::task::spawn_blocking(Disks::new_with_refreshed_list),
+        )
+        .await
+        .ok()
+        .and_then(Result::ok)
+        .unwrap_or_default()
+    };
+
+    let (rclone_disks_opt, sys_disks) = tokio::join!(
+        tokio::time::timeout(std::time::Duration::from_secs(3), rclone_disks_future),
+        sys_disks_future,
+    );
+
+    let disks_paths: Vec<String> = match rclone_disks_opt {
+        Ok(Some(paths)) if !paths.is_empty() => paths,
+        _ => {
+            let sys_paths: Vec<String> = sys_disks
+                .iter()
+                .map(|d| d.mount_point().to_string_lossy().into_owned())
+                .filter(|p| !p.is_empty())
+                .collect();
+            if !sys_paths.is_empty() {
+                sys_paths
+            } else {
+                #[cfg(windows)]
                 {
-                    p.push('\\');
+                    vec!["C:\\".to_string()]
                 }
-                if p == "/sdcard" {
-                    p = "/storage/emulated/0".to_string();
-                } else if let Some(suffix) = p.strip_prefix("/sdcard/") {
-                    p = format!("/storage/emulated/0/{suffix}");
+                #[cfg(target_os = "android")]
+                {
+                    vec!["/storage/emulated/0".to_string()]
                 }
-                p
-            };
+                #[cfg(not(any(windows, target_os = "android")))]
+                {
+                    vec!["/".to_string()]
+                }
+            }
+        }
+    };
+
+    let home = detect_home_dir();
+
+    // Pre-build a lookup table keyed by normalized mount point so we don't
+    // do an O(N×M) linear scan with `format!` allocations per disk path.
+    let sys_disk_by_mount: HashMap<String, usize> = {
+        let mut map = HashMap::with_capacity(sys_disks.len());
+        for (idx, d) in sys_disks.iter().enumerate() {
+            let mp = d.mount_point().to_string_lossy().into_owned();
+            map.insert(mp.clone(), idx);
+            // Also index with a trailing slash variant for fuzzy matching.
+            if !mp.ends_with('/') {
+                map.insert(format!("{mp}/"), idx);
+            }
+        }
+        map
+    };
+
+    #[cfg(target_os = "linux")]
+    let labels = fetch_linux_drive_labels().await;
+
+    let drives = disks_paths
+        .into_iter()
+        .map(|path| {
+            let normalized_path = normalize_drive_path(&path);
 
             // O(1) lookup with fuzzy trailing-slash matching.
             let sys_disk_idx = sys_disk_by_mount
@@ -244,15 +344,11 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
 
             let folder_name = normalized_path
                 .split(['/', '\\'])
-                .next_back()
+                .rfind(|s| !s.is_empty())
                 .unwrap_or("")
                 .to_string();
 
-            let is_home = Some(normalized_path.as_str()) == home.as_deref()
-                || (normalized_path.starts_with("C:\\Users\\")
-                    && normalized_path.split('\\').count() == 3)
-                || (normalized_path.starts_with("/Users/")
-                    && normalized_path.split('/').count() == 3);
+            let is_home = is_home_directory(&normalized_path, home.as_deref());
 
             let (label, show_name) = if is_home {
                 ("titlebar.home".to_string(), false)
@@ -315,7 +411,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
     Ok(drives)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
@@ -356,35 +452,9 @@ pub async fn get_disk_usage(
         "💾 Disk Usage for {fs_path} (resolved to {target_remote}): total={total} used={used} free={free}"
     );
 
-    let usage_percentage = if total > 0 {
-        (used as f64 / total as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let usage_percentage_label = format!("{}%", usage_percentage.round() as i64);
-
-    let usage_severity = if usage_percentage >= 90.0 {
-        DiskUsageSeverity::Critical
-    } else if usage_percentage >= 80.0 {
-        DiskUsageSeverity::High
-    } else if usage_percentage >= 60.0 {
-        DiskUsageSeverity::Warning
-    } else {
-        DiskUsageSeverity::Healthy
-    };
-
-    Ok(DiskUsage {
-        free,
-        used,
-        total,
-        usage_percentage,
-        usage_percentage_label,
-        usage_severity,
-    })
+    Ok(DiskUsage { free, used, total })
 }
 
-#[tauri::command]
 pub async fn get_about_remote(
     app: AppHandle,
     remote: String,
@@ -394,7 +464,7 @@ pub async fn get_about_remote(
 ) -> Result<serde_json::Value, String> {
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
-    let params = create_fs_params(remote.clone(), path.clone());
+    let params = create_fs_params(&remote, path.as_deref());
     let source = build_full_path(&remote, path.as_deref().unwrap_or(""));
 
     run_fs_command_as_job(
@@ -406,7 +476,7 @@ pub async fn get_about_remote(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_size(
     app: AppHandle,
     remote: String,
@@ -429,7 +499,7 @@ pub async fn get_size(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_stat(
     app: AppHandle,
     remote: String,
@@ -439,24 +509,19 @@ pub async fn get_stat(
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let params = create_fs_params(remote.clone(), Some(path.clone()));
+    let params = create_fs_params(&remote, Some(&path));
+    let source = build_full_path(&remote, &path);
 
     run_fs_command_as_job(
         app,
         operations::STAT,
         json!(params),
-        JobMetadata::for_query(
-            remote.clone(),
-            build_full_path(&remote, &path),
-            JobType::Stat,
-            origin,
-            group,
-        ),
+        JobMetadata::for_query(remote, source, JobType::Stat, origin, group),
     )
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_hashsum(
     app: AppHandle,
     remote: String,
@@ -481,7 +546,7 @@ pub async fn get_hashsum(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_hashsum_file(
     app: AppHandle,
     remote: String,
@@ -492,25 +557,20 @@ pub async fn get_hashsum_file(
 ) -> Result<serde_json::Value, String> {
     debug!("🔐 Getting hashsum file for remote: {remote}, path: {path}, hash_type: {hash_type}");
 
-    let mut params = create_fs_params(remote.clone(), Some(path.clone()));
+    let mut params = create_fs_params(&remote, Some(&path));
     params.insert("hashType".to_string(), json!(hash_type));
+    let source = build_full_path(&remote, &path);
 
     run_fs_command_as_job(
         app,
         operations::HASHSUMFILE,
         json!(params),
-        JobMetadata::for_query(
-            remote.clone(),
-            build_full_path(&remote, &path),
-            JobType::Hash,
-            origin,
-            group,
-        ),
+        JobMetadata::for_query(remote, source, JobType::Hash, origin, group),
     )
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_public_link(
     app: AppHandle,
     remote: String,
@@ -521,7 +581,7 @@ pub async fn get_public_link(
 ) -> Result<serde_json::Value, String> {
     debug!("🔗 Getting public link for remote: {remote}, path: {path}, options: {options:?}");
 
-    let mut params = create_fs_params(remote.clone(), Some(path.clone()));
+    let mut params = create_fs_params(&remote, Some(&path));
 
     if let Some(opts) = options {
         if let Some(unlink) = opts.unlink {
@@ -532,17 +592,13 @@ pub async fn get_public_link(
         }
     }
 
+    let source = build_full_path(&remote, &path);
+
     run_fs_command_as_job(
         app,
         operations::PUBLICLINK,
         json!(params),
-        JobMetadata::for_query(
-            remote.clone(),
-            build_full_path(&remote, &path),
-            JobType::Info,
-            origin,
-            group,
-        ),
+        JobMetadata::for_query(remote, source, JobType::Info, origin, group),
     )
     .await
 }

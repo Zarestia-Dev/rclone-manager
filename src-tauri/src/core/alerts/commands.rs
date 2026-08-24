@@ -3,14 +3,16 @@ use std::collections::HashSet;
 use chrono::Utc;
 use tauri::{AppHandle, Manager};
 
-use crate::core::alerts::dispatch;
-use crate::core::alerts::{
-    cache::{self, AlertHistoryCache},
-    dispatch::DispatchContext,
-    template::TemplateContext,
-    types::{AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRule, AlertStats},
+use crate::core::{
+    alerts::{
+        cache::{self, AlertHistoryCache},
+        dispatch::{self, DispatchContext},
+        template::TemplateContext,
+        types::{AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRule, AlertStats},
+    },
+    bridge,
+    settings::AppSettingsManager,
 };
-use crate::core::settings::AppSettingsManager;
 
 async fn prune_unused_mqtt_connections(app: &AppHandle) {
     let cache = app.state::<cache::AlertRuleCache>();
@@ -42,13 +44,13 @@ async fn prune_unused_mqtt_connections(app: &AppHandle) {
         .await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_alert_rules(app: AppHandle) -> Result<Vec<AlertRule>, String> {
     let cache = app.state::<cache::AlertRuleCache>();
     Ok(cache.get_rules().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn save_alert_rule(app: AppHandle, mut rule: AlertRule) -> Result<AlertRule, String> {
     let manager = app.state::<AppSettingsManager>();
     let cache = app.state::<cache::AlertRuleCache>();
@@ -69,7 +71,7 @@ pub async fn save_alert_rule(app: AppHandle, mut rule: AlertRule) -> Result<Aler
     Ok(result)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_alert_rule(app: AppHandle, id: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     cache::delete_rule(&manager, &id)?;
@@ -81,7 +83,7 @@ pub async fn delete_alert_rule(app: AppHandle, id: String) -> Result<(), String>
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn toggle_alert_rule(
     app: AppHandle,
     id: String,
@@ -104,7 +106,7 @@ pub async fn toggle_alert_rule(
     Ok(result)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_alert_actions(app: AppHandle) -> Result<Vec<AlertAction>, String> {
     let cache = app.state::<cache::AlertRuleCache>();
     let mut actions = cache.get_actions().await;
@@ -112,7 +114,7 @@ pub async fn get_alert_actions(app: AppHandle) -> Result<Vec<AlertAction>, Strin
     Ok(actions)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn save_alert_action(app: AppHandle, action: AlertAction) -> Result<AlertAction, String> {
     let manager = app.state::<AppSettingsManager>();
     let result = cache::upsert_action(&manager, action)?;
@@ -124,7 +126,7 @@ pub async fn save_alert_action(app: AppHandle, action: AlertAction) -> Result<Al
     Ok(result)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_alert_action(app: AppHandle, id: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     cache::delete_action(&manager, &id)?;
@@ -136,7 +138,7 @@ pub async fn delete_alert_action(app: AppHandle, id: String) -> Result<(), Strin
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, String> {
     let cache = app.state::<cache::AlertRuleCache>();
     let action = cache
@@ -189,7 +191,7 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
     Ok(true)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_alert_history(
     app: AppHandle,
     filter: Option<AlertHistoryFilter>,
@@ -199,39 +201,33 @@ pub async fn get_alert_history(
     Ok(cache.get_paginated(&filter).await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn acknowledge_alert(app: AppHandle, id: String) -> Result<(), String> {
     let cache = app.state::<AlertHistoryCache>();
     cache.acknowledge(&id).await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn acknowledge_all_alerts(app: AppHandle) -> Result<(), String> {
     let cache = app.state::<AlertHistoryCache>();
     cache.acknowledge_all().await;
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn clear_alert_history(app: AppHandle) -> Result<(), String> {
     let cache = app.state::<AlertHistoryCache>();
     cache.clear().await;
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_alert_stats(app: AppHandle) -> Result<AlertStats, String> {
     let cache = app.state::<AlertHistoryCache>();
     Ok(cache.get_stats().await)
 }
 
-#[tauri::command]
-pub async fn get_unacknowledged_alert_count(app: AppHandle) -> Result<usize, String> {
-    let cache = app.state::<AlertHistoryCache>();
-    Ok(cache.unacknowledged_count().await)
-}
-
-#[tauri::command]
+#[bridge]
 pub fn get_alert_template_keys() -> Vec<String> {
     crate::core::alerts::template::TemplateContext::get_available_keys()
 }

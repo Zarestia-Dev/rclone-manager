@@ -9,6 +9,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { ExplorerRoot, FileBrowserItem, FilePickerConfig, NautilusTabItem } from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
 
@@ -65,15 +66,18 @@ export class NautilusTabService {
   private readonly pathService = inject(PathService);
   private readonly localStorage = inject(LocalStorageService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly eventListenersService = inject(EventListenersService);
   private readonly fileViewerSvc = inject(FileViewerService);
 
   public readonly listReadGroups: Record<0 | 1, string> = {
-    0: `ui/nautilus/list-left-${Date.now().toString(36)}`,
-    1: `ui/nautilus/list-right-${Date.now().toString(36)}`,
+    0: `ui/nautilus/list-left-${crypto.randomUUID().slice(0, 8)}`,
+    1: `ui/nautilus/list-right-${crypto.randomUUID().slice(0, 8)}`,
   };
 
   /** Callback when the last tab is closed. */
-  onCloseOverlay!: () => void;
+  onCloseOverlay: () => void = () => {
+    /* empty */
+  };
 
   // -- Signals --
   readonly pendingPreviewFilePath = signal<string | null>(null);
@@ -111,6 +115,11 @@ export class NautilusTabService {
       remote: tab.left.remote ? { name: tab.left.remote.name, label: tab.left.remote.label } : null,
     }))
   );
+
+  readonly activeSelection = computed(() =>
+    this.activePaneIndex() === 0 ? this.selectedItems() : this.selectedItemsRight()
+  );
+  readonly activePaneRef = computed(() => this.getPaneRef(this.activePaneIndex()));
 
   readonly activeRemote = computed(() =>
     this.activePaneIndex() === 0 ? this.nautilusRemote() : this.nautilusRemoteRight()
@@ -218,7 +227,11 @@ export class NautilusTabService {
     filteredLocalDrives: ExplorerRoot[],
     filteredCloudRemotes: ExplorerRoot[]
   ): Promise<boolean> {
-    await this.nautilusService.loadRemoteData();
+    if (this.nautilusService.allRemotesLookup().length === 0) {
+      await this.nautilusService.loadRemoteData();
+    } else {
+      void this.nautilusService.loadRemoteData();
+    }
 
     const pickerState = this.nautilusService.filePickerState();
     let initialRemote: ExplorerRoot | null = null;
@@ -346,6 +359,8 @@ export class NautilusTabService {
 
   refresh(paneIndex: 0 | 1): void {
     const ref = this.getPaneRef(paneIndex);
+    ref.loading.set(true);
+    ref.error.set(null);
     ref.refreshTrigger.update(v => v + 1);
 
     const activeTab = this.tabs()[this.activeTabIndex()];
@@ -405,10 +420,17 @@ export class NautilusTabService {
    * Refresh multiple paths at once.
    */
   refreshAffectedPaths(affected: { remote: string; path: string }[]): void {
-    const unique = new Set(affected.map(a => `${a.remote}||${a.path}`));
-    unique.forEach(u => {
-      const [remote, path] = u.split('||');
-      this.refreshPath(remote, path);
+    const pathsByRemote = new Map<string, Set<string>>();
+    for (const item of affected) {
+      let set = pathsByRemote.get(item.remote);
+      if (!set) {
+        set = new Set<string>();
+        pathsByRemote.set(item.remote, set);
+      }
+      set.add(item.path);
+    }
+    pathsByRemote.forEach((paths, remote) => {
+      paths.forEach(path => this.refreshPath(remote, path));
     });
   }
 
@@ -679,6 +701,12 @@ export class NautilusTabService {
     );
 
     const ref = this.getPaneRef(pIdx);
+    const isNewLocation = ref.remote()?.name !== remote?.name || ref.path() !== path;
+    if (isNewLocation) {
+      ref.rawFiles.set([]);
+      ref.loading.set(true);
+      ref.error.set(null);
+    }
     ref.remote.set(remote);
     ref.path.set(path);
     ref.selection.set(new Set<string>());
@@ -706,12 +734,20 @@ export class NautilusTabService {
   // -- Private --
 
   private setupBackendEventListener(): void {
-    this.nautilusService.eventListenersService
+    this.eventListenersService
       .listenToJobCacheChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(event => {
         const { status, remote, source, destination } = event;
         if ((status === 'Completed' || status === 'Failed' || status === 'Stopped') && remote) {
+          const cleanRemote = this.pathService.normalizeRemoteName(remote);
+          const isRelevant = this.tabs().some(
+            t =>
+              this.pathService.normalizeRemoteName(t.left.remote?.name) === cleanRemote ||
+              this.pathService.normalizeRemoteName(t.right?.remote?.name) === cleanRemote
+          );
+          if (!isRelevant && cleanRemote !== 'local') return;
+
           const affected: { remote: string; path: string }[] = [];
           const addAffected = (pathStr: string): void => {
             const parsed = this.pathService.splitFsPath(pathStr);
@@ -747,24 +783,28 @@ export class NautilusTabService {
   private loadFilesForPane(paneIndex: 0 | 1): void {
     const ref = this.getPaneRef(paneIndex);
 
-    const loadParams = computed(() => ({
-      remote: ref.remote(),
-      path: ref.path(),
-      _trigger: ref.refreshTrigger(),
-    }));
+    const loadParams = computed(() => {
+      const activeTab = this.tabs()[this.activeTabIndex()];
+      return {
+        tabId: activeTab?.id,
+        remote: ref.remote(),
+        path: ref.path(),
+        _trigger: ref.refreshTrigger(),
+      };
+    });
 
     toObservable(loadParams)
       .pipe(
-        switchMap(({ remote, path, _trigger }) => {
+        switchMap(({ tabId, remote, path, _trigger }) => {
           if (!remote) {
             ref.rawFiles.set([]);
             return EMPTY;
           }
 
           // Check if this path was already loaded for this specific pane state
-          const activeTab = this.tabs()[this.activeTabIndex()];
-          if (activeTab) {
-            const pane = paneIndex === 0 ? activeTab.left : activeTab.right;
+          const targetTab = this.tabs().find(t => t.id === tabId);
+          if (targetTab) {
+            const pane = paneIndex === 0 ? targetTab.left : targetTab.right;
             if (
               pane &&
               pane.remote?.name === remote.name &&
@@ -789,12 +829,15 @@ export class NautilusTabService {
             : this.pathService.normalizeRemoteForRclone(remote.name);
           const readGroup = this.listReadGroups[paneIndex];
 
-          return from(this.stopListReadGroup(readGroup)).pipe(
-            switchMap(() =>
-              from(this.remoteOps.getRemotePaths(fsName, path, {}, 'filemanager', readGroup))
-            ),
-            map(res =>
-              (res.list || []).map(
+          return from(
+            this.remoteOps.getRemotePaths(fsName, path, {}, 'filemanager', readGroup)
+          ).pipe(
+            map(res => ({
+              tabId,
+              remote,
+              path,
+              _trigger,
+              files: (res.list || []).map(
                 f =>
                   ({
                     entry: f,
@@ -804,13 +847,15 @@ export class NautilusTabService {
                       remoteType: remote.type,
                     },
                   }) as FileBrowserItem
-              )
-            ),
+              ),
+              error: null as string | null,
+            })),
             catchError(err => {
-              const errorMessage = (err?.message ?? err ?? '').toString();
-              const isCancelled = /operation cancelled|operation canceled|cancelled|canceled/i.test(
-                errorMessage
-              );
+              const errorMessage = (err?.message ?? err ?? '').toString().toLowerCase();
+              const isCancelled =
+                errorMessage.includes('cancelled') ||
+                errorMessage.includes('canceled') ||
+                errorMessage.includes('abort');
 
               if (isCancelled) {
                 ref.loading.set(false);
@@ -819,35 +864,56 @@ export class NautilusTabService {
 
               console.error('Error fetching files:', err);
               const msg = this.translate.instant('nautilus.errors.loadFailed');
-              ref.error.set(err?.message ?? msg);
+              const errStr = err?.message ?? msg;
               this.notificationService.showError(msg);
-              ref.loading.set(false);
-              return of([]);
+              return of({
+                tabId,
+                remote,
+                path,
+                _trigger,
+                files: [] as FileBrowserItem[],
+                error: errStr,
+              });
             })
           );
         }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(files => {
-        ref.loading.set(false);
-        ref.rawFiles.set(files);
+      .subscribe(({ tabId, remote, path, _trigger, files, error }) => {
+        const isCurrentPane = ref.remote()?.name === remote?.name && ref.path() === path;
 
-        const activeTabId = this.tabs()[this.activeTabIndex()]?.id;
-        const tab = this.tabs().find(t => t.id === activeTabId);
-        if (!tab) return;
-        const pane = paneIndex === 0 ? tab.left : tab.right;
-        if (pane) {
-          pane.rawFiles.set(files);
-          pane.isLoading.set(false);
-          pane.error.set(ref.error());
-          // Save the loaded state!
-          pane.loadedRemote = pane.remote;
-          pane.loadedPath = pane.path;
-          pane.loadedTrigger = ref.refreshTrigger();
+        if (isCurrentPane) {
+          ref.loading.set(false);
+          if (error) {
+            ref.error.set(error);
+          } else {
+            ref.rawFiles.set(files);
+            ref.error.set(null);
+          }
+        }
+
+        // Store into the originating tab & pane
+        if (tabId !== undefined) {
+          const tab = this.tabs().find(t => t.id === tabId);
+          if (tab) {
+            const pane = paneIndex === 0 ? tab.left : tab.right;
+            if (pane && pane.remote?.name === remote?.name && pane.path === path) {
+              pane.isLoading.set(false);
+              if (error) {
+                pane.error.set(error);
+              } else {
+                pane.rawFiles.set(files);
+                pane.error.set(null);
+              }
+              pane.loadedRemote = pane.remote;
+              pane.loadedPath = pane.path;
+              pane.loadedTrigger = _trigger;
+            }
+          }
         }
 
         const pending = this.pendingPreviewFilePath();
-        if (pending) {
+        if (pending && isCurrentPane && !error) {
           const item = files.find(f => f.entry.Path === pending);
           if (item) {
             this.pendingPreviewFilePath.set(null);

@@ -44,7 +44,7 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
         }
     };
 
-    let icon = super::icon::get_icon(is_active).ok();
+    let icon = super::icon::get_icon(is_active, &settings.general.tray_icon_theme).ok();
 
     let app_clone = app.clone();
     app.run_on_main_thread(move || {

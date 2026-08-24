@@ -147,7 +147,7 @@ impl AutomationScheduler {
                         "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
 
-                    if let Err(e) = execute_automation(&automation_id, &app_handle).await {
+                    if let Err(e) = execute_automation(&automation_id, &app_handle, None).await {
                         error!("Automation execution failed {automation_id}: {e}");
                     } else {
                         info!("Automation execution completed: {automation_id}");
@@ -356,7 +356,11 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
     Ok(next_local.with_timezone(&Utc))
 }
 
-pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> Result<(), String> {
+pub async fn execute_automation(
+    automation_id: &str,
+    app_handle: &AppHandle,
+    scoped_targets: Option<Vec<(String, String)>>,
+) -> Result<(), String> {
     let cache = app_handle.state::<AutomationsCache>();
     let automation = cache
         .get_automation(automation_id)
@@ -404,12 +408,68 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
         )
         .await?;
 
-    let params = automation.args.params.clone();
+    if automation.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun) {
+        let qr_id = &automation.id;
+
+        info!("Executing quick run automation: {qr_id}");
+        let result = crate::core::flow::quick_run::commands::start_quick_run(
+            app_handle.clone(),
+            qr_id.to_string(),
+        )
+        .await;
+
+        match result {
+            Ok(res) => {
+                let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+                let job_handle = res
+                    .job_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| res.execute_id.clone());
+                cache
+                    .update_automation(
+                        automation_id,
+                        |t| {
+                            t.mark_running(job_handle);
+                            t.next_run = next_run;
+                        },
+                        Some(app_handle),
+                    )
+                    .await
+                    .ok();
+                notify(
+                    app_handle,
+                    NotificationEvent::Automation(AutomationStage::Started {
+                        backend: automation.backend_name.clone(),
+                        remote: automation.remote_name.clone(),
+                        profile: automation.profile_name.clone(),
+                        automation_name: automation.display_name(),
+                        automation_type: automation.automation_type,
+                    }),
+                );
+                return Ok(());
+            }
+            Err(e) => {
+                let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+                cache
+                    .update_automation(
+                        automation_id,
+                        |t| {
+                            t.mark_failure(e.clone());
+                            t.next_run = next_run;
+                        },
+                        Some(app_handle),
+                    )
+                    .await?;
+                return Err(e);
+            }
+        }
+    }
+
+    let mut params = automation.args.params.clone();
+    params.source = Some(crate::utils::types::origin::Origin::Automation);
+    params.scoped_targets = scoped_targets;
 
     let transfer_type = automation.automation_type;
-
-    let mut params = params;
-    params.source = Some(crate::utils::types::origin::Origin::Automation);
     let result = start_profile_batch(app_handle.clone(), transfer_type, params).await;
 
     match result {

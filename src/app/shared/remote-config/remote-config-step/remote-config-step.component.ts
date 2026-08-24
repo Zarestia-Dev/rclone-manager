@@ -116,7 +116,6 @@ export class RemoteConfigStepComponent {
   readonly newOptionKey = signal('');
   readonly newOptionType = signal<'boolean' | 'string' | 'number' | 'array'>('boolean');
   readonly randomIcon = signal('cloud');
-  readonly animTrigger = signal(0);
   readonly suggestedRemotes = signal<{ label: string; value: string; icon: string }[]>([]);
 
   // ── Computed View Models ──────────────────────────────────────────────────
@@ -152,8 +151,8 @@ export class RemoteConfigStepComponent {
     if (!field?.Examples) return [];
     const term = (this.providerSearchTerm() ?? '').toLowerCase();
     return field.Examples.filter(
-      (o: any) => o.Value?.toLowerCase().includes(term) || o.Help?.toLowerCase().includes(term)
-    ).map((o: any) => ({
+      o => o.Value?.toLowerCase().includes(term) || o.Help?.toLowerCase().includes(term)
+    ).map(o => ({
       ...o,
       icon: this.iconService.getIconName(o.Value || 'hard-drive'),
     }));
@@ -320,12 +319,10 @@ export class RemoteConfigStepComponent {
 
         const id = setInterval(() => {
           this.randomIcon.set(pickNextIcon());
-          this.animTrigger.update(v => v + 1);
         }, 3000);
         onCleanup(() => clearInterval(id));
       } else {
         this.randomIcon.set('cloud');
-        this.animTrigger.set(0);
       }
     });
   }
@@ -404,7 +401,7 @@ export class RemoteConfigStepComponent {
     this.remoteTypes().find(t => t.value === value)?.label ?? value ?? '';
 
   readonly displayProvider = (value: string): string =>
-    this.providerField()?.Examples?.find((o: any) => o.Value === value)?.Help ?? value;
+    this.providerField()?.Examples?.find(o => o.Value === value)?.Help ?? value;
 
   onTypeSelected(value: string): void {
     this.form().get('type')?.setValue(value);

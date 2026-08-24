@@ -282,8 +282,9 @@
   } @else {
     <mat-icon
       [class.accent]="item.entry.IsDir"
-      [style.width.px]="iconSize()"
-      [style.height.px]="iconSize()"
+      [class.list-view]="!sizeBinding"
+      [style.width.px]="sizeBinding ? iconSize() : null"
+      [style.height.px]="sizeBinding ? iconSize() : null"
       [svgIcon]="iconService.getIconForEntry(item.entry)"
     ></mat-icon>
   }

@@ -61,7 +61,7 @@
       a {
         color: var(--primary-color);
         text-decoration: none;
-        border-bottom: 1px solid rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+        border-bottom: 1px solid rgba(var(--primary-color-rgb), 0.3);
         transition: all 0.2s ease;
         word-break: break-all;
 
@@ -123,28 +123,6 @@
 
   .setting-control {
     flex-shrink: 0;
-
-    .stepper-container {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-    }
-
-    .stepper-input.mat-mdc-form-field {
-      width: 100px;
-      flex-grow: 0;
-
-      input {
-        text-align: center;
-      }
-    }
-
-    // Hide native number spinners — custom stepper buttons are used instead
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
 
     .time-split {
       display: flex;

@@ -9,11 +9,11 @@
       (click)="prevStep.emit()"
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
-      [attr.title]="'modals.remoteConfig.buttons.back' | translate"
-      [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
+      [attr.title]="'common.back' | translate"
+      [attr.aria-label]="'common.back' | translate"
     >
       <mat-icon svgIcon="left-arrow"></mat-icon>
-      {{ 'modals.remoteConfig.buttons.back' | translate }}
+      {{ 'common.back' | translate }}
     </button>
   }
 
@@ -25,10 +25,10 @@
       animate.leave="fade-in-out-leave"
       (click)="cancelAuth.emit()"
       [disabled]="(!state.isAuthInProgress() && !flow.isActive) || state.isAuthCancelled()"
-      [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
-      [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
+      [attr.title]="'common.cancel' | translate"
+      [attr.aria-label]="'common.cancel' | translate"
     >
-      {{ 'modals.remoteConfig.buttons.cancel' | translate }}
+      {{ 'common.cancel' | translate }}
     </button>
   }
 
@@ -39,7 +39,7 @@
     </span>
   }
 
-  @if ((state.currentStep() > 1 || state.editTarget()) && !flow.isActive) {
+  @if ((state.currentStep() > 0 || state.editTarget()) && !flow.isActive) {
     <button
       matButton="filled"
       (click)="submitForm.emit()"
@@ -60,10 +60,8 @@
 
   @if (flow.isActive) {
     @let continueLabel =
-      (flow.isProcessing
-        ? 'modals.remoteConfig.buttons.processing'
-        : 'modals.remoteConfig.buttons.continue'
-      ) | translate;
+      (flow.isProcessing ? 'modals.remoteConfig.buttons.processing' : 'common.continue')
+        | translate;
     <button
       matButton="filled"
       (click)="interactiveContinue.emit(flow.answer)"
@@ -92,10 +90,10 @@
       [disabled]="state.isNextDisabled()"
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
-      [attr.title]="'modals.remoteConfig.buttons.next' | translate"
-      [attr.aria-label]="'modals.remoteConfig.buttons.next' | translate"
+      [attr.title]="'common.next' | translate"
+      [attr.aria-label]="'common.next' | translate"
     >
-      {{ 'modals.remoteConfig.buttons.next' | translate }}
+      {{ 'common.next' | translate }}
       <mat-icon svgIcon="right-arrow"></mat-icon>
     </button>
   }

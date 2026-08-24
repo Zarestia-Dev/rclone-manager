@@ -29,6 +29,9 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
     <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat-square&color=2ec27e" alt="Latest Release">
   </a>
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/downloads/Zarestia-Dev/rclone-manager/total?style=flat-square&color=e66100" alt="ダウンロード数">
+  </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?style=flat-square&color=9141ac" alt="License">
   </a>
@@ -37,9 +40,6 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
-  </a>
-  <a href="https://hakanismail.info/zarestia/support">
-    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -140,7 +140,6 @@
 
 - **ライセンス:** [GNU GPLv3](LICENSE) の下でライセンスされています – 使用、変更、配布が自由に行えます。
 - **サポート:** このプロジェクトを気に入っていただけましたら、ぜひ GitHub で ⭐ をご検討ください！
-- **寄付:** RClone Manager がお役に立ちましたら、[開発の支援](https://hakanismail.info/zarestia/support) をご検討いただけると幸いです ❤️
 
 <p align="center">
   Zarestia Dev Team が ❤️ を込めて開発<br>

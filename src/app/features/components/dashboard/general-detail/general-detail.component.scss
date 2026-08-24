@@ -6,6 +6,8 @@
   margin: 0 auto;
   padding: var(--space-md);
   width: 100%;
+  overflow: auto;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -307,6 +309,38 @@
       &:disabled {
         opacity: 0.3;
       }
+    }
+  }
+}
+
+/* --- Quick Runs Card --- */
+.quick-runs-card {
+  mat-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--space-sm);
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      color: var(--window-fg-color);
+
+      mat-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  mat-card-content {
+    .quick-runs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-md);
+      align-items: start;
     }
   }
 }

@@ -1,8 +1,6 @@
 use crate::utils::types::state::{EnginePhase, RcApiEngine};
 
 pub const DEFAULT_API_PORT: u16 = 51900;
-#[cfg(not(feature = "librclone"))]
-pub const DEFAULT_OAUTH_PORT: u16 = 51901;
 
 #[cfg(not(feature = "librclone"))]
 impl Default for RcApiEngine {

@@ -41,7 +41,6 @@ export class RestorePreviewModalComponent {
 
   // Static derived data — plain properties since `analysis` is not a signal
   readonly isEncrypted = this.analysis.isEncrypted;
-  readonly isLegacy = this.analysis.isLegacy === true;
   readonly hasContents = !!this.analysis.contents;
   readonly hasUserNote = !!this.analysis.userNote;
   readonly profiles = this.analysis.contents?.profiles ?? [];

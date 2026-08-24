@@ -51,6 +51,7 @@ export class CliImportComponent {
   readonly visible = input(false);
   readonly remoteType = input('');
   readonly activeStep = input<EditTarget>(null);
+  readonly isQuickRun = input(false);
   readonly existingProfiles = input<Record<SharedProfileType, string[]>>(
     {} as Record<SharedProfileType, string[]>
   );
@@ -90,14 +91,18 @@ export class CliImportComponent {
   });
 
   readonly canPatch = computed(() => {
+    if (this.isQuickRun()) return true;
     const step = this.activeStep();
     return !!step && step !== 'remote';
   });
 
-  readonly canCreateNew = computed(() => !!this.effectiveProfileType());
+  readonly canCreateNew = computed(() => {
+    if (this.isQuickRun()) return false;
+    return !!this.effectiveProfileType();
+  });
 
   readonly canOverride = computed(
-    () => this.canCreateNew() && this.detectedVerbProfiles().length > 0
+    () => !this.isQuickRun() && this.canCreateNew() && this.detectedVerbProfiles().length > 0
   );
 
   readonly mappedFlags = computed(
@@ -148,6 +153,10 @@ export class CliImportComponent {
       (result.sourcePath && this.importSourcePath()) || (result.destPath && this.importDestPath());
     if (!hasFlags && !hasPaths) return true;
 
+    if (this.isQuickRun()) {
+      return false;
+    }
+
     switch (this.profileMode()) {
       case 'patch':
         return !this.canPatch();
@@ -193,7 +202,11 @@ export class CliImportComponent {
     }
 
     try {
-      const result = await this.mapper.importCliCommand(text, this.remoteType());
+      const result = await this.mapper.importCliCommand(
+        text,
+        this.remoteType(),
+        this.activeStep() ?? undefined
+      );
       if (!result.verb && result.classified.length === 0) {
         this.setError('wizards.cliImport.invalidCommand');
         return;
@@ -205,8 +218,12 @@ export class CliImportComponent {
       this.selectedFlags.set(new Set(mapped));
       this.importSourcePath.set(true);
       this.importDestPath.set(true);
-      this.profileMode.set(this.canCreateNew() ? 'new' : 'patch');
-      this.selectedOverrideProfile.set(this.detectedVerbProfiles()[0] ?? '');
+      if (this.isQuickRun()) {
+        this.profileMode.set('patch');
+      } else {
+        this.profileMode.set(this.canCreateNew() ? 'new' : 'patch');
+        this.selectedOverrideProfile.set(this.detectedVerbProfiles()[0] ?? '');
+      }
     } catch (error) {
       console.error('Failed to parse CLI import command:', error);
       this.setError('wizards.cliImport.invalidCommand');

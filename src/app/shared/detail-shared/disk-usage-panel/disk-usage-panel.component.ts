@@ -1,11 +1,12 @@
-import { Component, input, output, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NgClass, NgStyle } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { DiskUsage } from '@app/types';
+import { DiskUsage, DiskUsageSeverity } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
 @Component({
   selector: 'app-disk-usage-panel',
@@ -61,7 +62,7 @@ import { FormatFileSizePipe } from '@app/pipes';
             <span>{{ 'detailShared.diskUsage.notSupported' | translate }}</span>
           </div>
         } @else if (cfg.error) {
-          <div class="inline-status error" [title]="cfg.errorMessage" role="alert">
+          <div class="inline-status error" [title]="formattedErrorMessage()" role="alert">
             <mat-icon svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
             <span>{{ 'detailShared.diskUsage.errorLoading' | translate }}</span>
           </div>
@@ -109,10 +110,13 @@ import { FormatFileSizePipe } from '@app/pipes';
                 <span class="legend-value">{{ cfg.free ?? 0 | formatFileSize }}</span>
               </div>
 
-              <div class="legend-item total-item">
-                <span class="legend-label">{{ 'detailShared.diskUsage.total' | translate }}</span>
-                <span class="legend-value">{{ cfg.total ?? 0 | formatFileSize }}</span>
-              </div>
+              @if (cfg.total) {
+                <div class="legend-item total-item">
+                  <span class="legend-dot total" aria-hidden="true"></span>
+                  <span class="legend-label">{{ 'detailShared.diskUsage.total' | translate }}</span>
+                  <span class="legend-value">{{ cfg.total | formatFileSize }}</span>
+                </div>
+              }
             }
           </div>
         }
@@ -121,10 +125,28 @@ import { FormatFileSizePipe } from '@app/pipes';
   `,
 })
 export class DiskUsagePanelComponent {
+  private readonly backendTranslation = inject(BackendTranslationService);
+
   readonly config = input.required<DiskUsage>();
   readonly retry = output<void>();
 
-  readonly usagePercentage = computed(() => this.config().usagePercentage ?? 0);
-  readonly usagePercentageLabel = computed(() => this.config().usagePercentageLabel ?? '0%');
-  readonly usageSeverity = computed(() => this.config().usageSeverity ?? 'healthy');
+  readonly usagePercentage = computed(() => {
+    const cfg = this.config();
+    if (cfg.total && cfg.total > 0 && cfg.used !== undefined) {
+      return Math.min(100, Math.max(0, (cfg.used / cfg.total) * 100));
+    }
+    return 0;
+  });
+  readonly usagePercentageLabel = computed(() => `${Math.round(this.usagePercentage())}%`);
+  readonly usageSeverity = computed<DiskUsageSeverity>(() => {
+    const pct = this.usagePercentage();
+    if (pct >= 90) return 'critical';
+    if (pct >= 80) return 'high';
+    if (pct >= 60) return 'warning';
+    return 'healthy';
+  });
+  readonly formattedErrorMessage = computed(() => {
+    const msg = this.config().errorMessage;
+    return msg ? this.backendTranslation.translateBackendMessage(msg) : '';
+  });
 }

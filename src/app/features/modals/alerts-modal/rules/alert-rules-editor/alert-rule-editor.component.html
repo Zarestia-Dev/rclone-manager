@@ -18,7 +18,7 @@
     </div>
 
     <div class="panel">
-      <mat-form-field appearance="fill">
+      <mat-form-field>
         <mat-label>{{ 'alerts.ruleName' | translate }}</mat-label>
         <input
           matInput
@@ -52,7 +52,7 @@
     </div>
 
     <div class="panel">
-      <mat-form-field appearance="fill">
+      <mat-form-field>
         <mat-label>{{ 'alerts.actions' | translate }}</mat-label>
         <mat-select formControlName="action_ids" multiple>
           <mat-select-trigger>
@@ -99,7 +99,7 @@
 
     <div class="panel no-subscript">
       <div class="form-row two-col">
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.severityMin' | translate }}</mat-label>
           <mat-select formControlName="severity_min">
             @for (s of severities; track s) {
@@ -113,7 +113,7 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.cooldown' | translate }}</mat-label>
           <input matInput type="number" formControlName="cooldown_secs" min="0" />
           <span matSuffix class="field-suffix">sec</span>
@@ -125,7 +125,7 @@
       </div>
 
       <div class="form-row two-col">
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.eventFilter' | translate }}</mat-label>
           <mat-icon
             matPrefix
@@ -139,7 +139,7 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.remoteFilter' | translate }}</mat-label>
           <mat-icon
             matPrefix
@@ -155,7 +155,7 @@
       </div>
 
       <div class="form-row two-col">
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.backendFilter' | translate }}</mat-label>
           <mat-icon
             matPrefix
@@ -169,7 +169,7 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="fill">
+        <mat-form-field>
           <mat-label>{{ 'alerts.rule.profileFilter' | translate }}</mat-label>
           <mat-icon
             matPrefix
@@ -184,7 +184,7 @@
         </mat-form-field>
       </div>
 
-      <mat-form-field appearance="fill">
+      <mat-form-field>
         <mat-label>{{ 'alerts.origins.title' | translate }}</mat-label>
         <mat-icon
           matPrefix

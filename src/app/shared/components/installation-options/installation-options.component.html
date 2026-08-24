@@ -36,7 +36,7 @@
           <p>
             {{ 'shared.installationOptions.modes.' + mode() + '.custom.description' | translate }}
           </p>
-          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'">
             <mat-label>{{
               'shared.installationOptions.modes.' + mode() + '.custom.label' | translate
             }}</mat-label>
@@ -69,7 +69,7 @@
           <p>
             {{ 'shared.installationOptions.modes.' + mode() + '.existing.description' | translate }}
           </p>
-          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'">
             <mat-label>{{
               'shared.installationOptions.modes.' + mode() + '.existing.label' | translate
             }}</mat-label>

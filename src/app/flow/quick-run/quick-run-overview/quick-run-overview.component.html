@@ -1,0 +1,234 @@
+<div class="overview-container" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
+  <!-- Top Header Banner -->
+  <div class="overview-header-wrapper" role="banner">
+    <app-overview-header
+      [mode]="'general'"
+      (openBackendModal)="openBackendModal.emit()"
+      (toggleEditLayout)="toggleEditLayout()"
+    >
+    </app-overview-header>
+  </div>
+
+  <div class="overview-content" role="main">
+    <!-- Modular Accordion Panel Grid (with drag & drop) -->
+    <div class="layout-grid">
+      <mat-accordion
+        multi
+        cdkDropList
+        [cdkDropListDisabled]="!isEditingLayout()"
+        [cdkDropListData]="dashboardPanels()"
+        (cdkDropListDropped)="drop($event)"
+      >
+        @for (panel of displayPanels(); track panel.id) {
+          <div
+            cdkDrag
+            [cdkDragData]="panel"
+            [cdkDragDisabled]="!isEditingLayout()"
+            class="draggable-panel-wrapper"
+            [class.editing]="isEditingLayout()"
+          >
+            <div class="custom-placeholder" *cdkDragPlaceholder></div>
+
+            @if (isEditingLayout()) {
+              <div
+                class="panel-edit-controls"
+                cdkDragHandle
+                animate.enter="expand-height-enter"
+                animate.leave="expand-height-leave"
+              >
+                <mat-icon svgIcon="drag-indicator"></mat-icon>
+                <span class="panel-label">{{ panel.title | translate }}</span>
+
+                <div class="visibility-toggle">
+                  <span class="toggle-label">{{
+                    panel.visible
+                      ? ('generalOverview.layout.visible' | translate)
+                      : ('generalOverview.layout.hidden' | translate)
+                  }}</span>
+                  <mat-slide-toggle
+                    [checked]="panel.visible"
+                    (change)="togglePanelVisibility(panel.id)"
+                    class="primary"
+                  >
+                  </mat-slide-toggle>
+                </div>
+              </div>
+            }
+
+            <div
+              [class.panel-hidden-visual]="isEditingLayout() && !panel.visible"
+              class="panel-content-wrapper"
+            >
+              @switch (panel.id) {
+                @case ('quickRuns') {
+                  <mat-expansion-panel
+                    [expanded]="panelOpenStates()['quickRuns']"
+                    (opened)="setPanelOpenState('quickRuns', true)"
+                    (closed)="setPanelOpenState('quickRuns', false)"
+                    [hideToggle]="true"
+                    class="quick-runs-panel"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon svgIcon="quick-run" class="primary" aria-hidden="true"></mat-icon>
+                        <span>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</span>
+                      </mat-panel-title>
+                      <mat-panel-description>
+                        <span
+                          class="app-pill"
+                          [class.p-primary]="quickRuns().length > 0"
+                          [class.p-dim]="quickRuns().length === 0"
+                          aria-label="{{ quickRuns().length }} quick runs"
+                        >
+                          {{ quickRuns().length }}
+                        </span>
+                      </mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    @if (remoteGroups().length > 0) {
+                      <div class="filter-chips hide-scrollbar">
+                        <button
+                          type="button"
+                          class="app-pill interactive"
+                          [class.is-selected]="selectedRemoteFilter() === null"
+                          [class.p-primary]="selectedRemoteFilter() === null"
+                          (click)="setRemoteFilter(null)"
+                        >
+                          <span>{{ 'common.all' | translate }} ({{ quickRuns().length }})</span>
+                        </button>
+                        @for (group of remoteGroups(); track group.remoteName) {
+                          <button
+                            type="button"
+                            class="app-pill interactive"
+                            [class.is-selected]="selectedRemoteFilter() === group.remoteName"
+                            [class.p-primary]="selectedRemoteFilter() === group.remoteName"
+                            (click)="setRemoteFilter(group.remoteName)"
+                          >
+                            <mat-icon [svgIcon]="group.icon"></mat-icon>
+                            <span>{{ group.remoteName }} ({{ group.count }})</span>
+                          </button>
+                        }
+                      </div>
+                    }
+
+                    @if (filteredQuickRuns().length > 0) {
+                      <div class="grid">
+                        @for (qr of filteredQuickRuns(); track qr.id) {
+                          <app-quick-run-card
+                            [quickRun]="qr"
+                            [isRunning]="isRunning(qr.id)"
+                            variant="overview"
+                            (selectedChange)="onSelectQuickRunById($event)"
+                            (startRun)="onStartQuickRun($event)"
+                            (stopRun)="onStopQuickRun($event)"
+                            (editRun)="onEditQuickRun($event)"
+                            (openInFiles)="openInFiles($event)"
+                            (openRemoteDetail)="onOpenRemoteDetail($event)"
+                          />
+                        }
+                      </div>
+                    } @else if (selectedRemoteFilter(); as filterRemote) {
+                      <div class="empty-state">
+                        <mat-icon svgIcon="quick-run" class="empty-icon"></mat-icon>
+                        <p>
+                          {{
+                            'flow.quickRun.overview.noRunsForRemote'
+                              | translate: { remote: filterRemote }
+                          }}
+                        </p>
+                        <div class="empty-actions">
+                          <button
+                            matButton="filled"
+                            class="primary"
+                            (click)="onCreateQuickRunForRemote(filterRemote)"
+                            [attr.title]="
+                              'flow.quickRun.overview.createForRemote'
+                                | translate: { remote: filterRemote }
+                            "
+                          >
+                            <mat-icon svgIcon="plus"></mat-icon>
+                            <span>{{
+                              'flow.quickRun.overview.createForRemote'
+                                | translate: { remote: filterRemote }
+                            }}</span>
+                          </button>
+                          <button
+                            matButton="tonal"
+                            (click)="onOpenRemoteDetail(filterRemote)"
+                            [attr.title]="'dashboard.appDetail.remoteSettings' | translate"
+                          >
+                            <mat-icon svgIcon="open-link"></mat-icon>
+                            <span>{{ 'dashboard.appDetail.remoteSettings' | translate }}</span>
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="empty-state">
+                        <mat-icon svgIcon="quick-run"></mat-icon>
+                        <p>{{ 'flow.quickRun.overview.createFirst' | translate }}</p>
+                        <button
+                          matButton="filled"
+                          class="primary"
+                          (click)="onCreateQuickRun()"
+                          [attr.title]="'flow.quickRun.new' | translate"
+                        >
+                          <mat-icon svgIcon="plus"></mat-icon>
+                          <span>{{ 'flow.quickRun.new' | translate }}</span>
+                        </button>
+                      </div>
+                    }
+                  </mat-expansion-panel>
+                }
+                @case ('bandwidth') {
+                  <app-bandwidth-overview-panel
+                    [expanded]="panelOpenStates()['bandwidth']"
+                    (expandedChange)="setPanelOpenState('bandwidth', $event)"
+                  ></app-bandwidth-overview-panel>
+                }
+                @case ('system') {
+                  <app-system-overview-panel
+                    [expanded]="panelOpenStates()['system']"
+                    (expandedChange)="setPanelOpenState('system', $event)"
+                    [totalCount]="totalCount()"
+                    [totalCountLabelKey]="'flow.quickRun.overview.stats.total'"
+                    [activeJobsCount]="activeCount()"
+                  ></app-system-overview-panel>
+                }
+                @case ('jobs') {
+                  <app-jobs-overview-panel
+                    [expanded]="panelOpenStates()['jobs']"
+                    (expandedChange)="setPanelOpenState('jobs', $event)"
+                    [showFilterChips]="true"
+                    (jobClick)="handleJobClick($event)"
+                    (stopJob)="handleStopJob($event)"
+                  ></app-jobs-overview-panel>
+                }
+                @case ('serves') {
+                  <app-serves-overview-panel
+                    [expanded]="panelOpenStates()['serves']"
+                    (expandedChange)="setPanelOpenState('serves', $event)"
+                    [defaultOriginFilter]="'quickrun'"
+                    [showFilterChips]="true"
+                    (serveClick)="handleServeClick($event)"
+                    (stopServe)="handleStopServe($event)"
+                  ></app-serves-overview-panel>
+                }
+                @case ('automations') {
+                  <app-automations-overview-panel
+                    [expanded]="panelOpenStates()['automations']"
+                    (expandedChange)="setPanelOpenState('automations', $event)"
+                    [defaultOriginFilter]="'quickrun'"
+                    [showFilterChips]="true"
+                    (automationClick)="handleAutomationClick($event)"
+                    (toggleAutomation)="toggleAutomation($event)"
+                    (openInFiles)="openInFiles($event)"
+                  ></app-automations-overview-panel>
+                }
+              }
+            </div>
+          </div>
+        }
+      </mat-accordion>
+    </div>
+  </div>
+</div>

@@ -52,7 +52,7 @@ pub enum TransportKind {
 
 #[async_trait]
 pub trait RcloneTransport: Send + Sync {
-    fn kind(&self) -> TransportKind;
+    async fn kind(&self) -> TransportKind;
 
     async fn rpc(&self, endpoint: &str, payload: Option<&Value>) -> Result<Value, BackendError>;
 

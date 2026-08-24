@@ -23,7 +23,7 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
-import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption } from '@app/types';
+import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption, ExplorerRoot } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
@@ -77,7 +77,11 @@ export class PropertiesModalComponent implements OnInit {
 
   // Derived properties (pure data derivations)
   readonly displayLocation: string = this.pathService.getFullDisplayPath(
-    { name: this.data.remoteName, isLocal: this.data.isLocal } as any,
+    {
+      name: this.data.remoteName,
+      isLocal: this.data.isLocal,
+      type: this.data.remoteType ?? '',
+    } as ExplorerRoot,
     this.data.path
   );
 

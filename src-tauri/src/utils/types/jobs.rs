@@ -85,6 +85,9 @@ impl JobType {
                 | JobType::Check
                 | JobType::Mount
                 | JobType::CryptCheck
+                | JobType::Delete
+                | JobType::CopyUrl
+                | JobType::ArchiveCreate
         )
     }
 }
@@ -121,7 +124,6 @@ pub struct ResolveState {
     pub bytes: i64,
     pub size: i64,
     pub speed: f64,
-    pub speed_class: String,
     pub eta: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -158,6 +160,8 @@ pub struct JobInfo {
     pub jobid: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
     pub job_type: JobType,
     pub remote_name: String,
     pub source: Vec<String>,

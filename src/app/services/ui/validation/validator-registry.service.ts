@@ -12,6 +12,19 @@ import { REMOTE_NAME_REGEX } from '@app/types';
 import { Observable, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+const INTEGER_REGEX = /^-?\d+$/;
+const FLOAT_REGEX = /^-?\d+(\.\d+)?$/;
+const DURATION_REGEX = /^(\d+(\.\d+)?(ns|us|µs|ms|s|m|h|d))+$/;
+const SIZE_SUFFIX_REGEX = /^\d+(\.\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$/;
+const TIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?$/;
+const FILE_MODE_REGEX = /^[0-7]{3,4}$/;
+const BW_TIMETABLE_REGEX = /^\d+(\.\d+)?(B|K|M|G|T|P)?$/;
+const WIN_ABS_PATH_REGEX =
+  /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
+const URL_PATTERN_REGEX = /^https?:\/\/[^\s;]+$/;
+const BANDWIDTH_PATTERN_REGEX =
+  /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -19,22 +32,12 @@ export class ValidatorRegistryService {
   private readonly validators = new Map<string, ValidatorFn>();
   private readonly translate = inject(TranslateService);
   private readonly backendService = inject(BackendService);
-  private readonly regexCache = new Map<string, RegExp>();
 
   constructor() {
     this.validators.set('crossPlatformPath', this.crossPlatformPathValidator());
     this.validators.set('urlList', this.urlArrayValidator());
     this.validators.set('bandwidthFormat', this.bandwidthValidator());
     this.validators.set('password', this.passwordValidator());
-  }
-
-  private getCachedRegex(pattern: string): RegExp {
-    let compiled = this.regexCache.get(pattern);
-    if (!compiled) {
-      compiled = new RegExp(pattern);
-      this.regexCache.set(pattern, compiled);
-    }
-    return compiled;
   }
 
   registerValidator(name: string, validator: ValidatorFn): void {
@@ -47,7 +50,8 @@ export class ValidatorRegistryService {
 
   arrayValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || Array.isArray(control.value)) return null;
+      if (!control.value || Array.isArray(control.value) || typeof control.value === 'string')
+        return null;
       return { invalidArray: true };
     };
   }
@@ -57,7 +61,7 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!this.getCachedRegex('^-?\\d+$').test(value)) {
+      if (!INTEGER_REGEX.test(value)) {
         return { integer: { value, message: this.translate.instant('validators.integer') } };
       }
       return null;
@@ -69,7 +73,7 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!this.getCachedRegex('^-?\\d+(\\.\\d+)?$').test(value)) {
+      if (!FLOAT_REGEX.test(value)) {
         return { float: { value, message: this.translate.instant('validators.float') } };
       }
       return null;
@@ -81,7 +85,7 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!this.getCachedRegex('^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h|d))+$').test(value)) {
+      if (!DURATION_REGEX.test(value)) {
         return { duration: { value, message: this.translate.instant('validators.duration') } };
       }
       return null;
@@ -94,9 +98,7 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (value.toLowerCase() === 'off') return null;
-      if (
-        !this.getCachedRegex('^\\d+(\\.\\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$').test(value)
-      ) {
+      if (!SIZE_SUFFIX_REGEX.test(value)) {
         return { sizeSuffix: { value, message: this.translate.instant('validators.sizeSuffix') } };
       }
       return null;
@@ -117,12 +119,7 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (
-        !this.getCachedRegex(
-          '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?([+-]\\d{2}:\\d{2}|Z)?$'
-        ).test(value) &&
-        isNaN(new Date(value).getTime())
-      ) {
+      if (!TIME_REGEX.test(value) && isNaN(new Date(value).getTime())) {
         return { time: { value, message: this.translate.instant('validators.time') } };
       }
       return null;
@@ -150,11 +147,7 @@ export class ValidatorRegistryService {
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (value.toLowerCase() === 'off') return null;
       const hasTimetable = value.includes(',') || value.includes('-') || value.includes(':');
-      if (
-        !this.getCachedRegex('^\\d+(\\.\\d+)?(B|K|M|G|T|P)?$').test(value) &&
-        !hasTimetable &&
-        value.length > 0
-      ) {
+      if (!BW_TIMETABLE_REGEX.test(value) && !hasTimetable && value.length > 0) {
         return {
           bwTimetable: { value, message: this.translate.instant('validators.bwTimetable') },
         };
@@ -168,17 +161,18 @@ export class ValidatorRegistryService {
       if (!control.value || control.value === '') return null;
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!this.getCachedRegex('^[0-7]{3,4}$').test(value)) {
+      if (!FILE_MODE_REGEX.test(value)) {
         return { fileMode: { value, message: this.translate.instant('validators.fileMode') } };
       }
       return null;
     };
   }
 
-  enumValidator(allowedValues: string[]): ValidatorFn {
-    const lowerValues = allowedValues.map(v => v.toLowerCase());
+  enumValidator(allowedValues: unknown[]): ValidatorFn {
+    const lowerValues = allowedValues.map(v => String(v ?? '').toLowerCase());
     return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
+      if (control.value === null || control.value === undefined || control.value === '')
+        return null;
       const value = control.value.toString().trim().toLowerCase();
       if (!lowerValues.includes(value)) {
         return {
@@ -186,7 +180,7 @@ export class ValidatorRegistryService {
             value,
             allowedValues,
             message: this.translate.instant('validators.enum', {
-              values: allowedValues.join(', '),
+              values: allowedValues.map(v => String(v)).join(', '),
             }),
           },
         };
@@ -224,7 +218,7 @@ export class ValidatorRegistryService {
       }
     };
 
-    const triggers: Observable<any>[] = [];
+    const triggers: Observable<unknown>[] = [];
     if (autoStartCtrl) triggers.push(autoStartCtrl.valueChanges);
     if (cronEnabledCtrl) triggers.push(cronEnabledCtrl.valueChanges);
     if (watchEnabledCtrl) triggers.push(watchEnabledCtrl.valueChanges);
@@ -317,9 +311,7 @@ export class ValidatorRegistryService {
       if (!value) return null;
 
       if (this.backendService.isWindows()) {
-        const winAbs =
-          /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
-        if (winAbs.test(value)) return null;
+        if (WIN_ABS_PATH_REGEX.test(value)) return null;
       } else {
         if (/^(\/[^\0]*)$/.test(value)) return null;
       }
@@ -329,13 +321,12 @@ export class ValidatorRegistryService {
   }
 
   private urlArrayValidator(): ValidatorFn {
-    const urlPattern = /^https?:\/\/[^\s;]+$/;
     return (control: AbstractControl): ValidationErrors | null => {
       const urls = control.value;
       if (!Array.isArray(urls) || urls.length === 0) return null;
 
       for (const url of urls) {
-        if (typeof url !== 'string' || !urlPattern.test(url.trim())) {
+        if (typeof url !== 'string' || !URL_PATTERN_REGEX.test(url.trim())) {
           return {
             urlArray: { message: this.translate.instant('validators.urlArray'), invalidUrl: url },
           };
@@ -346,11 +337,9 @@ export class ValidatorRegistryService {
   }
 
   private bandwidthValidator(): ValidatorFn {
-    const bandwidthPattern =
-      /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
     return (control: AbstractControl): ValidationErrors | null => {
       if (!control.value) return null;
-      if (!bandwidthPattern.test(control.value)) {
+      if (!BANDWIDTH_PATTERN_REGEX.test(control.value)) {
         return { bandwidth: { message: this.translate.instant('validators.bandwidth') } };
       }
       return null;

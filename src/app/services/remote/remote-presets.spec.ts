@@ -69,16 +69,16 @@ describe('RemotePresetsService', () => {
   describe('resolvePresets', () => {
     it('should apply BASE_PRESET by default', () => {
       const presets = service.resolvePresets('sftp');
-      expect(presets.vfs?.['CacheMode']).toBe('full');
-      expect(presets.backend?.['LogLevel']).toBe('INFO');
+      expect(presets.vfs?.['vfs_cache_mode']).toBe('full');
+      expect(presets.backend?.['log_level']).toBe('INFO');
     });
 
     it('should merge family-specific presets', () => {
       const presets = service.resolvePresets('s3');
-      expect(presets.backend?.['DisableHTTP2']).toBe(true);
-      expect(presets.vfs?.['FastFingerprint']).toBe(true);
+      expect(presets.backend?.['disable_http2']).toBe(true);
+      expect(presets.vfs?.['vfs_fast_fingerprint']).toBe(true);
       // base preset should still be there
-      expect(presets.vfs?.['CacheMode']).toBe('full');
+      expect(presets.vfs?.['vfs_cache_mode']).toBe('full');
     });
 
     it('should merge provider-specific presets', () => {
@@ -101,15 +101,15 @@ describe('RemotePresetsService', () => {
       mockBackendService.backends.set([{ name: 'Local', isLocal: true, os: 'windows' }]);
       mockBackendService.activeBackend.set('Local');
       const presets = service.resolvePresets('sftp');
-      expect(presets.mount?.['NetworkMode']).toBe(true);
+      expect(presets.mount?.['network_mode']).toBe(true);
     });
 
     it('should merge OS-specific presets for macos engine', () => {
       mockBackendService.backends.set([{ name: 'Local', isLocal: true, os: 'darwin' }]);
       mockBackendService.activeBackend.set('Local');
       const presets = service.resolvePresets('sftp');
-      expect(presets.mount?.['NoAppleXattr']).toBe(true);
-      expect(presets.mount?.['NoAppleDouble']).toBe(true);
+      expect(presets.mount?.['no_apple_xattr']).toBe(true);
+      expect(presets.mount?.['no_apple_double']).toBe(true);
     });
 
     it('should not apply windows presets when client is windows but engine is linux (WSL)', () => {
@@ -119,7 +119,7 @@ describe('RemotePresetsService', () => {
       mockBackendService.backends.set([{ name: 'Local', isLocal: true, os: 'linux' }]);
       mockBackendService.activeBackend.set('Local');
       const presets = service.resolvePresets('sftp');
-      expect(presets.mount?.['NetworkMode']).toBeUndefined();
+      expect(presets.mount?.['network_mode']).toBeUndefined();
     });
   });
 });

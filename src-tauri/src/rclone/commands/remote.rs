@@ -5,7 +5,11 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::settings::remote::manager::delete_remote_settings,
+    core::{
+        bridge,
+        flow::quick_run::commands::{delete_quick_runs_for_remote, sync_quick_run_automations_bg},
+        settings::{AppSettingsManager, remote::manager::delete_remote_settings},
+    },
     rclone::{
         backend::BackendManager,
         commands::{
@@ -21,65 +25,87 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::config,
         types::{
-            events::REMOTE_CACHE_CHANGED,
+            events::{RCLONE_OAUTH_URL, REMOTE_CACHE_CHANGED},
             logs::{LogCache, LogLevel},
             state::RcloneState,
         },
     },
 };
 
-#[cfg(not(feature = "librclone"))]
-use crate::rclone::commands::system::ensure_oauth_process;
+/// Spawn a background poller that watches `config/oauthstatus` and emits
+/// `RCLONE_OAUTH_URL` to the frontend when the OAuth server produces an
+/// auth URL.
+fn spawn_oauth_status_poller(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        use std::time::Duration;
 
-async fn ensure_oauth_or_poll(
-    app: &AppHandle,
-) -> Result<(), crate::rclone::commands::system::RcloneError> {
-    #[cfg(not(feature = "librclone"))]
-    {
-        ensure_oauth_process(app).await
-    }
-    #[cfg(feature = "librclone")]
-    {
-        crate::rclone::commands::mobile_oauth::spawn_oauth_poller(app.clone());
-        Ok(())
-    }
+        const POLL_INTERVAL: Duration = Duration::from_millis(200);
+        const POLL_TIMEOUT: Duration = Duration::from_secs(300);
+
+        let transport = app.state::<RcloneState>().transport.clone();
+        let mut url_emitted = false;
+        let start = std::time::Instant::now();
+
+        log::debug!("Starting OAuth status poller (timeout: {POLL_TIMEOUT:?})");
+
+        loop {
+            if start.elapsed() > POLL_TIMEOUT {
+                log::warn!("OAuth status poller timed out after {POLL_TIMEOUT:?}");
+                return;
+            }
+
+            if app.state::<RcloneState>().is_shutting_down() {
+                log::debug!("OAuth status poller exiting — app shutting down");
+                return;
+            }
+
+            let status = match transport.rpc(config::OAUTHSTATUS, None).await {
+                Ok(s) => s,
+                Err(e) => {
+                    log::debug!("oauthstatus poll error (will retry): {e}");
+                    tokio::time::sleep(POLL_INTERVAL).await;
+                    continue;
+                }
+            };
+
+            let running = status
+                .get("running")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let auth_url = status
+                .get("authUrl")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+
+            log::debug!(
+                "oauthstatus: running={running}, authUrl={:?}",
+                auth_url.as_deref().map(|u| &u[..u.len().min(60)])
+            );
+
+            if let Some(url) = auth_url {
+                if !url_emitted {
+                    info!("OAuth auth URL available, emitting to frontend");
+                    let _ = app.emit(RCLONE_OAUTH_URL, json!({ "url": url }));
+                    url_emitted = true;
+                }
+            } else if url_emitted {
+                log::debug!(
+                    "OAuth server stopped (authUrl is None) after URL was emitted — flow completed"
+                );
+                return;
+            }
+
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+    });
 }
 
 async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
-    #[cfg(not(feature = "librclone"))]
-    {
-        let state = app.state::<RcloneState>();
-        let backend = app.state::<BackendManager>().get_active().await;
-        let url = crate::rclone::commands::common::get_config_url(&backend, endpoint);
-
-        let response = backend
-            .inject_auth(state.client.post(&url))
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-        let status = response.status();
-        let text = response.text().await.unwrap_or_default();
-
-        if !status.is_success() {
-            return Err(crate::localized_error!(
-                "backendErrors.http.error",
-                "status" => status,
-                "body"   => text
-            ));
-        }
-
-        Ok(serde_json::from_str(&text).unwrap_or_else(|_| json!({ "raw": text })))
-    }
-    #[cfg(feature = "librclone")]
-    {
-        let transport = app.state::<RcloneState>().transport.clone();
-        transport
-            .rpc(endpoint, Some(&body))
-            .await
-            .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
-    }
+    let transport = app.state::<RcloneState>().transport.clone();
+    transport
+        .rpc(endpoint, Some(&body))
+        .await
+        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }
 
 fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
@@ -95,7 +121,7 @@ fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
     Value::Object(map)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn create_remote_interactive(
     app: AppHandle,
     name: String,
@@ -111,9 +137,7 @@ pub async fn create_remote_interactive(
         Some(json!({ "type": rclone_type })),
     );
 
-    ensure_oauth_or_poll(&app)
-        .await
-        .map_err(|e| e.to_string())?;
+    spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -151,7 +175,7 @@ pub async fn create_remote_interactive(
     Ok(value)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn continue_create_remote_interactive(
     app: AppHandle,
     name: String,
@@ -168,9 +192,7 @@ pub async fn continue_create_remote_interactive(
         Some(json!({ "state": state_token })),
     );
 
-    ensure_oauth_or_poll(&app)
-        .await
-        .map_err(|e| e.to_string())?;
+    spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -219,7 +241,7 @@ pub async fn continue_create_remote_interactive(
     Ok(value)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn create_remote(
     app: AppHandle,
     name: String,
@@ -272,9 +294,7 @@ pub async fn create_remote(
         })),
     );
 
-    ensure_oauth_or_poll(&app)
-        .await
-        .map_err(|e| e.to_string())?;
+    spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::CREATE, body).await.map_err(|e| {
         log_operation(
@@ -309,7 +329,7 @@ pub async fn create_remote(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_remote(
     app: AppHandle,
     name: String,
@@ -354,9 +374,7 @@ pub async fn update_remote(
         })),
     );
 
-    ensure_oauth_or_poll(&app)
-        .await
-        .map_err(|e| e.to_string())?;
+    spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::UPDATE, body).await.map_err(|e| {
         log_operation(
@@ -389,7 +407,7 @@ pub async fn update_remote(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
     let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");
@@ -473,6 +491,20 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         Err(e) => {
             warn!("⚠️  Failed to delete settings for remote '{name}': {e}");
         }
+    }
+
+    // Clean up all associated quick runs for this remote
+    let manager = app.state::<AppSettingsManager>();
+    match delete_quick_runs_for_remote(&manager, &name) {
+        Ok(deleted_ids) if !deleted_ids.is_empty() => {
+            info!(
+                "Removed {} quick run(s) for deleted remote '{name}'",
+                deleted_ids.len()
+            );
+            sync_quick_run_automations_bg(&app).await;
+        }
+        Err(e) => warn!("Failed to clean up quick runs for remote '{name}': {e}"),
+        _ => {}
     }
 
     transport

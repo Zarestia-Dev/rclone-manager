@@ -57,12 +57,14 @@ export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnriched
     }
   );
 
-  private readonly _preloadEffect = effect(() => {
-    const remotes = this.remotesList();
-    if (remotes.length > 0) {
-      untracked(() => this.ops.preloadFeatures(this.transfers()));
-    }
-  });
+  constructor() {
+    effect(() => {
+      const remotes = this.remotesList();
+      if (remotes.length > 0) {
+        untracked(() => this.ops.preloadFeatures(this.transfers()));
+      }
+    });
+  }
 
   /**
    * Subclass-specific enrichment + filtering pipeline. Must return the full
@@ -94,6 +96,13 @@ export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnriched
     return this.translate.instant('shared.transferActivity.time.daysAgo', {
       count: days,
     });
+  }
+
+  /** Compute standard transfer speed category class from bytes/second */
+  protected getSpeedClass(speed: number): string {
+    if (speed > 5 * 1024 * 1024) return 'speed-fast';
+    if (speed > 1024 * 1024) return 'speed-medium';
+    return 'speed-slow';
   }
 
   /** Whether the given enriched item is currently being resolved. */

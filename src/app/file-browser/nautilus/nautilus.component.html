@@ -146,9 +146,11 @@
         [viewMenu]="viewMenu"
         [isPickerMode]="isPickerMode()"
         [isConfirmDisabled]="isConfirmDisabled()"
+        [isSidebarOpen]="isSidenavOpen()"
         (setLayout)="settings.setLayout($event)"
         (confirmSelection)="confirmSelection()"
         (toggleSidebar)="sidenav.toggle()"
+        (popOutToWindow)="onPopOutToWindow()"
       ></app-nautilus-bottom-bar>
     }
 

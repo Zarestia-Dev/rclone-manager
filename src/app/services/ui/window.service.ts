@@ -1,9 +1,9 @@
-import { effect, inject, Injectable, Injector, signal } from '@angular/core';
+import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 
 export type ResizeDirection =
   'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
@@ -14,8 +14,8 @@ export type ResizeDirection =
 export class WindowService extends TauriBaseService {
   private readonly _theme = signal<Theme>('system');
   public readonly theme = this._theme.asReadonly();
-  appSettingsService = inject(AppSettingsService);
-  private readonly injector = inject(Injector);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   private readonly _isMaximized = signal<boolean>(false);
@@ -23,35 +23,55 @@ export class WindowService extends TauriBaseService {
 
   constructor() {
     super();
-    // Reactively listen to settings changes
-    this.appSettingsService.selectSetting('runtime.theme').subscribe(setting => {
-      const theme = (setting?.value as Theme) || 'system';
-      this.applyTheme(theme);
-      this._theme.set(theme);
-    });
 
-    // Listen for system theme changes
-    this.systemThemeQuery.addEventListener('change', () => {
+    this.appSettingsService
+      .selectSetting('runtime.theme')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(setting => {
+        const theme = (setting?.value as Theme) || 'system';
+        this.applyTheme(theme);
+        this._theme.set(theme);
+      });
+
+    const handleSystemThemeChange = (): void => {
       if (this._theme() === 'system') {
         this.applyTheme('system');
       }
+    };
+    this.systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+    this.destroyRef.onDestroy(() => {
+      this.systemThemeQuery.removeEventListener('change', handleSystemThemeChange);
     });
 
-    this.initWindowListeners();
-    this.initLinuxResizeHandles();
-  }
-
-  private async initWindowListeners(): Promise<void> {
     if (this.isTauri) {
-      this.checkMaximizedState();
-      this.listenToEvent('tauri://resize').subscribe(() => {
-        this.checkMaximizedState();
+      effect(() => {
+        const isMax = this.isMaximized();
+        const container = document.getElementById('linux-resize-handles');
+        if (container) {
+          container.style.display = isMax ? 'none' : 'block';
+        }
       });
+
+      this.initWindowListeners();
+      this.initLinuxResizeHandles();
     }
   }
 
+  private async initWindowListeners(): Promise<void> {
+    this.checkMaximizedState();
+    this.listenToEvent('tauri://resize')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.checkMaximizedState();
+      });
+  }
+
   private initLinuxResizeHandles(): void {
-    if (!this.isTauri || isHeadlessMode() || platform() !== 'linux') return;
+    try {
+      if (platform() !== 'linux') return;
+    } catch {
+      return;
+    }
 
     const createHandles = (): void => {
       if (document.getElementById('linux-resize-handles')) return;
@@ -60,6 +80,7 @@ export class WindowService extends TauriBaseService {
 
       const container = document.createElement('div');
       container.id = 'linux-resize-handles';
+      container.style.display = this.isMaximized() ? 'none' : 'block';
 
       const directions: ResizeDirection[] = [
         'North',
@@ -95,13 +116,6 @@ export class WindowService extends TauriBaseService {
       }
 
       targetContainer.appendChild(container);
-
-      effect(
-        () => {
-          container.style.display = this.isMaximized() ? 'none' : 'block';
-        },
-        { injector: this.injector }
-      );
     };
 
     if (document.readyState === 'loading') {
@@ -124,7 +138,7 @@ export class WindowService extends TauriBaseService {
 
   async quitApplication(): Promise<void> {
     try {
-      await this.invokeCommand('shutdown_app');
+      await this.invokeCommand('request_app_exit');
     } catch (error) {
       console.error('Failed to quit application:', error);
     }
@@ -189,20 +203,10 @@ export class WindowService extends TauriBaseService {
 
   async applyTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
     try {
-      let _theme: 'light' | 'dark' = theme as 'light' | 'dark';
-      if (theme === 'system') {
-        try {
-          _theme = await this.getSystemTheme();
-        } catch {
-          _theme = this.systemThemeQuery.matches ? 'dark' : 'light';
-        }
-        // If systemThemeQuery disagrees (e.g. on Android where backend get_system_theme defaults to dark), use matchMedia
-        if (this.systemThemeQuery.matches !== (_theme === 'dark')) {
-          _theme = this.systemThemeQuery.matches ? 'dark' : 'light';
-        }
-      }
+      const resolvedTheme: 'light' | 'dark' =
+        theme === 'system' ? (this.systemThemeQuery.matches ? 'dark' : 'light') : theme;
 
-      document.documentElement.setAttribute('class', _theme);
+      document.documentElement.setAttribute('class', resolvedTheme);
 
       // On Android, notify native Kotlin bridge to sync status bar / navigation bar icon theme
       const bridge = (
@@ -214,16 +218,15 @@ export class WindowService extends TauriBaseService {
       ).__rclone__;
 
       if (bridge?.setSystemTheme) {
-        bridge.setSystemTheme(_theme === 'dark');
+        bridge.setSystemTheme(resolvedTheme === 'dark');
       }
 
-      await this.invokeCommand('set_theme', { theme: _theme });
+      await this.invokeCommand('set_theme', {
+        theme,
+        systemIsDark: this.systemThemeQuery.matches,
+      });
     } catch (error) {
       console.error('Failed to apply theme:', error);
     }
-  }
-
-  getSystemTheme(): Promise<'light' | 'dark'> {
-    return this.invokeCommand<'light' | 'dark'>('get_system_theme');
   }
 }

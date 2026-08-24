@@ -17,7 +17,7 @@ export const SUPPORTED_ARCHIVE_FORMATS = [
 export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   move: [
     {
-      Name: 'create-empty-src-dirs',
+      Name: 'createEmptySrcDirs',
       Help: 'Create empty source directories on destination after move.',
       Default: false,
       DefaultStr: 'false',
@@ -27,7 +27,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'createEmptySrcDirs',
     },
     {
-      Name: 'delete-empty-src-dirs',
+      Name: 'deleteEmptySrcDirs',
       Help: 'Delete empty source directories after move.',
       Default: false,
       DefaultStr: 'false',
@@ -39,7 +39,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   copy: [
     {
-      Name: 'create-empty-src-dirs',
+      Name: 'createEmptySrcDirs',
       Help: 'Create empty source directories on destination after copy.',
       Default: false,
       DefaultStr: 'false',
@@ -51,7 +51,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   sync: [
     {
-      Name: 'create-empty-src-dirs',
+      Name: 'createEmptySrcDirs',
       Help: 'Create empty source directories on destination after sync.',
       Default: false,
       DefaultStr: 'false',
@@ -63,7 +63,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   check: [
     {
-      Name: 'one-way',
+      Name: 'oneWay',
       Help: "Do check one way only - find files on source which don't exist on destination.",
       Default: false,
       DefaultStr: 'false',
@@ -83,7 +83,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'download',
     },
     {
-      Name: 'check-file-hash',
+      Name: 'checkFileHash',
       Help: 'Treat checkFileFs:checkFileRemote as a SUM file with hashes of given type.',
       Default: '',
       DefaultStr: '',
@@ -93,7 +93,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'checkFileHash',
     },
     {
-      Name: 'check-file-fs',
+      Name: 'checkFileFs',
       Help: 'Treat checkFileFs:checkFileRemote as a SUM file with hashes.',
       Default: '',
       DefaultStr: '',
@@ -103,7 +103,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'checkFileFs',
     },
     {
-      Name: 'check-file-remote',
+      Name: 'checkFileRemote',
       Help: 'Treat checkFileFs:checkFileRemote as a SUM file with hashes.',
       Default: '',
       DefaultStr: '',
@@ -123,7 +123,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'combined',
     },
     {
-      Name: 'missing-on-src',
+      Name: 'missingOnSrc',
       Help: 'Report all files missing from the source.',
       Default: true,
       DefaultStr: 'true',
@@ -133,7 +133,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'missingOnSrc',
     },
     {
-      Name: 'missing-on-dst',
+      Name: 'missingOnDst',
       Help: 'Report all files missing from the destination.',
       Default: true,
       DefaultStr: 'true',
@@ -175,7 +175,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   bisync: [
     {
-      Name: 'dry-run',
+      Name: 'dryRun',
       Help: 'Perform a dry-run.',
       Default: false,
       DefaultStr: 'false',
@@ -195,7 +195,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'resync',
     },
     {
-      Name: 'resync-mode',
+      Name: 'resyncMode',
       Help: 'During resync, prefer the version that is: path1, path2, newer, older, larger, smaller (default: path1 if --resync, otherwise none for no resync.)',
       Default: 'none',
       DefaultStr: 'none',
@@ -214,7 +214,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       ],
     },
     {
-      Name: 'check-access',
+      Name: 'checkAccess',
       Help: 'Abort if RCLONE_TEST files are not found on both filesystems.',
       Default: false,
       DefaultStr: 'false',
@@ -224,7 +224,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'checkAccess',
     },
     {
-      Name: 'check-filename',
+      Name: 'checkFilename',
       Help: 'File name for --check-access.',
       Default: 'RCLONE_TEST',
       DefaultStr: 'RCLONE_TEST',
@@ -234,7 +234,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'checkFilename',
     },
     {
-      Name: 'max-delete',
+      Name: 'maxDelete',
       Help: 'Abort sync if percentage of deleted files is above this threshold.',
       Default: 50,
       DefaultStr: '50',
@@ -254,7 +254,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'force',
     },
     {
-      Name: 'check-sync',
+      Name: 'checkSync',
       Help: 'Controls comparison of final listings.',
       Default: 'true',
       DefaultStr: 'true',
@@ -279,7 +279,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'compare',
     },
     {
-      Name: 'conflict-loser',
+      Name: 'conflictLoser',
       Help: 'Action to take on the loser of a sync conflict (when there is a winner) or on both files (when there is no winner): , num, pathname, delete (default: num)',
       Default: 'num',
       DefaultStr: 'num',
@@ -294,7 +294,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       ],
     },
     {
-      Name: 'conflict-resolve',
+      Name: 'conflictResolve',
       Help: 'Automatically resolve conflicts by preferring the version that is: none, path1, path2, newer, older, larger, smaller (default: none)',
       Default: 'none',
       DefaultStr: 'none',
@@ -313,7 +313,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       ],
     },
     {
-      Name: 'conflict-suffix',
+      Name: 'conflictSuffix',
       Help: "Suffix to use when renaming a --conflict-loser. Can be either one string or two comma-separated strings to assign different suffixes to Path1/Path2. (default: 'conflict')",
       Default: 'conflict',
       DefaultStr: 'conflict',
@@ -323,7 +323,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'conflictSuffix',
     },
     {
-      Name: 'create-empty-src-dirs',
+      Name: 'createEmptySrcDirs',
       Help: 'Sync creation and deletion of empty directories.',
       Default: false,
       DefaultStr: 'false',
@@ -333,7 +333,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'createEmptySrcDirs',
     },
     {
-      Name: 'remove-empty-dirs',
+      Name: 'removeEmptyDirs',
       Help: 'Remove empty directories at the final cleanup step.',
       Default: false,
       DefaultStr: 'false',
@@ -343,7 +343,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'removeEmptyDirs',
     },
     {
-      Name: 'download-hash',
+      Name: 'downloadHash',
       Help: 'Compute hash by downloading when otherwise unavailable. (warning: may be slow and use lots of data!)',
       Default: false,
       DefaultStr: 'false',
@@ -353,7 +353,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'downloadHash',
     },
     {
-      Name: 'filters-file',
+      Name: 'filtersFile',
       Help: 'Read filtering patterns from a file.',
       Default: '',
       DefaultStr: '',
@@ -363,7 +363,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'filtersFile',
     },
     {
-      Name: 'ignore-listing-checksum',
+      Name: 'ignoreListingChecksum',
       Help: 'Do not use checksums for listings.',
       Default: false,
       DefaultStr: 'false',
@@ -373,7 +373,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'ignoreListingChecksum',
     },
     {
-      Name: 'max-lock',
+      Name: 'maxLock',
       Help: 'Consider lock files older than this to be expired (default: 0 (never expire)) (minimum: 2m)',
       Default: '0s',
       DefaultStr: '0s',
@@ -383,7 +383,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'maxLock',
     },
     {
-      Name: 'no-slow-hash',
+      Name: 'noSlowHash',
       Help: 'Ignore listing checksums only on backends where they are slow',
       Default: false,
       DefaultStr: 'false',
@@ -393,7 +393,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'noSlowHash',
     },
     {
-      Name: 'slow-hash-sync-only',
+      Name: 'slowHashSyncOnly',
       Help: 'Ignore slow checksums for listings and deltas, but still consider them during sync calls.',
       Default: false,
       DefaultStr: 'false',
@@ -433,7 +433,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'workdir',
     },
     {
-      Name: 'backup-dir1',
+      Name: 'backupDir1',
       Help: '--backup-dir for Path1.',
       Default: '',
       DefaultStr: '',
@@ -443,7 +443,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'backupDir1',
     },
     {
-      Name: 'backup-dir2',
+      Name: 'backupDir2',
       Help: '--backup-dir for Path2.',
       Default: '',
       DefaultStr: '',
@@ -453,7 +453,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'backupDir2',
     },
     {
-      Name: 'no-cleanup',
+      Name: 'noCleanup',
       Help: 'Retain working files.',
       Default: false,
       DefaultStr: 'false',
@@ -513,7 +513,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'prefix',
     },
     {
-      Name: 'full-path',
+      Name: 'fullPath',
       Help: 'Use full path of files in the archive',
       Default: false,
       DefaultStr: 'false',
@@ -525,7 +525,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   cryptcheck: [
     {
-      Name: 'one-way',
+      Name: 'oneWay',
       Help: "Do check one way only - find files on source which don't exist on destination.",
       Default: false,
       DefaultStr: 'false',
@@ -585,7 +585,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'match',
     },
     {
-      Name: 'missing-on-dst',
+      Name: 'missingOnDst',
       Help: 'Report all files missing from the destination to this file.',
       Default: '',
       DefaultStr: '',
@@ -595,7 +595,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'missingOnDst',
     },
     {
-      Name: 'missing-on-src',
+      Name: 'missingOnSrc',
       Help: 'Report all files missing from the source to this file.',
       Default: '',
       DefaultStr: '',
@@ -607,7 +607,7 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
   ],
   copyurl: [
     {
-      Name: 'auto-filename',
+      Name: 'autoFilename',
       Help: 'Get the filename from the URL or headers if destination is a directory.',
       Default: false,
       DefaultStr: 'false',

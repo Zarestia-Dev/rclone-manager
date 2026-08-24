@@ -2,7 +2,7 @@
 //!
 //! Exposes rcman's dynamic export categories to the frontend.
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use tauri::{AppHandle, Manager};
 
 /// Response type for export categories
@@ -18,7 +18,7 @@ pub struct ExportCategoryResponse {
 }
 
 /// Get available export categories from rcman
-#[tauri::command]
+#[bridge]
 pub async fn get_export_categories(app: AppHandle) -> Result<Vec<ExportCategoryResponse>, String> {
     let manager = app.state::<AppSettingsManager>();
     let categories = manager

@@ -5,39 +5,16 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
 import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
-import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathNavigationService } from '../infrastructure/platform/path-navigation.service';
-import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
+import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-
-/**
- * Whether the *client* WebView can register a custom URL scheme
- * (`local-asset://`, `rclone://`, `audio-cover://`). Windows WebView2 and
- * mobile WebViews do not reliably support custom schemes, so we fall back
- * to `http://*.localhost`.
- *
- * This is a CLIENT-OS concern (where is the Tauri WebView running?),
- * deliberately distinct from the path-style decision (which derives from
- * the *engine* OS via `BackendInfo.os`). The two can legitimately differ —
- * e.g. a Linux rclone engine driven from a Windows client.
- */
-function supportsCustomUrlScheme(): boolean {
-  if (isHeadlessMode()) return false;
-  try {
-    const p = platform();
-    return p !== 'windows' && !isMobile();
-  } catch {
-    return !isMobile();
-  }
-}
 
 @Injectable({
   providedIn: 'root',
 })
 export class FileViewerService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
-  private readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly pathNavigationService = inject(PathNavigationService);
 
@@ -46,6 +23,22 @@ export class FileViewerService extends TauriBaseService {
 
   private readonly _activeFileName = signal<string | null>(null);
   public readonly activeFileName = this._activeFileName.asReadonly();
+
+  /**
+   * Whether the client WebView can register a custom URL scheme
+   * (`local-asset://`, `rclone://`, `audio-cover://`). Windows WebView2 and
+   * mobile WebViews do not reliably support custom schemes, so we fall back
+   * to `http://*.localhost`.
+   */
+  private supportsCustomUrlScheme(): boolean {
+    if (!this.isTauri) return false;
+    try {
+      const p = platform();
+      return p !== 'windows' && !isMobile();
+    } catch {
+      return !isMobile();
+    }
+  }
 
   setActiveFileName(name: string | null): void {
     this._activeFileName.set(name);
@@ -94,31 +87,27 @@ export class FileViewerService extends TauriBaseService {
       .subscribe(() => cleanup());
   }
 
-  async getFileType(item: Entry, _remoteName: string, _isLocal: boolean): Promise<string> {
-    return this.iconService.getFileTypeCategory(item);
-  }
-
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {
     const path = item.Path;
 
     if (isLocal) {
       const fullPath = this.pathService.joinPath(remoteName, path);
 
-      if (isHeadlessMode()) {
+      if (!this.isTauri) {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}`;
       }
-      if (supportsCustomUrlScheme()) {
+      if (this.supportsCustomUrlScheme()) {
         return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
       }
       return `http://audio-cover.localhost/local/${encodeURIComponent(fullPath)}`;
     } else {
-      if (isHeadlessMode()) {
+      if (!this.isTauri) {
         const encodedRemote = encodeURIComponent(remoteName);
         const encodedPath = encodeURIComponent(path);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
       }
-      if (supportsCustomUrlScheme()) {
+      if (this.supportsCustomUrlScheme()) {
         return `audio-cover://localhost/remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(
           path
         )}`;
@@ -161,7 +150,7 @@ export class FileViewerService extends TauriBaseService {
     if (isLocal) {
       const fullPath = this.pathService.joinPath(remoteName, path);
 
-      if (isHeadlessMode()) {
+      if (!this.isTauri) {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBase()}/stream?path=${encodedPath}`;
       }
@@ -172,7 +161,7 @@ export class FileViewerService extends TauriBaseService {
       // (absolute vs relative), not an OS inference.
       const encodedSegments = this.pathNavigationService.encodePath(fullPath);
 
-      if (supportsCustomUrlScheme()) {
+      if (this.supportsCustomUrlScheme()) {
         const pathWithSlash = encodedSegments.startsWith('/')
           ? encodedSegments
           : `/${encodedSegments}`;
@@ -188,7 +177,7 @@ export class FileViewerService extends TauriBaseService {
     const rName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
     const encodedPath = this.pathNavigationService.encodePath(path);
 
-    if (isHeadlessMode()) {
+    if (!this.isTauri) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(
         rName
       )}&path=${encodedPath}`;
@@ -196,7 +185,7 @@ export class FileViewerService extends TauriBaseService {
 
     const urlSafeRemote = this.pathService.normalizeRemoteName(rName);
     const encodedRemote = encodeURIComponent(urlSafeRemote);
-    if (supportsCustomUrlScheme()) {
+    if (this.supportsCustomUrlScheme()) {
       return `rclone://localhost/${encodedRemote}/${encodedPath}`;
     }
     return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;

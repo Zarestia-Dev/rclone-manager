@@ -83,6 +83,8 @@ export class AlertRuleEditorComponent {
     'startup',
     'update',
     'internal',
+    'flow',
+    'quickrun',
   ];
 
   form = this.fb.nonNullable.group({

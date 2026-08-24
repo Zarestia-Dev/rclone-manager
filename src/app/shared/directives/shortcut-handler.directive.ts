@@ -11,6 +11,7 @@ import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore
 import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 
 @Directive({
   selector: '[appShortcutHandler]',
@@ -26,6 +27,7 @@ export class ShortcutHandlerDirective {
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly nautilusService = inject(NautilusService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
+  private readonly flowOverlayService = inject(FlowOverlayService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -96,12 +98,6 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
-    // Navigation shortcuts
-    if (!ctrlKey && !shiftKey && !altKey && key === 'Escape') {
-      // Let individual components handle this
-      return false;
-    }
-
     // Settings shortcuts
     if (ctrlKey && !shiftKey && !altKey && key === ',') {
       this.openPreferences();
@@ -115,6 +111,11 @@ export class ShortcutHandlerDirective {
 
     if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'a') {
       this.openAlerts();
+      return true;
+    }
+
+    if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'f') {
+      this.toggleFlowOverlay();
       return true;
     }
 
@@ -148,25 +149,9 @@ export class ShortcutHandlerDirective {
       return false;
     }
 
-    // Block if file viewer is open
-    if (this.isFileViewerOpen()) {
-      console.debug('Shortcuts blocked: File viewer is open');
-      return true;
-    }
-
-    // Block if any modal is open
-    if (this.dialog.openDialogs.length > 0) {
-      console.debug('Shortcuts blocked: Modal is open');
-      return true;
-    }
-
-    // Block if onboarding is active
-    if (this.isOnboardingActive()) {
-      console.debug('Shortcuts blocked: Onboarding is active');
-      return true;
-    }
-
-    return false;
+    return (
+      this.isFileViewerOpen() || this.dialog.openDialogs.length > 0 || this.isOnboardingActive()
+    );
   }
 
   /**
@@ -192,7 +177,7 @@ export class ShortcutHandlerDirective {
   }
 
   private toggleFileBrowser(): void {
-    void this.nautilusService.newNautilusWindow(null, null);
+    this.nautilusService.toggleNautilusOverlay();
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {
@@ -251,5 +236,9 @@ export class ShortcutHandlerDirective {
 
   private openAlerts(): void {
     this.modalService.openAlerts();
+  }
+
+  private toggleFlowOverlay(): void {
+    this.flowOverlayService.toggleFlowOverlay();
   }
 }

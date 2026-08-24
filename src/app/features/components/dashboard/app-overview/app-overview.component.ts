@@ -1,15 +1,5 @@
+import { Component, computed, input, output, inject, ChangeDetectionStrategy } from '@angular/core';
 import {
-  Component,
-  computed,
-  input,
-  output,
-  inject,
-  signal,
-  linkedSignal,
-  ChangeDetectionStrategy,
-} from '@angular/core';
-import {
-  CardDisplayMode,
   OperationTab,
   PrimaryActionType,
   Remote,
@@ -23,9 +13,9 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-app-overview',
@@ -45,11 +35,10 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     '[class]': 'mode()',
     'attr.animate.enter': 'fade-in-out-enter',
     'attr.animate.leave': 'fade-in-out-leave',
-    '(document:click)': 'closeBlossom()',
   },
 })
 export class AppOverviewComponent {
-  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly uiStateService = inject(UiStateService);
   readonly remoteFacade = inject(RemoteFacadeService);
   readonly backendService = inject(BackendService);
 
@@ -67,23 +56,9 @@ export class AppOverviewComponent {
   readonly stopJob = output<StopJobEvent>();
   readonly openBackendModal = output<void>();
 
-  // Card display mode is local UI state initialized from settings options signal
-  readonly cardDisplayMode = linkedSignal<CardDisplayMode>(() => {
-    const saved = this.appSettingsService.options()?.['runtime.dashboard_card_variant']
-      ?.value as CardDisplayMode;
-    return saved || 'detailed';
-  });
-  readonly isEditingLayout = signal(false);
-  readonly isBlossomOpen = signal(false);
-
-  toggleBlossom(event: MouseEvent): void {
-    event.stopPropagation();
-    this.isBlossomOpen.update(v => !v);
-  }
-
-  closeBlossom(): void {
-    this.isBlossomOpen.set(false);
-  }
+  // Centrally synchronized card display mode & edit layout state
+  readonly cardDisplayMode = this.uiStateService.cardDisplayMode;
+  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview(this.mode()));
 
   // --- Derived state ---
   private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()] ?? MODE_CONFIG.mount);
@@ -114,8 +89,15 @@ export class AppOverviewComponent {
   }
 
   toggleEditLayout(): void {
-    this.isEditingLayout.update(v => !v);
-    this.closeBlossom();
+    this.uiStateService.toggleLayoutEdit({
+      overviewId: this.mode(),
+      hasViewToggle: true,
+      onReset: () => this.resetLayout(),
+    });
+  }
+
+  resetLayout(): void {
+    void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
   }
 
   onLayoutChanged(newNames: string[]): void {
@@ -124,13 +106,6 @@ export class AppOverviewComponent {
 
   onToggleHidden(remoteName: string): void {
     void this.remoteFacade.toggleRemoteVisibility(this.backendService.activeBackend(), remoteName);
-  }
-
-  onCardDisplayModeToggle(): void {
-    const nextMode = this.cardDisplayMode() === 'compact' ? 'detailed' : 'compact';
-    this.cardDisplayMode.set(nextMode);
-    void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', nextMode);
-    this.closeBlossom();
   }
 
   // --- Private helpers ---

@@ -1,5 +1,4 @@
 import {
-  DestroyRef,
   Injectable,
   computed,
   inject,
@@ -11,8 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, concatMap, from } from 'rxjs';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { merge } from 'rxjs';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
@@ -27,6 +25,12 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
+import { QuickRunService } from '../flow/quick-run.service';
+import { AutomationService } from '../operations/automation.service';
+import { NotificationService } from '../ui/notification.service';
+import { BackendTranslationService } from '../i18n/backend-translation.service';
+import { TranslateService } from '@ngx-translate/core';
+import { findUniqueName } from '../remote/utils/unique-name.util';
 import {
   Remote,
   JobInfo,
@@ -61,7 +65,7 @@ interface RemoteState {
 }
 
 @Injectable({ providedIn: 'root' })
-export class RemoteFacadeService extends TauriBaseService {
+export class RemoteFacadeService {
   private readonly jobService = inject(JobManagementService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
@@ -74,9 +78,13 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly backendService = inject(BackendService);
   private readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly statusService = inject(RcloneStatusService);
   private readonly flagConfigService = inject(FlagConfigService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly backendTranslation = inject(BackendTranslationService);
+  private readonly translate = inject(TranslateService);
+  private readonly quickRunService = inject(QuickRunService);
+  private readonly automationService = inject(AutomationService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -92,9 +100,6 @@ export class RemoteFacadeService extends TauriBaseService {
 
   private readonly _actionInProgress = signal<Record<string, ActionState[]>>({});
   readonly actionInProgress = this._actionInProgress.asReadonly();
-
-  // Memoized per-remote action signals — avoids creating a new computed on every call
-  private readonly _actionSignals = new Map<string, Signal<ActionState[]>>();
 
   readonly loading = this.isLoading.asReadonly();
 
@@ -153,8 +158,9 @@ export class RemoteFacadeService extends TauriBaseService {
 
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
+  private refreshInFlight: Promise<void> | null = null;
+
   constructor() {
-    super();
     void this.refreshAll();
 
     // Primary trigger: engine ready event (fires after caches are populated)
@@ -177,7 +183,7 @@ export class RemoteFacadeService extends TauriBaseService {
       this.eventListeners.listenToBackendSwitched()
     )
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.loadRemotes());
+      .subscribe(() => void this.loadRemotes());
   }
 
   // --- Settings & Path Collisions ---
@@ -200,14 +206,13 @@ export class RemoteFacadeService extends TauriBaseService {
     const collisions: { remoteName: string; profileName: string; opType: string; path: string }[] =
       [];
     const allSettings = this.remoteSettings();
-
     const opKeys = ['mount', 'bisync'] as const;
 
     for (const [rName, rConfig] of Object.entries(allSettings)) {
       if (!rConfig) continue;
 
       for (const opType of opKeys) {
-        const profilesMap = rConfig[opType] as Record<string, any> | undefined;
+        const profilesMap = rConfig[opType] as Record<string, Record<string, unknown>> | undefined;
         if (!profilesMap || typeof profilesMap !== 'object') continue;
 
         for (const [pName, pConfig] of Object.entries(profilesMap)) {
@@ -216,14 +221,18 @@ export class RemoteFacadeService extends TauriBaseService {
 
           const pathsToCheck: string[] = [];
           if (opType === 'mount') {
-            if (pConfig.mountPoint) pathsToCheck.push(pConfig.mountPoint);
-            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
-            if (pConfig.rclone?.mountOpt?.mountPoint)
-              pathsToCheck.push(pConfig.rclone.mountOpt.mountPoint);
+            if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
+            const dest = pConfig['dest'] as { path?: string } | undefined;
+            if (dest?.path) pathsToCheck.push(dest.path);
+            const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
+            if (typeof rclone?.['mountPoint'] === 'string') {
+              pathsToCheck.push(rclone['mountPoint']);
+            }
           } else if (opType === 'bisync') {
-            if (pConfig.path1) pathsToCheck.push(pConfig.path1);
-            if (pConfig.path2) pathsToCheck.push(pConfig.path2);
-            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
+            if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
+            if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
+            const dest = pConfig['dest'] as { path?: string } | undefined;
+            if (dest?.path) pathsToCheck.push(dest.path);
           }
 
           for (const rawPath of pathsToCheck) {
@@ -327,7 +336,7 @@ export class RemoteFacadeService extends TauriBaseService {
         ...cur,
         loading: false,
         error: true,
-        errorMessage: String(error),
+        errorMessage: this.backendTranslation.translateBackendMessage(error),
       }));
       return null;
     }
@@ -361,7 +370,8 @@ export class RemoteFacadeService extends TauriBaseService {
         const state = this.remoteStates.get(name);
 
         if (state) {
-          if (JSON.stringify(state.base().config) !== JSON.stringify(config)) {
+          const prevConfig = state.base().config;
+          if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
             this.remoteService.clearCache(name);
           }
           state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
@@ -415,51 +425,41 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   async refreshAll(): Promise<void> {
-    this.isLoading.set(true);
-    void this.flagConfigService.loadAllFlagFields();
-    void this.remoteService.getRemoteTypes();
-    try {
-      await Promise.all([
-        this.statusService.refreshStatus(),
-        this.loadRemotes(),
-        this.mountService.getMountedRemotes(),
-        this.serveService.refreshServes(),
-        this.jobService.refreshJobs(),
-      ]);
-      this.loadDiskUsageInBackground();
-    } finally {
-      this.isLoading.set(false);
-    }
+    if (this.refreshInFlight) return this.refreshInFlight;
+
+    const promise = (async (): Promise<void> => {
+      this.isLoading.set(true);
+      void this.flagConfigService.loadAllFlagFields();
+      void this.remoteService.getRemoteTypes();
+      try {
+        await Promise.all([
+          this.statusService.refreshStatus(),
+          this.loadRemotes(),
+          this.mountService.getMountedRemotes(),
+          this.serveService.refreshServes(),
+          this.jobService.refreshJobs(),
+          this.quickRunService.refresh(),
+          this.automationService.refreshAutomations(),
+        ]);
+        this.loadDiskUsageInBackground();
+      } finally {
+        this.isLoading.set(false);
+        this.refreshInFlight = null;
+      }
+    })();
+
+    this.refreshInFlight = promise;
+    return promise;
   }
 
   // --- Action State ---
-
-  getActionSignal(remoteName: string): Signal<ActionState[]> {
-    let sig = this._actionSignals.get(remoteName);
-    if (!sig) {
-      sig = computed(() => this._actionInProgress()[remoteName] ?? []);
-      this._actionSignals.set(remoteName, sig);
-    }
-    return sig;
-  }
 
   diskUsageSignal(remoteName: string): Signal<DiskUsage> {
     return this.getOrCreateRemoteState(remoteName).disk;
   }
 
   featuresSignal(remoteName: string): Signal<RemoteFeatures> {
-    const remote = this.activeRemotes().find(r => r.name === remoteName);
-    return this.remoteService.getFeaturesSignal(remoteName, remote?.type);
-  }
-
-  getActionState(remoteName: string): ActionState[] {
-    return this._actionInProgress()[remoteName] ?? [];
-  }
-
-  isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
-    return this.getActionState(remoteName).some(
-      a => a.type === action && a.profileName === profileName
-    );
+    return this.remoteService.getFeaturesSignal(remoteName, undefined);
   }
 
   async executeAction<T>(
@@ -592,9 +592,13 @@ export class RemoteFacadeService extends TauriBaseService {
   ): Promise<void> {
     if (type === 'serve') {
       const serves = this.runningServes().filter(
-        s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName
+        s =>
+          this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName &&
+          s.origin !== 'quickrun' &&
+          !s.quick_run_id
       );
-      const idToStop = serveId ?? serves.find(s => s.profile === profileName)?.id ?? serves[0]?.id;
+      const idToStop =
+        serveId ?? (profileName ? serves.find(s => s.profile === profileName)?.id : serves[0]?.id);
       if (!idToStop) throw new Error('Serve ID required to stop serve');
       await this.serveService.stopServe(idToStop, remoteName);
       return;
@@ -602,11 +606,15 @@ export class RemoteFacadeService extends TauriBaseService {
 
     if (type === 'mount') {
       const mounts = this.mountedRemotes().filter(
-        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+        m =>
+          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
+          m.origin !== 'quickrun' &&
+          !m.quick_run_id
       );
       const mountPoint =
-        mounts.find(m => (profileName ? m.profile === profileName : true))?.mount_point ??
-        mounts[0]?.mount_point;
+        (profileName
+          ? mounts.find(m => m.profile === profileName)?.mount_point
+          : mounts[0]?.mount_point) ?? mounts[0]?.mount_point;
       if (!mountPoint) throw new Error(`Active mount not found for ${remoteName}`);
       await this.mountService.unmountRemote(mountPoint, remoteName);
       return;
@@ -620,7 +628,10 @@ export class RemoteFacadeService extends TauriBaseService {
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
       const mount = this.mountedRemotes().find(
-        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+        m =>
+          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
+          m.origin !== 'quickrun' &&
+          !m.quick_run_id
       );
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
@@ -679,11 +690,7 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   generateUniqueRemoteName(baseName: string): string {
-    const existing = Array.from(this.remoteStates.keys());
-    let name = baseName;
-    let i = 1;
-    while (existing.includes(name)) name = `${baseName}-${i++}`;
-    return name;
+    return findUniqueName(baseName, Array.from(this.remoteStates.keys()));
   }
 
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
@@ -727,22 +734,16 @@ export class RemoteFacadeService extends TauriBaseService {
     const targets = remotes ?? this.activeRemotes();
     if (!targets.length) return;
 
-    from(targets)
-      .pipe(
-        concatMap(async remote => {
-          if (generation !== this.backgroundLoadGeneration) return null;
-          try {
-            return await this.getCachedOrFetchDiskUsage(remote.name);
-          } catch (e) {
-            console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
-            return null;
-          }
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        error: e => console.error('[RemoteFacadeService] Background loading error:', e),
-      });
+    void (async (): Promise<void> => {
+      for (const remote of targets) {
+        if (generation !== this.backgroundLoadGeneration) return;
+        try {
+          await this.getCachedOrFetchDiskUsage(remote.name);
+        } catch (e) {
+          console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
+        }
+      }
+    })();
   }
 
   // --- Private Signal Accessors ---
@@ -819,6 +820,9 @@ export class RemoteFacadeService extends TauriBaseService {
     const mountConfigs = getProfiles('mount');
     const serveConfigs = getProfiles('serve');
 
+    const profileMounts = mounts.filter(m => m.origin !== 'quickrun' && !m.quick_run_id);
+    const profileServes = serves.filter(s => s.origin !== 'quickrun' && !s.quick_run_id);
+
     return {
       ...base,
       config: (settings['config'] as RemoteConfig) || base.config,
@@ -837,56 +841,23 @@ export class RemoteFacadeService extends TauriBaseService {
         cryptcheck: this.buildOperationState('cryptcheck', jobs, settings),
         mount: {
           ...buildStatusEntry(
-            mounts,
+            profileMounts,
             Object.keys(mountConfigs),
             mountConfigs,
-            m => {
-              if (m.profile) return m.profile;
-              for (const [profName, profConfig] of Object.entries(mountConfigs)) {
-                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
-                const configMountPoint = rclone['mountPoint'] as string;
-                if (
-                  configMountPoint === m.mount_point ||
-                  (configMountPoint &&
-                    m.mount_point &&
-                    configMountPoint.replace(/\/$/, '') === m.mount_point.replace(/\/$/, ''))
-                ) {
-                  return profName;
-                }
-              }
-              return undefined;
-            },
+            m => m.profile ?? undefined,
             m => m.mount_point
           ),
         },
         serve: {
           ...buildStatusEntry(
-            serves,
+            profileServes,
             Object.keys(serveConfigs),
             serveConfigs,
-            s => {
-              if (s.profile) return s.profile;
-              for (const [profName, profConfig] of Object.entries(serveConfigs)) {
-                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
-                const configFs = rclone['fs'] as string;
-                const configType = rclone['serveType'] as string;
-                if (
-                  configFs === s.params.fs ||
-                  (configFs &&
-                    s.params.fs &&
-                    configFs.replace(/:$/, '') === s.params.fs.replace(/:$/, ''))
-                ) {
-                  if (configType === s.params.type) {
-                    return profName;
-                  }
-                }
-              }
-              return undefined;
-            },
+            s => s.profile ?? undefined,
             s => s.id
           ),
-          count: serves.length,
-          serves,
+          count: profileServes.length,
+          serves: profileServes,
         },
       },
     };
@@ -897,7 +868,9 @@ export class RemoteFacadeService extends TauriBaseService {
     jobs: JobInfo[],
     settings: RemoteSettings
   ): RemoteOperationState {
-    const typeJobs = jobs.filter(j => j.job_type === type);
+    const typeJobs = jobs.filter(
+      j => j.job_type === type && j.origin !== 'quickrun' && !j.quick_run_id
+    );
     const running = typeJobs.filter(j => j.status === 'Running');
     const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
     const profileNames = Object.keys(profiles);
@@ -969,11 +942,27 @@ function buildActiveProfiles<T, V>(
   getValue: (i: T) => V
 ): Record<string, V> {
   const result: Record<string, V> = {};
-  const fallback = profileNames.length === 1 ? (profileNames[0] ?? null) : null;
   for (const item of items) {
     const profile = getProfile(item)?.trim();
-    const target = profile && profile.length > 0 ? profile : fallback;
-    if (target && !(target in result)) result[target] = getValue(item);
+    if (profile && profileNames.includes(profile)) {
+      if (!(profile in result)) result[profile] = getValue(item);
+    }
   }
   return result;
+}
+
+function shallowEqualObjects(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const aKeys = Object.keys(a as object);
+  const bKeys = Object.keys(b as object);
+  if (aKeys.length !== bKeys.length) return false;
+  const bObj = b as Record<string, unknown>;
+  for (const key of aKeys) {
+    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
+    const av = (a as Record<string, unknown>)[key];
+    const bv = bObj[key];
+    if (av !== bv && JSON.stringify(av) !== JSON.stringify(bv)) return false;
+  }
+  return true;
 }

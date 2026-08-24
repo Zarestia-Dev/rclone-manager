@@ -8,6 +8,7 @@
 #
 # Environment variables:
 #   PUID / PGID           — Set container user/group ID (default: 1000)
+#   PGIDS                 — Supplementary group IDs, comma-separated (e.g. 1000,3000)
 #   RCLONE_MANAGER_HOST   — Bind address (default: 0.0.0.0)
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
@@ -71,7 +72,7 @@ LABEL maintainer="Zarestia-Dev" \
       org.opencontainers.image.source="https://github.com/Zarestia-Dev/rclone-manager"
 
 # Install runtime dependencies
-# Note: 'gosu' is used for privilege dropping in the entrypoint
+# Note: 'setpriv' (util-linux) is used for privilege dropping in the entrypoint
 # Note: 'xvfb' and 'dbus-x11' trick Tauri into running without a physical display
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -83,6 +84,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libwebkit2gtk-4.1-0 \
         openssl \
         unzip \
+        util-linux \
         xvfb \
     && rm -rf /var/lib/apt/lists/*
 

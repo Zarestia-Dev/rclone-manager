@@ -31,6 +31,7 @@ services:
       # Run 'id' in your terminal to find your UID/GID.
       - PUID=1000
       - PGID=1000
+      # - PGIDS=1000,3000 # Optional: Supplementary group IDs (comma-separated) for NFSv4 ACLs / ZFS mounts
 
       # --- Optional: Basic Authentication ---
       # Uncomment and fill in to password-protect the web UI.

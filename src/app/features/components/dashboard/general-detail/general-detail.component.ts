@@ -1,6 +1,7 @@
 import {
   Component,
   inject,
+  input,
   signal,
   computed,
   output,
@@ -22,11 +23,15 @@ import {
   StopJobEvent,
   StartJobEvent,
   RemoteStatus,
+  RemoteOperationState,
+  RemoteServeState,
   ActionViewModel,
   ACTION_CONFIGS,
   STANDARD_MODAL_SIZE,
   MODE_DEFAULTS,
   OPERATION_META,
+  OpenInFilesEvent,
+  isOperationActionInProgress,
 } from '@app/types';
 import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
 import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
@@ -44,6 +49,10 @@ import {
   buildActionOrderItems,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
+import { QuickRunCardComponent } from '../../../../flow/quick-run/quick-run-card/quick-run-card.component';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { QuickRun } from '@app/types';
+
 @Component({
   selector: 'app-general-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,6 +66,7 @@ import {
     JobsPanelComponent,
     TranslatePipe,
     AutomationCardComponent,
+    QuickRunCardComponent,
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
@@ -66,9 +76,14 @@ export class GeneralDetailComponent {
   private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly quickRunService = inject(QuickRunService);
   private readonly pathService = inject(PathService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+
+  // Inputs
+  readonly showStatusIndicators = input<boolean>(true);
+  readonly showQuickRuns = input<boolean>(false);
 
   // State
   protected readonly selectedRemote = computed(() => {
@@ -84,10 +99,55 @@ export class GeneralDetailComponent {
   readonly startJob = output<StartJobEvent>();
   readonly deleteJob = output<number>();
   readonly retryDiskUsage = output<void>();
+  readonly selectQuickRun = output<QuickRun>();
 
   // State
   private readonly allAutomations = this.automationService.automations;
   readonly currentAutomationCardIndex = signal(0);
+
+  readonly remoteQuickRuns = computed(() =>
+    this.quickRunService.quickRuns().filter(qr => qr.remoteName === this.selectedRemote().name)
+  );
+
+  isQuickRunRunning(id: string): boolean {
+    return this.quickRunService.runningIds().has(id);
+  }
+
+  onSelectQuickRunById(id: string): void {
+    const qr = this.remoteQuickRuns().find(q => q.id === id);
+    if (qr) {
+      this.selectQuickRun.emit(qr);
+    }
+  }
+
+  onStartQuickRun(qr: QuickRun): void {
+    void this.quickRunService.start(qr.id);
+  }
+
+  onStopQuickRun(qr: QuickRun): void {
+    void this.quickRunService.stop(qr.id);
+  }
+
+  onEditQuickRun(qr: QuickRun): void {
+    this.quickRunService.openEditor(qr);
+  }
+
+  onCreateQuickRunForRemote(): void {
+    this.quickRunService.openEditor(undefined, undefined, this.selectedRemote().name);
+  }
+
+  onOpenQuickRunInFiles(event: OpenInFilesEvent | string, qr?: QuickRun): void {
+    if (typeof event === 'string' && qr) {
+      void this.remoteFacade.openRemoteInFiles(qr.remoteName, event, undefined, qr.operationType);
+    } else if (typeof event !== 'string') {
+      void this.remoteFacade.openRemoteInFiles(
+        event.remoteName,
+        event.path,
+        event.profileName,
+        event.operationType
+      );
+    }
+  }
 
   // Derivations
   readonly jobs = computed(() =>
@@ -127,13 +187,7 @@ export class GeneralDetailComponent {
       const icon = isActive ? meta.stopIcon : meta.startIcon;
       const ariaLabel = this.translate.instant(tooltip);
 
-      const isLoading = actions.some(
-        a =>
-          a.operationType === key ||
-          a.type === key ||
-          (key === 'mount' && a.type === 'unmount') ||
-          (a.type === 'stop' && a.operationType === key)
-      );
+      const isLoading = isOperationActionInProgress(actions, key);
 
       models.push({
         key: config.key,
@@ -185,7 +239,8 @@ export class GeneralDetailComponent {
 
   onToggleAction(actionKey: PrimaryActionType): void {
     const remote = this.selectedRemote();
-    const status = remote.status[actionKey as keyof Omit<RemoteStatus, 'diskUsage'>] as any;
+    const status = remote.status[actionKey as keyof Omit<RemoteStatus, 'diskUsage'>] as
+      RemoteOperationState | RemoteServeState | undefined;
     const isActive = !!status?.active;
 
     if (isActive) {

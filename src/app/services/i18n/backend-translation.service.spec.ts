@@ -1,13 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BackendTranslationService } from './backend-translation.service';
 
 describe('BackendTranslationService', () => {
   let service: BackendTranslationService;
-  let translateServiceMock: jasmine.SpyObj<TranslateService>;
+  let translateServiceMock: { instant: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    translateServiceMock = jasmine.createSpyObj('TranslateService', ['instant']);
+    translateServiceMock = {
+      instant: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -25,18 +28,72 @@ describe('BackendTranslationService', () => {
 
   describe('translateBackendMessage', () => {
     it('should translate valid JSON error with params', () => {
-      const message = JSON.stringify({ key: 'errors.test', params: { param: 'value' } });
-      translateServiceMock.instant.and.returnValue('Translated Error value');
+      const message = JSON.stringify({
+        key: 'backendErrors.mount.configIncomplete',
+        params: { profile: 'Default' },
+      });
+      translateServiceMock.instant.mockReturnValue(
+        "Mount configuration incomplete for profile 'Default'"
+      );
 
       const result = service.translateBackendMessage(message);
 
-      expect(translateServiceMock.instant).toHaveBeenCalledWith('errors.test', { param: 'value' });
-      expect(result).toBe('Translated Error value');
+      expect(translateServiceMock.instant).toHaveBeenCalledWith(
+        'backendErrors.mount.configIncomplete',
+        {
+          profile: 'Default',
+        }
+      );
+      expect(result).toBe("Mount configuration incomplete for profile 'Default'");
+    });
+
+    it('should translate embedded JSON error in prefixed string', () => {
+      const embedded =
+        'Start job failed: {"key":"backendErrors.mount.configIncomplete","params":{"profile":"Default"}}';
+      translateServiceMock.instant.mockReturnValue(
+        "Mount configuration incomplete for profile 'Default'"
+      );
+
+      const result = service.translateBackendMessage(embedded);
+
+      expect(translateServiceMock.instant).toHaveBeenCalledWith(
+        'backendErrors.mount.configIncomplete',
+        {
+          profile: 'Default',
+        }
+      );
+      expect(result).toBe("Start job failed: Mount configuration incomplete for profile 'Default'");
+    });
+
+    it('should translate Error object wrapping JSON error', () => {
+      const error = new Error(JSON.stringify({ key: 'backendErrors.mount.pointEmpty' }));
+      translateServiceMock.instant.mockReturnValue('Mount point cannot be empty');
+
+      const result = service.translateBackendMessage(error);
+
+      expect(translateServiceMock.instant).toHaveBeenCalledWith(
+        'backendErrors.mount.pointEmpty',
+        undefined
+      );
+      expect(result).toBe('Mount point cannot be empty');
+    });
+
+    it('should translate structured object input directly', () => {
+      const obj = { key: 'backendErrors.rclone.binaryNotFound' };
+      translateServiceMock.instant.mockReturnValue('Rclone binary not found.');
+
+      const result = service.translateBackendMessage(obj);
+
+      expect(translateServiceMock.instant).toHaveBeenCalledWith(
+        'backendErrors.rclone.binaryNotFound',
+        undefined
+      );
+      expect(result).toBe('Rclone binary not found.');
     });
 
     it('should fallback to raw JSON if translation key is missing', () => {
-      const message = JSON.stringify({ key: 'errors.missing', params: {} });
-      translateServiceMock.instant.and.returnValue('errors.missing'); // Returns key if not found
+      const message = JSON.stringify({ key: 'backendErrors.missing', params: {} });
+      translateServiceMock.instant.mockReturnValue('backendErrors.missing'); // Returns key if not found
 
       const result = service.translateBackendMessage(message);
 
@@ -45,27 +102,29 @@ describe('BackendTranslationService', () => {
     });
 
     it('should translate simple translation key', () => {
-      const message = 'errors.simple.key';
-      translateServiceMock.instant.and.returnValue('Simple Translation');
+      const message = 'backendErrors.simple.key';
+      translateServiceMock.instant.mockReturnValue('Simple Translation');
 
       const result = service.translateBackendMessage(message);
 
-      expect(translateServiceMock.instant).toHaveBeenCalledWith('errors.simple.key', undefined);
+      expect(translateServiceMock.instant).toHaveBeenCalledWith(
+        'backendErrors.simple.key',
+        undefined
+      );
       expect(result).toBe('Simple Translation');
     });
 
     it('should fallback to original string if simple key not found', () => {
-      const message = 'errors.missing.key';
-      translateServiceMock.instant.and.returnValue('errors.missing.key');
+      const message = 'backendErrors.missing.key';
+      translateServiceMock.instant.mockReturnValue('backendErrors.missing.key');
 
       const result = service.translateBackendMessage(message);
 
-      expect(result).toBe('errors.missing.key');
+      expect(result).toBe('backendErrors.missing.key');
     });
 
     it('should return non-key string as is', () => {
       const message = 'Some random backend error';
-      // Should NOT call translate service
 
       const result = service.translateBackendMessage(message);
 
@@ -78,6 +137,11 @@ describe('BackendTranslationService', () => {
       const result = service.translateBackendMessage(message);
 
       expect(result).toBe(message);
+    });
+
+    it('should handle null or undefined gracefully', () => {
+      expect(service.translateBackendMessage(null)).toBe('');
+      expect(service.translateBackendMessage(undefined)).toBe('');
     });
 
     it('should handle non-string inputs', () => {

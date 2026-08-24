@@ -1,0 +1,220 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  padding: var(--panel-padding);
+  background: var(--view-bg-color);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.overview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--section-gap);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+
+  .overview-header-wrapper {
+    width: 100%;
+  }
+
+  .overview-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--panel-padding);
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Modular Panels Layout */
+.layout-grid {
+  width: 100%;
+}
+
+.quick-runs-panel {
+  ::ng-deep {
+    .mat-expansion-panel-body {
+      padding: 0;
+    }
+
+    .mat-expansion-panel-header-description {
+      margin-right: 0;
+    }
+  }
+
+  mat-panel-description {
+    margin-right: 0;
+  }
+
+  .filter-chips {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0 24px var(--space-sm);
+    overflow-x: auto;
+  }
+
+  .grid,
+  .quick-runs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+    align-items: start;
+    padding: 2px 24px 16px;
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .empty-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-runs-panel .grid,
+  .quick-runs-panel .quick-runs-grid {
+    gap: var(--space-sm);
+    padding: 2px 16px 16px;
+  }
+}
+
+/* Drag & Drop Layout Editor */
+.draggable-panel-wrapper {
+  border-radius: var(--card-border-radius);
+  border: 2px dashed transparent;
+  padding: 0;
+  transition:
+    border-color var(--transition-cubic),
+    background-color var(--transition-cubic),
+    padding var(--transition-cubic),
+    margin-bottom var(--transition-cubic);
+
+  &.cdk-drag-dragging {
+    transition: none;
+  }
+
+  &.editing {
+    border-color: rgba(var(--primary-color-rgb), 0.4);
+    background-color: rgba(var(--primary-color-rgb), 0.03);
+    padding: 16px;
+    margin-bottom: 24px;
+
+    &:hover {
+      border-color: var(--primary-color);
+      background-color: rgba(var(--primary-color-rgb), 0.06);
+    }
+  }
+
+  .panel-content-wrapper {
+    transition:
+      opacity var(--transition-cubic),
+      transform var(--transition-cubic);
+
+    &.panel-hidden-visual {
+      opacity: 0.4;
+      transform: scale(0.98);
+    }
+  }
+
+  &.cdk-drag-dragging .panel-content-wrapper {
+    transition: none;
+  }
+}
+
+.panel-edit-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: var(--view-bg-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-gnome);
+  overflow: hidden;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  .panel-label {
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    color: var(--window-fg-color);
+  }
+
+  .visibility-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+
+    mat-slide-toggle {
+      transform: scale(0.8);
+    }
+  }
+}
+
+.custom-placeholder {
+  background: rgba(var(--primary-color-rgb), 0.05);
+  border: 2px dashed var(--primary-color);
+  border-radius: 16px;
+  min-height: 80px;
+  margin-bottom: 16px;
+  transition: transform var(--transition-cubic);
+}
+
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 16px;
+  box-shadow: var(--shadow-gnome);
+  background-color: var(--window-bg-color);
+  padding: 0;
+
+  .panel-edit-controls {
+    display: flex !important;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .panel-content-wrapper {
+    display: none;
+  }
+
+  .draggable-panel-wrapper {
+    padding: 0 !important;
+    border: 2px solid var(--primary-color) !important;
+    background: var(--view-bg-color);
+  }
+}
+
+.cdk-drag-animating {
+  transition: transform var(--transition-cubic);
+}
+
+.cdk-drop-list-dragging .draggable-panel-wrapper:not(.cdk-drag-placeholder) {
+  transition: transform var(--transition-cubic);
+}
+
+@media (max-width: 768px) {
+  :host {
+    padding: var(--panel-padding-mobile);
+  }
+
+  .overview-container {
+    gap: var(--section-gap-mobile);
+  }
+}

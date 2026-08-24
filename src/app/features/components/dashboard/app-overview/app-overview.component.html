@@ -1,4 +1,8 @@
-<app-overview-header [mode]="mode()" (openBackendModal)="openBackendModal.emit()" />
+<app-overview-header
+  [mode]="mode()"
+  (openBackendModal)="openBackendModal.emit()"
+  (toggleEditLayout)="toggleEditLayout()"
+/>
 
 <div class="overview-content">
   <!-- Status Summary -->
@@ -78,49 +82,4 @@
       />
     }
   }
-</div>
-
-<div class="layout-actions-blossom" [class.open]="isBlossomOpen()">
-  <div class="blossom-panel">
-    <!-- Card Display Mode -->
-    <button
-      matMiniFab
-      class="blossom-item accent"
-      [style.transition-delay]="'70ms'"
-      (click)="onCardDisplayModeToggle()"
-      [attr.title]="
-        cardDisplayMode() === 'compact'
-          ? ('generalOverview.layout.showDetailed' | translate)
-          : ('generalOverview.layout.showCompact' | translate)
-      "
-    >
-      <mat-icon [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"></mat-icon>
-    </button>
-
-    <!-- Edit Layout Toggle -->
-    <button
-      matMiniFab
-      class="blossom-item"
-      [style.transition-delay]="'0ms'"
-      [class]="isEditingLayout() ? 'primary' : 'accent'"
-      (click)="toggleEditLayout()"
-      [attr.title]="
-        isEditingLayout()
-          ? ('generalOverview.layout.save' | translate)
-          : ('generalOverview.layout.edit' | translate)
-      "
-    >
-      <mat-icon [svgIcon]="isEditingLayout() ? 'check-circle' : 'pen'"></mat-icon>
-    </button>
-  </div>
-
-  <!-- Main Trigger Button -->
-  <button
-    matFab
-    class="blossom-trigger accent"
-    [attr.title]="'generalOverview.layout.settings' | translate"
-    (click)="toggleBlossom($event)"
-  >
-    <mat-icon svgIcon="tune"></mat-icon>
-  </button>
 </div>

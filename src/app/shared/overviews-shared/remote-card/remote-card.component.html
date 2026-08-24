@@ -16,23 +16,23 @@
   </div>
 }
 
-<div class="remote-header" [ngClass]="'display-' + displayMode()">
-  <div class="remote-info">
+<div class="card-header" [ngClass]="'display-' + displayMode()">
+  <div class="card-info">
     <div class="icon-container">
       <mat-icon
         [svgIcon]="iconService.getIconName(remote().type)"
-        class="remote-type-icon"
+        class="card-type-icon"
       ></mat-icon>
     </div>
-    <div class="remote-details">
-      <h4 class="remote-name" [attr.title]="remote().name">
+    <div class="card-details">
+      <h4 class="card-name" [attr.title]="remote().name">
         {{ remote().name }}
       </h4>
-      <span class="remote-type">{{ remote().type | titlecase }}</span>
+      <span class="card-meta">{{ remote().type | titlecase }}</span>
     </div>
   </div>
 
-  <div class="remote-status-indicators" aria-hidden="true">
+  <div class="card-status-indicators" aria-hidden="true">
     @for (vm of statusIndicatorViewModels(); track $index) {
       <div
         [class]="

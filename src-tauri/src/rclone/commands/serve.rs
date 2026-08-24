@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::paths::AppPaths,
+    core::{bridge, paths::AppPaths},
     rclone::{backend::BackendManager, state::watcher::refresh_serves_quietly},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
@@ -19,9 +19,7 @@ use crate::{
     },
 };
 
-use super::common::{
-    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_value,
-};
+use super::common::{OperationContext, parse_common_config, redact_value};
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -35,60 +33,9 @@ pub struct ServeParams {
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub serve_type: String,
-}
-
-fn to_serve_vfs_key(s: &str) -> String {
-    // 1. Convert camelCase/PascalCase to snake_case and replace '-' with '_'
-    let mut cleaned = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c == '-' {
-            cleaned.push('_');
-        } else if c.is_uppercase() {
-            if i > 0 && s.chars().nth(i - 1) != Some('-') {
-                cleaned.push('_');
-            }
-            cleaned.push(c.to_ascii_lowercase());
-        } else {
-            cleaned.push(c);
-        }
-    }
-
-    if cleaned.starts_with("vfs_") {
-        return cleaned;
-    }
-
-    // Special VFS read chunk cases
-    if cleaned == "chunk_size" {
-        return "vfs_read_chunk_size".to_string();
-    }
-    if cleaned == "chunk_size_limit" {
-        return "vfs_read_chunk_size_limit".to_string();
-    }
-    if cleaned == "chunk_streams" {
-        return "vfs_read_chunk_streams".to_string();
-    }
-
-    // VFS flags that do not get the vfs_ prefix on the CLI
-    let non_prefixed = [
-        "no_modtime",
-        "no_checksum",
-        "no_seek",
-        "dir_cache_time",
-        "poll_interval",
-        "read_only",
-        "dir_perms",
-        "file_perms",
-        "link_perms",
-        "umask",
-        "uid",
-        "gid",
-    ];
-
-    if non_prefixed.contains(&cleaned.as_str()) {
-        cleaned
-    } else {
-        format!("vfs_{cleaned}")
-    }
+    pub origin: Option<crate::utils::types::origin::Origin>,
+    pub quick_run_id: Option<String>,
+    pub execute_id: Option<String>,
 }
 
 impl ServeParams {
@@ -113,57 +60,34 @@ impl ServeParams {
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
             serve_type,
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
         })
     }
 
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
-
-        // 1. Pre-process serve options to handle "addr" array issue
-        if let Some(addr_val) = body.get("addr") {
-            let final_val = match addr_val {
-                Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                _ => addr_val.clone(),
-            };
-            body.insert("addr".to_string(), final_val);
-        }
-
-        // 2. Inject runtime remote overrides
-        body.insert(
-            "fs".to_string(),
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
+        let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
         );
 
-        // 3. Inject serve type
-        body.insert("type".to_string(), json!(self.serve_type));
-
-        // 4. Merge resolved profile blocks
-        if let Some(vfs_opts) = &self.vfs_options {
-            for (key, val) in vfs_opts {
-                let flat_key = to_serve_vfs_key(key);
-                body.insert(flat_key, val.clone());
-            }
-        }
-        if let Some(filter_opts) = &self.filter_options {
-            body.insert(
-                "_filter".to_string(),
-                serde_json::to_value(filter_opts).unwrap(),
-            );
-        }
-        if let Some(backend_opts) = &self.backend_options {
-            let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
-            if !final_backend.is_empty() {
-                body.insert(
-                    "_config".to_string(),
-                    serde_json::to_value(final_backend).unwrap(),
-                );
-            }
+        // Pre-process serve options to handle "addr" array issue
+        if let Some(Value::Array(arr)) = builder.get("addr")
+            && arr.len() == 1
+            && arr[0].is_string()
+        {
+            let single = arr[0].clone();
+            builder.insert("addr", single);
         }
 
-        Value::Object(body)
+        builder
+            .insert("fs", self.source.as_str())
+            .insert("type", self.serve_type.as_str())
+            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+            .with_vfs_options(self.vfs_options.as_ref())
+            .with_filter_options(self.filter_options.as_ref())
+            .with_backend_options(self.backend_options.as_ref())
+            .build()
     }
 }
 
@@ -233,12 +157,13 @@ pub async fn start_serve(
         .rpc(serve::START, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to start serve: {e}");
+            let mapped_error =
+                crate::rclone::engine::error_mapper::map_or_wrap_serve_error(&e.to_string());
             log_operation(
                 LogLevel::Error,
                 Some(params.remote_name.clone()),
                 Some("Start serve".to_string()),
-                error.clone(),
+                mapped_error.clone(),
                 None,
             );
             notify(
@@ -248,10 +173,10 @@ pub async fn start_serve(
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
                     protocol: serve_type.clone(),
-                    error: e.to_string(),
+                    error: mapped_error.clone(),
                 }),
             );
-            error
+            mapped_error
         })?;
 
     // Extract serve details
@@ -283,12 +208,21 @@ pub async fn start_serve(
         Some(response_json),
     );
 
-    // Refresh first so the entry exists in cache, then attach the profile to it.
-    refresh_serves_quietly(&app).await;
+    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     backend_manager
         .remote_cache
-        .store_serve_profile(&serve_id, params.profile.clone())
+        .preseed_serve_metadata(
+            &serve_id,
+            &addr,
+            payload.clone(),
+            params.profile.clone(),
+            params.quick_run_id.clone(),
+            params.origin.clone(),
+            params.execute_id.clone(),
+            Some(&app),
+        )
         .await;
+    refresh_serves_quietly(&app).await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
@@ -309,7 +243,7 @@ pub async fn start_serve(
 }
 
 /// Stop a specific serve instance by ID
-#[tauri::command]
+#[bridge]
 pub async fn stop_serve(
     app: AppHandle,
     server_id: String,
@@ -345,7 +279,9 @@ pub async fn stop_serve(
         .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to stop serve: {e}");
+            let err_str = e.to_string();
+            let error =
+                crate::localized_error!("backendErrors.serve.stopFailed", "error" => &err_str);
             log_operation(
                 LogLevel::Error,
                 Some(remote_name.clone()),
@@ -360,7 +296,7 @@ pub async fn stop_serve(
                     remote: remote_name.clone(),
                     profile: profile.clone(),
                     protocol: protocol.clone(),
-                    error: e.to_string(),
+                    error: error.clone(),
                 }),
             );
             error
@@ -392,23 +328,11 @@ pub async fn stop_serve(
 }
 
 /// Stop all running serve instances
-#[tauri::command]
+#[bridge]
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
     let transport = app.state::<RcloneState>().transport.clone();
-    let backend_manager = app.state::<BackendManager>();
-
-    // If there are no active serves, skip the API call.
-    let serves = backend_manager.remote_cache.get_serves().await;
-    if serves.is_empty() || context.is_shutdown() {
-        debug!("No active serves to stop — skipping STOPALL");
-        if !context.is_shutdown() {
-            refresh_serves_quietly(&app).await;
-        }
-        // Silent no-op during shutdown
-        return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
-    }
 
     if let Err(e) = transport.rpc(serve::STOPALL, None).await {
         warn!("Failed to stop all serves: {e}");
@@ -416,18 +340,17 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
 
     if !context.is_shutdown() {
         refresh_serves_quietly(&app).await;
+        notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
     }
 
     info!("✅ All serves stopped successfully");
-
-    notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }
 
 /// Start a serve using a named profile
 /// Resolves all options (serve, vfs, filter, backend) from cached settings
-#[tauri::command]
+#[bridge]
 pub async fn start_serve_profile(
     app: AppHandle,
     params: ProfileParams,
@@ -450,6 +373,11 @@ pub async fn start_serve_profile(
 
     // Ensure profile is set from the function parameter, not the config object
     serve_params.profile = Some(params.profile_name.clone());
+    serve_params.origin = params
+        .source
+        .or(Some(crate::utils::types::origin::Origin::Dashboard));
+    serve_params.quick_run_id = None;
+    serve_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
 
     start_serve(app, serve_params).await
 }
@@ -506,14 +434,23 @@ mod tests {
                 "addr": ["127.0.0.1:8080"],
                 "user": "admin"
             }),
-            backend_options: Some(HashMap::from([("buffer-size".to_string(), json!("16M"))])),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!("secret/*"))])),
-            vfs_options: Some(HashMap::from([(
-                "vfs-cache-mode".to_string(),
-                json!("full"),
-            )])),
+            backend_options: Some(HashMap::from([
+                ("buffer-size".to_string(), json!("16M")),
+                ("BufferSize".to_string(), json!("32M")),
+            ])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!("secret/*")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            vfs_options: Some(HashMap::from([
+                ("vfs-cache-mode".to_string(), json!("full")),
+                ("CacheMode".to_string(), json!("off")),
+            ])),
             runtime_remote_options: None,
             profile: Some("serve_profile".to_string()),
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
             serve_type: "webdav".to_string(),
         };
 
@@ -527,13 +464,19 @@ mod tests {
         // Verify "addr" array unwrapping
         assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
 
+        // Flat lowercase keys placed directly at root level (normalized)
         assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
-        assert!(obj.get("vfsOpt").is_none());
+        assert_eq!(obj.get("exclude").unwrap(), "secret/*");
+        assert_eq!(obj.get("buffer_size").unwrap(), "16M");
+
+        // PascalCase nested options placed into their respective blocks
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "off");
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("exclude").unwrap(), "secret/*");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("buffer-size").unwrap(), "16M");
+        assert_eq!(config.get("BufferSize").unwrap(), "32M");
     }
 }

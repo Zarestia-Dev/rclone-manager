@@ -20,12 +20,13 @@
 }
 
 .menu-page {
+  gap: 2px;
   width: 50%;
   display: flex;
+  overflow: hidden;
+  box-sizing: border-box;
   flex-direction: column;
   padding: var(--space-xxs);
-  box-sizing: border-box;
-  overflow: hidden;
 }
 
 .menu-header {

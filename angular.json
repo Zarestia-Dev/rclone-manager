@@ -50,6 +50,11 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/assets",
+              {
+                "glob": "**/*",
+                "input": "resources/i18n",
+                "output": "assets/i18n"
+              },
               "src/favicon.ico",
               "src/manifest.webmanifest",
               "src/sw.js",
@@ -72,8 +77,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "20kb"
+                  "maximumWarning": "20kb",
+                  "maximumError": "40kb"
                 }
               ],
               "outputHashing": "all"
@@ -118,6 +123,14 @@
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest",
+            "include": ["**/*.spec.ts"]
           }
         }
       }

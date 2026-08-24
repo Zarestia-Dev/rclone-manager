@@ -10,7 +10,7 @@ import { TauriBaseService } from '../platform/tauri-base.service';
   providedIn: 'root',
 })
 export class SystemInfoService extends TauriBaseService {
-  readonly minRcloneVersion = signal<string>('1.70.0');
+  readonly minRcloneVersion = signal<string>('1.75.0');
 
   /**
    * Check if running in librclone mode

@@ -1,8 +1,5 @@
 @if (infoBanner(); as banner) {
-  <div class="json-info-banner" role="status">
-    <mat-icon svgIcon="circle-info" />
-    <span>{{ banner | translate }}</span>
-  </div>
+  <app-alert-banner severity="info" [description]="banner | translate" />
 }
 
 <div class="chips-row" aria-label="Config fields overview">
@@ -40,15 +37,9 @@
 <div #editorContainer class="code-mirror"></div>
 
 @if (parseError(); as err) {
-  <div class="parse-error" role="alert" aria-live="polite">
-    <mat-icon svgIcon="circle-xmark" />
-    <span>{{ err.key | translate: err.params }}</span>
-  </div>
+  <app-alert-banner severity="error" [description]="err.key | translate: err.params" />
 }
 
 @if (parseWarning(); as warn) {
-  <div class="parse-warning" role="alert" aria-live="polite">
-    <mat-icon svgIcon="circle-exclamation" />
-    <span>{{ warn.key | translate: warn.params }}</span>
-  </div>
+  <app-alert-banner severity="warning" [description]="warn.key | translate: warn.params" />
 }

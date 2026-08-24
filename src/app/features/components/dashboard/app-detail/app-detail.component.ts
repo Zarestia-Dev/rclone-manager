@@ -45,14 +45,8 @@ import {
   OPERATION_METADATA,
   ACTION_ANIMATION_CLASS,
   OPERATION_COLOR_VAR,
-  SyncConfig,
-  CopyConfig,
-  MoveConfig,
+  AppConfig,
   BisyncConfig,
-  CheckConfig,
-  DeleteConfig,
-  CopyurlConfig,
-  ArchivecreateConfig,
   ProfileConfig,
   StartJobEvent,
   StopJobEvent,
@@ -62,6 +56,9 @@ import {
   STANDARD_MODAL_SIZE,
   MODE_DEFAULTS,
   BACKEND_PROFILE_SUPPORTED_OPS,
+  QuickRun,
+  Remote,
+  findInFlightAction,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -72,6 +69,7 @@ import { TransferActivityPanelComponent } from '../../../../shared/detail-shared
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
@@ -108,6 +106,8 @@ import {
 })
 export class AppDetailComponent {
   // --- Inputs ---
+  readonly mode = input<'remote' | 'quickRun'>('remote');
+  readonly quickRun = input<QuickRun | null>(null);
   readonly mainOperationType = input<OperationTab>('mount');
   readonly selectedSyncOperation = model<SyncOperationType>('sync');
   readonly remoteSettings = input<RemoteSettings>({});
@@ -123,10 +123,12 @@ export class AppDetailComponent {
   readonly openInFiles = output<OpenInFilesEvent>();
   readonly startJob = output<StartJobEvent>();
   readonly stopJob = output<StopJobEvent>();
+  readonly openRemoteDetail = output<string>();
 
   // --- Services ---
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly jobService = inject(JobManagementService);
+  private readonly quickRunService = inject(QuickRunService);
   protected readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly formatFileSize = inject(FormatFileSizePipe);
@@ -157,7 +159,43 @@ export class AppDetailComponent {
     return profiles[0]?.name ?? 'default';
   });
 
-  protected readonly selectedRemote = computed(() => {
+  protected readonly selectedRemote = computed<Remote>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      const remoteName = qr?.remoteName ?? '';
+      const found = this.remoteFacade.activeRemotes().find((r: Remote) => r.name === remoteName);
+      if (found) return found;
+      return {
+        name: remoteName || 'Remote',
+        type: 'alias',
+        config: { name: remoteName || 'Remote', type: 'alias' },
+        status: {
+          diskUsage: {},
+          mount: { active: false },
+          sync: { active: false },
+          copy: { active: false },
+          bisync: { active: false },
+          move: { active: false },
+          check: { active: false },
+          delete: { active: false },
+          copyurl: { active: false },
+          archivecreate: { active: false },
+          cryptcheck: { active: false },
+          serve: { active: false, count: 0, serves: [] },
+        },
+        features: {
+          IsLocal: false,
+          About: false,
+          BucketBased: false,
+          CleanUp: false,
+          PublicLink: false,
+          ChangeNotify: false,
+          Hashes: [],
+        },
+        primaryActions: [],
+        syncActions: [],
+      };
+    }
     const remote = this.remoteFacade.selectedRemote();
     if (!remote) throw new Error('[AppDetail] Selected remote is required');
     return remote;
@@ -168,9 +206,26 @@ export class AppDetailComponent {
   );
 
   // --- Derived: Operation Type ---
-  readonly isOperationsType = computed(() => this.mainOperationType() === 'operations');
+  readonly isOperationsType = computed<boolean>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return false;
+      return qr.operationType !== 'mount' && qr.operationType !== 'serve';
+    }
+    return this.mainOperationType() === 'operations';
+  });
+
+  readonly isQuickRunRunning = computed(() => {
+    const qr = this.quickRun();
+    if (!qr) return false;
+    return this.quickRunService.runningIds().has(qr.id);
+  });
 
   readonly currentOpType = computed<PrimaryActionType>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (qr) return qr.operationType;
+    }
     const op = this.isOperationsType()
       ? this.selectedSyncOperation()
       : (this.mainOperationType() as PrimaryActionType);
@@ -190,7 +245,12 @@ export class AppDetailComponent {
     );
   });
 
-  readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
+  readonly operationActiveState = computed(() => {
+    if (this.mode() === 'quickRun') {
+      return this.isQuickRunRunning();
+    }
+    return this.isOperationActive(this.currentOpType());
+  });
 
   readonly operationColor = computed<OperationColor>(
     () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
@@ -206,6 +266,11 @@ export class AppDetailComponent {
 
   // CSS class for the icon container — single operation state class or empty.
   protected readonly iconContainerClass = computed((): string => {
+    if (this.mode() === 'quickRun') {
+      if (!this.isQuickRunRunning()) return '';
+      const op = this.currentOpType();
+      return op === 'check' || op === 'cryptcheck' ? 'check' : op;
+    }
     const remote = this.selectedRemote();
     if (remote.status.mount.active) return 'mount';
     if (remote.status.serve.active) return 'serve';
@@ -224,7 +289,7 @@ export class AppDetailComponent {
   readonly primarySyncOps = computed<SyncOperationType[]>(() => {
     const remote = this.selectedRemote();
     const syncTypesSet: ReadonlySet<string> = new Set(SYNC_TYPES);
-    const custom = (remote.syncActions ?? []).filter((a): a is SyncOperationType =>
+    const custom = (remote.syncActions ?? []).filter((a: string): a is SyncOperationType =>
       syncTypesSet.has(a)
     );
     if (custom.length > 0) {
@@ -278,14 +343,7 @@ export class AppDetailComponent {
   });
 
   readonly enrichedProfiles = computed(() => {
-    const configs = this.getProfileConfigMap<{
-      app?: {
-        cronEnabled?: boolean;
-        cronExpression?: string | null;
-        watchEnabled?: boolean;
-        watchDelay?: number;
-      };
-    }>(this.currentOpType());
+    const configs = this.getProfileConfigMap<ProfileConfig>(this.currentOpType());
 
     return this.profiles().map(p => {
       const cfg = configs?.[p.name];
@@ -323,13 +381,27 @@ export class AppDetailComponent {
       `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile() ?? 'default'}`
   );
 
-  readonly activeGroupJob = computed<JobInfo | null>(() =>
-    this.jobService.getLatestJobForRemote(
+  readonly activeGroupJob = computed<JobInfo | null>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return null;
+      const jobs = this.jobService.jobs();
+      const matchingJobs = jobs.filter(j => j.quick_run_id === qr.id);
+
+      if (matchingJobs.length === 0) return null;
+
+      return matchingJobs.sort((a, b) => {
+        const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
+        const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
+        return tb !== ta ? tb - ta : b.jobid - a.jobid;
+      })[0];
+    }
+    return this.jobService.getLatestJobForRemote(
       this.selectedRemote().name,
       this.selectedProfile() ?? 'default',
       this.currentOpType()
-    )
-  );
+    );
+  });
 
   readonly isDryRun = computed(() =>
     this.getDryRunState(this.currentOpType(), this.selectedProfile())
@@ -337,6 +409,9 @@ export class AppDetailComponent {
 
   readonly isResync = computed(() => {
     if (this.currentOpType() !== 'bisync') return false;
+    if (this.mode() === 'quickRun') {
+      return !!this.quickRun()?.config?.rclone?.['resync'];
+    }
     const profiles = this.getProfileConfigMap<BisyncConfig>('bisync');
     return !!profiles?.[this.selectedProfile()]?.rclone?.resync;
   });
@@ -382,70 +457,48 @@ export class AppDetailComponent {
     return Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / 1000));
   });
 
-  // --- Derived: Cron Schedules ---
-  readonly cronSchedules = computed<
-    { profileName: string; cronExpression: string; humanReadable: string }[]
-  >(() => {
-    this._lang();
-    const configs = this.getProfileConfigMap<
-      | SyncConfig
-      | CopyConfig
-      | MoveConfig
-      | BisyncConfig
-      | CheckConfig
-      | DeleteConfig
-      | CopyurlConfig
-      | ArchivecreateConfig
-    >(this.selectedSyncOperation());
-    if (!configs) return [];
-
-    return Object.entries(configs)
-      .filter(([, cfg]) => cfg?.app?.cronEnabled && cfg?.app?.cronExpression)
-      .map(([profileName, cfg]) => {
-        let humanReadable = 'Invalid schedule';
-        const cronExpression = cfg.app.cronExpression ?? '';
-        try {
-          humanReadable = cronstrue(cronExpression, {
-            locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
-          });
-        } catch {
-          console.warn(`Invalid cron expression for profile ${profileName}: ${cronExpression}`);
-        }
-        return { profileName, cronExpression, humanReadable };
-      });
+  // --- Derived: Active App Config (Cron, Watcher, Settings) ---
+  readonly currentAppConfig = computed<AppConfig | undefined>(() => {
+    if (this.mode() === 'quickRun') {
+      return this.quickRun()?.config?.app;
+    }
+    const configs = this.getProfileConfigMap<ProfileConfig>(this.currentOpType());
+    const profile = this.selectedProfile();
+    return configs?.[profile]?.app;
   });
 
   readonly selectedCronSchedule = computed(() => {
-    const schedules = this.cronSchedules();
-    const selected = this.selectedProfile();
-    return selected
-      ? (schedules.find(s => s.profileName === selected) ?? null)
-      : (schedules[0] ?? null);
+    this._lang();
+    const app = this.currentAppConfig();
+    if (!app?.cronEnabled || !app?.cronExpression) return null;
+
+    let humanReadable = 'Invalid schedule';
+    try {
+      humanReadable = cronstrue(app.cronExpression, {
+        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
+      });
+    } catch {
+      console.warn(`Invalid cron expression: ${app.cronExpression}`);
+    }
+
+    const profileName =
+      this.mode() === 'quickRun' ? (this.quickRun()?.name ?? 'Quick Run') : this.selectedProfile();
+
+    return { profileName, cronExpression: app.cronExpression, humanReadable };
   });
 
   readonly selectedWatcher = computed(() => {
-    const configs = this.getProfileConfigMap<
-      | SyncConfig
-      | CopyConfig
-      | MoveConfig
-      | BisyncConfig
-      | CheckConfig
-      | DeleteConfig
-      | CopyurlConfig
-      | ArchivecreateConfig
-    >(this.selectedSyncOperation());
-    if (!configs) return null;
+    const app = this.currentAppConfig();
+    if (!app?.watchEnabled) return null;
 
-    const profileName = this.selectedProfile();
-    if (!profileName) return null;
-    const cfg = configs[profileName];
-    if (cfg?.app?.watchEnabled) {
-      return {
-        profileName,
-        watchDelay: cfg.app.watchDelay ?? 5,
-      };
-    }
-    return null;
+    const profileName =
+      this.mode() === 'quickRun' ? (this.quickRun()?.name ?? 'Quick Run') : this.selectedProfile();
+
+    return {
+      profileName,
+      watchDelay: app.watchDelay ?? 5,
+      watchChangedOnly: app.watchChangedOnly ?? false,
+    };
   });
 
   // --- Derived: Settings Sections ---
@@ -516,6 +569,20 @@ export class AppDetailComponent {
 
   // --- Derived: Control Configs ---
   readonly controlConfigs = computed<OperationControlConfig[]>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return [];
+      const type = qr.operationType;
+      const ctrl = this.buildControlConfig(
+        type,
+        (qr.config ?? {}) as unknown as ProfileConfig,
+        qr.name
+      );
+      if (qr.description) {
+        ctrl.operationDescription = qr.description;
+      }
+      return [ctrl];
+    }
     const type = this.currentOpType();
     const metadata = this.currentOpMetadata();
     if (!metadata) return [];
@@ -531,6 +598,19 @@ export class AppDetailComponent {
     const selected = this.selectedProfile();
     if (!this.showProfileSelector() || all.length <= 1) return all;
     return all.filter(c => c.profileName === selected);
+  });
+
+  readonly quickRunSettingsConfig = computed<SettingsPanelConfig>(() => {
+    const qr = this.quickRun();
+    return {
+      section: {
+        key: 'quickRun',
+        title: this.translate.instant('flow.quickRun.detail.configuration'),
+        icon: 'tune',
+      },
+      settings: (qr?.config ?? {}) as unknown as Record<string, unknown>,
+      buttonLabel: 'common.edit',
+    };
   });
 
   // --- Derived: Stats & Transfer Panels ---
@@ -718,8 +798,24 @@ export class AppDetailComponent {
   async toggleDryRun(): Promise<void> {
     const opType = this.currentOpType();
     const profile = this.selectedProfile();
-    const remoteName = this.selectedRemote().name;
     const newValue = !this.getDryRunState(opType, profile);
+
+    if (this.mode() === 'quickRun') {
+      await this.updateQuickRunRclone(rclone => {
+        if (opType === 'bisync') {
+          rclone['dry_run'] = newValue;
+          rclone['dryRun'] = newValue;
+        } else {
+          rclone['dry_run'] = newValue;
+          if (rclone['backend'] && typeof rclone['backend'] === 'object') {
+            (rclone['backend'] as Record<string, unknown>)['dry_run'] = newValue;
+          }
+        }
+      });
+      return;
+    }
+
+    const remoteName = this.selectedRemote().name;
 
     if (opType === 'bisync') {
       const profiles = this.getProfileConfigMap<BisyncConfig>('bisync') ?? {};
@@ -727,23 +823,17 @@ export class AppDetailComponent {
       await this.remoteFacade.updateRemoteSettings(remoteName, {
         bisyncConfigs: {
           ...profiles,
-          [profile]: { ...existing, rclone: { ...existing?.rclone, dryRun: newValue } },
+          [profile]: {
+            ...existing,
+            rclone: { ...existing?.rclone, dry_run: newValue, dryRun: newValue },
+          },
         },
       });
       return;
     }
 
     if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
-      const profiles =
-        this.getProfileConfigMap<
-          | SyncConfig
-          | CopyConfig
-          | MoveConfig
-          | CheckConfig
-          | DeleteConfig
-          | CopyurlConfig
-          | ArchivecreateConfig
-        >(opType) ?? {};
+      const profiles = this.getProfileConfigMap<ProfileConfig>(opType) ?? {};
       const cfg = profiles[profile];
       const backendProfileName = cfg?.app?.backendProfile || 'default';
       const backendConfigs =
@@ -753,7 +843,7 @@ export class AppDetailComponent {
       await this.remoteFacade.updateRemoteSettings(remoteName, {
         backendConfigs: {
           ...backendConfigs,
-          [backendProfileName]: { ...existingBackend, DryRun: newValue },
+          [backendProfileName]: { ...existingBackend, dry_run: newValue },
         },
       });
     }
@@ -761,6 +851,14 @@ export class AppDetailComponent {
 
   async toggleResync(): Promise<void> {
     if (this.currentOpType() !== 'bisync') return;
+
+    if (this.mode() === 'quickRun') {
+      await this.updateQuickRunRclone(rclone => {
+        rclone['resync'] = !rclone['resync'];
+      });
+      return;
+    }
+
     const profile = this.selectedProfile();
     const profiles = this.getProfileConfigMap<BisyncConfig>('bisync') ?? {};
     const existing = profiles[profile];
@@ -773,6 +871,19 @@ export class AppDetailComponent {
           rclone: { ...existing?.rclone, resync: !existing?.rclone?.resync },
         },
       },
+    });
+  }
+
+  private async updateQuickRunRclone(
+    mutator: (rclone: Record<string, unknown>) => void
+  ): Promise<void> {
+    const qr = this.quickRun();
+    if (!qr) return;
+    const rclone = { ...(qr.config?.rclone ?? {}) };
+    mutator(rclone);
+    await this.quickRunService.save({
+      ...qr,
+      config: { ...qr.config, rclone },
     });
   }
 
@@ -804,24 +915,33 @@ export class AppDetailComponent {
   }
 
   private getDryRunState(opType: string, profile: string): boolean {
+    if (this.mode() === 'quickRun') {
+      const rclone = (this.quickRun()?.config?.rclone ?? {}) as Record<string, unknown>;
+      if (opType === 'bisync') return !!(rclone['dry_run'] ?? rclone['dryRun'] ?? rclone['DryRun']);
+      const backendSubConfig = (rclone['backend'] ?? {}) as Record<string, unknown>;
+      return !!(
+        rclone['dry_run'] ??
+        rclone['dryRun'] ??
+        rclone['DryRun'] ??
+        backendSubConfig['dry_run'] ??
+        backendSubConfig['dryRun'] ??
+        backendSubConfig['DryRun']
+      );
+    }
     if (opType === 'bisync') {
-      return !!this.getProfileConfigMap<BisyncConfig>('bisync')?.[profile]?.rclone?.dryRun;
+      const bCfg = this.getProfileConfigMap<BisyncConfig>('bisync')?.[profile]?.rclone;
+      return !!(
+        bCfg?.['dry_run'] ??
+        bCfg?.dryRun ??
+        (bCfg as Record<string, unknown> | undefined)?.['DryRun']
+      );
     }
     if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
-      const profiles = this.getProfileConfigMap<
-        | SyncConfig
-        | CopyConfig
-        | MoveConfig
-        | CheckConfig
-        | DeleteConfig
-        | CopyurlConfig
-        | ArchivecreateConfig
-      >(opType);
-      const cfg = profiles?.[profile];
-      const backendProfileName = cfg?.app?.backendProfile || 'default';
+      const backendProfileName = this.currentAppConfig()?.backendProfile || 'default';
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
-      return !!backendConfigs[backendProfileName]?.['DryRun'];
+      const bOpts = backendConfigs[backendProfileName];
+      return !!(bOpts?.['dry_run'] ?? bOpts?.['dryRun'] ?? bOpts?.['DryRun']);
     }
     return false;
   }
@@ -877,36 +997,47 @@ export class AppDetailComponent {
     profileName?: string
   ): OperationControlConfig {
     const metadata = OPERATION_METADATA[type];
-    const isActive = this.isOperationActive(type, profileName);
-    const actionMatch = this.actionInProgress()?.find(
-      a =>
-        (a.type === type ||
-          (type === 'mount' && a.type === 'unmount') ||
-          (a.type === 'stop' && a.operationType === type)) &&
-        (a.profileName === profileName || (!a.profileName && !profileName))
-    );
-    const actionType = actionMatch?.type;
+    const isActive =
+      this.mode() === 'quickRun'
+        ? this.isQuickRunRunning()
+        : this.isOperationActive(type, profileName);
+    const actionMatch = findInFlightAction(this.actionInProgress(), type, profileName);
+    const qr = this.mode() === 'quickRun' ? this.quickRun() : null;
+    const quickRunAction = qr ? this.quickRunService.actionInProgress()[qr.id] : undefined;
+    const actionType = quickRunAction || actionMatch?.type;
     const isLoading = !!actionType;
     const t = (key: string, params?: object): string => this.translate.instant(key, params);
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
-    const rclone = (config.rclone || {}) as Record<string, unknown>;
-    const resolvedSource = (rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs']) as
-      string | undefined;
+    const rawRclone = (config.rclone || {}) as Record<string, unknown>;
+    const opData = (rawRclone[type] as Record<string, unknown> | undefined) ?? rawRclone;
+    const resolvedSource = (opData['srcFs'] ??
+      opData['path1'] ??
+      opData['fs'] ??
+      rawRclone['srcFs'] ??
+      rawRclone['path1'] ??
+      rawRclone['fs']) as string | undefined;
     const isSafMount =
       isMount &&
-      (rclone['mountType'] === 'saf' || String(rclone['mountPoint'] ?? '').startsWith('saf://'));
+      (opData['mountType'] === 'saf' ||
+        rawRclone['mountType'] === 'saf' ||
+        String(opData['mountPoint'] ?? rawRclone['mountPoint'] ?? '').startsWith('saf://'));
     const rawDest = isSafMount
       ? `saf://${this.selectedRemote().name}`
-      : ((rclone['dstFs'] ?? rclone['path2'] ?? rclone['mountPoint']) as string | undefined);
+      : ((opData['dstFs'] ??
+          opData['path2'] ??
+          opData['mountPoint'] ??
+          rawRclone['dstFs'] ??
+          rawRclone['path2'] ??
+          rawRclone['mountPoint']) as string | undefined);
     const resolvedDest = rawDest;
 
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((rclone['type'] as string) ?? 'http').toUpperCase()} at ${(rclone['addr'] as string) ?? t('dashboard.appDetail.default')}`,
+            destination: `${((opData['type'] as string) ?? (rawRclone['type'] as string) ?? 'http').toUpperCase()} at ${(opData['addr'] as string) ?? (rawRclone['addr'] as string) ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,

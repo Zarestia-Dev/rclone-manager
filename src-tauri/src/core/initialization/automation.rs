@@ -38,7 +38,34 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         }
     }
 
-    info!("📅 Loaded {} automation(s)", result.added.len());
+    info!("📅 Loaded {} remote automation(s)", result.added.len());
+
+    // ── Quick Run Automations ───────────────────────────────────────────────
+    if let Ok(quick_runs) =
+        crate::core::flow::quick_run::commands::get_all_quick_runs_sync(&manager)
+    {
+        info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
+
+        let _ = cache_state
+            .load_from_quick_runs(&quick_runs, &backend_name, Some(&app_handle))
+            .await;
+
+        for qr in &quick_runs {
+            if qr.is_autostart() {
+                info!("⚡ Auto-starting Quick Run: {} ({})", qr.name, qr.id);
+                let app = app_handle.clone();
+                let qr_id = qr.id.clone();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        crate::core::flow::quick_run::commands::start_quick_run(app, qr_id.clone())
+                            .await
+                    {
+                        log::error!("Failed to auto-start Quick Run {qr_id}: {e}");
+                    }
+                });
+            }
+        }
+    }
 
     scheduler_state.initialize(app_handle.clone()).await?;
     scheduler_state.start().await?;

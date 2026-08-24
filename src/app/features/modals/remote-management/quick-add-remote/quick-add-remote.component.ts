@@ -47,6 +47,22 @@ import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-c
 import { INITIAL_COMMAND_OPTIONS } from 'src/app/services/remote/utils/command-options.util';
 import { mapFormToConfigProfile } from '../../../../services/remote/utils/remote-config.utils';
 
+interface OperationsFormValue {
+  mount: Record<string, unknown>;
+  sync: Record<string, unknown>;
+  copy: Record<string, unknown>;
+  bisync: Record<string, unknown>;
+  move: Record<string, unknown>;
+  serve: Record<string, unknown>;
+}
+
+interface SetupFormValue {
+  name: string;
+  type: string;
+  vendor?: string;
+  [key: string]: unknown;
+}
+
 @Component({
   selector: 'app-quick-add-remote',
   hostDirectives: [EscapeCloseDirective],
@@ -164,7 +180,6 @@ export class QuickAddRemoteComponent {
   readonly oauthUrl = this.authStateService.oauthUrl;
   // Delegated to orchestrator (was a duplicate computed — now consistent with the modal).
   readonly oauthHelperUrl = this.orchestrator.oauthHelperUrl;
-  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
 
   // ── Computed ─────────────────────────────────────────────────────────────
 
@@ -250,10 +265,12 @@ export class QuickAddRemoteComponent {
 
     const baseGroup = {
       autoStart: new FormControl(false),
+      showOnTray: new FormControl(true),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(''),
       watchEnabled: new FormControl(false),
       watchDelay: new FormControl(5),
+      watchChangedOnly: new FormControl(false),
     };
 
     if (opType === 'bisync') {
@@ -300,13 +317,6 @@ export class QuickAddRemoteComponent {
   }
 
   // ── Listeners ─────────────────────────────────────────────────────────────
-
-  private static readonly SOURCE_DEST_OP_TYPES = new Set<OperationType>([
-    'sync',
-    'copy',
-    'bisync',
-    'move',
-  ]);
 
   private setupFormListeners(): void {
     for (const opName of this.operationNames) {
@@ -368,8 +378,9 @@ export class QuickAddRemoteComponent {
   // ── Submit ────────────────────────────────────────────────────────────────
 
   async onSubmit(): Promise<void> {
-    const setup = this.quickAddForm.get('setup')?.value;
-    const operations = this.quickAddForm.get('operations')?.value;
+    const setup = this.quickAddForm.get('setup')?.value as SetupFormValue | undefined;
+    const operations = this.quickAddForm.get('operations')?.value as
+      OperationsFormValue | undefined;
 
     if (this.quickAddForm.invalid || this.isAuthInProgress() || !setup || !operations) return;
 
@@ -395,36 +406,46 @@ export class QuickAddRemoteComponent {
     }
   }
 
-  private async handleStandardCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.name, operations);
-    const preset = this.presetsService.resolvePresets(setup.type || '');
+  private async handleStandardCreation(
+    setup: SetupFormValue,
+    operations: OperationsFormValue
+  ): Promise<void> {
+    const setupName = setup.name;
+    const setupType = setup.type;
+    const finalConfig = this.buildFinalConfig(setupName, operations);
+    const preset = this.presetsService.resolvePresets(setupType);
     const parameters = {
-      name: setup.name,
-      type: setup.type,
+      name: setupName,
+      type: setupType,
       ...(preset.remote || {}),
     };
     await this.remoteManagementService.createRemote(
-      setup.name,
+      setupName,
       parameters,
       this.remoteManagementService.buildOpt(this.commandOptions())
     );
     // Persist settings + refresh remotes + trigger autostarts via the orchestrator's
     // unified finalizeCreation (matches what the modal does on its non-interactive path).
     const remoteData: PendingRemoteData = {
-      name: setup.name,
-      type: setup.type,
+      name: setupName,
+      type: setupType,
       ...(preset.remote || {}),
     };
     this.orchestrator.setPendingConfig(remoteData, finalConfig);
     await this.orchestrator.finalizeCreation();
   }
 
-  private async handleInteractiveCreation(setup: any, operations: any): Promise<void> {
-    const finalConfig = this.buildFinalConfig(setup.name, operations);
-    const preset = this.presetsService.resolvePresets(setup.type || '');
+  private async handleInteractiveCreation(
+    setup: SetupFormValue,
+    operations: OperationsFormValue
+  ): Promise<void> {
+    const setupName = setup.name;
+    const setupType = setup.type;
+    const finalConfig = this.buildFinalConfig(setupName, operations);
+    const preset = this.presetsService.resolvePresets(setupType);
     const remoteData: PendingRemoteData = {
-      name: setup.name,
-      type: setup.type,
+      name: setupName,
+      type: setupType,
       ...(preset.remote || {}),
     };
     this.orchestrator.setPendingConfig(remoteData, finalConfig);
@@ -449,8 +470,14 @@ export class QuickAddRemoteComponent {
     }
   }
 
-  private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const buildProfile = (type: string, opData: any): any => {
+  private buildFinalConfig(
+    remoteName: string,
+    operations: OperationsFormValue
+  ): RemoteConfigSections {
+    const buildProfile = (
+      type: string,
+      opData: Record<string, unknown>
+    ): Record<string, unknown> => {
       return mapFormToConfigProfile(type, opData, {
         remoteName,
         pathService: this.pathService,
@@ -463,16 +490,14 @@ export class QuickAddRemoteComponent {
 
     const mountProfile = buildProfile('mount', operations.mount);
     if (preset.mount && Object.keys(preset.mount).length) {
-      if (!mountProfile['rclone']) mountProfile['rclone'] = {};
+      const rclone = (mountProfile['rclone'] as Record<string, unknown> | undefined) ?? {};
+      mountProfile['rclone'] = rclone;
       const { mountType, ...otherMountOpts } = preset.mount;
       if (mountType) {
-        mountProfile['rclone']['mountType'] = mountType;
+        rclone['mountType'] = mountType;
       }
       if (Object.keys(otherMountOpts).length) {
-        mountProfile['rclone']['mountOpt'] = {
-          ...mountProfile['rclone']['mountOpt'],
-          ...otherMountOpts,
-        };
+        Object.assign(rclone, otherMountOpts);
       }
     }
 

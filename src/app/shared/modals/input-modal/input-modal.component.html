@@ -8,7 +8,7 @@
 
   <div class="modal-content">
     @for (field of fields; track field.key) {
-      <mat-form-field appearance="fill" style="width: 100%">
+      <mat-form-field style="width: 100%">
         <mat-label>{{
           field.label || data.existingNameType || ('shared.inputModal.name' | translate)
         }}</mat-label>

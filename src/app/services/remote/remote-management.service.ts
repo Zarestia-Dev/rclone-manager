@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed, Signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { RemoteFileOperationsService } from './remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { memoizedLoader, MemoizedLoader } from './utils/memoized-loader.util';
 import {
   RemoteProvider,
   ConfigRecord,
@@ -23,6 +24,14 @@ interface RawProvider {
 
 type ProvidersResponse = Record<string, RawProvider[]>;
 
+interface WriteRemoteOptions {
+  successKey: string;
+  successParams?: Record<string, string>;
+  errorKey: string;
+}
+
+const EMPTY_HASHES: readonly string[] = Object.freeze([]);
+
 @Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
   private readonly remoteOpsService = inject(RemoteFileOperationsService);
@@ -31,6 +40,12 @@ export class RemoteManagementService extends TauriBaseService {
   private readonly metadataCache = new Map<string, FsInfo>();
   private readonly _features = signal<Record<string, RemoteFeatures>>({});
   private readonly _isLibrclone = signal<boolean | null>(null);
+
+  private readonly featuresSignals = new Map<string, Signal<RemoteFeatures>>();
+
+  private readonly providersLoader: MemoizedLoader<ProvidersResponse> = memoizedLoader(() =>
+    this.invokeCommand<ProvidersResponse>('get_remote_types')
+  );
 
   async getFsInfo(
     remoteName: string,
@@ -42,22 +57,21 @@ export class RemoteManagementService extends TauriBaseService {
     if (cached !== undefined) return cached;
 
     const fsName = this.pathService.isLocalPath(key) ? key : `${key}:`;
-    try {
-      const info = await this.remoteOpsService.getFsInfo(fsName, source, group);
-      this.metadataCache.set(key, info);
-      return info;
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
+    const info = await this.remoteOpsService.getFsInfo(fsName, source, group);
+    this.metadataCache.set(key, info);
+    return info;
   }
 
   getFeaturesSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
     const nameKey = this.pathService.normalizeRemoteName(remoteName);
     const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
-    return computed(
+    const cacheKey = typeKey || nameKey;
+    const existing = this.featuresSignals.get(cacheKey);
+    if (existing) return existing;
+
+    const sig = computed(
       () =>
-        this._features()[typeKey] ||
+        this._features()[cacheKey] ||
         this._features()[nameKey] || {
           IsLocal: this.pathService.isLocalPath(nameKey),
           About: true,
@@ -65,10 +79,12 @@ export class RemoteManagementService extends TauriBaseService {
           CleanUp: false,
           PublicLink: false,
           ChangeNotify: false,
-          Hashes: [],
+          Hashes: EMPTY_HASHES as string[],
           loading: true,
         }
     );
+    this.featuresSignals.set(cacheKey, sig);
+    return sig;
   }
 
   publicLinkSupported(remoteName: string): boolean {
@@ -82,11 +98,10 @@ export class RemoteManagementService extends TauriBaseService {
       return !!cached.PublicLink;
     }
 
-    // Trigger asynchronous load in background
-    this.getFeatures(remoteName).catch(err =>
+    // Async-load features so subsequent calls return accurate values
+    void this.getFeatures(remoteName).catch(err =>
       console.error(`Failed to load features for ${remoteName}:`, err)
     );
-
     return false;
   }
 
@@ -102,17 +117,7 @@ export class RemoteManagementService extends TauriBaseService {
     const cached = this._features()[typeKey] || this._features()[nameKey];
     if (cached && !cached.loading) return cached;
 
-    const loadingState: RemoteFeatures = {
-      IsLocal: this.pathService.isLocalPath(nameKey),
-      About: false,
-      BucketBased: false,
-      CleanUp: false,
-      PublicLink: false,
-      ChangeNotify: false,
-      Hashes: [],
-      loading: true,
-    };
-    this._features.update(c => ({ ...c, [nameKey]: loadingState, [typeKey]: loadingState }));
+    this.setFeatures(nameKey, typeKey, true);
 
     try {
       const info = await this.getFsInfo(remoteName, source, group);
@@ -126,7 +131,7 @@ export class RemoteManagementService extends TauriBaseService {
         Hashes: info.Hashes ?? [],
         loading: false,
       };
-      this._features.update(c => ({ ...c, [nameKey]: feats, [typeKey]: feats }));
+      this.setFeatures(nameKey, typeKey, feats);
       return feats;
     } catch {
       const fallback: RemoteFeatures = {
@@ -136,12 +141,29 @@ export class RemoteManagementService extends TauriBaseService {
         CleanUp: false,
         PublicLink: false,
         ChangeNotify: false,
-        Hashes: [],
+        Hashes: EMPTY_HASHES as string[],
         loading: false,
       };
-      this._features.update(c => ({ ...c, [nameKey]: fallback, [typeKey]: fallback }));
+      this.setFeatures(nameKey, typeKey, fallback);
       return fallback;
     }
+  }
+
+  private setFeatures(nameKey: string, typeKey: string, value: RemoteFeatures | true): void {
+    const features: RemoteFeatures =
+      value === true
+        ? {
+            IsLocal: this.pathService.isLocalPath(nameKey),
+            About: false,
+            BucketBased: false,
+            CleanUp: false,
+            PublicLink: false,
+            ChangeNotify: false,
+            Hashes: EMPTY_HASHES as string[],
+            loading: true,
+          }
+        : value;
+    this._features.update(c => ({ ...c, [nameKey]: features, [typeKey]: features }));
   }
 
   clearCache(remoteName?: string): void {
@@ -156,22 +178,7 @@ export class RemoteManagementService extends TauriBaseService {
     } else {
       this.metadataCache.clear();
       this._features.set({});
-    }
-  }
-
-  private providersCache: ProvidersResponse | null = null;
-  private providersPromise: Promise<ProvidersResponse> | null = null;
-
-  private async fetchProviders(): Promise<ProvidersResponse> {
-    if (this.providersCache) return this.providersCache;
-    if (this.providersPromise) return this.providersPromise;
-
-    this.providersPromise = this.invokeCommand<ProvidersResponse>('get_remote_types');
-    try {
-      this.providersCache = await this.providersPromise;
-      return this.providersCache;
-    } finally {
-      this.providersPromise = null;
+      this.featuresSignals.clear();
     }
   }
 
@@ -190,7 +197,7 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async getRemoteTypes(): Promise<RemoteProvider[]> {
-    return this.mapProviders(await this.fetchProviders());
+    return this.mapProviders(await this.providersLoader.load());
   }
 
   async getOAuthSupportedRemotes(): Promise<RemoteProvider[]> {
@@ -200,7 +207,7 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async getRemoteConfigFields(type: string): Promise<RcConfigOption[]> {
-    const response = await this.fetchProviders();
+    const response = await this.providersLoader.load();
     const match = Object.values(response)
       .flat()
       .find(p => p.Name === type);
@@ -220,15 +227,11 @@ export class RemoteManagementService extends TauriBaseService {
     parameters: ConfigRecord,
     opt?: Record<string, unknown>
   ): Promise<void> {
-    await this.invokeWithNotification(
-      'create_remote',
-      { name, parameters, ...(opt && { opt }) },
-      {
-        successKey: 'backendSuccess.remote.created',
-        successParams: { name },
-        errorKey: 'backendErrors.remote.configFailed',
-      }
-    );
+    await this.writeRemote('create_remote', name, parameters, opt, {
+      successKey: 'backendSuccess.remote.created',
+      successParams: { name },
+      errorKey: 'backendErrors.remote.configFailed',
+    });
   }
 
   async updateRemote(
@@ -236,13 +239,27 @@ export class RemoteManagementService extends TauriBaseService {
     parameters: ConfigRecord,
     opt?: Record<string, unknown>
   ): Promise<void> {
+    await this.writeRemote('update_remote', name, parameters, opt, {
+      successKey: 'backendSuccess.remote.updated',
+      successParams: { name },
+      errorKey: 'backendErrors.remote.configFailed',
+    });
+  }
+
+  private async writeRemote(
+    command: string,
+    name: string,
+    parameters: ConfigRecord,
+    opt: Record<string, unknown> | undefined,
+    options: WriteRemoteOptions
+  ): Promise<void> {
     await this.invokeWithNotification(
-      'update_remote',
+      command,
       { name, parameters, ...(opt && { opt }) },
       {
-        successKey: 'backendSuccess.remote.updated',
-        successParams: { name },
-        errorKey: 'backendErrors.remote.configFailed',
+        successKey: options.successKey,
+        successParams: options.successParams,
+        errorKey: options.errorKey,
       }
     );
   }
@@ -264,6 +281,7 @@ export class RemoteManagementService extends TauriBaseService {
     }
   }
 
+  /** Cancels an in-progress OAuth flow on the backend. */
   async quitOAuth(): Promise<void> {
     return this.invokeCommand('cancel_oauth');
   }
@@ -281,8 +299,8 @@ export class RemoteManagementService extends TauriBaseService {
     return this.invokeCommand('create_remote_interactive', {
       name,
       rcloneType: type,
-      ...(parameters && { parameters }),
-      ...(opt && { opt }),
+      ...(parameters !== undefined && { parameters }),
+      ...(opt !== undefined && { opt }),
     });
   }
 
@@ -297,12 +315,12 @@ export class RemoteManagementService extends TauriBaseService {
       name,
       stateToken,
       result,
-      ...(parameters && { parameters }),
-      ...(opt && { opt }),
+      ...(parameters !== undefined && { parameters }),
+      ...(opt !== undefined && { opt }),
     });
   }
 
-  async obscureValue(clear: string): Promise<string> {
-    return this.invokeCommand<string>('obscure_value', { clear });
+  async obscureValue(cleartext: string): Promise<string> {
+    return this.invokeCommand<string>('obscure_value', { clear: cleartext });
   }
 }

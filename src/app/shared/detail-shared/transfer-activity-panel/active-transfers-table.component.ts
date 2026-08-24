@@ -295,12 +295,14 @@ export class ActiveTransfersTableComponent {
     }
   );
 
-  private readonly _preloadEffect = effect(() => {
-    const remotes = this.remotesList();
-    if (remotes.length > 0) {
-      untracked(() => this.ops.preloadFeatures(this.transfers()));
-    }
-  });
+  constructor() {
+    effect(() => {
+      const remotes = this.remotesList();
+      if (remotes.length > 0) {
+        untracked(() => this.ops.preloadFeatures(this.transfers()));
+      }
+    });
+  }
 
   protected readonly enrichedTransfers = computed(() => {
     const search = this.searchTerm().toLowerCase().trim();

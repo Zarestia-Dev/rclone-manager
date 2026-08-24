@@ -1,7 +1,9 @@
+use crate::core::bridge;
+
 pub const APP_ID: &str = "io.github.zarestia_dev.rclone-manager";
 pub const APP_ID_DEV: &str = "io.github.zarestia_dev.rclone-manager-dev";
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn get_build_type() -> Option<&'static str> {
     if cfg!(feature = "flatpak") {
@@ -15,13 +17,71 @@ pub fn get_build_type() -> Option<&'static str> {
     }
 }
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn is_librclone() -> bool {
     cfg!(feature = "librclone")
 }
 
-#[tauri::command]
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveOperationsSummary {
+    pub has_active_operations: bool,
+    pub active_jobs_count: usize,
+    pub active_mounts_count: usize,
+    pub active_serves_count: usize,
+}
+
+pub async fn get_active_operations_summary(
+    app: tauri::AppHandle,
+) -> Result<ActiveOperationsSummary, String> {
+    use tauri::Manager;
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+
+    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
+    let active_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
+    let active_serves = backend_manager.remote_cache.get_serves().await;
+
+    let active_jobs_count = active_jobs.len();
+    let active_mounts_count = active_mounts.len();
+    let active_serves_count = active_serves.len();
+
+    let has_active_operations =
+        active_jobs_count > 0 || active_mounts_count > 0 || active_serves_count > 0;
+
+    Ok(ActiveOperationsSummary {
+        has_active_operations,
+        active_jobs_count,
+        active_mounts_count,
+        active_serves_count,
+    })
+}
+
+#[bridge]
+pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    use tauri::{Emitter, Manager};
+
+    let summary = get_active_operations_summary(app.clone()).await?;
+
+    if summary.has_active_operations {
+        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+        let _ = app.emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
+    } else {
+        crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
+        app.exit(0);
+    }
+
+    Ok(())
+}
+
+#[bridge]
 pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;
     handle_shutdown(app.clone()).await;
@@ -150,7 +210,7 @@ pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
     let _ = app_handle.set_activation_policy(policy);
 }
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn is_updater_enabled() -> bool {
     cfg!(feature = "updater")

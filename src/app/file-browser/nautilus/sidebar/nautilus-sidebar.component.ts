@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,12 +36,11 @@ interface BookmarkViewModel {
 function sortAndFilterRoots(
   roots: ExplorerRoot[],
   hidden: Set<string>,
-  order: string[]
+  orderMap: Map<string, number>
 ): ExplorerRoot[] {
   const visible = roots.filter(r => !hidden.has(r.name));
-  if (!order.length) return visible;
+  if (orderMap.size === 0) return visible;
 
-  const orderMap = new Map<string, number>(order.map((name, i) => [name, i]));
   return visible.sort((a, b) => (orderMap.get(a.name) ?? 9999) - (orderMap.get(b.name) ?? 9999));
 }
 
@@ -53,6 +60,7 @@ function sortAndFilterRoots(
   styleUrl: './nautilus-sidebar.component.scss',
 })
 export class NautilusSidebarComponent {
+  private readonly elementRef = inject(ElementRef);
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
@@ -97,7 +105,10 @@ export class NautilusSidebarComponent {
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
 
   // Context menu sliding controller
-  protected readonly menuCtrl = new SlideMenuController('.sidebar-sliding-container');
+  protected readonly menuCtrl = new SlideMenuController(
+    '.sidebar-sliding-container',
+    () => this.elementRef.nativeElement
+  );
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {
@@ -122,20 +133,16 @@ export class NautilusSidebarComponent {
     return new Set<string>(keys.filter(key => key === active));
   });
 
+  private readonly _orderMap = computed(
+    () => new Map<string, number>(this.settings.sidebarDriveOrder().map((name, i) => [name, i]))
+  );
+
   readonly displayLocalDrives = computed<ExplorerRoot[]>(() =>
-    sortAndFilterRoots(
-      this.localDrives(),
-      this.settings.sidebarHiddenDrives(),
-      this.settings.sidebarDriveOrder()
-    )
+    sortAndFilterRoots(this.localDrives(), this.settings.sidebarHiddenDrives(), this._orderMap())
   );
 
   readonly displayCloudRemotes = computed<ExplorerRoot[]>(() =>
-    sortAndFilterRoots(
-      this.cloudRemotes(),
-      this.settings.sidebarHiddenDrives(),
-      this.settings.sidebarDriveOrder()
-    )
+    sortAndFilterRoots(this.cloudRemotes(), this.settings.sidebarHiddenDrives(), this._orderMap())
   );
 
   readonly cleanupSupportedRemotes = computed<Set<string>>(() => {
@@ -165,28 +172,14 @@ export class NautilusSidebarComponent {
   onConfigureSidebar(): void {
     const all = [...this.localDrives(), ...this.cloudRemotes()];
     const hidden = this.settings.sidebarHiddenDrives();
-    const order = this.settings.sidebarDriveOrder();
+    const orderMap = this._orderMap();
 
-    const orderMap = new Map<string, number>(order.map((name, i) => [name, i]));
     const sortedAll = [...all].sort(
       (a, b) => (orderMap.get(a.name) ?? 9999) - (orderMap.get(b.name) ?? 9999)
     );
 
-    const items: ItemOrderVisibilityConfigItem[] = sortedAll.map(root => ({
-      id: root.name,
-      label: root.label || root.name,
-      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
-      icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
-      isVisible: !hidden.has(root.name),
-    }));
-
-    const defaultItems: ItemOrderVisibilityConfigItem[] = all.map(root => ({
-      id: root.name,
-      label: root.label || root.name,
-      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
-      icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
-      isVisible: true,
-    }));
+    const items = sortedAll.map(root => this._toConfigItem(root, !hidden.has(root.name)));
+    const defaultItems = all.map(root => this._toConfigItem(root, true));
 
     this.dialog
       .open(ItemOrderVisibilityModalComponent, {
@@ -254,6 +247,16 @@ export class NautilusSidebarComponent {
   private _bookmarkKey(bm: FileBrowserItem): string {
     const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '');
     return `${remote}::${bm.entry.Path}`;
+  }
+
+  private _toConfigItem(root: ExplorerRoot, isVisible: boolean): ItemOrderVisibilityConfigItem {
+    return {
+      id: root.name,
+      label: root.label || root.name,
+      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
+      icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
+      isVisible,
+    };
   }
 
   private _closeSidenavOnMobile(): void {

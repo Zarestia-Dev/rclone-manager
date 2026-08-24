@@ -1,4 +1,5 @@
 import { OPERATION_REGISTRY } from './operation-registry';
+import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
 
 // Dynamic extraction of FlagTypes based on registry
@@ -19,11 +20,15 @@ export const FLAG_TYPES = Object.freeze([
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 
-export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set(
+export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
   OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
 );
 
-export const PROFILE_ICONS: Readonly<Record<string, string>> = Object.freeze({
+export function isLinkedProfileType(type: string): type is SharedProfileType {
+  return LINKED_PROFILE_TYPES.has(type);
+}
+
+export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
   mount: 'hard-drive',
   sync: 'refresh',
   copy: 'copy',
@@ -39,7 +44,7 @@ export const PROFILE_ICONS: Readonly<Record<string, string>> = Object.freeze({
   filter: 'filter',
   backend: 'database',
   runtimeRemote: 'gear',
-});
+} as Record<SharedProfileType, string>);
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
@@ -192,10 +197,12 @@ export interface RemoteConfigStepVisibility {
 
 export interface AppConfig {
   autoStart: boolean;
+  showOnTray?: boolean;
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;
   watchDelay?: number;
+  watchChangedOnly?: boolean;
   vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;
@@ -213,7 +220,7 @@ export interface ProfileConfig {
     mountPoint?: string;
     type?: string;
     addr?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -223,7 +230,7 @@ export interface MountConfig {
     fs?: string;
     mountPoint?: string;
     mountType?: string;
-    mountOpt?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -233,7 +240,7 @@ export interface CopyConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -243,7 +250,7 @@ export interface SyncConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -260,7 +267,7 @@ export interface MoveConfig {
     dstFs?: string;
     createEmptySrcDirs?: boolean;
     deleteEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -295,7 +302,7 @@ export interface BisyncConfig {
     backupDir1?: string;
     backupDir2?: string;
     noCleanup?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -304,7 +311,7 @@ export interface ServeConfig {
   rclone: {
     fs?: string;
     type?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -316,7 +323,7 @@ export interface CheckConfig {
     download?: boolean;
     checkFileHash?: string;
     checkFileFs?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -324,7 +331,7 @@ export interface DeleteConfig {
   app: AppConfig;
   rclone: {
     srcFs?: string | string[];
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -335,7 +342,7 @@ export interface CopyurlConfig {
     dstFs?: string;
     autoFilename?: boolean;
     filenames?: string[];
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -347,7 +354,7 @@ export interface ArchivecreateConfig {
     format?: string;
     prefix?: string;
     fullPath?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -356,7 +363,7 @@ export interface CryptcheckConfig {
   rclone: {
     srcFs?: string | string[];
     dstFs?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -494,15 +501,7 @@ export interface PendingRemoteData {
 }
 
 export type WizardStep = 'setup' | 'operations' | 'interactive';
-export type OperationType =
-  | 'mount'
-  | 'sync'
-  | 'copy'
-  | 'bisync'
-  | 'move'
-  | 'serve'
-  | 'check'
-  | 'cryptcheck'
-  | 'delete'
-  | 'copyurl'
-  | 'archivecreate';
+// `OperationType` was previously a hand-maintained 11-literal union duplicating
+// `PrimaryActionType` from `operations.ts`. Now aliased to it so adding a new
+// operation to `OPERATION_REGISTRY` automatically extends this type.
+export type OperationType = PrimaryActionType;

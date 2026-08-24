@@ -18,7 +18,27 @@ use crate::utils::types::state::RcloneState;
 use super::error::{EngineError, EngineResult};
 
 impl RcApiEngine {
-    pub async fn validate_config_before_start(&self, app: &AppHandle) -> EngineResult<()> {
+    pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
+        info!("Testing rclone configuration and password");
+        match self.validate_config_inner(app).await {
+            Ok(()) => {
+                info!("Rclone configuration and password are valid");
+                self.clear_errors();
+                true
+            }
+            Err(e) => {
+                error!("Rclone configuration validation failed: {e}");
+                self.apply_config_error(&e);
+                let status: EngineStatus = (&self.phase).into();
+                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, status) {
+                    error!("Failed to emit validation error event: {emit_err}");
+                }
+                false
+            }
+        }
+    }
+
+    async fn validate_config_inner(&self, app: &AppHandle) -> EngineResult<()> {
         info!("Validating rclone configuration before engine start");
 
         let backend_manager = app.try_state::<BackendManager>().ok_or_else(|| {
@@ -171,29 +191,6 @@ impl RcApiEngine {
         }
     }
 
-    pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
-        info!("Testing rclone configuration and password");
-
-        match self.validate_config_before_start(app).await {
-            Ok(()) => {
-                info!("Rclone configuration and password are valid");
-                self.clear_errors();
-                true
-            }
-            Err(e) => {
-                error!("Rclone configuration validation failed: {e}");
-                self.apply_config_error(&e);
-                let status: EngineStatus = (&self.phase).into();
-                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, status) {
-                    error!("Failed to emit validation error event: {emit_err}");
-                }
-                false
-            }
-        }
-    }
-}
-
-impl RcApiEngine {
     fn apply_config_error(&mut self, e: &EngineError) {
         match e {
             #[cfg(not(feature = "librclone"))]

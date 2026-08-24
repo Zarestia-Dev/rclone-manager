@@ -11,7 +11,6 @@ export interface ResolveState {
   bytes: number;
   size: number;
   speed: number;
-  speedClass: string;
   eta: number;
   error?: string;
 }
@@ -129,6 +128,7 @@ export interface JobInfo {
   stats: GlobalStats;
   group?: string;
   profile?: string;
+  quick_run_id?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */

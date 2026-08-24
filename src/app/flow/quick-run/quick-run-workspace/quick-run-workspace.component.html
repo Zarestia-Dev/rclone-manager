@@ -1,0 +1,68 @@
+@if (selected(); as qr) {
+  <app-app-detail
+    mode="quickRun"
+    [quickRun]="qr"
+    (startJob)="startQuickRun(qr.id)"
+    (stopJob)="stopQuickRun(qr.id)"
+    (openRemoteConfigModal)="editQuickRun(qr.id)"
+    (openInFiles)="openInFiles($event)"
+    (openRemoteDetail)="openRemoteDetail($event)"
+  />
+
+  <button
+    matIconButton
+    [cdkMenuTriggerFor]="quickRunMenu"
+    [attr.title]="'common.moreActions' | translate"
+    [attr.aria-label]="'common.moreActions' | translate"
+    class="ellipsis-button"
+  >
+    <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+  </button>
+  <ng-template #quickRunMenu>
+    <div class="material-context-menu" cdkMenu>
+      <button class="menu-item" (click)="editQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="pen" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.edit' | translate }}</span>
+      </button>
+      <button class="menu-item" (click)="openLogsModal(qr.remoteName)" cdkMenuItem>
+        <mat-icon svgIcon="terminal" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.viewLogs' | translate }}</span>
+      </button>
+      <button class="menu-item" (click)="duplicateQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="copy" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.duplicate' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
+        <mat-checkbox
+          labelPosition="before"
+          [checked]="isShowOnTray(qr)"
+          (change)="toggleShowOnTray(qr, $event.checked)"
+        >
+          <span>{{ 'home.options.showInTray' | translate }}</span>
+        </mat-checkbox>
+      </button>
+      <mat-divider></mat-divider>
+      <button class="menu-item danger-item" (click)="removeQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.delete' | translate }}</span>
+      </button>
+    </div>
+  </ng-template>
+} @else if (selectedRemote()) {
+  <app-general-detail
+    [showStatusIndicators]="false"
+    [showQuickRuns]="true"
+    (startJob)="onStartRemoteJob($event)"
+    (stopJob)="onStopRemoteJob($event)"
+    (deleteJob)="onDeleteRemoteJob($event)"
+    (openRemoteConfigModal)="onOpenRemoteConfig($event.editTarget)"
+    (retryDiskUsage)="onRetryDiskUsage()"
+    (selectQuickRun)="onSelectQuickRun($event)"
+  />
+} @else {
+  <app-quick-run-overview
+    (openRemoteDetail)="openRemoteDetail($event)"
+    (openBackendModal)="openBackendModal()"
+  />
+}

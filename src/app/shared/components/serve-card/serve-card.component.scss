@@ -95,6 +95,31 @@
   color: var(--accent-color);
 }
 
+.origin-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim-color);
+  opacity: 0.75;
+  vertical-align: middle;
+  transition: opacity var(--transition-fast);
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.quickrun {
+    color: var(--primary-color);
+    opacity: 0.9;
+  }
+
+  .origin-mini-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}
+
 // ── URL / Address ─────────────────────────────────────────────────────────────
 
 .serve-url {

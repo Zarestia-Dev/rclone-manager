@@ -4,8 +4,8 @@ import { BackendService } from '../infrastructure/system/backend.service';
 export type StorageFamily = 's3' | 'webdav' | 'generic';
 
 export interface PresetValues {
-  vfs?: Record<string, unknown>; // VFS option overrides (FieldName keys)
-  mount?: Record<string, unknown>; // mountOpt overrides
+  vfs?: Record<string, unknown>; // VFS option overrides
+  mount?: Record<string, unknown>; // Mount option overrides
   backend?: Record<string, unknown>; // global backend flag overrides (e.g. BufferSize, DisableHTTP2)
   remote?: Record<string, unknown>; // remote-specific config overrides (e.g. disable_checksum)
 }
@@ -22,24 +22,24 @@ const REMOTE_FAMILY_MAP: Record<string, StorageFamily> = {
 // Base presets (applied to ALL remotes regardless of type)
 const BASE_PRESET: PresetValues = {
   vfs: {
-    CacheMode: 'full',
-    CacheMaxSize: '250G',
-    CacheMinFreeSpace: '10G',
-    CacheMaxAge: '48h',
-    WriteBack: '15s',
-    ChunkSize: '16M',
-    ChunkStreams: 8,
-    ReadAhead: '128M',
-    Refresh: true,
+    vfs_cache_mode: 'full',
+    vfs_cache_max_size: '250G',
+    vfs_cache_min_free_space: '10G',
+    vfs_cache_max_age: '48h',
+    vfs_write_back: '15s',
+    vfs_read_chunk_size: '16M',
+    vfs_read_chunk_streams: 8,
+    vfs_read_ahead: '128M',
+    vfs_refresh: true,
   },
   mount: {
-    AttrTimeout: '10s',
+    attr_timeout: '10s',
   },
   backend: {
-    BufferSize: '32M',
-    MaxBufferMemory: '2G',
-    LogLevel: 'INFO',
-    Transfers: 8,
+    buffer_size: '32M',
+    max_buffer_memory: '2G',
+    log_level: 'INFO',
+    transfers: 8,
   },
 };
 
@@ -47,16 +47,16 @@ const BASE_PRESET: PresetValues = {
 const FAMILY_PRESETS: Record<StorageFamily, PresetValues> = {
   s3: {
     backend: {
-      DisableHTTP2: true,
-      UseServerModTime: true,
+      disable_http2: true,
+      use_server_mod_time: true,
     },
     vfs: {
-      FastFingerprint: true,
+      vfs_fast_fingerprint: true,
     },
   },
   webdav: {
     vfs: {
-      WriteBack: '20s',
+      vfs_write_back: '20s',
     },
   },
   generic: {},
@@ -99,22 +99,22 @@ const VENDOR_PRESETS: Record<string, Record<string, PresetValues>> = {
 // OS-specific configuration overrides
 const OS_PRESETS: Record<'windows' | 'macos' | 'linux' | 'android', PresetValues> = {
   windows: {
-    mount: { NetworkMode: true },
+    mount: { network_mode: true },
   },
   macos: {
     mount: {
-      NoAppleXattr: true,
-      NoAppleDouble: true,
+      no_apple_xattr: true,
+      no_apple_double: true,
     },
   },
   linux: {},
   android: {
     vfs: {
-      CacheMode: 'full',
-      CacheMaxSize: '50G',
-      CacheMinFreeSpace: '2G',
-      CacheMaxAge: '24h',
-      WriteBack: '10s',
+      vfs_cache_mode: 'full',
+      vfs_cache_max_size: '50G',
+      vfs_cache_min_free_space: '2G',
+      vfs_cache_max_age: '24h',
+      vfs_write_back: '10s',
     },
     mount: {
       mountType: 'saf',
@@ -179,35 +179,23 @@ export class RemotePresetsService {
   resolvePresets(remoteType: string, vendor?: string): PresetValues {
     let merged = { ...BASE_PRESET };
 
-    // 1. Merge family-specific presets
     const family = this.getStorageFamily(remoteType);
-    const familyPreset = FAMILY_PRESETS[family];
-    if (familyPreset) {
-      merged = mergePresets(merged, familyPreset);
-    }
+    if (FAMILY_PRESETS[family]) merged = mergePresets(merged, FAMILY_PRESETS[family]);
 
-    // 2. Add provider-specific remote options
     const typeLower = remoteType.toLowerCase().replace(/\s+/g, '');
-    const providerPreset = PROVIDER_REMOTE_PRESETS[typeLower];
-    if (providerPreset) {
-      merged = mergePresets(merged, providerPreset);
+    if (PROVIDER_REMOTE_PRESETS[typeLower]) {
+      merged = mergePresets(merged, PROVIDER_REMOTE_PRESETS[typeLower]);
     }
 
-    // 3. Add vendor-specific remote presets (e.g. Nextcloud/Owncloud for WebDAV)
     if (vendor) {
       const vendorLower = vendor.toLowerCase().replace(/\s+/g, '');
       const vendorPreset = VENDOR_PRESETS[typeLower]?.[vendorLower];
-      if (vendorPreset) {
-        merged = mergePresets(merged, vendorPreset);
-      }
+      if (vendorPreset) merged = mergePresets(merged, vendorPreset);
     }
 
-    // 4. Merge OS-specific presets using rule matching
     const osPlatform = this.getTargetPlatform();
     const matchedRule = OS_PRESET_RULES.find(rule => rule.matches(osPlatform));
-    if (matchedRule) {
-      merged = mergePresets(merged, matchedRule.preset);
-    }
+    if (matchedRule) merged = mergePresets(merged, matchedRule.preset);
 
     return merged;
   }

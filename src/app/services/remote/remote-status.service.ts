@@ -44,13 +44,8 @@ export class RemoteStatusService {
   }
 
   getActiveSyncOperationIcon(remote: Remote): string {
-    for (const type of SYNC_TYPES) {
-      const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
-      if (state?.active) {
-        return OPERATION_ICONS[type] || 'sync';
-      }
-    }
-    return 'sync';
+    const type = this.getActiveSyncOperationType(remote);
+    return type ? OPERATION_ICONS[type] || 'sync' : 'sync';
   }
 
   getSyncOperationsTooltip(remote: Remote): string {
@@ -116,12 +111,15 @@ export class RemoteStatusService {
 
   getActiveOperationsSummary(remote: Remote): string[] {
     const summary: string[] = [];
-    if (this.isMounted(remote))
-      summary.push(
-        this.translate.instant('mount.mountedMultiple', {
-          count: this.getMountProfileCount(remote),
-        })
-      );
+    if (this.isMounted(remote)) {
+      const mountCount = this.getMountProfileCount(remote);
+      if (mountCount === 1) {
+        const profile = Object.keys(remote.status.mount.activeProfiles || {})[0] ?? 'Default';
+        summary.push(this.translate.instant('mount.mountedWithProfile', { profile }));
+      } else {
+        summary.push(this.translate.instant('mount.mountedMultiple', { count: mountCount }));
+      }
+    }
     if (this.getActiveSyncOperationType(remote))
       summary.push(
         this.translate.instant('operations.syncSummary', {

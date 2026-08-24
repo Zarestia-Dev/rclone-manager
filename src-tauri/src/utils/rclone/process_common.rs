@@ -7,7 +7,6 @@ use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::CoreSettings;
 use crate::utils::security::is_sensitive_field;
-use crate::utils::types::rclone::ProcessKind;
 use rcman::SettingsSchema;
 
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
@@ -123,10 +122,9 @@ fn append_user_flags_from_app(
     Ok(())
 }
 
-/// Build the rclone command for the main engine or the OAuth process.
+/// Build the rclone `rcd` command for the main engine.
 pub async fn build_rclone_process_command(
     app: &AppHandle,
-    kind: ProcessKind,
 ) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
     use crate::rclone::backend::BackendManager;
     use std::path::PathBuf;
@@ -156,41 +154,34 @@ pub async fn build_rclone_process_command(
             .await;
     }
 
-    let port = match kind {
-        ProcessKind::Engine => backend.port,
-        ProcessKind::OAuth => backend.oauth_port,
-    };
-
     let command = build_rclone_command(app, None, config_path.as_deref(), None);
-    let mut args = build_rclone_base_args(&backend.host, port);
+    let mut args = build_rclone_base_args(&backend.host, backend.port);
 
-    if let ProcessKind::Engine = kind {
-        let log_file_path = crate::core::paths::AppPaths::from_app_handle(app).map_or_else(
-            |_| PathBuf::from("main_engine.log"),
-            |paths| paths.get_rclone_log_dir().join("main_engine.log"),
-        );
+    let log_file_path = crate::core::paths::AppPaths::from_app_handle(app).map_or_else(
+        |_| PathBuf::from("main_engine.log"),
+        |paths| paths.get_rclone_log_dir().join("main_engine.log"),
+    );
 
-        args.extend([
-            "--log-file".to_string(),
-            log_file_path.to_string_lossy().to_string(),
-            "--log-file-max-size".to_string(),
-            "5M".to_string(),
-            "--log-file-max-backups".to_string(),
-            "5".to_string(),
-        ]);
+    args.extend([
+        "--log-file".to_string(),
+        log_file_path.to_string_lossy().to_string(),
+        "--log-file-max-size".to_string(),
+        "5M".to_string(),
+        "--log-file-max-backups".to_string(),
+        "5".to_string(),
+    ]);
 
-        if let Ok(paths) = crate::core::paths::AppPaths::from_app_handle(app) {
-            let template_path = paths.serve_template_path();
-            if template_path.exists() {
-                args.extend([
-                    "--rc-template".to_string(),
-                    template_path.to_string_lossy().to_string(),
-                ]);
-            }
+    if let Ok(paths) = crate::core::paths::AppPaths::from_app_handle(app) {
+        let template_path = paths.serve_template_path();
+        if template_path.exists() {
+            args.extend([
+                "--rc-template".to_string(),
+                template_path.to_string_lossy().to_string(),
+            ]);
         }
-
-        append_user_flags_from_app(app, &mut args)?;
     }
+
+    append_user_flags_from_app(app, &mut args)?;
 
     if let (Some(user), Some(pass)) = (&backend.username, &backend.password) {
         debug!("Starting rclone with authentication");

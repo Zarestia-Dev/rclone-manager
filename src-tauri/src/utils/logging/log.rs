@@ -113,8 +113,8 @@ pub fn log_operation(
     message: impl Into<String>,
     context: Option<Value>,
 ) {
-    let clean_remote =
-        remote_name.map(|name| crate::utils::json_helpers::extract_remote_name_from_fs(&name));
+    let clean_remote = remote_name
+        .map(|name| crate::utils::json_helpers::extract_remote_name_from_fs(&name).into_owned());
     let entry = LogEntry {
         timestamp: Utc::now(),
         remote_name: clean_remote,

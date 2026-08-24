@@ -17,6 +17,13 @@
           @if (serve().profile) {
             <span class="profile-badge">{{ serve().profile }}</span>
           }
+          <span
+            class="origin-mini-badge"
+            [class.quickrun]="isQuickRun()"
+            [attr.title]="originLabel()"
+          >
+            <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
+          </span>
         </div>
 
         <!-- URL or address -->

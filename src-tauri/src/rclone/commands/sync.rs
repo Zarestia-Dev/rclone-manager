@@ -4,15 +4,18 @@ use futures::future::join_all;
 use serde_json::{Map, Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::utils::{
-    rclone::endpoints::operations,
-    types::{
-        jobs::JobType,
-        remotes::{OperationType, ProfileParams},
+use crate::{
+    core::bridge,
+    utils::{
+        rclone::endpoints::operations,
+        types::{
+            jobs::JobType,
+            remotes::{OperationType, ProfileParams},
+        },
     },
 };
 
-use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
+use super::common::{is_directory, parse_common_config, parse_fs};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
 /// Unified parameter structure for all transfer operations
@@ -30,10 +33,9 @@ pub struct GenericTransferParams {
 
 impl GenericTransferParams {
     pub fn to_rclone_body(&self) -> Result<Value, String> {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
+        let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        );
 
         if self.transfer_type == OperationType::Delete {
             let endpoint = if self.is_dir {
@@ -46,12 +48,9 @@ impl GenericTransferParams {
                 if fs.ends_with(':') {
                     remote = remote.trim_start_matches('/').to_string();
                 }
-                body.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(&fs, self.runtime_remote_options.as_ref()),
-                );
-                body.insert("remote".to_string(), Value::String(remote));
-                body.insert("_path".to_string(), Value::String(endpoint.to_string()));
+                builder.insert("fs", fs);
+                builder.insert("remote", remote);
+                builder.insert("_path", endpoint);
             } else {
                 return Err(format!("Could not parse source path: {}", self.source));
             }
@@ -68,17 +67,11 @@ impl GenericTransferParams {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(true);
 
-                body.insert("url".to_string(), Value::String(self.source.clone()));
-                body.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(&fs, self.runtime_remote_options.as_ref()),
-                );
-                body.insert("remote".to_string(), Value::String(remote));
-                body.insert("autoFilename".to_string(), Value::Bool(auto_filename));
-                body.insert(
-                    "_path".to_string(),
-                    Value::String(operations::COPYURL.to_string()),
-                );
+                builder.insert("url", self.source.clone());
+                builder.insert("fs", fs);
+                builder.insert("remote", remote);
+                builder.insert("autoFilename", auto_filename);
+                builder.insert("_path", operations::COPYURL);
             } else {
                 return Err(format!("Could not parse destination path: {}", self.dest));
             }
@@ -88,43 +81,16 @@ impl GenericTransferParams {
                 OperationType::Copy | OperationType::Move
             )
         {
-            self.build_file_transfer_body(&mut body)?;
+            self.build_file_transfer_body(builder.as_map_mut())?;
         } else {
-            self.build_directory_transfer_body(&mut body);
+            self.build_directory_transfer_body(builder.as_map_mut());
         }
 
-        // Merge resolved filter_options into _filter
-        if let Some(filters) = &self.filter_options {
-            let mut filter_map = body
-                .get("_filter")
-                .and_then(|v| v.as_object())
-                .cloned()
-                .unwrap_or_default();
-            for (k, v) in filters {
-                filter_map.entry(k.clone()).or_insert_with(|| v.clone());
-            }
-            body.insert("_filter".to_string(), Value::Object(filter_map));
-        }
-
-        // Merge resolved backend_options into _config
-        let mut final_backend = match &self.backend_options {
-            Some(opts) => crate::rclone::commands::common::filter_empty_options(opts),
-            None => std::collections::HashMap::new(),
-        };
-
-        if let Some(existing_config) = body.get("_config").and_then(|v| v.as_object()) {
-            for (k, v) in existing_config {
-                final_backend.entry(k.clone()).or_insert_with(|| v.clone());
-            }
-        }
-        if !final_backend.is_empty() {
-            body.insert(
-                "_config".to_string(),
-                serde_json::to_value(final_backend).unwrap(),
-            );
-        }
-
-        Ok(Value::Object(body))
+        Ok(builder
+            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+            .with_filter_options(self.filter_options.as_ref())
+            .with_backend_options(self.backend_options.as_ref())
+            .build())
     }
 
     fn build_file_transfer_body(&self, body: &mut Map<String, Value>) -> Result<(), String> {
@@ -155,15 +121,9 @@ impl GenericTransferParams {
                 format!("{}/{}", dst_root.trim_end_matches(['/', '\\']), filename)
             };
 
-            body.insert(
-                "srcFs".to_string(),
-                fs_value_with_runtime_overrides(&src_fs, self.runtime_remote_options.as_ref()),
-            );
+            body.insert("srcFs".to_string(), Value::String(src_fs));
             body.insert("srcRemote".to_string(), Value::String(src_remote));
-            body.insert(
-                "dstFs".to_string(),
-                fs_value_with_runtime_overrides(&dst_fs, self.runtime_remote_options.as_ref()),
-            );
+            body.insert("dstFs".to_string(), Value::String(dst_fs));
             body.insert("dstRemote".to_string(), Value::String(dst_remote));
             body.insert("_path".to_string(), Value::String(endpoint.to_string()));
             Ok(())
@@ -176,18 +136,14 @@ impl GenericTransferParams {
     }
 
     fn build_directory_transfer_body(&self, body: &mut Map<String, Value>) {
-        let src_fs =
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref());
-        let dst_fs =
-            fs_value_with_runtime_overrides(&self.dest, self.runtime_remote_options.as_ref());
-
         if self.transfer_type == OperationType::Bisync {
-            body.insert("path1".to_string(), src_fs);
-            body.insert("path2".to_string(), dst_fs);
+            body.insert("path1".to_string(), Value::String(self.source.clone()));
+            body.insert("path2".to_string(), Value::String(self.dest.clone()));
         } else {
-            body.insert("srcFs".to_string(), src_fs);
-            body.insert("dstFs".to_string(), dst_fs);
+            body.insert("srcFs".to_string(), Value::String(self.source.clone()));
+            body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
         }
+
         body.insert(
             "_path".to_string(),
             Value::String(self.transfer_type.endpoint().unwrap_or("").to_string()),
@@ -213,7 +169,7 @@ fn has_archive_extension(path: &str) -> bool {
         || lower.ends_with(".tar.lz4")
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn start_profile_batch(
     app: AppHandle,
     transfer_type: OperationType,
@@ -247,13 +203,27 @@ pub async fn start_profile_batch(
 
     let mut inputs = Vec::new();
 
-    let dest = common.dest.clone();
-    if dest.is_empty() && transfer_type != OperationType::Delete {
-        return Err("No destination specified".to_string());
-    }
+    let (target_pairs, is_scoped) = if transfer_type != OperationType::Bisync
+        && let Some(scoped) = params.scoped_targets.filter(|t| !t.is_empty())
+    {
+        (scoped, true)
+    } else {
+        let dest = common.dest.clone();
+        if dest.is_empty() && transfer_type != OperationType::Delete {
+            return Err("No destination specified".to_string());
+        }
+        (
+            common
+                .source
+                .iter()
+                .map(|s| (s.clone(), dest.clone()))
+                .collect(),
+            false,
+        )
+    };
 
     let mut tasks = Vec::new();
-    for source in &common.source {
+    for (source, _) in &target_pairs {
         let app = app.clone();
         let source = source.clone();
         let runtime_remote_options = common.runtime_remote_options.clone();
@@ -265,14 +235,14 @@ pub async fn start_profile_batch(
         });
     }
 
-    let results = join_all(tasks).await;
+    let dir_results = join_all(tasks).await;
 
     // Validate that Sync, Bisync, and Check do not contain files
     if matches!(
         transfer_type,
         OperationType::Sync | OperationType::Bisync | OperationType::Check
     ) {
-        for (source, is_dir) in &results {
+        for (source, is_dir) in &dir_results {
             if !*is_dir {
                 return Err(format!(
                     "{transfer_type:?} only supports directories, not files: {source}"
@@ -286,6 +256,7 @@ pub async fn start_profile_batch(
         common
             .rclone_config
             .get("dryRun")
+            .or_else(|| common.rclone_config.get("dry_run"))
             .or_else(|| common.rclone_config.get("DryRun"))
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
@@ -293,7 +264,18 @@ pub async fn start_profile_batch(
         common
             .backend_options
             .as_ref()
-            .and_then(|opts| opts.get("DryRun"))
+            .and_then(|opts| {
+                opts.get("DryRun")
+                    .or_else(|| opts.get("dry_run"))
+                    .or_else(|| opts.get("dryRun"))
+            })
+            .or_else(|| {
+                common
+                    .rclone_config
+                    .get("DryRun")
+                    .or_else(|| common.rclone_config.get("dry_run"))
+                    .or_else(|| common.rclone_config.get("dryRun"))
+            })
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
     };
@@ -310,15 +292,18 @@ pub async fn start_profile_batch(
 
     let mut first_job_id = None;
 
-    for (i, (source, is_dir)) in results.into_iter().enumerate() {
+    for (i, ((source, dest_val), (_, is_dir))) in
+        target_pairs.into_iter().zip(dir_results).enumerate()
+    {
         if transfer_type == OperationType::Archivecreate
             || transfer_type == OperationType::Cryptcheck
         {
             let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
             let backend = backend_manager.get_active().await;
 
-            let mut dest_val = dest.clone();
-            if transfer_type == OperationType::Archivecreate && !has_archive_extension(&dest_val) {
+            let mut final_dest = dest_val.clone();
+            if transfer_type == OperationType::Archivecreate && !has_archive_extension(&final_dest)
+            {
                 let format = if let Value::Object(map) = &common.rclone_config {
                     map.get("format").and_then(|v| v.as_str()).unwrap_or("zip")
                 } else {
@@ -331,10 +316,13 @@ pub async fn start_profile_batch(
                     .unwrap_or("archive");
 
                 let filename = format!("{}.{}", folder_name, format);
-                if dest_val.ends_with(':') || dest_val.ends_with('/') || dest_val.ends_with('\\') {
-                    dest_val.push_str(&filename);
+                if final_dest.ends_with(':')
+                    || final_dest.ends_with('/')
+                    || final_dest.ends_with('\\')
+                {
+                    final_dest.push_str(&filename);
                 } else {
-                    dest_val.push_str(&format!("/{filename}"));
+                    final_dest.push_str(&format!("/{filename}"));
                 }
             }
 
@@ -343,7 +331,7 @@ pub async fn start_profile_batch(
                     let mut p = json!({
                         "action": "create",
                         "src": source,
-                        "dst": dest_val,
+                        "dst": final_dest,
                         "_async": true,
                     });
                     if let Value::Object(map) = &common.rclone_config {
@@ -367,7 +355,7 @@ pub async fn start_profile_batch(
                         operations::CRYPTCHECK,
                         json!({
                             "src": source,
-                            "dst": dest_val,
+                            "dst": final_dest,
                             "_async": true,
                         }),
                     )
@@ -379,9 +367,9 @@ pub async fn start_profile_batch(
                     "cryptcheck"
                 };
                 let mut args = if transfer_type == OperationType::Archivecreate {
-                    vec!["create".to_string(), source.clone(), dest_val.clone()]
+                    vec!["create".to_string(), source.clone(), final_dest.clone()]
                 } else {
-                    vec![source.clone(), dest_val.clone()]
+                    vec![source.clone(), final_dest.clone()]
                 };
 
                 if transfer_type == OperationType::Archivecreate
@@ -417,18 +405,17 @@ pub async fn start_profile_batch(
                 )
             };
 
-            let metadata = JobMetadata {
-                remote_name: params.remote_name.clone(),
-                job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
-                source: vec![source.clone()],
-                destination: dest_val.clone(),
-                profile: Some(params.profile_name.clone()),
-                origin: params.source.clone(),
-                group: None,
-                no_cache: params.no_cache.unwrap_or(false),
-                dry_run,
-                parent_job_id: None,
-            };
+            let metadata = JobMetadata::new(
+                params.remote_name.clone(),
+                transfer_type.as_job_type().unwrap_or(JobType::Sync),
+                vec![source.clone()],
+                final_dest.clone(),
+            )
+            .with_profile(Some(params.profile_name.clone()))
+            .with_origin(params.source.clone())
+            .with_no_cache(params.no_cache.unwrap_or(false))
+            .with_dry_run(dry_run)
+            .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
             let (jobid, _, _) = submit_job_with_options(
                 app.clone(),
@@ -445,7 +432,7 @@ pub async fn start_profile_batch(
                 first_job_id = Some(jobid);
             }
         } else {
-            let mut custom_dest = dest.clone();
+            let mut custom_dest = dest_val.clone();
             let mut custom_config = common.rclone_config.clone();
 
             if transfer_type == OperationType::Copyurl
@@ -481,23 +468,48 @@ pub async fn start_profile_batch(
     }
 
     if !inputs.is_empty() {
-        crate::rclone::commands::job::submit_batch_job(
-            app,
-            inputs,
-            JobMetadata {
-                remote_name: params.remote_name.clone(),
-                job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
-                source: common.source.clone(),
-                destination: common.dest.clone(),
-                profile: Some(params.profile_name.clone()),
-                origin: params.source,
-                group: None,
-                no_cache: params.no_cache.unwrap_or(false),
-                dry_run,
-                parent_job_id: None,
-            },
+        let metadata_source = if is_scoped {
+            inputs
+                .iter()
+                .filter_map(|input| {
+                    input
+                        .get("srcFs")
+                        .or_else(|| input.get("path1"))
+                        .or_else(|| input.get("fs"))
+                        .and_then(|v| v.as_str().map(String::from))
+                })
+                .collect()
+        } else {
+            common.source.clone()
+        };
+        let metadata_dest = if is_scoped {
+            inputs
+                .first()
+                .and_then(|input| {
+                    input
+                        .get("dstFs")
+                        .or_else(|| input.get("path2"))
+                        .or_else(|| input.get("remote"))
+                        .and_then(|v| v.as_str().map(String::from))
+                })
+                .unwrap_or_else(|| common.dest.clone())
+        } else {
+            common.dest.clone()
+        };
+
+        let metadata = JobMetadata::new(
+            params.remote_name.clone(),
+            transfer_type.as_job_type().unwrap_or(JobType::Sync),
+            metadata_source,
+            metadata_dest,
         )
-        .await
+        .with_profile(Some(params.profile_name.clone()))
+        .with_origin(params.source)
+        .with_no_cache(params.no_cache.unwrap_or(false))
+        .with_dry_run(dry_run)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+        crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
     } else {
         Ok(first_job_id.unwrap_or(0).to_string())
     }
@@ -570,14 +582,8 @@ mod tests {
             filter_options: None,
             backend_options: None,
             runtime_remote_options: Some(HashMap::from([
-                (
-                    "srcRemote".to_string(),
-                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
-                ),
-                (
-                    "dstRemote".to_string(),
-                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
-                ),
+                ("env_auth".to_string(), json!(true)),
+                ("provider".to_string(), json!("AWS")),
             ])),
             transfer_type: OperationType::Sync,
             is_dir: true,
@@ -586,15 +592,10 @@ mod tests {
         let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
-        let src_fs = obj.get("srcFs").unwrap().as_object().unwrap();
-        assert_eq!(src_fs.get("_name").unwrap(), "srcRemote");
-        assert_eq!(src_fs.get("_root").unwrap(), "bucket/a");
-        assert_eq!(src_fs.get("type").unwrap(), "s3");
-
-        let dst_fs = obj.get("dstFs").unwrap().as_object().unwrap();
-        assert_eq!(dst_fs.get("_name").unwrap(), "dstRemote");
-        assert_eq!(dst_fs.get("_root").unwrap(), "bucket/b");
-        assert_eq!(dst_fs.get("provider").unwrap(), "AWS");
+        assert_eq!(obj.get("srcFs").unwrap(), "srcRemote:bucket/a");
+        assert_eq!(obj.get("dstFs").unwrap(), "dstRemote:bucket/b");
+        assert_eq!(obj.get("env_auth").unwrap(), true);
+        assert_eq!(obj.get("provider").unwrap(), "AWS");
     }
 
     #[test]
@@ -672,14 +673,20 @@ mod tests {
             dest: "dst:".to_string(),
             rclone_config: json!({
                 "_filter": {
-                    "include": "*.jpg"
+                    "IncludeRule": "*.jpg"
                 },
                 "_config": {
-                    "transfers": 8
+                    "Transfers": 8
                 }
             }),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!("*.png"))])),
-            backend_options: Some(HashMap::from([("checkers".to_string(), json!(16))])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!("*.png")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            backend_options: Some(HashMap::from([
+                ("checkers".to_string(), json!(16)),
+                ("Checkers".to_string(), json!(32)),
+            ])),
             runtime_remote_options: None,
             transfer_type: OperationType::Sync,
             is_dir: true,
@@ -688,13 +695,18 @@ mod tests {
         let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
+        // Flat lowercase keys placed directly at root level
+        assert_eq!(obj.get("exclude").unwrap(), "*.png");
+        assert_eq!(obj.get("checkers").unwrap(), 16);
+
+        // PascalCase nested options placed into their respective blocks
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("include").unwrap(), "*.jpg");
-        assert_eq!(filter.get("exclude").unwrap(), "*.png");
+        assert_eq!(filter.get("IncludeRule").unwrap(), "*.jpg");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("transfers").unwrap(), 8);
-        assert_eq!(config.get("checkers").unwrap(), 16);
+        assert_eq!(config.get("Transfers").unwrap(), 8);
+        assert_eq!(config.get("Checkers").unwrap(), 32);
     }
 
     #[test]

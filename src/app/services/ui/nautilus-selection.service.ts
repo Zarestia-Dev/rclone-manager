@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { NautilusActionsService } from './nautilus-actions.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { FileBrowserItem, Entry, fileBrowserItemKey } from '@app/types';
 
@@ -8,7 +7,6 @@ import { FileBrowserItem, Entry, fileBrowserItemKey } from '@app/types';
 export class NautilusSelectionService {
   private readonly tabSvc = inject(NautilusTabService);
   private readonly nautilusService = inject(NautilusService);
-  private readonly actions = inject(NautilusActionsService);
 
   private lastSelectedIndex: Record<0 | 1, number | null> = { 0: null, 1: null };
 
@@ -34,10 +32,7 @@ export class NautilusSelectionService {
   }
 
   getSelectedItemsList(currentFiles: FileBrowserItem[]): FileBrowserItem[] {
-    const selection =
-      this.tabSvc.activePaneIndex() === 0
-        ? this.tabSvc.selectedItems()
-        : this.tabSvc.selectedItemsRight();
+    const selection = this.tabSvc.activeSelection();
     return currentFiles.filter((item: FileBrowserItem) => selection.has(this.getItemKey(item)));
   }
 
@@ -63,8 +58,13 @@ export class NautilusSelectionService {
 
     const lastIdx = this.lastSelectedIndex[paneIndex];
     if (event.shiftKey && lastIdx !== null && multi) {
-      const start = Math.min(lastIdx, index);
-      const end = Math.max(lastIdx, index);
+      if (event.ctrlKey || event.metaKey) {
+        currentSel.forEach(k => newSel.add(k));
+      }
+      const safeLastIdx = Math.max(0, Math.min(lastIdx, currentFiles.length - 1));
+      const safeIdx = Math.max(0, Math.min(index, currentFiles.length - 1));
+      const start = Math.min(safeLastIdx, safeIdx);
+      const end = Math.max(safeLastIdx, safeIdx);
       for (let i = start; i <= end; i++) {
         if (currentFiles[i]) newSel.add(this.getItemKey(currentFiles[i]));
       }
@@ -86,8 +86,6 @@ export class NautilusSelectionService {
     paneIndex: 0 | 1,
     currentFiles: FileBrowserItem[]
   ): void {
-    this.actions.contextMenuItem.set(item);
-
     if (item) {
       if (this.tabSvc.activePaneIndex() !== paneIndex) {
         this.tabSvc.switchPane(paneIndex);

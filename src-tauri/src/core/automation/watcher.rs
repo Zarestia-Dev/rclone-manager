@@ -2,6 +2,7 @@ use crate::core::automation::engine::execute_automation;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::cache::is_local_path;
+use crate::utils::json_helpers::build_full_path;
 use crate::utils::types::automation::{Automation, AutomationStatus};
 use crate::utils::types::remotes::OperationType;
 use chrono::Utc;
@@ -235,6 +236,7 @@ impl WatcherManager {
                             continue;
                         }
 
+                        let paths_to_sync = changed_paths.clone();
                         created_in_window.clear();
                         changed_paths.clear();
 
@@ -244,11 +246,25 @@ impl WatcherManager {
                             continue;
                         }
 
+                        let scoped_targets = if a.watch_changed_only && a.automation_type != OperationType::Bisync {
+                            let targets = compute_scoped_targets(&paths_clone, &a.args.dst_paths, &paths_to_sync);
+                            log::info!(
+                                "Computed {} scoped sync target(s) for automation {automation_id}",
+                                targets.len()
+                            );
+                            Some(targets)
+                        } else {
+                            None
+                        };
+
                         log::info!("Triggering automation {automation_id} after debounce");
                         let app_handle_clone = app_handle.clone();
                         let id_clone = automation_id.clone();
                         tokio::spawn(async move {
-                            if let Err(e) = execute_automation(&id_clone, &app_handle_clone).await {
+                            if let Err(e) =
+                                execute_automation(&id_clone, &app_handle_clone, scoped_targets)
+                                    .await
+                            {
                                 log::error!("Error executing automation {id_clone}: {e}");
                             }
                         });
@@ -267,6 +283,60 @@ impl Default for WatcherManager {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub fn compute_scoped_targets(
+    src_paths: &[String],
+    dst_paths: &[String],
+    changed_paths: &std::collections::HashSet<std::path::PathBuf>,
+) -> Vec<(String, String)> {
+    if changed_paths.is_empty() || src_paths.is_empty() {
+        return Vec::new();
+    }
+
+    let default_dst = dst_paths.first().cloned().unwrap_or_default();
+    let mut scoped_pairs = std::collections::HashSet::new();
+
+    for changed in changed_paths {
+        let Some((idx, src_root)) = src_paths
+            .iter()
+            .enumerate()
+            .find(|(_, src)| changed.starts_with(src))
+        else {
+            continue;
+        };
+
+        let Ok(rel_path) = changed.strip_prefix(src_root) else {
+            continue;
+        };
+
+        let rel_dir = if changed.is_dir() {
+            rel_path.to_string_lossy()
+        } else {
+            rel_path
+                .parent()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_default()
+        };
+
+        let rel_dir = rel_dir.replace('\\', "/").trim_matches('/').to_string();
+        let target_dst_root = dst_paths.get(idx).unwrap_or(&default_dst);
+
+        let (scoped_src, scoped_dst) = if rel_dir.is_empty() {
+            (src_root.clone(), target_dst_root.clone())
+        } else {
+            (
+                build_full_path(src_root, &rel_dir),
+                build_full_path(target_dst_root, &rel_dir),
+            )
+        };
+
+        scoped_pairs.insert((scoped_src, scoped_dst));
+    }
+
+    let mut result: Vec<(String, String)> = scoped_pairs.into_iter().collect();
+    result.sort();
+    result
 }
 
 // HELPERS
@@ -787,5 +857,53 @@ mod tests {
             &src_paths,
             &filter_opts2
         ));
+    }
+
+    #[test]
+    fn test_compute_scoped_targets() {
+        let src_paths = vec!["/home/user/backup".to_string()];
+        let dst_paths = vec!["google:test1".to_string()];
+
+        let mut changed = std::collections::HashSet::new();
+        changed.insert(std::path::PathBuf::from(
+            "/home/user/backup/proj/app/main.rs",
+        ));
+        changed.insert(std::path::PathBuf::from(
+            "/home/user/backup/proj/app/lib.rs",
+        ));
+        changed.insert(std::path::PathBuf::from("/home/user/backup/other/doc.txt"));
+
+        let targets = compute_scoped_targets(&src_paths, &dst_paths, &changed);
+        assert_eq!(targets.len(), 2);
+        assert_eq!(
+            targets[0],
+            (
+                "/home/user/backup/other".to_string(),
+                "google:test1/other".to_string()
+            )
+        );
+        assert_eq!(
+            targets[1],
+            (
+                "/home/user/backup/proj/app".to_string(),
+                "google:test1/proj/app".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_compute_scoped_targets_root_file() {
+        let src_paths = vec!["/home/user/backup".to_string()];
+        let dst_paths = vec!["google:test1".to_string()];
+
+        let mut changed = std::collections::HashSet::new();
+        changed.insert(std::path::PathBuf::from("/home/user/backup/notes.txt"));
+
+        let targets = compute_scoped_targets(&src_paths, &dst_paths, &changed);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(
+            targets[0],
+            ("/home/user/backup".to_string(), "google:test1".to_string())
+        );
     }
 }

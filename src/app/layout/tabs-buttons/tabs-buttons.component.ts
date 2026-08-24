@@ -1,8 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, output, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
-import { AppTab } from '@app/types';
+import { AppTab, TabItem } from '@app/types';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
@@ -12,22 +12,40 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
   styleUrl: './tabs-buttons.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[class.mobile-hidden]': 'uiStateService.mobileSidebarOpen()',
+    '[class.mobile-hidden]': 'isMobileHidden()',
+    '[class.is-editing]': 'isEditingLayout()',
   },
 })
-export class TabsButtonsComponent {
+export class TabsButtonsComponent<T extends string = string> {
   protected readonly uiStateService = inject(UiStateService);
 
-  readonly currentTab = this.uiStateService.currentTab;
+  readonly customTabs = input<TabItem<T>[]>();
+  readonly activeTab = input<T | string>();
+  readonly activeTabChange = output<T>();
+  readonly mobileHidden = input<boolean>();
 
-  readonly tabs: { id: AppTab; icon: string; label: string }[] = [
+  readonly isEditingLayout = this.uiStateService.isEditingLayout;
+  readonly editContext = this.uiStateService.activeEditContext;
+
+  private readonly defaultTabs: TabItem<AppTab>[] = [
     { id: 'general', icon: 'home', label: 'tabs.general' },
     { id: 'mount', icon: 'mount', label: 'tabs.mount' },
     { id: 'operations', icon: 'operations', label: 'tabs.operations' },
     { id: 'serve', icon: 'satellite-dish', label: 'tabs.serve' },
   ];
 
-  setTab(tab: AppTab): void {
-    this.uiStateService.setTab(tab);
+  readonly tabs = computed(() => (this.customTabs() ?? this.defaultTabs) as TabItem<T>[]);
+  readonly currentTab = computed(() => this.activeTab() ?? this.uiStateService.currentTab());
+  readonly isMobileHidden = computed(
+    () => this.mobileHidden() ?? this.uiStateService.mobileSidebarOpen()
+  );
+
+  setTab(tabId: T): void {
+    if (this.customTabs()) {
+      this.activeTabChange.emit(tabId);
+    } else {
+      this.uiStateService.setTab(tabId as unknown as AppTab);
+      this.activeTabChange.emit(tabId);
+    }
   }
 }

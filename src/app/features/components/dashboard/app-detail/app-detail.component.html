@@ -2,19 +2,43 @@
   <header class="detail-header">
     <div class="icon-container" [class]="iconContainerClass()">
       <mat-icon
-        [svgIcon]="iconService.getIconName(selectedRemote().type)"
+        [svgIcon]="
+          mode() === 'quickRun'
+            ? currentOpMetadata().icon || 'operations'
+            : iconService.getIconName(selectedRemote().type)
+        "
         class="remote-type-icon"
       ></mat-icon>
     </div>
     <div class="remote-text-info">
-      <h2 class="remote-name" [attr.title]="selectedRemote().name">
-        {{ selectedRemote().name }}
+      <h2
+        class="remote-name"
+        [attr.title]="mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name"
+      >
+        {{ mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name }}
       </h2>
-      <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
+      <span class="remote-type">
+        @if (mode() === 'quickRun') {
+          {{ currentOpMetadata().typeLabel || currentOpMetadata().label | translate }} ·
+          <button
+            type="button"
+            class="remote-link-btn"
+            (click)="openRemoteDetail.emit(quickRun()?.remoteName || '')"
+            [attr.title]="
+              ('dashboard.appDetail.remoteSettings' | translate) + ': ' + quickRun()?.remoteName
+            "
+          >
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote().type)"></mat-icon>
+            <span>{{ quickRun()?.remoteName }}</span>
+          </button>
+        } @else {
+          {{ selectedRemote().type | titlecase }}
+        }
+      </span>
     </div>
   </header>
 
-  @if (mainOperationType() === 'operations') {
+  @if (mode() === 'remote' && mainOperationType() === 'operations') {
     <div class="toggle-container">
       <div class="operation-toggle-group" role="group">
         @for (opType of primarySyncOps(); track opType) {
@@ -85,7 +109,7 @@
   <mat-tab-group>
     <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
-        @if (showProfileSelector()) {
+        @if (mode() === 'remote' && showProfileSelector()) {
           <div class="profile-selector-container" [class]="operationColorClass()">
             <div class="profile-selector-header">
               <span class="profile-selector-label">{{
@@ -174,7 +198,11 @@
               <span class="cron-schedule">
                 {{ 'automation.monitoring.realtimeSchedule' | translate }}
                 ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
-                {{ 'automation.monitoring.seconds' | translate }})
+                {{ 'automation.monitoring.seconds' | translate }}
+                @if (watcher.watchChangedOnly) {
+                  · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+                }
+                )
               </span>
             </div>
           }
@@ -192,7 +220,7 @@
           ></app-transfer-activity-panel>
         }
 
-        @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
+        @if (currentOpType() === 'serve' && filteredRunningServes().length > 0) {
           <div class="active-serves-list">
             <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
             <div class="serves-grid">
@@ -221,41 +249,50 @@
     </mat-tab>
 
     <mat-tab [label]="'dashboard.appDetail.configuration' | translate">
-      <div class="settings-layout configuration-content">
-        <section class="settings-group operation-settings">
-          <header class="group-header">
-            <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-            <p class="group-description">{{ operationSettingsDescription() }}</p>
-          </header>
-          <div class="group-panels">
-            @for (section of operationSettingsSections(); track section.key) {
-              <app-settings-panel
-                [config]="getSettingsPanelConfig(section)"
-                (editSettings)="onEditSettings($event)"
-              ></app-settings-panel>
-            }
-          </div>
-        </section>
+      @if (mode() === 'quickRun') {
+        <div class="settings-layout configuration-content">
+          <app-settings-panel
+            [config]="quickRunSettingsConfig()"
+            (editSettings)="openRemoteConfigModal.emit({})"
+          ></app-settings-panel>
+        </div>
+      } @else {
+        <div class="settings-layout configuration-content">
+          <section class="settings-group operation-settings">
+            <header class="group-header">
+              <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+              <p class="group-description">{{ operationSettingsDescription() }}</p>
+            </header>
+            <div class="group-panels">
+              @for (section of operationSettingsSections(); track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
 
-        <section class="settings-group shared-settings">
-          <header class="group-header">
-            <h3 class="group-title">
-              {{ 'dashboard.appDetail.sharedSettings' | translate }}
-            </h3>
-            <p class="group-description">
-              {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
-            </p>
-          </header>
-          <div class="group-panels">
-            @for (section of sharedSettingsSections(); track section.key) {
-              <app-settings-panel
-                [config]="getSettingsPanelConfig(section)"
-                (editSettings)="onEditSettings($event)"
-              ></app-settings-panel>
-            }
-          </div>
-        </section>
-      </div>
+          <section class="settings-group shared-settings">
+            <header class="group-header">
+              <h3 class="group-title">
+                {{ 'dashboard.appDetail.sharedSettings' | translate }}
+              </h3>
+              <p class="group-description">
+                {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
+              </p>
+            </header>
+            <div class="group-panels">
+              @for (section of sharedSettingsSections(); track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
+        </div>
+      }
     </mat-tab>
   </mat-tab-group>
 </div>

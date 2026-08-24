@@ -118,7 +118,6 @@ export class ServeManagementService extends TauriBaseService {
    */
   public async forceCheckServes(): Promise<void> {
     await this.invokeCommand('force_check_serves');
-    await this.refreshServes();
   }
 
   /**
@@ -181,17 +180,11 @@ export class ServeManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    const updated = await this.invokeCommand<number>('rename_serve_profile_in_cache', {
+    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
-
-    if (updated > 0) {
-      await this.refreshServesFromCache();
-    }
-
-    return updated;
   }
 
   /**

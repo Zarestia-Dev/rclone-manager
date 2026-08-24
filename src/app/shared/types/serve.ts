@@ -25,6 +25,8 @@ export interface ServeStartResponse {
   addr: string; // Address server is listening on
 }
 
+import { Origin } from './origin';
+
 /**
  * Running serve instance information
  */
@@ -32,13 +34,14 @@ export interface ServeListItem {
   id: string;
   addr: string;
   profile?: string;
+  quick_run_id?: string;
+  execute_id?: string;
+  origin?: Origin;
   params: {
     fs: string;
     type: string;
     opt?: ServeOptions;
     vfsOpt?: VfsOptions;
-    _config?: BackendOptions;
-    _filter?: FilterOptions;
   };
 }
 

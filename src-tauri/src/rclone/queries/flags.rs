@@ -5,6 +5,7 @@ use tauri::{AppHandle, Manager};
 use tokio::try_join;
 
 use crate::{
+    core::bridge,
     rclone::backend::{BackendManager, RcloneTransport},
     utils::rclone::endpoints::options,
 };
@@ -76,18 +77,13 @@ const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 /// <https://rclone.org/commands/rclone_check/#check-options>
 const CHECK_GROUPS: &[&str] = &["Check"];
 
-/// Returns the flag's groups as a `Vec<&str>`, trimmed.
-fn flag_groups(flag: &Value) -> Vec<&str> {
-    flag["Groups"]
-        .as_str()
-        .map(|s| s.split(',').map(str::trim).collect())
-        .unwrap_or_default()
-}
-
 /// True if any of the flag's groups appear in `set`.
+/// Zero-allocation short-circuit iterator.
 fn flag_has_any_group(flag: &Value, set: &[&str]) -> bool {
-    let groups = flag_groups(flag);
-    groups.iter().any(|g| set.contains(g))
+    let Some(groups) = flag["Groups"].as_str() else {
+        return false;
+    };
+    groups.split(',').map(str::trim).any(|g| set.contains(&g))
 }
 
 // ---------------------------------------------------------------------------
@@ -243,14 +239,14 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     Ok(options_info)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, String> {
     get_all_options_with_values(app)
         .await
         .map(|data| group_options(&data))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
     let transport = crate::rclone::commands::common::transport(&app);
     fetch_options(&transport, options::BLOCKS).await
@@ -284,31 +280,9 @@ fn get_flags_by_category_internal(
         .collect()
 }
 
-#[tauri::command]
-pub async fn get_flags_by_category(
-    app: AppHandle,
-    category: String,
-    filter_groups: Option<Vec<String>>,
-    exclude_flags: Option<Vec<String>>,
-) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    let fg: Option<Vec<&str>> = filter_groups
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    let ef: Option<Vec<&str>> = exclude_flags
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        &category,
-        fg.as_deref(),
-        ef.as_deref(),
-    ))
-}
-
 /// Unified flag fetcher for all operation types.
 /// Maps each operation to the correct rclone flag groups it supports.
-#[tauri::command]
+#[bridge]
 pub async fn get_operation_flags(app: AppHandle, operation: String) -> Result<Vec<Value>, String> {
     match operation.as_str() {
         // Copy group: copy, move
@@ -348,7 +322,7 @@ pub async fn get_operation_flags(app: AppHandle, operation: String) -> Result<Ve
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
 
@@ -375,7 +349,7 @@ pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 ///
 /// Flags that carry a Copy or Sync group are explicitly excluded so that
 /// operation-specific options never appear here.
-#[tauri::command]
+#[bridge]
 pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     let mut flags: Vec<Value> = get_flags_by_category_internal(&merged_json, "main", None, None)
@@ -394,7 +368,7 @@ pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(flags)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -405,7 +379,7 @@ pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     ))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -417,7 +391,7 @@ pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 }
 
 /// Get flags for a specific serve type (defaults to "http").
-#[tauri::command]
+#[bridge]
 pub async fn get_serve_flags(
     app: AppHandle,
     serve_type: Option<String>,
@@ -430,7 +404,7 @@ pub async fn get_serve_flags(
 
 /// Set a single rclone option, building a nested JSON payload from a dotted
 /// option name (e.g. "HTTP.ListenAddr" → `{ "HTTP": { "ListenAddr": value } }`).
-#[tauri::command]
+#[bridge]
 pub async fn set_rclone_option(
     app: AppHandle,
     block_name: String,
@@ -451,7 +425,6 @@ pub async fn set_rclone_option(
 
 /// Set multiple rclone options in one call.
 /// Expected payload shape: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
-#[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
     crate::rclone::commands::common::transport(&app)
         .rpc(options::SET, Some(&payload))

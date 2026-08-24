@@ -107,8 +107,13 @@
           </mat-panel-title>
           <mat-panel-description>
             @if (isWatchEnabled() && isWatchPossible()) {
-              {{ 'wizards.appOperation.watchDelay' | translate }}:
-              <strong>{{ opFormGroup().get('watchDelay')?.value || 1 }}s</strong>
+              <span>
+                {{ 'wizards.appOperation.watchDelay' | translate }}:
+                <strong>{{ watchDelayValue() }}s</strong>
+                @if (isWatchChangedOnly() && operationType() !== 'bisync') {
+                  · <strong>{{ 'automation.monitoring.changedOnlyShort' | translate }}</strong>
+                }
+              </span>
             } @else {
               <span class="description">{{
                 'wizards.appOperation.watchDescription' | translate
@@ -118,33 +123,69 @@
         </mat-expansion-panel-header>
 
         @if (isWatchPossible()) {
-          <div class="watch-delay-section">
-            <span class="watch-delay-label">{{
-              'wizards.appOperation.watchDelay' | translate
-            }}</span>
-            <app-number-input
-              formControlName="watchDelay"
-              [min]="0"
-              [allowNegative]="false"
-              [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
-            />
-            @if (
-              opFormGroup().get('watchDelay')?.hasError('required') &&
-              opFormGroup().get('watchDelay')?.touched
-            ) {
-              <mat-error class="validation-error">{{
-                'shared.validation.required' | translate
-              }}</mat-error>
-            }
-            @if (
-              opFormGroup().get('watchDelay')?.hasError('min') &&
-              opFormGroup().get('watchDelay')?.touched
-            ) {
-              <mat-error class="validation-error">{{
-                'shared.validation.min' | translate: { val: 1 }
-              }}</mat-error>
+          <div class="watch-options-container">
+            <div class="watch-option-row">
+              <div class="watch-option-info">
+                <span class="watch-option-title">{{
+                  'wizards.appOperation.watchDelay' | translate
+                }}</span>
+                <span class="watch-option-hint">{{
+                  'wizards.appOperation.watchDelayHint' | translate
+                }}</span>
+              </div>
+              <div class="watch-option-control">
+                <app-number-input
+                  formControlName="watchDelay"
+                  [min]="0"
+                  [allowNegative]="false"
+                  [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
+                />
+                @if (
+                  opFormGroup().get('watchDelay')?.hasError('required') &&
+                  opFormGroup().get('watchDelay')?.touched
+                ) {
+                  <mat-error class="validation-error">{{
+                    'shared.validation.required' | translate
+                  }}</mat-error>
+                }
+                @if (
+                  opFormGroup().get('watchDelay')?.hasError('min') &&
+                  opFormGroup().get('watchDelay')?.touched
+                ) {
+                  <mat-error class="validation-error">{{
+                    'shared.validation.min' | translate: { val: 0 }
+                  }}</mat-error>
+                }
+              </div>
+            </div>
+
+            @if (operationType() !== 'bisync') {
+              <div class="watch-option-row">
+                <div class="watch-option-info">
+                  <span class="watch-option-title">{{
+                    'wizards.appOperation.watchChangedOnly' | translate
+                  }}</span>
+                  <span class="watch-option-hint">
+                    {{ 'wizards.appOperation.watchChangedOnlyHint' | translate }}
+                  </span>
+                </div>
+                <div class="watch-option-control">
+                  <mat-slide-toggle
+                    formControlName="watchChangedOnly"
+                    [attr.title]="'wizards.appOperation.watchChangedOnlyHint' | translate"
+                    [attr.aria-label]="'wizards.appOperation.watchChangedOnly' | translate"
+                  ></mat-slide-toggle>
+                </div>
+              </div>
             }
           </div>
+
+          @if (watchDelayValue() === 0) {
+            <app-alert-banner
+              severity="info"
+              [description]="'wizards.appOperation.watchZeroDelayWarning' | translate"
+            />
+          }
         }
       </mat-expansion-panel>
     }
@@ -198,14 +239,14 @@
                 </div>
               </div>
               <div class="copyurl-inputs-wrapper">
-                <mat-form-field appearance="fill" class="path-input-field url-field">
+                <mat-form-field class="path-input-field url-field">
                   <input
                     matInput
                     formControlName="path"
                     [placeholder]="'wizards.appOperation.enterDownloadUrl' | translate"
                   />
                 </mat-form-field>
-                <mat-form-field appearance="fill" class="path-input-field filename-field">
+                <mat-form-field class="path-input-field filename-field">
                   <input
                     matInput
                     formControlName="filename"
@@ -225,7 +266,10 @@
             </div>
           }
         } @else {
-          @for (item of sourceItems(); track item.control) {
+          @for (
+            item of sourceItems();
+            track item.index + ':' + item.type + ':' + (item.remoteName || '')
+          ) {
             <ng-container
               *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }"
             />
@@ -270,6 +314,7 @@
             class="type-dropdown-btn"
             type="button"
             [cdkMenuTriggerFor]="typeMenu"
+            [cdkMenuTriggerData]="{ item: item }"
             [class.local]="item.type === 'local'"
             [class.remote]="item.type === 'currentRemote'"
             [class.other]="item.type === 'otherRemote'"
@@ -290,43 +335,10 @@
             }
             <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
           </button>
-
-          <ng-template #typeMenu>
-            <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
-              <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'local')">
-                <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
-              </button>
-              <button
-                cdkMenuItem
-                class="menu-item"
-                (cdkMenuItemTriggered)="setType(item, 'currentRemote')"
-              >
-                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                <span class="item-label">{{ currentRemoteName() }}:</span>
-              </button>
-              @if (otherRemotes().length) {
-                <mat-divider />
-                <div class="menu-group-label">
-                  {{ 'wizards.appOperation.otherRemotes' | translate }}
-                </div>
-                @for (remote of otherRemotes(); track remote) {
-                  <button
-                    cdkMenuItem
-                    class="menu-item"
-                    (cdkMenuItemTriggered)="setType(item, 'otherRemote:' + remote)"
-                  >
-                    <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                    <span class="item-label">{{ remote }}:</span>
-                  </button>
-                }
-              }
-            </div>
-          </ng-template>
         }
       </div>
 
-      <mat-form-field appearance="fill" class="path-input-field">
+      <mat-form-field class="path-input-field">
         <input
           matInput
           formControlName="path"
@@ -339,9 +351,7 @@
             ) | translate
           "
           (input)="onInputChanged($event, item)"
-          [cdkMenuTriggerFor]="
-            (isDest ? isDestPickerDisabled() : isSourcePickerDisabled()) ? null : autocompleteMenu
-          "
+          [cdkMenuTriggerFor]="isItemPickerDisabled(item) ? null : autocompleteMenu"
           [cdkMenuTriggerData]="{ item: item }"
           (cdkMenuOpened)="onMenuOpened(item)"
         />
@@ -350,23 +360,15 @@
       <div class="action-suffix">
         <button
           matIconButton
-          [disabled]="isDest ? isDestPickerDisabled() : isSourcePickerDisabled()"
+          [disabled]="isItemPickerDisabled(item)"
           (click)="selectPath(item); $event.stopPropagation()"
           type="button"
         >
           <mat-icon
             [svgIcon]="item.type === 'local' ? 'folder' : 'hard-drive'"
-            [class.purple]="
-              item.type === 'local' && !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
-            "
-            [class.primary]="
-              item.type === 'currentRemote' &&
-              !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
-            "
-            [class.accent]="
-              item.type === 'otherRemote' &&
-              !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
-            "
+            [class.purple]="item.type === 'local' && !isItemPickerDisabled(item)"
+            [class.primary]="item.type === 'currentRemote' && !isItemPickerDisabled(item)"
+            [class.accent]="item.type === 'otherRemote' && !isItemPickerDisabled(item)"
           ></mat-icon>
         </button>
         @if (!isDest && canAddSource() && sourceItems().length > 1) {
@@ -433,4 +435,33 @@
       }
     </div>
   }
+</ng-template>
+
+<ng-template #typeMenu let-item="item">
+  <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
+    <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'local')">
+      <mat-icon svgIcon="folder" class="purple"></mat-icon>
+      <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
+    </button>
+    <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'currentRemote')">
+      <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+      <span class="item-label">{{ currentRemoteName() }}:</span>
+    </button>
+    @if (otherRemotes().length) {
+      <mat-divider />
+      <div class="menu-group-label">
+        {{ 'wizards.appOperation.otherRemotes' | translate }}
+      </div>
+      @for (remote of otherRemotes(); track remote) {
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (cdkMenuItemTriggered)="setType(item, 'otherRemote:' + remote)"
+        >
+          <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+          <span class="item-label">{{ remote }}:</span>
+        </button>
+      }
+    }
+  </div>
 </ng-template>

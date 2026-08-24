@@ -10,7 +10,7 @@
       @if (mode() === 'general') {
         <img src="assets/rclone-manager-2.svg" alt="RClone Manager" class="app-logo" />
       } @else {
-        <mat-icon [svgIcon]="mode()" class="mode-logo" aria-hidden="true"></mat-icon>
+        <mat-icon [svgIcon]="iconName()" class="mode-logo" aria-hidden="true"></mat-icon>
       }
       <span class="status-dot" [class]="backendStatusClass()" aria-hidden="true"></span>
     </div>
@@ -21,4 +21,17 @@
       <span class="backend-label">{{ activeBackend() }}</span>
     </div>
   </button>
+
+  @if (showEditButton()) {
+    <div class="contextual-action-wrapper header-edit-wrapper" [class.visible]="!isEditingLayout()">
+      <button
+        matIconButton
+        class="header-edit-btn"
+        (click)="onToggleEdit()"
+        [attr.title]="'generalOverview.layout.edit' | translate"
+      >
+        <mat-icon svgIcon="pen"></mat-icon>
+      </button>
+    </div>
+  }
 </header>

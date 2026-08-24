@@ -3,9 +3,12 @@ use std::sync::Arc;
 use log::{debug, warn};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::queries::{get_mounted_remotes, list_serves};
 use crate::utils::types::remotes::RemoteCache;
+use crate::{
+    core::bridge,
+    rclone::backend::{BackendManager, types::Backend},
+};
 
 /// Core logic to check and reconcile mounted remotes for the active backend
 async fn check_and_reconcile_mounts(
@@ -34,7 +37,7 @@ async fn check_and_reconcile_mounts(
 }
 
 /// Force refresh mounted remotes
-#[tauri::command]
+#[bridge]
 pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking mounted remotes");
     // Force check only checks active backend
@@ -73,7 +76,7 @@ async fn check_and_reconcile_serves(
 }
 
 /// Force refresh serves
-#[tauri::command]
+#[bridge]
 pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking running serves");
     let backend_manager = app_handle.state::<BackendManager>();

@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -103,6 +104,7 @@ export class HomeComponent {
   private readonly localStorage = inject(LocalStorageService);
   readonly isSidebarOpen = signal(this.localStorage.get('ui.sidebarOpen', false));
   readonly sidebarMode = signal<MatDrawerMode>('side');
+  readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
   readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
     const remote = this.selectedRemote();
     if (!remote) return 'sync';
@@ -118,7 +120,17 @@ export class HomeComponent {
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
-    this.destroyRef.onDestroy(() => this.uiStateService.resetSelectedRemote());
+
+    this.uiStateService.registerMobileSidebar({
+      view: 'main_menu',
+      isOver: this.isSidebarOver,
+      isOpen: this.isSidebarOpen,
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.uiStateService.resetSelectedRemote();
+      this.uiStateService.unregisterMobileSidebar('main_menu');
+    });
   }
 
   // --- Layout ---
@@ -126,11 +138,6 @@ export class HomeComponent {
   setSidebarOpen(open: boolean): void {
     this.isSidebarOpen.set(open);
     this.localStorage.set('ui.sidebarOpen', open);
-
-    // Notify tabs to hide when mobile drawer is open
-    if (this.sidebarMode() === 'over') {
-      this.uiStateService.setMobileSidebarOpen(open);
-    }
   }
 
   private setupResponsiveLayout(): void {
@@ -168,7 +175,7 @@ export class HomeComponent {
     try {
       await this.remoteFacadeService.startJob(remoteName, operationType, profileName, 'dashboard');
     } catch (error) {
-      this.handleError('Start job failed', error);
+      console.error('Start job failed:', error);
     }
   }
 
@@ -198,13 +205,8 @@ export class HomeComponent {
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('home.deleteRemote.title'),
-      this.translate.instant('home.deleteRemote.message', { name: remoteName }),
-      this.translate.instant('common.delete'),
-      this.translate.instant('common.cancel'),
-      { icon: 'trash', color: 'warn' }
-    );
+    const dialogRef = this.modalService.openDeleteRemote<boolean>(remoteName);
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
     if (!confirmed) return;
 
     try {
@@ -213,7 +215,8 @@ export class HomeComponent {
         this.uiStateService.resetSelectedRemote();
       }
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.deleteRemoteFailed'), error);
+      console.error('Delete remote failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
@@ -276,7 +279,8 @@ export class HomeComponent {
         this.translate.instant('home.notifications.settingsReset', { name: remoteName })
       );
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.resetSettingsFailed'), error);
+      console.error('Reset settings failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
@@ -340,13 +344,5 @@ export class HomeComponent {
 
   openBackendModal(): void {
     this.modalService.openBackend();
-  }
-
-  // --- Error Handling ---
-
-  private handleError(message: string, error: unknown): void {
-    console.error(`${message}:`, error);
-    const detail = error instanceof Error ? error.message : String(error);
-    this.notificationService.showError(`${message}: ${detail}`);
   }
 }

@@ -1,8 +1,13 @@
-//! Mount plugin detection and installation (WinFsp, FUSE-T, MacFUSE)
-
+use crate::core::bridge;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
-    github_client, types::events::MOUNT_PLUGIN_INSTALLED, types::state::RcloneState,
+    github_client,
+    rclone::downloader::stream_download_to_file,
+    types::{
+        events::MOUNT_PLUGIN_INSTALLED,
+        provision::{ProvisionComponent, ProvisionStage, ProvisionState},
+        state::RcloneState,
+    },
 };
 
 #[cfg(target_os = "macos")]
@@ -56,7 +61,7 @@ fn check_winfsp_installed() -> bool {
     via_service
 }
 
-#[tauri::command]
+#[bridge]
 pub fn check_mount_plugin_installed() -> bool {
     #[cfg(target_os = "macos")]
     {
@@ -122,6 +127,11 @@ async fn run_install(
     info: MountPluginInfo,
 ) -> Result<String, String> {
     use tauri::{Emitter, Manager};
+    use tokio_util::sync::CancellationToken;
+
+    let cancel_token = CancellationToken::new();
+    let provision_state = app_handle.state::<ProvisionState>();
+    let _token_guard = provision_state.set_mount_plugin_token(cancel_token.clone());
 
     let state = app_handle.state::<RcloneState>();
     let tmp = std::env::temp_dir().join("rclone_temp");
@@ -129,44 +139,107 @@ async fn run_install(
 
     let local_file = tmp.join(&info.filename);
     log::info!("Downloading {}", info.download_url);
-    fetch_and_save(&state, &info.download_url, &local_file).await?;
+
+    stream_download_to_file(
+        app_handle,
+        &state.client,
+        &info.download_url,
+        &local_file,
+        ProvisionComponent::MountPlugin,
+        Some(cancel_token),
+    )
+    .await?;
+
+    let file_len = std::fs::metadata(&local_file).map(|m| m.len()).unwrap_or(0);
+
+    // Stage: Installing
+    provision_state.set_stage(
+        app_handle,
+        ProvisionComponent::MountPlugin,
+        ProvisionStage::Installing,
+        file_len,
+        None,
+    );
 
     let result = install_with_elevation(&local_file).await;
     let _ = std::fs::remove_file(&local_file);
-    result?;
+    if let Err(e) = result {
+        provision_state.set_stage(
+            app_handle,
+            ProvisionComponent::MountPlugin,
+            ProvisionStage::Error,
+            file_len,
+            Some(e.clone()),
+        );
+        return Err(e);
+    }
 
     for attempt in 1..=5 {
         if check_mount_plugin_installed() {
             if let Some(window) = app_handle.get_webview_window("main") {
                 let _ = window.emit(MOUNT_PLUGIN_INSTALLED, ());
             }
-            return Ok("backendSuccess.rclone.mountPluginInstalled".to_string());
+            provision_state.set_stage(
+                app_handle,
+                ProvisionComponent::MountPlugin,
+                ProvisionStage::Completed,
+                file_len,
+                None,
+            );
+            return Ok(crate::localized_success!(
+                "backendSuccess.rclone.mountPluginInstalled"
+            ));
         }
         log::debug!("Post-install verification {attempt}/5 failed, retrying in 1s...");
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 
-    Err("backendErrors.rclone.mountPluginVerificationFailed".to_string())
+    let err = crate::localized_error!("backendErrors.rclone.mountPluginVerificationFailed");
+    provision_state.set_stage(
+        app_handle,
+        ProvisionComponent::MountPlugin,
+        ProvisionStage::Error,
+        file_len,
+        Some(err.clone()),
+    );
+    Err(err)
 }
 
 #[cfg(target_os = "macos")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
     run_install(&app_handle, get_latest_fuse_t_url().await?).await
 }
 
 #[cfg(target_os = "windows")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
     run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<String, String> {
     Err(crate::localized_error!(
         "backendErrors.rclone.unsupportedPlatform"
     ))
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[bridge]
+pub async fn cancel_mount_plugin_install(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let provision_state = app_handle.state::<ProvisionState>();
+    if provision_state.cancel_mount_plugin() {
+        log::info!("Cancelling mount plugin download");
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[bridge]
+pub async fn cancel_mount_plugin_install(_app_handle: tauri::AppHandle) -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -237,34 +310,6 @@ async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), Strin
             ))
         }
     }
-}
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-async fn fetch_and_save(
-    state: &tauri::State<'_, RcloneState>,
-    url: &str,
-    path: &std::path::Path,
-) -> Result<(), String> {
-    let response = state
-        .client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!("Download failed: HTTP {}", response.status()));
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read response: {e}"))?;
-
-    std::fs::write(path, &bytes).map_err(|e| format!("Failed to write file: {e}"))?;
-
-    log::debug!("Saved to {path:?}");
-    Ok(())
 }
 
 #[cfg(test)]

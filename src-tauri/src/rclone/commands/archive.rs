@@ -2,16 +2,21 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::logging::log::log_operation;
 use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
 use crate::utils::types::state::RcloneState;
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    },
+};
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_create(
     app: AppHandle,
     source: String,
@@ -74,18 +79,15 @@ pub async fn archive_create(
 
     crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
-    let metadata = JobMetadata {
-        remote_name: destination.clone(),
-        job_type: JobType::ArchiveCreate,
-        source: vec![source.clone()],
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = JobMetadata::new(
+        destination.clone(),
+        JobType::ArchiveCreate,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
@@ -101,7 +103,7 @@ pub async fn archive_create(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_extract(
     app: AppHandle,
     source: String,
@@ -135,18 +137,15 @@ pub async fn archive_extract(
 
     crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
-    let metadata = JobMetadata {
-        remote_name: source.clone(),
-        job_type: JobType::ArchiveExtract,
-        source: vec![source.clone()],
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = JobMetadata::new(
+        source.clone(),
+        JobType::ArchiveExtract,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
@@ -162,7 +161,7 @@ pub async fn archive_extract(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_list(
     app: AppHandle,
     source: String,
@@ -217,9 +216,8 @@ pub async fn archive_list(
         )
     };
 
-    let remote_name = Some(crate::utils::json_helpers::extract_remote_name_from_fs(
-        &source,
-    ));
+    let remote_name =
+        Some(crate::utils::json_helpers::extract_remote_name_from_fs(&source).into_owned());
 
     log_operation(
         LogLevel::Info,

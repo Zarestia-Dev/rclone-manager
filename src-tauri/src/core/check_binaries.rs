@@ -3,12 +3,15 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::utils::{
-    rclone::util::RCLONE_EXECUTABLE,
-    types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+use crate::{
+    core::bridge,
+    utils::{
+        rclone::util::RCLONE_EXECUTABLE,
+        types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+    },
 };
 
-pub const MIN_RCLONE_VERSION: &str = "1.70.0";
+pub const MIN_RCLONE_VERSION: &str = "1.75.0";
 
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
     if let Some(path) = override_path
@@ -66,7 +69,7 @@ pub fn is_version_at_least(current: &str, required: &str) -> bool {
     true
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool, String> {
     let rclone_binary = resolve_rclone_binary(
         &app,
@@ -156,12 +159,12 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
         return configured;
     }
 
-    if let Ok(p) = which::which("rclone") {
+    if let Ok(p) = which::which(RCLONE_EXECUTABLE) {
         info!("Using system rclone at {}", p.display());
         p
     } else {
         error!("rclone binary not found in PATH or at configured location");
-        PathBuf::from("rclone")
+        PathBuf::from(RCLONE_EXECUTABLE)
     }
 }
 

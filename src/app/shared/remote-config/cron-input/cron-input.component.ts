@@ -205,10 +205,6 @@ export class CronInputComponent {
     });
   }
 
-  // ===================================
-  // Core Synchronization Logic
-  // ===================================
-
   private updateCronSourceOfTruth(newValue: string | null, emitEvent: boolean): void {
     const validValue = newValue || '';
     this.setCronControlValue(validValue, emitEvent);
@@ -254,10 +250,6 @@ export class CronInputComponent {
     }
   }
 
-  // ===================================
-  // Form Generation Logic
-  // ===================================
-
   private updateFromSimpleForm(): void {
     this.selectedPreset.set(null);
     const { frequency, time, dayOfWeek, dayOfMonth, intervalHours } = this.simpleForm.getRawValue();
@@ -294,10 +286,6 @@ export class CronInputComponent {
     this.selectedPreset.set(key);
     this.setCronControlValue(cron);
   }
-
-  // ===================================
-  // Component Logic: Parsing & Mapping
-  // ===================================
 
   private mapCronToSimpleForm(parts: string[]): void {
     if (parts.length < 5) return;
@@ -364,10 +352,6 @@ export class CronInputComponent {
     const mins = pad(Math.abs(offset) % 60);
     return `${timeZone} (UTC${sign}${hours}:${mins})`;
   }
-
-  // ===================================
-  // Validation & Formatting Helpers
-  // ===================================
 
   private applyValidationResult(expression: string, result: CronValidationResponse): void {
     this.validationResponse.set(result);

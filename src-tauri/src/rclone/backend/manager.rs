@@ -90,15 +90,6 @@ impl BackendManager {
         self.state.read().await.active().is_local
     }
 
-    /// Try to check if the active backend is a local backend synchronously without blocking.
-    /// Returns None if the lock cannot be acquired immediately.
-    pub fn try_is_active_local(&self) -> Option<bool> {
-        self.state
-            .try_read()
-            .ok()
-            .map(|state| state.active().is_local)
-    }
-
     /// Get a specific backend by name
     pub async fn get(&self, name: &str) -> Option<Backend> {
         self.state
@@ -353,6 +344,12 @@ impl BackendManager {
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
+        log::debug!(
+            "Backend '{name}' runtime: os={:?}, arch={:?}, go={:?}",
+            info.os,
+            info.arch(),
+            info.go_version()
+        );
         self.runtime_info
             .write()
             .await

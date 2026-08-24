@@ -8,14 +8,14 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::automation::engine::get_next_run,
+    core::{automation::engine::get_next_run, bridge, flow::quick_run::types::QuickRun},
     utils::{
         constants::{
             AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
             AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED,
         },
         types::{
-            automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+            automation::{Automation, AutomationArgs, AutomationStatus},
             events::AUTOMATIONS_CACHE_CHANGED,
             remotes::{OperationType, ProfileParams},
         },
@@ -28,6 +28,7 @@ struct ProfileConfig {
     cron_expression: Option<String>,
     watch_enabled: Option<bool>,
     watch_delay: Option<u64>,
+    watch_changed_only: Option<bool>,
     source: Option<Value>,
     dest: Option<Value>,
 }
@@ -63,6 +64,7 @@ impl<'de> Deserialize<'de> for ProfileConfig {
             cron_expression: profile.app.cron_expression,
             watch_enabled: profile.app.watch_enabled,
             watch_delay: profile.app.watch_delay,
+            watch_changed_only: profile.app.watch_changed_only,
             source,
             dest,
         })
@@ -144,6 +146,38 @@ impl AutomationsCache {
         let result = self
             .sync_automations(backend_name, automations, |t| {
                 t.backend_name == backend_name
+                    && t.args.params.source != Some(crate::utils::types::origin::Origin::QuickRun)
+            })
+            .await?;
+
+        if result.has_changes()
+            && let Some(app) = app
+        {
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
+
+        Ok(result)
+    }
+
+    /// Load automations from Quick Runs, preserving existing automation states.
+    pub async fn load_from_quick_runs(
+        &self,
+        quick_runs: &[QuickRun],
+        backend_name: &str,
+        app: Option<&AppHandle>,
+    ) -> Result<CacheUpdateResult, String> {
+        let mut automations = Vec::new();
+
+        for qr in quick_runs {
+            if let Some(automation) = self.create_automation_from_quick_run(backend_name, qr) {
+                automations.push(automation);
+            }
+        }
+
+        let result = self
+            .sync_automations(backend_name, automations, |t| {
+                t.backend_name == backend_name
+                    && t.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun)
             })
             .await?;
 
@@ -258,6 +292,7 @@ impl AutomationsCache {
             || existing.automation_type != new.automation_type
             || existing.watch_enabled != new.watch_enabled
             || existing.watch_delay != new.watch_delay
+            || existing.watch_changed_only != new.watch_changed_only
     }
 
     async fn update_automation_config(
@@ -274,6 +309,7 @@ impl AutomationsCache {
                 t.next_run = new_config.next_run;
                 t.watch_enabled = new_config.watch_enabled;
                 t.watch_delay = new_config.watch_delay;
+                t.watch_changed_only = new_config.watch_changed_only;
                 // Intentionally NOT overwriting `status` — the user's
                 // enabled/disabled choice is the source of truth in the cache.
             },
@@ -345,6 +381,7 @@ impl AutomationsCache {
             profile_name: profile_name.to_string(),
             source: Some(crate::utils::types::origin::Origin::Automation),
             no_cache: None,
+            scoped_targets: None,
         };
 
         let args = AutomationArgs {
@@ -376,6 +413,122 @@ impl AutomationsCache {
             stopped_count: 0,
             watch_enabled,
             watch_delay: config.watch_delay.unwrap_or(5),
+            watch_changed_only: if *automation_type == OperationType::Bisync {
+                false
+            } else {
+                config.watch_changed_only.unwrap_or(false)
+            },
+        })
+    }
+
+    pub fn create_automation_from_quick_run(
+        &self,
+        backend_name: &str,
+        qr: &QuickRun,
+    ) -> Option<Automation> {
+        let cron_enabled = qr.is_cron_enabled();
+        let watch_enabled = qr.is_watch_enabled();
+
+        if !cron_enabled && !watch_enabled {
+            return None;
+        }
+
+        let cron = if cron_enabled {
+            qr.cron_expression().filter(|s| !s.is_empty())
+        } else {
+            None
+        };
+
+        let mut src_paths = qr.watch_paths();
+        let rclone = qr.config.get("rclone");
+        if src_paths.is_empty() {
+            if let Some(src) = rclone.and_then(|r| r.get("srcFs")).and_then(Value::as_str)
+                && !src.trim().is_empty()
+            {
+                src_paths.push(src.to_string());
+            } else if let Some(src) = rclone
+                .and_then(|r| r.get("source").or_else(|| r.get("src")))
+                .and_then(Value::as_str)
+                && !src.trim().is_empty()
+            {
+                src_paths.push(src.to_string());
+            }
+        }
+        if src_paths.is_empty() {
+            src_paths.push(qr.remote_name.clone());
+        }
+
+        let mut dst_paths = Vec::new();
+        if let Some(dst) = rclone.and_then(|r| r.get("dstFs")).and_then(Value::as_str)
+            && !dst.trim().is_empty()
+        {
+            dst_paths.push(dst.to_string());
+        } else if let Some(dest) = rclone
+            .and_then(|r| r.get("dest").or_else(|| r.get("destination")))
+            .and_then(Value::as_str)
+            && !dest.trim().is_empty()
+        {
+            dst_paths.push(dest.to_string());
+        } else if let Some(mp) = rclone
+            .and_then(|r| r.get("mountPoint").or_else(|| r.get("mount_point")))
+            .and_then(Value::as_str)
+            && !mp.trim().is_empty()
+        {
+            dst_paths.push(mp.to_string());
+        }
+
+        let automation_id = qr.id.clone();
+
+        let params = ProfileParams {
+            remote_name: qr.remote_name.clone(),
+            profile_name: qr.name.clone(),
+            source: Some(crate::utils::types::origin::Origin::QuickRun),
+            no_cache: None,
+            scoped_targets: None,
+        };
+
+        let args = AutomationArgs {
+            params,
+            src_paths,
+            dst_paths,
+        };
+
+        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
+        let watch_delay = qr
+            .config
+            .get("app")
+            .and_then(|a| a.get("watchDelay"))
+            .and_then(Value::as_u64)
+            .unwrap_or(5);
+        let watch_changed_only = qr
+            .config
+            .get("app")
+            .and_then(|a| a.get("watchChangedOnly"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
+        Some(Automation {
+            id: automation_id,
+            automation_type: qr.operation_type,
+            remote_name: qr.remote_name.clone(),
+            profile_name: qr.name.clone(),
+            cron_expression: cron,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            created_at: chrono::Utc::now(),
+            last_run: None,
+            next_run,
+            last_error: None,
+            current_job_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled,
+            watch_delay,
+            watch_changed_only,
         })
     }
 
@@ -544,33 +697,6 @@ impl AutomationsCache {
         .await
     }
 
-    pub async fn get_stats(&self) -> AutomationStats {
-        let automations = self.automations.read().await;
-        let mut stats = AutomationStats {
-            total_automations: automations.len(),
-            enabled_automations: 0,
-            running_automations: 0,
-            failed_automations: 0,
-            total_runs: 0,
-            successful_runs: 0,
-            failed_runs: 0,
-            stopped_runs: 0,
-        };
-        for t in automations.values() {
-            match t.status {
-                AutomationStatus::Enabled => stats.enabled_automations += 1,
-                AutomationStatus::Running => stats.running_automations += 1,
-                AutomationStatus::Failed => stats.failed_automations += 1,
-                _ => {}
-            }
-            stats.total_runs += t.run_count;
-            stats.successful_runs += t.success_count;
-            stats.failed_runs += t.failure_count;
-            stats.stopped_runs += t.stopped_count;
-        }
-        stats
-    }
-
     /// Remove all automations for a backend. Returns the evicted automations so the
     /// caller can unschedule their jobs.
     pub async fn clear_backend_automations(&self, backend_name: &str) -> Vec<Automation> {
@@ -607,25 +733,19 @@ impl Default for AutomationsCache {
 /// Read-only query commands that only touch the cache live here.
 /// Commands that coordinate both cache and scheduler live in `commands.rs`.
 
-#[tauri::command]
+#[bridge]
 pub async fn get_automations(app: AppHandle) -> Result<Vec<Automation>, String> {
     let cache = app.state::<AutomationsCache>();
     Ok(cache.get_all_automations().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_automation(
     app: AppHandle,
     automation_id: String,
 ) -> Result<Option<Automation>, String> {
     let cache = app.state::<AutomationsCache>();
     Ok(cache.get_automation(&automation_id).await)
-}
-
-#[tauri::command]
-pub async fn get_automation_stats(app: AppHandle) -> Result<AutomationStats, String> {
-    let cache = app.state::<AutomationsCache>();
-    Ok(cache.get_stats().await)
 }
 
 #[cfg(test)]
@@ -1022,6 +1142,7 @@ mod tests {
                     profile_name: "p".to_string(),
                     source: None,
                     no_cache: None,
+                    scoped_targets: None,
                 },
                 src_paths: vec![],
                 dst_paths: vec![],
@@ -1039,6 +1160,7 @@ mod tests {
             stopped_count: 0,
             watch_enabled: false,
             watch_delay: 5,
+            watch_changed_only: false,
         }
     }
 
@@ -1276,43 +1398,6 @@ mod tests {
             AutomationStatus::Stopping,
             "toggling a Running automation must transition to Stopping"
         );
-    }
-
-    // Stats
-
-    #[tokio::test]
-    async fn test_get_stats_empty() {
-        let cache = make_cache();
-        let stats = cache.get_stats().await;
-        assert_eq!(stats.total_automations, 0);
-        assert_eq!(stats.enabled_automations, 0);
-        assert_eq!(stats.total_runs, 0);
-    }
-
-    #[tokio::test]
-    async fn test_get_stats_counts() {
-        let cache = make_cache();
-
-        let mut enabled = base_automation();
-        enabled.id = "e1".to_string();
-        enabled.status = AutomationStatus::Enabled;
-        enabled.run_count = 3;
-        enabled.success_count = 2;
-        enabled.failure_count = 1;
-
-        let mut disabled = base_automation();
-        disabled.id = "d1".to_string();
-        disabled.status = AutomationStatus::Disabled;
-
-        cache.add_automation(enabled, None).await.unwrap();
-        cache.add_automation(disabled, None).await.unwrap();
-
-        let stats = cache.get_stats().await;
-        assert_eq!(stats.total_automations, 2);
-        assert_eq!(stats.enabled_automations, 1);
-        assert_eq!(stats.total_runs, 3);
-        assert_eq!(stats.successful_runs, 2);
-        assert_eq!(stats.failed_runs, 1);
     }
 
     // CacheUpdateResult

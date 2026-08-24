@@ -29,6 +29,9 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
     <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat-square&color=2ec27e" alt="Последний выпуск">
   </a>
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/downloads/Zarestia-Dev/rclone-manager/total?style=flat-square&color=e66100" alt="Загрузки">
+  </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?style=flat-square&color=9141ac" alt="Лицензия">
   </a>
@@ -37,9 +40,6 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Состояние перевода Crowdin">
-  </a>
-  <a href="https://hakanismail.info/zarestia/support">
-    <img src="https://img.shields.io/badge/Поддержать-ea4aaa?style=flat-square" alt="Поддержать проект">
   </a>
 </p>
 
@@ -140,7 +140,6 @@
 
 - **Лицензия:** проект распространяется по лицензии [GNU GPLv3](LICENSE) и может свободно использоваться, изменяться и распространяться.
 - **Поддержка:** поставьте проекту звезду ⭐ на GitHub.
-- **Пожертвования:** поддержать разработку можно на [странице проекта](https://hakanismail.info/zarestia/support).
 
 <p align="center">
   Создано командой Zarestia Dev<br>

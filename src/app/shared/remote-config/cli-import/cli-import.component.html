@@ -126,7 +126,7 @@
                   </div>
                 </div>
                 <div class="flag-list">
-                  @for (item of flags; track item.flag.key) {
+                  @for (item of flags; track item.flag.raw + ':' + $index) {
                     <div class="flag-row select-row">
                       <mat-checkbox
                         [ngModel]="isFlagSelected(item.flag.key)"
@@ -190,7 +190,12 @@
           }
 
           <div class="profile-apply-section no-subscript">
-            <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
+            <h4>
+              {{
+                (isQuickRun() ? 'wizards.cliImport.applyToTask' : 'wizards.cliImport.applyConfig')
+                  | translate
+              }}
+            </h4>
 
             @if (result.sourcePath || result.destPath) {
               @if (result.sourcePath) {
@@ -216,7 +221,7 @@
               }
             }
 
-            @if (!result.verb) {
+            @if (!result.verb && !isQuickRun()) {
               <app-alert-banner
                 [severity]="!canPatch() ? 'warning' : 'info'"
                 [description]="
@@ -228,42 +233,44 @@
               />
             }
 
-            <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
-              <mat-radio-button value="new" [disabled]="!canCreateNew()">
-                {{ 'wizards.cliImport.newProfile' | translate }}
-              </mat-radio-button>
-              <mat-radio-button value="override" [disabled]="!canOverride()">
-                {{ 'wizards.cliImport.overrideProfile' | translate }}
-              </mat-radio-button>
-              <mat-radio-button value="patch" [disabled]="!canPatch()">
-                {{ 'wizards.cliImport.patchProfile' | translate }}
-              </mat-radio-button>
-            </mat-radio-group>
+            @if (!isQuickRun()) {
+              <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
+                <mat-radio-button value="new" [disabled]="!canCreateNew()">
+                  {{ 'wizards.cliImport.newProfile' | translate }}
+                </mat-radio-button>
+                <mat-radio-button value="override" [disabled]="!canOverride()">
+                  {{ 'wizards.cliImport.overrideProfile' | translate }}
+                </mat-radio-button>
+                <mat-radio-button value="patch" [disabled]="!canPatch()">
+                  {{ 'wizards.cliImport.patchProfile' | translate }}
+                </mat-radio-button>
+              </mat-radio-group>
 
-            @if (profileMode() === 'new') {
-              <mat-form-field>
-                <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
-                <input
-                  matInput
-                  [ngModel]="newProfileName()"
-                  (ngModelChange)="newProfileName.set($event)"
-                  placeholder="e.g. daily-backup"
-                />
-              </mat-form-field>
-            }
+              @if (profileMode() === 'new') {
+                <mat-form-field>
+                  <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="newProfileName()"
+                    (ngModelChange)="newProfileName.set($event)"
+                    placeholder="e.g. daily-backup"
+                  />
+                </mat-form-field>
+              }
 
-            @if (profileMode() === 'override') {
-              <mat-form-field>
-                <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
-                <mat-select
-                  [ngModel]="selectedOverrideProfile()"
-                  (ngModelChange)="selectedOverrideProfile.set($event)"
-                >
-                  @for (p of detectedVerbProfiles(); track p) {
-                    <mat-option [value]="p">{{ p }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+              @if (profileMode() === 'override') {
+                <mat-form-field>
+                  <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
+                  <mat-select
+                    [ngModel]="selectedOverrideProfile()"
+                    (ngModelChange)="selectedOverrideProfile.set($event)"
+                  >
+                    @for (p of detectedVerbProfiles(); track p) {
+                      <mat-option [value]="p">{{ p }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
             }
 
             <button
@@ -274,9 +281,11 @@
             >
               <mat-icon svgIcon="check-circle"></mat-icon>
               {{
-                (profileMode() === 'patch'
-                  ? 'wizards.cliImport.applyPatch'
-                  : 'wizards.cliImport.applyToProfile'
+                (isQuickRun()
+                  ? 'wizards.cliImport.applyToTask'
+                  : profileMode() === 'patch'
+                    ? 'wizards.cliImport.applyPatch'
+                    : 'wizards.cliImport.applyToProfile'
                 ) | translate
               }}
             </button>

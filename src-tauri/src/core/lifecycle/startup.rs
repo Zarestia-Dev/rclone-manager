@@ -170,6 +170,7 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
         profile_name: profile_name.to_string(),
         source: Some(Origin::Startup),
         no_cache: Some(false),
+        scoped_targets: None,
     };
 
     match mount_remote_profile(app.clone(), params).await {
@@ -188,6 +189,7 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
         profile_name: profile_name.to_string(),
         source: Some(Origin::Startup),
         no_cache: Some(false),
+        scoped_targets: None,
     };
 
     match start_serve_profile(app.clone(), params).await {
@@ -209,6 +211,7 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         profile_name: profile_name.to_string(),
         source: Some(Origin::Startup),
         no_cache: Some(false),
+        scoped_targets: None,
     };
 
     let transfer_type = match op_type {

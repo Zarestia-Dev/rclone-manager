@@ -37,7 +37,7 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::Value;
 
@@ -66,36 +66,33 @@ fn sync_env(key: &str) {
     }
 }
 
-/// Guard to ensure RcloneInitialize is called exactly once per process.
-/// RcloneInitialize is idempotent in librclone, but calling it once avoids
-/// redundant Go runtime setup.
-static INIT_GUARD: OnceLock<()> = OnceLock::new();
+/// Tracks whether librclone is currently initialized.
+static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Initialize librclone. Idempotent — safe to call multiple times.
 ///
-/// This should be called once at app startup (from `setup_app` when
-/// constructing `RcloneLibBackend`). The Go runtime initialized here lives
-/// for the lifetime of the process.
+/// This should be called at app startup (from `setup_app` when
+/// constructing `RcloneLibBackend`) and upon restart.
 #[allow(clippy::disallowed_methods)]
 pub fn initialize() {
-    INIT_GUARD.get_or_init(|| {
+    if !IS_INITIALIZED.swap(true, Ordering::AcqRel) {
         log::info!("Initializing librclone (RcloneInitialize)");
         unsafe {
             std::env::set_var("RCLONE_ASK_PASSWORD", "false");
         }
         sync_env("RCLONE_ASK_PASSWORD");
         unsafe { RcloneInitialize() };
-    });
+    }
 }
 
 /// Finalize librclone. Releases Go runtime resources.
 ///
-/// Call this once at app shutdown (from `RcApiEngine::shutdown`). After this,
-/// no further `rpc()` calls can be made unless `initialize()` is called again.
-/// In practice the process is exiting, so this is just for clean shutdown.
+/// Call this at app shutdown (from `RcApiEngine::shutdown`) or before re-initialization.
 pub fn finalize() {
-    log::info!("Finalizing librclone (RcloneFinalize)");
-    unsafe { RcloneFinalize() };
+    if IS_INITIALIZED.swap(false, Ordering::AcqRel) {
+        log::info!("Finalizing librclone (RcloneFinalize)");
+        unsafe { RcloneFinalize() };
+    }
 }
 
 /// Execute an rc call via librclone FFI.
@@ -118,20 +115,26 @@ pub fn rpc(input: &Value) -> Result<Value, BackendError> {
     let endpoint = input
         .get("_path")
         .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
+        .unwrap_or("unknown");
 
-    let c_method = CString::new(endpoint.clone())
+    let c_method = CString::new(endpoint)
         .map_err(|e| BackendError::Other(format!("CString conversion failed for method: {e}")))?;
 
-    // Prepare the input JSON (everything except _path) to avoid sending internal fields to rclone
-    let mut payload = input.clone();
-    if let Value::Object(ref mut map) = payload {
-        map.remove("_path");
-    }
-
-    // Serialize input payload to a JSON string.
-    let input_str = serde_json::to_string(&payload)?;
+    // Prepare the input JSON string (omitting _path without deep cloning unchanged inputs)
+    let input_str = if let Value::Object(map) = input {
+        if map.contains_key("_path") {
+            let filtered: serde_json::Map<_, _> = map
+                .iter()
+                .filter(|(k, _)| k.as_str() != "_path")
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            serde_json::to_string(&filtered)?
+        } else {
+            serde_json::to_string(input)?
+        }
+    } else {
+        serde_json::to_string(input)?
+    };
 
     // Convert to a C string. JSON strings don't contain interior NUL bytes
     // (they'd be escaped as \u0000), so this should always succeed.
@@ -146,7 +149,7 @@ pub fn rpc(input: &Value) -> Result<Value, BackendError> {
     // If output_ptr is null even on success, that's an error.
     if output_ptr.is_null() {
         return Err(BackendError::Rpc {
-            endpoint,
+            endpoint: endpoint.to_string(),
             status: status as u16,
             message: "null output from librclone (RcloneRpc returned null output pointer)".into(),
         });
@@ -179,7 +182,7 @@ pub fn rpc(input: &Value) -> Result<Value, BackendError> {
             .unwrap_or("unknown rclone error")
             .to_string();
         return Err(BackendError::Rpc {
-            endpoint,
+            endpoint: endpoint.to_string(),
             status: status as u16,
             message,
         });

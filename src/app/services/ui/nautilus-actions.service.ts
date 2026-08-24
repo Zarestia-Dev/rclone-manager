@@ -9,6 +9,7 @@ import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey, RemoteFeatures } fro
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
+import { NautilusSelectionService } from './nautilus-selection.service';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
@@ -19,6 +20,7 @@ import { DownloadService } from 'src/app/services/operations/download.service';
 @Injectable()
 export class NautilusActionsService {
   private readonly tabSvc = inject(NautilusTabService);
+  private readonly selectionSvc = inject(NautilusSelectionService);
   private readonly fileOps = inject(NautilusFileOperationsService);
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
@@ -34,16 +36,28 @@ export class NautilusActionsService {
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
-  async shareContextItem(itemOverride?: FileBrowserItem): Promise<void> {
+  private _resolveItemRemoteInfo(itemOverride?: FileBrowserItem | null): {
+    item: FileBrowserItem | null;
+    remoteName: string;
+    isLocal: boolean;
+    path: string;
+    remoteType?: string;
+  } {
     const item = itemOverride ?? this.contextMenuItem();
-    if (!item || item.entry.IsDir) return;
-
     const activeRemote = this.tabSvc.activeRemote();
-    const isLocal = item.meta.isLocal ?? activeRemote?.isLocal ?? true;
-    let remoteName = item.meta.remote ?? activeRemote?.name ?? '';
+    const isLocal = item?.meta.isLocal ?? activeRemote?.isLocal ?? true;
+    let remoteName = item?.meta.remote ?? activeRemote?.name ?? '';
     if (remoteName && !isLocal) {
       remoteName = this.pathSvc.normalizeRemoteForRclone(remoteName);
     }
+    const path = item?.entry.Path ?? this.tabSvc.activePath();
+    const remoteType = item?.meta.remoteType ?? activeRemote?.type;
+    return { item, remoteName, isLocal, path, remoteType };
+  }
+
+  async shareContextItem(itemOverride?: FileBrowserItem): Promise<void> {
+    const { item, remoteName, isLocal } = this._resolveItemRemoteInfo(itemOverride);
+    if (!item || item.entry.IsDir) return;
 
     try {
       await this.downloadService.shareFileNatively(
@@ -58,15 +72,8 @@ export class NautilusActionsService {
   }
 
   async openNativeContextItem(itemOverride?: FileBrowserItem): Promise<void> {
-    const item = itemOverride ?? this.contextMenuItem();
+    const { item, remoteName, isLocal } = this._resolveItemRemoteInfo(itemOverride);
     if (!item || item.entry.IsDir) return;
-
-    const activeRemote = this.tabSvc.activeRemote();
-    const isLocal = item.meta.isLocal ?? activeRemote?.isLocal ?? true;
-    let remoteName = item.meta.remote ?? activeRemote?.name ?? '';
-    if (remoteName && !isLocal) {
-      remoteName = this.pathSvc.normalizeRemoteForRclone(remoteName);
-    }
 
     try {
       await this.downloadService.openFileNatively(
@@ -81,20 +88,12 @@ export class NautilusActionsService {
   }
 
   openPropertiesDialog(source: 'contextMenu' | 'bookmark', itemOverride?: FileBrowserItem): void {
-    const activeRemote = this.tabSvc.activeRemote();
-    const item = itemOverride ?? this.contextMenuItem();
+    const { item, remoteName, isLocal, path, remoteType } =
+      this._resolveItemRemoteInfo(itemOverride);
     if (source === 'bookmark' && !item) return;
 
-    const path = item?.entry.Path ?? this.tabSvc.activePath();
-    const isLocal = item?.meta.isLocal ?? activeRemote?.isLocal ?? true;
-
-    let remoteName = item?.meta.remote ?? activeRemote?.name;
-    if (remoteName && !isLocal) {
-      remoteName = this.pathSvc.normalizeRemoteForRclone(remoteName);
-    }
-
     const baseName = this.pathSvc.normalizeRemoteName(
-      item?.meta.remote ?? activeRemote?.name ?? ''
+      item?.meta.remote ?? this.tabSvc.activeRemote()?.name ?? ''
     );
     const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
 
@@ -103,12 +102,8 @@ export class NautilusActionsService {
       path,
       isLocal,
       item: item?.entry,
-      remoteType: item?.meta.remoteType ?? activeRemote?.type,
+      remoteType,
       features,
-      height: '60vh',
-      maxHeight: '800px',
-      width: '60vw',
-      maxWidth: '400px',
     });
   }
 
@@ -117,9 +112,7 @@ export class NautilusActionsService {
   }
 
   openAboutModal(remote: ExplorerRoot): void {
-    const normalized = remote.isLocal
-      ? remote.name
-      : this.pathSvc.normalizeRemoteForRclone(remote.name);
+    const normalized = this.pathSvc.normalizeExplorerRoot(remote);
     this.modalService.openRemoteAbout({
       displayName: remote.name,
       normalizedName: normalized,
@@ -138,7 +131,7 @@ export class NautilusActionsService {
     if (!confirmed) return;
 
     try {
-      const normalized = r.isLocal ? r.name : this.pathSvc.normalizeRemoteForRclone(r.name);
+      const normalized = this.pathSvc.normalizeExplorerRoot(r);
       await this.remoteOps.cleanup(normalized, undefined, 'filemanager');
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.trashEmptied')
@@ -153,7 +146,7 @@ export class NautilusActionsService {
   }
 
   async openFilePreview(item: FileBrowserItem, activePaneFiles: FileBrowserItem[]): Promise<void> {
-    const currentRemote = this.tabSvc.nautilusRemote();
+    const currentRemote = this.tabSvc.activeRemote();
     const actualRemoteName = item.meta.remote ?? currentRemote?.name;
     if (!actualRemoteName) {
       this.notificationService.showError(this.translate.instant('nautilus.errors.openFileFailed'));
@@ -207,21 +200,24 @@ export class NautilusActionsService {
     if (changed) this._refresh();
   }
 
+  getSelectedOrContextItems(): FileBrowserItem[] {
+    const selection = this.tabSvc.activeSelection();
+    const selected = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
+    if (selected.length > 0) return selected;
+    const ctx = this.contextMenuItem();
+    return ctx ? [ctx] : [];
+  }
+
   async deleteSelectedItems(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
 
-    const selection = this.tabSvc.selectedItems();
-    let itemsToDelete = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
-
-    const ctx = this.contextMenuItem();
-    if (ctx && !selection.has(this._itemKey(ctx))) {
-      itemsToDelete = [ctx];
-    }
+    const itemsToDelete = this.getSelectedOrContextItems();
+    if (itemsToDelete.length === 0) return;
 
     const refreshNeeded = await this.fileOps.deleteItems(remote, itemsToDelete);
     if (refreshNeeded) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex() as 0 | 1);
+      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
       this._refresh();
     }
   }
@@ -230,10 +226,10 @@ export class NautilusActionsService {
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
 
-    const selection = this.tabSvc.selectedItems();
+    const selection = this.tabSvc.activeSelection();
     const item =
-      this.contextMenuItem() ??
-      this.tabSvc.activeFiles().find(f => selection.has(this._itemKey(f)) && f.entry.IsDir);
+      this.tabSvc.activeFiles().find(f => selection.has(this._itemKey(f)) && f.entry.IsDir) ??
+      this.contextMenuItem();
     if (!item) return;
 
     const changed = await this.fileOps.removeEmptyDirs(remote, item);
@@ -244,14 +240,7 @@ export class NautilusActionsService {
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
 
-    const selection = this.tabSvc.selectedItems();
-    let selectedFiles = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
-
-    const ctx = this.contextMenuItem();
-    if (ctx && !selection.has(this._itemKey(ctx))) {
-      selectedFiles = [ctx];
-    }
-
+    const selectedFiles = this.getSelectedOrContextItems();
     if (selectedFiles.length === 0) return;
 
     const changed = await this.fileOps.openArchiveCreateDialog(
@@ -266,13 +255,12 @@ export class NautilusActionsService {
     const item = this.contextMenuItem();
     if (!item?.entry.IsDir) return;
 
-    let root = this.tabSvc.activeRemote();
-    if (!root && item.meta.remote) {
-      const remoteName = this.pathSvc.normalizeRemoteName(item.meta.remote);
-      root =
-        this.nautilusService
-          .allRemotesLookup()
-          .find(r => this.pathSvc.normalizeRemoteName(r.name) === remoteName) ?? null;
+    let root: ExplorerRoot | null = null;
+    if (item.meta?.remote) {
+      root = this.nautilusService.lookupRemoteByName(item.meta.remote);
+    }
+    if (!root) {
+      root = this.tabSvc.activeRemote();
     }
 
     if (root) {
@@ -312,11 +300,9 @@ export class NautilusActionsService {
   });
 
   async copyPublicLink(): Promise<void> {
-    const item = this.contextMenuItem();
-    const remote = this.tabSvc.activeRemote();
-    if (!item || !remote) return;
+    const { item, remoteName } = this._resolveItemRemoteInfo();
+    if (!item || !remoteName) return;
 
-    const remoteName = this.pathSvc.normalizeRemoteForRclone(item.meta.remote ?? remote.name);
     this.notificationService.showInfo(
       this.translate.instant('nautilus.notifications.getPublicLinkStarted')
     );
@@ -347,11 +333,11 @@ export class NautilusActionsService {
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
 
-    const items = this._getSelectedItemsList(this.tabSvc.activeFiles());
+    const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
     if (items.length === 0) return;
 
     const existingNames = this.tabSvc.activeFiles().map(f => f.entry.Name);
-    const ref = await this.notificationService.openInput({
+    const ref = await this.notificationService.openInput<string>({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',
@@ -370,7 +356,7 @@ export class NautilusActionsService {
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       await this.fileOps.performFileOperations(items, remote, newPath, 'move');
 
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex() as 0 | 1);
+      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
       this._refresh();
     } catch (err) {
       console.error('Failed to create folder with selected items', err);
@@ -387,7 +373,7 @@ export class NautilusActionsService {
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
 
-    const items = this._getSelectedItemsList(this.tabSvc.activeFiles());
+    const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
     if (items.length === 0) return;
 
     const ref = this.dialog.open(MultiRenameModalComponent, {
@@ -398,7 +384,7 @@ export class NautilusActionsService {
 
     const changed = await firstValueFrom(ref.afterClosed());
     if (changed) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex() as 0 | 1);
+      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
       this._refresh();
     }
   }
@@ -408,7 +394,7 @@ export class NautilusActionsService {
     if (remote) {
       this.tabSvc.refreshPath(remote.name, this.tabSvc.activePath());
     } else {
-      this.tabSvc.refresh(this.tabSvc.activePaneIndex() as 0 | 1);
+      this.tabSvc.refresh(this.tabSvc.activePaneIndex());
     }
   }
 
@@ -417,14 +403,7 @@ export class NautilusActionsService {
   }
 
   private _resolveBookmarkRemote(bookmark: FileBrowserItem): ExplorerRoot | null {
-    const remote =
-      this.nautilusService
-        .allRemotesLookup()
-        .find(
-          r =>
-            this.pathSvc.normalizeRemoteName(r.name) ===
-            this.pathSvc.normalizeRemoteName(bookmark.meta.remote)
-        ) ?? null;
+    const remote = this.nautilusService.lookupRemoteByName(bookmark.meta.remote);
 
     if (!remote) {
       this.notificationService.showError(
@@ -434,13 +413,5 @@ export class NautilusActionsService {
       );
     }
     return remote;
-  }
-
-  private _getSelectedItemsList(currentFiles: FileBrowserItem[]): FileBrowserItem[] {
-    const selection =
-      this.tabSvc.activePaneIndex() === 0
-        ? this.tabSvc.selectedItems()
-        : this.tabSvc.selectedItemsRight();
-    return currentFiles.filter((item: FileBrowserItem) => selection.has(this._itemKey(item)));
   }
 }

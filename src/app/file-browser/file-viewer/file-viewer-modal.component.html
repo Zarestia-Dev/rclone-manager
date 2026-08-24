@@ -13,10 +13,20 @@
     @if (isMarkdownFile() && currentFileType() === 'text') {
       <button
         matIconButton
-        title="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
+        [attr.title]="
+          (showMarkdownPreview()
+            ? 'fileBrowser.fileViewer.showRawText'
+            : 'fileBrowser.fileViewer.showPreview'
+          ) | translate
+        "
         class="header-button"
         (click)="toggleMarkdownPreview(); $event.stopPropagation()"
-        [attr.aria-label]="showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview'"
+        [attr.aria-label]="
+          (showMarkdownPreview()
+            ? 'fileBrowser.fileViewer.showRawText'
+            : 'fileBrowser.fileViewer.showPreview'
+          ) | translate
+        "
       >
         <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
       </button>

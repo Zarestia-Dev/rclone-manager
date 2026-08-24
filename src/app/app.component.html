@@ -1,4 +1,4 @@
-<div class="app-wrapper">
+<div class="app-wrapper" appShortcutHandler>
   @if (!initializing()) {
     @if (modalService.isDialogStandalone()) {
       <ng-container
@@ -8,18 +8,29 @@
       @defer {
         <app-nautilus></app-nautilus>
       }
+    } @else if (flowOverlayService.isStandaloneWindow()) {
+      @defer {
+        <app-flow-container></app-flow-container>
+      }
+    } @else if (mainUiOverlayService.isStandaloneWindow()) {
+      @defer {
+        <app-main-ui-container></app-main-ui-container>
+      }
     } @else if (!completedOnboarding()) {
       @defer {
         <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
+    } @else if (selectedMainView() === 'nautilus') {
+      @defer {
+        <app-nautilus></app-nautilus>
+      }
+    } @else if (selectedMainView() === 'flow') {
+      @defer {
+        <app-flow-container></app-flow-container>
+      }
     } @else {
       @defer {
-        <ng-container appShortcutHandler>
-          <app-titlebar data-tauri-drag-region></app-titlebar>
-          <app-banner></app-banner>
-          <app-home></app-home>
-          <app-tabs data-tauri-drag-region></app-tabs>
-        </ng-container>
+        <app-main-ui-container></app-main-ui-container>
       }
     }
   }

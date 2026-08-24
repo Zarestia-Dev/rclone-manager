@@ -9,18 +9,18 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let snapshot = TraySnapshot::fetch(&app_clone).await?;
 
     // Build plan off main thread
-    let plan = {
+    let (plan, icon_theme) = {
         let settings_manager = app_clone.state::<AppSettingsManager>();
-        let max_tray_items = settings_manager
+        let settings = settings_manager
             .get_all()
-            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?
-            .core
-            .max_tray_items;
-        MenuPlan::build(&snapshot, max_tray_items)
+            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
+        let max_tray_items = settings.core.max_tray_items;
+        let icon_theme = settings.general.tray_icon_theme;
+        (MenuPlan::build(&snapshot, max_tray_items), icon_theme)
     };
 
     let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
-    let icon = crate::core::tray::icon::get_icon(false)
+    let icon = crate::core::tray::icon::get_icon(false, &icon_theme)
         .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0));
 
     app.run_on_main_thread(move || {
@@ -114,7 +114,10 @@ pub struct WindowOptions {
 }
 
 #[cfg(not(feature = "web-server"))]
-#[tauri::command]
+use crate::core::bridge;
+
+#[cfg(not(feature = "web-server"))]
+#[bridge]
 pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
         let _ = existing.show();

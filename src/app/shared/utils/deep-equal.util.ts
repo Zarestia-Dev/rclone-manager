@@ -12,7 +12,7 @@
  * for no callers. If those needs ever arise, replace this with a
  * battle-tested lib like `fast-deep-equal` rather than extending it.
  */
-export function deepEqual<T>(a: T, b: T): boolean {
+export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
 
   // `null === null` is caught above; if either side is null/undefined and

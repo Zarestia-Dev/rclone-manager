@@ -4,11 +4,12 @@ use serde_json::json;
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    core::bridge,
     rclone::backend::BackendManager,
     utils::rclone::endpoints::{config, core},
 };
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let paths = crate::rclone::commands::common::transport(&app)
         .rpc(config::PATHS, Some(&json!({})))
@@ -29,7 +30,7 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -50,29 +51,19 @@ struct RcloneDiskUsageResponse {
     info: RcloneDiskInfo,
 }
 
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum LocalDiskUsageColor {
-    Primary,
-    Accent,
-    Warn,
-}
-
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalDiskUsageResponse {
-    free: u64,
-    total: u64,
-    used: u64,
-    dir: String,
-    pub usage_percentage: f64,
-    pub usage_color: LocalDiskUsageColor,
+    pub free: u64,
+    pub total: u64,
+    pub used: u64,
+    pub dir: String,
 }
 
 /// Get local disk usage for a directory using rclone's core/du endpoint
 /// This returns disk space info (Available, Free, Total) for a LOCAL directory,
 /// useful for checking space on mount points.
-#[tauri::command]
+#[bridge]
 pub async fn get_local_disk_usage(
     app: AppHandle,
     dir: Option<String>,
@@ -96,37 +87,15 @@ pub async fn get_local_disk_usage(
     let used = response.info.total.saturating_sub(response.info.free);
     let free = response.info.free;
 
-    let usage_percentage = if total > 0 {
-        (used as f64 / total as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let ratio = if total > 0 {
-        used as f64 / total as f64
-    } else {
-        0.0
-    };
-
-    let usage_color = if ratio > 0.9 {
-        LocalDiskUsageColor::Warn
-    } else if ratio > 0.7 {
-        LocalDiskUsageColor::Accent
-    } else {
-        LocalDiskUsageColor::Primary
-    };
-
     Ok(LocalDiskUsageResponse {
         free,
         total,
         used,
         dir: response.dir,
-        usage_percentage,
-        usage_color,
     })
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, String> {
     let payload = json!({
         "clear": clear,

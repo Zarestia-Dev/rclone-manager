@@ -98,12 +98,6 @@
         </div>
       </section>
     }
-    @if (shouldShowRemoteOAuthFallback()) {
-      <div class="message info oauth-helper">
-        <mat-icon svgIcon="info"></mat-icon>
-        <span>{{ 'modals.oauth.remoteFallback' | translate }}</span>
-      </div>
-    }
     @if (currentStep() === 'interactive' && !isAuthCancelled()) {
       <div class="message info">
         <mat-icon svgIcon="info"></mat-icon>
@@ -135,7 +129,7 @@
         (click)="nextStep()"
         [disabled]="!isSetupStepValid()"
       >
-        {{ 'common.nextStep' | translate }}
+        {{ 'common.next' | translate }}
         <mat-icon iconPositionEnd svgIcon="right-arrow"></mat-icon>
       </button>
     }

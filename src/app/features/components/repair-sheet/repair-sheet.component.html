@@ -88,9 +88,20 @@
         ></app-installation-options>
       }
     }
+
+    @if (installing()) {
+      <app-provision-progress [progress]="activeProgress()"></app-provision-progress>
+    }
   </div>
 
   <div class="sheet-actions">
+    @if (installing() && activeProgress()) {
+      <button type="button" matButton="outlined" (click)="cancelRepair()">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+        {{ 'common.cancel' | translate }}
+      </button>
+    }
+
     <button
       type="submit"
       matButton="filled"

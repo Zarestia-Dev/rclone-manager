@@ -1,89 +1,49 @@
-use crate::core::settings::AppSettingsManager;
-use crate::core::settings::schema::AppSettings;
-use log::info;
+use serde_json::Value;
 use std::path::Path;
 
-/// Creates a new `AppSettingsManager` with all necessary sub-settings and migrators.
-///
-/// This does NOT perform slow migrations (like keyring migration).
+use crate::core::settings::AppSettingsManager;
+use crate::core::settings::schema::AppSettings;
+
+/// Migrator for `remotes` sub-settings: flattens legacy double-nested `runtimeRemoteConfigs`
+/// e.g. `{ "runtimeRemoteConfigs": { "Default": { "One Drive": { "token": "123" } } } }`
+/// into flat `{ "runtimeRemoteConfigs": { "Default": { "token": "123" } } }`.
+pub fn migrate_remote_sub_settings(mut val: Value) -> Value {
+    let Some(obj) = val.as_object_mut() else {
+        return val;
+    };
+    let Some(runtime_configs) = obj
+        .get_mut("runtimeRemoteConfigs")
+        .and_then(Value::as_object_mut)
+    else {
+        return val;
+    };
+
+    for (_profile_name, profile_val) in runtime_configs.iter_mut() {
+        let Some(profile_obj) = profile_val.as_object() else {
+            continue;
+        };
+        if profile_obj.len() == 1 {
+            let inner_val = profile_obj.values().next();
+            if let Some(inner_obj) = inner_val.filter(|v| v.is_object()) {
+                *profile_val = inner_obj.clone();
+            }
+        }
+    }
+    val
+}
+
+/// Creates a new `AppSettingsManager` with all necessary sub-settings.
 pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, String> {
     rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         .with_config_dir(config_dir)
         .with_env_credentials()
         .with_schema::<AppSettings>()
-        .with_migrator(|mut value: serde_json::Value| {
-            if let Some(root) = value.as_object_mut() {
-                // Flatten legacy app_settings if present
-                if let Some(app_settings) = root.remove("app_settings") {
-                    info!("found legacy app_settings, flattening to root");
-                    if let Some(app_settings_obj) = app_settings.as_object() {
-                        for (k, v) in app_settings_obj {
-                            if !root.contains_key(k) {
-                                root.insert(k.clone(), v.clone());
-                            }
-                        }
-                    }
-                }
-
-                // Migrate rclone_path to rclone_binary and ensure it ends with the binary name
-                if let Some(core) = root.get_mut("core")
-                    && let Some(core_obj) = core.as_object_mut()
-                {
-                    let bin_name = if cfg!(windows) {
-                        "rclone.exe"
-                    } else {
-                        "rclone"
-                    };
-
-                    let rclone_binary = if let Some(old_path) = core_obj.remove("rclone_path") {
-                        info!("migrating core.rclone_path to core.rclone_binary");
-                        Some(old_path)
-                    } else {
-                        core_obj.get("rclone_binary").cloned()
-                    };
-
-                    if let Some(path_str) = rclone_binary.as_ref().and_then(|v| v.as_str())
-                        && !path_str.is_empty()
-                        && path_str != "system"
-                        && !path_str.ends_with(bin_name)
-                    {
-                        let mut path = std::path::PathBuf::from(path_str);
-                        path.push(bin_name);
-                        core_obj.insert(
-                            "rclone_binary".to_string(),
-                            serde_json::Value::String(path.to_string_lossy().to_string()),
-                        );
-                    } else if let Some(path_val) = rclone_binary {
-                        core_obj.insert("rclone_binary".to_string(), path_val);
-                    }
-                }
-            }
-            value
-        })
         .with_sub_settings(
             rcman::SubSettingsConfig::new("remotes")
                 .with_profiles()
-                .with_migrator(crate::core::settings::remote::manager::migrate_to_multi_profile),
+                .with_migrator(migrate_remote_sub_settings),
         )
-        .with_sub_settings(
-            rcman::SubSettingsConfig::singlefile("backend")
-                .with_profiles()
-                .with_migrator(|mut value: serde_json::Value| {
-                    if let Some(root) = value.as_object_mut()
-                        && let Some(backend_settings) = root.remove("backend")
-                    {
-                        info!("found legacy backend settings, flattening to root");
-                        if let Some(backend_obj) = backend_settings.as_object() {
-                            for (k, v) in backend_obj {
-                                if !root.contains_key(k) {
-                                    root.insert(k.clone(), v.clone());
-                                }
-                            }
-                        }
-                    }
-                    value
-                }),
-        )
+        .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
         .with_sub_settings(
             rcman::SubSettingsConfig::singlefile("connections")
                 .with_schema::<crate::rclone::backend::types::Backend>(),
@@ -96,6 +56,55 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
             rcman::SubSettingsConfig::singlefile("alerts/actions")
                 .with_schema::<crate::core::alerts::types::AlertAction>(),
         )
+        .with_sub_settings(rcman::SubSettingsConfig::singlefile(
+            crate::utils::constants::SUB_QUICK_RUNS,
+        ))
+        .with_sub_settings(
+            rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_TEMPLATES)
+                .with_schema::<crate::core::settings::schema::UserPresetTemplate>(),
+        )
         .build()
         .map_err(|e| format!("Failed to create rcman settings manager: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_migrate_remote_sub_settings_double_nested() {
+        let legacy = json!({
+            "runtimeRemoteConfigs": {
+                "Default": {
+                    "One Drive": {
+                        "token": "secret_token",
+                        "client_credentials": true
+                    }
+                }
+            }
+        });
+
+        let migrated = migrate_remote_sub_settings(legacy);
+        let default_profile = &migrated["runtimeRemoteConfigs"]["Default"];
+
+        assert_eq!(default_profile["token"], "secret_token");
+        assert_eq!(default_profile["client_credentials"], true);
+        assert!(default_profile.get("One Drive").is_none());
+    }
+
+    #[test]
+    fn test_migrate_remote_sub_settings_already_flat() {
+        let flat = json!({
+            "runtimeRemoteConfigs": {
+                "Default": {
+                    "token": "secret_token",
+                    "client_credentials": true
+                }
+            }
+        });
+
+        let migrated = migrate_remote_sub_settings(flat.clone());
+        assert_eq!(migrated, flat);
+    }
 }

@@ -161,9 +161,11 @@ mod tests {
         ]);
         assert_eq!(args.general.data_dir, Some(PathBuf::from("/data")));
         assert_eq!(args.general.cache_dir, Some(PathBuf::from("/cache")));
+        #[cfg(feature = "tray")]
         assert!(!args.general.tray);
     }
 
+    #[cfg(feature = "tray")]
     #[test]
     fn test_tray_flag() {
         let args = CliArgs::parse_from(["rclone-manager", "--tray"]);

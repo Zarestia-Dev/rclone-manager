@@ -11,6 +11,7 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bott
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import {
+  BinaryStatus,
   InstallationOptionsData,
   RepairData,
   RepairMode,
@@ -19,6 +20,7 @@ import {
 } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
+import { ProvisionProgressComponent } from '../../../shared/components/provision-progress/provision-progress.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { RepairService } from 'src/app/services/operations/repair.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
@@ -34,6 +36,7 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
     MatIconModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
+    ProvisionProgressComponent,
     TranslatePipe,
   ],
   templateUrl: './repair-sheet.component.html',
@@ -57,6 +60,19 @@ export class RepairSheetComponent {
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
   private readonly sheetRef = inject(MatBottomSheetRef<RepairSheetComponent>);
   private readonly repairService = inject(RepairService);
+
+  readonly rcloneProgress = this.repairService.rcloneProgress;
+  readonly mountPluginProgress = this.repairService.mountPluginProgress;
+
+  readonly activeProgress = computed(() => {
+    if (this.isMountPluginRepair()) {
+      return this.mountPluginProgress();
+    }
+    if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+      return this.rcloneProgress();
+    }
+    return null;
+  });
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly passwordService = inject(RclonePasswordService);
   private readonly translate = inject(TranslateService);
@@ -266,7 +282,7 @@ export class RepairSheetComponent {
     this.sheetRef.dismiss();
   }
 
-  private dismissAfter(result: any, delay: number): void {
+  private dismissAfter(result: unknown, delay: number): void {
     const id = setTimeout(() => this.sheetRef.dismiss(result), delay);
     this.destroyRef.onDestroy(() => clearTimeout(id));
   }
@@ -276,29 +292,22 @@ export class RepairSheetComponent {
     try {
       const { installLocation, customPath } = this.installationData();
       const configPath = installLocation === 'custom' ? customPath : '';
-      if (this.backendService.backends().length === 0) {
-        await this.backendService.loadBackends();
-      }
-      const localBackend = this.backendService.backends().find(b => b.name === 'Local');
-      if (localBackend) {
-        await this.backendService.updateBackend({
-          name: 'Local',
-          host: localBackend.host,
-          oauthHost: localBackend.oauthHost,
-          port: localBackend.port,
-          isLocal: true,
-          username: localBackend.username,
-          password: localBackend.password,
-          configPath: configPath || undefined,
-          oauthPort: localBackend.oauthPort,
-        });
-      }
+      await this.backendService.updateLocalBackendConfigPath(configPath || undefined);
       this.dismissAfter('success', 1000);
     } catch (error) {
       console.error('Config repair failed:', error);
     } finally {
       this.installing.set(false);
     }
+  }
+
+  async cancelRepair(): Promise<void> {
+    if (this.isMountPluginRepair()) {
+      await this.repairService.cancelMountPluginRepair();
+    } else if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+      await this.repairService.cancelRcloneRepair();
+    }
+    this.installing.set(false);
   }
 
   private async executeRepair(): Promise<void> {
@@ -312,11 +321,8 @@ export class RepairSheetComponent {
       this.dismissAfter('success', this.isMountPluginRepair() ? 2000 : 1000);
     } catch (error) {
       console.error('Repair failed:', error);
-      if (this.isMountPluginRepair()) {
-        const errorMsg =
-          error instanceof Error
-            ? error.message
-            : this.backendTranslation.translateBackendMessage(error);
+      if (this.isMountPluginRepair() && !this.repairService.isCancellationError(error)) {
+        const errorMsg = this.backendTranslation.translateBackendMessage(error);
         this.messageOverride.set(
           this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
             error: errorMsg,
@@ -353,10 +359,13 @@ export class RepairSheetComponent {
     }
     if (installLocation === 'existing') {
       if (!existingBinaryPath.trim()) return 'repairSheet.buttons.selectBinaryFirst';
-      if (binaryTestResult === 'invalid') return 'repairSheet.buttons.invalidBinary';
-      if (binaryTestResult === 'testing') return 'repairSheet.buttons.testingBinary';
-      if (binaryTestResult === 'valid') return 'repairSheet.buttons.useThisBinary';
-      return 'repairSheet.buttons.testBinaryFirst';
+      const labels: Record<BinaryStatus, string> = {
+        untested: 'repairSheet.buttons.testBinaryFirst',
+        testing: 'repairSheet.buttons.testingBinary',
+        valid: 'repairSheet.buttons.useThisBinary',
+        invalid: 'repairSheet.buttons.invalidBinary',
+      };
+      return labels[binaryTestResult];
     }
     return this.repairService.getRepairButtonTextKey(this.data.type);
   }

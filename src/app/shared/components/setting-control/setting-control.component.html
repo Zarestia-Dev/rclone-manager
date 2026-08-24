@@ -52,10 +52,10 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
-        <mat-form-field class="input-field" appearance="fill">
+        <mat-form-field class="input-field">
           <input
             matInput
-            [type]="isSensitiveField() ? 'password' : inputType || 'text'"
+            [type]="isPasswordField() ? 'password' : inputType || 'text'"
             [step]="inputStep || null"
             [formControl]="$any(control())"
             [attr.aria-label]="opt.Name"
@@ -112,7 +112,7 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
-        <mat-form-field class="input-field" appearance="fill">
+        <mat-form-field class="input-field">
           <mat-select
             [formControl]="$any(control())"
             [attr.aria-label]="opt.Name"
@@ -145,7 +145,7 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
-        <mat-form-field class="input-field" appearance="fill">
+        <mat-form-field class="input-field">
           <mat-select
             multiple
             [formControl]="$any(control())"
@@ -187,7 +187,7 @@
     <div class="setting-full-width">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
       <div class="setting-control">
-        <mat-form-field class="input-field" appearance="fill">
+        <mat-form-field class="input-field">
           <input
             matInput
             #autoTrigger="matAutocompleteTrigger"
@@ -238,7 +238,7 @@
       <div class="array-items">
         @for (itemControl of formArrayControls(); track itemControl) {
           <div class="array-item">
-            <mat-form-field appearance="fill" class="array-input">
+            <mat-form-field class="array-input">
               <input
                 matInput
                 [type]="isSensitiveField() ? 'password' : 'text'"
@@ -275,224 +275,118 @@
   </ng-template>
 
   <div class="setting-item" id="{{ 'setting-' + mergedOption()?.Name }}">
-    @if (isNumericType()) {
-      <ng-container
-        *ngTemplateOutlet="
-          stepperInput;
-          context: {
-            $implicit: mergedOption(),
-            inputType: 'number',
-            inputStep: numericInputStep(),
-          }
-        "
-      />
-    } @else {
-      @switch (mergedOption()?.Type) {
-        @case ('bool') {
+    @switch (controlType()) {
+      @case ('numeric') {
+        <ng-container
+          *ngTemplateOutlet="
+            stepperInput;
+            context: {
+              $implicit: mergedOption(),
+              inputType: 'number',
+              inputStep: numericInputStep(),
+            }
+          "
+        />
+      }
+      @case ('bool') {
+        <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
+        <div class="setting-control">
+          <mat-slide-toggle
+            [formControl]="$any(control())"
+            [attr.aria-label]="mergedOption()?.Name"
+            (change)="commitValue()"
+          >
+            {{
+              control()?.value
+                ? ('shared.settingControl.enabled' | translate)
+                : ('shared.settingControl.disabled' | translate)
+            }}
+          </mat-slide-toggle>
+        </div>
+      }
+      @case ('time') {
+        <div class="setting-full-width">
+          <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
+          <div class="setting-control time-split">
+            <mat-form-field class="input-field">
+              <mat-label>{{ 'shared.settingControl.date' | translate }}</mat-label>
+              <input
+                matInput
+                [matDatepicker]="picker"
+                [formControl]="$any(dateControl())"
+                [attr.aria-label]="
+                  'shared.settingControl.aria.date' | translate: { name: mergedOption()?.Name }
+                "
+                (dateChange)="commitValue()"
+              />
+              <mat-datepicker-toggle matSuffix [for]="picker" />
+              <mat-datepicker #picker />
+            </mat-form-field>
+            <mat-form-field class="input-field">
+              <mat-label>{{ 'shared.settingControl.time' | translate }}</mat-label>
+              <input
+                matInput
+                [matTimepicker]="timePicker"
+                [formControl]="$any(timeControl())"
+                [attr.aria-label]="
+                  'shared.settingControl.aria.time' | translate: { name: mergedOption()?.Name }
+                "
+                (blur)="commitValue()"
+              />
+              <mat-timepicker-toggle matSuffix [for]="timePicker" />
+              <mat-timepicker #timePicker />
+            </mat-form-field>
+          </div>
+        </div>
+      }
+      @case ('tristate') {
+        <div class="setting-full-width">
           <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
           <div class="setting-control">
-            <mat-slide-toggle
-              [formControl]="$any(control())"
-              [attr.aria-label]="mergedOption()?.Name"
-              (change)="commitValue()"
-            >
-              {{
-                control()?.value
-                  ? ('shared.settingControl.enabled' | translate)
-                  : ('shared.settingControl.disabled' | translate)
-              }}
-            </mat-slide-toggle>
+            <mat-form-field class="input-field">
+              <mat-select
+                [formControl]="$any(control())"
+                [attr.aria-label]="mergedOption()?.Name"
+                (selectionChange)="commitValue()"
+              >
+                <mat-option [value]="null">{{
+                  'shared.settingControl.autoUnset' | translate
+                }}</mat-option>
+                <mat-option [value]="true">{{
+                  'shared.settingControl.true' | translate
+                }}</mat-option>
+                <mat-option [value]="false">{{
+                  'shared.settingControl.false' | translate
+                }}</mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
-        }
-        @case ('Time') {
-          <div class="setting-full-width">
-            <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
-            <div class="setting-control time-split">
-              <mat-form-field appearance="fill" class="input-field">
-                <mat-label>{{ 'shared.settingControl.date' | translate }}</mat-label>
-                <input
-                  matInput
-                  [matDatepicker]="picker"
-                  [formControl]="$any(dateControl())"
-                  [attr.aria-label]="
-                    'shared.settingControl.aria.date' | translate: { name: mergedOption()?.Name }
-                  "
-                  (dateChange)="commitValue()"
-                />
-                <mat-datepicker-toggle matSuffix [for]="picker" />
-                <mat-datepicker #picker />
-              </mat-form-field>
-              <mat-form-field appearance="fill" class="input-field">
-                <mat-label>{{ 'shared.settingControl.time' | translate }}</mat-label>
-                <input
-                  matInput
-                  [matTimepicker]="timePicker"
-                  [formControl]="$any(timeControl())"
-                  [attr.aria-label]="
-                    'shared.settingControl.aria.time' | translate: { name: mergedOption()?.Name }
-                  "
-                  (blur)="commitValue()"
-                />
-                <mat-timepicker-toggle matSuffix [for]="timePicker" />
-                <mat-timepicker #timePicker />
-              </mat-form-field>
-            </div>
-          </div>
-        }
-        @case ('Tristate') {
-          <div class="setting-full-width">
-            <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: mergedOption() }" />
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="fill">
-                <mat-select
-                  [formControl]="$any(control())"
-                  [attr.aria-label]="mergedOption()?.Name"
-                  (selectionChange)="commitValue()"
-                >
-                  <mat-option [value]="null">{{
-                    'shared.settingControl.autoUnset' | translate
-                  }}</mat-option>
-                  <mat-option [value]="true">{{
-                    'shared.settingControl.true' | translate
-                  }}</mat-option>
-                  <mat-option [value]="false">{{
-                    'shared.settingControl.false' | translate
-                  }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-          </div>
-        }
-        @case ('string') {
-          @if (mergedOption()?.Examples?.length) {
-            @if (isMultiselectOption()) {
-              <ng-container
-                *ngTemplateOutlet="
-                  multiSelect;
-                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-                "
-              />
-            } @else if (mergedOption()?.Exclusive === false) {
-              <ng-container
-                *ngTemplateOutlet="
-                  autocompleteInput;
-                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-                "
-              />
-            } @else {
-              <ng-container
-                *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-              />
-            }
-          } @else {
-            <ng-container
-              *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
-            />
-          }
-        }
-        @case ('Bits') {
-          @if (hasBitsComboExamples()) {
-            <ng-container
-              *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-            />
-          } @else if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="
-                multiSelect;
-                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-              "
-            />
-          } @else {
-            <ng-container
-              *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
-            />
-          }
-        }
-        @case ('Encoding') {
-          <ng-container
-            *ngTemplateOutlet="
-              multiSelect;
-              context: {
-                $implicit: mergedOption(),
-                optionsList: mergedOption()?.Examples || encodingFlags,
-              }
-            "
-          />
-        }
-        @case ('DumpFlags') {
-          <ng-container
-            *ngTemplateOutlet="
-              multiSelect;
-              context: {
-                $implicit: mergedOption(),
-                optionsList: mergedOption()?.Examples || DUMP_FLAGS_FALLBACK,
-              }
-            "
-          />
-        }
-        @case ('SpaceSepList') {
-          @if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="
-                multiSelect;
-                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-              "
-            />
-          } @else {
-            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
-          }
-        }
-        @case ('stringArray') {
-          @if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="
-                multiSelect;
-                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-              "
-            />
-          } @else {
-            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
-          }
-        }
-        @case ('CommaSepList') {
-          @if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="
-                multiSelect;
-                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-              "
-            />
-          } @else {
-            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
-          }
-        }
-        @default {
-          @if (mergedOption()?.Examples?.length) {
-            @if (isMultiselectOption()) {
-              <ng-container
-                *ngTemplateOutlet="
-                  multiSelect;
-                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-                "
-              />
-            } @else if (mergedOption()?.Exclusive === false) {
-              <ng-container
-                *ngTemplateOutlet="
-                  autocompleteInput;
-                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
-                "
-              />
-            } @else {
-              <ng-container
-                *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-              />
-            }
-          } @else {
-            <ng-container
-              *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
-            />
-          }
-        }
+        </div>
+      }
+      @case ('multiSelect') {
+        <ng-container
+          *ngTemplateOutlet="
+            multiSelect;
+            context: { $implicit: mergedOption(), optionsList: controlOptionsList() }
+          "
+        />
+      }
+      @case ('autocomplete') {
+        <ng-container
+          *ngTemplateOutlet="
+            autocompleteInput;
+            context: { $implicit: mergedOption(), optionsList: controlOptionsList() }
+          "
+        />
+      }
+      @case ('select') {
+        <ng-container *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }" />
+      }
+      @case ('array') {
+        <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+      }
+      @case ('input') {
+        <ng-container *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }" />
       }
     }
   </div>

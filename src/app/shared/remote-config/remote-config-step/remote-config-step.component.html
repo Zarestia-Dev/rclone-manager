@@ -2,7 +2,7 @@
   <div class="main-fields-container">
     @let remoteType = remoteTypeValue();
     @if (showTypeField()) {
-      <mat-form-field appearance="fill" class="remote-type-field anim-field">
+      <mat-form-field class="remote-type-field anim-field">
         <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
         <mat-icon matPrefix [svgIcon]="remoteTypeIcon()" class="field-icon"></mat-icon>
         <input
@@ -50,12 +50,7 @@
     @if (showTypeField() && !remoteType && !isLoading()) {
       <div class="empty-state">
         <div class="empty-state-icon-ring">
-          <mat-icon
-            [svgIcon]="randomIcon()"
-            class="empty-state-icon"
-            [class.anim-icon-fade-a]="animTrigger() % 2 === 0"
-            [class.anim-icon-fade-b]="animTrigger() % 2 === 1"
-          ></mat-icon>
+          <mat-icon [svgIcon]="randomIcon()" class="empty-state-icon anim-icon-fade"></mat-icon>
         </div>
         <div class="empty-state-body">
           <h3 class="empty-state-title">
@@ -117,7 +112,7 @@
 
     @if (providerField(); as pField) {
       @let pCtrl = form().get(pField.Name);
-      <mat-form-field appearance="fill" id="section-auth" class="anim-field">
+      <mat-form-field id="section-auth" class="anim-field">
         <mat-label>{{
           pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
         }}</mat-label>
@@ -286,7 +281,7 @@
                       ></mat-slide-toggle>
                     }
                     @case ('string') {
-                      <mat-form-field appearance="fill" class="option-value-field no-subscript">
+                      <mat-form-field class="option-value-field no-subscript">
                         <input
                           matInput
                           [value]="opt.stringValue"
@@ -296,7 +291,7 @@
                       </mat-form-field>
                     }
                     @case ('number') {
-                      <mat-form-field appearance="fill" class="option-value-field no-subscript">
+                      <mat-form-field class="option-value-field no-subscript">
                         <input
                           matInput
                           type="number"
@@ -353,7 +348,7 @@
         }
 
         <div class="add-custom-row">
-          <mat-form-field appearance="fill" class="custom-key-field no-subscript">
+          <mat-form-field class="custom-key-field no-subscript">
             <mat-label>{{ 'wizards.remoteConfig.optionKey' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="terminal" class="field-icon" />
             <input
@@ -365,7 +360,7 @@
             />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="custom-type-field no-subscript">
+          <mat-form-field class="custom-type-field no-subscript">
             <mat-label>{{ 'wizards.remoteConfig.optionType' | translate }}</mat-label>
             <mat-select [value]="newOptionType()" (valueChange)="newOptionType.set($event)">
               <mat-option value="boolean">boolean</mat-option>

@@ -37,11 +37,35 @@ pub struct GeneralSettings {
     pub language: String,
 
     #[setting(
+        label = "settings.general.default_view.label",
+        description = "settings.general.default_view.description",
+        options(
+            ("main_menu", "settings.general.default_view.options.main_menu"),
+            ("nautilus", "settings.general.default_view.options.nautilus"),
+            ("flow", "settings.general.default_view.options.flow")
+        )
+    )]
+    pub default_view: String,
+
+    #[setting(
         label = "settings.general.tray_enabled.label",
         description = "settings.general.tray_enabled.description"
     )]
     #[cfg(feature = "tray")]
     pub tray_enabled: bool,
+
+    #[setting(
+        label = "settings.general.tray_icon_theme.label",
+        description = "settings.general.tray_icon_theme.description",
+        options(
+            ("system", "settings.general.tray_icon_theme.options.system"),
+            ("color", "settings.general.tray_icon_theme.options.color"),
+            ("monochrome_light", "settings.general.tray_icon_theme.options.monochrome_light"),
+            ("monochrome_dark", "settings.general.tray_icon_theme.options.monochrome_dark")
+        )
+    )]
+    #[cfg(feature = "tray")]
+    pub tray_icon_theme: String,
 
     #[setting(
         label = "settings.general.start_on_startup.label",
@@ -69,6 +93,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(all(desktop, not(feature = "web-server")))]
     pub standalone_dialogs: bool,
+
+    #[setting(
+        label = "settings.general.prevent_sleep.label",
+        description = "settings.general.prevent_sleep.description"
+    )]
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    pub prevent_sleep: bool,
 }
 
 impl Default for GeneralSettings {
@@ -84,13 +115,18 @@ impl Default for GeneralSettings {
         Self {
             #[cfg(feature = "tray")]
             tray_enabled: true,
+            #[cfg(feature = "tray")]
+            tray_icon_theme: "color".to_string(),
             #[cfg(feature = "tauri-plugin-notification")]
             notifications: true,
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             start_on_startup: false,
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            prevent_sleep: true,
             language,
+            default_view: "main_menu".to_string(),
             restrict: true,
         }
     }
@@ -279,6 +315,12 @@ pub struct RuntimeSettings {
     pub dashboard_layout: Value,
 
     #[setting(
+        label = "settings.runtime.quick_run_layout.label",
+        description = "settings.runtime.quick_run_layout.description"
+    )]
+    pub quick_run_layout: Value,
+
+    #[setting(
         label = "settings.runtime.remote_layouts.label",
         description = "settings.runtime.remote_layouts.description"
     )]
@@ -311,6 +353,7 @@ impl Default for RuntimeSettings {
             #[cfg(feature = "flatpak")]
             flatpak_warn: true,
             dashboard_layout: Value::Object(Default::default()),
+            quick_run_layout: Value::Object(Default::default()),
             remote_layouts: Value::Object(Default::default()),
             dashboard_card_variant: "compact".to_string(),
         }
@@ -344,4 +387,65 @@ pub struct AppSettings {
     pub developer: DeveloperSettings,
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
+}
+
+/// User preset template schema for `rcman`
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[schema(category = "templates")]
+pub struct UserPresetTemplate {
+    #[setting(label = "templates.id.label", description = "templates.id.description")]
+    pub id: String,
+
+    #[setting(
+        label = "templates.name.label",
+        description = "templates.name.description"
+    )]
+    pub name: String,
+
+    #[setting(
+        label = "templates.description.label",
+        description = "templates.description.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    #[setting(
+        label = "templates.icon.label",
+        description = "templates.icon.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+
+    #[setting(
+        label = "templates.created_at.label",
+        description = "templates.created_at.description"
+    )]
+    pub created_at: String,
+
+    #[setting(
+        label = "templates.updated_at.label",
+        description = "templates.updated_at.description"
+    )]
+    pub updated_at: String,
+
+    #[setting(
+        label = "templates.values.label",
+        description = "templates.values.description"
+    )]
+    #[serde(default)]
+    pub values: Value,
+}
+
+impl Default for UserPresetTemplate {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            description: None,
+            icon: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+            values: Value::Object(Default::default()),
+        }
+    }
 }

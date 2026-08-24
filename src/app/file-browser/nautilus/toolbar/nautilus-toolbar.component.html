@@ -88,6 +88,7 @@
       class="path-input"
       [value]="fullPathInput()"
       (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
+      (keydown.escape)="isEditingPathChange.emit(false); pathInput.blur()"
       (blur)="isEditingPathChange.emit(false)"
     />
   }
@@ -110,10 +111,15 @@
     </button>
   }
 
-  @if (nautilusService.isStandaloneWindow()) {
+  <app-menu></app-menu>
+
+  @if (
+    nautilusService.isStandaloneWindow() ||
+    (uiStateService.defaultView() === 'nautilus' && !nautilusService.isBrowserOverlayOpen())
+  ) {
     <app-window-controls></app-window-controls>
   } @else {
-    @if (!isMobile()) {
+    @if (!isMobileOS()) {
       <button
         class="nav-button"
         [title]="'nautilus.contextMenu.openNewWindow' | translate"

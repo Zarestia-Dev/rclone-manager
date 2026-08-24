@@ -1,3 +1,4 @@
+import { Origin } from './origin';
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
@@ -28,6 +29,29 @@ export interface MountedRemote {
   fs: string;
   mount_point: string;
   profile?: string;
+  quick_run_id?: string;
+  execute_id?: string;
+  origin?: Origin;
+}
+
+/**
+ * Unified response returned when starting any operation (mount, serve, sync, etc.)
+ */
+export interface OperationExecutionResult {
+  executeId: string;
+  origin: Origin;
+  operationType: PrimaryActionType;
+  remoteName: string;
+  quickRunId?: string;
+  profile?: string;
+  success: boolean;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  error?: string;
+  startTime: string;
+  jobId?: number;
+  serveId?: string;
+  serveAddr?: string;
+  mountPoint?: string;
 }
 
 // ── Remote runtime state ────────────────────────────────────────────────────
@@ -42,9 +66,6 @@ export interface DiskUsage {
   error?: boolean;
   errorMessage?: string;
   notSupported?: boolean;
-  usagePercentage?: number;
-  usagePercentageLabel?: string;
-  usageSeverity?: DiskUsageSeverity;
 }
 
 export interface RemoteOperationState {

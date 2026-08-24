@@ -1,0 +1,106 @@
+.flow-main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  background: var(--view-bg-color);
+  color: var(--view-fg-color);
+  overflow: hidden;
+}
+
+// ── Sidenav Container & Body ───────────────────────────────────────────────
+
+mat-sidenav-container.flow-sidenav-container {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  background: transparent;
+
+  mat-sidenav.flow-sidenav {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg-color);
+  }
+
+  mat-sidenav-content.flow-body {
+    display: flex;
+    flex-direction: column;
+    background: var(--view-bg-color);
+    overflow: hidden;
+    min-width: 0;
+    position: relative;
+
+    app-quick-run-workspace {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+.sidebar-button {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  z-index: 1;
+}
+
+// ── Workflow Builder placeholder ───────────────────────────────────────────
+
+.workflow-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  text-align: center;
+
+  .placeholder-icon {
+    font-size: 72px;
+    width: 72px;
+    height: 72px;
+    color: var(--accent-color);
+    opacity: 0.6;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--window-fg-color);
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--dim-color);
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  .placeholder-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-sm);
+    background: var(--hover-bg-color);
+    color: var(--accent-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 150ms ease;
+
+    &:hover {
+      background: var(--selected-bg-color);
+    }
+
+    .link-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}

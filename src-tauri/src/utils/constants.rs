@@ -34,6 +34,10 @@ pub const SUB_CONNECTIONS: &str = "connections";
 pub const SUB_ALERTS_RULES: &str = "alerts/rules";
 /// Sub-settings section holding alert actions.
 pub const SUB_ALERTS_ACTIONS: &str = "alerts/actions";
+/// Sub-settings section holding quick run configurations.
+pub const SUB_QUICK_RUNS: &str = "quick_runs";
+/// Sub-settings section holding custom user preset templates.
+pub const SUB_TEMPLATES: &str = "templates";
 
 // ── SettingsChangeEvent wildcard ─────────────────────────────────────────
 

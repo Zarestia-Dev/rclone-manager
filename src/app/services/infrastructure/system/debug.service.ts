@@ -1,11 +1,9 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
+import { EditorView } from 'codemirror';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import {
-  isHeadlessMode,
-  isMobile,
-} from 'src/app/services/infrastructure/platform/api-client.service';
+import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 
 export interface DebugInfo {
   logsDir: string;
@@ -65,6 +63,7 @@ export class DebugService extends TauriBaseService {
   }
 
   async openDevTools(): Promise<void> {
+    if (!this.isTauri) return;
     try {
       await this.invokeCommand<string>('open_devtools');
     } catch (err) {
@@ -87,8 +86,6 @@ export class DebugService extends TauriBaseService {
     if (e.defaultPrevented) return;
     const target = e.target as HTMLElement | null;
     if (!target) return;
-    // Dismiss any open CDK overlays before showing ours
-    target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     e.preventDefault();
     this.createContextMenu(e.clientX, e.clientY, this.buildMenuItems(target));
   }
@@ -96,24 +93,37 @@ export class DebugService extends TauriBaseService {
   private buildMenuItems(target: HTMLElement): MenuEntry[] {
     const inputEl = target.closest('input, textarea') as
       HTMLInputElement | HTMLTextAreaElement | null;
-    const editableEl = !inputEl
-      ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
-      : null;
+    const cmEditor = target.closest('.cm-editor') as HTMLElement | null;
+    const cmView = cmEditor ? EditorView.findFromDOM(cmEditor) : null;
+    const editableEl =
+      !inputEl && !cmView
+        ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
+        : null;
 
     const isPassword = inputEl?.type === 'password';
-    const isReadOnly = !!(
-      inputEl?.readOnly ||
-      inputEl?.disabled ||
-      editableEl?.getAttribute('contenteditable') === 'false'
-    );
+    const isReadOnly = cmView
+      ? cmView.state.readOnly
+      : !!(
+          inputEl?.readOnly ||
+          inputEl?.disabled ||
+          editableEl?.getAttribute('contenteditable') === 'false'
+        );
     const isDisabled = !!inputEl?.disabled;
 
-    const selectedText =
-      inputEl && !isPassword
-        ? inputEl.value.substring(inputEl.selectionStart ?? 0, inputEl.selectionEnd ?? 0)
-        : (window.getSelection()?.toString() ?? '');
+    let selectedText = '';
+    if (inputEl && !isPassword) {
+      selectedText = inputEl.value.substring(
+        inputEl.selectionStart ?? 0,
+        inputEl.selectionEnd ?? 0
+      );
+    } else if (cmView) {
+      const mainRange = cmView.state.selection.main;
+      selectedText = cmView.state.sliceDoc(mainRange.from, mainRange.to);
+    } else {
+      selectedText = window.getSelection()?.toString() ?? '';
+    }
 
-    const isInput = !!(inputEl || editableEl);
+    const isInput = !!(inputEl || cmView || editableEl);
     const items: MenuEntry[] = [];
 
     if (isInput) {
@@ -122,7 +132,7 @@ export class DebugService extends TauriBaseService {
           items.push({
             label: this.t('nautilus.contextMenu.cut'),
             shortcut: 'Ctrl+X',
-            action: () => this.cut(selectedText, inputEl, editableEl),
+            action: () => this.cut(selectedText, inputEl, editableEl, cmView),
           });
         }
         if (!isPassword) {
@@ -137,14 +147,14 @@ export class DebugService extends TauriBaseService {
         items.push({
           label: this.t('nautilus.contextMenu.paste'),
           shortcut: 'Ctrl+V',
-          action: () => this.paste(inputEl, editableEl),
+          action: () => this.paste(inputEl, editableEl, cmView),
         });
       }
       if (!isDisabled) {
         items.push({
           label: this.t('nautilus.contextMenu.selectAll'),
           shortcut: 'Ctrl+A',
-          action: () => this.selectAll(inputEl, editableEl),
+          action: () => this.selectAll(inputEl, editableEl, cmView),
         });
       }
     } else if (selectedText && !isPassword) {
@@ -170,7 +180,7 @@ export class DebugService extends TauriBaseService {
       );
     }
 
-    if (isDevMode() && !selectedText) {
+    if (isDevMode() && this.isTauri && !selectedText) {
       items.push({
         label: this.t('developerTools.openDevTools'),
         action: () => void this.openDevTools(),
@@ -183,7 +193,8 @@ export class DebugService extends TauriBaseService {
   private cut(
     text: string,
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
-    editableEl: HTMLElement | null
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
   ): void {
     this.clipboard.copy(text);
     if (inputEl) {
@@ -192,18 +203,23 @@ export class DebugService extends TauriBaseService {
       inputEl.value = inputEl.value.substring(0, start) + inputEl.value.substring(end);
       inputEl.selectionStart = inputEl.selectionEnd = start;
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (cmView) {
+      cmView.dispatch(cmView.state.replaceSelection(''));
+      cmView.focus();
     } else if (editableEl) {
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
         range.deleteContents();
+        editableEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
   }
 
   private async paste(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
-    editableEl: HTMLElement | null
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
   ): Promise<void> {
     let text = '';
     try {
@@ -219,6 +235,9 @@ export class DebugService extends TauriBaseService {
       inputEl.value = inputEl.value.substring(0, start) + text + inputEl.value.substring(end);
       inputEl.selectionStart = inputEl.selectionEnd = start + text.length;
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (cmView) {
+      cmView.dispatch(cmView.state.replaceSelection(text));
+      cmView.focus();
     } else if (editableEl) {
       editableEl.focus();
       const sel = window.getSelection();
@@ -230,16 +249,25 @@ export class DebugService extends TauriBaseService {
         range.collapse(false);
         sel.removeAllRanges();
         sel.addRange(range);
+        editableEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
   }
 
   private selectAll(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
-    editableEl: HTMLElement | null
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
   ): void {
     if (inputEl) {
       inputEl.select();
+      return;
+    }
+    if (cmView) {
+      cmView.dispatch({
+        selection: { anchor: 0, head: cmView.state.doc.length },
+      });
+      cmView.focus();
       return;
     }
     if (editableEl) {
@@ -252,7 +280,7 @@ export class DebugService extends TauriBaseService {
   }
 
   private async readClipboard(): Promise<string> {
-    if (isHeadlessMode()) return navigator.clipboard.readText();
+    if (!this.isTauri) return navigator.clipboard.readText();
     const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
     return readText();
   }

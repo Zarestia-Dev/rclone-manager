@@ -233,23 +233,6 @@
   gap: var(--space-sm);
 }
 
-.oauth-group {
-  background: var(--view-bg-color);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--box-shadow);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-
-  h4 {
-    margin: 0;
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--dim-label-color);
-  }
-}
-
 .tab-content {
   display: flex;
   flex-direction: column;

@@ -4,7 +4,7 @@ use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{automation::engine::AutomationScheduler, settings::AppSettingsManager},
+    core::{automation::engine::AutomationScheduler, bridge, settings::AppSettingsManager},
     rclone::{
         backend::{
             BackendManager,
@@ -22,19 +22,19 @@ use crate::{
     },
 };
 
-#[tauri::command]
+#[bridge]
 pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.list_all().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.get_active_name().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String> {
     let manager = app.state::<AppSettingsManager>();
     let remotes = manager
@@ -48,7 +48,7 @@ pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String>
         .map_err(|e| format!("Failed to list profiles: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("Switching to backend: {name}");
 
@@ -95,15 +95,11 @@ pub struct AddBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_port: Option<u16>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
     pub copy_remotes_from: Option<String>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
     info!(
         "Adding backend: {} ({}:{})",
@@ -128,15 +124,6 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     backend.host = params.host;
     backend.port = params.port;
     backend.config_path = params.config_path;
-
-    #[cfg(not(feature = "librclone"))]
-    if let Some(port) = params.oauth_port {
-        backend.oauth_port = port;
-    }
-    #[cfg(not(feature = "librclone"))]
-    if let Some(host) = params.oauth_host.filter(|h| !h.is_empty()) {
-        backend.oauth_host = host;
-    }
 
     if let (Some(u), Some(p)) = (&params.username, &params.password)
         && !u.is_empty()
@@ -180,13 +167,9 @@ pub struct UpdateBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_port: Option<u16>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_host: Option<String>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Result<(), String> {
     info!("Updating backend: {}", params.name);
 
@@ -206,13 +189,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         port: params.port,
         username: None,
         password: None,
-        #[cfg(not(feature = "librclone"))]
-        oauth_port: params.oauth_port.unwrap_or(existing.oauth_port),
-        #[cfg(not(feature = "librclone"))]
-        oauth_host: params
-            .oauth_host
-            .filter(|h| !h.is_empty())
-            .unwrap_or(existing.oauth_host),
         config_password: existing.config_password.clone(),
         config_path: params.config_path,
     };
@@ -250,11 +226,12 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    let needs_engine_restart = Backend::is_local_name(&params.name)
-        && (existing.host != backend.host
-            || existing.port != backend.port
-            || existing.config_path != backend.config_path
-            || existing.config_password != backend.config_password);
+    let creds_changed =
+        existing.username != backend.username || existing.password != backend.password;
+    let conn_changed = existing.host != backend.host
+        || existing.port != backend.port
+        || existing.config_path != backend.config_path
+        || existing.config_password != backend.config_password;
 
     backend_manager
         .update(settings_manager.inner(), &params.name, backend.clone())
@@ -262,16 +239,24 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
-    if needs_engine_restart {
-        info!("Restarting Local engine — connection settings changed");
-        crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
+    if creds_changed || conn_changed {
+        if existing.is_local {
+            info!("Restarting Local engine — connection or credentials changed");
+            crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
+        } else {
+            info!(
+                "Clearing engine errors and re-probing after remote backend credential/connection update"
+            );
+            crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
+            crate::rclone::engine::lifecycle::start_engine_if_not_running(&app).await;
+        }
     }
 
     info!("Backend '{}' updated", params.name);
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("Removing backend: {name}");
 
@@ -306,7 +291,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn test_backend_connection(
     app: AppHandle,
     name: String,
@@ -349,7 +334,7 @@ pub async fn test_backend_connection(
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn test_backend_connection_details(
     app: AppHandle,
     host: String,
@@ -479,10 +464,6 @@ async fn test_remote_connection(
 }
 
 async fn configure_remote_backend(app: &AppHandle, backend: &Backend) {
-    if backend.is_local {
-        return;
-    }
-
     if let Some(config_path) = &backend.config_path {
         info!(
             "Setting config path for remote backend '{}' to: {}",
@@ -579,18 +560,11 @@ mod tests {
             "name": "Local",
             "host": "0.0.0.0",
             "port": 51900,
-            "oauthPort": 53682,
-            "oauthHost": "my-server.local",
             "configPassword": "secret",
             "configPath": "/config/rclone.conf"
         }"#;
 
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, Some(53682));
-            assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
-        }
         assert_eq!(params.config_password.as_deref(), Some("secret"));
         assert_eq!(
             params.config_path.as_ref(),
@@ -604,17 +578,10 @@ mod tests {
             "name": "MyRemote",
             "host": "192.168.1.100",
             "port": 51900,
-            "isLocal": false,
-            "oauthPort": 53682,
-            "oauthHost": "192.168.1.100"
+            "isLocal": false
         }"#;
 
         let params: AddBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, Some(53682));
-            assert_eq!(params.oauth_host.as_deref(), Some("192.168.1.100"));
-        }
         assert!(!params.is_local);
     }
 
@@ -622,11 +589,6 @@ mod tests {
     fn test_missing_optional_fields_use_none() {
         let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, None);
-            assert_eq!(params.oauth_host, None);
-        }
         assert_eq!(params.username, None);
         assert_eq!(params.password, None);
     }

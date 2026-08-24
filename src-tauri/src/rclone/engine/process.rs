@@ -5,7 +5,6 @@ use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::SystemStatusPayload;
-use crate::utils::types::rclone::ProcessKind;
 use crate::utils::types::state::{RcApiEngine, RcloneState};
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
@@ -24,7 +23,7 @@ impl RcApiEngine {
 
         self.current_api_port = backend.port;
 
-        let engine_cmd = match build_rclone_process_command(app, ProcessKind::Engine).await {
+        let engine_cmd = match build_rclone_process_command(app).await {
             Ok(cmd) => cmd,
             Err(e) => {
                 error!("Failed to create engine command: {e}");
@@ -60,31 +59,25 @@ impl RcApiEngine {
     }
 
     pub async fn kill_process(&mut self, app: &AppHandle) -> EngineResult<()> {
-        let Some(mut child) = self.process.take() else {
-            self.mark_stopped();
-            return Ok(());
-        };
-
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 
-        let mut kill_error: Option<EngineError> = None;
+        if let Some(child) = self.process.take() {
+            if child.id().is_some() {
+                let state = app.state::<RcloneState>();
+                let quit_request =
+                    backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
-        if child.id().is_some() {
-            let state = app.state::<RcloneState>();
-            let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
+                if let Err(e) = graceful_shutdown(child, quit_request).await {
+                    log::warn!("Graceful shutdown failed: {e}");
+                }
+            } else {
+                log::debug!("Engine process had already terminated");
+            }
+        }
 
-            if let Err(e) = graceful_shutdown(child, quit_request).await {
-                log::warn!("Graceful shutdown failed: {e}");
-            }
-        } else {
-            info!("Force killing engine process");
-            if let Err(e) = child.kill().await {
-                let msg = format!("Failed to kill process: {e}");
-                error!("{msg}");
-                kill_error = Some(EngineError::KillFailed(msg));
-            }
-            let _ = child.wait().await;
+        if backend.is_local {
+            let _ = kill_processes_on_port(backend.port);
         }
 
         self.mark_stopped();
@@ -100,15 +93,8 @@ impl RcApiEngine {
                 .await;
         }
 
-        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::error());
+        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
 
-        if let Some(err) = kill_error {
-            return Err(err);
-        }
         Ok(())
-    }
-
-    pub fn kill_port_processes(&self) -> EngineResult<()> {
-        kill_processes_on_port(self.current_api_port).map_err(EngineError::PortCleanupFailed)
     }
 }

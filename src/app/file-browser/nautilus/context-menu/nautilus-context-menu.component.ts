@@ -6,6 +6,7 @@ import {
   TemplateRef,
   input,
   output,
+  ElementRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -41,6 +42,8 @@ import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/
   styleUrls: ['../../../styles/_slide-menu.scss'],
 })
 export class NautilusContextMenuComponent {
+  private readonly elementRef = inject(ElementRef);
+
   // Services
   public readonly tabSvc = inject(NautilusTabService);
   public readonly actions = inject(NautilusActionsService);
@@ -72,14 +75,13 @@ export class NautilusContextMenuComponent {
   readonly pathOptionsMenuTemplate = viewChild<TemplateRef<unknown>>('pathOptionsMenuTemplate');
 
   // Slide animation controller
-  readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
+  readonly menuCtrl = new SlideMenuController(
+    '.nautilus-sliding-container',
+    () => this.elementRef.nativeElement
+  );
 
   // Computeds
-  protected readonly activeSelectionCount = computed(() => {
-    return this.tabSvc.activePaneIndex() === 0
-      ? this.tabSvc.selectedItems().size
-      : this.tabSvc.selectedItemsRight().size;
-  });
+  protected readonly activeSelectionCount = computed(() => this.tabSvc.activeSelection().size);
 
   protected readonly supportsPublicLink = this.actions.supportsPublicLink;
 
@@ -97,13 +99,11 @@ export class NautilusContextMenuComponent {
   }
 
   protected copyItems(): void {
-    const filesList = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
-    this.fileOps.copyItems(this.selectionSvc.getSelectedItemsList(filesList));
+    this.fileOps.copyItems(this.selectionSvc.getSelectedItemsList(this.getActiveFiles()));
   }
 
   protected cutItems(): void {
-    const filesList = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
-    this.fileOps.cutItems(this.selectionSvc.getSelectedItemsList(filesList));
+    this.fileOps.cutItems(this.selectionSvc.getSelectedItemsList(this.getActiveFiles()));
   }
 
   protected openContextMenuOpen(): void {
@@ -111,6 +111,10 @@ export class NautilusContextMenuComponent {
     if (item) {
       this.navigateTo.emit(item);
     }
+  }
+
+  private getActiveFiles(): FileBrowserItem[] {
+    return this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
   }
 
   protected getFormattedPath(item: FileBrowserItem | null): string {

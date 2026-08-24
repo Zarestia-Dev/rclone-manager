@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::automation::engine::AutomationScheduler,
+    core::{automation::engine::AutomationScheduler, bridge},
     rclone::{
         backend::BackendManager,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
@@ -11,12 +11,21 @@ use crate::{
     utils::types::{events::APP_EVENT, state::RcloneState},
 };
 
-#[cfg(not(feature = "librclone"))]
-use crate::rclone::engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT};
-
 /// Main entry point for the shutdown sequence.
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
+
+    app_handle.state::<RcloneState>().set_shutting_down();
+
+    let _ = app_handle.emit(
+        APP_EVENT,
+        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
+    );
+
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
+        power_state.release().await;
+    }
 
     let scheduler_state = app_handle.state::<AutomationScheduler>();
 
@@ -76,7 +85,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
-    #[cfg(not(feature = "librclone"))]
     let engine_result = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
         let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
         engine_state.lock().await.shutdown(&app_clone).await;
@@ -84,37 +92,21 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     })
     .await;
 
-    #[cfg(feature = "librclone")]
-    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
-        let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
-        engine_state.lock().await.shutdown(&app_clone).await;
-        Ok::<(), String>(())
-    })
-    .await;
-
-    #[cfg(not(feature = "librclone"))]
-    {
-        match engine_result {
-            Ok(Ok(())) => info!("Engine shutdown completed."),
-            Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
-            Err(_) => {
-                error!("Engine shutdown timed out — force-killing rclone processes");
-                if let Err(e) = crate::utils::process::process_manager::kill_all_rclone_processes(
-                    DEFAULT_API_PORT,
-                    DEFAULT_OAUTH_PORT,
-                ) {
-                    error!("Force kill failed: {e}");
-                }
+    match engine_result {
+        Ok(Ok(())) => info!("Engine shutdown completed."),
+        Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
+        #[cfg(not(feature = "librclone"))]
+        Err(_) => {
+            error!("Engine shutdown timed out — force-killing rclone processes");
+            let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
+            if let Err(e) =
+                crate::utils::process::process_manager::kill_all_rclone_processes(force_kill_port)
+            {
+                error!("Force kill failed: {e}");
             }
         }
-
-        // Kill the OAuth subprocess if it's still alive.
-        let state = app_handle.state::<RcloneState>();
-        if let Some(mut child) = state.oauth_process.lock().await.take() {
-            info!("Killing OAuth process during shutdown");
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-        }
+        #[cfg(feature = "librclone")]
+        Err(_) => {}
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.
@@ -133,15 +125,8 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     apply_pending_updates(&app_handle).await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
-    app.state::<RcloneState>().set_shutting_down();
-
-    let _ = app.emit(
-        APP_EVENT,
-        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
-    );
-
     handle_shutdown(app.clone()).await;
     info!("Shutdown completed.");
     app.exit(0);

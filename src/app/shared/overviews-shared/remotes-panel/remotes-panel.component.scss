@@ -1,82 +1,35 @@
 :host {
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--card-border-radius-large);
-  background: var(--view-bg-color);
-  box-shadow: var(--shadow-gnome);
-  overflow: hidden;
+  display: block;
+  width: 100%;
 }
 
-// ── Panel Header ─────────────────────────────────────────────────────────────
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xl);
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.panel-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  flex: 1;
-  min-width: 0;
-
-  .title-text {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.remotes-panel {
+  ::ng-deep {
+    .mat-expansion-panel-body {
+      padding: 0;
+    }
   }
 
-  mat-icon {
-    color: var(--dim-color);
+  mat-panel-title {
+    mat-icon.active-icon {
+      color: var(--mode-primary-color, var(--primary-color));
+    }
   }
-}
 
-:host(.active-remotes-panel) .panel-title mat-icon {
-  color: var(--mode-primary-color, var(--primary-color));
-}
+  mat-panel-description {
+    margin-right: 0;
+  }
 
-.panel-count {
-  flex-shrink: 0;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 var(--space-xs);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--dim-color);
-  background: var(--bg-elevated-2);
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
-}
-
-:host(.active-remotes-panel) .panel-count {
-  background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
-  color: var(--mode-primary-color, var(--primary-color));
-}
-
-// ── Remotes Grid ─────────────────────────────────────────────────────────────
-
-.remotes-grid {
-  flex: 1;
-  overflow-y: auto;
-  max-height: 50vh;
-  padding: var(--space-lg);
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-md);
-  align-items: start;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+    align-items: start;
+    padding: 2px 24px 16px;
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 }
 
 // ── Drag & drop ───────────────────────────────────────────────────────────────
@@ -110,20 +63,15 @@
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
-.remotes-grid.cdk-drop-list-dragging app-remote-card:not(.cdk-drag-placeholder) {
+.grid.cdk-drop-list-dragging app-remote-card:not(.cdk-drag-placeholder) {
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 // ── Responsive ───────────────────────────────────────────────────────────────
 
 @media (max-width: 768px) {
-  .panel-header {
-    padding: var(--space-md);
-  }
-
-  .remotes-grid {
-    padding: var(--space-md);
-    max-height: 350px;
+  .remotes-panel .grid {
     gap: var(--space-sm);
+    padding: 2px 16px 16px;
   }
 }
