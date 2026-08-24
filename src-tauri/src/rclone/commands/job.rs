@@ -742,7 +742,8 @@ fn dispatch_job_completion_effects(
 
     if !outcome.success {
         let raw_err = outcome.error_msg.as_deref().unwrap_or("Job failed");
-        let mapped_err = crate::rclone::engine::error_mapper::map_or_wrap_job_error(raw_err);
+        let error_for_notify = crate::rclone::engine::error_mapper::map_rclone_error(raw_err)
+            .unwrap_or_else(|| raw_err.to_string());
         if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
@@ -753,7 +754,7 @@ fn dispatch_job_completion_effects(
             );
             notify(
                 app,
-                metadata.failed_event(backend_name.to_string(), &mapped_err),
+                metadata.failed_event(backend_name.to_string(), &error_for_notify),
             );
         }
         return Err(RcloneError::JobError(raw_err.to_string()));

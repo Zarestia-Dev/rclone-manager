@@ -47,9 +47,13 @@ export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object
 } as Record<SharedProfileType, string>);
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
-  'onedrive',
-  'iclouddrive',
   'jottacloud',
+  'onedrive',
+  'zoho',
+  'seafile',
+  'sugarsync',
+  'iclouddrive',
+  'internxt',
 ]);
 
 // ─── Command Option types ───────────────────────────────────────────────────

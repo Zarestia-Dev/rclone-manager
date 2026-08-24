@@ -646,3 +646,56 @@ fn emit_log(level: LogLevel, title: &str, body: &str) {
         LogLevel::Trace => trace!("🔔 {title} — {body}"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::localized_error;
+
+    #[test]
+    fn test_job_failed_resolves_structured_error() {
+        crate::utils::i18n::init_test_translations();
+
+        let err_json = localized_error!(
+            "backendErrors.job.executionFailed",
+            "error" => "failed to mount FUSE fs: no such directory"
+        );
+
+        let event = NotificationEvent::Job(JobStage::Failed {
+            backend: "Local".to_string(),
+            remote: "Google Drive".to_string(),
+            profile: Some("Default".to_string()),
+            job_type: JobType::Mount,
+            error: err_json,
+            origin: Origin::Internal,
+            source: None,
+            destination: None,
+        });
+
+        let rendered = event.render();
+        assert_eq!(rendered.title, "mount Failed");
+        assert_eq!(
+            rendered.body,
+            "Failed mount for Google Drive profile 'Default' on Local: Job execution failed: failed to mount FUSE fs: no such directory"
+        );
+    }
+
+    #[test]
+    fn test_mount_failed_resolves_direct_key() {
+        crate::utils::i18n::init_test_translations();
+
+        let event = NotificationEvent::Mount(MountStage::Failed {
+            backend: "Local".to_string(),
+            remote: "Google Drive".to_string(),
+            profile: Some("Default".to_string()),
+            error: "backendErrors.mount.pointEmpty".to_string(),
+        });
+
+        let rendered = event.render();
+        assert_eq!(rendered.title, "Mount Error");
+        assert_eq!(
+            rendered.body,
+            "Failed to mount Google Drive profile 'Default' from Local: Mount point cannot be empty"
+        );
+    }
+}

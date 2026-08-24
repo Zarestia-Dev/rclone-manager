@@ -65,7 +65,13 @@ impl Translations {
                 match std::fs::read_to_string(&main_file) {
                     Ok(content) => match serde_json::from_str::<Value>(&content) {
                         Ok(Value::Object(map)) => {
-                            for key in ["tray", "notification", "powerInhibitor", "alerts"] {
+                            for key in [
+                                "tray",
+                                "notification",
+                                "powerInhibitor",
+                                "alerts",
+                                "backendErrors",
+                            ] {
                                 if let Some(val) = map.get(key) {
                                     backend_translations.insert(key.to_string(), val.clone());
                                 }
@@ -158,11 +164,69 @@ impl Translations {
         current.as_str().unwrap_or(key).to_string()
     }
 
+    fn resolve_param_value(&self, value: &str) -> String {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return String::new();
+        }
+
+        // 1. If it's a structured JSON error string: {"key":"...", "params":{...}}
+        if ((trimmed.starts_with('{') && trimmed.ends_with('}'))
+            || trimmed.contains(r#"{"key":""#)
+            || trimmed.contains(r#"{"key": ""#))
+            && let Ok(val) = serde_json::from_str::<Value>(trimmed)
+            && let Some(key) = val.get("key").and_then(|k| k.as_str())
+        {
+            if let Some(params_obj) = val.get("params").and_then(|p| p.as_object()) {
+                let resolved_params: Vec<(String, String)> = params_obj
+                    .iter()
+                    .map(|(k, v)| {
+                        let val_str = match v {
+                            Value::String(s) => self.resolve_param_value(s),
+                            _ => v.to_string(),
+                        };
+                        (k.clone(), val_str)
+                    })
+                    .collect();
+                let params_ref: Vec<(&str, &str)> = resolved_params
+                    .iter()
+                    .map(|(k, v)| (k.as_str(), v.as_str()))
+                    .collect();
+                let translated = self.resolve_with_params(key, &params_ref);
+                if translated != key {
+                    return translated;
+                }
+            } else {
+                let translated = self.resolve(key);
+                if translated != key {
+                    return translated;
+                }
+            }
+        }
+
+        // 2. If it's a translation key (e.g. "backendErrors.mount.pointEmpty")
+        if trimmed.starts_with("backendErrors.")
+            || (trimmed.contains('.')
+                && !trimmed.contains(' ')
+                && !trimmed.contains('/')
+                && !trimmed.contains('\\'))
+        {
+            let translated = self.resolve(trimmed);
+            if translated != trimmed {
+                return translated;
+            }
+        }
+
+        // 3. Fallback: plain string as-is
+        trimmed.to_string()
+    }
+
     fn resolve_with_params(&self, key: &str, params: &[(&str, &str)]) -> String {
         let mut result = self.resolve(key);
         for (param_key, param_value) in params {
             let placeholder = format!("{{{{{param_key}}}}}");
-            result = result.replace(&placeholder, param_value);
+            let resolved_val = self.resolve_param_value(param_value);
+            result = result.replace(&placeholder, &resolved_val);
         }
         result
     }
@@ -217,9 +281,27 @@ pub fn t(key: &str) -> String {
     TRANSLATIONS.resolve(key)
 }
 
-/// Translate a key with parameter interpolation
+/// Translate a key with parameter interpolation (automatically resolves structured error params)
 pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
+}
+
+#[cfg(test)]
+pub fn init_test_translations() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let resource_dir = manifest_dir.parent().unwrap().join("resources");
+    init(resource_dir);
+}
+
+#[cfg(test)]
+pub fn set_test_translations(lang: &str, dict: Value) {
+    let mut cache = TRANSLATIONS.cache.write().unwrap();
+    cache.insert(lang.to_string(), dict);
+}
+
+/// Translates a backend error message (structured JSON, translation key, or raw string)
+pub fn resolve_error(error_str: &str) -> String {
+    TRANSLATIONS.resolve_param_value(error_str)
 }
 
 /// Macro for ergonomic translations
@@ -289,6 +371,8 @@ macro_rules! localized_success {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_static_error() {
         let error = localized_error!("backendErrors.mount.pointEmpty");
@@ -320,26 +404,45 @@ mod tests {
 
     #[test]
     fn test_nested_resolution() {
-        use serde_json::json;
-        let mut cache = super::TRANSLATIONS.cache.write().unwrap();
-        cache.insert(
-            super::DEFAULT_LANG.to_string(),
-            json!({
-                "tray": {
-                    "showApp": "Show Application",
-                    "nested": {
-                        "key": "Value"
-                    }
-                }
-            }),
-        );
-        drop(cache);
-
-        assert_eq!(super::t("tray.showApp"), "Show Application");
-        assert_eq!(super::t("tray.nested.key"), "Value");
+        super::init_test_translations();
+        assert_eq!(super::t("tray.showApp"), "Show App");
         assert_eq!(super::t("tray.nonexistent"), "tray.nonexistent");
+    }
 
-        // Cleanup
-        super::TRANSLATIONS.cache.write().unwrap().clear();
+    #[test]
+    fn test_resolve_error_structured_json() {
+        super::init_test_translations();
+
+        let json_err = localized_error!(
+            "backendErrors.job.executionFailed",
+            "error" => "failed to mount FUSE fs: no such directory"
+        );
+        let resolved = resolve_error(&json_err);
+        assert_eq!(
+            resolved,
+            "Job execution failed: failed to mount FUSE fs: no such directory"
+        );
+
+        let key_err = localized_error!("backendErrors.mount.pointEmpty");
+        let resolved_key = resolve_error(&key_err);
+        assert_eq!(resolved_key, "Mount point cannot be empty");
+
+        let multi_param_err = localized_error!(
+            "backendErrors.mount.alreadyInUse",
+            "mountPoint" => "/mnt/pcloud",
+            "remote" => "pcloud:"
+        );
+        let resolved_multi = resolve_error(&multi_param_err);
+        assert_eq!(
+            resolved_multi,
+            "Mount point /mnt/pcloud is already in use by remote pcloud:"
+        );
+
+        // Fallback to raw string
+        let raw_err = "failed to exec mount: no such file or directory";
+        assert_eq!(resolve_error(raw_err), raw_err);
+
+        // Empty string
+        assert_eq!(resolve_error(""), "");
     }
 }

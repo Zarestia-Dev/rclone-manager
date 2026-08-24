@@ -53,7 +53,7 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
 6. **Internationalization & Backend Error Architecture (CRITICAL)**
    - **Unified Resource Directory**: All translation files reside in `resources/i18n/{lang}/` (`main.json`, `rclone.json`, `rclone-providers.json`). Do not split or duplicate translation files across other directories.
    - **Frontend Static Asset Serving**: Angular loads translations via `MultiFileLoader` from static assets (`assets/i18n/...` mapped in `angular.json`).
-   - **Backend Minimal Memory Footprint**: The Rust backend (`src-tauri/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`).
+   - **Backend Minimal Memory Footprint**: The Rust backend (`src-tauri/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`, `backendErrors`).
    - **Language-Agnostic Backend Errors**: Rust code must **never** pre-translate error messages. Always use `localized_error!("backendErrors.<category>.<key>", ...)` or `localized_success!("backendSuccess.<category>.<key>", ...)`, producing structured `{ key, params }` JSON or raw keys for `BackendTranslationService` on the frontend.
 
 7. **Platform & Tauri Target Abstraction (CRITICAL)**
