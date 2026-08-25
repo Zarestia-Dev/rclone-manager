@@ -18,6 +18,7 @@ pub const RCLONE_CONFIG_UNLOCKED: &str = "rclone_config_unlocked";
 
 // UI and cache events
 pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
+pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 pub const MOUNT_STATE_CHANGED: &str = "mount_state_changed";
 pub const SERVE_STATE_CHANGED: &str = "serve_state_changed";
@@ -57,6 +58,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     BANDWIDTH_LIMIT_CHANGED,
     RCLONE_CONFIG_UNLOCKED,
     UPDATE_TRAY_MENU,
+    SYSTEM_THEME_CHANGED,
     JOB_CACHE_CHANGED,
     MOUNT_STATE_CHANGED,
     SERVE_STATE_CHANGED,

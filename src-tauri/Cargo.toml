@@ -96,7 +96,7 @@ rustls-platform-verifier = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power", "Win32_System_Registry"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
 winreg = "0.52"
 

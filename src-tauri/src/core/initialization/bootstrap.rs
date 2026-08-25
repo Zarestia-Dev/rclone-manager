@@ -23,6 +23,10 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     // Initialize Engine (Background monitoring loop)
     init_engine(app_handle).await?;
 
+    // Initialize native system theme detection
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::app::ui::init_system_theme();
+
     // Monitor Network Changes (Background task)
     #[cfg(not(target_os = "ios"))]
     {
@@ -31,6 +35,10 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
             crate::utils::io::network::monitor_network_changes(handle).await;
         });
     }
+
+    // Monitor OS Theme Changes (Background task)
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::app::ui::monitor_theme_changes(app_handle.clone());
 
     Ok(())
 }
