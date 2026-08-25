@@ -109,7 +109,7 @@ impl LinkChecker {
     }
 }
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
+#[cfg(all(feature = "desktop", target_os = "linux"))]
 #[must_use]
 pub fn is_metered() -> bool {
     std::thread::spawn(|| {
@@ -118,7 +118,7 @@ pub fn is_metered() -> bool {
         let connection = match Connection::system() {
             Ok(c) => c,
             Err(e) => {
-                log::error!("Failed to connect to D-Bus: {e}");
+                log::debug!("Failed to connect to D-Bus for metered network check: {e}");
                 return false;
             }
         };
@@ -131,7 +131,7 @@ pub fn is_metered() -> bool {
         ) {
             Ok(p) => p,
             Err(e) => {
-                log::error!("NetworkManager D-Bus proxy error: {e}");
+                log::debug!("NetworkManager D-Bus proxy error: {e}");
                 return false;
             }
         };
@@ -139,7 +139,7 @@ pub fn is_metered() -> bool {
         match proxy.get_property::<u32>("Metered") {
             Ok(status) => matches!(status, 1 | 3),
             Err(e) => {
-                log::error!("Failed to read Metered property: {e}");
+                log::debug!("Failed to read Metered property: {e}");
                 false
             }
         }
@@ -148,15 +148,15 @@ pub fn is_metered() -> bool {
     .unwrap_or(false)
 }
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
+#[cfg(all(feature = "desktop", target_os = "linux"))]
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
+#[cfg(all(feature = "desktop", target_os = "linux"))]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
-            log::error!("Failed to connect to D-Bus: {e}");
+            log::debug!("Failed to connect to D-Bus for network change monitoring: {e}");
             return;
         }
     };
@@ -171,7 +171,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     {
         Ok(p) => p,
         Err(e) => {
-            log::error!("Failed to create NetworkManager D-Bus proxy: {e}");
+            log::debug!("Failed to create NetworkManager D-Bus proxy: {e}");
             return;
         }
     };
@@ -191,16 +191,19 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     }
 }
 
-#[cfg(all(target_os = "linux", feature = "container"))]
+#[cfg(all(target_os = "linux", not(feature = "desktop")))]
 #[must_use]
 pub fn is_metered() -> bool {
-    log::info!(
-        "is_metered: container mode does not support metered network detection, returning false."
+    log::debug!(
+        "is_metered: headless/server mode does not support metered network detection, returning false."
     );
     false
 }
 
-#[cfg(any(target_os = "macos", all(target_os = "linux", feature = "container")))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "linux", not(feature = "desktop"))
+))]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     use tauri::Emitter;
     let payload = NetworkStatusPayload { is_metered: false };

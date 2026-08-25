@@ -7,7 +7,6 @@ import {
   FormArray,
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
-import { BackendService } from '../../infrastructure/system/backend.service';
 import { REMOTE_NAME_REGEX } from '@app/types';
 import { Observable, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -19,8 +18,6 @@ const SIZE_SUFFIX_REGEX = /^\d+(\.\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$/;
 const TIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?$/;
 const FILE_MODE_REGEX = /^[0-7]{3,4}$/;
 const BW_TIMETABLE_REGEX = /^\d+(\.\d+)?(B|K|M|G|T|P)?$/;
-const WIN_ABS_PATH_REGEX =
-  /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
 const URL_PATTERN_REGEX = /^https?:\/\/[^\s;]+$/;
 const BANDWIDTH_PATTERN_REGEX =
   /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
@@ -31,10 +28,8 @@ const BANDWIDTH_PATTERN_REGEX =
 export class ValidatorRegistryService {
   private readonly validators = new Map<string, ValidatorFn>();
   private readonly translate = inject(TranslateService);
-  private readonly backendService = inject(BackendService);
 
   constructor() {
-    this.validators.set('crossPlatformPath', this.crossPlatformPathValidator());
     this.validators.set('urlList', this.urlArrayValidator());
     this.validators.set('bandwidthFormat', this.bandwidthValidator());
     this.validators.set('password', this.passwordValidator());
@@ -302,21 +297,6 @@ export class ValidatorRegistryService {
         };
       }
       return null;
-    };
-  }
-
-  private crossPlatformPathValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value;
-      if (!value) return null;
-
-      if (this.backendService.isWindows()) {
-        if (WIN_ABS_PATH_REGEX.test(value)) return null;
-      } else {
-        if (/^(\/[^\0]*)$/.test(value)) return null;
-      }
-
-      return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
     };
   }
 

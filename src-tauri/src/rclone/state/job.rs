@@ -383,7 +383,10 @@ impl JobCache {
                 JOB_CACHE_CHANGED,
                 crate::utils::types::events::JobChangeEvent::from(job),
             );
-            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            #[cfg(all(
+                feature = "desktop",
+                not(any(target_os = "android", target_os = "ios"))
+            ))]
             {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {

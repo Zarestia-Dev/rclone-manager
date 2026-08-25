@@ -18,7 +18,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import {
   InstallationOptionsData,
   InstallationTabOption,
@@ -60,7 +59,6 @@ export class InstallationOptionsComponent implements OnInit {
 
   private fs = inject(FileSystemService);
   private system = inject(SystemInfoService);
-  private validators = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
 
   readonly statusText = computed(() => {
@@ -95,11 +93,6 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const pathValidator = this.validators.getValidator('crossPlatformPath');
-    if (pathValidator) {
-      this.customPathControl.setValidators([pathValidator]);
-      this.existingBinaryControl.setValidators([pathValidator]);
-    }
     this.emit();
   }
 
@@ -156,8 +149,6 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   getError(control: FormControl): string {
-    if (control.hasError('invalidPath'))
-      return this.translate.instant('shared.installationOptions.errors.invalidPath');
     if (control.hasError('required'))
       return this.translate.instant('shared.installationOptions.errors.required');
     return '';

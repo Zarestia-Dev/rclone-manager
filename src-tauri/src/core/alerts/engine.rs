@@ -194,7 +194,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
                 Some(a) if a.is_enabled() => a.clone(),
                 Some(_) => continue,
                 None => {
-                    warn!("Action '{}' in rule '{}' not found", action_id, rule.name);
+                    debug!("Action '{}' in rule '{}' not found", action_id, rule.name);
                     continue;
                 }
             };

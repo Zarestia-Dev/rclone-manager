@@ -17,5 +17,8 @@ pub mod tray;
 #[cfg(not(feature = "librclone"))]
 pub mod check_binaries;
 
-#[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+#[cfg(all(
+    feature = "desktop",
+    not(any(target_os = "android", target_os = "ios"))
+))]
 pub mod power;

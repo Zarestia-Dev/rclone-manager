@@ -4,32 +4,9 @@ use std::path::Path;
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::AppSettings;
 
-/// Migrator for `remotes` sub-settings: flattens legacy double-nested `runtimeRemoteConfigs`
-/// e.g. `{ "runtimeRemoteConfigs": { "Default": { "One Drive": { "token": "123" } } } }`
-/// into flat `{ "runtimeRemoteConfigs": { "Default": { "token": "123" } } }`.
-pub fn migrate_remote_sub_settings(mut val: Value) -> Value {
-    let Some(obj) = val.as_object_mut() else {
-        return val;
-    };
-    let Some(runtime_configs) = obj
-        .get_mut("runtimeRemoteConfigs")
-        .and_then(Value::as_object_mut)
-    else {
-        return val;
-    };
-
-    for (_profile_name, profile_val) in runtime_configs.iter_mut() {
-        let Some(profile_obj) = profile_val.as_object() else {
-            continue;
-        };
-        if profile_obj.len() == 1 {
-            let inner_val = profile_obj.values().next();
-            if let Some(inner_obj) = inner_val.filter(|v| v.is_object()) {
-                *profile_val = inner_obj.clone();
-            }
-        }
-    }
-    val
+/// Migrator for `remotes` sub-settings: delegates to `migrate_to_multi_profile`.
+pub fn migrate_remote_sub_settings(val: Value) -> Value {
+    crate::core::settings::remote::manager::migrate_to_multi_profile(val)
 }
 
 /// Creates a new `AppSettingsManager` with all necessary sub-settings.

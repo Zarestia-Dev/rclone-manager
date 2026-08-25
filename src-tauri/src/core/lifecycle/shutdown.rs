@@ -22,7 +22,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
     );
 
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
         power_state.release().await;
     }

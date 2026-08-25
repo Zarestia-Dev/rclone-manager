@@ -25,7 +25,10 @@ use crate::{
 
 #[cfg(any(
     feature = "tray",
-    all(desktop, not(any(target_os = "android", target_os = "ios")))
+    all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    )
 ))]
 use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
@@ -140,7 +143,10 @@ fn handle_settings_changed(app: &AppHandle) {
                         crate::utils::i18n::apply_language_change(&app, lang);
                     }
                 }
-                #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+                #[cfg(all(
+                    feature = "desktop",
+                    not(any(target_os = "android", target_os = "ios"))
+                ))]
                 ("general", "prevent_sleep") => {
                     let app_clone = app.clone();
                     tauri::async_runtime::spawn(async move {
@@ -351,7 +357,10 @@ fn register_tray_refresh_listeners(app: &AppHandle) {
     }
 }
 
-#[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+#[cfg(all(
+    feature = "desktop",
+    not(any(target_os = "android", target_os = "ios"))
+))]
 fn register_operation_state_listeners(app: &AppHandle) {
     for event in [SERVE_STATE_CHANGED, MOUNT_STATE_CHANGED] {
         let app_clone = app.clone();
@@ -368,7 +377,10 @@ pub fn setup_event_listener(app: &AppHandle) {
     #[cfg(feature = "tray")]
     register_tray_refresh_listeners(app);
 
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     register_operation_state_listeners(app);
 
     handle_ctrl_c(app);
