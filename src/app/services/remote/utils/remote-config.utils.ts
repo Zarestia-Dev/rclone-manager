@@ -491,9 +491,12 @@ export function mapConfigToFormProfile(
   const incomingOptions = collectIncomingOptions(rcloneConfig);
 
   if (type === 'mount') {
-    incomingOptions[MOUNT_TYPE_KEY] = rcloneConfig[MOUNT_TYPE_KEY] || null;
+    const rawMountType = rcloneConfig[MOUNT_TYPE_KEY];
+    const mountPoint = String(rcloneConfig['mountPoint'] ?? rcloneConfig['mount_point'] ?? '');
+    incomingOptions[MOUNT_TYPE_KEY] =
+      rawMountType || (mountPoint.startsWith('saf://') ? 'saf' : 'mount');
   } else if (type === 'serve') {
-    incomingOptions[SERVE_TYPE_KEY] = rcloneConfig[SERVE_TYPE_KEY] || null;
+    incomingOptions[SERVE_TYPE_KEY] = rcloneConfig[SERVE_TYPE_KEY] || 'http';
   }
 
   result['options'] = incomingOptions;

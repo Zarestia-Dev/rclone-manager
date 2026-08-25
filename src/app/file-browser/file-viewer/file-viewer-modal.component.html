@@ -10,7 +10,7 @@
     </div>
   </div>
   <div class="header-actions">
-    @if (isMarkdownFile() && currentFileType() === 'text') {
+    @if (!data.isDirectUrl && isMarkdownFile() && currentFileType() === 'text') {
       <button
         matIconButton
         [attr.title]="
@@ -33,7 +33,7 @@
     }
 
     <!-- Edit Actions -->
-    @if (currentFileType() === 'text') {
+    @if (!data.isDirectUrl && currentFileType() === 'text') {
       @if (isEditing()) {
         <button
           matIconButton
@@ -72,7 +72,7 @@
       }
     }
 
-    @if (currentFileType() === 'archive') {
+    @if (!data.isDirectUrl && currentFileType() === 'archive') {
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.extract' | translate"
@@ -89,7 +89,7 @@
       </button>
     }
 
-    @if (!isHeadless()) {
+    @if (!data.isDirectUrl && !isHeadless()) {
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.openNativeTooltip' | translate"
@@ -150,13 +150,60 @@
       <!-- Empty placeholder to unmount content layout while loading new type -->
     }
     @case ('image') {
-      <img
-        [src]="currentUrl()"
-        [alt]="fileName()"
-        class="preview-content"
-        (load)="onLoadComplete()"
-        (error)="onLoadError()"
-      />
+      <div
+        class="image-viewer-container"
+        (wheel)="onImageWheel($event)"
+        (mousedown)="onImageMouseDown($event)"
+        (mousemove)="onImageMouseMove($event)"
+        (mouseup)="onImageMouseUp()"
+        (mouseleave)="onImageMouseUp()"
+        [style.cursor]="imageCursor()"
+      >
+        <img
+          [src]="currentUrl()"
+          [alt]="fileName()"
+          class="preview-content image-zoomable"
+          [style.transform]="imageTransform()"
+          (load)="onLoadComplete()"
+          (error)="onLoadError()"
+          draggable="false"
+        />
+
+        <!-- Floating Zoom Toolbar -->
+        <div
+          class="floating-zoom-toolbar"
+          (mousedown)="$event.stopPropagation()"
+          (wheel)="$event.stopPropagation()"
+        >
+          <button
+            [attr.title]="'fileBrowser.fileViewer.zoomOut' | translate"
+            class="action-button"
+            (click)="zoomOut(); $event.stopPropagation()"
+            [disabled]="zoomLevel() <= 0.25"
+            [attr.aria-label]="'fileBrowser.fileViewer.zoomOut' | translate"
+          >
+            <mat-icon svgIcon="remove"></mat-icon>
+          </button>
+          <button
+            matButton="text"
+            [attr.title]="'fileBrowser.fileViewer.resetZoom' | translate"
+            class="action-button zoom-percentage"
+            (click)="resetZoom(); $event.stopPropagation()"
+            [attr.aria-label]="'fileBrowser.fileViewer.resetZoom' | translate"
+          >
+            {{ zoomPercentage() }}
+          </button>
+          <button
+            [attr.title]="'fileBrowser.fileViewer.zoomIn' | translate"
+            class="action-button"
+            (click)="zoomIn(); $event.stopPropagation()"
+            [disabled]="zoomLevel() >= 5"
+            [attr.aria-label]="'fileBrowser.fileViewer.zoomIn' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+          </button>
+        </div>
+      </div>
     }
     @case ('video') {
       <video

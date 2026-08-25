@@ -243,6 +243,7 @@ export class JsonEditorComponent {
 
   private editorView: EditorView | null = null;
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private isPushingToEditor = false;
   private readonly explicitKeys = signal<ReadonlySet<string>>(new Set());
   private readonly customControlKeys = signal<ReadonlySet<string>>(new Set());
   readonly parseError = signal<TranslationResult | null>(null);
@@ -279,7 +280,9 @@ export class JsonEditorComponent {
     const explicit = this.explicitKeys();
     const excluded = this.excludedSet();
 
-    const isSafMount = type === 'mount' && value['mountType'] === 'saf';
+    const isSafMount =
+      type === 'mount' &&
+      (value['mountType'] === 'saf' || String(value['mountPoint'] ?? '').startsWith('saf://'));
     const baseDefs = defs.filter(f => {
       const key = this.fieldKey(f);
       if (isSafMount && key === 'mountPoint') return false;
@@ -495,7 +498,7 @@ export class JsonEditorComponent {
       autocompletion({ override: [completionSource] }),
       EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
       EditorView.updateListener.of(update => {
-        if (!update.docChanged) return;
+        if (!update.docChanged || this.isPushingToEditor) return;
         const text = update.state.doc.toString();
         if (this._debounceTimer) clearTimeout(this._debounceTimer);
         this._debounceTimer = setTimeout(() => this.applyEditorChanges(text), 150);
@@ -730,10 +733,9 @@ export class JsonEditorComponent {
 
         if (srcVal !== undefined) {
           if (sourceCtrl instanceof FormArray) {
-            sourceCtrl.clear();
             const paths = Array.isArray(srcVal) ? srcVal : [srcVal].filter(Boolean);
             if (paths.length > 0) {
-              for (const p of paths) {
+              while (sourceCtrl.length < paths.length) {
                 sourceCtrl.push(
                   new FormGroup({
                     type: new FormControl('local'),
@@ -741,10 +743,15 @@ export class JsonEditorComponent {
                     remote: new FormControl(''),
                   })
                 );
-                const lastGroup = sourceCtrl.at(sourceCtrl.length - 1) as FormGroup;
+              }
+              while (sourceCtrl.length > paths.length) {
+                sourceCtrl.removeAt(sourceCtrl.length - 1);
+              }
+              paths.forEach((p, idx) => {
+                const group = sourceCtrl.at(idx) as FormGroup;
                 const parsedPath = this.pathService.parseFsString(
                   p,
-                  'currentRemote',
+                  'local',
                   currentRemote,
                   existing
                 );
@@ -752,16 +759,24 @@ export class JsonEditorComponent {
                   parsedPath.type = 'currentRemote';
                   parsedPath.remote = '';
                 }
-                lastGroup.patchValue(parsedPath);
-              }
+                group.patchValue(parsedPath, { emitEvent: false });
+              });
             } else {
-              sourceCtrl.push(
-                new FormGroup({
-                  type: new FormControl('currentRemote'),
-                  path: new FormControl(''),
-                  remote: new FormControl(currentRemote),
-                })
-              );
+              while (sourceCtrl.length > 1) {
+                sourceCtrl.removeAt(sourceCtrl.length - 1);
+              }
+              if (sourceCtrl.length === 0) {
+                sourceCtrl.push(
+                  new FormGroup({
+                    type: new FormControl('local'),
+                    path: new FormControl(''),
+                    remote: new FormControl(''),
+                  })
+                );
+              } else {
+                const first = sourceCtrl.at(0) as FormGroup;
+                first.get('path')?.setValue('', { emitEvent: false });
+              }
             }
           } else if (sourceCtrl instanceof FormGroup) {
             const parsedPath = this.pathService.parseFsString(
@@ -774,7 +789,7 @@ export class JsonEditorComponent {
               parsedPath.type = 'currentRemote';
               parsedPath.remote = '';
             }
-            sourceCtrl.patchValue(parsedPath);
+            sourceCtrl.patchValue(parsedPath, { emitEvent: false });
           }
         }
 
@@ -794,7 +809,7 @@ export class JsonEditorComponent {
               parsedPath.type = 'local';
               parsedPath.remote = '';
             }
-            destCtrl.patchValue(parsedPath);
+            destCtrl.patchValue(parsedPath, { emitEvent: false });
           }
         }
       }
@@ -803,12 +818,12 @@ export class JsonEditorComponent {
       if (type === 'mount') {
         const typeCtrl = fg.get('options.mountType');
         if (typeCtrl && rcloneParsed['mountType'] !== undefined) {
-          typeCtrl.setValue(rcloneParsed['mountType'], { emitEvent: true });
+          typeCtrl.setValue(rcloneParsed['mountType'], { emitEvent: false });
         }
       } else if (type === 'serve') {
         const typeCtrl = fg.get('options.type');
         if (typeCtrl && rcloneParsed['type'] !== undefined) {
-          typeCtrl.setValue(rcloneParsed['type'], { emitEvent: true });
+          typeCtrl.setValue(rcloneParsed['type'], { emitEvent: false });
         }
       }
 
@@ -1055,10 +1070,15 @@ export class JsonEditorComponent {
       selection.mainIndex
     );
 
-    this.editorView.dispatch({
-      changes: { from: 0, to: currentText.length, insert: newText },
-      selection: clampedSelection,
-    });
+    try {
+      this.isPushingToEditor = true;
+      this.editorView.dispatch({
+        changes: { from: 0, to: currentText.length, insert: newText },
+        selection: clampedSelection,
+      });
+    } finally {
+      this.isPushingToEditor = false;
+    }
   }
 
   private getOptionsTarget(): FormGroup {

@@ -589,11 +589,14 @@ export class NautilusFileOperationsService {
 
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
+    const destBasePath = this.pathService.joinPath(normalizedRemote, currentPath);
 
     const ref = await this.notifications.openInput<{ url?: string; filename?: string }>({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
       icon: 'download',
       createLabel: this.translate.instant('nautilus.modals.copyUrl.confirm'),
+      destinationPath: destBasePath,
+      showUrlPreview: true,
       fields: [
         {
           key: 'url',

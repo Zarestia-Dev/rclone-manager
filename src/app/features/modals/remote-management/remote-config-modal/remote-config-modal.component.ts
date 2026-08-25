@@ -6,10 +6,10 @@ import {
   ElementRef,
   inject,
   signal,
-  afterNextRender,
   viewChild,
+  afterNextRender,
 } from '@angular/core';
-import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -440,28 +440,7 @@ export class RemoteConfigModalComponent {
   });
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
-    const { values } = event;
-    const patchGroupOptions = (configKey: string, opts?: Record<string, unknown>): void => {
-      if (!opts) return;
-      const group = this.state.remoteConfigForm.get(`${configKey}.options`) as FormGroup | null;
-      if (group) {
-        for (const [k, v] of Object.entries(opts)) {
-          if (!group.contains(k)) {
-            group.addControl(k, new FormControl(v));
-          } else {
-            group.get(k)?.setValue(v);
-          }
-        }
-      }
-    };
-
-    if (values.vfs) patchGroupOptions('vfsConfig', values.vfs);
-    if (values.mount) patchGroupOptions('mountConfig', values.mount);
-    if (values.backend) patchGroupOptions('backendConfig', values.backend);
-    if (values.filter) patchGroupOptions('filterConfig', values.filter);
-    if (values.remote) {
-      this.state.remoteForm.patchValue(values.remote, { emitEvent: false });
-    }
+    this.state.applyTemplate(event.values);
     const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
     this.notificationService.showSuccess(msg);
   }

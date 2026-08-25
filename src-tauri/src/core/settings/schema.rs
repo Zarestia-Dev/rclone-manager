@@ -410,25 +410,6 @@ pub struct UserPresetTemplate {
     pub description: Option<String>,
 
     #[setting(
-        label = "templates.icon.label",
-        description = "templates.icon.description"
-    )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
-
-    #[setting(
-        label = "templates.created_at.label",
-        description = "templates.created_at.description"
-    )]
-    pub created_at: String,
-
-    #[setting(
-        label = "templates.updated_at.label",
-        description = "templates.updated_at.description"
-    )]
-    pub updated_at: String,
-
-    #[setting(
         label = "templates.values.label",
         description = "templates.values.description"
     )]
@@ -442,9 +423,6 @@ impl Default for UserPresetTemplate {
             id: String::new(),
             name: String::new(),
             description: None,
-            icon: None,
-            created_at: String::new(),
-            updated_at: String::new(),
             values: Value::Object(Default::default()),
         }
     }

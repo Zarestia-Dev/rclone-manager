@@ -765,6 +765,13 @@
       "hide": "検索を非表示",
       "show": "検索を表示"
     },
+    "urlPreview": {
+      "host": "ホスト",
+      "destination": "宛先",
+      "openViewer": "ビューアで開く",
+      "openViewerTooltip": "全画面メディアプレビューを開く",
+      "inferredFromUrl": "URLから推測"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "推奨",
@@ -1596,7 +1603,10 @@
       "openingNative": "外部アプリで {{name}} を開いています...",
       "errorOpenNative": "外部アプリでファイルを開けませんでした",
       "showRawText": "元のテキストを表示",
-      "showPreview": "プレビューを表示"
+      "showPreview": "プレビューを表示",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小",
+      "resetZoom": "ズームをリセット"
     }
   },
   "dashboard": {

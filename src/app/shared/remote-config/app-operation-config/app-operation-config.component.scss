@@ -349,6 +349,13 @@ app-alert-banner {
 }
 
 // ── Copyurl Row & Wrapper ──────────────────────────────────────────────────
+.copyurl-path-wrapper {
+  app-url-preview {
+    box-sizing: border-box;
+    padding: 0 var(--space-sm) var(--space-xs);
+  }
+}
+
 .copyurl-row {
   .path-type-selector {
     .copyurl-source {

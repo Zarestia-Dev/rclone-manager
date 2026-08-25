@@ -61,6 +61,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     url: string;
     isLocal: boolean;
     remoteName: string;
+    isDirectUrl?: boolean;
   };
 
   private readonly sanitizer = inject(DomSanitizer);
@@ -79,6 +80,24 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
+
+  // Zoom & Pan state for image preview
+  zoomLevel = signal(1);
+  panX = signal(0);
+  panY = signal(0);
+  isDragging = signal(false);
+  private startDragX = 0;
+  private startDragY = 0;
+  private initialPanX = 0;
+  private initialPanY = 0;
+
+  zoomPercentage = computed(() => `${Math.round(this.zoomLevel() * 100)}%`);
+  imageTransform = computed(
+    () => `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoomLevel()})`
+  );
+  imageCursor = computed(() =>
+    this.zoomLevel() > 1 ? (this.isDragging() ? 'grabbing' : 'grab') : 'default'
+  );
 
   safePdfUrl = computed(() => {
     const url = this.currentUrl();
@@ -106,6 +125,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
   isMobile = computed(() => isMobile());
   isDownloadVisible = computed(() => {
+    if (this.data.isDirectUrl) {
+      return false;
+    }
     return (
       this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
     );
@@ -446,6 +468,61 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
+  zoomIn(): void {
+    this.zoomLevel.update(z => Math.min(5, Math.round((z + 0.25) * 100) / 100));
+  }
+
+  zoomOut(): void {
+    this.zoomLevel.update(z => {
+      const next = Math.max(0.25, Math.round((z - 0.25) * 100) / 100);
+      if (next <= 1) {
+        this.panX.set(0);
+        this.panY.set(0);
+      }
+      return next;
+    });
+  }
+
+  resetZoom(): void {
+    this.zoomLevel.set(1);
+    this.panX.set(0);
+    this.panY.set(0);
+    this.isDragging.set(false);
+  }
+
+  onImageWheel(event: WheelEvent): void {
+    if (this.currentFileType() !== 'image') return;
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      this.zoomIn();
+    } else if (event.deltaY > 0) {
+      this.zoomOut();
+    }
+  }
+
+  onImageMouseDown(event: MouseEvent): void {
+    if (this.zoomLevel() <= 1 || event.button !== 0) return;
+    event.preventDefault();
+    this.isDragging.set(true);
+    this.startDragX = event.clientX;
+    this.startDragY = event.clientY;
+    this.initialPanX = this.panX();
+    this.initialPanY = this.panY();
+  }
+
+  onImageMouseMove(event: MouseEvent): void {
+    if (!this.isDragging()) return;
+    event.preventDefault();
+    const dx = event.clientX - this.startDragX;
+    const dy = event.clientY - this.startDragY;
+    this.panX.set(this.initialPanX + dx);
+    this.panY.set(this.initialPanY + dy);
+  }
+
+  onImageMouseUp(): void {
+    this.isDragging.set(false);
+  }
+
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (this.isEditing()) return;
@@ -459,6 +536,23 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         break;
       case 'Escape':
         this.closeViewer.emit();
+        break;
+      case '+':
+      case '=':
+        if (this.currentFileType() === 'image') {
+          this.zoomIn();
+        }
+        break;
+      case '-':
+      case '_':
+        if (this.currentFileType() === 'image') {
+          this.zoomOut();
+        }
+        break;
+      case '0':
+        if (this.currentFileType() === 'image') {
+          this.resetZoom();
+        }
         break;
     }
   }
@@ -482,17 +576,44 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set('');
     this.archiveError.set(null);
     this.errorMessage.set(null);
+    this.resetZoom();
 
     try {
-      const url = await this.fileViewerService.generateUrl(
-        item,
-        this.data.remoteName,
-        this.data.isLocal
-      );
+      const url = this.data.isDirectUrl
+        ? this.data.url
+        : await this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal);
       const type = this.fileCategory();
 
       this.currentFileType.set(type);
       this.rawUrl.set(url);
+
+      if (this.data.isDirectUrl) {
+        if (type === 'image' || type === 'video' || type === 'audio' || type === 'pdf') {
+          this.currentUrl.set(url);
+          if (type === 'pdf') {
+            this.isLoading.set(false);
+          }
+          return;
+        }
+
+        // For non-media or extensionless URLs (e.g. Unsplash dynamic images), probe image loading first
+        const probeImg = new Image();
+        probeImg.referrerPolicy = 'no-referrer';
+        probeImg.onload = (): void => {
+          if (this.rawUrl() === url) {
+            this.currentFileType.set('image');
+            this.currentUrl.set(url);
+            this.isLoading.set(false);
+          }
+        };
+        probeImg.onerror = (): void => {
+          if (this.rawUrl() === url) {
+            this.isLoading.set(false);
+          }
+        };
+        probeImg.src = url;
+        return;
+      }
 
       await this.updateContent();
     } catch (err) {
@@ -502,6 +623,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   async updateContent(): Promise<void> {
+    if (this.data.isDirectUrl) return;
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
@@ -784,6 +906,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    * Download the current file using the DownloadService
    */
   async download(): Promise<void> {
+    if (this.data.isDirectUrl) {
+      window.open(this.data.url, '_blank');
+      return;
+    }
     if (this.isDownloading()) return;
     this.isDownloading.set(true);
     try {

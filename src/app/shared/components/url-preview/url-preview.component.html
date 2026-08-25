@@ -1,0 +1,124 @@
+@if (isValid()) {
+  <div class="url-preview-card" [class.compact]="compact()">
+    <!-- Media Thumbnail or File Icon Box -->
+    <div class="preview-media-box">
+      @if (isMedia() && !mediaError()) {
+        @if (fileCategory() === 'video') {
+          <button
+            type="button"
+            class="media-thumbnail video-thumbnail clickable"
+            (click)="openInViewer()"
+            [attr.title]="'shared.urlPreview.openViewerTooltip' | translate"
+            [attr.aria-label]="'shared.urlPreview.openViewer' | translate"
+          >
+            <video
+              [src]="url()"
+              preload="metadata"
+              muted
+              class="thumb-video"
+              (error)="onMediaError()"
+              (loadeddata)="onMediaLoad()"
+            ></video>
+            <span class="thumb-hover-overlay always-visible">
+              <mat-icon svgIcon="play"></mat-icon>
+            </span>
+          </button>
+        } @else if (fileCategory() === 'audio') {
+          <button
+            type="button"
+            class="media-thumbnail audio-thumbnail clickable"
+            (click)="openInViewer()"
+            [attr.title]="'shared.urlPreview.openViewerTooltip' | translate"
+            [attr.aria-label]="'shared.urlPreview.openViewer' | translate"
+          >
+            <mat-icon
+              [svgIcon]="iconService.getIconForFileType('audio')"
+              class="audio-icon"
+            ></mat-icon>
+            <span class="thumb-hover-overlay">
+              <mat-icon svgIcon="play"></mat-icon>
+            </span>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="media-thumbnail clickable"
+            (click)="openInViewer()"
+            [attr.title]="'shared.urlPreview.openViewerTooltip' | translate"
+            [attr.aria-label]="'shared.urlPreview.openViewer' | translate"
+          >
+            <img
+              [src]="url()"
+              referrerpolicy="no-referrer"
+              loading="lazy"
+              alt="Preview"
+              class="thumb-img"
+              (error)="onMediaError()"
+              (load)="onMediaLoad()"
+            />
+            <span class="thumb-hover-overlay">
+              <mat-icon svgIcon="expand"></mat-icon>
+            </span>
+          </button>
+        }
+      } @else {
+        <div class="file-icon-box">
+          <mat-icon
+            [svgIcon]="iconService.getIconForFileType(fileCategory())"
+            [class]="fileCategory() === 'directory' ? 'folder-icon' : 'generic-file-icon'"
+          ></mat-icon>
+        </div>
+      }
+    </div>
+
+    <!-- Metadata Details -->
+    <div class="preview-details">
+      <div class="preview-top-row">
+        <div class="badges-group">
+          @if (protocolLabel()) {
+            <span class="app-pill" [class.p-primary]="isHttps()" [class.p-accent]="!isHttps()">
+              <mat-icon [svgIcon]="protocolIcon()"></mat-icon>
+              <span>{{ protocolLabel() }}</span>
+            </span>
+          }
+          @if (hostname()) {
+            <span class="app-pill p-dim" [attr.title]="'shared.urlPreview.host' | translate">
+              <span class="truncate">{{ hostname() }}</span>
+            </span>
+          }
+          @if (extension()) {
+            <span class="app-pill p-accent font-mono">.{{ extension() }}</span>
+          }
+        </div>
+
+        @if (canOpenViewer()) {
+          <button
+            type="button"
+            class="action-button"
+            (click)="openInViewer()"
+            [attr.title]="'shared.urlPreview.openViewerTooltip' | translate"
+            [attr.aria-label]="'shared.urlPreview.openViewer' | translate"
+          >
+            <mat-icon svgIcon="open-link"></mat-icon>
+          </button>
+        }
+      </div>
+
+      <div class="preview-filename-row">
+        <span class="filename-text" [attr.title]="effectiveFilename()">
+          {{ effectiveFilename() || ('shared.urlPreview.inferredFromUrl' | translate) }}
+        </span>
+      </div>
+
+      @if (targetPreview()) {
+        <div class="preview-target-row">
+          <mat-icon svgIcon="folder" class="target-icon"></mat-icon>
+          <span class="target-label">{{ 'shared.urlPreview.destination' | translate }}:</span>
+          <span class="target-path truncate" [attr.title]="targetPreview()">{{
+            targetPreview()
+          }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}

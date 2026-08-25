@@ -765,6 +765,13 @@
       "hide": "Aramayı gizle",
       "show": "Aramayı göster"
     },
+    "urlPreview": {
+      "host": "Sunucu",
+      "destination": "Hedef",
+      "openViewer": "Görüntüleyicide Aç",
+      "openViewerTooltip": "Tam medya önizlemesini aç",
+      "inferredFromUrl": "URL'den çıkarıldı"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Önerilen",
@@ -1596,7 +1603,10 @@
       "openingNative": "{{name}} harici uygulamada açılıyor...",
       "errorOpenNative": "Dosya harici uygulamada açılamadı",
       "showRawText": "Ham Metni Göster",
-      "showPreview": "Önizlemeyi Göster"
+      "showPreview": "Önizlemeyi Göster",
+      "zoomIn": "Yakınlaştır",
+      "zoomOut": "Uzaklaştır",
+      "resetZoom": "Yakınlaştırmayı Sıfırla"
     }
   },
   "dashboard": {

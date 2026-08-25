@@ -39,6 +39,15 @@
         }
       </mat-form-field>
     }
+
+    @if (hasUrlField() && urlValue()) {
+      <app-url-preview
+        [url]="urlValue()"
+        [customFilename]="filenameValue()"
+        [destinationPath]="data.destinationPath"
+        [compact]="true"
+      />
+    }
   </div>
 
   <div class="modal-actions">

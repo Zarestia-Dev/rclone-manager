@@ -16,6 +16,7 @@ import {
   SYNC_TYPES,
   PROFILE_ICONS,
   PendingRemoteData,
+  TemplateCategory,
 } from '@app/types';
 import { INITIAL_COMMAND_OPTIONS } from './utils/command-options.util';
 import { findUniqueName } from './utils/unique-name.util';
@@ -943,7 +944,10 @@ export class RemoteConfigStateService {
   applyPresets(remoteType: string): void {
     const vendor = this.remoteForm.get('vendor')?.value;
     const preset = this.presetsService.resolvePresets(remoteType, vendor);
+    this.applyTemplate(preset);
+  }
 
+  applyTemplate(values: Partial<Record<TemplateCategory, Record<string, unknown>>>): void {
     const patchProfile = (
       type: SharedProfileType,
       overrides: Record<string, unknown> | undefined
@@ -958,11 +962,17 @@ export class RemoteConfigStateService {
       }));
     };
 
-    patchProfile('vfs', preset.vfs);
-    patchProfile('backend', preset.backend);
+    if (values.vfs) patchProfile('vfs', values.vfs);
+    if (values.backend) patchProfile('backend', values.backend);
+    if (values.filter) patchProfile('filter', values.filter);
+    if (values.sync) patchProfile('sync', values.sync);
+    if (values.copy) patchProfile('copy', values.copy);
+    if (values.bisync) patchProfile('bisync', values.bisync);
+    if (values.move) patchProfile('move', values.move);
+    if (values.serve) patchProfile('serve', values.serve);
 
-    if (preset.mount) {
-      const { mountType, ...otherMountOpts } = preset.mount;
+    if (values.mount) {
+      const { mountType, ...otherMountOpts } = values.mount;
       const selected = this.selectedProfileName()['mount'];
       if (selected) {
         const current = this.readProfileRecord('mount', selected);
@@ -984,12 +994,12 @@ export class RemoteConfigStateService {
       }
     }
 
-    if (preset.remote) {
-      this.remoteForm.patchValue(preset.remote, { emitEvent: false });
-      for (const key of Object.keys(preset.remote)) this.onRemoteFieldChanged(key, true);
+    if (values.remote) {
+      this.remoteForm.patchValue(values.remote, { emitEvent: false });
+      for (const key of Object.keys(values.remote)) this.onRemoteFieldChanged(key, true);
     }
 
-    // Re-sync active profile forms so they reflect the patched presets.
+    // Re-sync active profile forms so they reflect the patched template values.
     for (const flagType of this.PROFILE_TYPES) {
       const activeProfile = this.selectedProfileName()[flagType];
       if (!activeProfile) continue;
@@ -1813,7 +1823,12 @@ export class RemoteConfigStateService {
 
     dstCtrl.patchValue(vals['dest'] as Record<string, unknown>);
     const destVal = vals['dest'] as { path?: string } | undefined;
-    if ((type === 'mount' || type === 'bisync') && !destVal?.path) {
+    const isSafMount =
+      type === 'mount' &&
+      ((vals['options'] as Record<string, unknown> | undefined)?.['mountType'] === 'saf' ||
+        String(destVal?.path ?? '').startsWith('saf://'));
+
+    if ((type === 'mount' || type === 'bisync') && !destVal?.path && !isSafMount) {
       const opType = type as 'mount' | 'bisync';
       void this.pathInspectionService.resolveDefaultPath(rName, opType).then(defaultPath => {
         if (generation !== this.getGeneration(type)) return;

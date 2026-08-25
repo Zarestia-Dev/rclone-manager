@@ -10,6 +10,8 @@ import { PathNavigationService } from '../infrastructure/platform/path-navigatio
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
+import { extractFilenameFromUrl } from 'src/app/shared/utils/url.utils';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -52,7 +54,45 @@ export class FileViewerService extends TauriBaseService {
   ): Promise<void> {
     const item = items[currentIndex];
     const fileUrl = await this.generateUrl(item, remoteName, isLocal);
+    await this.attachModalOverlay({
+      items,
+      currentIndex,
+      url: fileUrl,
+      isLocal,
+      remoteName,
+    });
+  }
 
+  async openDirectUrl(url: string, fileName?: string): Promise<void> {
+    const name = fileName || extractFilenameFromUrl(url) || 'file';
+    const syntheticItem: Entry = {
+      ID: '',
+      Name: name,
+      Path: name,
+      IsDir: false,
+      Size: 0,
+      MimeType: '',
+      ModTime: new Date().toISOString(),
+    };
+
+    await this.attachModalOverlay({
+      items: [syntheticItem],
+      currentIndex: 0,
+      url,
+      isLocal: false,
+      remoteName: '',
+      isDirectUrl: true,
+    });
+  }
+
+  private async attachModalOverlay(data: {
+    items: Entry[];
+    currentIndex: number;
+    url: string;
+    isLocal: boolean;
+    remoteName: string;
+    isDirectUrl?: boolean;
+  }): Promise<void> {
     const overlayRef = this.overlay.create({
       hasBackdrop: true,
       scrollStrategy: this.overlay.scrollStrategies.block(),
@@ -64,13 +104,7 @@ export class FileViewerService extends TauriBaseService {
       await import('../../file-browser/file-viewer/file-viewer-modal.component');
     const portal = new ComponentPortal(FileViewerModalComponent);
     const componentRef = overlayRef.attach(portal);
-    componentRef.instance.data = {
-      items,
-      currentIndex,
-      url: fileUrl,
-      isLocal,
-      remoteName,
-    };
+    componentRef.instance.data = data;
 
     const cleanup = (): void => {
       overlayRef.dispose();

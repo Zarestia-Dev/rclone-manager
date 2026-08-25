@@ -765,6 +765,13 @@
       "hide": "Скрыть поиск",
       "show": "Показать поиск"
     },
+    "urlPreview": {
+      "host": "Хост",
+      "destination": "Назначение",
+      "openViewer": "Открыть в просмотрщике",
+      "openViewerTooltip": "Открыть полный предпросмотр медиа",
+      "inferredFromUrl": "Извлечено из URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Рекомендуемый",
@@ -1596,7 +1603,10 @@
       "openingNative": "Открытие {{name}} во внешнем приложении...",
       "errorOpenNative": "Не удалось открыть файл во внешнем приложении",
       "showRawText": "Показать исходный текст",
-      "showPreview": "Показать предпросмотр"
+      "showPreview": "Показать предпросмотр",
+      "zoomIn": "Увеличить",
+      "zoomOut": "Уменьшить",
+      "resetZoom": "Сбросить масштаб"
     }
   },
   "dashboard": {

@@ -765,6 +765,13 @@
       "hide": "Hide search",
       "show": "Show search"
     },
+    "urlPreview": {
+      "host": "Host",
+      "destination": "Destination",
+      "openViewer": "Open in Viewer",
+      "openViewerTooltip": "Open full media preview",
+      "inferredFromUrl": "Inferred from URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Recommended",
@@ -1596,7 +1603,10 @@
       "openingNative": "Opening {{name}} in external viewer...",
       "errorOpenNative": "Failed to open file in external app",
       "showRawText": "Show Raw Text",
-      "showPreview": "Show Preview"
+      "showPreview": "Show Preview",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "resetZoom": "Reset Zoom"
     }
   },
   "dashboard": {

@@ -765,6 +765,13 @@
       "hide": "Приховати пошук",
       "show": "Показати пошук"
     },
+    "urlPreview": {
+      "host": "Хост",
+      "destination": "Призначення",
+      "openViewer": "Відкрити у переглядачі",
+      "openViewerTooltip": "Відкрити повний попередній перегляд медіа",
+      "inferredFromUrl": "Визначено з URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Рекомендовано",
@@ -1596,7 +1603,10 @@
       "openingNative": "Відкриття {{name}} у зовнішньому додатку...",
       "errorOpenNative": "Не вдалося відкрити файл у зовнішньому додатку",
       "showRawText": "Показати вихідний текст",
-      "showPreview": "Показати попередній перегляд"
+      "showPreview": "Показати попередній перегляд",
+      "zoomIn": "Наблизити",
+      "zoomOut": "Віддалити",
+      "resetZoom": "Скинути масштаб"
     }
   },
   "dashboard": {

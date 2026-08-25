@@ -231,45 +231,51 @@
       <div class="path-list">
         @if (operationType() === 'copyurl') {
           @for (item of sourceItems(); track item.control) {
-            <div class="path-item-row copyurl-row" [formGroup]="item.control">
-              <div class="path-type-selector">
-                <div class="static-pill copyurl-source">
-                  <mat-icon svgIcon="link" class="primary"></mat-icon>
-                  <span class="truncate">{{ 'wizards.appOperation.urlLabel' | translate }}</span>
+            <div class="path-row-wrapper copyurl-path-wrapper">
+              <div class="path-item-row copyurl-row" [formGroup]="item.control">
+                <div class="path-type-selector">
+                  <div class="static-pill copyurl-source">
+                    <mat-icon svgIcon="link" class="primary"></mat-icon>
+                    <span class="truncate">{{ 'wizards.appOperation.urlLabel' | translate }}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="copyurl-inputs-wrapper">
-                <mat-form-field class="path-input-field url-field">
-                  <input
-                    matInput
-                    formControlName="path"
-                    [placeholder]="'wizards.appOperation.enterDownloadUrl' | translate"
-                  />
-                </mat-form-field>
-                <mat-form-field class="path-input-field filename-field">
-                  <input
-                    matInput
-                    formControlName="filename"
-                    [placeholder]="
-                      'wizards.appOperation.copyUrlCustomFilenamePlaceholder' | translate
-                    "
-                  />
-                </mat-form-field>
-              </div>
-              @if (sourceItems().length > 1) {
-                <div class="action-suffix">
-                  <button matIconButton (click)="removePath('source', item.index)" type="button">
-                    <mat-icon svgIcon="trash" class="warn"></mat-icon>
-                  </button>
+                <div class="copyurl-inputs-wrapper">
+                  <mat-form-field class="path-input-field url-field">
+                    <input
+                      matInput
+                      formControlName="path"
+                      [placeholder]="'wizards.appOperation.enterDownloadUrl' | translate"
+                    />
+                  </mat-form-field>
+                  <mat-form-field class="path-input-field filename-field">
+                    <input
+                      matInput
+                      formControlName="filename"
+                      [placeholder]="
+                        'wizards.appOperation.copyUrlCustomFilenamePlaceholder' | translate
+                      "
+                    />
+                  </mat-form-field>
                 </div>
+                @if (sourceItems().length > 1) {
+                  <div class="action-suffix">
+                    <button matIconButton (click)="removePath('source', item.index)" type="button">
+                      <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+              @if (item.control.get('path')?.value) {
+                <app-url-preview
+                  [url]="item.control.get('path')?.value"
+                  [customFilename]="item.control.get('filename')?.value"
+                  [destinationPath]="fullDestPath()"
+                />
               }
             </div>
           }
         } @else {
-          @for (
-            item of sourceItems();
-            track item.index + ':' + item.type + ':' + (item.remoteName || '')
-          ) {
+          @for (item of sourceItems(); track item.control) {
             <ng-container
               *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }"
             />

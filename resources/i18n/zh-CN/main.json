@@ -765,6 +765,13 @@
       "hide": "隐藏搜索",
       "show": "显示搜索"
     },
+    "urlPreview": {
+      "host": "主机",
+      "destination": "目标路径",
+      "openViewer": "在查看器中打开",
+      "openViewerTooltip": "打开完整媒体预览",
+      "inferredFromUrl": "从URL推断"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "推荐配置",
@@ -1596,7 +1603,10 @@
       "openingNative": "正在外部应用中打开 {{name}}...",
       "errorOpenNative": "在外部应用中打开文件失败",
       "showRawText": "显示原始内容",
-      "showPreview": "显示预览"
+      "showPreview": "显示预览",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "resetZoom": "重置缩放"
     }
   },
   "dashboard": {

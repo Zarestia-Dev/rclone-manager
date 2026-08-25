@@ -765,6 +765,13 @@
       "hide": "Masquer la recherche",
       "show": "Afficher la recherche"
     },
+    "urlPreview": {
+      "host": "Hôte",
+      "destination": "Destination",
+      "openViewer": "Ouvrir dans la visionneuse",
+      "openViewerTooltip": "Ouvrir l'aperçu multimédia complet",
+      "inferredFromUrl": "Déduit de l'URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Recommandé",
@@ -1596,7 +1603,10 @@
       "openingNative": "Ouverture de {{name}} dans l'application externe...",
       "errorOpenNative": "Échec de l'ouverture du fichier dans l'application externe",
       "showRawText": "Afficher le texte brut",
-      "showPreview": "Afficher l'aperçu"
+      "showPreview": "Afficher l'aperçu",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "resetZoom": "Réinitialiser le zoom"
     }
   },
   "dashboard": {

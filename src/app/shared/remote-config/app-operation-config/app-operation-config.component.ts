@@ -53,6 +53,7 @@ import { NumberInputComponent } from 'src/app/shared/components/number-input/num
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
+import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -85,6 +86,7 @@ interface PathItem {
     TranslatePipe,
     AlertBannerComponent,
     CdkOverlayAutoposDirective,
+    UrlPreviewComponent,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
@@ -108,6 +110,18 @@ export class OperationConfigComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+
+  readonly fullDestPath = computed(() => {
+    this.formVersion();
+    const dest = this.destItem();
+    if (!dest) return '';
+    const pathVal = (dest.pathControl?.value || '').trim();
+    if (dest.type === 'local') {
+      return pathVal;
+    }
+    const remote = dest.remoteName || this.currentRemoteName();
+    return remote ? (pathVal ? `${remote}:${pathVal}` : `${remote}:`) : pathVal;
+  });
 
   readonly cronPanelExpanded = linkedSignal<boolean>(() => {
     this.formVersion();
@@ -204,7 +218,9 @@ export class OperationConfigComponent {
     this.formVersion();
     const fg = this.opFormGroup();
     const val = fg.get('options.mountType')?.value ?? fg.get('mountType')?.value;
-    return val ? String(val).toLowerCase() : this.isMobilePlatform() ? 'saf' : 'mount';
+    if (val) return String(val).toLowerCase();
+    const destPath = String(fg.get('dest.path')?.value ?? '');
+    return destPath.startsWith('saf://') ? 'saf' : 'mount';
   });
   readonly isLocalMobileSafMount = computed(
     () =>

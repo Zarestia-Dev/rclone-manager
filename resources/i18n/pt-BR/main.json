@@ -765,6 +765,13 @@
       "hide": "Esconder busca",
       "show": "Mostrar busca"
     },
+    "urlPreview": {
+      "host": "Host",
+      "destination": "Destino",
+      "openViewer": "Abrir no visualizador",
+      "openViewerTooltip": "Abrir pré-visualização completa de mídia",
+      "inferredFromUrl": "Inferido a partir da URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Recomendado",
@@ -1596,7 +1603,10 @@
       "openingNative": "Abrindo {{name}} no visualizador externo...",
       "errorOpenNative": "Falha ao abrir o arquivo no aplicativo externo",
       "showRawText": "Mostrar texto bruto",
-      "showPreview": "Mostrar pré-visualização"
+      "showPreview": "Mostrar pré-visualização",
+      "zoomIn": "Aumentar zoom",
+      "zoomOut": "Diminuir zoom",
+      "resetZoom": "Redefinir zoom"
     }
   },
   "dashboard": {
