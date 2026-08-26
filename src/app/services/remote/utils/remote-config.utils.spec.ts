@@ -6,6 +6,7 @@ import {
   mapFormToConfigProfile,
   ConfigToFormContext,
   FormToConfigContext,
+  resolveOptionExamples,
 } from './remote-config.utils';
 
 describe('remote-config.utils', () => {
@@ -272,6 +273,78 @@ describe('remote-config.utils', () => {
       expect(rclone['srcFs']).toEqual(['/home/user/docs', 'cloud:files']);
       expect(rclone['dstFs']).toBe('myremote:backup');
       expect(rclone['delete_excluded']).toBe(true);
+    });
+  });
+
+  describe('resolveOptionExamples', () => {
+    it('should return explicit examples when defined on option', () => {
+      const opt = {
+        Name: 'custom',
+        FieldName: 'Custom',
+        Help: '',
+        Type: 'string',
+        DefaultStr: '',
+        Examples: [{ Value: 'custom_val', Help: 'Custom Help' }],
+      };
+      const examples = resolveOptionExamples(opt);
+      expect(examples.length).toBe(1);
+      expect(examples[0].Value).toBe('custom_val');
+    });
+
+    it('should provide default examples for Duration type', () => {
+      const opt = {
+        Name: 'timeout',
+        FieldName: 'Timeout',
+        Help: '',
+        Type: 'Duration',
+        DefaultStr: '1m',
+      };
+      const examples = resolveOptionExamples(opt);
+      expect(examples.length).toBeGreaterThan(0);
+      expect(examples.some(e => e.Value === '10s')).toBe(true);
+      expect(examples.some(e => e.Value === '1h')).toBe(true);
+    });
+
+    it('should provide default examples for SizeSuffix type', () => {
+      const opt = {
+        Name: 'buffer_size',
+        FieldName: 'BufferSize',
+        Help: '',
+        Type: 'SizeSuffix',
+        DefaultStr: '16M',
+      };
+      const examples = resolveOptionExamples(opt);
+      expect(examples.length).toBeGreaterThan(0);
+      expect(examples.some(e => e.Value === '512k')).toBe(true);
+      expect(examples.some(e => e.Value === '1G')).toBe(true);
+    });
+
+    it('should provide default examples for bandwidth options or BwTimetable type', () => {
+      const opt = {
+        Name: 'bwlimit',
+        FieldName: 'Bwlimit',
+        Help: '',
+        Type: 'string',
+        DefaultStr: '',
+      };
+      const examples = resolveOptionExamples(opt);
+      expect(examples.length).toBeGreaterThan(0);
+      expect(examples.some(e => e.Value === 'off')).toBe(true);
+      expect(examples.some(e => e.Value === '10M:50M')).toBe(true);
+    });
+
+    it('should return empty array for null/undefined or options without type defaults', () => {
+      expect(resolveOptionExamples(null)).toEqual([]);
+      expect(resolveOptionExamples(undefined)).toEqual([]);
+      expect(
+        resolveOptionExamples({
+          Name: 'random_key',
+          FieldName: 'RandomKey',
+          Help: '',
+          Type: 'unknown',
+          DefaultStr: '',
+        })
+      ).toEqual([]);
     });
   });
 });

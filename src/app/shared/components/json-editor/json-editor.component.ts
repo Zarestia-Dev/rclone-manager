@@ -15,12 +15,16 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, FormArray } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
+import { CdkMenuModule, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
 import {
   RcConfigOption,
+  RcConfigExample,
   SENSITIVE_KEYS,
   SharedProfileType,
   TranslationResult,
@@ -33,9 +37,11 @@ import {
   matchesConfigSearch,
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
+  resolveOptionExamples,
 } from 'src/app/services/remote/utils/remote-config.utils';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { PathService, PathGroup } from '../../../services/infrastructure/platform/path.service';
+import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
 import {
@@ -44,8 +50,13 @@ import {
   lineNumbers,
   highlightActiveLine,
   highlightActiveLineGutter,
+  WidgetType,
+  Decoration,
+  DecorationSet,
+  ViewPlugin,
+  ViewUpdate,
 } from '@codemirror/view';
-import { EditorState, EditorSelection } from '@codemirror/state';
+import { EditorState, EditorSelection, RangeSetBuilder, Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter, lintGutter, Diagnostic } from '@codemirror/lint';
@@ -82,6 +93,69 @@ function isNestedOptionsType(type: string | null): boolean {
 
 function hasOptionsGroup(type: string | null): boolean {
   return !!type && HAS_OPTIONS_GROUP_TYPES.has(type);
+}
+
+export interface ExampleMenuContext {
+  rect: DOMRect;
+  keyText: string;
+  examples: RcConfigExample[];
+  field: RcConfigOption;
+  valueRange: { from: number; to: number };
+}
+
+class ExampleButtonWidget extends WidgetType {
+  constructor(
+    readonly ctx: Omit<ExampleMenuContext, 'rect'>,
+    readonly onOpenMenu: (ctx: ExampleMenuContext) => void
+  ) {
+    super();
+  }
+
+  override eq(other: ExampleButtonWidget): boolean {
+    return (
+      other.ctx.keyText === this.ctx.keyText &&
+      other.ctx.valueRange.from === this.ctx.valueRange.from &&
+      other.ctx.valueRange.to === this.ctx.valueRange.to &&
+      other.ctx.examples === this.ctx.examples
+    );
+  }
+
+  override toDOM(): HTMLElement {
+    const wrap = document.createElement('span');
+    wrap.className = 'cm-example-widget';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cm-example-btn';
+    btn.title = this.ctx.keyText;
+    btn.setAttribute('aria-label', this.ctx.keyText);
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>`;
+
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = btn.getBoundingClientRect();
+      this.onOpenMenu({
+        rect,
+        keyText: this.ctx.keyText,
+        examples: this.ctx.examples,
+        field: this.ctx.field,
+        valueRange: this.ctx.valueRange,
+      });
+    });
+
+    wrap.appendChild(btn);
+    return wrap;
+  }
+
+  override ignoreEvent(): boolean {
+    return false;
+  }
 }
 
 function buildRcloneCompletionSource(
@@ -182,7 +256,15 @@ function buildRcloneCompletionSource(
 
 @Component({
   selector: 'app-json-editor',
-  imports: [MatIconModule, TranslatePipe, RcloneOptionTranslatePipe, AlertBannerComponent],
+  imports: [
+    MatIconModule,
+    MatDividerModule,
+    CdkMenuModule,
+    CdkOverlayAutoposDirective,
+    TranslatePipe,
+    RcloneOptionTranslatePipe,
+    AlertBannerComponent,
+  ],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -224,7 +306,8 @@ export class JsonEditorComponent {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
   private readonly sharedLookupTable = inject(JSON_EDITOR_LOOKUP_TABLE, { optional: true });
-  readonly translateService = inject(TranslateService);
+  private readonly translateService = inject(TranslateService);
+  readonly currentLang = this.translateService.currentLang;
 
   readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
 
@@ -239,7 +322,9 @@ export class JsonEditorComponent {
     { initialValue: true }
   );
 
+  private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly editorContainer = viewChild<ElementRef<HTMLElement>>('editorContainer');
+  readonly menuTrigger = viewChild<CdkMenuTrigger>(CdkMenuTrigger);
 
   private editorView: EditorView | null = null;
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -248,6 +333,87 @@ export class JsonEditorComponent {
   private readonly customControlKeys = signal<ReadonlySet<string>>(new Set());
   readonly parseError = signal<TranslationResult | null>(null);
   readonly parseWarning = signal<TranslationResult | null>(null);
+  readonly activeExampleMenu = signal<ExampleMenuContext | null>(null);
+  readonly menuAnchorPos = signal<{ x: number; y: number; width: number; height: number }>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
+  openExampleMenu(
+    rectOrCtx: DOMRect | ExampleMenuContext,
+    keyText?: string,
+    examples?: RcConfigExample[],
+    field?: RcConfigOption,
+    valueRange?: { from: number; to: number }
+  ): void {
+    const ctx: ExampleMenuContext =
+      'rect' in rectOrCtx
+        ? rectOrCtx
+        : {
+            rect: rectOrCtx,
+            keyText: keyText ?? '',
+            examples: examples ?? [],
+            field: field ?? ({ Name: keyText ?? '', Help: '', Type: 'string' } as RcConfigOption),
+            valueRange: valueRange ?? { from: 0, to: 0 },
+          };
+
+    const hostRect = this.hostEl.nativeElement.getBoundingClientRect();
+    this.activeExampleMenu.set(ctx);
+    this.menuAnchorPos.set({
+      x: ctx.rect.left - hostRect.left,
+      y: ctx.rect.top - hostRect.top,
+      width: ctx.rect.width,
+      height: ctx.rect.height,
+    });
+    queueMicrotask(() => {
+      if (!this.menuTrigger()?.isOpen()) {
+        this.menuTrigger()?.open();
+      }
+    });
+  }
+
+  closeExampleMenu(): void {
+    if (this.menuTrigger()?.isOpen()) {
+      this.menuTrigger()?.close();
+    }
+    this.activeExampleMenu.set(null);
+  }
+
+  selectExample(exampleValue: string): void {
+    const menu = this.activeExampleMenu();
+    if (!menu || !this.editorView) return;
+
+    let replacement: string;
+    const fieldType = menu.field?.Type;
+
+    if (fieldType === 'bool') {
+      replacement = String(exampleValue).toLowerCase() === 'true' ? 'true' : 'false';
+    } else if (
+      fieldType &&
+      (isIntType(fieldType) || isFloatType(fieldType)) &&
+      /^-?\d+(\.\d+)?$/.test(String(exampleValue).trim())
+    ) {
+      replacement = String(exampleValue).trim();
+    } else {
+      replacement = JSON.stringify(exampleValue);
+    }
+
+    const { from, to } = menu.valueRange;
+    const currentDoc = this.editorView.state.doc;
+
+    let insertText = replacement;
+    if (from === to && from > 0 && currentDoc.sliceString(from - 1, from) === ':') {
+      insertText = ' ' + replacement;
+    }
+
+    this.editorView.dispatch({
+      changes: { from, to, insert: insertText },
+    });
+    this.editorView.focus();
+    this.closeExampleMenu();
+  }
 
   private readonly formValue = toSignal(
     toObservable(this.formGroup).pipe(
@@ -482,6 +648,8 @@ export class JsonEditorComponent {
       return diagnostics;
     });
 
+    const exampleWidgetsExtension = this.createExampleWidgetsExtension();
+
     const extensions = [
       history(),
       lineNumbers(),
@@ -495,9 +663,13 @@ export class JsonEditorComponent {
       lintGutter(),
       linter(jsonParseLinter()),
       rcloneLinter,
+      exampleWidgetsExtension,
       autocompletion({ override: [completionSource] }),
       EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
       EditorView.updateListener.of(update => {
+        if (update.docChanged && this.activeExampleMenu()) {
+          this.closeExampleMenu();
+        }
         if (!update.docChanged || this.isPushingToEditor) return;
         const text = update.state.doc.toString();
         if (this._debounceTimer) clearTimeout(this._debounceTimer);
@@ -509,6 +681,101 @@ export class JsonEditorComponent {
       state: EditorState.create({ doc: this.serializeForm(), extensions }),
       parent: container.nativeElement,
     });
+  }
+
+  private createExampleWidgetsExtension(): Extension {
+    const buildDecos = (view: EditorView): DecorationSet => {
+      const builder = new RangeSetBuilder<Decoration>();
+      const fieldDefs = this.fieldDefs();
+      const lookupTable = this.lookupTable();
+      const tree = syntaxTree(view.state);
+      const decoratedLines = new Set<number>();
+      const items: { pos: number; widget: Decoration }[] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        tree.iterate({
+          from,
+          to,
+          enter: node => {
+            if (node.name === 'Property') {
+              const propNode = node.node;
+              const keyNode = propNode.getChild('PropertyName') ?? propNode.firstChild;
+              const valueNode = propNode.lastChild;
+
+              if (!keyNode) return;
+
+              const rawKey = view.state.sliceDoc(keyNode.from, keyNode.to);
+              const keyText = rawKey.replace(/^"|"$/g, '');
+
+              let fieldDef = fieldDefs.find(
+                f => (f.Name || f.FieldName) === keyText || f.FieldName === keyText
+              );
+              if (!fieldDef) {
+                const cleanKey = keyText
+                  .toLowerCase()
+                  .replace(/^--?/, '')
+                  .replace(/-/g, '')
+                  .replace(/_/g, '');
+                const match = lookupTable[cleanKey] || lookupTable[keyText.toLowerCase()];
+                if (match) fieldDef = match.option;
+              }
+
+              const examples = resolveOptionExamples(fieldDef);
+              if (!examples || examples.length === 0 || !fieldDef) return;
+
+              const line = view.state.doc.lineAt(keyNode.from);
+              if (decoratedLines.has(line.number)) return;
+              decoratedLines.add(line.number);
+
+              const hasDistinctValue = valueNode && valueNode.from > keyNode.to;
+              const valueRange = {
+                from: hasDistinctValue ? valueNode.from : keyNode.to,
+                to: hasDistinctValue ? valueNode.to : keyNode.to,
+              };
+
+              const widget = Decoration.widget({
+                widget: new ExampleButtonWidget(
+                  { keyText, examples, field: fieldDef, valueRange },
+                  ctx => {
+                    this.openExampleMenu(ctx);
+                  }
+                ),
+                side: 1,
+              });
+
+              const targetPos = hasDistinctValue ? valueNode.to : keyNode.to;
+              items.push({ pos: targetPos, widget });
+            }
+          },
+        });
+      }
+
+      items.sort((a, b) => a.pos - b.pos);
+      for (const item of items) {
+        builder.add(item.pos, item.pos, item.widget);
+      }
+
+      return builder.finish();
+    };
+
+    return ViewPlugin.fromClass(
+      class {
+        decorations: DecorationSet;
+
+        constructor(view: EditorView) {
+          this.decorations = buildDecos(view);
+        }
+
+        update(update: ViewUpdate): void {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = buildDecos(update.view);
+          }
+        }
+      },
+      {
+        decorations: v => v.decorations,
+      }
+    );
   }
 
   private validateOptions(

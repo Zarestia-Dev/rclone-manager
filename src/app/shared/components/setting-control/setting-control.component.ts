@@ -49,6 +49,7 @@ import {
   isIntType,
   isFloatType,
 } from 'src/app/shared/utils';
+import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
 
 const DUMP_FLAGS_FALLBACK: readonly string[] = [
   'headers',
@@ -127,7 +128,8 @@ export class SettingControlComponent implements ControlValueAccessor {
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
-  readonly translate = inject(TranslateService);
+  private readonly translate = inject(TranslateService);
+  readonly currentLang = this.translate.currentLang;
 
   // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);
@@ -300,7 +302,8 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly controlOptionsList = computed<({ Value?: string; Help?: string } | string)[]>(() => {
     const opt = this.mergedOption();
     if (!opt) return [];
-    if (opt.Examples?.length) return opt.Examples;
+    const examples = resolveOptionExamples(opt);
+    if (examples.length) return examples;
     if (opt.Type === 'Encoding') return ENCODING_FLAGS as string[];
     if (opt.Type === 'DumpFlags') return DUMP_FLAGS_FALLBACK as string[];
     return [];
@@ -342,7 +345,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       if (isMulti || opt.Type === 'Encoding' || opt.Type === 'DumpFlags') {
         return 'multiSelect';
       }
-      if (opt.Exclusive === false) {
+      if (opt.Exclusive === false || isConvertibleType(opt.Type)) {
         return 'autocomplete';
       }
       return 'select';
@@ -379,7 +382,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       const eValue = eObj ? (eObj.Value ?? '') : e;
       if (eValue === value) {
         if (eObj) {
-          return eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
+          const text = eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
+          return text ? this.translate.instant(text) : '';
         }
         return String(e);
       }
@@ -846,24 +850,25 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (!isSingleSelect) {
       const r = this.validatorRegistry;
+      const examples = this.controlOptionsList();
       if (isMultiSelect || isJsonArrayType(opt.Type)) {
         validators.push(r.arrayValidator());
       } else {
         const vMap: Record<string, () => ValidatorFn> = {
-          int: () => r.integerValidator(opt.DefaultStr),
-          int64: () => r.integerValidator(opt.DefaultStr),
-          int32: () => r.integerValidator(opt.DefaultStr),
-          uint: () => r.integerValidator(opt.DefaultStr),
-          uint32: () => r.integerValidator(opt.DefaultStr),
-          uint64: () => r.integerValidator(opt.DefaultStr),
-          float: () => r.floatValidator(opt.DefaultStr),
-          float32: () => r.floatValidator(opt.DefaultStr),
-          float64: () => r.floatValidator(opt.DefaultStr),
-          Duration: () => r.durationValidator(opt.DefaultStr),
-          SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr),
-          BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
-          FileMode: () => r.fileModeValidator(opt.DefaultStr),
-          Time: () => r.timeValidator(opt.DefaultStr),
+          int: () => r.integerValidator(opt.DefaultStr, examples),
+          int64: () => r.integerValidator(opt.DefaultStr, examples),
+          int32: () => r.integerValidator(opt.DefaultStr, examples),
+          uint: () => r.integerValidator(opt.DefaultStr, examples),
+          uint32: () => r.integerValidator(opt.DefaultStr, examples),
+          uint64: () => r.integerValidator(opt.DefaultStr, examples),
+          float: () => r.floatValidator(opt.DefaultStr, examples),
+          float32: () => r.floatValidator(opt.DefaultStr, examples),
+          float64: () => r.floatValidator(opt.DefaultStr, examples),
+          Duration: () => r.durationValidator(opt.DefaultStr, examples),
+          SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr, examples),
+          BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr, examples),
+          FileMode: () => r.fileModeValidator(opt.DefaultStr, examples),
+          Time: () => r.timeValidator(opt.DefaultStr, examples),
           Tristate: () => r.tristateValidator(),
         };
         if (vMap[opt.Type]) validators.push(vMap[opt.Type]());

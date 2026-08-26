@@ -935,7 +935,8 @@
       },
       "errors": {
         "invalidValue": "Valor inválido"
-      }
+      },
+      "showOptions": "Mostrar opciones"
     },
     "serveCard": {
       "tooltips": {
@@ -3279,6 +3280,72 @@
       "completed": "Completado",
       "cancelled": "Operación cancelada",
       "error": "Error"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Desactivado / Infinito (0s)",
+        "10s": "10 segundos",
+        "30s": "30 segundos",
+        "1m": "1 minuto",
+        "5m": "5 minutos",
+        "10m": "10 minutos",
+        "30m": "30 minutos",
+        "1h": "1 hora",
+        "24h": "24 horas (1 día)",
+        "7d": "7 días",
+        "30d": "30 días",
+        "off": "Desactivado (off)"
+      },
+      "sizeSuffix": {
+        "0": "Ilimitado / Desactivado (0)",
+        "512k": "512 KiB",
+        "1M": "1 MiB",
+        "8M": "8 MiB",
+        "16M": "16 MiB",
+        "32M": "32 MiB",
+        "64M": "64 MiB",
+        "128M": "128 MiB",
+        "256M": "256 MiB",
+        "512M": "512 MiB",
+        "1G": "1 GiB",
+        "10G": "10 GiB",
+        "100G": "100 GiB",
+        "1T": "1 TiB",
+        "off": "Ilimitado / Desactivado (off)"
+      },
+      "countSuffix": {
+        "0": "Ninguno (0)",
+        "100": "100 elementos",
+        "1k": "1.000 (1k)",
+        "10k": "10.000 (10k)",
+        "100k": "100.000 (100k)",
+        "1M": "1 Millón (1M)",
+        "10M": "10 Millones (10M)",
+        "off": "Ilimitado / Desactivado (off)"
+      },
+      "bwTimetable": {
+        "off": "Ilimitado (off)",
+        "512k": "512 KiB/s",
+        "1M": "1 MiB/s",
+        "5M": "5 MiB/s",
+        "10M": "10 MiB/s",
+        "50M": "50 MiB/s",
+        "split": "10M subida, 50M bajada",
+        "schedule": "Horario programado"
+      },
+      "fileMode": {
+        "0644": "Usuario lectura/escritura, Otros solo lectura (0644)",
+        "0666": "Lectura/escritura para todos (0666)",
+        "0755": "Usuario lectura/escritura/ejecución, Otros lectura/ejecución (0755)",
+        "0777": "Acceso total para todos (0777)"
+      },
+      "tristate": {
+        "true": "Habilitado (true)",
+        "false": "Deshabilitado (false)",
+        "unset": "No establecido"
+      }
     }
   }
 }

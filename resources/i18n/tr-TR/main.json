@@ -935,7 +935,8 @@
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
-      }
+      },
+      "showOptions": "Seçenekleri göster"
     },
     "serveCard": {
       "tooltips": {
@@ -3279,6 +3280,72 @@
       "completed": "Tamamlandı",
       "cancelled": "İşlem iptal edildi",
       "error": "Hata"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Kapalı / Sonsuz (0s)",
+        "10s": "10 saniye",
+        "30s": "30 saniye",
+        "1m": "1 dakika",
+        "5m": "5 dakika",
+        "10m": "10 dakika",
+        "30m": "30 dakika",
+        "1h": "1 saat",
+        "24h": "24 saat (1 gün)",
+        "7d": "7 gün",
+        "30d": "30 gün",
+        "off": "Devre dışı (off)"
+      },
+      "sizeSuffix": {
+        "0": "Sınırsız / Kapalı (0)",
+        "512k": "512 KiB",
+        "1M": "1 MiB",
+        "8M": "8 MiB",
+        "16M": "16 MiB",
+        "32M": "32 MiB",
+        "64M": "64 MiB",
+        "128M": "128 MiB",
+        "256M": "256 MiB",
+        "512M": "512 MiB",
+        "1G": "1 GiB",
+        "10G": "10 GiB",
+        "100G": "100 GiB",
+        "1T": "1 TiB",
+        "off": "Sınırsız / Kapalı (off)"
+      },
+      "countSuffix": {
+        "0": "Yok (0)",
+        "100": "100 öğe",
+        "1k": "1.000 (1k)",
+        "10k": "10.000 (10k)",
+        "100k": "100.000 (100k)",
+        "1M": "1 Milyon (1M)",
+        "10M": "10 Milyon (10M)",
+        "off": "Sınırsız / Devre dışı (off)"
+      },
+      "bwTimetable": {
+        "off": "Sınırsız (off)",
+        "512k": "512 KiB/s",
+        "1M": "1 MiB/s",
+        "5M": "5 MiB/s",
+        "10M": "10 MiB/s",
+        "50M": "50 MiB/s",
+        "split": "10M yükleme, 50M indirme",
+        "schedule": "Zaman çizelgesi programı"
+      },
+      "fileMode": {
+        "0644": "Kullanıcı okuma/yazma, Diğerleri salt okunur (0644)",
+        "0666": "Herkes okuma/yazma (0666)",
+        "0755": "Kullanıcı okuma/yazma/çalıştırma, Diğerleri okuma/çalıştırma (0755)",
+        "0777": "Herkes tam erişim (0777)"
+      },
+      "tristate": {
+        "true": "Etkin (true)",
+        "false": "Devre dışı (false)",
+        "unset": "Açıkta / Ayarlanmamış"
+      }
     }
   }
 }

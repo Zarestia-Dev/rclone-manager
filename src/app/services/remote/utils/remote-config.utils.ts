@@ -2,11 +2,36 @@ import {
   RcConfigQuestionResponse,
   InteractiveFlowState,
   RcConfigOption,
+  RcConfigExample,
   OperationType,
   SharedProfileType,
 } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import { PathGroup } from '../../infrastructure/platform/path.service';
+
+import { TYPE_DEFAULT_EXAMPLES } from './remote-config-examples.constant';
+
+export function resolveOptionExamples(opt: RcConfigOption | null | undefined): RcConfigExample[] {
+  if (!opt) return [];
+  if (opt.Examples && opt.Examples.length > 0) {
+    return [...opt.Examples];
+  }
+
+  const typeKey = opt.Type;
+  if (typeKey && TYPE_DEFAULT_EXAMPLES[typeKey]) {
+    return [...TYPE_DEFAULT_EXAMPLES[typeKey]];
+  }
+
+  const rawName = (opt.Name || opt.FieldName || '').toLowerCase();
+  const normalizedKey = rawName.replace(/^--?/, '').replace(/[- ]/g, '_');
+
+  // Bandwidth limit options default to BwTimetable examples
+  if (normalizedKey.includes('bwlimit') || normalizedKey.includes('bandwidth')) {
+    const bwExamples = TYPE_DEFAULT_EXAMPLES['BwTimetable'];
+    return bwExamples ? [...bwExamples] : [];
+  }
+  return [];
+}
 
 export function createInitialInteractiveFlowState(): InteractiveFlowState {
   return {

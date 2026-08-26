@@ -935,7 +935,8 @@
       },
       "errors": {
         "invalidValue": "Valeur invalide"
-      }
+      },
+      "showOptions": "Afficher les options"
     },
     "serveCard": {
       "tooltips": {
@@ -3279,6 +3280,72 @@
       "completed": "Terminé",
       "cancelled": "Opération annulée",
       "error": "Erreur"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Désactivé / Infini (0s)",
+        "10s": "10 secondes",
+        "30s": "30 secondes",
+        "1m": "1 minute",
+        "5m": "5 minutes",
+        "10m": "10 minutes",
+        "30m": "30 minutes",
+        "1h": "1 heure",
+        "24h": "24 heures (1 jour)",
+        "7d": "7 jours",
+        "30d": "30 jours",
+        "off": "Désactivé (off)"
+      },
+      "sizeSuffix": {
+        "0": "Illimité / Désactivé (0)",
+        "512k": "512 Kio",
+        "1M": "1 Mio",
+        "8M": "8 Mio",
+        "16M": "16 Mio",
+        "32M": "32 Mio",
+        "64M": "64 Mio",
+        "128M": "128 Mio",
+        "256M": "256 Mio",
+        "512M": "512 Mio",
+        "1G": "1 Gio",
+        "10G": "10 Gio",
+        "100G": "100 Gio",
+        "1T": "1 Tio",
+        "off": "Illimité / Désactivé (off)"
+      },
+      "countSuffix": {
+        "0": "Aucun (0)",
+        "100": "100 éléments",
+        "1k": "1 000 (1k)",
+        "10k": "10 000 (10k)",
+        "100k": "100 000 (100k)",
+        "1M": "1 million (1M)",
+        "10M": "10 millions (10M)",
+        "off": "Illimité / Désactivé (off)"
+      },
+      "bwTimetable": {
+        "off": "Illimité (off)",
+        "512k": "512 Kio/s",
+        "1M": "1 Mio/s",
+        "5M": "5 Mio/s",
+        "10M": "10 Mio/s",
+        "50M": "50 Mio/s",
+        "split": "10M envoi, 50M réception",
+        "schedule": "Calendrier horaire"
+      },
+      "fileMode": {
+        "0644": "Utilisateur lecture/écriture, Autres lecture seule (0644)",
+        "0666": "Lecture/écriture pour tous (0666)",
+        "0755": "Utilisateur lecture/écriture/exéc, Autres lecture/exéc (0755)",
+        "0777": "Accès complet pour tous (0777)"
+      },
+      "tristate": {
+        "true": "Activé (true)",
+        "false": "Désactivé (false)",
+        "unset": "Non défini"
+      }
     }
   }
 }

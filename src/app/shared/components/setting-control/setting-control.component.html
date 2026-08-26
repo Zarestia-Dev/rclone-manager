@@ -10,7 +10,7 @@
                   : 'title'
                   : opt.FieldName || opt.Name
                   : provider()
-                  : translate.currentLang()
+                  : currentLang()
             }}
             @if (opt.Required) {
               <small class="required-asterisk">*</small>
@@ -26,7 +26,7 @@
           class="help-text"
           [innerHTML]="
             opt.Name
-              | rcloneOptionTranslate: 'help' : opt.Help : provider() : translate.currentLang()
+              | rcloneOptionTranslate: 'help' : opt.Help : provider() : currentLang()
               | linebreaks
           "
         ></p>
@@ -125,7 +125,7 @@
             @for (example of opt.Examples; track example.Value) {
               <mat-option [value]="example.Value" class="multi-line-option">
                 <div class="option-content">
-                  <span class="option-label">{{ example.Help || example.Value }}</span>
+                  <span class="option-label">{{ example.Help || example.Value | translate }}</span>
                   @if (example.Help && example.Help !== example.Value) {
                     <small class="option-value-badge">{{ example.Value }}</small>
                   }
@@ -167,7 +167,9 @@
             @for (item of optionsList; track item.Value ?? item) {
               <mat-option [value]="item.Value ?? item" class="multi-line-option">
                 <div class="option-content">
-                  <span class="option-label">{{ item.Help || (item.Value ?? item) }}</span>
+                  <span class="option-label">{{
+                    item.Help || item.Value || item | translate
+                  }}</span>
                   @if (item.Help && item.Help !== (item.Value ?? item)) {
                     <small class="option-value-badge">{{ item.Value ?? item }}</small>
                   }
@@ -203,6 +205,8 @@
             type="button"
             matIconButton
             class="dropdown-arrow-btn"
+            [attr.title]="'shared.settingControl.showOptions' | translate"
+            [attr.aria-label]="'shared.settingControl.showOptions' | translate"
             (click)="$event.stopPropagation(); autoTrigger.openPanel()"
             tabindex="-1"
           >
@@ -216,7 +220,9 @@
             @for (item of optionsList || opt.Examples; track item.Value ?? item) {
               <mat-option [value]="item.Value ?? item" class="multi-line-option">
                 <div class="option-content">
-                  <span class="option-label">{{ item.Help || (item.Value ?? item) }}</span>
+                  <span class="option-label">{{
+                    item.Help || item.Value || item | translate
+                  }}</span>
                   @if (item.Help && item.Help !== (item.Value ?? item)) {
                     <small class="option-value-badge">{{ item.Value ?? item }}</small>
                   }

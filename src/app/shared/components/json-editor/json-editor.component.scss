@@ -1,4 +1,5 @@
 :host {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -6,7 +7,20 @@
 }
 
 // ============================================================================
-// CHIP ROW
+// UNIFIED EDITOR CARD (HEADER + CONTENT)
+// ============================================================================
+
+.editor-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+  overflow: hidden;
+}
+
+// ============================================================================
+// HEADER: CHIP ROW
 // ============================================================================
 
 .chips-row {
@@ -15,9 +29,9 @@
   gap: var(--space-xs);
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-gnome);
+  background: var(--headerbar-bg-color, rgba(var(--window-fg-color-rgb), 0.03));
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .chips-empty {
@@ -27,11 +41,141 @@
 }
 
 // ============================================================================
+// CONTENT: CODE MIRROR
+// ============================================================================
+
+.code-mirror {
+  min-height: 240px;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  ::ng-deep .cm-editor {
+    flex: 1;
+    min-height: 240px;
+    height: 100%;
+
+    .cm-scroller {
+      line-height: 1.65 !important;
+      min-height: 240px;
+    }
+
+    .cm-gutters {
+      border-right: 1px solid var(--border-color) !important;
+      background: var(--headerbar-bg-color, rgba(var(--window-fg-color-rgb), 0.02)) !important;
+    }
+
+    .cm-line {
+      padding: 2px 0 !important;
+    }
+  }
+}
+
+// ============================================================================
 // MOBILE
 // ============================================================================
 
 @media (max-width: 640px) {
   .chips-row {
     gap: var(--space-xxs);
+    padding: var(--space-xxs) var(--space-xs);
+  }
+
+  .code-mirror {
+    min-height: 200px;
+
+    ::ng-deep .cm-editor {
+      min-height: 200px;
+
+      .cm-scroller {
+        min-height: 200px;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// INLINE EXAMPLE BUTTON
+// ============================================================================
+
+::ng-deep .cm-example-widget {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: var(--space-xs);
+  margin-right: var(--space-xxs);
+}
+
+::ng-deep .cm-example-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xxs);
+  color: var(--accent-color);
+  background: var(--bg-elevated-2);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  cursor: pointer;
+  line-height: 1;
+  transition: var(--transition-fast);
+
+  svg {
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+  }
+
+  &:hover {
+    background: var(--hover-bg-color);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+}
+
+// ============================================================================
+// CDK MENU ANCHOR & EXAMPLES MENU STYLING
+// ============================================================================
+
+.cdk-menu-anchor {
+  position: absolute;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+::ng-deep .material-context-menu.examples-menu {
+  min-width: 260px;
+  max-width: 380px;
+
+  .menu-group-label {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--window-fg-color);
+    padding: var(--space-xxs) var(--space-sm);
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  .menu-item {
+    gap: var(--space-xs);
+    padding: var(--space-xxs) var(--space-sm);
+    min-height: 32px;
+
+    .item-label {
+      flex: 1;
+      min-width: 0;
+      white-space: normal;
+      line-height: 1.35;
+      font-size: var(--font-size-sm);
+      word-break: break-word;
+    }
+
+    .app-pill {
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+    }
   }
 }

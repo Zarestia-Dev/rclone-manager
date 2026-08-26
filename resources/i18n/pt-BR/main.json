@@ -935,7 +935,8 @@
       },
       "errors": {
         "invalidValue": "Valor inválido"
-      }
+      },
+      "showOptions": "Mostrar opções"
     },
     "serveCard": {
       "tooltips": {
@@ -3279,6 +3280,72 @@
       "completed": "Concluído",
       "cancelled": "Operação cancelada",
       "error": "Erro"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Desativado / Infinito (0s)",
+        "10s": "10 segundos",
+        "30s": "30 segundos",
+        "1m": "1 minuto",
+        "5m": "5 minutos",
+        "10m": "10 minutos",
+        "30m": "30 minutos",
+        "1h": "1 hora",
+        "24h": "24 horas (1 dia)",
+        "7d": "7 dias",
+        "30d": "30 dias",
+        "off": "Desativado (off)"
+      },
+      "sizeSuffix": {
+        "0": "Ilimitado / Desativado (0)",
+        "512k": "512 KiB",
+        "1M": "1 MiB",
+        "8M": "8 MiB",
+        "16M": "16 MiB",
+        "32M": "32 MiB",
+        "64M": "64 MiB",
+        "128M": "128 MiB",
+        "256M": "256 MiB",
+        "512M": "512 MiB",
+        "1G": "1 GiB",
+        "10G": "10 GiB",
+        "100G": "100 GiB",
+        "1T": "1 TiB",
+        "off": "Ilimitado / Desativado (off)"
+      },
+      "countSuffix": {
+        "0": "Nenhum (0)",
+        "100": "100 itens",
+        "1k": "1.000 (1k)",
+        "10k": "10.000 (10k)",
+        "100k": "100.000 (100k)",
+        "1M": "1 Milhão (1M)",
+        "10M": "10 Milhões (10M)",
+        "off": "Ilimitado / Desativado (off)"
+      },
+      "bwTimetable": {
+        "off": "Ilimitado (off)",
+        "512k": "512 KiB/s",
+        "1M": "1 MiB/s",
+        "5M": "5 MiB/s",
+        "10M": "10 MiB/s",
+        "50M": "50 MiB/s",
+        "split": "10M upload, 50M download",
+        "schedule": "Horário programado"
+      },
+      "fileMode": {
+        "0644": "Usuário leitura/escrita, Outros somente leitura (0644)",
+        "0666": "Leitura/escrita para todos (0666)",
+        "0755": "Usuário leitura/escrita/exec, Outros leitura/exec (0755)",
+        "0777": "Acesso total para todos (0777)"
+      },
+      "tristate": {
+        "true": "Habilitado (true)",
+        "false": "Deshabilitado (false)",
+        "unset": "Não definido"
+      }
     }
   }
 }
