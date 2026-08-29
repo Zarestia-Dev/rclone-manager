@@ -47,7 +47,7 @@
         line-height: 1.5;
       }
 
-      .auth-error-detail {
+      .error-detail {
         margin-top: var(--space-xs);
         padding: var(--space-xs) var(--space-sm);
         background: rgba(var(--warn-color-rgb), var(--active-opacity));
@@ -87,6 +87,25 @@
         font-weight: 500;
       }
     }
+  }
+
+  .port-config-container {
+    display: flex;
+    flex-direction: column;
+
+    .port-buttons-row {
+      display: flex;
+      gap: var(--space-sm);
+      width: 100%;
+
+      button {
+        flex: 1;
+      }
+    }
+  }
+
+  app-alert-banner {
+    margin-top: var(--space-sm);
   }
 }
 
@@ -138,5 +157,10 @@ mat-icon[svgIcon="caret-down"] {
     align-items: center;
     text-align: center;
     gap: var(--space-sm);
+  }
+
+  .port-config-container .port-buttons-row {
+    flex-direction: column;
+    gap: var(--space-xs);
   }
 }

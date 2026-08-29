@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Rclone Port Collision Detection & Auto-Repair Flow**:
+  - Added automatic detection for occupied TCP ports prior to spawning local Rclone engines.
+  - Non-blocking startup error handling with instant child status reaping (`try_wait`) to eliminate startup timeout delays on port bind failures.
+  - Integrated port collision repair sheet with automatic next-available port suggestion, real-time TCP port availability testing via `<app-alert-banner>`, and one-click apply & restart.
+  - Added system error banner notification for port errors with dedicated translations across all 9 supported locales.
+- **Smart Remote vs. Local Authentication Error Handling**:
+  - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
+
+
 ## [v0.3.2] - 2026-08-24
 
 ### Added

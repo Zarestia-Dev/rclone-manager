@@ -156,6 +156,24 @@ export class BackendService extends TauriBaseService {
     });
   }
 
+  async updateLocalBackendPort(port: number): Promise<void> {
+    let localBackend = this.backends().find(b => b.name === 'Local');
+    if (!localBackend) {
+      await this.loadBackends();
+      localBackend = this.backends().find(b => b.name === 'Local');
+    }
+    if (!localBackend) return;
+    await this.updateBackend({
+      name: 'Local',
+      host: localBackend.host,
+      port,
+      isLocal: true,
+      username: localBackend.username,
+      password: localBackend.password,
+      configPath: localBackend.configPath,
+    });
+  }
+
   async testConnection(name: string): Promise<TestConnectionResult> {
     try {
       const result = await this.invokeCommand<TestConnectionResult>('test_backend_connection', {

@@ -39,7 +39,10 @@
     "moreActions": "Diğer İşlemler",
     "duplicate": "Çoğalt",
     "clearAll": "Tümünü Temizle",
-    "acknowledge": "Onayla"
+    "acknowledge": "Onayla",
+    "actions": "İşlemler",
+    "savedSuccessfully": "Başarıyla kaydedildi",
+    "deletedSuccessfully": "Başarıyla silindi"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -329,6 +332,8 @@
       "backendFilterHint": "Sadece belirli altyapılardaki olayları izlemek için.",
       "profileFilter": "Profil Filtresi",
       "profileFilterHint": "Sadece belirli profillerdeki olayları izlemek için.",
+      "workflowFilter": "İş Akışı Filtresi",
+      "workflowFilterHint": "Uyarıları belirli iş akışlarına göre filtreleyin.",
       "autoAcknowledge": "Otomatik Onayla",
       "autoAcknowledgeHint": "Oluşan uyarıları otomatik olarak onaylandı olarak işaretle. Sistem bildirimi tetikleyen uyarılar için idealdir.",
       "actions": "Tetiklenecek Eylemler",
@@ -345,11 +350,15 @@
       "engine": "Altyapı ve Motor",
       "update": "Yazılım Güncellemeleri",
       "automation": "Otomasyonlar",
-      "system": "Sistem Olayları"
+      "system": "Sistem Olayları",
+      "workflow": "Görsel İş Akışları"
     },
     "action": {
       "basicInfo": "Temel Bilgiler",
       "configuration": "Yapılandırma",
+      "channelKind": "Kanal Türü",
+      "whatsappProvider": "WhatsApp Sağlayıcısı",
+      "telegramMode": "Telegram Modu",
       "noActionsCreated": "Henüz hiçbir uyarı eylemi oluşturulmadı.",
       "noHeaders": "Yapılandırılmış özel üstbilgi yok.",
       "kind": "Eylem Tipi",
@@ -407,8 +416,16 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Başlık Adı",
-      "headerValue": "Değer"
+      "headerValue": "Değer",
+      "apikey": "API Anahtarı",
+      "password": "Şifre",
+      "username": "Kullanıcı Adı",
+      "subject": "Konu",
+      "mqttHost": "MQTT Sunucusu",
+      "mqttPort": "MQTT Portu",
+      "mqttTopic": "MQTT Konusu"
     },
+    "test": "Test Et",
     "noRulesHint": "Henüz yapılandırılmış uyarı kuralı yok. Bildirim almak için bir kural oluşturun.",
     "noActionsHint": "Henüz yapılandırılmış uyarı eylemi yok. Uyarıların nasıl iletileceğini belirlemek için bir eylem oluşturun."
   },
@@ -624,6 +641,10 @@
       "auth": {
         "title": "Rclone Kimlik Doğrulaması Gerekli",
         "subtitle": "Lütfen kimlik bilgilerinizi veya yapılandırma şifrenizi kontrol edin"
+      },
+      "port": {
+        "title": "Bağlantı Noktası Zaten Kullanımda",
+        "subtitle": "Yapılandırılan bağlantı noktası başka bir uygulama tarafından kullanılıyor"
       }
     }
   },
@@ -3006,7 +3027,11 @@
       "engineConnectionFailed": "Motor Bağlantı Hatası",
       "engineBinaryNotFound": "Rclone Bulunamadı",
       "enginePasswordRequired": "Şifre Gerekli",
-      "engineAuthFailed": "Motor Kimlik Doğrulaması Başarısız"
+      "engineAuthFailed": "Motor Kimlik Doğrulaması Başarısız",
+      "workflowStarted": "İş Akışı '{{name}}' Başlatıldı",
+      "workflowCompleted": "İş Akışı '{{name}}' Tamamlandı",
+      "workflowFailed": "İş Akışı '{{name}}' Başarısız Oldu",
+      "workflowStopped": "İş Akışı '{{name}}' Durduruldu"
     },
     "body": {
       "mountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}', {{mountPoint}} adresine bağlandı.",
@@ -3016,6 +3041,10 @@
       "jobCompleted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarıyla tamamlandı.",
       "jobFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarısız oldu: {{error}}",
       "jobStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} durduruldu.",
+      "workflowStarted": "İş akışı '{{name}}' yürütülmeye başlandı.",
+      "workflowCompleted": "İş akışı '{{name}}' {{duration}} içinde başarıyla tamamlandı.",
+      "workflowFailed": "İş akışı '{{name}}' başarısız oldu: {{error}}",
+      "workflowStopped": "İş akışı '{{name}}' durduruldu.",
       "serveStarted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatıldı.",
       "serveFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatılamadı: {{error}}",
       "serveStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu durduruldu.",
@@ -3067,7 +3096,8 @@
       "passwordRequired": "Parola Gerekli",
       "systemIssue": "Sistem Sorunu",
       "versionTooOld": "Rclone Eski",
-      "authRequired": "Kimlik Doğrulama Gerekli"
+      "authRequired": "Kimlik Doğrulama Gerekli",
+      "portInUse": "Bağlantı Noktası Zaten Kullanımda"
     },
     "messages": {
       "missingRclone": "Rclone ikili dosyası bulunamadı. Devam etmek için lütfen kurun.",
@@ -3078,7 +3108,9 @@
       "versionTooOld": "Rclone sürümünüz {{required}} sürümünden daha eski. Devam etmek için lütfen güncelleyin.",
       "defaultParams": "Bir sistem bileşeni düzgün çalışmıyor.",
       "mountPluginStatusError": "Durum kontrol edilemedi",
-      "authRequired": "Kimlik doğrulama hatası nedeniyle bağlantı reddedildi."
+      "authRequired": "Kimlik doğrulama hatası nedeniyle bağlantı reddedildi.",
+      "remoteAuthRequired": "Uzak backend, kimlik doğrulama hatası nedeniyle bağlantıyı reddetti. Lütfen kimlik bilgilerinizi kontrol edin.",
+      "portInUse": "{{port}} bağlantı noktası başka bir uygulama veya bağlantı tarafından kullanılıyor. Devam etmek için farklı bir bağlantı noktası seçin."
     },
     "progress": {
       "installingRclone": "Rclone Kuruluyor...",
@@ -3095,7 +3127,20 @@
       "restoreBackup": "Yedeği Geri Yükle",
       "restartEngine": "Motoru Yeniden Başlat",
       "submitPassword": "Kilidi Aç",
+      "changePort": "Bağlantı Noktasını Uygula ve Yeniden Başlat",
+      "configureBackend": "Backend'i Yapılandır",
       "repair": "Onar"
+    },
+    "portConfig": {
+      "portLabel": "Yerel Bağlantı Noktası",
+      "suggestPort": "Öneri Al",
+      "suggestPortTooltip": "Kullanılabilir bir sonraki TCP bağlantı noktasını bul",
+      "testPort": "Bağlantı Noktasını Test Et",
+      "testPortTooltip": "Bu bağlantı noktasının kullanılabilir olup olmadığını kontrol et",
+      "portAvailable": "{{port}} bağlantı noktası kullanılabilir",
+      "portOccupied": "{{port}} bağlantı noktası kullanımda",
+      "portOccupiedTooltip": "Seçilen bağlantı noktası şu anda başka bir işlem tarafından kullanılıyor",
+      "invalidPort": "Bağlantı noktası 1024 ile 65535 arasında olmalıdır"
     },
     "details": {
       "issueLabel": "Sorun",
@@ -3127,6 +3172,14 @@
       "rcloneAuth": {
         "issue": "Kimlik doğrulama reddedildi",
         "action": "Eski süreci sonlandır ve motoru yeniden başlat"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Uzak kimlik doğrulama reddedildi",
+        "action": "Ayarlardan backend kimlik bilgilerini yapılandırın"
+      },
+      "rclonePort": {
+        "issue": "{{port}} bağlantı noktası kullanımda",
+        "action": "Bağlantı noktasını değiştir ve motoru yeniden başlat"
       }
     },
     "tooltips": {
@@ -3170,67 +3223,314 @@
     "cleared": "Veriler Temizlendi"
   },
   "flow": {
-    "title": "Flow",
+    "title": "Akış",
     "search": "Akışlarda ara...",
     "toggleSearch": "Aramayı Aç/Kapat",
     "loading": "Akışlar yükleniyor...",
-    "noResults": "Eşleşen akış bulunamadı",
-    "toggleSidebar": "Flow Kenar Çubuğunu Aç/Kapat",
+    "noResults": "Eşleşen akış öğesi bulunamadı",
+    "toggleSidebar": "Akış Kenar Çubuğunu Aç/Kapat",
     "empty": {
-      "description": "Hızlı operasyonlar ve iş akışları ile başlamak için yeni bir quick run veya workflow oluşturun."
+      "description": "Hızlı operasyonlar ve boru hatları ile başlamak için hızlı bir çalıştırma veya iş akışı oluşturun."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Hızlı Çalıştırmalar",
+      "new": "Yeni Hızlı Çalıştırma",
+      "actions": {
+        "start": "Başlat",
+        "stop": "Durdur"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Zamanlanmış Görev",
+        "watcher": "Klasör İzleyici Aktif",
+        "watcherChangedOnly": "Klasör İzleyici Aktif (Yalnızca alt dizinler)",
+        "autostart": "Otomatik Başlatma Etkin"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Çalışma Zamanı Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "Çalışıyor"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Toplam Hızlı Çalıştırma"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Hızlı Başlat",
+        "createFirst": "Hızlı ve profilsiz işlemlerle başlamak için ilk Hızlı Çalıştırmanızı oluşturun.",
         "noRunsForRemote": "{{remote}} için yapılandırılmış hızlı işlem yok.",
         "createForRemote": "{{remote}} için Hızlı İşlem Oluştur"
+      },
+      "detail": {
+        "configuration": "Yapılandırma"
+      },
+      "editor": {
+        "createTitle": "Hızlı Çalıştırma Oluştur",
+        "editTitle": "Hızlı Çalıştırmayı Düzenle",
+        "name": "İsim",
+        "nameRequired": "İsim zorunludur",
+        "description": "Açıklama (isteğe bağlı)",
+        "remote": "Remote",
+        "noRemotes": "Yapılandırılmış remote yok",
+        "remoteRequired": "Remote seçimi zorunludur",
+        "selectRemoteFirst": "Otomatik tamamlamayı görmek için önce bir remote seçin",
+        "tabVfs": "VFS",
+        "tabFilter": "Filtre",
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Çalışma Zamanı Remote"
       }
     },
     "tabs": {
       "quickRun": "Hızlı Çalıştırma",
       "workflow": "İş Akışı"
     },
-    "builder": {
-      "placeholderTitle": "İş Akışı Oluşturucu Geliştirme Aşamasında",
-      "placeholderMessage": "Çok adımlı rclone işlem zincirleri için görsel tuval yakında kullanıma sunulacaktır.",
-      "viewRoadmap": "GitHub Yol Haritasını Görüntüle"
+    "workflow": {
+      "title": "İş Akışı Düzenleyici",
+      "untitled": "İsimsiz İş Akışı",
+      "savedWorkflows": "Kayıtlı İş Akışları",
+      "presetRecipes": "Hazır Şablonlar & Tarifler",
+      "categories": {
+        "all": "Tümü"
+      },
+      "category": {
+        "trigger": "Tetikleyici",
+        "task": "Görev",
+        "logic": "Mantık",
+        "action": "Eylem"
+      },
+      "actions": {
+        "configure": "Düğümü Yapılandır",
+        "duplicate": "Düğümü Çoğalt",
+        "delete": "Düğümü Sil",
+        "duplicateWorkflow": "İş Akışını Çoğalt",
+        "deleteWorkflow": "İş Akışını Sil",
+        "exportWorkflow": "JSON Dışa Aktar"
+      },
+      "toolbar": {
+        "togglePalette": "Düğüm Kitaplığını Aç/Kapat",
+        "selectWorkflow": "İş Akışı Seç",
+        "newWorkflow": "Yeni İş Akışı",
+        "run": "İş Akışını Çalıştır",
+        "stop": "İş Akışını Durdur",
+        "presets": "Şablonlar ve Tarifler",
+        "undo": "Geri Al",
+        "redo": "Yinele",
+        "zoomOut": "Uzaklaştır",
+        "zoomIn": "Yakınlaştır",
+        "resetZoom": "Yakınlaştırmayı Sıfırla",
+        "fitToView": "Ekrana Sığdır",
+        "snapToGrid": "Izgaraya Hizala",
+        "toggleLog": "Çalıştırma Günlüğünü Aç/Kapat",
+        "toggleInspector": "Denetleyiciyi Aç/Kapat",
+        "cleanDuplicates": "Yinelenenleri Temizle"
+      },
+      "palette": {
+        "title": "Düğüm Kitaplığı",
+        "searchPlaceholder": "Düğümlerde ara...",
+        "clickToAdd": "Tuvale eklemek için tıklayın veya sürükleyin",
+        "add": "Düğüm Ekle",
+        "noResults": "Aramanızla eşleşen düğüm bulunamadı",
+        "hideSearch": "Arama ve filtreleri gizle",
+        "showSearch": "Arama ve filtreleri göster"
+      },
+      "inspector": {
+        "title": "Düğüm Denetleyicisi",
+        "general": "Genel Ayarlar",
+        "parameters": "Parametreler ve Seçenekler",
+        "nodeTitle": "Düğüm Başlığı",
+        "nodeSubtitle": "Alt Başlık / Açıklama",
+        "subtitlePlaceholder": "Örn. Günlük Belgeler Yedeklemesi",
+        "cronExpression": "Cron İfadesi",
+        "invalidCron": "Geçersiz cron ifadesi",
+        "cronHourly": "Saatlik",
+        "cronDaily": "Her gün 02:00'de",
+        "cronWeekly": "Haftalık (Pzt)",
+        "watchFolder": "İzlenecek Klasör Yolu",
+        "debounceSeconds": "Gecikme Süresi (saniye)",
+        "remote": "Remote",
+        "localOrSelect": "Yerel / Remote Seç",
+        "sourcePath": "Kaynak Yol (srcFs)",
+        "destinationPath": "Hedef Yol (dstFs)",
+        "mountPoint": "Bağlama Noktası Dizini",
+        "rcEndpoint": "RC Uç Noktası",
+        "delaySeconds": "Gecikme Süresi (saniye)",
+        "conditionOperator": "Koşul İşleci",
+        "opEquals": "Eşittir (==)",
+        "opNotEquals": "Eşit Değildir (!=)",
+        "opContains": "İçerir",
+        "opTruthy": "Dolu / Doğru (Truthy)",
+        "leftValue": "Sol İfade / Değer",
+        "rightValue": "Sağ Karşılaştırma Değeri",
+        "alertTitle": "Uyarı Başlığı",
+        "alertMessage": "Uyarı Mesajı",
+        "severity": "Önem Seviyesi",
+        "severityInfo": "Bilgi",
+        "severitySuccess": "Başarılı",
+        "severityError": "Hata / Uyarı",
+        "manualDesc": "Elle tetikleme iş akışını isteğe bağlı olarak başlatır. Ek bir yapılandırma gerektirmez.",
+        "parallelForkDesc": "Çalıştırmayı birden fazla eşzamanlı dala ayırır.",
+        "joinDesc": "Devam etmeden önce tüm gelen paralel dalların tamamlanmasını bekler.",
+        "jobEventProfile": "Hedef Profil / İşlem",
+        "jobEventPlaceholder": "İzlenecek profili seçin",
+        "unmountPoint": "Bağlama Noktası",
+        "unmountPlaceholder": "/mnt/remote veya C:\\Mount",
+        "delayPreset5s": "5 sn",
+        "delayPreset15s": "15 sn",
+        "delayPreset30s": "30 sn",
+        "delayPreset1m": "1 dk",
+        "delayPreset5m": "5 dk",
+        "openDetailed": "Detaylı Ayarlar",
+        "openDetailedTooltip": "Gelişmiş parametre ve bayrak düzenleyiciyi aç",
+        "activeConfig": "Aktif Yapılandırma ve Bayraklar",
+        "noActiveConfig": "Yapılandırılmış ek bayrak veya filtre yok",
+        "removeFlag": "Parametreyi kaldır",
+        "addFlagsHint": "Gelişmiş Rclone bayrakları, filtreleri ve VFS seçeneklerini yapılandırmak için Detaylı Ayarlar'a tıklayın.",
+        "appStartDesc": "Uygulama başladığında isteğe bağlı gecikmeyle otomatik tetiklenir.",
+        "startupDelay": "Başlangıç Gecikmesi (saniye)",
+        "delay0s": "Hemen (0s)",
+        "fileFilterPattern": "Dosya Filtresi Deseni (glob)",
+        "eventState": "Olay Durumu Filtresi",
+        "eventStateAny": "Herhangi Bir Tamamlanma (Başarılı veya Hatalı)",
+        "eventStateSuccess": "Yalnızca Başarılı",
+        "eventStateFailed": "Yalnızca Hatalı",
+        "optionalPath": "İsteğe Bağlı Alt Klasör Yolu",
+        "cryptRemote": "Şifreli Uzak Depolama",
+        "selectCryptRemote": "Şifreli remote seçin...",
+        "cryptDstPath": "Şifreli Hedef Yolu",
+        "scriptCommand": "Komut / Betik Yolu",
+        "scriptArguments": "Argümanlar (isteğe bağlı)",
+        "workingDir": "Çalışma Dizini (isteğe bağlı)",
+        "selectQuickRun": "Hızlı İşlem Profili Seçin",
+        "quickRunPlaceholder": "Bir hızlı işlem seçin...",
+        "stopStatus": "Sonlandırma Durumu",
+        "stopStatusSuccess": "Başarıyla Tamamla",
+        "stopStatusFailed": "Hata ile Sonlandır",
+        "stopMessage": "Sonlandırma Mesajı / Nedeni",
+        "powerAction": "Güç Eylemi",
+        "powerSleep": "Uyku Modu (Suspend)",
+        "powerShutdown": "Bilgisayarı Kapat",
+        "powerHibernate": "Hazırda Beklet (Hibernate)",
+        "powerLock": "Ekranı Kilitle",
+        "auditMessage": "Günlük Mesajı",
+        "severityWarn": "Uyarı",
+        "opNotContains": "İçermez",
+        "opGreaterThan": "Büyüktür (>)",
+        "opLessThan": "Küçüktür (<)",
+        "opIsEmpty": "Boştur",
+        "opFileExists": "Dosya/Yol Mevcut",
+        "executionStatus": "Yürütme Durumu"
+      },
+      "status": {
+        "running": "Çalışıyor",
+        "success": "Tamamlandı",
+        "failed": "Başarısız",
+        "skipped": "Atlandı",
+        "idle": "Beklemede"
+      },
+      "sheet": {
+        "title": "Düğüm Yapılandırması",
+        "configureNode": "Düğümü Yapılandır ({{type}})",
+        "nodeSaved": "Düğüm ayarları başarıyla kaydedildi",
+        "saveAndClose": "Uygula ve Kapat",
+        "tabGeneral": "Genel & Yollar",
+        "tabOperations": "İşlem Bayrakları",
+        "tabFilter": "Filtre Seçenekleri",
+        "tabBackend": "Backend Seçenekleri",
+        "tabVfs": "VFS Seçenekleri",
+        "tabMount": "Bağlama Seçenekleri",
+        "tabServe": "Sunma Seçenekleri",
+        "tabCron": "Cron Zamanlaması",
+        "tabWatch": "Klasör İzleyici",
+        "modeActionRef": "Kayıtlı Bildirim Eylemi Kullan",
+        "modeInline": "Özel Kanal Yapılandırması",
+        "overrideTemplate": "Mesaj Şablonunu Özelleştir",
+        "saveAsGlobalAction": "Bildirim Eylemi Olarak Kaydet",
+        "saveAsGlobalActionHint": "Bu yapılandırmayı kalıcı genel bildirim eylemi olarak kaydeder",
+        "actionSavedSuccess": "'{{name}}' eylemi Bildirim Eylemlerine başarıyla kaydedildi",
+        "notificationTestSuccess": "Test bildirimi başarıyla gönderildi",
+        "templateVariables": "Şablon Değişkenleri",
+        "insertVarHint": "Şablona değişken eklemek için tıklayın",
+        "expand": "Genişlet",
+        "collapse": "Daralt",
+        "searchFlags": "Bayrak ve seçeneklerde ara...",
+        "configuredCount": "{{count}} yapılandırıldı"
+      },
+      "ports": {
+        "in": "Giriş",
+        "out": "Çıkış",
+        "start": "Başlat",
+        "trigger": "Tetikle",
+        "onChange": "Değişiklikte",
+        "onFinish": "Bitişte",
+        "success": "Başarılı",
+        "failure": "Başarısız",
+        "true": "Doğru (True)",
+        "false": "Yanlış (False)",
+        "afterDelay": "Gecikme Sonrası",
+        "branch1": "1. Dal",
+        "branch2": "2. Dal",
+        "in1": "1. Giriş",
+        "in2": "2. Giriş",
+        "done": "Bitti",
+        "mounted": "Bağlandı"
+      },
+      "nodes": {
+        "manualTrigger": "Manuel Tetikleyici",
+        "manualTriggerDesc": "İş akışını istek üzerine manuel olarak başlat",
+        "cronSchedule": "Cron Zamanlaması",
+        "cronScheduleDesc": "Belirlenen cron zaman çizelgesine göre tetikle",
+        "folderWatcher": "Klasör İzleyici",
+        "folderWatcherDesc": "Yerel dizindeki dosyalar değiştiğinde tetikle",
+        "jobEvent": "İş Tamamlanma Olayı",
+        "jobEventDesc": "Başka bir profil veya hızlı işlem bittiğinde tetikle",
+        "rcCommand": "Rclone RC Komutu",
+        "rcCommandDesc": "Özel bir RC API uç noktasını çağır",
+        "condition": "Koşul Dallanması",
+        "conditionDesc": "Koşul testine göre akışı dallandır",
+        "delay": "Gecikme Zamanlayıcı",
+        "delayDesc": "Çalıştırmayı belirtilen süre boyunca duraklat",
+        "parallelFork": "Paralel Ayrılma",
+        "parallelForkDesc": "Birden fazla alt dalı eşzamanlı olarak çalıştır",
+        "join": "Dalları Birleştir",
+        "joinDesc": "Tüm paralel dalların tamamlanmasını bekle",
+        "notification": "Bildirim Gönder",
+        "notificationDesc": "WhatsApp, Telegram, Webhook, E-posta veya masaüstü bildirimi gönder",
+        "unmount": "Remote Bağlantısını Kes",
+        "unmountDesc": "Aktif yerel dosya sistemi bağını güvenle çıkar",
+        "appStart": "Uygulama Başlangıcı",
+        "appStartDesc": "Rclone Manager başladığında otomatik tetiklenir",
+        "cleanup": "Çöp Kutusunu Temizle",
+        "cleanupDesc": "Uzak depolamadaki çöp kutusunu boşalt",
+        "cryptcheck": "Şifreli Bütünlük Kontrolü",
+        "cryptcheckDesc": "Şifrelenmiş remote bütünlüğünü doğrula",
+        "execScript": "Betik / Komut Çalıştır",
+        "execScriptDesc": "Yerel kabuk komutu veya betik çalıştır",
+        "quickRun": "Hızlı İşlem",
+        "quickRunDesc": "Kayıtlı bir Hızlı İşlem profilini çalıştır",
+        "stop": "Akışı Sonlandır",
+        "stopDesc": "İş akışı yürütmesini durdur",
+        "systemPower": "Sistem Güç Eylemi",
+        "systemPowerDesc": "Sistemi uyut, kilitle veya kapat",
+        "logAudit": "Özel Günlük Kaydı",
+        "logAuditDesc": "İş akışı yürütme günlüğüne özel kayıt ekle"
+      },
+      "logs": {
+        "title": "Çalıştırma Günlüğü",
+        "copy": "Günlükleri Kopyala",
+        "clear": "Günlükleri Temizle",
+        "jumpToNode": "Düğümü tuval üzerinde vurgula",
+        "empty": "Henüz çalıştırma günlüğü yok. Adım çıktılarını görmek için bir iş akışı çalıştırın."
+      },
+      "details": "İş Akışı Detayları",
+      "name": "İş Akışı Adı",
+      "description": "İş Akışı Açıklaması",
+      "descriptionPlaceholder": "Bu iş akışının amacını açıklayın...",
+      "deleteConfirm": "Bu iş akışını silmek istediğinizden emin misiniz?",
+      "cleanDuplicates": "Yinelenenleri Temizle",
+      "cleanDuplicatesConfirm": "Yinelenen iş akışlarını temizlemek istediğinizden emin misiniz?",
+      "stats": {
+        "title": "Genel Bakış",
+        "nodes": "Toplam Düğüm",
+        "connections": "Bağlantılar",
+        "created": "Oluşturulma",
+        "updated": "Güncellenme"
+      }
     }
   },
   "templates": {

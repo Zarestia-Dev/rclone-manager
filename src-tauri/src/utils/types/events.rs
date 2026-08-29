@@ -35,6 +35,10 @@ pub const NETWORK_STATUS_CHANGED: &str = "network_status_changed";
 // Automation events
 pub const AUTOMATIONS_CACHE_CHANGED: &str = "automations_cache_changed";
 
+// Workflow events
+pub const WORKFLOW_NODE_STATE_CHANGED: &str = "workflow_node_state_changed";
+pub const WORKFLOW_EXECUTION_STATE_CHANGED: &str = "workflow_execution_state_changed";
+
 // Alert events
 pub const ALERT_FIRED: &str = "alert_fired";
 
@@ -67,6 +71,8 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     PROVISION_PROGRESS,
     NETWORK_STATUS_CHANGED,
     AUTOMATIONS_CACHE_CHANGED,
+    WORKFLOW_NODE_STATE_CHANGED,
+    WORKFLOW_EXECUTION_STATE_CHANGED,
     APP_EVENT,
     BROWSE,
     ALERT_FIRED,
@@ -82,6 +88,7 @@ pub enum EngineStatus {
     AuthError { message: String },
     PathError,
     VersionError { version: String, required: String },
+    PortError { port: u16, message: String },
     Updating,
     Restarted { reason: String },
 }
@@ -99,6 +106,11 @@ impl From<&crate::utils::types::state::EnginePhase> for EngineStatus {
             EnginePhase::FailedVersion { version, required } => Self::VersionError {
                 version: version.clone(),
                 required: required.clone(),
+            },
+            #[cfg(not(feature = "librclone"))]
+            EnginePhase::FailedPort { port, message } => Self::PortError {
+                port: *port,
+                message: message.clone(),
             },
             EnginePhase::FailedPassword => Self::PasswordError,
             EnginePhase::FailedAuth { message } => Self::AuthError {
@@ -178,5 +190,38 @@ mod tests {
         let deserialized: SettingsChangeEvent = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.value["limit"], "10M");
         assert_eq!(deserialized.value["enabled"], true);
+    }
+
+    #[test]
+    fn test_engine_status_port_error_serialization() {
+        let status = EngineStatus::PortError {
+            port: 51900,
+            message: "Port in use".to_string(),
+        };
+        let serialized = serde_json::to_string(&status).unwrap();
+        assert!(serialized.contains(r#""status":"portError""#));
+        assert!(serialized.contains(r#""port":51900"#));
+
+        let deserialized: EngineStatus = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, status);
+    }
+
+    #[test]
+    #[cfg(not(feature = "librclone"))]
+    fn test_engine_phase_to_engine_status_conversion() {
+        use crate::utils::types::state::EnginePhase;
+
+        let phase = EnginePhase::FailedPort {
+            port: 51901,
+            message: "Address already in use".to_string(),
+        };
+        let status: EngineStatus = (&phase).into();
+        assert_eq!(
+            status,
+            EngineStatus::PortError {
+                port: 51901,
+                message: "Address already in use".to_string(),
+            }
+        );
     }
 }

@@ -231,6 +231,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
             (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>]);
             (clear_engine_auth_error, $crate::rclone::engine::lifecycle::clear_engine_auth_error, []);
+            #[cfg(not(feature = "librclone"))]
+            (find_available_port, $crate::rclone::commands::backend::find_available_port, [start_port: Option<u16>], [sync, no_app]);
+            #[cfg(not(feature = "librclone"))]
+            (check_port_available, $crate::rclone::commands::backend::check_port_available, [port: u16], [sync, no_app]);
 
             // AUTOMATIONS
             (get_automations, $crate::rclone::state::automations::get_automations, []);
@@ -248,6 +252,19 @@ macro_rules! MASTER_COMMAND_LIST {
             (delete_quick_run, $crate::core::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
             (start_quick_run, $crate::core::flow::quick_run::commands::start_quick_run, [quick_run_id: String]);
             (stop_quick_run, $crate::core::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
+
+            // WORKFLOWS (FLOW WORKSPACE)
+            (list_workflows, $crate::core::flow::workflow::commands::list_workflows, []);
+            (get_workflow, $crate::core::flow::workflow::commands::get_workflow, [workflow_id: String]);
+            (create_workflow, $crate::core::flow::workflow::commands::create_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (update_workflow, $crate::core::flow::workflow::commands::update_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (delete_workflow, $crate::core::flow::workflow::commands::delete_workflow, [workflow_id: String]);
+            (duplicate_workflow, $crate::core::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
+            (validate_workflow, $crate::core::flow::workflow::commands::validate_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowDefinition], [no_app]);
+            (execute_workflow, $crate::core::flow::workflow::commands::execute_workflow, [workflow_id: String]);
+            (stop_workflow, $crate::core::flow::workflow::commands::stop_workflow, [workflow_id: String]);
+            (export_workflow, $crate::core::flow::workflow::commands::export_workflow, [workflow_id: String]);
+            (import_workflow, $crate::core::flow::workflow::commands::import_workflow, [json_str: String]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);

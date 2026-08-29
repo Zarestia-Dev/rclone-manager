@@ -10,6 +10,8 @@ import {
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import {
   BinaryStatus,
   InstallationOptionsData,
@@ -21,11 +23,13 @@ import {
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
 import { ProvisionProgressComponent } from '../../../shared/components/provision-progress/provision-progress.component';
+import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { RepairService } from 'src/app/services/operations/repair.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
@@ -34,9 +38,12 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
   imports: [
     MatButtonModule,
     MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
     ProvisionProgressComponent,
+    AlertBannerComponent,
     TranslatePipe,
   ],
   templateUrl: './repair-sheet.component.html',
@@ -55,9 +62,11 @@ export class RepairSheetComponent {
   readonly isSubmittingPassword = signal(false);
   readonly hasPasswordError = signal(false);
   readonly passwordErrorMessage = signal('');
+  readonly isSuggestingPort = signal(false);
   private readonly messageOverride = signal<string | null>(null);
 
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
+  readonly selectedPort = signal<number>(this.data.port ?? 51900);
   private readonly sheetRef = inject(MatBottomSheetRef<RepairSheetComponent>);
   private readonly repairService = inject(RepairService);
 
@@ -78,20 +87,44 @@ export class RepairSheetComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+  private readonly modalService = inject(ModalService);
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly backendTranslation = inject(BackendTranslationService);
 
+  readonly isTestingPort = signal<boolean>(false);
+  readonly portTestResult = signal<'untested' | 'available' | 'occupied'>(
+    this.data.type === 'rclone_port' ? 'occupied' : 'untested'
+  );
+
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
   readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
+
+  readonly isRemoteBackend = computed(() => {
+    if (this.data.isRemote !== undefined) return this.data.isRemote;
+    return !this.backendService.isLocalBackend();
+  });
+
+  readonly isRemoteAuthRepair = computed(
+    () => this.data.type === 'rclone_auth' && this.isRemoteBackend()
+  );
 
   readonly isRcloneBinaryRepair = computed(
     () => this.data.type === 'rclone_binary' || this.data.type === 'rclone_version'
   );
   readonly isMountPluginRepair = computed(() => this.data.type === 'mount_plugin');
+  readonly isRclonePortRepair = computed(() => this.data.type === 'rclone_port');
   readonly requiresPassword = computed(
     () => this.data.type === 'rclone_password' || this.data.requiresPassword === true
   );
   readonly canSubmitPassword = computed(() => !!this.password() && !this.isSubmittingPassword());
+
+  readonly portInputError = computed(() => {
+    const port = this.selectedPort();
+    if (!port || isNaN(port) || port < 1024 || port > 65535) {
+      return 'repairSheet.portConfig.invalidPort';
+    }
+    return '';
+  });
 
   readonly currentMode = computed((): RepairMode => {
     if (this.showConfigOptions()) return 'config';
@@ -100,31 +133,53 @@ export class RepairSheetComponent {
   });
 
   readonly isProcessing = computed(
-    () => this.installing() || this.isSubmittingPassword() || this.isRefreshingStatus()
+    () =>
+      this.installing() ||
+      this.isSubmittingPassword() ||
+      this.isRefreshingStatus() ||
+      this.isSuggestingPort() ||
+      this.isTestingPort()
   );
 
-  readonly repairIcon = computed(() => this.repairService.getRepairButtonIcon(this.data.type));
-  readonly repairDetails = computed(() => this.repairService.getRepairDetails(this.data.type));
+  readonly repairIcon = computed(() =>
+    this.repairService.getRepairButtonIcon(this.data.type, this.isRemoteBackend())
+  );
+  readonly repairDetails = computed(() =>
+    this.repairService.getRepairDetails(this.data.type, this.isRemoteBackend())
+  );
 
   readonly displayTitle = computed(
     () =>
       this.data.title ??
-      this.translate.instant(this.repairService.getRepairTitleKey(this.data.type), {
-        required: this.minRcloneVersion(),
-      })
+      this.translate.instant(
+        this.repairService.getRepairTitleKey(this.data.type, this.isRemoteBackend()),
+        {
+          required: this.minRcloneVersion(),
+          port: this.data.port ?? 51900,
+        }
+      )
   );
 
   readonly displayMessage = computed(
     () =>
       this.messageOverride() ??
       this.data.message ??
-      this.translate.instant(this.repairService.getRepairMessageKey(this.data.type), {
-        required: this.minRcloneVersion(),
-      })
+      this.translate.instant(
+        this.repairService.getRepairMessageKey(this.data.type, this.isRemoteBackend()),
+        {
+          required: this.minRcloneVersion(),
+          port: this.data.port ?? 51900,
+        }
+      )
   );
 
   readonly canRepair = computed(() => {
     if (this.isProcessing()) return false;
+    if (this.isRclonePortRepair()) {
+      return (
+        !this.portInputError() && !!this.selectedPort() && this.portTestResult() !== 'occupied'
+      );
+    }
     switch (this.currentMode()) {
       case 'config':
       case 'install':
@@ -138,7 +193,9 @@ export class RepairSheetComponent {
     if (this.installing()) return 'spinner';
     if (this.isSubmittingPassword()) return 'download';
     if (this.showConfigOptions()) return 'file';
-    return this.repairService.getRepairButtonIcon(this.data.type);
+    if (this.isRclonePortRepair()) return 'rotate-right';
+    if (this.isRemoteAuthRepair()) return 'lock';
+    return this.repairService.getRepairButtonIcon(this.data.type, this.isRemoteBackend());
   });
 
   readonly repairActionTextKey = computed(() => {
@@ -148,11 +205,13 @@ export class RepairSheetComponent {
   });
 
   private readonly repairButtonTextKey = computed(() => {
+    if (this.isRclonePortRepair()) return 'repairSheet.actions.changePort';
+    if (this.isRemoteAuthRepair()) return 'repairSheet.actions.configureBackend';
     if (this.showConfigOptions()) return this.getConfigModeButtonTextKey();
     if (this.requiresPassword() && !this.password()) return 'repairSheet.buttons.enterPassword';
     if (this.isRcloneBinaryRepair() && this.showAdvanced())
       return this.getInstallModeButtonTextKey();
-    return this.repairService.getRepairButtonTextKey(this.data.type);
+    return this.repairService.getRepairButtonTextKey(this.data.type, this.isRemoteBackend());
   });
 
   private readonly repairProgressTextKey = computed(() => {
@@ -162,11 +221,17 @@ export class RepairSheetComponent {
     ) {
       return 'repairSheet.progress.configuring';
     }
-    return this.repairService.getRepairProgressTextKey(this.data.type);
+    return this.repairService.getRepairProgressTextKey(this.data.type, this.isRemoteBackend());
   });
 
   readonly repairTooltip = computed(() => {
     if (this.canRepair() || this.isProcessing()) return '';
+
+    if (this.isRclonePortRepair()) {
+      if (this.portInputError()) return 'repairSheet.portConfig.invalidPort';
+      if (this.portTestResult() === 'occupied') return 'repairSheet.portConfig.portOccupiedTooltip';
+      return '';
+    }
 
     const { installLocation, customPath, existingBinaryPath, binaryTestResult } =
       this.installationData();
@@ -195,6 +260,45 @@ export class RepairSheetComponent {
     return this.installationValid() ? '' : 'repairSheet.tooltips.fixValidationErrors';
   });
 
+  onPortChange(event: Event): void {
+    const val = Number((event.target as HTMLInputElement).value);
+    this.selectedPort.set(val);
+    if (this.data.type === 'rclone_port' && val === this.data.port) {
+      this.portTestResult.set('occupied');
+    } else {
+      this.portTestResult.set('untested');
+    }
+  }
+
+  async suggestNextPort(): Promise<void> {
+    this.isSuggestingPort.set(true);
+    this.portTestResult.set('untested');
+    try {
+      const start = (this.selectedPort() || 51900) + 1;
+      const next = await this.repairService.findNextAvailablePort(start);
+      this.selectedPort.set(next);
+      this.portTestResult.set('available');
+    } catch (err) {
+      console.error('Failed to find next available port:', err);
+    } finally {
+      this.isSuggestingPort.set(false);
+    }
+  }
+
+  async testPort(): Promise<void> {
+    if (this.portInputError() || !this.selectedPort()) return;
+    this.isTestingPort.set(true);
+    try {
+      const isAvailable = await this.repairService.checkPortAvailable(this.selectedPort());
+      this.portTestResult.set(isAvailable ? 'available' : 'occupied');
+    } catch (err) {
+      console.error('Failed to test port availability:', err);
+      this.portTestResult.set('occupied');
+    } finally {
+      this.isTestingPort.set(false);
+    }
+  }
+
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
@@ -205,6 +309,17 @@ export class RepairSheetComponent {
 
   async repair(): Promise<void> {
     if (!this.canRepair()) return;
+
+    if (this.isRclonePortRepair()) {
+      await this.executePortRepair();
+      return;
+    }
+
+    if (this.isRemoteAuthRepair()) {
+      this.sheetRef.dismiss();
+      this.modalService.openBackend();
+      return;
+    }
 
     switch (this.currentMode()) {
       case 'config':
@@ -225,6 +340,20 @@ export class RepairSheetComponent {
           );
         }
         break;
+    }
+  }
+
+  private async executePortRepair(): Promise<void> {
+    this.installing.set(true);
+    try {
+      await this.repairService.repairRclonePort(this.selectedPort());
+      this.dismissAfter('success', 1000);
+    } catch (error) {
+      console.error('Port repair failed:', error);
+      const errorMsg = this.backendTranslation.translateBackendMessage(error);
+      this.messageOverride.set(errorMsg);
+    } finally {
+      this.installing.set(false);
     }
   }
 

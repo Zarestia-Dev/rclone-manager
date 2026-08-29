@@ -66,7 +66,8 @@ export type EngineStatus =
   | { status: 'authError'; payload: { message: string } }
   | { status: 'pathError' }
   | { status: 'versionError'; payload: { version: string; required: string } }
+  | { status: 'portError'; payload: { port: number; message: string } }
   | { status: 'updating' }
   | { status: 'restarted'; payload: { reason: string } };
 
-export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'generic' | null;
+export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'port' | 'generic' | null;

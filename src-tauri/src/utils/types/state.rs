@@ -80,6 +80,9 @@ pub enum EnginePhase {
     FailedPassword,
     /// Cannot start: the RC API is reachable but rejected our credentials
     FailedAuth { message: String },
+    /// Cannot start: local port is already in use by another process.
+    #[cfg(not(feature = "librclone"))]
+    FailedPort { port: u16, message: String },
     /// Cannot start: any other unrecoverable error.
     FailedOther { message: String },
 }
@@ -110,7 +113,10 @@ impl EnginePhase {
     pub fn is_failed(&self) -> bool {
         match self {
             #[cfg(not(feature = "librclone"))]
-            Self::FailedPath | Self::FailedVersion { .. } | Self::Updating => true,
+            Self::FailedPath
+            | Self::FailedVersion { .. }
+            | Self::FailedPort { .. }
+            | Self::Updating => true,
             Self::FailedPassword | Self::FailedAuth { .. } | Self::FailedOther { .. } => true,
             _ => false,
         }
@@ -139,6 +145,8 @@ impl std::fmt::Display for EnginePhase {
             }
             Self::FailedPassword => write!(f, "Password Error"),
             Self::FailedAuth { message } => write!(f, "Auth Error: {message}"),
+            #[cfg(not(feature = "librclone"))]
+            Self::FailedPort { port, message } => write!(f, "Port Error ({port}): {message}"),
             Self::FailedOther { message } => write!(f, "Error: {message}"),
         }
     }

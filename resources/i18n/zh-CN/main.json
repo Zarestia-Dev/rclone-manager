@@ -39,7 +39,10 @@
     "moreActions": "更多操作",
     "duplicate": "复制",
     "clearAll": "清除全部",
-    "acknowledge": "确认"
+    "acknowledge": "确认",
+    "actions": "操作",
+    "savedSuccessfully": "保存成功",
+    "deletedSuccessfully": "删除成功"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -336,7 +339,9 @@
       "noActionsHint": "您需要先创建一个警报操作，然后才能将其分配给规则。",
       "filtersEmptyHint": "留空以匹配所有事件。",
       "scopeFilters": "范围过滤器",
-      "allEvents": "所有事件"
+      "allEvents": "所有事件",
+      "workflowFilter": "Workflow Filter",
+      "workflowFilterHint": "Filter alerts by specific workflows."
     },
     "events": {
       "job": "任务与文件操作",
@@ -345,7 +350,8 @@
       "engine": "后端基础设施",
       "update": "软件更新",
       "automation": "自动化",
-      "system": "系统事件"
+      "system": "系统事件",
+      "workflow": "Visual Workflows"
     },
     "action": {
       "basicInfo": "基本信息",
@@ -407,10 +413,21 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "请求头名称",
-      "headerValue": "值"
+      "headerValue": "值",
+      "channelKind": "Channel Type",
+      "whatsappProvider": "WhatsApp Provider",
+      "telegramMode": "Telegram Mode",
+      "apikey": "API Key",
+      "password": "Password",
+      "username": "Username",
+      "subject": "Subject",
+      "mqttHost": "MQTT Host",
+      "mqttPort": "MQTT Port",
+      "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "尚未配置警报规则。创建规则以接收通知。",
-    "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。"
+    "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。",
+    "test": "Test"
   },
   "settings": {
     "resetAll": {
@@ -624,6 +641,10 @@
       "auth": {
         "title": "需要 Rclone 身份验证",
         "subtitle": "请检查您的凭据或配置密码"
+      },
+      "port": {
+        "title": "端口已被占用",
+        "subtitle": "配置的端口已被其他应用程序占用"
       }
     }
   },
@@ -3006,7 +3027,11 @@
       "engineConnectionFailed": "引擎连接错误",
       "engineBinaryNotFound": "未找到 Rclone",
       "enginePasswordRequired": "需要密码",
-      "engineAuthFailed": "引擎身份验证失败"
+      "engineAuthFailed": "引擎身份验证失败",
+      "workflowStarted": "Workflow '{{name}}' Started",
+      "workflowCompleted": "Workflow '{{name}}' Completed",
+      "workflowFailed": "Workflow '{{name}}' Failed",
+      "workflowStopped": "Workflow '{{name}}' Stopped"
     },
     "body": {
       "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
@@ -3044,7 +3069,11 @@
       "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
       "enginePasswordRequired": "访问配置文件需要密码。",
       "engineAuthFailed": "无法通过 rclone 引擎身份验证：{{error}}",
-      "powerInhibited": "正在运行的操作正在阻止系统休眠。"
+      "powerInhibited": "正在运行的操作正在阻止系统休眠。",
+      "workflowStarted": "Workflow '{{name}}' started execution.",
+      "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
+      "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
+      "workflowStopped": "Workflow '{{name}}' was stopped."
     }
   },
   "repairSheet": {
@@ -3067,7 +3096,8 @@
       "passwordRequired": "需要密码",
       "systemIssue": "系统问题",
       "versionTooOld": "Rclone 版本过旧",
-      "authRequired": "需要身份验证"
+      "authRequired": "需要身份验证",
+      "portInUse": "端口已被占用"
     },
     "messages": {
       "missingRclone": "未找到 rclone 可执行文件，请安装后继续。",
@@ -3078,7 +3108,9 @@
       "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
       "mountPluginStatusError": "状态检查失败",
-      "authRequired": "由于身份验证失败，后端拒绝了连接。"
+      "authRequired": "由于身份验证失败，后端拒绝了连接。",
+      "remoteAuthRequired": "由于身份验证失败，远程后端拒绝了连接。请检查您的凭据。",
+      "portInUse": "端口 {{port}} 已被其他应用程序或连接占用。请选择其他端口以继续。"
     },
     "progress": {
       "installingRclone": "正在安装 Rclone…",
@@ -3095,7 +3127,20 @@
       "restoreBackup": "恢复备份",
       "restartEngine": "重启引擎",
       "submitPassword": "解锁",
+      "changePort": "应用端口并重启",
+      "configureBackend": "配置后端",
       "repair": "修复"
+    },
+    "portConfig": {
+      "portLabel": "本地端口",
+      "suggestPort": "建议端口",
+      "suggestPortTooltip": "寻找下一个可用 TCP 端口",
+      "testPort": "测试端口",
+      "testPortTooltip": "检查该端口当前是否可用",
+      "portAvailable": "端口 {{port}} 可用",
+      "portOccupied": "端口 {{port}} 已被占用",
+      "portOccupiedTooltip": "所选端口当前被其他进程占用",
+      "invalidPort": "端口必须在 1024 到 65535 之间"
     },
     "details": {
       "issueLabel": "问题",
@@ -3127,6 +3172,14 @@
       "rcloneAuth": {
         "issue": "身份验证被拒绝",
         "action": "终止过时进程并重启引擎"
+      },
+      "rcloneAuthRemote": {
+        "issue": "远程身份验证被拒绝",
+        "action": "在设置中配置后端凭据"
+      },
+      "rclonePort": {
+        "issue": "端口 {{port}} 已被占用",
+        "action": "更换端口并重启引擎"
       }
     },
     "tooltips": {
@@ -3170,67 +3223,314 @@
     "cleared": "数据已清空"
   },
   "flow": {
-    "title": "Flow",
+    "title": "流程",
     "search": "搜索流程...",
     "toggleSearch": "切换搜索",
     "loading": "正在加载流程...",
-    "noResults": "未找到匹配的流程",
-    "toggleSidebar": "切换 Flow 侧边栏",
+    "noResults": "未找到匹配的流程项",
+    "toggleSidebar": "切换流程侧边栏",
     "empty": {
-      "description": "创建快捷运行或工作流以开始快速操作和管道。"
+      "description": "创建快捷运行或工作流，快速开始执行操作与自动化流水线。"
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "快捷运行",
+      "new": "新建快捷运行",
+      "actions": {
+        "start": "启动",
+        "stop": "停止"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "定时任务",
+        "watcher": "文件夹监控已启用",
+        "watcherChangedOnly": "文件夹监控已启用 (仅限子目录)",
+        "autostart": "开机自启已启用"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "运行中"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "快捷运行总数"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
-        "noRunsForRemote": "未为 {{remote}} 配置快速运行。",
-        "createForRemote": "为 {{remote}} 创建快速运行"
+        "quickLaunch": "快速启动",
+        "createFirst": "创建您的第一个快捷运行，免配置文件直接快速执行操作。",
+        "noRunsForRemote": "未为 {{remote}} 配置快捷运行。",
+        "createForRemote": "为 {{remote}} 创建快捷运行"
+      },
+      "detail": {
+        "configuration": "配置"
+      },
+      "editor": {
+        "createTitle": "创建快捷运行",
+        "editTitle": "编辑快捷运行",
+        "name": "名称",
+        "nameRequired": "名称为必填项",
+        "description": "描述 (可选)",
+        "remote": "远程存储",
+        "noRemotes": "未配置远程存储",
+        "remoteRequired": "必须选择远程存储",
+        "selectRemoteFirst": "请先选择一个远程存储以查看自动补全",
+        "tabVfs": "VFS",
+        "tabFilter": "过滤",
+        "tabBackend": "后端",
+        "tabRuntimeRemote": "运行时远程"
       }
     },
     "tabs": {
-      "quickRun": "快速运行",
+      "quickRun": "快捷运行",
       "workflow": "工作流"
     },
-    "builder": {
-      "placeholderTitle": "工作流构建器正在开发中",
-      "placeholderMessage": "用于多步骤 rclone 管道和条件任务链接的可视化画布即将推出。",
-      "viewRoadmap": "在 GitHub 上查看路线图"
+    "workflow": {
+      "title": "工作流编辑器",
+      "untitled": "未命名工作流",
+      "savedWorkflows": "已保存工作流",
+      "presetRecipes": "预设配方",
+      "categories": {
+        "all": "全部"
+      },
+      "category": {
+        "trigger": "触发器",
+        "task": "任务",
+        "logic": "逻辑",
+        "action": "动作"
+      },
+      "actions": {
+        "configure": "配置节点",
+        "duplicate": "复制节点",
+        "delete": "删除节点",
+        "duplicateWorkflow": "复制工作流",
+        "deleteWorkflow": "删除工作流",
+        "exportWorkflow": "导出 JSON"
+      },
+      "toolbar": {
+        "togglePalette": "切换节点库",
+        "selectWorkflow": "选择工作流",
+        "newWorkflow": "新建工作流",
+        "run": "运行工作流",
+        "stop": "停止工作流",
+        "presets": "预设与配方",
+        "undo": "撤销",
+        "redo": "重做",
+        "zoomOut": "缩小",
+        "zoomIn": "放大",
+        "resetZoom": "重置缩放",
+        "fitToView": "适应屏幕",
+        "snapToGrid": "对齐网格",
+        "toggleLog": "切换运行日志",
+        "toggleInspector": "切换检查器",
+        "cleanDuplicates": "清理重复项"
+      },
+      "palette": {
+        "title": "节点库",
+        "searchPlaceholder": "搜索节点...",
+        "clickToAdd": "点击或拖拽添加到画布",
+        "add": "添加节点",
+        "noResults": "未找到匹配节点",
+        "hideSearch": "隐藏搜索和筛选",
+        "showSearch": "显示搜索和筛选"
+      },
+      "inspector": {
+        "title": "节点检查器",
+        "general": "常规设置",
+        "parameters": "参数与选项",
+        "nodeTitle": "节点标题",
+        "nodeSubtitle": "副标题 / 描述",
+        "subtitlePlaceholder": "例如：每日文档备份",
+        "cronExpression": "Cron 表达式",
+        "invalidCron": "无效的 Cron 表达式",
+        "cronHourly": "每小时",
+        "cronDaily": "每天 02:00",
+        "cronWeekly": "每周 (周一)",
+        "watchFolder": "监控文件夹路径",
+        "debounceSeconds": "防抖延迟 (秒)",
+        "remote": "远程存储",
+        "localOrSelect": "本地 / 选择远程",
+        "sourcePath": "源路径 (srcFs)",
+        "destinationPath": "目标路径 (dstFs)",
+        "mountPoint": "挂载点目录",
+        "rcEndpoint": "RC 接口端点",
+        "delaySeconds": "延迟时间 (秒)",
+        "conditionOperator": "条件操作符",
+        "opEquals": "等于 (==)",
+        "opNotEquals": "不等于 (!=)",
+        "opContains": "包含",
+        "opTruthy": "非空 / 真值 (Truthy)",
+        "leftValue": "左侧表达式 / 值",
+        "rightValue": "右侧比较值",
+        "alertTitle": "提示标题",
+        "alertMessage": "提示内容",
+        "severity": "严重程度",
+        "severityInfo": "信息",
+        "severitySuccess": "成功",
+        "severityError": "错误 / 警告",
+        "openDetailed": "详细设置",
+        "openDetailedTooltip": "打开完整参数与标志编辑器底栏",
+        "activeConfig": "当前有效配置与标志",
+        "noActiveConfig": "未配置额外的标志或过滤器",
+        "removeFlag": "移除参数",
+        "addFlagsHint": "点击详细设置以配置高级 Rclone 标志、过滤器和 VFS 选项。",
+        "manualDesc": "Manual trigger starts the workflow on demand. No additional configuration required.",
+        "parallelForkDesc": "Splits execution into multiple concurrent branches.",
+        "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
+        "jobEventProfile": "Target Profile / Job",
+        "jobEventPlaceholder": "Select a profile to monitor",
+        "unmountPoint": "Mount Point",
+        "unmountPlaceholder": "/mnt/remote or C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "appStartDesc": "Trigger automatically on application startup with optional delay.",
+        "startupDelay": "Startup Delay (seconds)",
+        "delay0s": "Immediate (0s)",
+        "fileFilterPattern": "File Filter Pattern (glob)",
+        "eventState": "Event State Filter",
+        "eventStateAny": "Any Completion (Success or Failure)",
+        "eventStateSuccess": "Only on Success",
+        "eventStateFailed": "Only on Failure",
+        "optionalPath": "Optional Subfolder Path",
+        "cryptRemote": "Crypt Remote",
+        "selectCryptRemote": "Select crypt remote...",
+        "cryptDstPath": "Encrypted Destination Path",
+        "scriptCommand": "Command / Script",
+        "scriptArguments": "Arguments (optional)",
+        "workingDir": "Working Directory (optional)",
+        "selectQuickRun": "Select Quick Run Profile",
+        "quickRunPlaceholder": "Select a quick run...",
+        "stopStatus": "Termination Status",
+        "stopStatusSuccess": "Complete with Success",
+        "stopStatusFailed": "Halt with Error / Failure",
+        "stopMessage": "Stop Message / Reason",
+        "powerAction": "Power Action",
+        "powerSleep": "Sleep / Suspend",
+        "powerShutdown": "Shutdown Computer",
+        "powerHibernate": "Hibernate",
+        "powerLock": "Lock Screen / Session",
+        "auditMessage": "Audit Log Message",
+        "severityWarn": "Warning",
+        "opNotContains": "Does Not Contain",
+        "opGreaterThan": "Greater Than (>)",
+        "opLessThan": "Less Than (<)",
+        "opIsEmpty": "Is Empty",
+        "opFileExists": "File/Path Exists",
+        "executionStatus": "执行状态"
+      },
+      "status": {
+        "running": "运行中",
+        "success": "已完成",
+        "failed": "失败",
+        "skipped": "已跳过",
+        "idle": "空闲"
+      },
+      "sheet": {
+        "title": "节点配置",
+        "configureNode": "配置节点 ({{type}})",
+        "nodeSaved": "节点设置保存成功",
+        "saveAndClose": "应用并关闭",
+        "tabGeneral": "常规与路径",
+        "tabOperations": "操作标志",
+        "tabFilter": "过滤选项",
+        "tabBackend": "后端选项",
+        "tabVfs": "VFS 选项",
+        "tabMount": "挂载选项",
+        "tabServe": "服务选项",
+        "tabCron": "Cron 计划",
+        "tabWatch": "文件夹监控",
+        "expand": "展开面板",
+        "collapse": "折叠面板",
+        "searchFlags": "搜索标志与选项...",
+        "configuredCount": "已配置 {{count}} 项",
+        "modeActionRef": "Use Saved Alert Action",
+        "modeInline": "Custom Inline Channel",
+        "overrideTemplate": "Override Message Template",
+        "saveAsGlobalAction": "Save as Alert Action",
+        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
+        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
+        "notificationTestSuccess": "Test notification sent successfully",
+        "templateVariables": "Template Variables",
+        "insertVarHint": "Click to insert variable into template"
+      },
+      "ports": {
+        "in": "输入",
+        "out": "输出",
+        "start": "开始",
+        "trigger": "触发",
+        "onChange": "变更时",
+        "onFinish": "完成时",
+        "success": "成功",
+        "failure": "失败",
+        "true": "真 (True)",
+        "false": "假 (False)",
+        "afterDelay": "延迟后",
+        "branch1": "分支 1",
+        "branch2": "分支 2",
+        "in1": "输入 1",
+        "in2": "输入 2",
+        "done": "完成",
+        "mounted": "已挂载"
+      },
+      "nodes": {
+        "manualTrigger": "手动触发",
+        "manualTriggerDesc": "按需手动启动工作流",
+        "cronSchedule": "Cron 定时计划",
+        "cronScheduleDesc": "按预设的 Cron 定时计划触发",
+        "folderWatcher": "文件夹监控",
+        "folderWatcherDesc": "本地目录中的文件发生更改时触发",
+        "jobEvent": "任务完成事件",
+        "jobEventDesc": "另一个配置文件或快捷运行完成时触发",
+        "rcCommand": "Rclone RC 命令",
+        "rcCommandDesc": "调用任意 RC API 端点",
+        "condition": "条件分支",
+        "conditionDesc": "根据条件测试结果进行分支流程",
+        "delay": "延时计时器",
+        "delayDesc": "暂停执行指定时长",
+        "parallelFork": "并行分流",
+        "parallelForkDesc": "同时并发执行多个下游分支",
+        "join": "汇聚分支",
+        "joinDesc": "等待所有并行分支执行完成",
+        "notification": "桌面通知",
+        "notificationDesc": "显示系统桌面通知气泡",
+        "unmount": "卸载挂载",
+        "unmountDesc": "安全卸载当前活跃的本地文件系统挂载",
+        "appStart": "On App Launch",
+        "appStartDesc": "Trigger automatically when Rclone Manager starts",
+        "cleanup": "Cleanup Trash",
+        "cleanupDesc": "Empty remote trash or recycle bin",
+        "cryptcheck": "Cryptcheck",
+        "cryptcheckDesc": "Verify integrity of encrypted remote",
+        "execScript": "Execute Script",
+        "execScriptDesc": "Run local shell command or script",
+        "quickRun": "Quick Run",
+        "quickRunDesc": "Execute a saved Quick Run profile",
+        "stop": "Stop Workflow",
+        "stopDesc": "Halt workflow execution",
+        "systemPower": "System Power",
+        "systemPowerDesc": "Sleep, lock or shutdown host system",
+        "logAudit": "Audit Log",
+        "logAuditDesc": "Write entry to workflow execution log"
+      },
+      "logs": {
+        "title": "执行日志",
+        "copy": "复制日志",
+        "clear": "清空日志",
+        "jumpToNode": "点击以在画布上聚焦节点",
+        "empty": "暂无执行日志。运行工作流以查看步骤输出。"
+      },
+      "details": "工作流详情",
+      "name": "工作流名称",
+      "description": "工作流描述",
+      "descriptionPlaceholder": "描述此工作流的用途...",
+      "deleteConfirm": "确定要删除此工作流吗？",
+      "cleanDuplicates": "清理重复项",
+      "cleanDuplicatesConfirm": "确定要删除重复的工作流吗？",
+      "stats": {
+        "title": "概览",
+        "nodes": "节点总数",
+        "connections": "连接数",
+        "created": "创建时间",
+        "updated": "更新时间"
+      }
     }
   },
   "templates": {

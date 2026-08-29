@@ -67,6 +67,12 @@ impl RcApiEngine {
         self.phase = EnginePhase::FailedVersion { version, required };
     }
 
+    /// Mark the engine as having a port-in-use failure (desktop only).
+    #[cfg(not(feature = "librclone"))]
+    pub fn mark_port_failed(&mut self, port: u16, message: String) {
+        self.phase = EnginePhase::FailedPort { port, message };
+    }
+
     /// Mark the engine as having an unspecified failure.
     pub fn mark_other_failed(&mut self, message: String) {
         self.phase = EnginePhase::FailedOther { message };
@@ -133,6 +139,13 @@ mod tests {
             assert!(matches!(
                 engine.start_block_reason(),
                 Some(EnginePhase::FailedVersion { .. })
+            ));
+
+            engine.clear_errors();
+            engine.mark_port_failed(51900, "Port in use".into());
+            assert!(matches!(
+                engine.start_block_reason(),
+                Some(EnginePhase::FailedPort { .. })
             ));
         }
     }

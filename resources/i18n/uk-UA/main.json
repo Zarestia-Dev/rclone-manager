@@ -39,7 +39,10 @@
     "moreActions": "Інші дії",
     "duplicate": "Дублювати",
     "clearAll": "Очистити все",
-    "acknowledge": "Підтвердити"
+    "acknowledge": "Підтвердити",
+    "actions": "Дії",
+    "savedSuccessfully": "Успішно збережено",
+    "deletedSuccessfully": "Успішно видалено"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -336,7 +339,9 @@
       "noActionsHint": "Спочатку потрібно створити дію сповіщення, перш ніж призначати її правилу.",
       "filtersEmptyHint": "Залиште порожнім, щоб відповідати всім подіям.",
       "scopeFilters": "Фільтри області",
-      "allEvents": "Усі події"
+      "allEvents": "Усі події",
+      "workflowFilter": "Workflow Filter",
+      "workflowFilterHint": "Filter alerts by specific workflows."
     },
     "events": {
       "job": "Завдання та операції з файлами",
@@ -345,7 +350,8 @@
       "engine": "Інфраструктура бекенду",
       "update": "Оновлення ПЗ",
       "automation": "Автоматизації",
-      "system": "Системні події"
+      "system": "Системні події",
+      "workflow": "Visual Workflows"
     },
     "action": {
       "basicInfo": "Основна інформація",
@@ -407,10 +413,21 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Назва заголовка",
-      "headerValue": "Значення"
+      "headerValue": "Значення",
+      "channelKind": "Channel Type",
+      "whatsappProvider": "WhatsApp Provider",
+      "telegramMode": "Telegram Mode",
+      "apikey": "API Key",
+      "password": "Password",
+      "username": "Username",
+      "subject": "Subject",
+      "mqttHost": "MQTT Host",
+      "mqttPort": "MQTT Port",
+      "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Правила сповіщень ще не налаштовані. Створіть правило для отримання сповіщень.",
-    "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень."
+    "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень.",
+    "test": "Test"
   },
   "settings": {
     "resetAll": {
@@ -624,6 +641,10 @@
       "auth": {
         "title": "Потрібна автентифікація Rclone",
         "subtitle": "Будь ласка, перевірте облікові дані або пароль конфігурації"
+      },
+      "port": {
+        "title": "Порт вже використовується",
+        "subtitle": "Налаштований порт зайнятий іншою програмою"
       }
     }
   },
@@ -3006,7 +3027,11 @@
       "engineConnectionFailed": "Помилка зʼєднання з рушієм",
       "engineBinaryNotFound": "Rclone не знайдено",
       "enginePasswordRequired": "Потрібен пароль",
-      "engineAuthFailed": "Помилка автентифікації двигуна"
+      "engineAuthFailed": "Помилка автентифікації двигуна",
+      "workflowStarted": "Workflow '{{name}}' Started",
+      "workflowCompleted": "Workflow '{{name}}' Completed",
+      "workflowFailed": "Workflow '{{name}}' Failed",
+      "workflowStopped": "Workflow '{{name}}' Stopped"
     },
     "body": {
       "mountSucceeded": "Успішно змонтовано {{remote}}, профіль «{{profile}}» з {{backend}} у {{mountPoint}}.",
@@ -3044,7 +3069,11 @@
       "engineBinaryNotFound": "Виконуваний файл Rclone не знайдено, перевірте налаштування.",
       "enginePasswordRequired": "Для доступу до файлу конфігурації потрібен пароль.",
       "engineAuthFailed": "Не вдалося автентифікуватися в двигуні rclone: {{error}}",
-      "powerInhibited": "Активні операції запобігають переходу системи в режим сну."
+      "powerInhibited": "Активні операції запобігають переходу системи в режим сну.",
+      "workflowStarted": "Workflow '{{name}}' started execution.",
+      "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
+      "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
+      "workflowStopped": "Workflow '{{name}}' was stopped."
     }
   },
   "repairSheet": {
@@ -3067,7 +3096,8 @@
       "passwordRequired": "Потрібен пароль",
       "systemIssue": "Проблема системи",
       "versionTooOld": "Rclone застарів",
-      "authRequired": "Потрібна автентифікація"
+      "authRequired": "Потрібна автентифікація",
+      "portInUse": "Порт вже використовується"
     },
     "messages": {
       "missingRclone": "Не вдалося знайти виконуваний файл rclone. Встановіть його, щоб продовжити.",
@@ -3078,7 +3108,9 @@
       "versionTooOld": "Ваша версія rclone старіша за {{required}}. Оновіть її, щоб продовжити.",
       "defaultParams": "Системний компонент працює некоректно.",
       "mountPluginStatusError": "Не вдалося перевірити стан",
-      "authRequired": "Сервер відхилив підключення через помилку автентифікації."
+      "authRequired": "Сервер відхилив підключення через помилку автентифікації.",
+      "remoteAuthRequired": "Віддалений бекенд відхилив з'єднання через помилку автентифікації. Будь ласка, перевірте облікові дані.",
+      "portInUse": "Порт {{port}} вже зайнятий іншою програмою або з'єднанням. Виберіть інший порт, щоб продовжити."
     },
     "progress": {
       "installingRclone": "Встановлення Rclone...",
@@ -3095,7 +3127,20 @@
       "restoreBackup": "Відновити з копії",
       "restartEngine": "Перезапустити рушій",
       "submitPassword": "Розблокувати",
+      "changePort": "Застосувати порт і перезапустити",
+      "configureBackend": "Налаштувати бекенд",
       "repair": "Виправити"
+    },
+    "portConfig": {
+      "portLabel": "Локальний порт",
+      "suggestPort": "Підібрати порт",
+      "suggestPortTooltip": "Знайти наступний вільний TCP-порт",
+      "testPort": "Перевірити порт",
+      "testPortTooltip": "Перевірити, чи вільний цей порт",
+      "portAvailable": "Порт {{port}} вільний",
+      "portOccupied": "Порт {{port}} зайнятий",
+      "portOccupiedTooltip": "Вибраний порт зайнятий іншим процесом",
+      "invalidPort": "Порт має бути в діапазоні від 1024 до 65535"
     },
     "details": {
       "issueLabel": "Проблема",
@@ -3127,6 +3172,14 @@
       "rcloneAuth": {
         "issue": "Автентифікацію відхилено",
         "action": "Завершити застарілий процес та перезапустити рушій"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Віддалену автентифікацію відхилено",
+        "action": "Налаштуйте облікові дані бекенда в налаштуваннях"
+      },
+      "rclonePort": {
+        "issue": "Порт {{port}} використовується",
+        "action": "Змінити порт та перезапустити рушій"
       }
     },
     "tooltips": {
@@ -3170,67 +3223,314 @@
     "cleared": "Дані очищено"
   },
   "flow": {
-    "title": "Flow",
+    "title": "Потоки",
     "search": "Пошук потоків...",
     "toggleSearch": "Перемкнути пошук",
     "loading": "Завантаження потоків...",
-    "noResults": "Немає відповідних потоків",
-    "toggleSidebar": "Перемкнути бічну панель Flow",
+    "noResults": "Збігів не знайдено",
+    "toggleSidebar": "Бічна панель потоків",
     "empty": {
-      "description": "Створіть швидкий запуск або робочий процес для швидких операцій та конвеєрів."
+      "description": "Створіть швидкий запуск або робочий процес для швидких операцій та автоматизацій."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Швидкі Запуски",
+      "new": "Новий Швидкий Запуск",
+      "actions": {
+        "start": "Запустити",
+        "stop": "Зупинити"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Заплановане завдання",
+        "watcher": "Відстеження папки активне",
+        "watcherChangedOnly": "Відстеження папки активне (лише підкаталоги)",
+        "autostart": "Автозапуск увімкнено"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "Виконується"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Всього швидких запусків"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Швидкий запуск",
+        "createFirst": "Створіть свій перший швидкий запуск для виконання операцій без створення профілів.",
         "noRunsForRemote": "Для {{remote}} не налаштовано швидких запусків.",
         "createForRemote": "Створити швидкий запуск для {{remote}}"
+      },
+      "detail": {
+        "configuration": "Конфігурація"
+      },
+      "editor": {
+        "createTitle": "Створити швидкий запуск",
+        "editTitle": "Редагувати швидкий запуск",
+        "name": "Назва",
+        "nameRequired": "Назва обов’язкова",
+        "description": "Опис (необов’язково)",
+        "remote": "Віддалений диск",
+        "noRemotes": "Диски не налаштовані",
+        "remoteRequired": "Необхідно вибрати диск",
+        "selectRemoteFirst": "Виберіть диск для автодоповнення",
+        "tabVfs": "VFS",
+        "tabFilter": "Фільтр",
+        "tabBackend": "Бекенд",
+        "tabRuntimeRemote": "Диск виконання"
       }
     },
     "tabs": {
       "quickRun": "Швидкий запуск",
       "workflow": "Робочий процес"
     },
-    "builder": {
-      "placeholderTitle": "Конструктор робочих процесів у розробці",
-      "placeholderMessage": "Візуальне полотно для багатоетапних конвеєрів rclone незабаром з'явиться.",
-      "viewRoadmap": "Переглянути план розвитку на GitHub"
+    "workflow": {
+      "title": "Редактор робочих процесів",
+      "untitled": "Процес без назви",
+      "savedWorkflows": "Збережені процеси",
+      "presetRecipes": "Готові шаблони",
+      "categories": {
+        "all": "Всі"
+      },
+      "category": {
+        "trigger": "Тригер",
+        "task": "Завдання",
+        "logic": "Логіка",
+        "action": "Дія"
+      },
+      "actions": {
+        "configure": "Налаштувати вузол",
+        "duplicate": "Дублювати вузол",
+        "delete": "Видалити вузол",
+        "duplicateWorkflow": "Дублювати процес",
+        "deleteWorkflow": "Видалити процес",
+        "exportWorkflow": "Експорт JSON"
+      },
+      "toolbar": {
+        "togglePalette": "Бібліотека вузлів",
+        "selectWorkflow": "Вибрати процес",
+        "newWorkflow": "Новий процес",
+        "run": "Запустити процес",
+        "stop": "Зупинити процес",
+        "presets": "Шаблони та рецепти",
+        "undo": "Скасувати",
+        "redo": "Повторити",
+        "zoomOut": "Зменшити",
+        "zoomIn": "Збільшити",
+        "resetZoom": "Скинути масштаб",
+        "fitToView": "За розміром екрана",
+        "snapToGrid": "Прив’язати до сітки",
+        "toggleLog": "Журнал виконання",
+        "toggleInspector": "Інспектор",
+        "cleanDuplicates": "Очистити дублікати"
+      },
+      "palette": {
+        "title": "Бібліотека вузлів",
+        "searchPlaceholder": "Пошук вузлів...",
+        "clickToAdd": "Натисніть або перетягніть для додавання",
+        "add": "Додати вузол",
+        "noResults": "Вузлів не знайдено",
+        "hideSearch": "Приховати пошук і фільтри",
+        "showSearch": "Показати пошук і фільтри"
+      },
+      "inspector": {
+        "title": "Інспектор вузла",
+        "general": "Загальні налаштування",
+        "parameters": "Параметри та опції",
+        "nodeTitle": "Назва вузла",
+        "nodeSubtitle": "Підзаголовок / Опис",
+        "subtitlePlaceholder": "Напр. Щоденне резервне копіювання",
+        "cronExpression": "Вираз Cron",
+        "invalidCron": "Некоректний вираз cron",
+        "cronHourly": "Щогодини",
+        "cronDaily": "Щодня о 02:00",
+        "cronWeekly": "Щотижня (Пн)",
+        "watchFolder": "Шлях до відстежуваної папки",
+        "debounceSeconds": "Затримка стабілізації (сек)",
+        "remote": "Віддалений диск",
+        "localOrSelect": "Локальний / Вибрати диск",
+        "sourcePath": "Вихідний шлях (srcFs)",
+        "destinationPath": "Шлях призначення (dstFs)",
+        "mountPoint": "Точка монтування",
+        "rcEndpoint": "Ендпоінт RC",
+        "delaySeconds": "Тривалість затримки (сек)",
+        "conditionOperator": "Оператор умови",
+        "opEquals": "Дорівнює (==)",
+        "opNotEquals": "Не дорівнює (!=)",
+        "opContains": "Містить",
+        "opTruthy": "Не порожньо / Істина (Truthy)",
+        "leftValue": "Лівий вираз / Значення",
+        "rightValue": "Праве значення порівняння",
+        "alertTitle": "Заголовок сповіщення",
+        "alertMessage": "Текст сповіщення",
+        "severity": "Рівень важливості",
+        "severityInfo": "Інформація",
+        "severitySuccess": "Успіх",
+        "severityError": "Помилка / Попередження",
+        "openDetailed": "Детальні налаштування",
+        "openDetailedTooltip": "Відкрити панель розширених параметрів і прапорців",
+        "activeConfig": "Активна конфігурація та прапорці",
+        "noActiveConfig": "Додаткових прапорців або фільтрів не налаштовано",
+        "removeFlag": "Видалити параметр",
+        "addFlagsHint": "Натисніть Детальні налаштування, щоб налаштувати розширені прапорці Rclone, фільтри та опції VFS.",
+        "manualDesc": "Manual trigger starts the workflow on demand. No additional configuration required.",
+        "parallelForkDesc": "Splits execution into multiple concurrent branches.",
+        "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
+        "jobEventProfile": "Target Profile / Job",
+        "jobEventPlaceholder": "Select a profile to monitor",
+        "unmountPoint": "Mount Point",
+        "unmountPlaceholder": "/mnt/remote or C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "appStartDesc": "Trigger automatically on application startup with optional delay.",
+        "startupDelay": "Startup Delay (seconds)",
+        "delay0s": "Immediate (0s)",
+        "fileFilterPattern": "File Filter Pattern (glob)",
+        "eventState": "Event State Filter",
+        "eventStateAny": "Any Completion (Success or Failure)",
+        "eventStateSuccess": "Only on Success",
+        "eventStateFailed": "Only on Failure",
+        "optionalPath": "Optional Subfolder Path",
+        "cryptRemote": "Crypt Remote",
+        "selectCryptRemote": "Select crypt remote...",
+        "cryptDstPath": "Encrypted Destination Path",
+        "scriptCommand": "Command / Script",
+        "scriptArguments": "Arguments (optional)",
+        "workingDir": "Working Directory (optional)",
+        "selectQuickRun": "Select Quick Run Profile",
+        "quickRunPlaceholder": "Select a quick run...",
+        "stopStatus": "Termination Status",
+        "stopStatusSuccess": "Complete with Success",
+        "stopStatusFailed": "Halt with Error / Failure",
+        "stopMessage": "Stop Message / Reason",
+        "powerAction": "Power Action",
+        "powerSleep": "Sleep / Suspend",
+        "powerShutdown": "Shutdown Computer",
+        "powerHibernate": "Hibernate",
+        "powerLock": "Lock Screen / Session",
+        "auditMessage": "Audit Log Message",
+        "severityWarn": "Warning",
+        "opNotContains": "Does Not Contain",
+        "opGreaterThan": "Greater Than (>)",
+        "opLessThan": "Less Than (<)",
+        "opIsEmpty": "Is Empty",
+        "opFileExists": "File/Path Exists",
+        "executionStatus": "Стан виконання"
+      },
+      "status": {
+        "running": "Виконується",
+        "success": "Завершено",
+        "failed": "Помилка",
+        "skipped": "Пропущено",
+        "idle": "Очікування"
+      },
+      "sheet": {
+        "title": "Налаштування вузла",
+        "configureNode": "Налаштування вузла ({{type}})",
+        "nodeSaved": "Параметри вузла успішно збережено",
+        "saveAndClose": "Застосувати та закрити",
+        "tabGeneral": "Загальні & Шляхи",
+        "tabOperations": "Прапорці операцій",
+        "tabFilter": "Параметри фільтрації",
+        "tabBackend": "Опції бекенду",
+        "tabVfs": "Опції VFS",
+        "tabMount": "Опції монтування",
+        "tabServe": "Опції сервера",
+        "tabCron": "Розклад Cron",
+        "tabWatch": "Відстеження папки",
+        "expand": "Розгорнути панель",
+        "collapse": "Згорнути панель",
+        "searchFlags": "Пошук прапорців та опцій...",
+        "configuredCount": "Налаштовано: {{count}}",
+        "modeActionRef": "Use Saved Alert Action",
+        "modeInline": "Custom Inline Channel",
+        "overrideTemplate": "Override Message Template",
+        "saveAsGlobalAction": "Save as Alert Action",
+        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
+        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
+        "notificationTestSuccess": "Test notification sent successfully",
+        "templateVariables": "Template Variables",
+        "insertVarHint": "Click to insert variable into template"
+      },
+      "ports": {
+        "in": "Вхід",
+        "out": "Вихід",
+        "start": "Старт",
+        "trigger": "Тригер",
+        "onChange": "При зміні",
+        "onFinish": "При завершенні",
+        "success": "Успіх",
+        "failure": "Помилка",
+        "true": "Істина",
+        "false": "Хибність",
+        "afterDelay": "Після затримки",
+        "branch1": "Гілка 1",
+        "branch2": "Гілка 2",
+        "in1": "Вхід 1",
+        "in2": "Вхід 2",
+        "done": "Готово",
+        "mounted": "Змонтовано"
+      },
+      "nodes": {
+        "manualTrigger": "Ручний запуск",
+        "manualTriggerDesc": "Запуск процесу вручну за запитом",
+        "cronSchedule": "Розклад Cron",
+        "cronScheduleDesc": "Запуск за регулярним розкладом cron",
+        "folderWatcher": "Відстеження папки",
+        "folderWatcherDesc": "Запуск при зміні файлів у локальній папці",
+        "jobEvent": "Подія завершення завдання",
+        "jobEventDesc": "Запуск після завершення іншого профілю або швидкого запуску",
+        "rcCommand": "Команда Rclone RC",
+        "rcCommandDesc": "Виклик довільного ендпоінту RC API",
+        "condition": "Розгалуження за умовою",
+        "conditionDesc": "Розділення потоку на основі перевірки умови",
+        "delay": "Таймер затримки",
+        "delayDesc": "Призупинення виконання на заданий час",
+        "parallelFork": "Паралельний поділ",
+        "parallelForkDesc": "Одночасне паралельне виконання кількох гілок",
+        "join": "Об’єднання гілок",
+        "joinDesc": "Очікування завершення всіх паралельних гілок",
+        "notification": "Сповіщення на стільниці",
+        "notificationDesc": "Показати системне спливаюче сповіщення",
+        "unmount": "Розмонтувати диск",
+        "unmountDesc": "Безпечне розмонтування активної файлової системи",
+        "appStart": "On App Launch",
+        "appStartDesc": "Trigger automatically when Rclone Manager starts",
+        "cleanup": "Cleanup Trash",
+        "cleanupDesc": "Empty remote trash or recycle bin",
+        "cryptcheck": "Cryptcheck",
+        "cryptcheckDesc": "Verify integrity of encrypted remote",
+        "execScript": "Execute Script",
+        "execScriptDesc": "Run local shell command or script",
+        "quickRun": "Quick Run",
+        "quickRunDesc": "Execute a saved Quick Run profile",
+        "stop": "Stop Workflow",
+        "stopDesc": "Halt workflow execution",
+        "systemPower": "System Power",
+        "systemPowerDesc": "Sleep, lock or shutdown host system",
+        "logAudit": "Audit Log",
+        "logAuditDesc": "Write entry to workflow execution log"
+      },
+      "logs": {
+        "title": "Журнал виконання",
+        "copy": "Скопіювати журнал",
+        "clear": "Очистити журнал",
+        "jumpToNode": "Натисніть, щоб виділити вузол на полотні",
+        "empty": "Журнал виконання поки порожній. Запустіть робочий процес."
+      },
+      "details": "Властивості процесу",
+      "name": "Назва процесу",
+      "description": "Опис процесу",
+      "descriptionPlaceholder": "Опишіть призначення цього робочого процесу...",
+      "deleteConfirm": "Ви дійсно хочете видалити цей процес?",
+      "cleanDuplicates": "Очистити дублікати",
+      "cleanDuplicatesConfirm": "Ви дійсно хочете видалити повторювані процеси?",
+      "stats": {
+        "title": "Огляд",
+        "nodes": "Всього вузлів",
+        "connections": "Зв'язки",
+        "created": "Створено",
+        "updated": "Оновлено"
+      }
     }
   },
   "templates": {

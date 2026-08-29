@@ -100,6 +100,16 @@ export class EventListenersService extends TauriBaseService {
     );
   }
 
+  listenToRcloneEnginePortError(): Observable<{ port: number; message: string }> {
+    return this.listenToEngineStatus().pipe(
+      filter(
+        (event): event is { status: 'portError'; payload: { port: number; message: string } } =>
+          event.status === 'portError'
+      ),
+      map(event => event.payload)
+    );
+  }
+
   listenToEngineErrorState(): Observable<EngineErrorType> {
     return this.listenToEngineStatus().pipe(
       map(state => {
@@ -112,6 +122,8 @@ export class EventListenersService extends TauriBaseService {
             return 'path' as const;
           case 'versionError':
             return 'version' as const;
+          case 'portError':
+            return 'port' as const;
           case 'error':
             return 'generic' as const;
           default:

@@ -84,7 +84,7 @@ impl RcApiEngine {
 
     #[cfg(not(feature = "librclone"))]
     pub async fn wait_until_ready(
-        &self,
+        &mut self,
         app: &AppHandle,
         timeout_secs: u64,
     ) -> Result<(), WaitReadyError> {
@@ -93,7 +93,20 @@ impl RcApiEngine {
 
         let check_future = async {
             loop {
-                if !self.is_process_alive() {
+                // Check if the spawned child process has exited (try_wait reaps status & handles zombies immediately)
+                if let Some(child) = &mut self.process {
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            debug!("Child process exited with status: {status}");
+                            return Err(WaitReadyError::ProcessDied);
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            debug!("Error checking child process status: {e}");
+                            return Err(WaitReadyError::ProcessDied);
+                        }
+                    }
+                } else if !self.is_process_alive() {
                     return Err(WaitReadyError::ProcessDied);
                 }
 

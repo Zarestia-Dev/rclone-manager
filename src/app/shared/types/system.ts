@@ -194,6 +194,7 @@ export enum RepairSheetType {
   RCLONE_BINARY = 'rclone_binary',
   RCLONE_VERSION = 'rclone_version',
   RCLONE_AUTH = 'rclone_auth',
+  RCLONE_PORT = 'rclone_port',
 }
 
 export interface LocalDiskUsage {

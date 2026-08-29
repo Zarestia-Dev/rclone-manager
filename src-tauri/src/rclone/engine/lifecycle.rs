@@ -220,6 +220,8 @@ fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
         #[cfg(not(feature = "librclone"))]
         EnginePhase::FailedVersion { .. } => {}
         #[cfg(not(feature = "librclone"))]
+        EnginePhase::FailedPort { .. } => {}
+        #[cfg(not(feature = "librclone"))]
         EnginePhase::Updating => {}
         EnginePhase::FailedOther { .. } => {}
         _ => {}
@@ -331,7 +333,7 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                     backend.port, backend.port
                 );
                 error!("{msg}");
-                engine.mark_other_failed(msg);
+                engine.mark_port_failed(backend.port, msg);
                 emit_block_status(app, &engine.phase);
                 return;
             }
@@ -348,6 +350,17 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 debug!("Port {} is now free after kill", backend.port);
             }
         }
+    }
+
+    if crate::utils::process::process_manager::is_port_in_use(backend.port) {
+        let msg = format!(
+            "Port {} is already occupied by another process or application",
+            backend.port
+        );
+        error!("{msg}");
+        engine.mark_port_failed(backend.port, msg);
+        emit_block_status(app, &engine.phase);
+        return;
     }
 
     // Step 3: spawn the new rcd and wait for readiness.
@@ -373,11 +386,20 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 Err(WaitReadyError::ProcessDied) => {
                     error!("Rclone process exited during startup");
                     let _ = engine.kill_process(app).await;
-                    handle_start_failure(
-                        engine,
-                        app,
-                        "Rclone process exited during startup (check rclone log)".to_string(),
-                    );
+                    if crate::utils::process::process_manager::is_port_in_use(backend.port) {
+                        let msg = format!(
+                            "Port {} could not be bound (address already in use)",
+                            backend.port
+                        );
+                        engine.mark_port_failed(backend.port, msg);
+                        emit_block_status(app, &engine.phase);
+                    } else {
+                        handle_start_failure(
+                            engine,
+                            app,
+                            "Rclone process exited during startup (check rclone log)".to_string(),
+                        );
+                    }
                 }
                 Err(WaitReadyError::Timeout) => {
                     error!("Failed to start Rclone API within {API_READY_TIMEOUT_SECS}s");

@@ -39,7 +39,10 @@
     "moreActions": "Más acciones",
     "duplicate": "Duplicar",
     "clearAll": "Borrar todo",
-    "acknowledge": "Confirmar"
+    "acknowledge": "Confirmar",
+    "actions": "Acciones",
+    "savedSuccessfully": "Guardado con éxito",
+    "deletedSuccessfully": "Eliminado con éxito"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -336,7 +339,9 @@
       "noActionsHint": "Debe crear una acción de alerta antes de poder asignarla a una regla.",
       "filtersEmptyHint": "Dejar vacío para que coincida con todos los eventos.",
       "scopeFilters": "Filtros de Ámbito",
-      "allEvents": "Todos los eventos"
+      "allEvents": "Todos los eventos",
+      "workflowFilter": "Workflow Filter",
+      "workflowFilterHint": "Filter alerts by specific workflows."
     },
     "events": {
       "job": "Tareas y Operaciones de Archivos",
@@ -345,7 +350,8 @@
       "engine": "Infraestructura del Motor",
       "update": "Actualizaciones de Software",
       "automation": "Automatizaciones",
-      "system": "Eventos del Sistema"
+      "system": "Eventos del Sistema",
+      "workflow": "Visual Workflows"
     },
     "action": {
       "basicInfo": "Información Básica",
@@ -407,10 +413,21 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Nombre de Cabecera",
-      "headerValue": "Valor"
+      "headerValue": "Valor",
+      "channelKind": "Channel Type",
+      "whatsappProvider": "WhatsApp Provider",
+      "telegramMode": "Telegram Mode",
+      "apikey": "API Key",
+      "password": "Password",
+      "username": "Username",
+      "subject": "Subject",
+      "mqttHost": "MQTT Host",
+      "mqttPort": "MQTT Port",
+      "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Aún no hay reglas de alerta configuradas. Cree una regla para recibir notificaciones.",
-    "noActionsHint": "Aún no hay acciones de alerta configuradas. Cree una acción para definir cómo se entregan las alertas."
+    "noActionsHint": "Aún no hay acciones de alerta configuradas. Cree una acción para definir cómo se entregan las alertas.",
+    "test": "Test"
   },
   "settings": {
     "resetAll": {
@@ -624,6 +641,10 @@
       "auth": {
         "title": "Autenticación de Rclone requerida",
         "subtitle": "Verifique sus credenciales o contraseña de configuración"
+      },
+      "port": {
+        "title": "Puerto ya en uso",
+        "subtitle": "El puerto configurado está ocupado por otra aplicación"
       }
     }
   },
@@ -3006,7 +3027,11 @@
       "engineConnectionFailed": "Error de conexión con el motor",
       "engineBinaryNotFound": "Rclone no encontrado",
       "enginePasswordRequired": "Contraseña requerida",
-      "engineAuthFailed": "Error de Autenticación del Motor"
+      "engineAuthFailed": "Error de Autenticación del Motor",
+      "workflowStarted": "Workflow '{{name}}' Started",
+      "workflowCompleted": "Workflow '{{name}}' Completed",
+      "workflowFailed": "Workflow '{{name}}' Failed",
+      "workflowStopped": "Workflow '{{name}}' Stopped"
     },
     "body": {
       "mountSucceeded": "Perfil {{remote}} '{{profile}}' de {{backend}} montado con éxito en {{mountPoint}}.",
@@ -3044,7 +3069,11 @@
       "engineBinaryNotFound": "Binario de rclone no encontrado, verifique su configuración.",
       "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración.",
       "engineAuthFailed": "Error al autenticar con el motor de rclone: {{error}}",
-      "powerInhibited": "Las operaciones activas impiden la suspensión del sistema."
+      "powerInhibited": "Las operaciones activas impiden la suspensión del sistema.",
+      "workflowStarted": "Workflow '{{name}}' started execution.",
+      "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
+      "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
+      "workflowStopped": "Workflow '{{name}}' was stopped."
     }
   },
   "repairSheet": {
@@ -3061,24 +3090,27 @@
     },
     "titles": {
       "missingRclone": "Falta Rclone",
-      "missingMountPlugin": "Falta plugin de montaje",
-      "corruptConfig": "Configuración corrupta",
+      "missingMountPlugin": "Falta el complemento de montaje",
+      "corruptConfig": "Configuración dañada",
       "backendError": "Error de backend",
-      "passwordRequired": "Se requiere contraseña",
+      "passwordRequired": "Contraseña requerida",
       "systemIssue": "Problema del sistema",
-      "versionTooOld": "Rclone obsoleto",
-      "authRequired": "Autenticación requerida"
+      "versionTooOld": "Rclone desactualizado",
+      "authRequired": "Autenticación requerida",
+      "portInUse": "Puerto ya en uso"
     },
     "messages": {
-      "missingRclone": "No se pudo encontrar el binario de rclone. Por favor instálelo para continuar.",
-      "missingMountPlugin": "El plugin de montaje es necesario para montar remotos. Instálelo para habilitar esta función.",
-      "corruptConfig": "El archivo de configuración de rclone parece estar corrupto. ¿Restaurar desde una copia de seguridad?",
-      "backendError": "El backend de rclone es inalcanzable. Reiniciar el motor puede solucionar esto.",
-      "passwordRequired": "Su configuración de rclone está encriptada. Por favor ingrese su contraseña.",
-      "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Por favor actualice para continuar.",
+      "missingRclone": "No se pudo encontrar el binario de rclone. Instálelo para continuar.",
+      "missingMountPlugin": "El complemento de montaje es necesario para montar remotos. Instálelo para habilitar esta función.",
+      "corruptConfig": "El archivo de configuración de rclone parece estar dañado. ¿Restaurar desde la copia de seguridad?",
+      "backendError": "El backend de rclone no está disponible. Reiniciar el motor puede solucionar esto.",
+      "passwordRequired": "Su configuración de rclone está cifrada. Por favor, introduzca su contraseña.",
+      "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Actualícela para continuar.",
       "defaultParams": "Un componente del sistema no funciona correctamente.",
-      "mountPluginStatusError": "Error al verificar el estado",
-      "authRequired": "El backend rechazó la conexión debido a un fallo de autenticación."
+      "mountPluginStatusError": "Error al comprobar el estado",
+      "authRequired": "El backend rechazó la conexión debido a un fallo de autenticación.",
+      "remoteAuthRequired": "El backend remoto rechazó la conexión debido a un fallo de autenticación. Por favor, verifique sus credenciales.",
+      "portInUse": "El puerto {{port}} ya está ocupado por otra aplicación o conexión. Elija un puerto diferente para continuar."
     },
     "progress": {
       "installingRclone": "Instalando Rclone...",
@@ -3095,7 +3127,20 @@
       "restoreBackup": "Restaurar copia de seguridad",
       "restartEngine": "Reiniciar motor",
       "submitPassword": "Desbloquear",
+      "changePort": "Aplicar puerto y reiniciar",
+      "configureBackend": "Configurar backend",
       "repair": "Reparar"
+    },
+    "portConfig": {
+      "portLabel": "Puerto local",
+      "suggestPort": "Sugerir puerto",
+      "suggestPortTooltip": "Buscar el siguiente puerto TCP disponible",
+      "testPort": "Probar puerto",
+      "testPortTooltip": "Comprobar si este puerto está disponible",
+      "portAvailable": "El puerto {{port}} está disponible",
+      "portOccupied": "El puerto {{port}} está en uso",
+      "portOccupiedTooltip": "El puerto seleccionado está ocupado por otro proceso",
+      "invalidPort": "El puerto debe estar entre 1024 y 65535"
     },
     "details": {
       "issueLabel": "Problema",
@@ -3127,6 +3172,14 @@
       "rcloneAuth": {
         "issue": "Autenticación rechazada",
         "action": "Terminar proceso obsoleto y reiniciar el motor"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Autenticación remota rechazada",
+        "action": "Configurar credenciales de backend en ajustes"
+      },
+      "rclonePort": {
+        "issue": "Puerto {{port}} en uso",
+        "action": "Cambiar puerto y reiniciar motor"
       }
     },
     "tooltips": {
@@ -3170,67 +3223,314 @@
     "cleared": "Datos Limpiados"
   },
   "flow": {
-    "title": "Flow",
+    "title": "Flujo",
     "search": "Buscar flujos...",
     "toggleSearch": "Alternar búsqueda",
     "loading": "Cargando flujos...",
-    "noResults": "No se encontraron flujos coincidentes",
-    "toggleSidebar": "Alternar barra lateral de Flow",
+    "noResults": "No se encontraron elementos de flujo",
+    "toggleSidebar": "Alternar barra lateral de flujos",
     "empty": {
-      "description": "Cree una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones rápidas."
+      "description": "Crea una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Ejecuciones Rápidas",
+      "new": "Nueva Ejecución Rápida",
+      "actions": {
+        "start": "Iniciar",
+        "stop": "Detener"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Tarea Programada",
+        "watcher": "Vigilante de Carpeta Activo",
+        "watcherChangedOnly": "Vigilante de Carpeta Activo (solo subdirectorios)",
+        "autostart": "Inicio Automático Activado"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "En ejecución"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Total de Ejecuciones Rápidas"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Inicio Rápido",
+        "createFirst": "Crea tu primera Ejecución Rápida para realizar operaciones rápidas sin perfiles.",
         "noRunsForRemote": "No hay ejecuciones rápidas configuradas para {{remote}}.",
-        "createForRemote": "Crear ejecución rápida para {{remote}}"
+        "createForRemote": "Crear Ejecución Rápida para {{remote}}"
+      },
+      "detail": {
+        "configuration": "Configuración"
+      },
+      "editor": {
+        "createTitle": "Crear Ejecución Rápida",
+        "editTitle": "Editar Ejecución Rápida",
+        "name": "Nombre",
+        "nameRequired": "El nombre es obligatorio",
+        "description": "Descripción (opcional)",
+        "remote": "Remoto",
+        "noRemotes": "No hay remotos configurados",
+        "remoteRequired": "El remoto es obligatorio",
+        "selectRemoteFirst": "Selecciona un remoto para ver el autocompletado",
+        "tabVfs": "VFS",
+        "tabFilter": "Filtro",
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Remoto en Tiempo de Ejecución"
       }
     },
     "tabs": {
-      "quickRun": "Ejecución rápida",
-      "workflow": "Flujo de trabajo"
+      "quickRun": "Ejecución Rápida",
+      "workflow": "Flujo de Trabajo"
     },
-    "builder": {
-      "placeholderTitle": "Constructor de flujos de trabajo en progreso",
-      "placeholderMessage": "Próximamente habrá un lienzo visual para cadenas de tareas de rclone de varios pasos.",
-      "viewRoadmap": "Ver hoja de ruta en GitHub"
+    "workflow": {
+      "title": "Editor de Flujos",
+      "untitled": "Flujo sin título",
+      "savedWorkflows": "Flujos guardados",
+      "presetRecipes": "Recetas predefinidas",
+      "categories": {
+        "all": "Todos"
+      },
+      "category": {
+        "trigger": "Disparador",
+        "task": "Tarea",
+        "logic": "Lógica",
+        "action": "Acción"
+      },
+      "actions": {
+        "configure": "Configurar nodo",
+        "duplicate": "Duplicar nodo",
+        "delete": "Eliminar nodo",
+        "duplicateWorkflow": "Duplicar flujo",
+        "deleteWorkflow": "Eliminar flujo",
+        "exportWorkflow": "Exportar JSON"
+      },
+      "toolbar": {
+        "togglePalette": "Biblioteca de nodos",
+        "selectWorkflow": "Seleccionar flujo",
+        "newWorkflow": "Nuevo flujo",
+        "run": "Ejecutar flujo",
+        "stop": "Detener flujo",
+        "presets": "Plantillas y recetas",
+        "undo": "Deshacer",
+        "redo": "Rehacer",
+        "zoomOut": "Alejar",
+        "zoomIn": "Acercar",
+        "resetZoom": "Restablecer zoom",
+        "fitToView": "Ajustar a pantalla",
+        "snapToGrid": "Ajustar a la cuadrícula",
+        "toggleLog": "Registro de ejecución",
+        "toggleInspector": "Alternar inspector",
+        "cleanDuplicates": "Limpiar duplicados"
+      },
+      "palette": {
+        "title": "Biblioteca de nodos",
+        "searchPlaceholder": "Buscar nodos...",
+        "clickToAdd": "Haz clic o arrastra para añadir al lienzo",
+        "add": "Añadir nodo",
+        "noResults": "No se encontraron nodos",
+        "hideSearch": "Ocultar búsqueda y filtros",
+        "showSearch": "Mostrar búsqueda y filtros"
+      },
+      "inspector": {
+        "title": "Inspector de nodos",
+        "general": "Configuración general",
+        "parameters": "Parámetros y opciones",
+        "nodeTitle": "Título del nodo",
+        "nodeSubtitle": "Subtítulo / Descripción",
+        "subtitlePlaceholder": "Ej. Copia diaria de documentos",
+        "cronExpression": "Expresión Cron",
+        "invalidCron": "Expresión cron no válida",
+        "cronHourly": "Cada hora",
+        "cronDaily": "Diariamente a las 02:00",
+        "cronWeekly": "Semanal (Lun)",
+        "watchFolder": "Ruta de carpeta a vigilar",
+        "debounceSeconds": "Retardo de estabilización (segundos)",
+        "remote": "Remoto",
+        "localOrSelect": "Local / Seleccionar remoto",
+        "sourcePath": "Ruta de origen (srcFs)",
+        "destinationPath": "Ruta de destino (dstFs)",
+        "mountPoint": "Directorio de punto de montaje",
+        "rcEndpoint": "Punto final RC",
+        "delaySeconds": "Duración del retraso (segundos)",
+        "conditionOperator": "Operador de condición",
+        "opEquals": "Igual a (==)",
+        "opNotEquals": "Distinto de (!=)",
+        "opContains": "Contiene",
+        "opTruthy": "No vacío / Verdadero (Truthy)",
+        "leftValue": "Expresión / Valor izquierdo",
+        "rightValue": "Valor de comparación derecho",
+        "alertTitle": "Título de la alerta",
+        "alertMessage": "Mensaje de la alerta",
+        "severity": "Nivel de gravedad",
+        "severityInfo": "Información",
+        "severitySuccess": "Éxito",
+        "severityError": "Error / Alerta",
+        "openDetailed": "Configuración detallada",
+        "openDetailedTooltip": "Abrir editor avanzado de parámetros y opciones",
+        "activeConfig": "Configuración activa y opciones",
+        "noActiveConfig": "Sin parámetros adicionales configurados",
+        "removeFlag": "Eliminar parámetro",
+        "addFlagsHint": "Haz clic en Configuración detallada para configurar parámetros avanzados de Rclone, filtros y opciones VFS.",
+        "manualDesc": "Manual trigger starts the workflow on demand. No additional configuration required.",
+        "parallelForkDesc": "Splits execution into multiple concurrent branches.",
+        "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
+        "jobEventProfile": "Target Profile / Job",
+        "jobEventPlaceholder": "Select a profile to monitor",
+        "unmountPoint": "Mount Point",
+        "unmountPlaceholder": "/mnt/remote or C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "appStartDesc": "Trigger automatically on application startup with optional delay.",
+        "startupDelay": "Startup Delay (seconds)",
+        "delay0s": "Immediate (0s)",
+        "fileFilterPattern": "File Filter Pattern (glob)",
+        "eventState": "Event State Filter",
+        "eventStateAny": "Any Completion (Success or Failure)",
+        "eventStateSuccess": "Only on Success",
+        "eventStateFailed": "Only on Failure",
+        "optionalPath": "Optional Subfolder Path",
+        "cryptRemote": "Crypt Remote",
+        "selectCryptRemote": "Select crypt remote...",
+        "cryptDstPath": "Encrypted Destination Path",
+        "scriptCommand": "Command / Script",
+        "scriptArguments": "Arguments (optional)",
+        "workingDir": "Working Directory (optional)",
+        "selectQuickRun": "Select Quick Run Profile",
+        "quickRunPlaceholder": "Select a quick run...",
+        "stopStatus": "Termination Status",
+        "stopStatusSuccess": "Complete with Success",
+        "stopStatusFailed": "Halt with Error / Failure",
+        "stopMessage": "Stop Message / Reason",
+        "powerAction": "Power Action",
+        "powerSleep": "Sleep / Suspend",
+        "powerShutdown": "Shutdown Computer",
+        "powerHibernate": "Hibernate",
+        "powerLock": "Lock Screen / Session",
+        "auditMessage": "Audit Log Message",
+        "severityWarn": "Warning",
+        "opNotContains": "Does Not Contain",
+        "opGreaterThan": "Greater Than (>)",
+        "opLessThan": "Less Than (<)",
+        "opIsEmpty": "Is Empty",
+        "opFileExists": "File/Path Exists",
+        "executionStatus": "Estado de ejecución"
+      },
+      "status": {
+        "running": "En ejecución",
+        "success": "Completado",
+        "failed": "Fallido",
+        "skipped": "Omitido",
+        "idle": "Inactivo"
+      },
+      "sheet": {
+        "title": "Configuración del nodo",
+        "configureNode": "Configurar nodo ({{type}})",
+        "nodeSaved": "Configuración del nodo guardada correctamente",
+        "saveAndClose": "Aplicar y cerrar",
+        "tabGeneral": "General y rutas",
+        "tabOperations": "Opciones de operación",
+        "tabFilter": "Opciones de filtro",
+        "tabBackend": "Opciones de backend",
+        "tabVfs": "Opciones VFS",
+        "tabMount": "Opciones de montaje",
+        "tabServe": "Opciones de servidor",
+        "tabCron": "Programación Cron",
+        "tabWatch": "Vigilancia de carpetas",
+        "expand": "Expandir panel",
+        "collapse": "Contraer panel",
+        "searchFlags": "Buscar parámetros y opciones...",
+        "configuredCount": "{{count}} configurados",
+        "modeActionRef": "Use Saved Alert Action",
+        "modeInline": "Custom Inline Channel",
+        "overrideTemplate": "Override Message Template",
+        "saveAsGlobalAction": "Save as Alert Action",
+        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
+        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
+        "notificationTestSuccess": "Test notification sent successfully",
+        "templateVariables": "Template Variables",
+        "insertVarHint": "Click to insert variable into template"
+      },
+      "ports": {
+        "in": "Entrada",
+        "out": "Salida",
+        "start": "Iniciar",
+        "trigger": "Disparador",
+        "onChange": "Al cambiar",
+        "onFinish": "Al terminar",
+        "success": "Éxito",
+        "failure": "Fallo",
+        "true": "Verdadero",
+        "false": "Falso",
+        "afterDelay": "Tras retraso",
+        "branch1": "Rama 1",
+        "branch2": "Rama 2",
+        "in1": "Entrada 1",
+        "in2": "Entrada 2",
+        "done": "Listo",
+        "mounted": "Montado"
+      },
+      "nodes": {
+        "manualTrigger": "Disparador manual",
+        "manualTriggerDesc": "Iniciar flujo manualmente bajo demanda",
+        "cronSchedule": "Programación Cron",
+        "cronScheduleDesc": "Disparar según horario cron recurrente",
+        "folderWatcher": "Vigilante de carpetas",
+        "folderWatcherDesc": "Disparar cuando cambien archivos en el directorio local",
+        "jobEvent": "Evento de fin de tarea",
+        "jobEventDesc": "Disparar al terminar otro perfil o ejecución rápida",
+        "rcCommand": "Comando RC de Rclone",
+        "rcCommandDesc": "Invocar punto final de la API RC",
+        "condition": "Bifurcación condicional",
+        "conditionDesc": "Ramificar el flujo según prueba condicional",
+        "delay": "Temporizador de retraso",
+        "delayDesc": "Pausar la ejecución durante un tiempo determinado",
+        "parallelFork": "División paralela",
+        "parallelForkDesc": "Ejecutar varias ramas simultáneamente",
+        "join": "Unir ramas",
+        "joinDesc": "Esperar a que finalicen todas las ramas paralelas",
+        "notification": "Notificación de escritorio",
+        "notificationDesc": "Mostrar banner de notificación de escritorio",
+        "unmount": "Desmontar remoto",
+        "unmountDesc": "Desmontar con seguridad el sistema de archivos local activo",
+        "appStart": "On App Launch",
+        "appStartDesc": "Trigger automatically when Rclone Manager starts",
+        "cleanup": "Cleanup Trash",
+        "cleanupDesc": "Empty remote trash or recycle bin",
+        "cryptcheck": "Cryptcheck",
+        "cryptcheckDesc": "Verify integrity of encrypted remote",
+        "execScript": "Execute Script",
+        "execScriptDesc": "Run local shell command or script",
+        "quickRun": "Quick Run",
+        "quickRunDesc": "Execute a saved Quick Run profile",
+        "stop": "Stop Workflow",
+        "stopDesc": "Halt workflow execution",
+        "systemPower": "System Power",
+        "systemPowerDesc": "Sleep, lock or shutdown host system",
+        "logAudit": "Audit Log",
+        "logAuditDesc": "Write entry to workflow execution log"
+      },
+      "logs": {
+        "title": "Registro de ejecución",
+        "copy": "Copiar registros",
+        "clear": "Borrar registros",
+        "jumpToNode": "Haga clic para enfocar el nodo en el lienzo",
+        "empty": "Sin registros de ejecución todavía. Ejecute un flujo de trabajo."
+      },
+      "details": "Detalles del flujo de trabajo",
+      "name": "Nombre del flujo",
+      "description": "Descripción del flujo",
+      "descriptionPlaceholder": "Describa el propósito de este flujo de trabajo...",
+      "deleteConfirm": "¿Está seguro de que desea eliminar este flujo de trabajo?",
+      "cleanDuplicates": "Limpiar duplicados",
+      "cleanDuplicatesConfirm": "¿Está seguro de que desea eliminar los flujos duplicados?",
+      "stats": {
+        "title": "Resumen",
+        "nodes": "Nodos totales",
+        "connections": "Conexiones",
+        "created": "Creado",
+        "updated": "Actualizado"
+      }
     }
   },
   "templates": {

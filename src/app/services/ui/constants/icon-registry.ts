@@ -87,6 +87,7 @@ export const BASE_ICONS: Record<string, string> = {
   unarchive: 'assets/icons/actions/unarchive.svg',
   detailed: 'assets/icons/actions/detailed.svg',
   'drag-indicator': 'assets/icons/actions/drag-indicator.svg',
+  wand: 'assets/icons/actions/wand.svg',
 
   // ------------------- Device Icons -------------------
   'hard-drive': 'assets/icons/devices/hard-drive.svg',

@@ -8,13 +8,17 @@ export interface RepairData {
     | 'config_corrupt'
     | 'backend_unreachable'
     | 'rclone_password'
-    | 'rclone_auth';
+    | 'rclone_auth'
+    | 'rclone_port';
   title?: string;
   message?: string;
   requiresPassword?: boolean;
   showStoreOption?: boolean;
   passwordDescription?: string;
   authError?: string;
+  port?: number;
+  portError?: string;
+  isRemote?: boolean;
 }
 
 export type RepairMode = 'standard' | 'install' | 'config';

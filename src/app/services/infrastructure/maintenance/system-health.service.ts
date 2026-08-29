@@ -8,6 +8,7 @@ import { SystemInfoService } from '../system/system-info.service';
 import { InstallationService } from '../../settings/installation.service';
 import { RclonePasswordService } from '../../security/rclone-password.service';
 import { EventListenersService } from '../system/event-listeners.service';
+import { BackendService } from '../system/backend.service';
 
 export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
 
@@ -17,6 +18,7 @@ export class SystemHealthService {
   private readonly installationService = inject(InstallationService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly backendService = inject(BackendService);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -24,6 +26,7 @@ export class SystemHealthService {
   private hasReportedRclonePathError = false;
   private hasReportedRcloneVersionError = false;
   private hasReportedRcloneAuthError = false;
+  private hasReportedRclonePortError = false;
   private onboardingCompleted = false;
 
   readonly rcloneInstalled = signal<boolean | null>(null);
@@ -292,11 +295,13 @@ export class SystemHealthService {
         this.hasReportedRclonePathError = false;
         this.hasReportedRcloneVersionError = false;
         this.hasReportedRcloneAuthError = false;
+        this.hasReportedRclonePortError = false;
         this.closeSheetsByType(
           RepairSheetType.RCLONE_BINARY,
           RepairSheetType.RCLONE_VERSION,
           RepairSheetType.RCLONE_PASSWORD,
-          RepairSheetType.RCLONE_AUTH
+          RepairSheetType.RCLONE_AUTH,
+          RepairSheetType.RCLONE_PORT
         );
       });
 
@@ -344,6 +349,24 @@ export class SystemHealthService {
         this.showRepairSheet({
           type: RepairSheetType.RCLONE_AUTH,
           authError: message,
+          isRemote: !this.backendService.isLocalBackend(),
+        });
+      });
+
+    this.eventListenersService
+      .listenToRcloneEnginePortError()
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ port, message }) => {
+        if (this.hasReportedRclonePortError) return;
+        if (this.hasActiveSheetOfType(RepairSheetType.RCLONE_PORT)) return;
+        this.hasReportedRclonePortError = true;
+        this.showRepairSheet({
+          type: RepairSheetType.RCLONE_PORT,
+          port,
+          portError: message,
         });
       });
   }

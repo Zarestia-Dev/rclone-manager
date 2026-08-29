@@ -8,8 +8,10 @@
       <div class="repair-content">
         <h3>{{ displayTitle() }}</h3>
         <p>{{ displayMessage() }}</p>
-        @if (data.authError) {
-          <p class="auth-error-detail">{{ data.authError }}</p>
+        @if (data.authError || data.portError) {
+          <div class="error-detail">
+            {{ data.authError || data.portError }}
+          </div>
         }
       </div>
     </div>
@@ -21,7 +23,10 @@
             <mat-icon [svgIcon]="detail.icon"></mat-icon>
             <span>
               <strong>{{ detail.labelKey | translate }}:</strong>
-              {{ detail.valueKey | translate: { required: minRcloneVersion() } }}
+              {{
+                detail.valueKey
+                  | translate: { required: minRcloneVersion(), port: data.port ?? selectedPort() }
+              }}
             </span>
           </div>
         }
@@ -87,6 +92,74 @@
           (validChange)="onInstallationValidChange($event)"
         ></app-installation-options>
       }
+    }
+
+    @if (isRclonePortRepair()) {
+      <div class="port-config-container">
+        <mat-form-field>
+          <mat-label>{{ 'repairSheet.portConfig.portLabel' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            [min]="1024"
+            [max]="65535"
+            [value]="selectedPort()"
+            (input)="onPortChange($event)"
+            [disabled]="installing()"
+          />
+          @if (portInputError()) {
+            <mat-error>{{ portInputError() | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="port-buttons-row">
+          <button
+            type="button"
+            matButton="outlined"
+            class="test-port-btn"
+            (click)="testPort()"
+            [disabled]="installing() || isTestingPort() || isSuggestingPort() || !!portInputError()"
+            [attr.title]="'repairSheet.portConfig.testPortTooltip' | translate"
+          >
+            <mat-icon
+              [svgIcon]="isTestingPort() ? 'spinner' : 'globe'"
+              [class.colorful-spinner]="isTestingPort()"
+            ></mat-icon>
+            {{ 'repairSheet.portConfig.testPort' | translate }}
+          </button>
+
+          <button
+            type="button"
+            matButton="filled"
+            class="accent suggest-port-btn"
+            (click)="suggestNextPort()"
+            [disabled]="installing() || isSuggestingPort() || isTestingPort()"
+            [attr.title]="'repairSheet.portConfig.suggestPortTooltip' | translate"
+          >
+            <mat-icon
+              [svgIcon]="isSuggestingPort() ? 'spinner' : 'wand'"
+              [class.colorful-spinner]="isSuggestingPort()"
+            ></mat-icon>
+            {{ 'repairSheet.portConfig.suggestPort' | translate }}
+          </button>
+        </div>
+
+        @if (portTestResult() === 'available') {
+          <app-alert-banner
+            severity="success"
+            [description]="
+              'repairSheet.portConfig.portAvailable' | translate: { port: selectedPort() }
+            "
+          ></app-alert-banner>
+        } @else if (portTestResult() === 'occupied') {
+          <app-alert-banner
+            severity="error"
+            [description]="
+              'repairSheet.portConfig.portOccupied' | translate: { port: selectedPort() }
+            "
+          ></app-alert-banner>
+        }
+      </div>
     }
 
     @if (installing()) {
