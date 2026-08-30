@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>rclone-manager</id>
+    <version>{{VERSION}}</version>
+    <title>RClone Manager</title>
+    <authors>Zarestia-Dev</authors>
+    <owners>Hakanbaban53</owners>
+    <projectUrl>https://github.com/Zarestia-Dev/rclone-manager</projectUrl>
+    <licenseUrl>https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE</licenseUrl>
+    <iconUrl>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/master/src-tauri/icons/icon.png</iconUrl>
+    <docsUrl>https://hakanismail.info/zarestia/rclone-manager/docs/</docsUrl>
+    <bugTrackerUrl>https://github.com/Zarestia-Dev/rclone-manager/issues</bugTrackerUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A simple cross-platform GUI for rclone, the command-line program to manage files on cloud storage.</description>
+    <summary>A simple cross-platform GUI for rclone.</summary>
+    <releaseNotes>https://github.com/Zarestia-Dev/rclone-manager/releases</releaseNotes>
+    <tags>rclone gui admin cloud s3 storage cross-platform</tags>
+    <packageSourceUrl>https://github.com/Zarestia-Dev/rclone-manager</packageSourceUrl>
+    <projectSourceUrl>https://github.com/Zarestia-Dev/rclone-manager</projectSourceUrl>
+    <dependencies>
+      <dependency id="chocolatey-core.extension" version="1.3.3" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
