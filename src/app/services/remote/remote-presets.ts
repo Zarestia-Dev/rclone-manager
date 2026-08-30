@@ -48,7 +48,7 @@ const FAMILY_PRESETS: Record<StorageFamily, PresetValues> = {
   s3: {
     backend: {
       disable_http2: true,
-      use_server_mod_time: true,
+      use_server_modtime: true,
     },
     vfs: {
       vfs_fast_fingerprint: true,
@@ -103,8 +103,8 @@ const OS_PRESETS: Record<'windows' | 'macos' | 'linux' | 'android', PresetValues
   },
   macos: {
     mount: {
-      no_apple_xattr: true,
-      no_apple_double: true,
+      noapplexattr: true,
+      noappledouble: true,
     },
   },
   linux: {},

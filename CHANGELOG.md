@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Smart Remote vs. Local Authentication Error Handling**:
   - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
 
+### Fixed
+- **Canonical Rclone Preset Flag Mapping for macOS Mounts & S3 Backend**: Corrected preset flag definitions in `RemotePresetsService` to use upstream canonical Rclone flag names (`noappledouble`, `noapplexattr` instead of snake_case `no_apple_*` for macOS mounts, and `use_server_modtime` instead of `use_server_mod_time` for S3). Fixes #290
+
 
 ## [v0.3.2] - 2026-08-24
 

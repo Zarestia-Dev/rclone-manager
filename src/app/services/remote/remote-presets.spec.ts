@@ -76,6 +76,7 @@ describe('RemotePresetsService', () => {
     it('should merge family-specific presets', () => {
       const presets = service.resolvePresets('s3');
       expect(presets.backend?.['disable_http2']).toBe(true);
+      expect(presets.backend?.['use_server_modtime']).toBe(true);
       expect(presets.vfs?.['vfs_fast_fingerprint']).toBe(true);
       // base preset should still be there
       expect(presets.vfs?.['vfs_cache_mode']).toBe('full');
@@ -108,8 +109,8 @@ describe('RemotePresetsService', () => {
       mockBackendService.backends.set([{ name: 'Local', isLocal: true, os: 'darwin' }]);
       mockBackendService.activeBackend.set('Local');
       const presets = service.resolvePresets('sftp');
-      expect(presets.mount?.['no_apple_xattr']).toBe(true);
-      expect(presets.mount?.['no_apple_double']).toBe(true);
+      expect(presets.mount?.['noapplexattr']).toBe(true);
+      expect(presets.mount?.['noappledouble']).toBe(true);
     });
 
     it('should not apply windows presets when client is windows but engine is linux (WSL)', () => {
