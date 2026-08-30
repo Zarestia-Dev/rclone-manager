@@ -6,6 +6,7 @@
 /out-tsc
 /bazel-out
 /target
+/manifests
 
 # Node
 /node_modules
