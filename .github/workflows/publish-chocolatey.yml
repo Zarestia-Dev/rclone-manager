@@ -1,0 +1,83 @@
+name: "Publish to Chocolatey"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g. v0.3.2). Leave empty to use the latest release."
+        required: false
+        type: string
+
+jobs:
+  chocolatey:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $inputVersion = "${{ inputs.version }}"
+          if ($inputVersion) {
+            $ver = $inputVersion.TrimStart('v')
+          } else {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
+            $ver = $release.tag_name.TrimStart('v')
+          }
+          Write-Host "Version: $ver"
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Download installers and compute checksums
+        id: checksums
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          $baseUrl = "https://github.com/${{ github.repository }}/releases/download/v$ver"
+
+          $x64Url = "$baseUrl/RClone.Manager_${ver}_x64_en-US.msi"
+          $arm64Url = "$baseUrl/RClone.Manager_${ver}_arm64_en-US.msi"
+
+          Write-Host "Downloading x64 MSI from $x64Url ..."
+          Invoke-WebRequest -Uri $x64Url -OutFile x64.msi
+
+          Write-Host "Downloading arm64 MSI from $arm64Url ..."
+          Invoke-WebRequest -Uri $arm64Url -OutFile arm64.msi
+
+          $x64Hash = (Get-FileHash x64.msi -Algorithm SHA256).Hash.ToLower()
+          $arm64Hash = (Get-FileHash arm64.msi -Algorithm SHA256).Hash.ToLower()
+
+          Write-Host "x64   SHA256: $x64Hash"
+          Write-Host "arm64 SHA256: $arm64Hash"
+
+          echo "X64_URL=$x64Url" >> $env:GITHUB_OUTPUT
+          echo "ARM64_URL=$arm64Url" >> $env:GITHUB_OUTPUT
+          echo "X64_HASH=$x64Hash" >> $env:GITHUB_OUTPUT
+          echo "ARM64_HASH=$arm64Hash" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare Chocolatey package
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          $chocoDir = "packaging/chocolatey"
+
+          # Update nuspec version
+          $nuspec = Get-Content "$chocoDir/rclone-manager.nuspec" -Raw
+          $nuspec = $nuspec -replace '\{\{VERSION\}\}', $ver
+          Set-Content -Path "$chocoDir/rclone-manager.nuspec" -Value $nuspec -NoNewline
+
+          # Update install script with URLs and hashes
+          $install = Get-Content "$chocoDir/tools/chocolateyInstall.ps1" -Raw
+          $install = $install -replace '\{\{X64_URL\}\}', '${{ steps.checksums.outputs.X64_URL }}'
+          $install = $install -replace '\{\{X64_HASH\}\}', '${{ steps.checksums.outputs.X64_HASH }}'
+          $install = $install -replace '\{\{ARM64_URL\}\}', '${{ steps.checksums.outputs.ARM64_URL }}'
+          $install = $install -replace '\{\{ARM64_HASH\}\}', '${{ steps.checksums.outputs.ARM64_HASH }}'
+          Set-Content -Path "$chocoDir/tools/chocolateyInstall.ps1" -Value $install -NoNewline
+
+      - name: Pack and push
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          cd packaging/chocolatey
+          choco pack rclone-manager.nuspec
+          choco push "rclone-manager.$ver.nupkg" --source https://push.chocolatey.org/ --api-key ${{ secrets.CHOCO_API_KEY }}
