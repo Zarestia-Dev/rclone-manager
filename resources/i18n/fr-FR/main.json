@@ -86,7 +86,7 @@
     "failedMount": "Échec du montage de {{remote}}: {{error}}",
     "successUnmount": "Démonté avec succès {{remote}}",
     "failedUnmount": "Échec de démontage de {{remote}}: {{error}}",
-    "androidRootWarning": "Les types de montage non-SAF nécessitent des privilèges root (Super-utilisateur) sur Android."
+    "androidRootWarning": "Les types de montage non-SAF nécessitent des privilèges root (superutilisateur) sur Android."
   },
   "operations": {
     "available": "Opérations de synchronisation disponibles",
@@ -421,6 +421,8 @@
     "resetFailed": "Échec de la réinitialisation de {{key}} par défaut.",
     "loadFailed": "Impossible de charger les paramètres de l'application.",
     "remoteResetSuccess": "Les paramètres {{remote}} ont été réinitialisés avec succès",
+    "remoteSaved": "Remote enregistré avec succès",
+    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Activer l'icône dans la zone de notification",
@@ -586,9 +588,7 @@
         "label": "Signets",
         "description": "Liste des signets pour un accès rapide."
       }
-    },
-    "remoteSaved": "Remote enregistré avec succès",
-    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -862,6 +862,10 @@
         "successDownload": "Fichier téléchargé avec succès",
         "failDownload": "Échec du téléchargement du fichier"
       },
+      "messages": {
+        "resolveStarted": "La résolution du conflit de fichiers a commencé",
+        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
+      },
       "empty": {
         "noActive": "Aucun transfert actif",
         "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
@@ -881,10 +885,6 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      },
-      "messages": {
-        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}",
-        "resolveStarted": "La résolution du conflit de fichiers a commencé"
       }
     },
     "inputModal": {
@@ -1225,7 +1225,7 @@
       "watchRequiresLocal": "La surveillance en temps réel nécessite au moins un répertoire local source ou destination.",
       "watchMixedSourcesNote": "Seuls les répertoires sources locaux seront surveillés en temps réel. Les changements sur les sources distantes ne déclencheront pas automatiquement la synchronisation.",
       "watchFilterNote": "Le surveillant de fichiers respecte votre profil de filtrage. Les modifications des fichiers ou dossiers exclus (selon un motif, une taille ou un âge) ne déclencheront pas de synchronisation.",
-      "mobileSafMountNote": "Sur Android, le montage rend ce distant disponible dans le sélecteur de fichiers du système et dans d'autres applications via SAF (Storage Access Framework).",
+      "mobileSafMountNote": "Sur Android, le montage rend cet emplacement distant disponible dans le sélecteur de fichiers système et dans d'autres applications via SAF (Storage Access Framework).",
       "scheduleDescription": "Lorsqu'elle est activée, cette opération exécutera <strong>récurrente</strong> en fonction du calendrier cron ci-dessous.",
       "scheduleSubtitle": "Exécutez cette opération automatiquement selon une planification récurrente.",
       "sourcePaths": "Chemin de la source",
