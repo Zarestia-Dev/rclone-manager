@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "アラートルールがまだ設定されていません。通知を受け取るためのルールを作成してください。",
-    "noActionsHint": "アラートアクションがまだ設定されていません。アクションを作成してください。",
-    "test": "Test"
+    "noActionsHint": "アラートアクションがまだ設定されていません。アクションを作成してください。"
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "無題のワークフロー",
       "savedWorkflows": "保存されたワークフロー",
       "presetRecipes": "プリセットレシピ",
+      "unsavedChanges": "未保存の変更",
+      "saving": "保存中...",
       "categories": {
         "all": "すべて"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "グリッドにスナップ",
         "toggleLog": "実行ログの切り替え",
         "toggleInspector": "インスペクターの切り替え",
-        "cleanDuplicates": "重複を削除"
+        "cleanDuplicates": "重複を削除",
+        "dryRun": "ドライラン",
+        "dryRunTooltip": "データを変更したり実際のコマンドを実行したりせずにワークフローの実行をシミュレートします"
       },
       "palette": {
         "title": "ノードライブラリ",
         "searchPlaceholder": "ノードを検索...",
         "clickToAdd": "クリックまたはドラッグしてキャンバスに追加",
-        "add": "ノードを追加",
         "noResults": "一致するノードが見つかりません",
         "hideSearch": "検索とフィルターを非表示",
         "showSearch": "検索とフィルターを表示"
       },
       "inspector": {
-        "title": "ノードインスペクター",
         "general": "一般設定",
         "parameters": "パラメーター & オプション",
         "nodeTitle": "ノード名",
@@ -3347,8 +3348,23 @@
         "localOrSelect": "ローカル / リモートを選択",
         "sourcePath": "ソースパス (srcFs)",
         "destinationPath": "宛先パス (dstFs)",
-        "mountPoint": "マウントポイントディレクトリ",
+        "mountPoint": "マウントポイント",
         "rcEndpoint": "RC エンドポイント",
+        "rcParameters": "RC パラメーター (JSON)",
+        "rcParametersHint": "RC コマンドに渡される JSON ペイロード ({{nodes.id.field}} トークンをサポート)",
+        "rcPresets": "プリセットエンドポイント",
+        "presetCategoryAll": "すべて",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "ストレージ",
+        "presetCategoryCore": "コア",
+        "insertVariable": "ノード出力変数の挿入",
+        "insertTokenBtn": "トークンを挿入",
+        "formatJson": "JSON 整形",
+        "clearJson": "クリア",
+        "validJson": "有効な JSON",
+        "invalidJson": "無効な JSON",
+        "templateJson": "動的テンプレート",
+        "noUpstreamNodesHint": "ワークフローに他のノードを追加して、{{nodes.id.field}} のように出力を動的に参照します",
         "delaySeconds": "遅延時間 (秒)",
         "conditionOperator": "条件演算子",
         "opEquals": "等しい (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "空でない / 真 (Truthy)",
         "leftValue": "左辺の式 / 値",
         "rightValue": "右辺の比較値",
+        "conditionValuePlaceholder": "値または {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/ファイルパスまたは {{nodes.id.path}}",
+        "targetNode": "ターゲットノード",
+        "targetNodeField": "出力フィールド",
+        "targetNodePlaceholder": "ターゲットノードを選択",
+        "targetFieldPlaceholder": "出力フィールドを選択",
+        "resolvedToken": "解決済みトークン",
         "alertTitle": "アラートタイトル",
         "alertMessage": "アラートメッセージ",
         "severity": "重要度レベル",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "エラー時に失敗",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "ワークフローを停止する理由",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "実行状態"
+        "executionStatus": "実行状態",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "ターゲットノード",
+        "serverId": "サーバーID",
+        "modeCustom": "カスタム",
+        "alertAction": "アラートアクション / チャンネル",
+        "selectAlertAction": "アラートアクションを選択...",
+        "noAlertActionsFound": "保存済みのアラートアクションが見つかりません",
+        "openAlertsModal": "アクションを設定",
+        "templateVariables": "テンプレート変数",
+        "insertVariableHint": "クリックしてメッセージに挿入",
+        "joinMode": "結合ポリシー",
+        "joinModeAllSuccess": "すべてのブランチ (AND)",
+        "joinModeAllSuccessHint": "すべての並列ブランチが正常に完了した場合にのみ続行します。",
+        "joinModeAnySuccess": "少なくとも1つ (OR)",
+        "joinModeAnySuccessHint": "すべてのブランチが完了し、少なくとも1つが成功していれば続行します。",
+        "joinModeAlways": "常に続行",
+        "joinModeAlwaysHint": "エラーが発生した場合でも、すべてのブランチが完了したら無条件で続行します。",
+        "joinBranchesTitle": "入力ブランチ",
+        "joinAddBranch": "ブランチ追加",
+        "joinRemoveBranch": "ブランチ削除",
+        "parallelBranchesTitle": "出力ブランチ",
+        "parallelAddBranch": "ブランチ追加",
+        "parallelRemoveBranch": "ブランチ削除",
+        "archiveFormat": "アーカイブ形式",
+        "archivePrefix": "内部プレフィックス (任意)",
+        "downloadUrl": "ダウンロードURL",
+        "autoFilename": "ファイル名を自動決定"
       },
       "status": {
         "running": "実行中",
@@ -3422,34 +3484,6 @@
         "failed": "失敗",
         "skipped": "スキップ",
         "idle": "待機中"
-      },
-      "sheet": {
-        "title": "ノード設定",
-        "configureNode": "ノード設定 ({{type}})",
-        "nodeSaved": "ノード設定を正常に保存しました",
-        "saveAndClose": "適用して閉じる",
-        "tabGeneral": "一般 & パス",
-        "tabOperations": "操作フラグ",
-        "tabFilter": "フィルターオプション",
-        "tabBackend": "バックエンドオプション",
-        "tabVfs": "VFS オプション",
-        "tabMount": "マウントオプション",
-        "tabServe": "配信オプション",
-        "tabCron": "Cron スケジュール",
-        "tabWatch": "フォルダ監視",
-        "expand": "シートを展開",
-        "collapse": "シートを折りたたむ",
-        "searchFlags": "フラグやオプションを検索...",
-        "configuredCount": "{{count}} 件設定済み",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "入力",
@@ -3467,8 +3501,7 @@
         "branch2": "分岐 2",
         "in1": "入力 1",
         "in2": "入力 2",
-        "done": "完了",
-        "mounted": "マウント済み"
+        "done": "完了"
       },
       "nodes": {
         "manualTrigger": "手動トリガー",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "実行ログ",
         "copy": "ログをコピー",
         "clear": "ログをクリア",
         "jumpToNode": "クリックしてキャンバス上のノードにフォーカス",
-        "empty": "実行ログはまだありません。ワークフローを実行してステップ出力を確認してください。"
+        "empty": "実行ログはまだありません。ワークフローを実行してステップ出力を確認してください。",
+        "copied": "ログをクリップボードにコピーしました",
+        "filterAll": "すべて",
+        "filterErrors": "エラー",
+        "filterWarnings": "警告",
+        "filterSuccess": "成功"
       },
       "details": "ワークフロー詳細",
       "name": "ワークフロー名",
@@ -3530,6 +3570,18 @@
         "connections": "接続数",
         "created": "作成日",
         "updated": "更新日"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "手動トリガー",
+        "manualTriggerDesc": "UIから手動でトリガーされました"
+      },
+      "editor": {
+        "configureNode": "ノードを設定: {{type}}",
+        "nodeSaved": "ワークフローノードの設定を更新しました"
       }
     }
   },

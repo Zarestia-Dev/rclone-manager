@@ -6,6 +6,7 @@ import {
   inject,
   DestroyRef,
   afterNextRender,
+  effect,
 } from '@angular/core';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +24,8 @@ import { TitlebarComponent } from 'src/app/layout/titlebar/titlebar.component';
 import { SidebarComponent } from 'src/app/layout/sidebar/sidebar.component';
 import { TabsButtonsComponent } from 'src/app/layout/tabs-buttons/tabs-buttons.component';
 import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quick-run-workspace.component';
+import { WorkflowWorkspaceComponent } from './workflow/components/workflow-workspace/workflow-workspace.component';
+import { WorkflowStateService } from '../services/flow/workflow-state.service';
 import { BannerComponent } from '../layout/banners/banner.component';
 
 export type FlowSubMode = 'builder' | 'quick_run';
@@ -39,6 +42,7 @@ export type FlowSubMode = 'builder' | 'quick_run';
     SidebarComponent,
     TabsButtonsComponent,
     QuickRunWorkspaceComponent,
+    WorkflowWorkspaceComponent,
     BannerComponent,
   ],
   templateUrl: './flow-container.component.html',
@@ -47,6 +51,7 @@ export type FlowSubMode = 'builder' | 'quick_run';
 })
 export class FlowContainerComponent {
   readonly quickRunService = inject(QuickRunService);
+  private readonly workflowState = inject(WorkflowStateService);
   private readonly uiStateService = inject(UiStateService);
   private readonly localStorage = inject(LocalStorageService);
   private readonly destroyRef = inject(DestroyRef);
@@ -80,6 +85,14 @@ export class FlowContainerComponent {
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
+
+    effect(() => {
+      const mode = this.workflowState.requestedSubMode();
+      if (mode) {
+        this.setSubMode(mode);
+        this.workflowState.requestedSubMode.set(null);
+      }
+    });
 
     this.uiStateService.registerMobileSidebar({
       view: 'flow',
@@ -129,16 +142,30 @@ export class FlowContainerComponent {
     }
   }
 
-  /**
-   * Switch to the Workflow Builder tab. The builder is not implemented yet —
-   * clicking this shows the "working on it" placeholder.
-   */
+  /** Switch to the Workflow Builder tab and create a fresh workflow. */
   newWorkflow(): void {
     this.setSubMode('builder');
+    this.workflowState.createNewWorkflow();
+    if (this.sidebarMode() === 'over') {
+      this.setSidebarOpen(false);
+    }
+  }
+
+  onQuickRunSelected(): void {
+    this.setSubMode('quick_run');
+    if (this.sidebarMode() === 'over') {
+      this.setSidebarOpen(false);
+    }
+  }
+
+  onWorkflowSelected(): void {
+    this.setSubMode('builder');
+    if (this.sidebarMode() === 'over') {
+      this.setSidebarOpen(false);
+    }
   }
 
   onItemSelected(): void {
-    this.setSubMode('quick_run');
     if (this.sidebarMode() === 'over') {
       this.setSidebarOpen(false);
     }

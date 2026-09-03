@@ -406,7 +406,10 @@ fn get_all_quick_runs(manager: &AppSettingsManager) -> Result<Vec<QuickRun>, Str
     get_all_quick_runs_sync(manager)
 }
 
-fn get_quick_run(manager: &AppSettingsManager, id: &str) -> Result<Option<QuickRun>, String> {
+pub(crate) fn get_quick_run(
+    manager: &AppSettingsManager,
+    id: &str,
+) -> Result<Option<QuickRun>, String> {
     let sub = manager
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;

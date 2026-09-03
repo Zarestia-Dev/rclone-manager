@@ -207,9 +207,15 @@ func rcOperationsArchive(ctx context.Context, in rc.Params) (out rc.Params, err 
 func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	srcPath, _ := in.GetString("src")
 	if srcPath == "" {
+		srcPath, _ = in.GetString("srcFs")
+	}
+	if srcPath == "" {
 		srcPath, _ = in.GetString("source")
 	}
 	dstPath, _ := in.GetString("dst")
+	if dstPath == "" {
+		dstPath, _ = in.GetString("dstFs")
+	}
 	if dstPath == "" {
 		dstPath, _ = in.GetString("destination")
 	}

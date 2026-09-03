@@ -1,0 +1,201 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="dismiss()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="terminal"></mat-icon>
+  </button>
+  <p class="header-title" data-tauri-drag-region>
+    {{ 'flow.workflow.nodes.rcCommand' | translate }}
+  </p>
+  <button
+    type="button"
+    matIconButton
+    (click)="dismiss()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <!-- Endpoint Input -->
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.rcEndpoint' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="command()"
+      (ngModelChange)="command.set($event)"
+      placeholder="operations/fsinfo"
+    />
+  </mat-form-field>
+
+  <!-- Presets Header and Tabs -->
+  <div class="rc-section-header">
+    <span class="section-label">{{ 'flow.workflow.inspector.rcPresets' | translate }}</span>
+    <div class="preset-filter-tabs">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activePresetCategory() === 'all'"
+        (click)="setPresetCategory('all')"
+      >
+        {{ 'flow.workflow.inspector.presetCategoryAll' | translate }}
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activePresetCategory() === 'vfs'"
+        (click)="setPresetCategory('vfs')"
+      >
+        {{ 'flow.workflow.inspector.presetCategoryVfs' | translate }}
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activePresetCategory() === 'ops'"
+        (click)="setPresetCategory('ops')"
+      >
+        {{ 'flow.workflow.inspector.presetCategoryOps' | translate }}
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activePresetCategory() === 'core'"
+        (click)="setPresetCategory('core')"
+      >
+        {{ 'flow.workflow.inspector.presetCategoryCore' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="presets-row">
+    @for (preset of filteredPresets(); track preset.command) {
+      <button
+        type="button"
+        class="app-pill interactive preset-pill"
+        [class.active]="command() === preset.command"
+        (click)="applyRcPreset(preset.command, preset.defaultParams)"
+        [attr.title]="preset.title"
+      >
+        <span>{{ preset.label }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Parameters Header -->
+  <div class="params-header-row">
+    <div class="params-header-left">
+      <span class="section-label">{{ 'flow.workflow.inspector.rcParameters' | translate }}</span>
+      @if (jsonStatus().isTemplate) {
+        <span
+          class="status-badge template"
+          [attr.title]="'flow.workflow.inspector.templateJson' | translate"
+        >
+          <mat-icon svgIcon="workflow"></mat-icon>
+          <span>{{ 'flow.workflow.inspector.templateJson' | translate }}</span>
+        </span>
+      } @else if (rawParamsJson().trim() && !jsonStatus().valid) {
+        <span class="status-badge invalid" [attr.title]="jsonStatus().error || ''">
+          <mat-icon svgIcon="circle-info"></mat-icon>
+          <span>{{ 'flow.workflow.inspector.invalidJson' | translate }}</span>
+        </span>
+      }
+    </div>
+    <div class="params-header-actions">
+      <button
+        type="button"
+        class="action-mini-btn"
+        (click)="formatJson()"
+        [attr.title]="'flow.workflow.inspector.formatJson' | translate"
+      >
+        <span>&#123;&#125; {{ 'flow.workflow.inspector.formatJson' | translate }}</span>
+      </button>
+      @if (rawParamsJson().trim()) {
+        <button
+          type="button"
+          class="action-mini-btn"
+          (click)="clearParams()"
+          [attr.title]="'flow.workflow.inspector.clearJson' | translate"
+        >
+          <span>{{ 'flow.workflow.inspector.clearJson' | translate }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Parameters Textarea -->
+  <mat-form-field class="form-field-full params-field">
+    <textarea
+      #paramsTextarea
+      matInput
+      rows="7"
+      class="code-font"
+      [ngModel]="rawParamsJson()"
+      (ngModelChange)="rawParamsJson.set($event)"
+      placeholder='{\n  "fs": "remote:"\n}'
+    ></textarea>
+  </mat-form-field>
+
+  <!-- Variable Helper Section -->
+  <div class="var-helper-panel">
+    <div class="var-helper-header">
+      <mat-icon svgIcon="circle-info" class="helper-icon"></mat-icon>
+      <span class="helper-title">{{ 'flow.workflow.inspector.insertVariable' | translate }}</span>
+    </div>
+
+    @if (availableUpstreamNodes().length > 0) {
+      <div class="var-picker-controls">
+        <mat-form-field class="form-field-compact">
+          <mat-label>{{ 'flow.workflow.inspector.targetNode' | translate }}</mat-label>
+          <mat-select
+            [ngModel]="activeVariableNodeId()"
+            (ngModelChange)="onVariableNodeSelect($event)"
+          >
+            @for (n of availableUpstreamNodes(); track n.id) {
+              <mat-option [value]="n.id">{{ n.title }} ({{ n.id }})</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field class="form-field-compact">
+          <mat-label>{{ 'flow.workflow.inspector.targetNodeField' | translate }}</mat-label>
+          <mat-select
+            [ngModel]="activeVariableField()"
+            (ngModelChange)="onVariableFieldSelect($event)"
+          >
+            @for (f of availableFieldsForSelectedNode(); track f.key) {
+              <mat-option [value]="f.key">{{ f.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <button
+        type="button"
+        class="insert-token-btn"
+        (click)="insertSelectedToken()"
+        [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.insertTokenBtn' | translate }}:</span>
+        <code>{{ selectedTokenPreview() }}</code>
+      </button>
+    } @else {
+      <div class="no-nodes-hint">
+        <span>{{ 'flow.workflow.inspector.noUpstreamNodesHint' | translate }}</span>
+      </div>
+    }
+  </div>
+</main>
+
+<footer>
+  <button matButton="tonal" type="button" (click)="dismiss()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button matButton="filled" type="button" [disabled]="!jsonStatus().valid" (click)="save()">
+    {{ 'common.save' | translate }}
+  </button>
+</footer>

@@ -1,0 +1,37 @@
+<svg:g class="workflow-wire-group" [class.selected]="isSelected()" [class.active]="isActive()">
+  <!-- Transparent wide stroke for easy clicking/hover detection -->
+  <svg:path
+    [attr.d]="pathD()"
+    class="wire-hitbox"
+    (click)="onSelect($event)"
+    (mousedown)="$event.stopPropagation()"
+  />
+
+  <!-- Background glow for selection / active flow -->
+  <svg:path [attr.d]="pathD()" class="wire-glow" />
+
+  <!-- Main visible connecting line -->
+  <svg:path [attr.d]="pathD()" class="wire-main" />
+
+  <!-- Active marching dash / pulse flow overlay during execution -->
+  @if (isActive()) {
+    <svg:path [attr.d]="pathD()" class="wire-pulse-flow" />
+  }
+
+  <!-- Center delete button on hover/selection -->
+  @if (isSelected()) {
+    <svg:g
+      class="wire-action-handle"
+      role="button"
+      tabindex="0"
+      [attr.transform]="'translate(' + midpoint().x + ',' + midpoint().y + ')'"
+      (click)="onRemove($event)"
+      (mousedown)="$event.stopPropagation()"
+    >
+      <svg:circle r="18" class="handle-hitbox" />
+      <svg:circle r="12" class="handle-bg" />
+      <svg:line x1="-4" y1="-4" x2="4" y2="4" class="handle-icon" />
+      <svg:line x1="4" y1="-4" x2="-4" y2="4" class="handle-icon" />
+    </svg:g>
+  }
+</svg:g>

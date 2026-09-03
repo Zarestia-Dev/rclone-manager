@@ -249,6 +249,8 @@ mod tests {
             backend_name: default_backend_name(),
             dry_run: false,
             parent_job_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 

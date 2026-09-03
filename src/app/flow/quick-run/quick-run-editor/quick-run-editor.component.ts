@@ -47,7 +47,9 @@ import {
   PROFILE_ICONS,
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
+  WorkflowNode,
 } from '@app/types';
+import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { FlagConfigStepComponent } from 'src/app/shared/remote-config/flag-config-step/flag-config-step.component';
 import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
@@ -136,15 +138,22 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly valueMapper = inject(RcloneValueMapperService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly workflowStateService = inject(WorkflowStateService, { optional: true });
   private readonly dialogRef = inject(MatDialogRef<QuickRunEditorComponent>, { optional: true });
   private readonly dialogData = inject<QuickRunEditorModalOptions | null>(MAT_DIALOG_DATA, {
     optional: true,
   });
 
+  /** When set, the editor loads this workflow node for editing. */
+  readonly workflowNode = input<WorkflowNode | null>(null);
   /** When set, the editor loads this quick run for editing. */
   readonly editTarget = input<QuickRun | null>(null);
   /** Resolved target QuickRun whether passed via dialog data or input property. */
   readonly targetQuickRun = computed(() => this.dialogData?.quickRun ?? this.editTarget());
+  /** Resolved target WorkflowNode whether passed via dialog data or input property. */
+  readonly targetNode = computed(() => this.dialogData?.workflowNode ?? this.workflowNode());
+  /** True when editing a WorkflowNode instead of a standalone QuickRun. */
+  readonly isWorkflowMode = computed(() => !!this.targetNode());
   /** Emitted when the user cancels or after a successful save. */
   readonly closed = output<void>();
 
@@ -168,7 +177,9 @@ export class QuickRunEditorComponent implements OnInit {
 
   // ── UI state ──────────────────────────────────────────────────────────────
 
-  readonly isSaving = this.quickRunService.isSaving;
+  readonly isSaving = computed(() =>
+    this.isWorkflowMode() ? false : this.quickRunService.isSaving()
+  );
   readonly showSearch = signal(false);
   readonly showCliImport = signal(false);
   readonly showObscureTool = signal(false);
@@ -278,11 +289,31 @@ export class QuickRunEditorComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
+    const targetNode = this.targetNode();
     const target = this.targetQuickRun();
     const cloneData = this.dialogData?.cloneData;
     const initOp = this.dialogData?.initialOpType;
     const initRemote = this.dialogData?.initialRemoteName;
-    if (target) {
+
+    if (targetNode) {
+      const cfg = targetNode.config || {};
+      const opType = (targetNode.type as PrimaryActionType) || initOp || 'sync';
+      const remote = (cfg['remoteName'] ?? cfg['remote'] ?? initRemote ?? '') as string;
+      const seed =
+        (cfg['config'] as QuickRunConfig | undefined) ?? (cfg as unknown as QuickRunConfig);
+
+      this.form.patchValue({
+        name: targetNode.title,
+        description: targetNode.subtitle ?? '',
+        operationType: opType,
+        remoteName: remote,
+      });
+      this.currentOpType.set(opType);
+      this.activeTab.set(opType as FlagType);
+      this.currentRemoteName.set(remote);
+
+      this.populateFormFromSeed(seed);
+    } else if (target) {
       this.form.patchValue({
         name: target.name,
         description: target.description ?? '',
@@ -729,6 +760,27 @@ export class QuickRunEditorComponent implements OnInit {
       return;
     }
     const input = this.buildInput();
+
+    const node = this.targetNode();
+    if (this.isWorkflowMode() && node) {
+      if (this.workflowStateService) {
+        this.workflowStateService.updateNode(node.id, {
+          title: input.name,
+          subtitle: input.description,
+          config: {
+            remoteName: input.remoteName,
+            config: input.config,
+          },
+        });
+      }
+      this.notificationService.showSuccess(
+        this.translate.instant('flow.workflow.editor.nodeSaved')
+      );
+      this.closed.emit();
+      this.dialogRef?.close(true);
+      return;
+    }
+
     await this.quickRunService.save(input);
     this.closed.emit();
     this.dialogRef?.close(true);
@@ -944,15 +996,23 @@ export class QuickRunEditorComponent implements OnInit {
     if (sourceValue) {
       if (Array.isArray(sourceValue)) {
         const paths = (sourceValue as Record<string, unknown>[]).map(item =>
-          this.resolvePath(item, remoteName)
+          opType === 'copyurl'
+            ? String(item['path'] ?? '').trim()
+            : this.resolvePath(item, remoteName)
         );
         if (opType === 'bisync') opConfig['path1'] = paths[0] ?? '';
+        else if (opType === 'copyurl')
+          opConfig['url'] = paths.length === 1 ? (paths[0] ?? '') : paths;
         else opConfig['srcFs'] = paths.length === 1 ? (paths[0] ?? '') : paths;
       } else if (typeof sourceValue === 'object') {
-        const path = this.resolvePath(sourceValue as Record<string, unknown>, remoteName);
+        const path =
+          opType === 'copyurl'
+            ? String((sourceValue as Record<string, unknown>)['path'] ?? '').trim()
+            : this.resolvePath(sourceValue as Record<string, unknown>, remoteName);
         if (opType === 'mount') opConfig['srcFs'] = path;
         else if (opType === 'serve') opConfig['fs'] = path;
         else if (opType === 'bisync') opConfig['path1'] = path;
+        else if (opType === 'copyurl') opConfig['url'] = path;
         else opConfig['srcFs'] = path;
       }
     }

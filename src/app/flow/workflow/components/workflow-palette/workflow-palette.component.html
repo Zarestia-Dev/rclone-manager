@@ -1,0 +1,95 @@
+<!-- Header: Title + Collapse Search Toggle + Close Button -->
+<div class="palette-header">
+  <div
+    class="palette-title"
+    role="button"
+    tabindex="0"
+    (click)="toggleSearch()"
+    (keydown.enter)="toggleSearch()"
+    (keydown.space)="toggleSearch()"
+    [attr.title]="
+      (isSearchOpen() ? 'flow.workflow.palette.hideSearch' : 'flow.workflow.palette.showSearch')
+        | translate
+    "
+  >
+    <mat-icon svgIcon="workflow" class="title-icon"></mat-icon>
+    <span>{{ 'flow.workflow.palette.title' | translate }}</span>
+    <mat-icon
+      [svgIcon]="isSearchOpen() ? 'chevron-up' : 'chevron-down'"
+      class="toggle-icon"
+    ></mat-icon>
+  </div>
+
+  <button
+    type="button"
+    class="palette-close-btn"
+    (click)="closePalette.emit()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</div>
+
+<!-- Search Container (shared component, auto-animates) -->
+<app-search-container
+  [visible]="isSearchOpen()"
+  [searchText]="searchQuery()"
+  (searchTextChange)="searchQuery.set($event)"
+  (searchToggle)="toggleSearch()"
+  placeholder="flow.workflow.palette.searchPlaceholder"
+  ariaLabel="flow.workflow.palette.searchPlaceholder"
+  [enableShortcut]="false"
+></app-search-container>
+
+<!-- Category Filter Pills (visible only when search is open) -->
+<div class="category-pills-bar" [class.is-open]="isSearchOpen()">
+  @for (cat of categories; track cat.id) {
+    <button
+      type="button"
+      class="app-pill interactive"
+      [class.is-selected]="selectedCategory() === cat.id"
+      (click)="selectedCategory.set(cat.id)"
+    >
+      <mat-icon [svgIcon]="cat.icon"></mat-icon>
+      <span>{{ cat.label | translate }}</span>
+    </button>
+  }
+</div>
+
+<!-- Items List Grid -->
+<div class="palette-items-list">
+  @for (item of filteredItems(); track item.type) {
+    <div
+      class="palette-item-card"
+      role="button"
+      tabindex="0"
+      draggable="true"
+      (dragstart)="onDragStart(item, $event)"
+      (click)="addNodeToCanvas(item)"
+      (keydown.enter)="addNodeToCanvas(item)"
+      (keydown.space)="addNodeToCanvas(item)"
+      [attr.title]="'flow.workflow.palette.clickToAdd' | translate"
+    >
+      <div class="item-icon-box" [ngClass]="'color-' + (item.cssClass || 'accent')">
+        <mat-icon [svgIcon]="item.icon"></mat-icon>
+      </div>
+      <div class="item-info">
+        <div class="item-title">
+          {{ item.titleKey ? (item.titleKey | translate) : item.title }}
+        </div>
+        <div class="item-description">
+          {{ item.descriptionKey ? (item.descriptionKey | translate) : item.description }}
+        </div>
+      </div>
+      <div class="action-button" aria-hidden="true">
+        <mat-icon svgIcon="plus"></mat-icon>
+      </div>
+    </div>
+  } @empty {
+    <div class="empty-palette">
+      <mat-icon svgIcon="search" class="empty-icon"></mat-icon>
+      <p>{{ 'flow.workflow.palette.noResults' | translate }}</p>
+    </div>
+  }
+</div>

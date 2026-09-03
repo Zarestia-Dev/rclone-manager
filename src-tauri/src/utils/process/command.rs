@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::path::Path;
 use std::process::Stdio;
 
 #[cfg(windows)]
@@ -42,6 +43,11 @@ impl Command {
         S: AsRef<OsStr>,
     {
         self.inner.args(args);
+        self
+    }
+
+    pub fn current_dir<P: AsRef<Path>>(mut self, dir: P) -> Self {
+        self.inner.current_dir(dir);
         self
     }
 

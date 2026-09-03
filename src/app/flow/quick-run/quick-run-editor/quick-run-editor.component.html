@@ -11,8 +11,11 @@
   </button>
   <p>
     {{
-      (targetQuickRun() ? 'flow.quickRun.editor.editTitle' : 'flow.quickRun.editor.createTitle')
-        | translate
+      isWorkflowMode()
+        ? ('flow.workflow.editor.configureNode' | translate: { type: currentOpType() })
+        : targetQuickRun()
+          ? ('flow.quickRun.editor.editTitle' | translate)
+          : ('flow.quickRun.editor.createTitle' | translate)
     }}
   </p>
 
@@ -163,22 +166,24 @@
         </div>
 
         <!-- Operation Selector Bar -->
-        <div class="op-selector-bar">
-          <div class="op-chips-group hide-scrollbar">
-            @for (op of operations; track op.key) {
-              <button
-                type="button"
-                class="app-pill interactive"
-                [class.is-selected]="currentOpType() === op.key"
-                (click)="selectOperation(op.key)"
-                [attr.title]="getOperationLabel(op.key) | translate"
-              >
-                <mat-icon [svgIcon]="op.icon"></mat-icon>
-                <span>{{ getOperationLabel(op.key) | translate }}</span>
-              </button>
-            }
+        @if (!isWorkflowMode()) {
+          <div class="op-selector-bar">
+            <div class="op-chips-group hide-scrollbar">
+              @for (op of operations; track op.key) {
+                <button
+                  type="button"
+                  class="app-pill interactive"
+                  [class.is-selected]="currentOpType() === op.key"
+                  (click)="selectOperation(op.key)"
+                  [attr.title]="getOperationLabel(op.key) | translate"
+                >
+                  <mat-icon [svgIcon]="op.icon"></mat-icon>
+                  <span>{{ getOperationLabel(op.key) | translate }}</span>
+                </button>
+              }
+            </div>
           </div>
-        </div>
+        }
       </section>
 
       <!-- 2. Active Tab Content Section -->
@@ -217,6 +222,7 @@
                   [existingRemotes]="existingRemoteNames()"
                   [isNewRemote]="false"
                   [searchQuery]="searchQuery()"
+                  [showAutomations]="!isWorkflowMode()"
                 />
               }
 
@@ -257,6 +263,9 @@
     @if (isSaving()) {
       <mat-icon svgIcon="spinner"></mat-icon>
     }
-    {{ (targetQuickRun() ? 'common.save' : 'common.create') | translate }}
+    {{
+      (isWorkflowMode() ? 'common.save' : targetQuickRun() ? 'common.save' : 'common.create')
+        | translate
+    }}
   </button>
 </footer>

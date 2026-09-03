@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "尚未配置警报规则。创建规则以接收通知。",
-    "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。",
-    "test": "Test"
+    "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。"
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "未命名工作流",
       "savedWorkflows": "已保存工作流",
       "presetRecipes": "预设配方",
+      "unsavedChanges": "未保存的更改",
+      "saving": "正在保存...",
       "categories": {
         "all": "全部"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "对齐网格",
         "toggleLog": "切换运行日志",
         "toggleInspector": "切换检查器",
-        "cleanDuplicates": "清理重复项"
+        "cleanDuplicates": "清理重复项",
+        "dryRun": "模拟运行",
+        "dryRunTooltip": "模拟工作流执行，不修改数据或执行真实命令"
       },
       "palette": {
         "title": "节点库",
         "searchPlaceholder": "搜索节点...",
         "clickToAdd": "点击或拖拽添加到画布",
-        "add": "添加节点",
         "noResults": "未找到匹配节点",
         "hideSearch": "隐藏搜索和筛选",
         "showSearch": "显示搜索和筛选"
       },
       "inspector": {
-        "title": "节点检查器",
         "general": "常规设置",
         "parameters": "参数与选项",
         "nodeTitle": "节点标题",
@@ -3347,8 +3348,23 @@
         "localOrSelect": "本地 / 选择远程",
         "sourcePath": "源路径 (srcFs)",
         "destinationPath": "目标路径 (dstFs)",
-        "mountPoint": "挂载点目录",
+        "mountPoint": "挂载点",
         "rcEndpoint": "RC 接口端点",
+        "rcParameters": "RC 参数 (JSON)",
+        "rcParametersHint": "传递给 RC 命令的 JSON 载荷 (支持 {{nodes.id.field}} 变量)",
+        "rcPresets": "预设端点",
+        "presetCategoryAll": "全部",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "存储",
+        "presetCategoryCore": "核心",
+        "insertVariable": "插入节点输出变量",
+        "insertTokenBtn": "插入变量",
+        "formatJson": "格式化 JSON",
+        "clearJson": "清除",
+        "validJson": "有效 JSON",
+        "invalidJson": "无效 JSON",
+        "templateJson": "动态模板",
+        "noUpstreamNodesHint": "在工作流中添加其他节点，以动态引用其输出，如 {{nodes.id.field}}",
         "delaySeconds": "延迟时间 (秒)",
         "conditionOperator": "条件操作符",
         "opEquals": "等于 (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "非空 / 真值 (Truthy)",
         "leftValue": "左侧表达式 / 值",
         "rightValue": "右侧比较值",
+        "conditionValuePlaceholder": "值或 {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/文件路径或 {{nodes.id.path}}",
+        "targetNode": "目标节点",
+        "targetNodeField": "输出字段",
+        "targetNodePlaceholder": "选择目标节点",
+        "targetFieldPlaceholder": "选择输出字段",
+        "resolvedToken": "解析变量",
         "alertTitle": "提示标题",
         "alertMessage": "提示内容",
         "severity": "严重程度",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "出错时失败",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "终止工作流的原因",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "执行状态"
+        "executionStatus": "执行状态",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "目标节点",
+        "serverId": "服务 ID",
+        "modeCustom": "自定义",
+        "alertAction": "告警动作 / 渠道",
+        "selectAlertAction": "选择告警动作...",
+        "noAlertActionsFound": "未找到已保存的告警动作",
+        "openAlertsModal": "配置动作",
+        "templateVariables": "模板变量",
+        "insertVariableHint": "点击插入到消息中",
+        "joinMode": "合并策略",
+        "joinModeAllSuccess": "所有分支 (AND)",
+        "joinModeAllSuccessHint": "仅当所有并行的输入分支全部成功完成时才继续执行。",
+        "joinModeAnySuccess": "至少一个 (OR)",
+        "joinModeAnySuccessHint": "当所有分支执行完毕且至少有一个成功时继续执行。",
+        "joinModeAlways": "始终继续",
+        "joinModeAlwaysHint": "所有分支执行完毕后无条件继续执行，即使发生错误。",
+        "joinBranchesTitle": "输入分支",
+        "joinAddBranch": "添加分支",
+        "joinRemoveBranch": "移除分支",
+        "parallelBranchesTitle": "输出分支",
+        "parallelAddBranch": "添加分支",
+        "parallelRemoveBranch": "移除分支",
+        "archiveFormat": "归档格式",
+        "archivePrefix": "内部前缀（可选）",
+        "downloadUrl": "下载链接",
+        "autoFilename": "自动确定文件名"
       },
       "status": {
         "running": "运行中",
@@ -3422,34 +3484,6 @@
         "failed": "失败",
         "skipped": "已跳过",
         "idle": "空闲"
-      },
-      "sheet": {
-        "title": "节点配置",
-        "configureNode": "配置节点 ({{type}})",
-        "nodeSaved": "节点设置保存成功",
-        "saveAndClose": "应用并关闭",
-        "tabGeneral": "常规与路径",
-        "tabOperations": "操作标志",
-        "tabFilter": "过滤选项",
-        "tabBackend": "后端选项",
-        "tabVfs": "VFS 选项",
-        "tabMount": "挂载选项",
-        "tabServe": "服务选项",
-        "tabCron": "Cron 计划",
-        "tabWatch": "文件夹监控",
-        "expand": "展开面板",
-        "collapse": "折叠面板",
-        "searchFlags": "搜索标志与选项...",
-        "configuredCount": "已配置 {{count}} 项",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "输入",
@@ -3467,8 +3501,7 @@
         "branch2": "分支 2",
         "in1": "输入 1",
         "in2": "输入 2",
-        "done": "完成",
-        "mounted": "已挂载"
+        "done": "完成"
       },
       "nodes": {
         "manualTrigger": "手动触发",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "执行日志",
         "copy": "复制日志",
         "clear": "清空日志",
         "jumpToNode": "点击以在画布上聚焦节点",
-        "empty": "暂无执行日志。运行工作流以查看步骤输出。"
+        "empty": "暂无执行日志。运行工作流以查看步骤输出。",
+        "copied": "日志已复制到剪贴板",
+        "filterAll": "全部",
+        "filterErrors": "错误",
+        "filterWarnings": "警告",
+        "filterSuccess": "成功"
       },
       "details": "工作流详情",
       "name": "工作流名称",
@@ -3530,6 +3570,18 @@
         "connections": "连接数",
         "created": "创建时间",
         "updated": "更新时间"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "手动触发",
+        "manualTriggerDesc": "从界面手动触发"
+      },
+      "editor": {
+        "configureNode": "配置节点：{{type}}",
+        "nodeSaved": "工作流节点设置已更新"
       }
     }
   },

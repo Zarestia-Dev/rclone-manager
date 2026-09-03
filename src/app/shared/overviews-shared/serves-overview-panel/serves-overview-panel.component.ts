@@ -55,11 +55,16 @@ export class ServesOverviewPanelComponent {
     const filter = this.selectedOriginFilter();
     if (filter === 'all') return all;
 
-    if (filter === 'quickrun' || filter === 'flow') {
-      return all.filter(s => s.origin === 'quickrun' || s.origin === 'flow' || !!s.quick_run_id);
+    if (filter === 'flow') {
+      return all.filter(s => s.origin === 'flow' || !!s.workflow_id);
+    }
+    if (filter === 'quickrun') {
+      return all.filter(s => (s.origin === 'quickrun' || !!s.quick_run_id) && !s.workflow_id);
     }
     if (filter === 'dashboard') {
-      return all.filter(s => (s.origin === 'dashboard' || !s.origin) && !s.quick_run_id);
+      return all.filter(
+        s => (s.origin === 'dashboard' || !s.origin) && !s.quick_run_id && !s.workflow_id
+      );
     }
     return all.filter(s => s.origin === filter);
   });

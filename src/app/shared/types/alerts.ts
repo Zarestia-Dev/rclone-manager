@@ -9,7 +9,7 @@ export interface SeverityStyle {
 }
 
 export type AlertEventKind =
-  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system';
+  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system' | 'workflow';
 
 export interface AlertRule {
   id: string;
@@ -20,6 +20,7 @@ export interface AlertRule {
   remote_filter: string[];
   backend_filter: string[];
   profile_filter: string[];
+  workflow_filter?: string[];
   origin_filter: Origin[];
   action_ids: string[];
   cooldown_secs: number;

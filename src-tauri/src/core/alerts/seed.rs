@@ -41,6 +41,7 @@ pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
             origin_filter: vec![],
             backend_filter: vec![],
             profile_filter: vec![],
+            workflow_filter: vec![],
             action_ids: vec![DEFAULT_ACTION_ID.to_string()],
             cooldown_secs: 0,
             max_fire_count: 0,

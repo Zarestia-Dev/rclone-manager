@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Правила сповіщень ще не налаштовані. Створіть правило для отримання сповіщень.",
-    "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень.",
-    "test": "Test"
+    "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень."
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "Процес без назви",
       "savedWorkflows": "Збережені процеси",
       "presetRecipes": "Готові шаблони",
+      "unsavedChanges": "Незбережені зміни",
+      "saving": "Збереження...",
       "categories": {
         "all": "Всі"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "Прив’язати до сітки",
         "toggleLog": "Журнал виконання",
         "toggleInspector": "Інспектор",
-        "cleanDuplicates": "Очистити дублікати"
+        "cleanDuplicates": "Очистити дублікати",
+        "dryRun": "Тестовий запуск",
+        "dryRunTooltip": "Імітація виконання робочого процесу без зміни даних та виконання реальних команд"
       },
       "palette": {
         "title": "Бібліотека вузлів",
         "searchPlaceholder": "Пошук вузлів...",
         "clickToAdd": "Натисніть або перетягніть для додавання",
-        "add": "Додати вузол",
         "noResults": "Вузлів не знайдено",
         "hideSearch": "Приховати пошук і фільтри",
         "showSearch": "Показати пошук і фільтри"
       },
       "inspector": {
-        "title": "Інспектор вузла",
         "general": "Загальні налаштування",
         "parameters": "Параметри та опції",
         "nodeTitle": "Назва вузла",
@@ -3349,6 +3350,21 @@
         "destinationPath": "Шлях призначення (dstFs)",
         "mountPoint": "Точка монтування",
         "rcEndpoint": "Ендпоінт RC",
+        "rcParameters": "Параметри RC (JSON)",
+        "rcParametersHint": "Корисне навантаження JSON для команди RC (підтримує токени {{nodes.id.field}})",
+        "rcPresets": "Готові ендпоінти",
+        "presetCategoryAll": "Всі",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Сховище",
+        "presetCategoryCore": "Ядро",
+        "insertVariable": "Вставити вихідну змінну вузла",
+        "insertTokenBtn": "Вставити змінну",
+        "formatJson": "Форматувати JSON",
+        "clearJson": "Очистити",
+        "validJson": "Коректний JSON",
+        "invalidJson": "Некоректний JSON",
+        "templateJson": "Динамічний шаблон",
+        "noUpstreamNodesHint": "Додайте інші вузли до робочого процесу, щоб динамічно посилатися на їхній вивід, як {{nodes.id.field}}",
         "delaySeconds": "Тривалість затримки (сек)",
         "conditionOperator": "Оператор умови",
         "opEquals": "Дорівнює (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "Не порожньо / Істина (Truthy)",
         "leftValue": "Лівий вираз / Значення",
         "rightValue": "Праве значення порівняння",
+        "conditionValuePlaceholder": "значення або {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/шлях/до/файлу або {{nodes.id.path}}",
+        "targetNode": "Цільовий вузол",
+        "targetNodeField": "Поле виводу",
+        "targetNodePlaceholder": "Виберіть цільовий вузол",
+        "targetFieldPlaceholder": "Виберіть поле виводу",
+        "resolvedToken": "Розпізнаний токен",
         "alertTitle": "Заголовок сповіщення",
         "alertMessage": "Текст сповіщення",
         "severity": "Рівень важливості",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "Зупиняти при помилці",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "Причина зупинки робочого процесу",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "Стан виконання"
+        "executionStatus": "Стан виконання",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "Цільовий вузол",
+        "serverId": "ID сервера",
+        "modeCustom": "Власний",
+        "alertAction": "Дія сповіщення / Канал",
+        "selectAlertAction": "Виберіть дію сповіщення...",
+        "noAlertActionsFound": "Збережених дій сповіщень не знайдено",
+        "openAlertsModal": "Налаштувати дії",
+        "templateVariables": "Змінні шаблону",
+        "insertVariableHint": "Натисніть, щоб вставити в повідомлення",
+        "joinMode": "Політика об'єднання",
+        "joinModeAllSuccess": "Усі гілки (AND)",
+        "joinModeAllSuccessHint": "Продовжує лише за успішного завершення всіх паралельних гілок.",
+        "joinModeAnySuccess": "Принаймні одна (OR)",
+        "joinModeAnySuccessHint": "Продовжує після завершення всіх гілок, якщо хоча б одна була успішною.",
+        "joinModeAlways": "Завжди продовжувати",
+        "joinModeAlwaysHint": "Безумовно продовжує після завершення всіх гілок, навіть за наявності помилок.",
+        "joinBranchesTitle": "Вхідні гілки",
+        "joinAddBranch": "Додати гілку",
+        "joinRemoveBranch": "Видалити гілку",
+        "parallelBranchesTitle": "Вихідні гілки",
+        "parallelAddBranch": "Додати гілку",
+        "parallelRemoveBranch": "Видалити гілку",
+        "archiveFormat": "Формат архіву",
+        "archivePrefix": "Внутрішній префікс (необов'язково)",
+        "downloadUrl": "URL для завантаження",
+        "autoFilename": "Автоматично визначати ім'я файлу"
       },
       "status": {
         "running": "Виконується",
@@ -3422,34 +3484,6 @@
         "failed": "Помилка",
         "skipped": "Пропущено",
         "idle": "Очікування"
-      },
-      "sheet": {
-        "title": "Налаштування вузла",
-        "configureNode": "Налаштування вузла ({{type}})",
-        "nodeSaved": "Параметри вузла успішно збережено",
-        "saveAndClose": "Застосувати та закрити",
-        "tabGeneral": "Загальні & Шляхи",
-        "tabOperations": "Прапорці операцій",
-        "tabFilter": "Параметри фільтрації",
-        "tabBackend": "Опції бекенду",
-        "tabVfs": "Опції VFS",
-        "tabMount": "Опції монтування",
-        "tabServe": "Опції сервера",
-        "tabCron": "Розклад Cron",
-        "tabWatch": "Відстеження папки",
-        "expand": "Розгорнути панель",
-        "collapse": "Згорнути панель",
-        "searchFlags": "Пошук прапорців та опцій...",
-        "configuredCount": "Налаштовано: {{count}}",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "Вхід",
@@ -3467,8 +3501,7 @@
         "branch2": "Гілка 2",
         "in1": "Вхід 1",
         "in2": "Вхід 2",
-        "done": "Готово",
-        "mounted": "Змонтовано"
+        "done": "Готово"
       },
       "nodes": {
         "manualTrigger": "Ручний запуск",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "Журнал виконання",
         "copy": "Скопіювати журнал",
         "clear": "Очистити журнал",
         "jumpToNode": "Натисніть, щоб виділити вузол на полотні",
-        "empty": "Журнал виконання поки порожній. Запустіть робочий процес."
+        "empty": "Журнал виконання поки порожній. Запустіть робочий процес.",
+        "copied": "Журнали скопійовано в буфер обміну",
+        "filterAll": "Всі",
+        "filterErrors": "Помилки",
+        "filterWarnings": "Попередження",
+        "filterSuccess": "Успішно"
       },
       "details": "Властивості процесу",
       "name": "Назва процесу",
@@ -3530,6 +3570,18 @@
         "connections": "Зв'язки",
         "created": "Створено",
         "updated": "Оновлено"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "Ручний запуск",
+        "manualTriggerDesc": "Запущено вручну з інтерфейсу"
+      },
+      "editor": {
+        "configureNode": "Налаштування вузла: {{type}}",
+        "nodeSaved": "Параметри вузла робочого процесу оновлено"
       }
     }
   },

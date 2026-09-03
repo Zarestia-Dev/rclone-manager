@@ -32,6 +32,8 @@ export interface MountedRemote {
   quick_run_id?: string;
   execute_id?: string;
   origin?: Origin;
+  workflow_id?: string;
+  node_id?: string;
 }
 
 /**

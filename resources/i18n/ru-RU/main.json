@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Правила оповещений еще не настроены. Создайте правило для получения уведомлений.",
-    "noActionsHint": "Действия оповещений еще не настроены. Создайте действие для доставки оповещений.",
-    "test": "Test"
+    "noActionsHint": "Действия оповещений еще не настроены. Создайте действие для доставки оповещений."
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "Безымянный процесс",
       "savedWorkflows": "Сохраненные процессы",
       "presetRecipes": "Готовые шаблоны",
+      "unsavedChanges": "Несохраненные изменения",
+      "saving": "Сохранение...",
       "categories": {
         "all": "Все"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "Привязать к сетке",
         "toggleLog": "Журнал выполнения",
         "toggleInspector": "Инспектор",
-        "cleanDuplicates": "Очистить дубликаты"
+        "cleanDuplicates": "Очистить дубликаты",
+        "dryRun": "Тестовый запуск",
+        "dryRunTooltip": "Имитация выполнения рабочего процесса без изменения данных и выполнения реальных команд"
       },
       "palette": {
         "title": "Библиотека узлов",
         "searchPlaceholder": "Поиск узлов...",
         "clickToAdd": "Нажмите или перетащите для добавления",
-        "add": "Добавить узел",
         "noResults": "Узлы не найдены",
         "hideSearch": "Скрыть поиск и фильтры",
         "showSearch": "Показать поиск и фильтры"
       },
       "inspector": {
-        "title": "Инспектор узла",
         "general": "Общие настройки",
         "parameters": "Параметры и опции",
         "nodeTitle": "Название узла",
@@ -3349,6 +3350,21 @@
         "destinationPath": "Путь назначения (dstFs)",
         "mountPoint": "Точка монтирования",
         "rcEndpoint": "Эндпоинт RC",
+        "rcParameters": "Параметры RC (JSON)",
+        "rcParametersHint": "JSON-полезная нагрузка для команды RC (поддерживает токены {{nodes.id.field}})",
+        "rcPresets": "Готовые эндпоинты",
+        "presetCategoryAll": "Все",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Хранилище",
+        "presetCategoryCore": "Ядро",
+        "insertVariable": "Вставить выходную переменную узла",
+        "insertTokenBtn": "Вставить переменную",
+        "formatJson": "Форматировать JSON",
+        "clearJson": "Очистить",
+        "validJson": "Корректный JSON",
+        "invalidJson": "Некорректный JSON",
+        "templateJson": "Динамический шаблон",
+        "noUpstreamNodesHint": "Добавьте другие узлы в рабочий процесс, чтобы динамически ссылаться на их вывод, как {{nodes.id.field}}",
         "delaySeconds": "Длительность задержки (сек)",
         "conditionOperator": "Оператор условия",
         "opEquals": "Равно (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "Не пусто / Истинно (Truthy)",
         "leftValue": "Левое выражение / Значение",
         "rightValue": "Правое сравниваемое значение",
+        "conditionValuePlaceholder": "значение или {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/путь/к/файлу или {{nodes.id.path}}",
+        "targetNode": "Целевой узел",
+        "targetNodeField": "Поле вывода",
+        "targetNodePlaceholder": "Выберите целевой узел",
+        "targetFieldPlaceholder": "Выберите поле вывода",
+        "resolvedToken": "Разрешенный токен",
         "alertTitle": "Заголовок оповещения",
         "alertMessage": "Текст оповещения",
         "severity": "Уровень важности",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "Останавливать при ошибке",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "Причина остановки рабочего процесса",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "Статус выполнения"
+        "executionStatus": "Статус выполнения",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "Целевой узел",
+        "serverId": "ID сервера",
+        "modeCustom": "Свой",
+        "alertAction": "Действие оповещения / Канал",
+        "selectAlertAction": "Выберите действие оповещения...",
+        "noAlertActionsFound": "Сохраненные действия оповещений не найдены",
+        "openAlertsModal": "Настроить действия",
+        "templateVariables": "Переменные шаблона",
+        "insertVariableHint": "Нажмите, чтобы вставить в сообщение",
+        "joinMode": "Политика объединения",
+        "joinModeAllSuccess": "Все ветви (AND)",
+        "joinModeAllSuccessHint": "Продолжает только при успешном завершении всех параллельных ветвей.",
+        "joinModeAnySuccess": "Хотя бы одна (OR)",
+        "joinModeAnySuccessHint": "Продолжает после завершения всех ветвей, если хотя бы одна была успешной.",
+        "joinModeAlways": "Всегда продолжать",
+        "joinModeAlwaysHint": "Безусловно продолжает после завершения всех ветвей, даже при наличии ошибок.",
+        "joinBranchesTitle": "Входящие ветви",
+        "joinAddBranch": "Добавить ветвь",
+        "joinRemoveBranch": "Удалить ветвь",
+        "parallelBranchesTitle": "Исходящие ветви",
+        "parallelAddBranch": "Добавить ветвь",
+        "parallelRemoveBranch": "Удалить ветвь",
+        "archiveFormat": "Формат архива",
+        "archivePrefix": "Внутренний префикс (необязательно)",
+        "downloadUrl": "URL для скачивания",
+        "autoFilename": "Автоматически определять имя файла"
       },
       "status": {
         "running": "Выполняется",
@@ -3422,34 +3484,6 @@
         "failed": "Ошибка",
         "skipped": "Пропущено",
         "idle": "Ожидание"
-      },
-      "sheet": {
-        "title": "Настройка узла",
-        "configureNode": "Настройка узла ({{type}})",
-        "nodeSaved": "Параметры узла успешно сохранены",
-        "saveAndClose": "Применить и закрыть",
-        "tabGeneral": "Общие & Пути",
-        "tabOperations": "Флаги операций",
-        "tabFilter": "Параметры фильтрации",
-        "tabBackend": "Опции бэкенда",
-        "tabVfs": "Опции VFS",
-        "tabMount": "Опции монтирования",
-        "tabServe": "Опции сервера",
-        "tabCron": "Расписание Cron",
-        "tabWatch": "Отслеживание папки",
-        "expand": "Развернуть панель",
-        "collapse": "Свернуть панель",
-        "searchFlags": "Поиск флагов и опций...",
-        "configuredCount": "Настроено: {{count}}",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "Вход",
@@ -3467,8 +3501,7 @@
         "branch2": "Ветка 2",
         "in1": "Вход 1",
         "in2": "Вход 2",
-        "done": "Готово",
-        "mounted": "Смонтировано"
+        "done": "Готово"
       },
       "nodes": {
         "manualTrigger": "Ручной запуск",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "Журнал выполнения",
         "copy": "Скопировать журнал",
         "clear": "Очистить журнал",
         "jumpToNode": "Нажмите, чтобы выделить узел на холсте",
-        "empty": "Журнал выполнения пока пуст. Запустите рабочий процесс."
+        "empty": "Журнал выполнения пока пуст. Запустите рабочий процесс.",
+        "copied": "Журналы скопированы в буфер обмена",
+        "filterAll": "Все",
+        "filterErrors": "Ошибки",
+        "filterWarnings": "Предупреждения",
+        "filterSuccess": "Успешно"
       },
       "details": "Свойства процесса",
       "name": "Название процесса",
@@ -3530,6 +3570,18 @@
         "connections": "Связи",
         "created": "Создано",
         "updated": "Обновлено"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "Ручной запуск",
+        "manualTriggerDesc": "Запущено вручную из интерфейса"
+      },
+      "editor": {
+        "configureNode": "Настройка узла: {{type}}",
+        "nodeSaved": "Настройки узла рабочего процесса обновлены"
       }
     }
   },

@@ -19,6 +19,7 @@ import {
   QuickRunInput,
   TemplateCategory,
   PrimaryActionType,
+  WorkflowNode,
 } from '@app/types';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
@@ -73,6 +74,7 @@ export interface QuickRunEditorModalOptions {
   cloneData?: QuickRunInput | QuickRun;
   initialOpType?: PrimaryActionType;
   initialRemoteName?: string;
+  workflowNode?: WorkflowNode;
 }
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -268,6 +270,14 @@ export class ModalService extends TauriBaseService {
       import('../../features/modals/remote/delete-remote-modal/delete-remote-modal.component').then(
         m => m.DeleteRemoteModalComponent
       ),
+    'workflow-cron-editor': () =>
+      import('../../flow/workflow/modals/cron-editor-modal/cron-editor-modal.component').then(
+        m => m.CronEditorModalComponent
+      ),
+    'workflow-rc-editor': () =>
+      import('../../flow/workflow/modals/rc-editor-modal/rc-editor-modal.component').then(
+        m => m.RcEditorModalComponent
+      ),
   };
 
   async resolveDialogWindow(): Promise<void> {
@@ -398,18 +408,80 @@ export class ModalService extends TauriBaseService {
       data = { initialOpType, initialRemoteName };
     }
 
+    const title = data.workflowNode
+      ? data.workflowNode.title ||
+        this.translate.instant('flow.workflow.editor.configureNode', {
+          type: data.initialOpType ?? data.workflowNode.type,
+        })
+      : data.quickRun
+        ? this.translate.instant('flow.quickRun.editor.editTitle')
+        : this.translate.instant('flow.quickRun.editor.createTitle');
+
+    const suffix = data.workflowNode?.id ?? data.quickRun?.id ?? 'new';
+
     return this.openModal(
       'quick-run-editor',
       { ...CONFIG_MODAL_SIZE, disableClose: true, data },
       {
-        title: data.quickRun
-          ? this.translate.instant('flow.quickRun.editor.editTitle')
-          : this.translate.instant('flow.quickRun.editor.createTitle'),
+        title,
         width: 1024,
         height: 860,
-        suffix: data.quickRun?.id ?? 'new',
+        suffix,
       }
     );
+  }
+
+  openWorkflowCronEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
+    return this.openModal(
+      'workflow-cron-editor',
+      {
+        width: '640px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant('flow.workflow.nodes.cronSchedule'),
+        width: 640,
+        height: 600,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowRcEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
+    return this.openModal(
+      'workflow-rc-editor',
+      {
+        width: '780px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant('flow.workflow.nodes.rcCommand'),
+        width: 780,
+        height: 700,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowNodeEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
+    if (node.type === 'cron') {
+      return this.openWorkflowCronEditor(node);
+    }
+    if (node.type === 'rc_command') {
+      return this.openWorkflowRcEditor(node);
+    }
+    const remoteName = (node.config['remote'] ?? node.config['remoteName'] ?? '') as string;
+    return this.openQuickRunEditor({
+      workflowNode: node,
+      initialOpType: node.type as PrimaryActionType,
+      initialRemoteName: remoteName,
+    });
   }
 
   openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {

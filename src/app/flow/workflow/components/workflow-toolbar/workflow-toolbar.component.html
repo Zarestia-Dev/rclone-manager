@@ -1,0 +1,252 @@
+<div class="workflow-toolbar-container">
+  <!-- Left: Workflow Switcher / Name Input -->
+  <div class="toolbar-left">
+    <div class="workflow-title-group">
+      <!-- Direct Inline Workflow Name Editor -->
+      <input
+        type="text"
+        class="workflow-name-input"
+        [ngModel]="activeWorkflow()?.name"
+        (ngModelChange)="onNameInput($event)"
+        (blur)="onNameBlur()"
+        (keydown.enter)="$any($event.target).blur()"
+        [placeholder]="'flow.workflow.name' | translate"
+        [attr.title]="'flow.workflow.name' | translate"
+      />
+
+      <!-- Dropdown button for switching & managing workflows -->
+      <button
+        type="button"
+        class="action-button"
+        [cdkMenuTriggerFor]="workflowListMenu"
+        [attr.title]="'flow.workflow.toolbar.selectWorkflow' | translate"
+      >
+        <mat-icon svgIcon="chevron-down" class="dropdown-icon"></mat-icon>
+      </button>
+
+      <ng-template #workflowListMenu>
+        <div class="material-context-menu limited" cdkMenu>
+          <div class="menu-group-label menu-header-row">
+            <span>{{ 'flow.workflow.savedWorkflows' | translate }}</span>
+            @if (hasDuplicateWorkflows()) {
+              <button
+                type="button"
+                class="action-button clean-duplicates-btn"
+                (click)="cleanDuplicates()"
+                [attr.title]="'flow.workflow.cleanDuplicates' | translate"
+              >
+                <mat-icon svgIcon="broom"></mat-icon>
+              </button>
+            }
+          </div>
+
+          @for (wf of allWorkflows(); track wf.id) {
+            <div class="workflow-menu-row" [class.is-selected]="wf.id === activeWorkflow()?.id">
+              <button
+                cdkMenuItem
+                class="menu-item"
+                (cdkMenuItemTriggered)="loadWorkflowById(wf.id)"
+              >
+                <mat-icon svgIcon="workflow"></mat-icon>
+                <div class="option-content">
+                  <span class="option-label">{{ wf.name }}</span>
+                  <small class="option-description"
+                    >{{ wf.nodes.length }}
+                    {{ 'flow.workflow.stats.nodes' | translate | lowercase }}</small
+                  >
+                </div>
+              </button>
+
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="action-button"
+                  (click)="duplicateWorkflow($event, wf.id)"
+                  [attr.title]="'flow.workflow.actions.duplicateWorkflow' | translate"
+                >
+                  <mat-icon svgIcon="copy"></mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="action-button danger"
+                  (click)="deleteWorkflow($event, wf.id)"
+                  [attr.title]="'flow.workflow.actions.deleteWorkflow' | translate"
+                >
+                  <mat-icon svgIcon="trash"></mat-icon>
+                </button>
+              </div>
+            </div>
+          }
+
+          <mat-divider></mat-divider>
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="createNew()">
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'flow.workflow.toolbar.newWorkflow' | translate }}</span>
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Center: Run / Execution Engine Controls -->
+  <div class="toolbar-center">
+    @if (!engineService.isExecuting()) {
+      <div class="run-actions-group">
+        <button
+          type="button"
+          class="run-workflow-btn"
+          (click)="runWorkflow()"
+          [attr.title]="'flow.workflow.toolbar.run' | translate"
+        >
+          <mat-icon svgIcon="play"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.run' | translate }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="dry-run-workflow-btn"
+          (click)="runWorkflowDryRun()"
+          [attr.title]="'flow.workflow.toolbar.dryRunTooltip' | translate"
+        >
+          <mat-icon svgIcon="eye"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.dryRun' | translate }}</span>
+        </button>
+      </div>
+    } @else {
+      <div class="toolbar-execution-group">
+        <button
+          type="button"
+          class="stop-workflow-btn animate-pulse-red"
+          (click)="stopWorkflow()"
+          [attr.title]="'flow.workflow.toolbar.stop' | translate"
+        >
+          <mat-icon svgIcon="pause"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.stop' | translate }}</span>
+        </button>
+
+        <div class="toolbar-execution-status" [class.is-simulation]="engineService.isDryRun()">
+          <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+          <span class="status-text">
+            @if (engineService.isDryRun()) {
+              <span class="simulation-tag">[{{ 'flow.workflow.toolbar.dryRun' | translate }}]</span>
+            }
+            {{ engineService.executionProgress()?.currentStepTitle || 'Running...' }}
+          </span>
+          @if (engineService.executionProgress(); as prog) {
+            <span class="status-counter">({{ prog.completed }}/{{ prog.total }})</span>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Templates / Recipes Dropdown -->
+    <button
+      type="button"
+      class="toolbar-pill-btn"
+      [cdkMenuTriggerFor]="recipesMenu"
+      [attr.title]="'flow.workflow.toolbar.presets' | translate"
+    >
+      <mat-icon svgIcon="experiment"></mat-icon>
+      <span>{{ 'flow.workflow.toolbar.presets' | translate }}</span>
+      <mat-icon svgIcon="chevron-down" class="pill-arrow"></mat-icon>
+    </button>
+
+    <ng-template #recipesMenu>
+      <div class="material-context-menu limited" cdkMenu>
+        <div class="menu-group-label">{{ 'flow.workflow.presetRecipes' | translate }}</div>
+        @for (tpl of presetTemplates(); track tpl.id) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="loadTemplate(tpl)">
+            <mat-icon [svgIcon]="tpl.icon"></mat-icon>
+            <div class="option-content">
+              <span class="option-label">{{ tpl.name }}</span>
+              <small class="option-description">{{ tpl.description }}</small>
+            </div>
+          </button>
+        }
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Right: Zoom, History, Grid Snap, Inspector & Console Toggle -->
+  <div class="toolbar-right">
+    <!-- Undo / Redo -->
+    <div class="button-group">
+      <button
+        matIconButton
+        type="button"
+        (click)="stateService.undo()"
+        [disabled]="!stateService.canUndo()"
+        [attr.title]="'flow.workflow.toolbar.undo' | translate"
+      >
+        <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+      </button>
+      <button
+        matIconButton
+        type="button"
+        (click)="stateService.redo()"
+        [disabled]="!stateService.canRedo()"
+        [attr.title]="'flow.workflow.toolbar.redo' | translate"
+      >
+        <mat-icon svgIcon="rotate-right"></mat-icon>
+      </button>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls-group">
+      <button
+        matIconButton
+        type="button"
+        (click)="stateService.zoomOut()"
+        [attr.title]="'flow.workflow.toolbar.zoomOut' | translate"
+      >
+        <mat-icon svgIcon="remove"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="zoom-label"
+        (click)="stateService.resetZoom()"
+        [attr.title]="'flow.workflow.toolbar.resetZoom' | translate"
+      >
+        {{ zoomPercentage() }}%
+      </button>
+      <button
+        matIconButton
+        type="button"
+        (click)="stateService.zoomIn()"
+        [attr.title]="'flow.workflow.toolbar.zoomIn' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+      </button>
+      <button
+        matIconButton
+        type="button"
+        (click)="stateService.fitToView()"
+        [attr.title]="'flow.workflow.toolbar.fitToView' | translate"
+      >
+        <mat-icon svgIcon="expand"></mat-icon>
+      </button>
+    </div>
+
+    <!-- Grid Snap Toggle -->
+    <button
+      matIconButton
+      type="button"
+      [class.active-btn]="stateService.snapToGrid()"
+      (click)="stateService.snapToGrid.set(!stateService.snapToGrid())"
+      [attr.title]="'flow.workflow.toolbar.snapToGrid' | translate"
+    >
+      <mat-icon svgIcon="grid"></mat-icon>
+    </button>
+
+    <!-- Console / Execution Log Toggle -->
+    <button
+      matIconButton
+      type="button"
+      (click)="toggleLog.emit()"
+      [class.active-btn]="isLogOpen()"
+      [attr.title]="'flow.workflow.toolbar.toggleLog' | translate"
+    >
+      <mat-icon svgIcon="terminal"></mat-icon>
+    </button>
+  </div>
+</div>

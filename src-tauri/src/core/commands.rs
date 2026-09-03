@@ -261,7 +261,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (delete_workflow, $crate::core::flow::workflow::commands::delete_workflow, [workflow_id: String]);
             (duplicate_workflow, $crate::core::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
             (validate_workflow, $crate::core::flow::workflow::commands::validate_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowDefinition], [no_app]);
-            (execute_workflow, $crate::core::flow::workflow::commands::execute_workflow, [workflow_id: String]);
+            (execute_workflow, $crate::core::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
             (stop_workflow, $crate::core::flow::workflow::commands::stop_workflow, [workflow_id: String]);
             (export_workflow, $crate::core::flow::workflow::commands::export_workflow, [workflow_id: String]);
             (import_workflow, $crate::core::flow::workflow::commands::import_workflow, [json_str: String]);

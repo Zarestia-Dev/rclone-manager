@@ -75,6 +75,17 @@ impl GenericTransferParams {
             } else {
                 return Err(format!("Could not parse destination path: {}", self.dest));
             }
+        } else if self.transfer_type == OperationType::Archivecreate {
+            builder.insert("action", "create");
+            builder.insert("src", self.source.clone());
+            builder.insert("dst", self.dest.clone());
+            if let Some(fmt) = self.rclone_config.get("format").and_then(|v| v.as_str()) {
+                builder.insert("format", fmt);
+            }
+            if let Some(prefix) = self.rclone_config.get("prefix").and_then(|v| v.as_str()) {
+                builder.insert("prefix", prefix);
+            }
+            builder.insert("_path", operations::ARCHIVE);
         } else if !self.is_dir
             && matches!(
                 self.transfer_type,
@@ -139,6 +150,11 @@ impl GenericTransferParams {
         if self.transfer_type == OperationType::Bisync {
             body.insert("path1".to_string(), Value::String(self.source.clone()));
             body.insert("path2".to_string(), Value::String(self.dest.clone()));
+        } else if self.transfer_type == OperationType::Cryptcheck {
+            body.insert("src".to_string(), Value::String(self.source.clone()));
+            body.insert("dst".to_string(), Value::String(self.dest.clone()));
+            body.insert("srcFs".to_string(), Value::String(self.source.clone()));
+            body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
         } else {
             body.insert("srcFs".to_string(), Value::String(self.source.clone()));
             body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
@@ -151,7 +167,7 @@ impl GenericTransferParams {
     }
 }
 
-fn has_archive_extension(path: &str) -> bool {
+pub(crate) fn has_archive_extension(path: &str) -> bool {
     let lower = path.to_lowercase();
     lower.ends_with(".zip")
         || lower.ends_with(".tar")
@@ -311,7 +327,7 @@ pub async fn start_profile_batch(
                 };
                 let clean_src = source.trim_end_matches(':');
                 let folder_name = clean_src
-                    .split(['/', '\\'])
+                    .split(['/', '\\', ':'])
                     .rfind(|s| !s.is_empty())
                     .unwrap_or("archive");
 

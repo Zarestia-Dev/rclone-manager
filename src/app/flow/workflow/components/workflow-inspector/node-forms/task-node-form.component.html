@@ -1,0 +1,253 @@
+<!-- Modal-Configured Operations: Sync, Copy, Move, Bisync, Check, Cryptcheck, Delete, Archive, CopyURL, Mount, Serve -->
+@if (isPrimaryOperationNode()) {
+  <div class="operation-summary-card">
+    <!-- Remote Property -->
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'flow.workflow.inspector.remote' | translate }}</span>
+      @if (inspectorRemote()) {
+        <div class="prop-badge remote-badge">
+          <mat-icon svgIcon="cloud" class="prop-icon"></mat-icon>
+          <span class="prop-value font-semibold">
+            {{ inspectorRemote() }}
+            @if (selectedRemoteItem()?.type; as rType) {
+              <span class="remote-type-tag">({{ rType }})</span>
+            }
+          </span>
+        </div>
+      } @else {
+        <span class="empty-val">{{ 'common.notConfigured' | translate }}</span>
+      }
+    </div>
+
+    <!-- Source / Download URL -->
+    @if (node().type !== 'mount' && node().type !== 'serve') {
+      <div class="summary-prop-row">
+        <span class="prop-label">{{
+          (node().type === 'copyurl'
+            ? 'flow.workflow.inspector.downloadUrl'
+            : 'flow.workflow.inspector.sourcePath'
+          ) | translate
+        }}</span>
+        @if (inspectorSource()) {
+          <span class="prop-value code-font path-val" [attr.title]="inspectorSource()">
+            {{ inspectorSource() }}
+          </span>
+        } @else {
+          <span class="empty-val">-</span>
+        }
+      </div>
+    }
+
+    <!-- Destination / Mount Point / Serve Address -->
+    @if (node().type !== 'delete') {
+      <div class="summary-prop-row">
+        <span class="prop-label">{{
+          (node().type === 'mount'
+            ? 'flow.workflow.inspector.mountPoint'
+            : node().type === 'serve'
+              ? 'flow.workflow.inspector.serveAddress'
+              : 'flow.workflow.inspector.destinationPath'
+          ) | translate
+        }}</span>
+        @if (node().type === 'serve' ? inspectorServeAddr() : inspectorDest()) {
+          <span
+            class="prop-value code-font path-val"
+            [attr.title]="node().type === 'serve' ? inspectorServeAddr() : inspectorDest()"
+          >
+            {{ node().type === 'serve' ? inspectorServeAddr() : inspectorDest() }}
+          </span>
+        } @else {
+          <span class="empty-val">-</span>
+        }
+      </div>
+    }
+
+    <!-- Operation Specific: Archive format & prefix -->
+    @if (node().type === 'archivecreate') {
+      <div class="summary-prop-row">
+        <span class="prop-label">{{ 'flow.workflow.inspector.archiveFormat' | translate }}</span>
+        <span class="app-pill p-accent">{{ archiveFormat() | uppercase }}</span>
+      </div>
+      @if (archivePrefix()) {
+        <div class="summary-prop-row">
+          <span class="prop-label">{{ 'flow.workflow.inspector.archivePrefix' | translate }}</span>
+          <span class="prop-value code-font path-val">{{ archivePrefix() }}</span>
+        </div>
+      }
+    }
+
+    <!-- Operation Specific: Serve protocol -->
+    @if (node().type === 'serve') {
+      <div class="summary-prop-row">
+        <span class="prop-label">{{ 'flow.workflow.inspector.serveProtocol' | translate }}</span>
+        <span class="app-pill p-primary">{{ inspectorServeType() | uppercase }}</span>
+      </div>
+    }
+
+    <!-- Operation Specific: Copyurl autoFilename -->
+    @if (node().type === 'copyurl') {
+      <div class="summary-prop-row">
+        <span class="prop-label">{{ 'flow.workflow.inspector.autoFilename' | translate }}</span>
+        <span class="app-pill p-dim">{{
+          (autoFilename() ? 'common.yes' : 'common.no') | translate
+        }}</span>
+      </div>
+    }
+
+    <!-- Edit in Modal CTA Button -->
+    <div class="summary-card-footer">
+      <button
+        matButton="filled"
+        type="button"
+        class="btn-edit-config"
+        (click)="openDetailed.emit()"
+        [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
+      >
+        <mat-icon svgIcon="tune"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.openDetailed' | translate }}</span>
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Task: Cleanup Trash -->
+@if (node().type === 'cleanup') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.remote' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['remote'] || ''"
+      (ngModelChange)="onFieldChange('remote', $event)"
+      [placeholder]="'flow.workflow.inspector.localOrSelect' | translate"
+    >
+      @for (remote of remotes(); track remote.name) {
+        <mat-option [value]="remote.name">{{ remote.name }} ({{ remote.type }})</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.optionalPath' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['path'] || ''"
+      (ngModelChange)="onFieldChange('path', $event)"
+      placeholder="optional/subfolder"
+    />
+  </mat-form-field>
+}
+
+<!-- Task: Execute Script -->
+@if (node().type === 'exec_script') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.scriptCommand' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['command'] || ''"
+      (ngModelChange)="onFieldChange('command', $event)"
+      placeholder="mysqldump or /path/to/backup.sh"
+    />
+    <button
+      matSuffix
+      matIconButton
+      type="button"
+      (click)="browseScriptCommand()"
+      [attr.title]="'common.browse' | translate"
+    >
+      <mat-icon svgIcon="folder"></mat-icon>
+    </button>
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.scriptArguments' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['args'] || ''"
+      (ngModelChange)="onFieldChange('args', $event)"
+      placeholder="-u root --all-databases"
+    />
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.workingDir' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['workingDir'] || ''"
+      (ngModelChange)="onFieldChange('workingDir', $event)"
+      placeholder="/home/user/project"
+    />
+    <button
+      matSuffix
+      matIconButton
+      type="button"
+      (click)="browseWorkingDir()"
+      [attr.title]="'common.browse' | translate"
+    >
+      <mat-icon svgIcon="folder"></mat-icon>
+    </button>
+  </mat-form-field>
+
+  <div class="toggle-row">
+    <mat-slide-toggle
+      [checked]="nodeConfig()['failOnError'] !== false"
+      (change)="onFieldChange('failOnError', $event.checked)"
+    >
+      {{ 'flow.workflow.inspector.failOnError' | translate }}
+    </mat-slide-toggle>
+  </div>
+}
+
+<!-- Task: Quick Run -->
+@if (node().type === 'quick_run') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.selectQuickRun' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['quickRunId'] || ''"
+      (ngModelChange)="onFieldChange('quickRunId', $event)"
+      [placeholder]="'flow.workflow.inspector.quickRunPlaceholder' | translate"
+    >
+      @for (qr of quickRuns(); track qr.id) {
+        <mat-option [value]="qr.id">{{ qr.name }} ({{ qr.operationType }})</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+}
+
+<!-- Task: RC Command (Modal Configured) -->
+@if (node().type === 'rc_command') {
+  <div class="operation-summary-card">
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'flow.workflow.inspector.rcEndpoint' | translate }}</span>
+      <div class="prop-badge remote-badge">
+        <mat-icon svgIcon="terminal" class="prop-icon"></mat-icon>
+        <span class="prop-value font-semibold code-font">
+          {{ nodeConfig()['command'] || 'core/version' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'flow.workflow.inspector.rcParameters' | translate }}</span>
+      @if (rcParamCount() > 0) {
+        <span class="app-pill p-accent">
+          {{ rcParamCount() }} {{ 'flow.workflow.inspector.parameters' | translate | lowercase }}
+        </span>
+      } @else {
+        <span class="empty-val">{{ 'flow.workflow.inspector.noActiveConfig' | translate }}</span>
+      }
+    </div>
+
+    <!-- Edit in Modal CTA Button -->
+    <div class="summary-card-footer">
+      <button
+        matButton="filled"
+        type="button"
+        class="btn-edit-config"
+        (click)="openDetailed.emit()"
+        [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
+      >
+        <mat-icon svgIcon="tune"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.openDetailed' | translate }}</span>
+      </button>
+    </div>
+  </div>
+}

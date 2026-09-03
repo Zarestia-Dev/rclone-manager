@@ -71,6 +71,8 @@ impl JobCache {
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
+            workflow_id: metadata.workflow_id,
+            node_id: metadata.node_id,
         };
 
         self.add_job(job, app).await;
@@ -428,6 +430,8 @@ mod tests {
             backend_name: default_backend_name(),
             dry_run: false,
             parent_job_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 

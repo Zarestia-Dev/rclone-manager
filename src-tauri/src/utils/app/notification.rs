@@ -162,6 +162,34 @@ pub enum EngineStage {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "stage", content = "data", rename_all = "snake_case")]
+pub enum WorkflowStage {
+    Started {
+        workflow_id: String,
+        workflow_name: String,
+        origin: Origin,
+    },
+    Completed {
+        workflow_id: String,
+        workflow_name: String,
+        duration_ms: u64,
+        origin: Origin,
+    },
+    Failed {
+        workflow_id: String,
+        workflow_name: String,
+        error: String,
+        failed_node_title: Option<String>,
+        origin: Origin,
+    },
+    Stopped {
+        workflow_id: String,
+        workflow_name: String,
+        origin: Origin,
+    },
+}
+
 // Main Notification Event Enum
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +203,7 @@ pub enum NotificationEvent {
     Mount(MountStage),
     Engine(EngineStage),
     System(SystemStage),
+    Workflow(WorkflowStage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -564,6 +593,70 @@ impl NotificationEvent {
                 SystemStage::AllJobsStopped => RenderedContent {
                     title: t("notification.title.allJobsStopped"),
                     body: t("notification.body.allJobsStopped"),
+                    level: LogLevel::Warn,
+                },
+            },
+
+            // --- WORKFLOW DOMAIN ---
+            Self::Workflow(stage) => match stage {
+                WorkflowStage::Started { workflow_name, .. } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowStarted",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowStarted",
+                        &[("name", workflow_name)],
+                    ),
+                    level: LogLevel::Info,
+                },
+                WorkflowStage::Completed {
+                    workflow_name,
+                    duration_ms,
+                    ..
+                } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowCompleted",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowCompleted",
+                        &[
+                            ("name", workflow_name),
+                            ("duration", &format!("{:.2}s", *duration_ms as f64 / 1000.0)),
+                        ],
+                    ),
+                    level: LogLevel::Info,
+                },
+                WorkflowStage::Failed {
+                    workflow_name,
+                    error,
+                    failed_node_title,
+                    ..
+                } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowFailed",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowFailed",
+                        &[
+                            ("name", workflow_name),
+                            ("error", error),
+                            ("node", failed_node_title.as_deref().unwrap_or("")),
+                        ],
+                    ),
+                    level: LogLevel::Error,
+                },
+                WorkflowStage::Stopped { workflow_name, .. } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowStopped",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowStopped",
+                        &[("name", workflow_name)],
+                    ),
                     level: LogLevel::Warn,
                 },
             },

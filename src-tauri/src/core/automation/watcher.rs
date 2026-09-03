@@ -1,4 +1,5 @@
 use crate::core::automation::engine::execute_automation;
+use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::cache::is_local_path;
@@ -107,27 +108,32 @@ impl WatcherManager {
 
         let config_key = automation.automation_type.config_key();
 
-        let filter_options = match crate::rclone::commands::common::resolve_profile_settings(
-            &app_handle,
-            &automation.remote_name,
-            &automation.profile_name,
-            config_key,
-        )
-        .await
-        {
-            Ok((config, settings)) => {
-                crate::rclone::commands::common::parse_common_config(&config, &settings)
-                    .and_then(|c| c.filter_options)
-                    .map(|opts| resolve_filter_options(&opts))
-            }
-            Err(e) => {
-                log::debug!(
-                    "Could not resolve filter options for automation {}: {e}",
-                    automation.id
-                );
-                None
-            }
-        };
+        let filter_options =
+            if automation.args.params.source == Some(crate::utils::types::origin::Origin::Flow) {
+                resolve_workflow_filter_options(&app_handle, &automation.id).await
+            } else {
+                match crate::rclone::commands::common::resolve_profile_settings(
+                    &app_handle,
+                    &automation.remote_name,
+                    &automation.profile_name,
+                    config_key,
+                )
+                .await
+                {
+                    Ok((config, settings)) => {
+                        crate::rclone::commands::common::parse_common_config(&config, &settings)
+                            .and_then(|c| c.filter_options)
+                            .map(|opts| resolve_filter_options(&opts))
+                    }
+                    Err(e) => {
+                        log::debug!(
+                            "Could not resolve filter options for automation {}: {e}",
+                            automation.id
+                        );
+                        None
+                    }
+                }
+            };
 
         let (tx, mut rx) = tokio::sync::mpsc::channel::<notify::Result<Event>>(200);
 
@@ -652,6 +658,52 @@ fn resolve_filter_options(opts: &HashMap<String, Value>) -> ResolvedFilterOption
         includes,
         files_from,
     }
+}
+
+async fn resolve_workflow_filter_options(
+    app_handle: &AppHandle,
+    workflow_id: &str,
+) -> Option<ResolvedFilterOptions> {
+    let manager = app_handle.try_state::<AppSettingsManager>()?;
+    let wf = crate::core::flow::workflow::commands::get_workflow_by_id(&manager, workflow_id)
+        .ok()
+        .flatten()?;
+
+    let glob_pattern = wf.watcher_glob_pattern()?;
+    let mut includes = Vec::new();
+    let mut excludes = Vec::new();
+
+    for pattern in glob_pattern.split(',') {
+        let p = pattern.trim();
+        if p.is_empty() {
+            continue;
+        }
+        if let Some(stripped) = p.strip_prefix('!') {
+            let excl = stripped.trim();
+            if !excl.is_empty() {
+                excludes.push(excl.to_string());
+            }
+        } else {
+            includes.push(p.to_string());
+        }
+    }
+
+    if includes.is_empty() && excludes.is_empty() {
+        return None;
+    }
+
+    Some(ResolvedFilterOptions {
+        ignore_case: false,
+        max_depth: None,
+        min_size: None,
+        max_size: None,
+        min_age: None,
+        max_age: None,
+        filter_rules: Vec::new(),
+        excludes,
+        includes,
+        files_from: Vec::new(),
+    })
 }
 
 fn is_path_filtered(

@@ -79,6 +79,8 @@ impl RemoteCache {
                     m.quick_run_id = e.quick_run_id.clone();
                     m.execute_id = e.execute_id.clone();
                     m.origin = e.origin.clone();
+                    m.workflow_id = e.workflow_id.clone();
+                    m.node_id = e.node_id.clone();
                 }
                 m
             })
@@ -97,6 +99,8 @@ impl RemoteCache {
                     s.quick_run_id = e.quick_run_id.clone();
                     s.execute_id = e.execute_id.clone();
                     s.origin = e.origin.clone();
+                    s.workflow_id = e.workflow_id.clone();
+                    s.node_id = e.node_id.clone();
                 }
                 s
             })
@@ -255,6 +259,8 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
         app_handle: Option<&AppHandle>,
     ) {
         let norm = normalize_mount_path(mount_point);
@@ -268,6 +274,8 @@ impl RemoteCache {
             m.quick_run_id = quick_run_id;
             m.origin = origin;
             m.execute_id = execute_id;
+            m.workflow_id = workflow_id;
+            m.node_id = node_id;
         } else {
             mounts.push(MountedRemote {
                 fs: fs.to_string(),
@@ -276,6 +284,8 @@ impl RemoteCache {
                 quick_run_id,
                 origin,
                 execute_id,
+                workflow_id,
+                node_id,
             });
         }
         drop(mounts);
@@ -303,6 +313,8 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
         app_handle: Option<&AppHandle>,
     ) {
         let mut serves = self.serves.write().await;
@@ -311,6 +323,8 @@ impl RemoteCache {
             s.quick_run_id = quick_run_id;
             s.origin = origin;
             s.execute_id = execute_id;
+            s.workflow_id = workflow_id;
+            s.node_id = node_id;
         } else {
             serves.push(ServeInstance {
                 id: serve_id.to_string(),
@@ -320,6 +334,8 @@ impl RemoteCache {
                 quick_run_id,
                 origin,
                 execute_id,
+                workflow_id,
+                node_id,
             });
         }
         drop(serves);
@@ -340,6 +356,8 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
         app_handle: Option<&AppHandle>,
     ) {
         let norm = normalize_mount_path(mount_point);
@@ -355,6 +373,8 @@ impl RemoteCache {
             m.quick_run_id = quick_run_id;
             m.origin = origin;
             m.execute_id = execute_id;
+            m.workflow_id = workflow_id;
+            m.node_id = node_id;
             drop(mounts);
             if let Some(app) = app_handle {
                 let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
@@ -648,6 +668,8 @@ mod tests {
             quick_run_id: Some("qr-123".to_string()),
             origin: Some(crate::utils::types::origin::Origin::QuickRun),
             execute_id: Some("exec-1".to_string()),
+            workflow_id: Some("wf-1".to_string()),
+            node_id: Some("node-1".to_string()),
         }];
 
         // Incoming mount from rclone with trailing slash
@@ -658,6 +680,8 @@ mod tests {
         assert_eq!(merged[0].profile.as_deref(), Some("my-profile"));
         assert_eq!(merged[0].quick_run_id.as_deref(), Some("qr-123"));
         assert_eq!(merged[0].execute_id.as_deref(), Some("exec-1"));
+        assert_eq!(merged[0].workflow_id.as_deref(), Some("wf-1"));
+        assert_eq!(merged[0].node_id.as_deref(), Some("node-1"));
         assert_eq!(
             merged[0].origin,
             Some(crate::utils::types::origin::Origin::QuickRun)

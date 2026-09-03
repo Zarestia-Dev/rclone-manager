@@ -135,6 +135,15 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             }
         }
 
+        if !rule.workflow_filter.is_empty() {
+            let matches = profile
+                .as_deref()
+                .is_some_and(|wf| rule.workflow_filter.iter().any(|f| f == wf));
+            if !matches {
+                continue;
+            }
+        }
+
         if let Some(body_filter) = &rule.body_filter
             && !body.contains(body_filter.as_str())
         {
@@ -272,7 +281,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
     }
 }
 
-async fn execute_action(
+pub async fn execute_action(
     _app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,

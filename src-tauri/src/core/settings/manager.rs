@@ -36,6 +36,9 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         .with_sub_settings(rcman::SubSettingsConfig::singlefile(
             crate::utils::constants::SUB_QUICK_RUNS,
         ))
+        .with_sub_settings(rcman::SubSettingsConfig::singlefile(
+            crate::utils::constants::SUB_WORKFLOWS,
+        ))
         .with_sub_settings(
             rcman::SubSettingsConfig::singlefile(crate::utils::constants::SUB_TEMPLATES)
                 .with_schema::<crate::core::settings::schema::UserPresetTemplate>(),

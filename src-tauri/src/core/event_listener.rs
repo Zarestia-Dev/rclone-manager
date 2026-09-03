@@ -32,10 +32,10 @@ use crate::{
 ))]
 use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
+use crate::utils::types::events::{JOB_CACHE_CHANGED, JobChangeEvent};
+
 #[cfg(feature = "tray")]
-use crate::utils::types::events::{
-    BACKEND_SWITCHED, JOB_CACHE_CHANGED, JobChangeEvent, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
-};
+use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU};
 
 #[cfg(feature = "tray")]
 fn trigger_tray_update(app: AppHandle) {
@@ -303,7 +303,6 @@ fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
     info!("Engine restarting due to additional flags change");
 }
 
-#[cfg(feature = "tray")]
 fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(JOB_CACHE_CHANGED, move |event| {
@@ -314,12 +313,19 @@ fn handle_job_cache_changed(app: &AppHandle) {
             if let Ok(ev) = serde_json::from_str::<JobChangeEvent>(&payload)
                 && let Ok(id) = ev.job_id.parse::<u64>()
                 && let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
-                && !job.job_type.is_tray_relevant()
             {
-                return;
-            }
+                #[cfg(feature = "tray")]
+                if job.job_type.is_tray_relevant() {
+                    trigger_tray_update(app.clone());
+                }
 
-            trigger_tray_update(app);
+                if job.status.is_finished() {
+                    crate::core::flow::workflow::engine::trigger_workflows_for_job_finish(
+                        &app, &job,
+                    )
+                    .await;
+                }
+            }
         });
     });
 }
@@ -387,7 +393,6 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_rclone_password_stored(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
-    #[cfg(feature = "tray")]
     handle_job_cache_changed(app);
     debug!("Event listeners set up");
 }

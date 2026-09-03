@@ -4,6 +4,8 @@ import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
+import { WorkflowStorageService } from '../flow/workflow-storage.service';
+import { WorkflowStateService } from '../flow/workflow-state.service';
 
 /**
  * Dispatches centralized UI navigation requests across main views, tabs,
@@ -17,12 +19,33 @@ export class NavigationDispatcherService {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
   private readonly quickRunService = inject(QuickRunService);
+  private readonly workflowStorage = inject(WorkflowStorageService);
+  private readonly workflowState = inject(WorkflowStateService);
+
+  /**
+   * Navigates directly to a workflow on the Flow canvas.
+   */
+  navigateToWorkflow(workflowId?: string, workflowName?: string): void {
+    this.uiStateService.setMainView('flow');
+    const wf = this.workflowStorage
+      .workflows()
+      .find(w => (workflowId && w.id === workflowId) || (workflowName && w.name === workflowName));
+    if (wf) {
+      this.workflowState.loadWorkflow(wf);
+    }
+  }
 
   /**
    * Navigate to the appropriate view and tab for a running or completed job.
    */
   navigateToJob(job: JobInfo): void {
-    if (job.origin === 'quickrun' || job.origin === 'flow') {
+    if (job.origin === 'flow') {
+      const wfId = job.workflow_id || job.profile;
+      this.navigateToWorkflow(wfId);
+      return;
+    }
+
+    if (job.origin === 'quickrun') {
       this.uiStateService.setMainView('flow');
       const qr = this.quickRunService
         .quickRuns()
@@ -77,11 +100,16 @@ export class NavigationDispatcherService {
   }
 
   /**
-   * Navigate to the remote or Quick Run corresponding to the given automation.
+   * Navigate to the remote, Quick Run, or Workflow corresponding to the given automation.
    */
   navigateToAutomation(automation: Automation): void {
+    if (automation.args?.source === 'flow') {
+      this.navigateToWorkflow(automation.id, automation.profileName);
+      return;
+    }
+
     const remoteName = automation.remoteName || automation.args?.remoteName;
-    if (remoteName) {
+    if (remoteName && remoteName !== 'Workflow') {
       const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
       if (remote) {
         this.uiStateService.setMainView('main_menu');

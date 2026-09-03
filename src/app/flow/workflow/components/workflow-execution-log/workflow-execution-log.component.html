@@ -1,0 +1,155 @@
+<div class="workflow-execution-log-container" [class.is-collapsed]="isCollapsed()">
+  <!-- Header Bar -->
+  <div class="log-header">
+    <div
+      class="log-title"
+      role="button"
+      tabindex="0"
+      (click)="toggleCollapse()"
+      (keydown.enter)="toggleCollapse()"
+      (keydown.space)="toggleCollapse()"
+    >
+      <mat-icon
+        [svgIcon]="isCollapsed() ? 'chevron-up' : 'chevron-down'"
+        class="toggle-icon"
+      ></mat-icon>
+      <span class="title-text">{{ 'flow.workflow.logs.title' | translate }}</span>
+      @if (engineService.logs().length > 0) {
+        <span class="log-count-badge">{{ engineService.logs().length }}</span>
+      }
+    </div>
+
+    <!-- Severity Filter Chips -->
+    @if (!isCollapsed() && engineService.logs().length > 0) {
+      <div class="log-filter-chips">
+        <button
+          type="button"
+          class="filter-chip"
+          [class.active]="activeFilter() === 'all'"
+          (click)="setFilter('all')"
+        >
+          <span>{{ 'flow.workflow.logs.filterAll' | translate }}</span>
+          <span class="chip-count">{{ engineService.logs().length }}</span>
+        </button>
+
+        @if (errorCount() > 0) {
+          <button
+            type="button"
+            class="filter-chip error"
+            [class.active]="activeFilter() === 'error'"
+            (click)="setFilter('error')"
+          >
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>{{ 'flow.workflow.logs.filterErrors' | translate }}</span>
+            <span class="chip-count">{{ errorCount() }}</span>
+          </button>
+        }
+
+        @if (warnCount() > 0) {
+          <button
+            type="button"
+            class="filter-chip warn"
+            [class.active]="activeFilter() === 'warn'"
+            (click)="setFilter('warn')"
+          >
+            <mat-icon svgIcon="warning"></mat-icon>
+            <span>{{ 'flow.workflow.logs.filterWarnings' | translate }}</span>
+            <span class="chip-count">{{ warnCount() }}</span>
+          </button>
+        }
+
+        @if (successCount() > 0) {
+          <button
+            type="button"
+            class="filter-chip success"
+            [class.active]="activeFilter() === 'success'"
+            (click)="setFilter('success')"
+          >
+            <mat-icon svgIcon="check-circle"></mat-icon>
+            <span>{{ 'flow.workflow.logs.filterSuccess' | translate }}</span>
+            <span class="chip-count">{{ successCount() }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Live Execution Status / Progress -->
+    @if (engineService.isExecuting()) {
+      <div class="live-progress">
+        <mat-icon svgIcon="sync" class="animate-spin progress-icon"></mat-icon>
+        <span class="progress-step">{{ engineService.executionProgress()?.currentStepTitle }}</span>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="log-actions">
+      <button
+        type="button"
+        class="icon-action-btn"
+        (click)="copyLogs()"
+        [attr.title]="'flow.workflow.logs.copy' | translate"
+      >
+        <mat-icon svgIcon="copy"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="icon-action-btn"
+        (click)="clearLogs()"
+        [attr.title]="'flow.workflow.logs.clear' | translate"
+      >
+        <mat-icon svgIcon="trash"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="icon-action-btn"
+        (click)="closeConsole.emit()"
+        [attr.title]="'common.close' | translate"
+      >
+        <mat-icon svgIcon="close"></mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (engineService.isExecuting()) {
+    <mat-progress-bar mode="indeterminate" class="execution-progress-bar"></mat-progress-bar>
+  }
+
+  <!-- Log Entries Body -->
+  @if (!isCollapsed()) {
+    <div #logList class="log-body">
+      @for (entry of filteredLogs(); track entry.id) {
+        <div
+          class="log-row"
+          [ngClass]="['severity-' + entry.severity, entry.nodeId ? 'is-clickable' : '']"
+          tabindex="0"
+          [attr.role]="entry.nodeId ? 'button' : null"
+          (click)="onLogEntryClick(entry)"
+          (keydown.enter)="onLogEntryClick(entry)"
+          (keydown.space)="onLogEntryClick(entry)"
+          [attr.title]="entry.nodeId ? ('flow.workflow.logs.jumpToNode' | translate) : null"
+        >
+          <span class="log-time">{{ entry.timestamp | date: 'HH:mm:ss' }}</span>
+          <div class="log-severity-icon">
+            @if (entry.severity === 'success') {
+              <mat-icon svgIcon="check-circle"></mat-icon>
+            } @else if (entry.severity === 'error') {
+              <mat-icon svgIcon="circle-xmark"></mat-icon>
+            } @else if (entry.severity === 'warn') {
+              <mat-icon svgIcon="warning"></mat-icon>
+            } @else {
+              <mat-icon svgIcon="info"></mat-icon>
+            }
+          </div>
+          @if (entry.nodeTitle) {
+            <span class="log-node-tag">[{{ entry.nodeTitle }}]</span>
+          }
+          <span class="log-message">{{ entry.message }}</span>
+        </div>
+      } @empty {
+        <div class="empty-logs">
+          <p>{{ 'flow.workflow.logs.empty' | translate }}</p>
+        </div>
+      }
+    </div>
+  }
+</div>

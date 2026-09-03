@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Nenhuma regra de alerta configurada ainda. Crie uma regra para receber notificações.",
-    "noActionsHint": "Nenhuma ação de alerta configurada ainda. Crie uma ação para definir como os alertas são entregues.",
-    "test": "Test"
+    "noActionsHint": "Nenhuma ação de alerta configurada ainda. Crie uma ação para definir como os alertas são entregues."
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "Fluxo sem título",
       "savedWorkflows": "Fluxos Salvos",
       "presetRecipes": "Modelos Prontos",
+      "unsavedChanges": "Alterações não salvas",
+      "saving": "Salvando...",
       "categories": {
         "all": "Todos"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "Alinhar à Grade",
         "toggleLog": "Registro de Execução",
         "toggleInspector": "Alternar Inspetor",
-        "cleanDuplicates": "Limpar Duplicados"
+        "cleanDuplicates": "Limpar Duplicados",
+        "dryRun": "Simulação",
+        "dryRunTooltip": "Simular a execução do fluxo de trabalho sem modificar dados ou executar comandos reais"
       },
       "palette": {
         "title": "Biblioteca de Nós",
         "searchPlaceholder": "Buscar nós...",
         "clickToAdd": "Clique ou arraste para adicionar ao painel",
-        "add": "Adicionar Nó",
         "noResults": "Nenhum nó correspondente encontrado",
         "hideSearch": "Ocultar busca e filtros",
         "showSearch": "Mostrar busca e filtros"
       },
       "inspector": {
-        "title": "Inspetor de Nó",
         "general": "Configurações Gerais",
         "parameters": "Parâmetros e Opções",
         "nodeTitle": "Título do Nó",
@@ -3347,8 +3348,23 @@
         "localOrSelect": "Local / Selecionar Remoto",
         "sourcePath": "Caminho de Origem (srcFs)",
         "destinationPath": "Caminho de Destino (dstFs)",
-        "mountPoint": "Diretório do Ponto de Montagem",
+        "mountPoint": "Ponto de montagem",
         "rcEndpoint": "Ponto de Extremidade RC",
+        "rcParameters": "Parâmetros RC (JSON)",
+        "rcParametersHint": "Carga útil JSON enviada ao comando RC (suporta tokens {{nodes.id.field}})",
+        "rcPresets": "Pontos de extremidade predefinidos",
+        "presetCategoryAll": "Todos",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Armazenamento",
+        "presetCategoryCore": "Núcleo",
+        "insertVariable": "Inserir variável de saída do nó",
+        "insertTokenBtn": "Inserir variável",
+        "formatJson": "Formatar JSON",
+        "clearJson": "Limpar",
+        "validJson": "JSON válido",
+        "invalidJson": "JSON inválido",
+        "templateJson": "Modelo dinâmico",
+        "noUpstreamNodesHint": "Adicione outros nós ao seu fluxo para referenciar dinamicamente suas saídas como {{nodes.id.field}}",
         "delaySeconds": "Duração do Atraso (segundos)",
         "conditionOperator": "Operador de Condição",
         "opEquals": "Igual a (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "Não Vazio / Verdadeiro (Truthy)",
         "leftValue": "Expressão / Valor Esquerdo",
         "rightValue": "Valor de Comparação Direito",
+        "conditionValuePlaceholder": "valor ou {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/caminho/do/arquivo ou {{nodes.id.path}}",
+        "targetNode": "Nó de destino",
+        "targetNodeField": "Campo de saída",
+        "targetNodePlaceholder": "Selecionar nó de destino",
+        "targetFieldPlaceholder": "Selecionar campo de saída",
+        "resolvedToken": "Token resolvido",
         "alertTitle": "Título do Alerta",
         "alertMessage": "Mensagem do Alerta",
         "severity": "Nível de Gravidade",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "Falhar em Caso de Erro",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "Motivo para interromper o fluxo de trabalho",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "Status de Execução"
+        "executionStatus": "Status de Execução",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "Nó de destino",
+        "serverId": "ID de servidor",
+        "modeCustom": "Personalizado",
+        "alertAction": "Ação de alerta / Canal",
+        "selectAlertAction": "Selecione uma ação de alerta...",
+        "noAlertActionsFound": "Nenhuma ação de alerta salva encontrada",
+        "openAlertsModal": "Configurar ações",
+        "templateVariables": "Variáveis de modelo",
+        "insertVariableHint": "Clique para inserir na mensagem",
+        "joinMode": "Política de junção",
+        "joinModeAllSuccess": "Todos os ramos (AND)",
+        "joinModeAllSuccessHint": "Prossegue apenas se todos os ramos paralelos de entrada forem concluídos com sucesso.",
+        "joinModeAnySuccess": "Pelo menos um (OR)",
+        "joinModeAnySuccessHint": "Prossegue assim que todos os ramos terminarem, se pelo menos um teve sucesso.",
+        "joinModeAlways": "Sempre prosseguir",
+        "joinModeAlwaysHint": "Prossegue incondicionalmente quando todos os ramos terminarem, mesmo com falhas.",
+        "joinBranchesTitle": "Ramos de entrada",
+        "joinAddBranch": "Adicionar ramo",
+        "joinRemoveBranch": "Remover ramo",
+        "parallelBranchesTitle": "Ramos de saída",
+        "parallelAddBranch": "Adicionar ramo",
+        "parallelRemoveBranch": "Remover ramo",
+        "archiveFormat": "Formato do arquivo",
+        "archivePrefix": "Prefixo interno (opcional)",
+        "downloadUrl": "URL de download",
+        "autoFilename": "Determinar nome de arquivo automaticamente"
       },
       "status": {
         "running": "Executando",
@@ -3422,34 +3484,6 @@
         "failed": "Falhou",
         "skipped": "Ignorado",
         "idle": "Ocioso"
-      },
-      "sheet": {
-        "title": "Configuração do Nó",
-        "configureNode": "Configurar Nó ({{type}})",
-        "nodeSaved": "Configurações do nó salvas com sucesso",
-        "saveAndClose": "Aplicar e Fechar",
-        "tabGeneral": "Geral & Caminhos",
-        "tabOperations": "Opções de Operação",
-        "tabFilter": "Opções de Filtro",
-        "tabBackend": "Opções de Backend",
-        "tabVfs": "Opções VFS",
-        "tabMount": "Opções de Montagem",
-        "tabServe": "Opções de Servidor",
-        "tabCron": "Agendamento Cron",
-        "tabWatch": "Monitor de Pasta",
-        "expand": "Expandir Painel",
-        "collapse": "Recolher Painel",
-        "searchFlags": "Buscar opções e parâmetros...",
-        "configuredCount": "{{count}} configurado(s)",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "Entrada",
@@ -3467,8 +3501,7 @@
         "branch2": "Ramificação 2",
         "in1": "Entrada 1",
         "in2": "Entrada 2",
-        "done": "Concluído",
-        "mounted": "Montado"
+        "done": "Concluído"
       },
       "nodes": {
         "manualTrigger": "Gatilho Manual",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "Registro de Execução",
         "copy": "Copiar Registros",
         "clear": "Limpar Registros",
         "jumpToNode": "Clique para focar o nó no painel",
-        "empty": "Ainda não há registros. Execute um fluxo para ver o resultado."
+        "empty": "Ainda não há registros. Execute um fluxo para ver o resultado.",
+        "copied": "Logs copiados para a área de transferência",
+        "filterAll": "Todos",
+        "filterErrors": "Erros",
+        "filterWarnings": "Avisos",
+        "filterSuccess": "Sucesso"
       },
       "details": "Detalhes do Fluxo de Trabalho",
       "name": "Nome do Fluxo",
@@ -3530,6 +3570,18 @@
         "connections": "Conexões",
         "created": "Criado",
         "updated": "Atualizado"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "Gatilho manual",
+        "manualTriggerDesc": "Acionado manualmente pela interface"
+      },
+      "editor": {
+        "configureNode": "Configurar Nó: {{type}}",
+        "nodeSaved": "Configurações do nó de fluxo de trabalho atualizadas"
       }
     }
   },

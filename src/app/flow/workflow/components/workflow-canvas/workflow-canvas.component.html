@@ -1,0 +1,73 @@
+<div
+  #canvasContainer
+  class="workflow-canvas-container"
+  [class.is-panning]="isPanning()"
+  (mousedown)="onCanvasMouseDown($event)"
+  (wheel)="onCanvasWheel($event)"
+  (dragover)="onDragOver($event)"
+  (drop)="onDrop($event)"
+>
+  <!-- Dot Grid & Scalable Plane -->
+  <div class="workflow-canvas-plane" [style.transform]="canvasTransform()">
+    <!-- SVG Wires Layer -->
+    <svg class="workflow-canvas-svg">
+      @if (activeWorkflow(); as wf) {
+        @for (edge of wf.edges; track edge.id) {
+          <g
+            app-workflow-wire
+            [edge]="edge"
+            [sourcePos]="getPortCoordinate(edge.sourceNodeId, edge.sourcePortId, true)"
+            [targetPos]="getPortCoordinate(edge.targetNodeId, edge.targetPortId, false)"
+            [isSelected]="stateService.selectedEdgeIds().has(edge.id)"
+            [isActive]="engineService.activeEdgeIds().has(edge.id)"
+            (selectWire)="stateService.selectEdge($event)"
+            (removeWire)="stateService.removeEdge($event)"
+          ></g>
+        }
+      }
+
+      <!-- Live connecting wire preview when dragging from port -->
+      @if (isConnecting()) {
+        <path [attr.d]="connectingPath()" class="connecting-wire-preview" />
+      }
+    </svg>
+
+    <!-- HTML Nodes Layer -->
+    <div class="workflow-nodes-layer">
+      @if (activeWorkflow(); as wf) {
+        @for (node of wf.nodes; track node.id) {
+          <app-workflow-node
+            [node]="node"
+            [isSelected]="stateService.selectedNodeIds().has(node.id)"
+            [zoom]="viewport().zoom"
+            [style.left.px]="node.x"
+            [style.top.px]="node.y"
+            class="workflow-node-positioned"
+            [class.selected]="stateService.selectedNodeIds().has(node.id)"
+            [class.is-dragging]="draggingNodeId() === node.id"
+            (mousedown)="onNodeMouseDown(node, $event)"
+            (selectNode)="stateService.selectNode($event)"
+            (deleteNode)="stateService.removeNode($event)"
+            (duplicateNode)="stateService.duplicateNode($event)"
+            (inspectNode)="onInspectNode($event)"
+            (startConnecting)="onStartConnecting(node.id, $event.portId, $event.event)"
+            (portMouseUp)="onPortMouseUp(node.id, $event.portId)"
+          ></app-workflow-node>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Floating Minimap Navigation -->
+  <div class="minimap-floating-container">
+    <app-workflow-minimap
+      [nodes]="activeWorkflow()?.nodes || []"
+      [edges]="activeWorkflow()?.edges || []"
+      [selectedNodeIds]="stateService.selectedNodeIds()"
+      [viewport]="viewport()"
+      [containerWidth]="containerWidth()"
+      [containerHeight]="containerHeight()"
+      (panTo)="onMinimapPanTo($event)"
+    ></app-workflow-minimap>
+  </div>
+</div>

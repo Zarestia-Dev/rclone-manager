@@ -168,7 +168,9 @@
             }
           </mat-select>
         </mat-form-field>
+      </div>
 
+      <div class="form-row two-col">
         <mat-form-field>
           <mat-label>{{ 'alerts.rule.profileFilter' | translate }}</mat-label>
           <mat-icon
@@ -179,6 +181,20 @@
           <mat-select formControlName="profile_filter" multiple>
             @for (p of allProfiles(); track p) {
               <mat-option [value]="p">{{ p }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>{{ 'alerts.rule.workflowFilter' | translate }}</mat-label>
+          <mat-icon
+            matPrefix
+            svgIcon="circle-info"
+            [attr.title]="'alerts.rule.workflowFilterHint' | translate"
+          ></mat-icon>
+          <mat-select formControlName="workflow_filter" multiple>
+            @for (w of workflows(); track w.id) {
+              <mat-option [value]="w.name">{{ w.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>

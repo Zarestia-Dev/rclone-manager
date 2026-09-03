@@ -55,8 +55,11 @@ export class AutomationsOverviewPanelComponent {
     const all = this.rawAutomations();
     const filter = this.selectedOriginFilter();
     if (filter === 'all') return all;
-    if (filter === 'quickrun' || filter === 'flow') {
-      return all.filter(t => t.args?.source === 'quickrun' || t.args?.source === 'flow');
+    if (filter === 'flow') {
+      return all.filter(t => t.args?.source === 'flow');
+    }
+    if (filter === 'quickrun') {
+      return all.filter(t => t.args?.source === 'quickrun');
     }
     if (filter === 'dashboard' || filter === 'automation') {
       return all.filter(t => t.args?.source !== 'quickrun' && t.args?.source !== 'flow');

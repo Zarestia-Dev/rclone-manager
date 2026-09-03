@@ -67,6 +67,38 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         }
     }
 
+    // ── Workflow Automations ───────────────────────────────────────────────
+    if let Ok(workflows) = crate::core::flow::workflow::commands::get_all_workflows_sync(&manager) {
+        info!("🌀 Syncing {} Workflow(s)...", workflows.len());
+
+        let _ = cache_state
+            .load_from_workflows(&workflows, &backend_name, Some(&app_handle))
+            .await;
+
+        for wf in &workflows {
+            if wf.is_autostart() {
+                let delay = wf.app_start_delay_seconds();
+                info!(
+                    "⚡ Auto-starting Workflow: {} ({}) with {delay}s delay",
+                    wf.name, wf.id
+                );
+                let app = app_handle.clone();
+                let wf_id = wf.id.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = crate::core::flow::workflow::commands::execute_workflow(
+                        app,
+                        wf_id.clone(),
+                        None,
+                    )
+                    .await
+                    {
+                        log::error!("Failed to auto-start Workflow {wf_id}: {e}");
+                    }
+                });
+            }
+        }
+    }
+
     scheduler_state.initialize(app_handle.clone()).await?;
     scheduler_state.start().await?;
     scheduler_state

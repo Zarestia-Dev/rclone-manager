@@ -463,6 +463,76 @@ pub async fn execute_automation(
                 return Err(e);
             }
         }
+    } else if automation.args.params.source == Some(crate::utils::types::origin::Origin::Flow) {
+        let wf_id = &automation.id;
+
+        info!("Executing workflow automation: {wf_id}");
+        let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+        let _ = cache
+            .update_automation(
+                automation_id,
+                |t| {
+                    t.mark_running(wf_id.clone());
+                    t.next_run = next_run;
+                },
+                Some(app_handle),
+            )
+            .await;
+
+        // execute_workflow emits its own dedicated NotificationEvent::Workflow events
+        let result = crate::core::flow::workflow::commands::execute_workflow(
+            app_handle.clone(),
+            wf_id.to_string(),
+            None,
+        )
+        .await;
+
+        let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+        match result {
+            Ok(exec_res) => {
+                if exec_res.success {
+                    let _ = cache
+                        .update_automation(
+                            automation_id,
+                            |t| {
+                                t.mark_success();
+                                t.next_run = next_run;
+                            },
+                            Some(app_handle),
+                        )
+                        .await;
+                    return Ok(());
+                } else {
+                    let err = exec_res
+                        .error
+                        .unwrap_or_else(|| "Workflow execution failed".to_string());
+                    let _ = cache
+                        .update_automation(
+                            automation_id,
+                            |t| {
+                                t.mark_failure(err.clone());
+                                t.next_run = next_run;
+                            },
+                            Some(app_handle),
+                        )
+                        .await;
+                    return Err(err);
+                }
+            }
+            Err(e) => {
+                let _ = cache
+                    .update_automation(
+                        automation_id,
+                        |t| {
+                            t.mark_failure(e.clone());
+                            t.next_run = next_run;
+                        },
+                        Some(app_handle),
+                    )
+                    .await;
+                return Err(e);
+            }
+        }
     }
 
     let mut params = automation.args.params.clone();

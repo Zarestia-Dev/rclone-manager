@@ -39,7 +39,12 @@
       [mode]="sidebarMode()"
       class="flow-sidenav"
     >
-      <app-sidebar mode="flow" (itemSelected)="onItemSelected()"></app-sidebar>
+      <app-sidebar
+        mode="flow"
+        (itemSelected)="onItemSelected()"
+        (quickRunSelected)="onQuickRunSelected()"
+        (workflowSelected)="onWorkflowSelected()"
+      ></app-sidebar>
     </mat-sidenav>
 
     <!-- ── Mode Content View ────────────────────────────────────────────────── -->
@@ -61,21 +66,7 @@
           <app-quick-run-workspace></app-quick-run-workspace>
         }
         @case ('builder') {
-          <!-- Workflow Builder placeholder — "working on it" -->
-          <div class="workflow-placeholder">
-            <mat-icon svgIcon="workflow" class="placeholder-icon"></mat-icon>
-            <h2>{{ 'flow.builder.placeholderTitle' | translate }}</h2>
-            <p>{{ 'flow.builder.placeholderMessage' | translate }}</p>
-            <a
-              href="https://github.com/Zarestia-Dev/rclone-manager/issues/232"
-              target="_blank"
-              rel="noopener"
-              class="placeholder-link"
-            >
-              <mat-icon svgIcon="open-link" class="link-icon"></mat-icon>
-              <span>{{ 'flow.builder.viewRoadmap' | translate }}</span>
-            </a>
-          </div>
+          <app-workflow-workspace></app-workflow-workspace>
         }
       }
     </mat-sidenav-content>

@@ -53,22 +53,36 @@ export class AutomationCardComponent {
   toggled = output<string>();
   openInFiles = output<string>();
 
+  protected readonly isFlow = computed(() => {
+    const auto = this.automation();
+    return auto.args?.source === 'flow';
+  });
+
   protected readonly isQuickRun = computed(() => {
     const auto = this.automation();
-    return auto.args?.source === 'quickrun' || auto.args?.source === 'flow';
+    return auto.args?.source === 'quickrun';
   });
 
   protected readonly originLabel = computed(() => {
-    return this.isQuickRun()
-      ? this.translate.instant('flow.tabs.quickRun') || 'Quick Run'
-      : this.translate.instant('navigation.dashboard') || 'Dashboard';
+    if (this.isFlow()) {
+      const t = this.translate.instant('flow.title');
+      return t === 'flow.title' ? 'Flow' : t;
+    }
+    if (this.isQuickRun()) {
+      const t = this.translate.instant('flow.tabs.quickRun');
+      return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
+    }
+    const t = this.translate.instant('navigation.dashboard');
+    return t === 'navigation.dashboard' ? 'Dashboard' : t;
   });
 
   protected readonly originIcon = computed(() => {
+    if (this.isFlow()) return 'workflow';
     return this.isQuickRun() ? 'quick-run' : 'cloud';
   });
 
   protected readonly originBadgeClass = computed(() => {
+    if (this.isFlow()) return 'p-accent';
     return this.isQuickRun() ? 'p-primary' : 'p-dim';
   });
 

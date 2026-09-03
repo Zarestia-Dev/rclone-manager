@@ -130,7 +130,7 @@
       </div>
     }
   } @else if (mode() === 'flow') {
-    @if (filteredQuickRuns().length > 0) {
+    @if (filteredQuickRuns().length > 0 || filteredWorkflows().length > 0) {
       @for (qr of filteredQuickRuns(); track trackByQuickRunId($index, qr)) {
         @let running = isQuickRunRunning(qr.id);
         <mat-card
@@ -185,6 +185,75 @@
               <span>{{ getQuickRunActionLabel(qr) | translate }}</span>
               <span class="separator">·</span>
               <span class="remote-name">{{ qr.remoteName }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      @for (wf of filteredWorkflows(); track trackByWorkflowId($index, wf)) {
+        @let running = isWorkflowRunning(wf.id);
+        <mat-card
+          class="sidebar-card"
+          (click)="selectWorkflow(wf)"
+          [class.selected]="selectedWorkflowId() === wf.id"
+          [class.is-running]="running"
+        >
+          <mat-card-content class="card-content">
+            <div class="card-header">
+              <div class="name-wrapper">
+                <mat-icon
+                  svgIcon="workflow"
+                  class="item-kind-icon"
+                  [attr.title]="'flow.tabs.workflow' | translate"
+                ></mat-icon>
+                <h4 [attr.title]="wf.name">{{ wf.name }}</h4>
+              </div>
+              <div class="status-indicators">
+                @if (getWorkflowCron(wf); as cronExpr) {
+                  <mat-icon
+                    svgIcon="clock"
+                    class="feature-icon cron"
+                    [attr.title]="getWorkflowTriggerTooltip(wf)"
+                  ></mat-icon>
+                }
+                @if (hasWatcherNode(wf)) {
+                  <mat-icon
+                    svgIcon="eye"
+                    class="feature-icon watcher"
+                    [attr.title]="'flow.quickRun.badges.watcher' | translate"
+                  ></mat-icon>
+                }
+                @if (hasAutoStartNode(wf)) {
+                  <mat-icon
+                    svgIcon="bolt"
+                    class="feature-icon autostart"
+                    [attr.title]="'flow.quickRun.badges.autostart' | translate"
+                  ></mat-icon>
+                }
+                @if (running) {
+                  <span
+                    class="status-dot-mini running"
+                    [attr.title]="'flow.workflow.status.running' | translate"
+                  ></span>
+                }
+              </div>
+            </div>
+
+            <div class="card-type">
+              <mat-icon
+                [svgIcon]="getWorkflowTriggerIcon(wf)"
+                [attr.title]="getWorkflowTriggerTooltip(wf)"
+              ></mat-icon>
+              <span
+                >{{ wf.nodes.length }}
+                {{ 'flow.workflow.stats.nodes' | translate | lowercase }}</span
+              >
+              @if (getWorkflowTriggerSummary(wf); as trigger) {
+                <span class="separator">·</span>
+                <span class="remote-name" [attr.title]="getWorkflowTriggerTooltip(wf)">{{
+                  trigger
+                }}</span>
+              }
             </div>
           </mat-card-content>
         </mat-card>

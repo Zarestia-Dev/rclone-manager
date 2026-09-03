@@ -1,0 +1,95 @@
+.workflow-minimap-card {
+  position: relative;
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+  backdrop-filter: blur(12px);
+
+  .mini-wires-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    .mini-wire {
+      stroke: var(--border-color);
+      stroke-width: 1.5px;
+      opacity: 0.5;
+    }
+  }
+
+  .mini-node {
+    position: absolute;
+    border-radius: 2px;
+    background: var(--dim-color);
+    box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease;
+
+    &.color-primary {
+      background: var(--primary-color);
+    }
+    &.color-accent {
+      background: var(--accent-color);
+    }
+    &.color-yellow {
+      background: var(--yellow);
+    }
+    &.color-orange {
+      background: var(--orange);
+    }
+    &.color-purple {
+      background: var(--purple);
+    }
+    &.color-warn {
+      background: var(--warn-color);
+    }
+    &.color-dim {
+      background: var(--dim-color);
+    }
+    &.color-cyan {
+      background: #00bcd4;
+    }
+
+    &.selected {
+      outline: 1.5px solid #ffffff;
+      box-shadow: 0 0 4px var(--accent-color);
+      z-index: 2;
+    }
+
+    &.status-running {
+      animation: miniNodePulse 1.2s infinite ease-in-out;
+    }
+
+    &.status-failed {
+      background: var(--destructive-bg-color);
+    }
+
+    &.status-success {
+      background: var(--success-bg-color);
+    }
+  }
+
+  .mini-viewport {
+    position: absolute;
+    border: 1.5px solid var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.15);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+}
+
+@keyframes miniNodePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

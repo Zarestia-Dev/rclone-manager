@@ -1,0 +1,313 @@
+<!-- Logic: Parallel Split -->
+@if (node().type === 'parallel_fork') {
+  <app-alert-banner
+    severity="info"
+    icon="flow"
+    [description]="'flow.workflow.inspector.parallelForkDesc' | translate"
+  />
+
+  <!-- Outgoing Branch Outputs Management -->
+  <div class="branches-card">
+    <div class="card-header">
+      <span class="card-title">{{
+        'flow.workflow.inspector.parallelBranchesTitle' | translate
+      }}</span>
+      <span class="card-badge">{{ node().outputs.length }}</span>
+    </div>
+
+    <div class="branches-grid">
+      @for (port of node().outputs; track port.id; let idx = $index) {
+        <div class="branch-chip" [class.removable]="idx >= 2">
+          <span class="chip-status-dot"></span>
+          <span class="chip-text">{{ port.label || port.name }}</span>
+          @if (idx >= 2) {
+            <button
+              type="button"
+              class="chip-delete-btn"
+              (click)="removeOutputBranch(port.id)"
+              [attr.title]="'flow.workflow.inspector.parallelRemoveBranch' | translate"
+            >
+              <mat-icon svgIcon="close"></mat-icon>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <button
+      type="button"
+      class="add-branch-full-btn"
+      (click)="addOutputBranch()"
+      [attr.title]="'flow.workflow.inspector.parallelAddBranch' | translate"
+    >
+      <mat-icon svgIcon="plus"></mat-icon>
+      <span>{{ 'flow.workflow.inspector.parallelAddBranch' | translate }}</span>
+    </button>
+  </div>
+}
+
+<!-- Logic: Join Branches -->
+@if (node().type === 'join') {
+  <app-alert-banner
+    severity="info"
+    icon="done-all"
+    [description]="'flow.workflow.inspector.joinDesc' | translate"
+  />
+
+  <div class="policy-section">
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.joinMode' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="nodeConfig()['joinMode'] || 'all_success'"
+        (ngModelChange)="onFieldChange('joinMode', $event)"
+      >
+        <mat-option value="all_success">
+          {{ 'flow.workflow.inspector.joinModeAllSuccess' | translate }}
+        </mat-option>
+        <mat-option value="any_success">
+          {{ 'flow.workflow.inspector.joinModeAnySuccess' | translate }}
+        </mat-option>
+        <mat-option value="always">
+          {{ 'flow.workflow.inspector.joinModeAlways' | translate }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="policy-note">
+      <mat-icon svgIcon="circle-info"></mat-icon>
+      <span>
+        @if ((nodeConfig()['joinMode'] || 'all_success') === 'all_success') {
+          {{ 'flow.workflow.inspector.joinModeAllSuccessHint' | translate }}
+        } @else if (nodeConfig()['joinMode'] === 'any_success') {
+          {{ 'flow.workflow.inspector.joinModeAnySuccessHint' | translate }}
+        } @else if (nodeConfig()['joinMode'] === 'always') {
+          {{ 'flow.workflow.inspector.joinModeAlwaysHint' | translate }}
+        }
+      </span>
+    </div>
+  </div>
+
+  <!-- Incoming Branch Inputs Management -->
+  <div class="branches-card">
+    <div class="card-header">
+      <span class="card-title">{{ 'flow.workflow.inspector.joinBranchesTitle' | translate }}</span>
+      <span class="card-badge">{{ node().inputs.length }}</span>
+    </div>
+
+    <div class="branches-grid">
+      @for (port of node().inputs; track port.id; let idx = $index) {
+        <div class="branch-chip" [class.removable]="idx >= 2">
+          <span class="chip-status-dot"></span>
+          <span class="chip-text">{{ port.label || port.name }}</span>
+          @if (idx >= 2) {
+            <button
+              type="button"
+              class="chip-delete-btn"
+              (click)="removeInputBranch(port.id)"
+              [attr.title]="'flow.workflow.inspector.joinRemoveBranch' | translate"
+            >
+              <mat-icon svgIcon="close"></mat-icon>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <button
+      type="button"
+      class="add-branch-full-btn"
+      (click)="addInputBranch()"
+      [attr.title]="'flow.workflow.inspector.joinAddBranch' | translate"
+    >
+      <mat-icon svgIcon="plus"></mat-icon>
+      <span>{{ 'flow.workflow.inspector.joinAddBranch' | translate }}</span>
+    </button>
+  </div>
+}
+
+<!-- Logic: Stop Workflow -->
+@if (node().type === 'stop') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.stopStatus' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['status'] || 'success'"
+      (ngModelChange)="onFieldChange('status', $event)"
+    >
+      <mat-option value="success">{{
+        'flow.workflow.inspector.stopStatusSuccess' | translate
+      }}</mat-option>
+      <mat-option value="failed">{{
+        'flow.workflow.inspector.stopStatusFailed' | translate
+      }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.stopMessage' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['message'] || ''"
+      (ngModelChange)="onFieldChange('message', $event)"
+      [placeholder]="'flow.workflow.inspector.stopMessagePlaceholder' | translate"
+    />
+  </mat-form-field>
+}
+
+<!-- Logic: Delay -->
+@if (node().type === 'delay') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.delaySeconds' | translate }}</mat-label>
+    <input
+      matInput
+      type="number"
+      min="1"
+      max="86400"
+      [ngModel]="delaySecondsValue()"
+      (ngModelChange)="onFieldChange('seconds', $event)"
+    />
+  </mat-form-field>
+
+  <div class="presets-row">
+    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(5)">
+      {{ 'flow.workflow.inspector.delayPreset5s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(15)">
+      {{ 'flow.workflow.inspector.delayPreset15s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(30)">
+      {{ 'flow.workflow.inspector.delayPreset30s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(60)">
+      {{ 'flow.workflow.inspector.delayPreset1m' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyDelayPreset(300)">
+      {{ 'flow.workflow.inspector.delayPreset5m' | translate }}
+    </button>
+  </div>
+}
+
+<!-- Logic: Condition -->
+@if (node().type === 'condition') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.conditionOperator' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['operator'] || 'equals'"
+      (ngModelChange)="onFieldChange('operator', $event)"
+    >
+      <mat-option value="equals">{{ 'flow.workflow.inspector.opEquals' | translate }}</mat-option>
+      <mat-option value="not_equals">{{
+        'flow.workflow.inspector.opNotEquals' | translate
+      }}</mat-option>
+      <mat-option value="contains">{{
+        'flow.workflow.inspector.opContains' | translate
+      }}</mat-option>
+      <mat-option value="not_contains">{{
+        'flow.workflow.inspector.opNotContains' | translate
+      }}</mat-option>
+      <mat-option value="greater_than">{{
+        'flow.workflow.inspector.opGreaterThan' | translate
+      }}</mat-option>
+      <mat-option value="less_than">{{
+        'flow.workflow.inspector.opLessThan' | translate
+      }}</mat-option>
+      <mat-option value="truthy">{{ 'flow.workflow.inspector.opTruthy' | translate }}</mat-option>
+      <mat-option value="is_empty">{{
+        'flow.workflow.inspector.opIsEmpty' | translate
+      }}</mat-option>
+      <mat-option value="file_exists">{{
+        'flow.workflow.inspector.opFileExists' | translate
+      }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="target-mode-group">
+    <mat-button-toggle-group
+      [value]="conditionLeftValueMode()"
+      (change)="setConditionLeftValueMode($event.value)"
+      name="condition-left-mode"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="node">
+        {{ 'flow.workflow.inspector.modeTargetNode' | translate }}
+      </mat-button-toggle>
+      <mat-button-toggle value="custom">
+        {{ 'flow.workflow.inspector.modeCustom' | translate }}
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  @if (conditionLeftValueMode() === 'node') {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.targetNode' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="conditionTargetNodeId()"
+        (ngModelChange)="onConditionTargetNodeChange($event)"
+        [placeholder]="'flow.workflow.inspector.targetNodePlaceholder' | translate"
+      >
+        @for (upNode of availableUpstreamNodes(); track upNode.id) {
+          <mat-option [value]="upNode.id"> {{ upNode.title }} ({{ upNode.id }}) </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.targetNodeField' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="conditionTargetField()"
+        (ngModelChange)="onConditionTargetFieldChange($event, conditionTargetNodeId())"
+        [placeholder]="'flow.workflow.inspector.targetFieldPlaceholder' | translate"
+      >
+        @for (field of availableNodeFields(); track field.key) {
+          <mat-option [value]="field.key">
+            {{ field.label }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (nodeConfig()['leftValue']) {
+      <div class="token-preview">
+        <span class="token-label">{{ 'flow.workflow.inspector.resolvedToken' | translate }}:</span>
+        <code>{{ nodeConfig()['leftValue'] }}</code>
+      </div>
+    }
+  } @else {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.leftValue' | translate }}</mat-label>
+      <input
+        matInput
+        [ngModel]="nodeConfig()['leftValue'] || ''"
+        [placeholder]="
+          (isFileExistsConditionOperator()
+            ? 'flow.workflow.inspector.conditionFilePathPlaceholder'
+            : 'flow.workflow.inspector.conditionValuePlaceholder'
+          ) | translate
+        "
+        (ngModelChange)="onFieldChange('leftValue', $event)"
+      />
+      @if (isFileExistsConditionOperator()) {
+        <button
+          matSuffix
+          matIconButton
+          type="button"
+          (click)="browseConditionFilePath()"
+          [attr.title]="'common.browse' | translate"
+        >
+          <mat-icon svgIcon="folder"></mat-icon>
+        </button>
+      }
+    </mat-form-field>
+  }
+
+  @if (!isUnaryConditionOperator()) {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.rightValue' | translate }}</mat-label>
+      <input
+        matInput
+        [ngModel]="nodeConfig()['rightValue'] || ''"
+        [placeholder]="'flow.workflow.inspector.conditionValuePlaceholder' | translate"
+        (ngModelChange)="onFieldChange('rightValue', $event)"
+      />
+    </mat-form-field>
+  }
+}

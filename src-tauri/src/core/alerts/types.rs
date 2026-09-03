@@ -71,6 +71,8 @@ pub enum AlertEventKind {
     System,
     /// Export operations (credentials, profiles, settings, etc.)
     Export,
+    /// Visual workflow DAG executions
+    Workflow,
 }
 
 impl std::fmt::Display for AlertEventKind {
@@ -90,6 +92,7 @@ impl AlertEventKind {
             Self::Automation => "automation",
             Self::System => "system",
             Self::Export => "export",
+            Self::Workflow => "workflow",
         }
     }
 }
@@ -128,6 +131,11 @@ pub struct AlertRule {
     /// Which profile names to watch. Empty = all profiles.
     #[setting(label = "Profile Filter")]
     pub profile_filter: Vec<String>,
+
+    /// Which workflow IDs or names to watch. Empty = all workflows.
+    #[setting(label = "Workflow Filter")]
+    #[serde(default)]
+    pub workflow_filter: Vec<String>,
 
     /// IDs of `AlertAction` entries to execute when this rule fires.
     #[setting(label = "Actions")]
@@ -183,6 +191,7 @@ impl Default for AlertRule {
             origin_filter: vec![],
             backend_filter: vec![],
             profile_filter: vec![],
+            workflow_filter: vec![],
             action_ids: vec![],
             cooldown_secs: 0,
             max_fire_count: 0,

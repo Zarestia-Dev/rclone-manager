@@ -1,0 +1,75 @@
+.workflow-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--view-bg-color);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--border-color) 40%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+
+  &.is-panning {
+    cursor: grab;
+  }
+
+  .workflow-canvas-plane {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+
+    .workflow-canvas-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 8000px;
+      height: 8000px;
+      overflow: visible;
+      pointer-events: none;
+
+      .connecting-wire-preview {
+        fill: none;
+        stroke: var(--accent-color);
+        stroke-width: 2.5px;
+        stroke-dasharray: 6 6;
+        stroke-linecap: round;
+        pointer-events: none;
+      }
+    }
+
+    .workflow-nodes-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: auto;
+
+      .workflow-node-positioned {
+        position: absolute;
+        pointer-events: auto;
+        z-index: 1;
+
+        &.selected {
+          z-index: 10;
+        }
+
+        &.is-dragging {
+          z-index: 20;
+        }
+      }
+    }
+  }
+
+  .minimap-floating-container {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    z-index: 10;
+  }
+}

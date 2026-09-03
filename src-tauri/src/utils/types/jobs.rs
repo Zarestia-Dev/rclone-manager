@@ -184,6 +184,10 @@ pub struct JobInfo {
     pub dry_run: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_job_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
 }
 
 impl JobInfo {

@@ -1,0 +1,183 @@
+<!-- Trigger: Manual -->
+@if (node().type === 'manual') {
+  <app-alert-banner
+    severity="info"
+    icon="play"
+    [description]="'flow.workflow.inspector.manualDesc' | translate"
+  />
+}
+
+<!-- Trigger: App Start (Auto Start) -->
+@if (node().type === 'app_start') {
+  <app-alert-banner
+    severity="info"
+    icon="bolt"
+    [description]="'flow.workflow.inspector.appStartDesc' | translate"
+  />
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.startupDelay' | translate }}</mat-label>
+    <input
+      matInput
+      type="number"
+      min="0"
+      max="3600"
+      [ngModel]="nodeConfig()['delaySeconds'] ?? 0"
+      (ngModelChange)="onFieldChange('delaySeconds', $event)"
+      placeholder="0"
+    />
+  </mat-form-field>
+
+  <div class="presets-row">
+    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(0)">
+      {{ 'flow.workflow.inspector.delay0s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(5)">
+      {{ 'flow.workflow.inspector.delayPreset5s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(15)">
+      {{ 'flow.workflow.inspector.delayPreset15s' | translate }}
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyAppStartPreset(30)">
+      {{ 'flow.workflow.inspector.delayPreset30s' | translate }}
+    </button>
+  </div>
+}
+
+<!-- Trigger: Cron -->
+@if (node().type === 'cron') {
+  <div class="operation-summary-card">
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'flow.workflow.inspector.cronExpression' | translate }}</span>
+      <div class="prop-badge remote-badge">
+        <mat-icon svgIcon="clock" class="prop-icon"></mat-icon>
+        <span class="prop-value font-semibold code-font">
+          {{ nodeConfig()['cronExpression'] || '0 2 * * *' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'wizards.appOperation.yourSchedule' | translate }}</span>
+      <span class="prop-value" [class.text-warn]="isCronInvalid()">
+        {{ cronHumanReadable() || ('flow.workflow.inspector.cronDaily' | translate) }}
+      </span>
+    </div>
+
+    <!-- Edit in Modal CTA Button -->
+    <div class="summary-card-footer">
+      <button
+        matButton="filled"
+        type="button"
+        class="btn-edit-config"
+        (click)="openDetailed.emit()"
+        [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
+      >
+        <mat-icon svgIcon="tune"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.openDetailed' | translate }}</span>
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Trigger: Watcher -->
+@if (node().type === 'watcher') {
+  <app-alert-banner
+    severity="info"
+    icon="folder"
+    [description]="'flow.workflow.nodes.folderWatcherDesc' | translate"
+  />
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.watchFolder' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="watchPath()"
+      (ngModelChange)="onWatchPathChange($event)"
+      placeholder="/home/user/Downloads"
+    />
+    <button
+      matSuffix
+      matIconButton
+      type="button"
+      (click)="browseWatchFolder()"
+      [attr.title]="'common.browse' | translate"
+    >
+      <mat-icon svgIcon="folder"></mat-icon>
+    </button>
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.fileFilterPattern' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['globPattern'] || ''"
+      (ngModelChange)="onFieldChange('globPattern', $event)"
+      placeholder="*.pdf, *.jpg, !*.tmp"
+    />
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.debounceSeconds' | translate }}</mat-label>
+    <input
+      matInput
+      type="number"
+      min="1"
+      max="300"
+      [ngModel]="nodeConfig()['debounceSeconds'] ?? 5"
+      (ngModelChange)="onFieldChange('debounceSeconds', $event)"
+    />
+  </mat-form-field>
+
+  <div class="presets-row">
+    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(2)">2s</button>
+    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(5)">5s</button>
+    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(10)">
+      10s
+    </button>
+    <button type="button" class="app-pill interactive" (click)="applyDebouncePreset(30)">
+      30s
+    </button>
+  </div>
+}
+
+<!-- Trigger: Job Event -->
+@if (node().type === 'job_event') {
+  <app-alert-banner
+    severity="info"
+    icon="done-all"
+    [description]="'flow.workflow.nodes.jobEventDesc' | translate"
+  />
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.jobEventProfile' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['targetProfileId'] || ''"
+      (ngModelChange)="onFieldChange('targetProfileId', $event)"
+      [placeholder]="'flow.workflow.inspector.jobEventPlaceholder' | translate"
+    >
+      @for (profile of allProfiles(); track profile) {
+        <mat-option [value]="profile">{{ profile }}</mat-option>
+      }
+      @if (allProfiles().length === 0) {
+        <mat-option disabled>{{ 'flow.quickRun.editor.noProfiles' | translate }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.eventState' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['eventState'] || 'any'"
+      (ngModelChange)="onFieldChange('eventState', $event)"
+    >
+      <mat-option value="any">{{ 'flow.workflow.inspector.eventStateAny' | translate }}</mat-option>
+      <mat-option value="success">{{
+        'flow.workflow.inspector.eventStateSuccess' | translate
+      }}</mat-option>
+      <mat-option value="failed">{{
+        'flow.workflow.inspector.eventStateFailed' | translate
+      }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+}

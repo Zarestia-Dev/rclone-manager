@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::RwLock;
 
-pub const SOURCE_KEYS: &[&str] = &["source", "srcFs", "path1", "fs"];
+pub const SOURCE_KEYS: &[&str] = &["source", "srcFs", "path1", "fs", "url"];
 pub const DEST_KEYS: &[&str] = &["dest", "dstFs", "path2", "mountPoint"];
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -20,6 +20,10 @@ pub struct MountedRemote {
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
 }
 
 impl MountedRemote {
@@ -32,6 +36,8 @@ impl MountedRemote {
             quick_run_id: None,
             execute_id: None,
             origin: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 }
@@ -49,6 +55,10 @@ pub struct ServeInstance {
     pub execute_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
 }
 
 impl ServeInstance {
@@ -62,6 +72,8 @@ impl ServeInstance {
             quick_run_id: None,
             execute_id: None,
             origin: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 }
@@ -245,6 +257,8 @@ impl OperationType {
             Self::Check => Some(crate::utils::rclone::endpoints::operations::CHECK),
             Self::Delete => Some(crate::utils::rclone::endpoints::operations::PURGE),
             Self::Copyurl => Some(crate::utils::rclone::endpoints::operations::COPYURL),
+            Self::Cryptcheck => Some(crate::utils::rclone::endpoints::operations::CRYPTCHECK),
+            Self::Archivecreate => Some(crate::utils::rclone::endpoints::operations::ARCHIVE),
             _ => None,
         }
     }

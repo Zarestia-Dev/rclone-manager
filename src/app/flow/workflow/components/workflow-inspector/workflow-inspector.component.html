@@ -1,0 +1,422 @@
+@if (selectedNode(); as node) {
+  <div class="workflow-inspector-panel">
+    <!-- Panel Header -->
+    <div class="inspector-header">
+      <div class="header-info">
+        <div class="header-icon-box" [ngClass]="'color-' + nodeCssClass()">
+          <mat-icon [svgIcon]="nodeIcon()" class="header-icon"></mat-icon>
+        </div>
+        <div class="header-text">
+          <h3>{{ node.title }}</h3>
+          <span class="node-type-label">
+            <span class="app-pill" [ngClass]="nodePillClass()">
+              {{ 'flow.workflow.category.' + node.category | translate }}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="header-actions">
+        @if (hasDetailedConfig()) {
+          <button
+            matIconButton
+            type="button"
+            (click)="openDetailedSettings()"
+            [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
+          >
+            <mat-icon svgIcon="tune"></mat-icon>
+          </button>
+        }
+        <button
+          matIconButton
+          type="button"
+          (click)="closeInspectorPanel()"
+          [attr.title]="'common.close' | translate"
+        >
+          <mat-icon svgIcon="close"></mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="inspector-content">
+      <!-- Live Execution Status Section (shown when node has run / is running) -->
+      @if (node.state && node.state !== 'idle') {
+        <div class="inspector-section execution-status-section">
+          <div class="section-title">
+            {{ 'flow.workflow.inspector.executionStatus' | translate }}
+          </div>
+          @if (node.state === 'failed') {
+            <app-alert-banner
+              severity="error"
+              [title]="
+                ('flow.workflow.status.failed' | translate) +
+                (node.lastDurationMs ? ' (' + node.lastDurationMs + 'ms)' : '')
+              "
+              [description]="node.errorMessage || ''"
+            ></app-alert-banner>
+          } @else {
+            <div class="execution-status-card" [ngClass]="'status-' + node.state">
+              <div class="status-card-header">
+                <div class="status-badge-pill" [ngClass]="'badge-' + node.state">
+                  @if (node.state === 'running') {
+                    <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+                    <span>{{ 'flow.workflow.status.running' | translate }}</span>
+                  } @else if (node.state === 'success') {
+                    <mat-icon svgIcon="check-circle"></mat-icon>
+                    <span>{{ 'flow.workflow.status.success' | translate }}</span>
+                  } @else if (node.state === 'skipped') {
+                    <mat-icon svgIcon="pause"></mat-icon>
+                    <span>{{ 'flow.workflow.status.skipped' | translate }}</span>
+                  }
+                </div>
+
+                @if (node.lastDurationMs) {
+                  <span class="execution-duration-pill">{{ node.lastDurationMs }}ms</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Live Active Service Section (Mount or Serve) -->
+      @if (activeMount(); as mount) {
+        <div class="inspector-section live-service-section">
+          <div class="section-title">
+            <span class="live-indicator-dot"></span>
+            {{ 'flow.workflow.inspector.liveActiveService' | translate }}
+          </div>
+          <div class="live-service-card">
+            <div class="live-service-header">
+              <div class="live-service-meta">
+                <span class="live-service-label">{{
+                  'flow.workflow.inspector.currentlyMounted' | translate
+                }}</span>
+                <span class="live-service-value" [attr.title]="mount.mount_point">{{
+                  mount.mount_point
+                }}</span>
+              </div>
+              <button
+                type="button"
+                class="app-pill interactive danger-pill"
+                (click)="unmountActive()"
+                [attr.title]="'flow.workflow.inspector.unmountNow' | translate"
+              >
+                <mat-icon svgIcon="eject"></mat-icon>
+                <span>{{ 'flow.workflow.inspector.unmountNow' | translate }}</span>
+              </button>
+            </div>
+            <div class="live-service-details">
+              <span class="detail-item"><strong>FS:</strong> {{ mount.fs }}</span>
+              @if (mount.profile) {
+                <span class="detail-item"><strong>Profile:</strong> {{ mount.profile }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeServe(); as serve) {
+        <div class="inspector-section live-service-section">
+          <div class="section-title">
+            <span class="live-indicator-dot"></span>
+            {{ 'flow.workflow.inspector.liveActiveService' | translate }}
+          </div>
+          <div class="live-service-card">
+            <div class="live-service-header">
+              <div class="live-service-meta">
+                <span class="live-service-label">{{
+                  'flow.workflow.inspector.currentlyServing' | translate
+                }}</span>
+                <span class="live-service-value" [attr.title]="serve.addr">{{ serve.addr }}</span>
+              </div>
+              <button
+                type="button"
+                class="app-pill interactive danger-pill"
+                (click)="stopActiveServe()"
+                [attr.title]="'flow.workflow.inspector.stopServeNow' | translate"
+              >
+                <mat-icon svgIcon="stop"></mat-icon>
+                <span>{{ 'flow.workflow.inspector.stopServeNow' | translate }}</span>
+              </button>
+            </div>
+            <div class="live-service-details">
+              <span class="detail-item"
+                ><strong>Type:</strong> {{ serve.params['type'] || 'http' | uppercase }}</span
+              >
+              @if (activeServeUrl()) {
+                <a
+                  class="live-link"
+                  [href]="activeServeUrl()"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.title]="'flow.workflow.inspector.openInBrowser' | translate"
+                >
+                  <mat-icon svgIcon="open-in-new"></mat-icon>
+                  <span>{{ activeServeUrl() }}</span>
+                </a>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- General Metadata Section -->
+      <div class="inspector-section">
+        <div class="section-title">{{ 'flow.workflow.inspector.general' | translate }}</div>
+
+        <mat-form-field class="form-field-full">
+          <mat-label>{{ 'flow.workflow.inspector.nodeTitle' | translate }}</mat-label>
+          <input matInput [ngModel]="nodeTitle()" (ngModelChange)="onTitleChange($event)" />
+        </mat-form-field>
+
+        <mat-form-field class="form-field-full">
+          <mat-label>{{ 'flow.workflow.inspector.nodeSubtitle' | translate }}</mat-label>
+          <input
+            matInput
+            [ngModel]="nodeSubtitle()"
+            (ngModelChange)="onSubtitleChange($event)"
+            [placeholder]="'flow.workflow.inspector.subtitlePlaceholder' | translate"
+          />
+        </mat-form-field>
+      </div>
+
+      <!-- Type-Specific Primary Properties Section (Modularized sub-forms) -->
+      <div class="inspector-section">
+        <div class="section-title">{{ 'flow.workflow.inspector.parameters' | translate }}</div>
+
+        @switch (node.category) {
+          @case ('trigger') {
+            <app-trigger-node-form
+              [node]="node"
+              [nodeConfig]="nodeConfig()"
+              [allProfiles]="allProfiles()"
+              (openDetailed)="openDetailedSettings()"
+              (configChange)="onConfigFieldChange($event.key, $event.value)"
+            ></app-trigger-node-form>
+          }
+          @case ('task') {
+            <app-task-node-form
+              [node]="node"
+              [nodeConfig]="nodeConfig()"
+              [remotes]="remotes()"
+              [quickRuns]="quickRuns()"
+              [inspectorRemote]="inspectorRemote()"
+              [inspectorSource]="inspectorSource()"
+              [inspectorDest]="inspectorDest()"
+              [inspectorServeType]="inspectorServeType()"
+              [inspectorServeAddr]="inspectorServeAddr()"
+              (openDetailed)="openDetailedSettings()"
+              (remoteChange)="onInspectorRemoteChange($event)"
+              (sourceChange)="onInspectorSourceChange($event)"
+              (destChange)="onInspectorDestChange($event)"
+              (serveTypeChange)="onServeTypeChange($event)"
+              (serveAddrChange)="onServeAddrChange($event)"
+              (configChange)="onConfigFieldChange($event.key, $event.value)"
+              (rcloneFieldChange)="onRcloneFieldChange($event.key, $event.value)"
+            ></app-task-node-form>
+          }
+          @case ('logic') {
+            <app-logic-node-form
+              [node]="node"
+              [nodeConfig]="nodeConfig()"
+              (configChange)="onConfigFieldChange($event.key, $event.value)"
+            ></app-logic-node-form>
+          }
+          @case ('action') {
+            <app-action-node-form
+              [node]="node"
+              [nodeConfig]="nodeConfig()"
+              [availableMountNodes]="availableMountNodes()"
+              [availableServeNodes]="availableServeNodes()"
+              (configChange)="onConfigFieldChange($event.key, $event.value)"
+            ></app-action-node-form>
+          }
+        }
+      </div>
+
+      <!-- Active Configuration & Flags Summary Section (Only for Operation Nodes) -->
+      @if (isOperationNode()) {
+        <div class="inspector-section active-config-section">
+          <div class="section-title-row">
+            <div class="section-title">
+              {{ 'flow.workflow.inspector.activeConfig' | translate }}
+            </div>
+            @if (activeConfigEntries().length > 0) {
+              <span class="config-count-badge">{{ activeConfigEntries().length }}</span>
+            }
+          </div>
+
+          @if (activeConfigEntries().length > 0) {
+            <div class="config-chips-list">
+              @for (item of activeConfigEntries(); track item.path) {
+                <div class="config-chip" [ngClass]="'chip-' + item.category">
+                  <span class="category-tag">{{ item.category }}</span>
+                  <span class="chip-key">{{ item.key }}:</span>
+                  <span class="chip-val" [attr.title]="item.value">{{ item.value }}</span>
+                  <button
+                    type="button"
+                    class="chip-delete-btn"
+                    (click)="removeConfigItem(item.path)"
+                    [attr.title]="'flow.workflow.inspector.removeFlag' | translate"
+                  >
+                    <mat-icon svgIcon="close"></mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-config-box">
+              <span class="empty-text">{{
+                'flow.workflow.inspector.noActiveConfig' | translate
+              }}</span>
+              <span class="empty-hint">{{
+                'flow.workflow.inspector.addFlagsHint' | translate
+              }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+} @else if (activeWorkflow(); as wf) {
+  <div class="workflow-inspector-panel">
+    <!-- Panel Header -->
+    <div class="inspector-header">
+      <div class="header-info">
+        <div class="header-icon-box color-accent">
+          <mat-icon svgIcon="workflow" class="header-icon"></mat-icon>
+        </div>
+        <div class="header-text">
+          <h3>{{ wf.name || ('flow.workflow.untitled' | translate) }}</h3>
+          <span class="node-type-label">
+            <span class="app-pill p-accent">
+              <mat-icon svgIcon="workflow"></mat-icon>
+              <span>{{ 'flow.workflow.details' | translate }}</span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button
+          matIconButton
+          type="button"
+          (click)="closeInspectorPanel()"
+          [attr.title]="'common.close' | translate"
+        >
+          <mat-icon svgIcon="close"></mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="inspector-content">
+      <!-- General Metadata Section -->
+      <div class="inspector-section">
+        <div class="section-title">{{ 'flow.workflow.inspector.general' | translate }}</div>
+
+        <mat-form-field class="form-field-full">
+          <mat-label>{{ 'flow.workflow.name' | translate }}</mat-label>
+          <input
+            matInput
+            [ngModel]="workflowName()"
+            (ngModelChange)="onWorkflowNameChange($event)"
+            (blur)="saveActiveWorkflow()"
+            [placeholder]="'flow.workflow.name' | translate"
+          />
+        </mat-form-field>
+
+        <mat-form-field class="form-field-full">
+          <mat-label>{{ 'flow.workflow.description' | translate }}</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            [ngModel]="workflowDescription()"
+            (ngModelChange)="onWorkflowDescriptionChange($event)"
+            (blur)="saveActiveWorkflow()"
+            [placeholder]="'flow.workflow.descriptionPlaceholder' | translate"
+          ></textarea>
+        </mat-form-field>
+      </div>
+
+      <!-- Stats / Overview Section -->
+      <div class="inspector-section">
+        <div class="section-title">{{ 'flow.workflow.stats.title' | translate }}</div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">{{ 'flow.workflow.stats.nodes' | translate }}</span>
+            <span class="stat-value">{{ wf.nodes.length }}</span>
+            <span class="stat-breakdown">
+              {{ triggerNodesCount() }}
+              {{ 'flow.workflow.category.trigger' | translate | lowercase }} ·
+              {{ taskNodesCount() }} {{ 'flow.workflow.category.task' | translate | lowercase }} ·
+              {{ logicNodesCount() }} {{ 'flow.workflow.category.logic' | translate | lowercase }} ·
+              {{ actionNodesCount() }} {{ 'flow.workflow.category.action' | translate | lowercase }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">{{ 'flow.workflow.stats.connections' | translate }}</span>
+            <span class="stat-value">{{ wf.edges.length }}</span>
+            <span class="stat-breakdown"
+              >{{ wf.edges.length }}
+              {{ 'flow.workflow.stats.connections' | translate | lowercase }}</span
+            >
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">{{ 'flow.workflow.stats.created' | translate }}</span>
+            <span class="stat-value-sm">{{
+              wf.createdAt ? (wf.createdAt | date: 'mediumDate') : '-'
+            }}</span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">{{ 'flow.workflow.stats.updated' | translate }}</span>
+            <span class="stat-value-sm">{{
+              wf.updatedAt ? (wf.updatedAt | date: 'mediumDate') : '-'
+            }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workflow Level Actions -->
+      <div class="inspector-section workflow-actions-section">
+        <div class="section-title">{{ 'common.actions' | translate }}</div>
+
+        <div class="workflow-actions-list">
+          <button
+            matButton="tonal"
+            type="button"
+            class="action-btn"
+            (click)="duplicateActiveWorkflow()"
+          >
+            <mat-icon svgIcon="copy"></mat-icon>
+            <span>{{ 'flow.workflow.actions.duplicateWorkflow' | translate }}</span>
+          </button>
+
+          <button
+            matButton="tonal"
+            type="button"
+            class="action-btn"
+            (click)="exportActiveWorkflowJson()"
+          >
+            <mat-icon svgIcon="export"></mat-icon>
+            <span>{{ 'flow.workflow.actions.exportWorkflow' | translate }}</span>
+          </button>
+
+          <button
+            matButton="filled"
+            type="button"
+            class="action-btn delete-btn"
+            (click)="deleteActiveWorkflow()"
+          >
+            <mat-icon svgIcon="trash"></mat-icon>
+            <span>{{ 'flow.workflow.actions.deleteWorkflow' | translate }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

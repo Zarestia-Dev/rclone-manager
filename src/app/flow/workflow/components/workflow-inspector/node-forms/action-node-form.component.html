@@ -1,0 +1,242 @@
+<!-- Action: Notification -->
+@if (node().type === 'notification') {
+  @if (alertService.actions().length > 0) {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.alertAction' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="nodeConfig()['actionId'] || ''"
+        (ngModelChange)="onActionSelect($event)"
+        [placeholder]="'flow.workflow.inspector.selectAlertAction' | translate"
+      >
+        @for (action of alertService.actions(); track action.id) {
+          <mat-option [value]="action.id">
+            <span class="action-option-item">
+              <mat-icon [svgIcon]="getActionIcon(action.kind)"></mat-icon>
+              <span>{{ action.name }}</span>
+              <span class="action-kind-tag">({{ action.kind }})</span>
+            </span>
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (selectedAction(); as action) {
+      <div class="action-summary-card">
+        <div class="summary-header">
+          <mat-icon [svgIcon]="getActionIcon(action.kind)"></mat-icon>
+          <span class="action-name">{{ action.name }}</span>
+          <span class="action-kind-pill">{{ action.kind }}</span>
+        </div>
+        @if (getActionDetail(action); as detail) {
+          <div class="summary-detail" [attr.title]="detail">{{ detail }}</div>
+        }
+      </div>
+    }
+  } @else {
+    <div class="empty-actions-hint">
+      <mat-icon svgIcon="circle-info"></mat-icon>
+      <span class="hint-text">{{ 'flow.workflow.inspector.noAlertActionsFound' | translate }}</span>
+      <button
+        type="button"
+        class="app-pill interactive primary-pill"
+        (click)="openAlertsModal()"
+        [attr.title]="'flow.workflow.inspector.openAlertsModal' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.openAlertsModal' | translate }}</span>
+      </button>
+    </div>
+  }
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.alertTitle' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['title'] || ''"
+      (ngModelChange)="onFieldChange('title', $event)"
+    />
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.alertMessage' | translate }}</mat-label>
+    <textarea
+      matInput
+      rows="2"
+      class="code-font"
+      [ngModel]="nodeConfig()['message'] || ''"
+      (ngModelChange)="onFieldChange('message', $event)"
+    ></textarea>
+  </mat-form-field>
+
+  <app-alert-banner
+    severity="info"
+    [title]="'flow.workflow.inspector.templateVariables' | translate"
+  >
+    <div class="tags-row">
+      @for (key of templateKeys(); track key) {
+        <button
+          type="button"
+          class="tag-btn"
+          (click)="insertTemplateVariable(key)"
+          [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
+        >
+          <code>{{ '{{' }}{{ key }}{{ '}}' }}</code>
+        </button>
+      }
+    </div>
+  </app-alert-banner>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.severity' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['severity'] || 'info'"
+      (ngModelChange)="onFieldChange('severity', $event)"
+    >
+      <mat-option value="info">{{ 'alerts.severityLevels.info' | translate }}</mat-option>
+      <mat-option value="warning">{{ 'alerts.severityLevels.warning' | translate }}</mat-option>
+      <mat-option value="average">{{ 'alerts.severityLevels.average' | translate }}</mat-option>
+      <mat-option value="high">{{ 'alerts.severityLevels.high' | translate }}</mat-option>
+      <mat-option value="critical">{{ 'alerts.severityLevels.critical' | translate }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+}
+
+<!-- Action: Unmount -->
+@if (node().type === 'unmount') {
+  <mat-button-toggle-group
+    [value]="unmountTargetMode()"
+    (change)="setUnmountTargetMode($event.value)"
+    name="unmount-target-mode"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle value="node">
+      {{ 'flow.workflow.inspector.modeTargetNode' | translate }}
+    </mat-button-toggle>
+    <mat-button-toggle value="custom">
+      {{ 'flow.workflow.inspector.modeCustom' | translate }}
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (unmountTargetMode() === 'node') {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.targetMountNode' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="nodeConfig()['targetNodeId'] || ''"
+        (ngModelChange)="onFieldChange('targetNodeId', $event)"
+        [placeholder]="'flow.workflow.inspector.targetMountNodePlaceholder' | translate"
+      >
+        @for (mNode of availableMountNodes(); track mNode.id) {
+          <mat-option [value]="mNode.id">{{ mNode.title }} ({{ mNode.id }})</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.mountPoint' | translate }}</mat-label>
+      <input
+        matInput
+        [ngModel]="nodeConfig()['mountPoint'] || ''"
+        (ngModelChange)="onFieldChange('mountPoint', $event)"
+        [placeholder]="'flow.workflow.inspector.unmountPlaceholder' | translate"
+      />
+      <button
+        matSuffix
+        matIconButton
+        type="button"
+        (click)="browseUnmountFolder()"
+        [attr.title]="'common.browse' | translate"
+      >
+        <mat-icon svgIcon="folder"></mat-icon>
+      </button>
+    </mat-form-field>
+  }
+}
+
+<!-- Action: Stop Serve -->
+@if (node().type === 'stop_serve') {
+  <mat-button-toggle-group
+    [value]="stopServeTargetMode()"
+    (change)="setStopServeTargetMode($event.value)"
+    name="stop-serve-target-mode"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle value="node">
+      {{ 'flow.workflow.inspector.modeTargetNode' | translate }}
+    </mat-button-toggle>
+    <mat-button-toggle value="custom">
+      {{ 'flow.workflow.inspector.modeCustom' | translate }}
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (stopServeTargetMode() === 'node') {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.targetServeNode' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="nodeConfig()['targetNodeId'] || ''"
+        (ngModelChange)="onFieldChange('targetNodeId', $event)"
+        [placeholder]="'flow.workflow.inspector.targetServeNodePlaceholder' | translate"
+      >
+        @for (sNode of availableServeNodes(); track sNode.id) {
+          <mat-option [value]="sNode.id">{{ sNode.title }} ({{ sNode.id }})</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <mat-form-field class="form-field-full">
+      <mat-label>{{ 'flow.workflow.inspector.serverId' | translate }}</mat-label>
+      <input
+        matInput
+        [ngModel]="nodeConfig()['serverId'] || ''"
+        (ngModelChange)="onFieldChange('serverId', $event)"
+        placeholder="e.g. 12345"
+      />
+    </mat-form-field>
+  }
+}
+
+<!-- Action: System Power -->
+@if (node().type === 'system_power') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.powerAction' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['action'] || 'sleep'"
+      (ngModelChange)="onFieldChange('action', $event)"
+    >
+      <mat-option value="sleep">{{ 'flow.workflow.inspector.powerSleep' | translate }}</mat-option>
+      <mat-option value="shutdown">{{
+        'flow.workflow.inspector.powerShutdown' | translate
+      }}</mat-option>
+      <mat-option value="hibernate">{{
+        'flow.workflow.inspector.powerHibernate' | translate
+      }}</mat-option>
+      <mat-option value="lock">{{ 'flow.workflow.inspector.powerLock' | translate }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+}
+
+<!-- Action: Audit Log -->
+@if (node().type === 'log_audit') {
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.auditMessage' | translate }}</mat-label>
+    <input
+      matInput
+      [ngModel]="nodeConfig()['message'] || ''"
+      (ngModelChange)="onFieldChange('message', $event)"
+      placeholder="Custom log message"
+    />
+  </mat-form-field>
+
+  <mat-form-field class="form-field-full">
+    <mat-label>{{ 'flow.workflow.inspector.severity' | translate }}</mat-label>
+    <mat-select
+      [ngModel]="nodeConfig()['severity'] || 'info'"
+      (ngModelChange)="onFieldChange('severity', $event)"
+    >
+      <mat-option value="info">{{ 'flow.workflow.inspector.severityInfo' | translate }}</mat-option>
+      <mat-option value="warn">{{ 'flow.workflow.inspector.severityWarn' | translate }}</mat-option>
+      <mat-option value="error">{{
+        'flow.workflow.inspector.severityError' | translate
+      }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+}

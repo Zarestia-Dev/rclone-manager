@@ -37,6 +37,8 @@ export interface ServeListItem {
   quick_run_id?: string;
   execute_id?: string;
   origin?: Origin;
+  workflow_id?: string;
+  node_id?: string;
   params: {
     fs: string;
     type: string;

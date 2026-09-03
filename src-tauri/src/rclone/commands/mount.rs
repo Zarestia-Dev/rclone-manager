@@ -35,6 +35,8 @@ pub struct MountParams {
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
+    pub workflow_id: Option<String>,
+    pub node_id: Option<String>,
     pub no_cache: Option<bool>,
 }
 
@@ -76,6 +78,8 @@ impl FromConfig for MountParams {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
             no_cache: None,
         })
     }
@@ -143,6 +147,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             quick_run_id: params.quick_run_id.clone(),
             execute_id: params.execute_id.clone(),
             origin: params.origin.clone(),
+            workflow_id: params.workflow_id.clone(),
+            node_id: params.node_id.clone(),
         };
 
         let mut current_mounts = cache.get_mounted_remotes().await;
@@ -156,6 +162,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 params.quick_run_id.clone(),
                 params.origin.clone(),
                 params.execute_id.clone(),
+                params.workflow_id.clone(),
+                params.node_id.clone(),
                 Some(&app),
             )
             .await;
@@ -218,7 +226,9 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     .with_origin(params.origin.clone())
     .with_no_cache(params.no_cache.unwrap_or(false))
     .with_quick_run_id(params.quick_run_id.clone())
-    .with_execute_id(params.execute_id.clone());
+    .with_execute_id(params.execute_id.clone())
+    .with_workflow_id(params.workflow_id.clone())
+    .with_node_id(params.node_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
     let _ = super::job::submit_job_with_options(
@@ -241,6 +251,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
+            params.workflow_id.clone(),
+            params.node_id.clone(),
             Some(&app),
         )
         .await;
@@ -630,6 +642,8 @@ mod tests {
             quick_run_id: None,
             execute_id: None,
             origin: None,
+            workflow_id: None,
+            node_id: None,
             no_cache: None,
         };
 

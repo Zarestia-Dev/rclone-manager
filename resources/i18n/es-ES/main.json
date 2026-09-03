@@ -426,8 +426,7 @@
       "mqttTopic": "MQTT Topic"
     },
     "noRulesHint": "Aún no hay reglas de alerta configuradas. Cree una regla para recibir notificaciones.",
-    "noActionsHint": "Aún no hay acciones de alerta configuradas. Cree una acción para definir cómo se entregan las alertas.",
-    "test": "Test"
+    "noActionsHint": "Aún no hay acciones de alerta configuradas. Cree una acción para definir cómo se entregan las alertas."
   },
   "settings": {
     "resetAll": {
@@ -3285,6 +3284,8 @@
       "untitled": "Flujo sin título",
       "savedWorkflows": "Flujos guardados",
       "presetRecipes": "Recetas predefinidas",
+      "unsavedChanges": "Cambios no guardados",
+      "saving": "Guardando...",
       "categories": {
         "all": "Todos"
       },
@@ -3318,19 +3319,19 @@
         "snapToGrid": "Ajustar a la cuadrícula",
         "toggleLog": "Registro de ejecución",
         "toggleInspector": "Alternar inspector",
-        "cleanDuplicates": "Limpiar duplicados"
+        "cleanDuplicates": "Limpiar duplicados",
+        "dryRun": "Modo de prueba",
+        "dryRunTooltip": "Simular la ejecución del flujo de trabajo sin modificar datos ni ejecutar comandos reales"
       },
       "palette": {
         "title": "Biblioteca de nodos",
         "searchPlaceholder": "Buscar nodos...",
         "clickToAdd": "Haz clic o arrastra para añadir al lienzo",
-        "add": "Añadir nodo",
         "noResults": "No se encontraron nodos",
         "hideSearch": "Ocultar búsqueda y filtros",
         "showSearch": "Mostrar búsqueda y filtros"
       },
       "inspector": {
-        "title": "Inspector de nodos",
         "general": "Configuración general",
         "parameters": "Parámetros y opciones",
         "nodeTitle": "Título del nodo",
@@ -3347,8 +3348,23 @@
         "localOrSelect": "Local / Seleccionar remoto",
         "sourcePath": "Ruta de origen (srcFs)",
         "destinationPath": "Ruta de destino (dstFs)",
-        "mountPoint": "Directorio de punto de montaje",
+        "mountPoint": "Punto de montaje",
         "rcEndpoint": "Punto final RC",
+        "rcParameters": "Parámetros RC (JSON)",
+        "rcParametersHint": "Carga útil JSON enviada al comando RC (admite variables {{nodes.id.field}})",
+        "rcPresets": "Puntos finales preestablecidos",
+        "presetCategoryAll": "Todos",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Almacenamiento",
+        "presetCategoryCore": "Núcleo",
+        "insertVariable": "Insertar variable de salida del nodo",
+        "insertTokenBtn": "Insertar variable",
+        "formatJson": "Dar formato a JSON",
+        "clearJson": "Limpiar",
+        "validJson": "JSON válido",
+        "invalidJson": "JSON no válido",
+        "templateJson": "Plantilla dinámica",
+        "noUpstreamNodesHint": "Agregue otros nodos a su flujo para referenciar sus salidas como {{nodes.id.field}}",
         "delaySeconds": "Duración del retraso (segundos)",
         "conditionOperator": "Operador de condición",
         "opEquals": "Igual a (==)",
@@ -3357,6 +3373,13 @@
         "opTruthy": "No vacío / Verdadero (Truthy)",
         "leftValue": "Expresión / Valor izquierdo",
         "rightValue": "Valor de comparación derecho",
+        "conditionValuePlaceholder": "valor o {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/ruta/al/archivo o {{nodes.id.path}}",
+        "targetNode": "Nodo de destino",
+        "targetNodeField": "Campo de salida",
+        "targetNodePlaceholder": "Seleccionar nodo de destino",
+        "targetFieldPlaceholder": "Seleccionar campo de salida",
+        "resolvedToken": "Token resuelto",
         "alertTitle": "Título de la alerta",
         "alertMessage": "Mensaje de la alerta",
         "severity": "Nivel de gravedad",
@@ -3374,7 +3397,6 @@
         "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
         "jobEventProfile": "Target Profile / Job",
         "jobEventPlaceholder": "Select a profile to monitor",
-        "unmountPoint": "Mount Point",
         "unmountPlaceholder": "/mnt/remote or C:\\Mount",
         "delayPreset5s": "5s",
         "delayPreset15s": "15s",
@@ -3396,12 +3418,14 @@
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
+        "failOnError": "Fallar en Caso de Error",
         "selectQuickRun": "Select Quick Run Profile",
         "quickRunPlaceholder": "Select a quick run...",
         "stopStatus": "Termination Status",
         "stopStatusSuccess": "Complete with Success",
         "stopStatusFailed": "Halt with Error / Failure",
         "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "Motivo para detener el flujo de trabajo",
         "powerAction": "Power Action",
         "powerSleep": "Sleep / Suspend",
         "powerShutdown": "Shutdown Computer",
@@ -3414,7 +3438,45 @@
         "opLessThan": "Less Than (<)",
         "opIsEmpty": "Is Empty",
         "opFileExists": "File/Path Exists",
-        "executionStatus": "Estado de ejecución"
+        "executionStatus": "Estado de ejecución",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "modeTargetNode": "Nodo de destino",
+        "serverId": "ID de servidor",
+        "modeCustom": "Personalizado",
+        "alertAction": "Acción de alerta / Canal",
+        "selectAlertAction": "Seleccione una acción de alerta...",
+        "noAlertActionsFound": "No se encontraron acciones de alerta guardadas",
+        "openAlertsModal": "Configurar acciones",
+        "templateVariables": "Variables de plantilla",
+        "insertVariableHint": "Haga clic para insertar en el mensaje",
+        "joinMode": "Política de unión",
+        "joinModeAllSuccess": "Todas las ramas (AND)",
+        "joinModeAllSuccessHint": "Solo continúa si todas las ramas paralelas finalizan con éxito.",
+        "joinModeAnySuccess": "Al menos una (OR)",
+        "joinModeAnySuccessHint": "Continúa en cuanto todas las ramas terminen, si al menos una tuvo éxito.",
+        "joinModeAlways": "Continuar siempre",
+        "joinModeAlwaysHint": "Continúa incondicionalmente una vez finalizadas todas las ramas, incluso con errores.",
+        "joinBranchesTitle": "Ramas entrantes",
+        "joinAddBranch": "Añadir rama",
+        "joinRemoveBranch": "Eliminar rama",
+        "parallelBranchesTitle": "Ramas salientes",
+        "parallelAddBranch": "Añadir rama",
+        "parallelRemoveBranch": "Eliminar rama",
+        "archiveFormat": "Formato de archivo",
+        "archivePrefix": "Prefijo interno (opcional)",
+        "downloadUrl": "URL de descarga",
+        "autoFilename": "Determinar nombre de archivo automáticamente"
       },
       "status": {
         "running": "En ejecución",
@@ -3422,34 +3484,6 @@
         "failed": "Fallido",
         "skipped": "Omitido",
         "idle": "Inactivo"
-      },
-      "sheet": {
-        "title": "Configuración del nodo",
-        "configureNode": "Configurar nodo ({{type}})",
-        "nodeSaved": "Configuración del nodo guardada correctamente",
-        "saveAndClose": "Aplicar y cerrar",
-        "tabGeneral": "General y rutas",
-        "tabOperations": "Opciones de operación",
-        "tabFilter": "Opciones de filtro",
-        "tabBackend": "Opciones de backend",
-        "tabVfs": "Opciones VFS",
-        "tabMount": "Opciones de montaje",
-        "tabServe": "Opciones de servidor",
-        "tabCron": "Programación Cron",
-        "tabWatch": "Vigilancia de carpetas",
-        "expand": "Expandir panel",
-        "collapse": "Contraer panel",
-        "searchFlags": "Buscar parámetros y opciones...",
-        "configuredCount": "{{count}} configurados",
-        "modeActionRef": "Use Saved Alert Action",
-        "modeInline": "Custom Inline Channel",
-        "overrideTemplate": "Override Message Template",
-        "saveAsGlobalAction": "Save as Alert Action",
-        "saveAsGlobalActionHint": "Save this inline configuration as a permanent global alert action",
-        "actionSavedSuccess": "Action '{{name}}' saved successfully to Alert Actions",
-        "notificationTestSuccess": "Test notification sent successfully",
-        "templateVariables": "Template Variables",
-        "insertVarHint": "Click to insert variable into template"
       },
       "ports": {
         "in": "Entrada",
@@ -3467,8 +3501,7 @@
         "branch2": "Rama 2",
         "in1": "Entrada 1",
         "in2": "Entrada 2",
-        "done": "Listo",
-        "mounted": "Montado"
+        "done": "Listo"
       },
       "nodes": {
         "manualTrigger": "Disparador manual",
@@ -3508,14 +3541,21 @@
         "systemPower": "System Power",
         "systemPowerDesc": "Sleep, lock or shutdown host system",
         "logAudit": "Audit Log",
-        "logAuditDesc": "Write entry to workflow execution log"
+        "logAuditDesc": "Write entry to workflow execution log",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote"
       },
       "logs": {
         "title": "Registro de ejecución",
         "copy": "Copiar registros",
         "clear": "Borrar registros",
         "jumpToNode": "Haga clic para enfocar el nodo en el lienzo",
-        "empty": "Sin registros de ejecución todavía. Ejecute un flujo de trabajo."
+        "empty": "Sin registros de ejecución todavía. Ejecute un flujo de trabajo.",
+        "copied": "Registros copiados al portapapeles",
+        "filterAll": "Todos",
+        "filterErrors": "Errores",
+        "filterWarnings": "Advertencias",
+        "filterSuccess": "Éxito"
       },
       "details": "Detalles del flujo de trabajo",
       "name": "Nombre del flujo",
@@ -3530,6 +3570,18 @@
         "connections": "Conexiones",
         "created": "Creado",
         "updated": "Actualizado"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "recipes": {
+        "manualTrigger": "Disparador manual",
+        "manualTriggerDesc": "Activado manualmente desde la interfaz"
+      },
+      "editor": {
+        "configureNode": "Configurar nodo: {{type}}",
+        "nodeSaved": "Ajustes del nodo de flujo de trabajo actualizados"
       }
     }
   },

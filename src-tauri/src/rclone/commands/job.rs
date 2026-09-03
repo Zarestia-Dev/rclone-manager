@@ -51,6 +51,10 @@ pub struct JobMetadata {
     pub quick_run_id: Option<String>,
     #[serde(default)]
     pub execute_id: Option<String>,
+    #[serde(default)]
+    pub workflow_id: Option<String>,
+    #[serde(default)]
+    pub node_id: Option<String>,
 }
 
 impl JobMetadata {
@@ -74,6 +78,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -104,6 +110,18 @@ impl JobMetadata {
     #[must_use]
     pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
         self.quick_run_id = quick_run_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_workflow_id(mut self, workflow_id: Option<String>) -> Self {
+        self.workflow_id = workflow_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_node_id(mut self, node_id: Option<String>) -> Self {
+        self.node_id = node_id;
         self
     }
 
@@ -146,6 +164,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -176,6 +196,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 

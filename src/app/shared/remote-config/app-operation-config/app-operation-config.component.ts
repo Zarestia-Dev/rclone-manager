@@ -99,6 +99,7 @@ export class OperationConfigComponent {
   readonly existingRemotes = input<string[]>([]);
   readonly description = input('');
   readonly isNewRemote = input(true);
+  readonly showAutomations = input(true);
   readonly searchQuery = input('');
 
   // Services
@@ -200,18 +201,26 @@ export class OperationConfigComponent {
     return (terms.length === 1 && !terms[0]) || keywords.some(k => terms.some(t => k.includes(t)));
   }
 
-  readonly showAutoStart = computed(() => this.matchesSearch(['auto', 'start', 'enable']));
-  readonly showCronSection = computed(() =>
-    this.matchesSearch([
-      'cron',
-      'schedule',
-      'automation',
-      'watch',
-      'real-time',
-      'realtime',
-      'monitor',
-      'filesystem',
-    ])
+  readonly showAutoStart = computed(
+    () =>
+      this.showAutomations() &&
+      !this.isNewRemote() &&
+      this.matchesSearch(['auto', 'start', 'enable'])
+  );
+  readonly showCronSection = computed(
+    () =>
+      this.showAutomations() &&
+      !this.isNewRemote() &&
+      this.matchesSearch([
+        'cron',
+        'schedule',
+        'automation',
+        'watch',
+        'real-time',
+        'realtime',
+        'monitor',
+        'filesystem',
+      ])
   );
   readonly isMobilePlatform = computed(() => isMobile());
   readonly selectedMountType = computed(() => {

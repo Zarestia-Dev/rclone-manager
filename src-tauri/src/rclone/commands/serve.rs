@@ -36,6 +36,8 @@ pub struct ServeParams {
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
+    pub workflow_id: Option<String>,
+    pub node_id: Option<String>,
 }
 
 impl ServeParams {
@@ -63,6 +65,8 @@ impl ServeParams {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         })
     }
 
@@ -219,6 +223,8 @@ pub async fn start_serve(
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
+            params.workflow_id.clone(),
+            params.node_id.clone(),
             Some(&app),
         )
         .await;
@@ -451,6 +457,8 @@ mod tests {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
             serve_type: "webdav".to_string(),
         };
 

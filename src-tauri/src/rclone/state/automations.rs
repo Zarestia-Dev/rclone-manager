@@ -8,7 +8,11 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::{automation::engine::get_next_run, bridge, flow::quick_run::types::QuickRun},
+    core::{
+        automation::engine::get_next_run,
+        bridge,
+        flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
+    },
     utils::{
         constants::{
             AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
@@ -178,6 +182,37 @@ impl AutomationsCache {
             .sync_automations(backend_name, automations, |t| {
                 t.backend_name == backend_name
                     && t.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun)
+            })
+            .await?;
+
+        if result.has_changes()
+            && let Some(app) = app
+        {
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
+
+        Ok(result)
+    }
+
+    /// Load automations from Workflows, preserving existing automation states.
+    pub async fn load_from_workflows(
+        &self,
+        workflows: &[WorkflowDefinition],
+        backend_name: &str,
+        app: Option<&AppHandle>,
+    ) -> Result<CacheUpdateResult, String> {
+        let mut automations = Vec::new();
+
+        for wf in workflows {
+            if let Some(automation) = self.create_automation_from_workflow(backend_name, wf) {
+                automations.push(automation);
+            }
+        }
+
+        let result = self
+            .sync_automations(backend_name, automations, |t| {
+                t.backend_name == backend_name
+                    && t.args.params.source == Some(crate::utils::types::origin::Origin::Flow)
             })
             .await?;
 
@@ -529,6 +564,75 @@ impl AutomationsCache {
             watch_enabled,
             watch_delay,
             watch_changed_only,
+        })
+    }
+
+    pub fn create_automation_from_workflow(
+        &self,
+        backend_name: &str,
+        wf: &WorkflowDefinition,
+    ) -> Option<Automation> {
+        let cron_enabled = wf.is_cron_enabled();
+        let watch_enabled = wf.is_watch_enabled();
+
+        if !cron_enabled && !watch_enabled {
+            return None;
+        }
+
+        let cron = if cron_enabled {
+            wf.effective_cron_expression()
+                .filter(|s| !s.trim().is_empty())
+        } else {
+            None
+        };
+
+        let automation_id = wf.id.clone();
+
+        let params = ProfileParams {
+            remote_name: "Workflow".to_string(),
+            profile_name: wf.name.clone(),
+            source: Some(crate::utils::types::origin::Origin::Flow),
+            no_cache: None,
+            scoped_targets: None,
+        };
+
+        let src_paths = if watch_enabled {
+            wf.watcher_paths()
+        } else {
+            vec![wf.name.clone()]
+        };
+
+        let args = AutomationArgs {
+            params,
+            src_paths,
+            dst_paths: vec!["Workflow Engine".to_string()],
+        };
+
+        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
+        let watch_delay = wf.watcher_debounce_seconds();
+
+        Some(Automation {
+            id: automation_id,
+            automation_type: OperationType::Sync,
+            remote_name: "Workflow".to_string(),
+            profile_name: wf.name.clone(),
+            cron_expression: cron,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            created_at: chrono::Utc::now(),
+            last_run: None,
+            next_run,
+            last_error: None,
+            current_job_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled,
+            watch_delay,
+            watch_changed_only: false,
         })
     }
 
@@ -1488,5 +1592,109 @@ mod tests {
             .expect("scheduled automation found");
         assert_eq!(scheduled.automation_type, OperationType::Copy);
         assert_eq!(scheduled.cron_expression.as_deref(), Some("0 12 * * *"));
+    }
+
+    #[tokio::test]
+    async fn test_create_and_load_workflow_automations() {
+        let cache = make_cache();
+
+        let wf_with_cron = WorkflowDefinition {
+            id: "wf-cron-1".to_string(),
+            name: "Nightly Sync Flow".to_string(),
+            description: None,
+            cron_expression: Some("0 3 * * *".to_string()),
+            nodes: vec![],
+            edges: vec![],
+            viewport: Default::default(),
+            auto_start: false,
+            created_at: None,
+            updated_at: None,
+            last_executed_at: None,
+        };
+
+        let wf_without_cron = WorkflowDefinition {
+            id: "wf-manual-1".to_string(),
+            name: "Manual Flow".to_string(),
+            description: None,
+            cron_expression: None,
+            nodes: vec![],
+            edges: vec![],
+            viewport: Default::default(),
+            auto_start: false,
+            created_at: None,
+            updated_at: None,
+            last_executed_at: None,
+        };
+
+        let wf_with_watcher = WorkflowDefinition {
+            id: "wf-watcher-1".to_string(),
+            name: "Watcher Flow".to_string(),
+            description: None,
+            cron_expression: None,
+            nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
+                id: "node-w".to_string(),
+                node_type: "watcher".to_string(),
+                category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
+                title: "Watcher".to_string(),
+                subtitle: None,
+                icon: None,
+                x: 0.0,
+                y: 0.0,
+                inputs: vec![],
+                outputs: vec![],
+                config: serde_json::json!({
+                    "watchPaths": ["/tmp/sync_dir"],
+                    "debounceSeconds": 8
+                }),
+                state: None,
+                error_message: None,
+                last_duration_ms: None,
+                started_at: None,
+                finished_at: None,
+            }],
+            edges: vec![],
+            viewport: Default::default(),
+            auto_start: false,
+            created_at: None,
+            updated_at: None,
+            last_executed_at: None,
+        };
+
+        let auto1 = cache.create_automation_from_workflow("local", &wf_with_cron);
+        assert!(auto1.is_some());
+        let a1 = auto1.unwrap();
+        assert_eq!(a1.id, "wf-cron-1");
+        assert_eq!(a1.cron_expression.as_deref(), Some("0 3 * * *"));
+        assert!(!a1.watch_enabled);
+        assert_eq!(
+            a1.args.params.source,
+            Some(crate::utils::types::origin::Origin::Flow)
+        );
+
+        let auto2 = cache.create_automation_from_workflow("local", &wf_without_cron);
+        assert!(auto2.is_none());
+
+        let auto3 = cache.create_automation_from_workflow("local", &wf_with_watcher);
+        assert!(auto3.is_some());
+        let a3 = auto3.unwrap();
+        assert_eq!(a3.id, "wf-watcher-1");
+        assert!(a3.cron_expression.is_none());
+        assert!(a3.watch_enabled);
+        assert_eq!(a3.watch_delay, 8);
+        assert_eq!(a3.args.src_paths, vec!["/tmp/sync_dir".to_string()]);
+
+        let res = cache
+            .load_from_workflows(
+                &[wf_with_cron, wf_without_cron, wf_with_watcher],
+                "local",
+                None,
+            )
+            .await
+            .expect("load_from_workflows succeeds");
+        assert_eq!(res.added.len(), 2);
+
+        let loaded = cache.get_automation("wf-watcher-1").await;
+        assert!(loaded.is_some());
+        assert!(loaded.unwrap().watch_enabled);
     }
 }
