@@ -19,14 +19,19 @@ import { JobInfo, JobStatItem, Origin, StopJobEvent, JOB_ICON_MAP } from '@app/t
 import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 export interface RunningJobViewModel {
   job: JobInfo;
   typeIcon: string;
+  typeClass: string;
+  animationClass: string;
   label: string;
   originLabel: string;
   originBadgeClass: string;
+  progressPercentage: number;
 }
 
 @Component({
@@ -44,6 +49,7 @@ export interface RunningJobViewModel {
     FormatFileSizePipe,
     FormatRateValuePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],
@@ -56,11 +62,11 @@ export class JobsOverviewPanelComponent {
   readonly defaultOriginFilter = input<Origin | Origin[] | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
 
-  readonly jobClick = output<JobInfo>();
   readonly stopJob = output<StopJobEvent>();
 
   private readonly jobService = inject(JobManagementService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
+  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
 
   readonly selectedOriginFilter = linkedSignal<string>(() => {
@@ -112,21 +118,47 @@ export class JobsOverviewPanelComponent {
   });
 
   readonly runningJobViewModels = computed<RunningJobViewModel[]>(() =>
-    this.runningJobs().map(job => ({
-      job,
-      typeIcon: this.getJobTypeIcon(job),
-      label: this.getJobLabel(job),
-      originLabel: this.getOriginLabel(job.origin),
-      originBadgeClass: this.getOriginBadgeClass(job.origin),
-    }))
+    this.runningJobs().map(job => {
+      const stats = job.stats;
+      const progressPercentage =
+        stats && stats.totalBytes > 0 ? Math.min(100, (stats.bytes / stats.totalBytes) * 100) : 0;
+      return {
+        job,
+        typeIcon: this.getJobTypeIcon(job),
+        typeClass: this.getJobTypeClass(job),
+        animationClass: this.getJobAnimationClass(job),
+        label: this.getJobLabel(job),
+        originLabel: this.getOriginLabel(job.origin),
+        originBadgeClass: this.getOriginBadgeClass(job.origin),
+        progressPercentage,
+      };
+    })
   );
 
   getJobTypeIcon(job: JobInfo): string {
     return JOB_ICON_MAP[job.job_type] ?? 'folder';
   }
 
+  getJobTypeClass(job: JobInfo): string {
+    switch (job.job_type) {
+      case 'sync':
+      case 'bisync':
+        return 'type-primary';
+      case 'copy':
+        return 'type-yellow';
+      case 'move':
+        return 'type-orange';
+      default:
+        return 'type-accent';
+    }
+  }
+
+  getJobAnimationClass(job: JobInfo): string {
+    return job.job_type === 'sync' || job.job_type === 'bisync' ? 'animate-spin' : '';
+  }
+
   getJobLabel(job: JobInfo): string {
-    const key = `fileBrowser.operations.types.${job.job_type}`;
+    const key = `dashboard.appDetail.${job.job_type}`;
     const translated = this.translate.instant(key);
     return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
   }
@@ -174,7 +206,7 @@ export class JobsOverviewPanelComponent {
   }
 
   onJobRowClick(job: JobInfo): void {
-    this.jobClick.emit(job);
+    this.modalService.openJobDetail(job);
   }
 
   onStopJobClick(job: JobInfo, event: MouseEvent): void {

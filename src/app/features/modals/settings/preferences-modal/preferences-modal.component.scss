@@ -12,6 +12,7 @@
   color: white;
   box-shadow: var(--shadow-popover);
   z-index: 9998;
+  cursor: pointer;
   transition: var(--transition-fast);
 
   &:hover {
@@ -52,6 +53,7 @@
   justify-content: space-evenly;
 
   button {
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: var(--space-xxs);
@@ -59,6 +61,7 @@
     border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
     font-weight: 500;
+    color: var(--window-fg-color);
     transition: var(--transition-standard);
 
     &:hover {
@@ -122,6 +125,11 @@
   justify-content: center;
 }
 
+.array-error {
+  margin-top: var(--space-xxs);
+  font-size: var(--font-size-xs);
+}
+
 // ============================================================================
 // Pending Changes Section
 // ============================================================================
@@ -178,7 +186,7 @@
   padding: var(--space-sm) 0;
 
   &:not(:last-child) {
-    border-bottom: var(--row-separator);
+    border-bottom: 1px solid var(--card-shade-color);
   }
 }
 
@@ -192,10 +200,6 @@
     font-size: var(--font-size-base);
     font-weight: 500;
     color: var(--window-fg-color);
-  }
-
-  .change-category {
-    margin-bottom: var(--space-xxs);
   }
 
   .app-pill {
@@ -213,7 +217,7 @@
     color: var(--window-fg-color);
     font-weight: 600;
     background: var(--bg-elevated-2);
-    padding: 3px 8px;
+    padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--radius-sm);
     max-width: 250px;
     overflow: hidden;

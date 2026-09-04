@@ -91,11 +91,13 @@ describe('SidebarComponent', () => {
     },
   ]);
 
+  const mockSelectedQuickRunId = signal<string | null>(null);
   const mockCurrentWorkflow = signal<WorkflowDefinition | null>(null);
   const mockIsExecuting = signal<boolean>(false);
   const mockLoadWorkflow = vi.fn();
 
   beforeEach(async () => {
+    mockSelectedQuickRunId.set(null);
     mockCurrentWorkflow.set(null);
     mockIsExecuting.set(false);
     mockLoadWorkflow.mockClear();
@@ -141,7 +143,7 @@ describe('SidebarComponent', () => {
           provide: QuickRunService,
           useValue: {
             quickRuns: mockQuickRuns,
-            selectedId: signal(null),
+            selectedId: mockSelectedQuickRunId,
             runningIds: signal(new Set<string>()),
             isLoading: signal(false),
             select: vi.fn(),
@@ -329,5 +331,50 @@ describe('SidebarComponent', () => {
       viewport: { x: 0, y: 0, zoom: 1 },
     };
     expect(component.getWorkflowTriggerIcon(wfManual)).toBe('play');
+  });
+
+  it('renders flow section headers and marks active section based on flowSubMode', () => {
+    fixture.componentRef.setInput('flowSubMode', 'quick_run');
+    fixture.detectChanges();
+
+    const headers = fixture.nativeElement.querySelectorAll('.flow-section-header');
+    expect(headers.length).toBe(2);
+    expect(headers[0].classList.contains('active-section')).toBe(true);
+    expect(headers[1].classList.contains('active-section')).toBe(false);
+
+    fixture.componentRef.setInput('flowSubMode', 'builder');
+    fixture.detectChanges();
+
+    expect(headers[0].classList.contains('active-section')).toBe(false);
+    expect(headers[1].classList.contains('active-section')).toBe(true);
+  });
+
+  it('distinguishes panel selection mutually exclusively based on flowSubMode', () => {
+    // Both services have an active/loaded entity
+    mockSelectedQuickRunId.set('qr-1');
+    mockCurrentWorkflow.set(mockWorkflows()[0]); // id: 'wf-1'
+
+    // When flowSubMode is 'quick_run', ONLY quick run is selected
+    fixture.componentRef.setInput('flowSubMode', 'quick_run');
+    fixture.detectChanges();
+
+    expect(component.isQuickRunSelected('qr-1')).toBe(true);
+    expect(component.isWorkflowSelected('wf-1')).toBe(false);
+
+    const cards = fixture.nativeElement.querySelectorAll('.sidebar-card');
+    // First card is quick run 'qr-1'
+    expect(cards[0].classList.contains('selected')).toBe(true);
+    // Second card is workflow 'wf-1'
+    expect(cards[1].classList.contains('selected')).toBe(false);
+
+    // When switching to 'builder' (workflow), ONLY workflow is selected
+    fixture.componentRef.setInput('flowSubMode', 'builder');
+    fixture.detectChanges();
+
+    expect(component.isQuickRunSelected('qr-1')).toBe(false);
+    expect(component.isWorkflowSelected('wf-1')).toBe(true);
+
+    expect(cards[0].classList.contains('selected')).toBe(false);
+    expect(cards[1].classList.contains('selected')).toBe(true);
   });
 });

@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
-import { OPERATION_REGISTRY, QuickRun, Remote } from '@app/types';
+import { OPERATION_REGISTRY, QuickRun, Remote, FlowSubMode } from '@app/types';
 import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
 
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -46,6 +46,7 @@ export type SidebarMode = 'remotes' | 'flow';
 })
 export class SidebarComponent {
   readonly mode = input<SidebarMode>('remotes');
+  readonly flowSubMode = input<FlowSubMode>('quick_run');
   readonly customTitle = input<string>();
   readonly customIcon = input<string>();
   readonly remotes = input<Remote[]>([]);
@@ -151,18 +152,25 @@ export class SidebarComponent {
     this.itemSelected.emit();
   }
 
+  isQuickRunSelected(id: string): boolean {
+    return this.flowSubMode() === 'quick_run' && this.selectedQuickRunId() === id;
+  }
+
+  private static readonly OPERATION_MAP = new Map(OPERATION_REGISTRY.map(def => [def.key, def]));
+  private readonly cronTooltipCache = new Map<string, string>();
+
   isQuickRunRunning(id: string): boolean {
     return this.runningIds().has(id);
   }
 
   getQuickRunIcon(qr: QuickRun): string {
-    const def = OPERATION_REGISTRY.find(d => d.key === qr.operationType);
-    return def?.icon ?? 'operations';
+    return SidebarComponent.OPERATION_MAP.get(qr.operationType)?.icon ?? 'operations';
   }
 
   getQuickRunActionLabel(qr: QuickRun): string {
-    const def = OPERATION_REGISTRY.find(d => d.key === qr.operationType);
-    return def?.actionLabel ?? 'flow.tabs.quickRun';
+    return (
+      SidebarComponent.OPERATION_MAP.get(qr.operationType)?.actionLabel ?? 'flow.tabs.quickRun'
+    );
   }
 
   hasCron(qr: QuickRun): boolean {
@@ -189,37 +197,28 @@ export class SidebarComponent {
     this.itemSelected.emit();
   }
 
+  isWorkflowSelected(id: string): boolean {
+    return this.flowSubMode() === 'builder' && this.selectedWorkflowId() === id;
+  }
+
   isWorkflowRunning(id: string): boolean {
     return this.workflowEngine.isExecuting() && this.workflowState.currentWorkflow()?.id === id;
   }
 
   hasAutoStartNode(wf: WorkflowDefinition): boolean {
-    return (
-      !!wf.autoStart ||
-      wf.nodes.some(
-        n => n.type === 'app_start' || (n.category === 'trigger' && n.type === 'app_start')
-      )
-    );
+    return !!wf.autoStart || wf.nodes.some(n => n.type === 'app_start');
   }
 
   hasWatcherNode(wf: WorkflowDefinition): boolean {
-    return wf.nodes.some(
-      n => n.type === 'watcher' || (n.category === 'trigger' && n.type === 'watcher')
-    );
+    return wf.nodes.some(n => n.type === 'watcher');
   }
 
   getWorkflowCron(wf: WorkflowDefinition): string | null {
-    if (wf.cronExpression && wf.cronExpression.trim()) {
-      return wf.cronExpression.trim();
-    }
-    const cronNode = wf.nodes.find(
-      n => n.type === 'cron' || (n.category === 'trigger' && n.type === 'cron')
-    );
-    const expr = cronNode?.config?.['cronExpression'];
-    if (typeof expr === 'string' && expr.trim()) {
-      return expr.trim();
-    }
-    return null;
+    const expr = wf.cronExpression?.trim();
+    if (expr) return expr;
+    const cronNode = wf.nodes.find(n => n.type === 'cron');
+    const nodeExpr = cronNode?.config?.['cronExpression'];
+    return typeof nodeExpr === 'string' && nodeExpr.trim() ? nodeExpr.trim() : null;
   }
 
   hasCronNode(wf: WorkflowDefinition): boolean {
@@ -260,12 +259,19 @@ export class SidebarComponent {
   getWorkflowTriggerTooltip(wf: WorkflowDefinition): string {
     const cron = this.getWorkflowCron(wf);
     if (cron) {
+      const lang = this.translate.getCurrentLang() ?? 'en-US';
+      const cacheKey = `${lang}:${cron}`;
+      const cached = this.cronTooltipCache.get(cacheKey);
+      if (cached) return cached;
+      let formatted: string;
       try {
-        const human = formatCronHumanReadable(cron, this.translate.getCurrentLang() ?? 'en-US');
-        return `${human} (${cron})`;
+        const human = formatCronHumanReadable(cron, lang);
+        formatted = `${human} (${cron})`;
       } catch {
-        return cron;
+        formatted = cron;
       }
+      this.cronTooltipCache.set(cacheKey, formatted);
+      return formatted;
     }
     const triggerNode = wf.nodes.find(n => n.category === 'trigger');
     if (triggerNode) {
@@ -284,26 +290,30 @@ export class SidebarComponent {
   private matchesWorkflowQuery(wf: WorkflowDefinition, query: string): boolean {
     const nodeTitles = wf.nodes.map(n => `${n.title} ${n.subtitle ?? ''} ${n.type}`).join(' ');
     const cron = this.getWorkflowCron(wf) ?? '';
-    const haystack = [wf.name, wf.description ?? '', cron, nodeTitles].join(' ').toLowerCase();
+    const haystack = [wf.name, wf.description, cron, nodeTitles]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
     return haystack.includes(query);
   }
 
   private matchesQuickRunQuery(qr: QuickRun, query: string): boolean {
-    const rclone = (qr.config.rclone ?? {}) as Record<string, unknown>;
+    const rclone = (qr.config?.rclone ?? {}) as Record<string, unknown>;
     const opType = qr.operationType;
     const opData = (rclone[opType] as Record<string, unknown> | undefined) ?? rclone;
     const haystack = [
       qr.name,
-      qr.description ?? '',
+      qr.description,
       qr.remoteName,
       qr.operationType,
-      opData['srcFs'] ? String(opData['srcFs']) : rclone['srcFs'] ? String(rclone['srcFs']) : '',
-      opData['dstFs'] ?? rclone['dstFs'] ?? '',
-      opData['path1'] ?? rclone['path1'] ?? '',
-      opData['path2'] ?? rclone['path2'] ?? '',
-      opData['mountPoint'] ?? rclone['mountPoint'] ?? '',
-      opData['fs'] ?? rclone['fs'] ?? '',
+      opData['srcFs'] ?? rclone['srcFs'],
+      opData['dstFs'] ?? rclone['dstFs'],
+      opData['path1'] ?? rclone['path1'],
+      opData['path2'] ?? rclone['path2'],
+      opData['mountPoint'] ?? rclone['mountPoint'],
+      opData['fs'] ?? rclone['fs'],
     ]
+      .filter(Boolean)
       .join(' ')
       .toLowerCase();
     return haystack.includes(query);

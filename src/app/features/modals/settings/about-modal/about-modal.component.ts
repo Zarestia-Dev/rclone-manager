@@ -20,7 +20,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NgClass, NgTemplateOutlet, DecimalPipe } from '@angular/common';
+import { NgTemplateOutlet, DecimalPipe } from '@angular/common';
 
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
@@ -29,6 +29,7 @@ import { DebugService, DebugInfo } from 'src/app/services/infrastructure/system/
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import {
@@ -46,7 +47,6 @@ renderer.link = ({ href, title, text }): string => {
 @Component({
   selector: 'app-about-modal',
   imports: [
-    NgClass,
     DecimalPipe,
     NgTemplateOutlet,
     MatDividerModule,
@@ -77,6 +77,7 @@ export class AboutModalComponent implements OnInit {
   private readonly debugService = inject(DebugService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translate = inject(TranslateService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
   private readonly rcloneStatusService = inject(RcloneStatusService);
   public readonly backendService = inject(BackendService);
@@ -170,9 +171,9 @@ export class AboutModalComponent implements OnInit {
   // Platform / fscache
   // ---------------------------------------------------------------------------
 
-  readonly buildType = computed(() => this.appUpdaterService.buildType());
-  readonly updaterEnabled = computed(() => this.appUpdaterService.isUpdaterEnabled());
-  readonly rcloneUpdateEnabled = computed(() => this.rcloneUpdateService.isUpdaterEnabled());
+  readonly buildType = this.appUpdaterService.buildType;
+  readonly updaterEnabled = this.appUpdaterService.isUpdaterEnabled;
+  readonly rcloneUpdateEnabled = this.rcloneUpdateService.isUpdaterEnabled;
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
   readonly isLibrclone = signal(false);
@@ -312,7 +313,12 @@ export class AboutModalComponent implements OnInit {
       await this.appUpdaterService.finishUpdate();
     } catch (error) {
       console.error('Failed to finish update:', error);
-      this.notificationService.showError(this.translate.instant('updates.restartFailed'));
+      const translated = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.restartFailed', {
+          error: translated || this.translate.instant('common.error'),
+        })
+      );
     } finally {
       this.restartingApp.set(false);
     }
@@ -325,7 +331,12 @@ export class AboutModalComponent implements OnInit {
       await this.debugService.restartApp();
     } catch (error) {
       console.error('Failed to restart app:', error);
-      this.notificationService.showError(this.translate.instant('updates.restartFailed'));
+      const translated = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.restartFailed', {
+          error: translated || this.translate.instant('common.error'),
+        })
+      );
     } finally {
       this.restartingApp.set(false);
     }
@@ -386,6 +397,14 @@ export class AboutModalComponent implements OnInit {
     this.restartingRcloneEngine.set(true);
     try {
       await this.rcloneUpdateService.applyUpdate();
+    } catch (error) {
+      console.error('Failed to apply rclone update:', error);
+      const translated = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.restartFailed', {
+          error: translated || this.translate.instant('common.error'),
+        })
+      );
     } finally {
       this.restartingRcloneEngine.set(false);
     }
@@ -398,7 +417,13 @@ export class AboutModalComponent implements OnInit {
   }
 
   async unskipRcloneVersion(version: string): Promise<void> {
-    await this.rcloneUpdateService.unskipVersion(version);
+    try {
+      await this.rcloneUpdateService.unskipVersion(version);
+      this.notificationService.showSuccess(this.translate.instant('updates.restored', { version }));
+    } catch (error) {
+      console.error('Failed to unskip rclone version:', error);
+      this.notificationService.showError(this.translate.instant('updates.restoreFailed'));
+    }
   }
 
   async toggleRcloneAutoCheck(): Promise<void> {
@@ -422,8 +447,10 @@ export class AboutModalComponent implements OnInit {
 
   readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
+    const buildType = this.buildType();
+    if (!buildType) return null;
 
-    switch (this.buildType()) {
+    switch (buildType) {
       case 'flatpak':
         return {
           command: 'flatpak update io.github.zarestia_dev.rclone-manager',
@@ -437,6 +464,7 @@ export class AboutModalComponent implements OnInit {
         };
       case 'portable':
         return {
+          command: undefined,
           links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
         };
       case 'container':
@@ -518,10 +546,6 @@ export class AboutModalComponent implements OnInit {
     this.scrolled.set(content.scrollTop > 10);
   }
 
-  showMemoryOverlay(): void {
-    this.navigateTo('memory');
-  }
-
   async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {
     await this.debugService.openFolder(folderType);
   }
@@ -545,6 +569,18 @@ export class AboutModalComponent implements OnInit {
   getChannelLabel(channel: string | null | undefined): string {
     if (!channel) return '';
     return this.channels.find(c => c.value === channel)?.label ?? channel;
+  }
+
+  getPlatformLabel(buildType: string | null | undefined): string {
+    if (!buildType) return '';
+    const labels: Record<string, string> = {
+      deb: 'DEB',
+      rpm: 'RPM',
+      flatpak: 'Flatpak',
+      portable: 'Portable',
+      container: 'Docker',
+    };
+    return labels[buildType] ?? buildType.toUpperCase();
   }
 
   private formatReleaseNotes(markdown: string | undefined | null): SafeHtml {

@@ -14,7 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 
-import { TabItem } from '@app/types';
+import { TabItem, FlowSubMode } from '@app/types';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
@@ -27,8 +27,6 @@ import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quic
 import { WorkflowWorkspaceComponent } from './workflow/components/workflow-workspace/workflow-workspace.component';
 import { WorkflowStateService } from '../services/flow/workflow-state.service';
 import { BannerComponent } from '../layout/banners/banner.component';
-
-export type FlowSubMode = 'builder' | 'quick_run';
 
 @Component({
   selector: 'app-flow-container',
@@ -57,11 +55,16 @@ export class FlowContainerComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly modalService = inject(ModalService);
 
+  private getInitialSubMode(): FlowSubMode {
+    const stored = this.localStorage.get<string>('ui.flowActiveSubMode', 'quick_run');
+    return stored === 'builder' ? 'builder' : 'quick_run';
+  }
+
   /**
-   * Currently-active Flow sub-mode. Defaults to `'quick_run'`. The Builder
-   * tab switches to `'builder'` which shows a "working on it" placeholder.
+   * Currently-active Flow sub-mode. Initialized from localStorage if available,
+   * falling back to `'quick_run'`.
    */
-  readonly activeSubMode = signal<FlowSubMode>('quick_run');
+  readonly activeSubMode = signal<FlowSubMode>(this.getInitialSubMode());
 
   /** Tab definitions for flow container using TabsButtonsComponent. */
   readonly tabs: TabItem<FlowSubMode>[] = [
@@ -110,7 +113,16 @@ export class FlowContainerComponent {
     this.localStorage.set('ui.flowSidebarOpen', open);
   }
 
+  private closeSidebarIfOver(): void {
+    if (this.sidebarMode() === 'over') {
+      this.setSidebarOpen(false);
+    }
+  }
+
   private setupResponsiveLayout(): void {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
     const mql = window.matchMedia('(min-width: 900px)');
     const update = (matches: boolean): void => this.sidebarMode.set(matches ? 'side' : 'over');
     const handler = (e: MediaQueryListEvent): void => update(e.matches);
@@ -121,53 +133,41 @@ export class FlowContainerComponent {
   }
 
   setSubMode(mode: FlowSubMode | string): void {
+    const resolved = mode === 'builder' ? 'builder' : 'quick_run';
     this.uiStateService.endLayoutEdit();
-    this.activeSubMode.set(mode as FlowSubMode);
+    this.activeSubMode.set(resolved);
+    this.localStorage.set('ui.flowActiveSubMode', resolved);
   }
 
   /** Open the remote configuration modal to create a new remote only. */
   newRemote(): void {
     this.modalService.openRemoteConfig({ editTarget: 'remote' });
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
+    this.closeSidebarIfOver();
   }
 
   /** Open the quick-run editor in "create" mode. */
   newQuickRun(): void {
     this.setSubMode('quick_run');
     this.quickRunService.openEditor();
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
+    this.closeSidebarIfOver();
   }
 
   /** Switch to the Workflow Builder tab and create a fresh workflow. */
   newWorkflow(): void {
     this.setSubMode('builder');
     this.workflowState.createNewWorkflow();
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
+    this.closeSidebarIfOver();
   }
 
   onQuickRunSelected(): void {
     this.setSubMode('quick_run');
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
   }
 
   onWorkflowSelected(): void {
     this.setSubMode('builder');
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
   }
 
   onItemSelected(): void {
-    if (this.sidebarMode() === 'over') {
-      this.setSidebarOpen(false);
-    }
+    this.closeSidebarIfOver();
   }
 }

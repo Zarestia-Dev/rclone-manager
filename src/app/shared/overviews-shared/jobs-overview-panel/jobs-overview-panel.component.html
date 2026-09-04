@@ -34,7 +34,7 @@
   } @else {
     @let stats = jobStats();
     @let activeJobs = activeJobsCount();
-    <div class="job-grid" role="grid">
+    <div class="job-grid">
       @if (showFilterChips()) {
         <div class="origin-filter-row">
           <button
@@ -90,30 +90,25 @@
       }
 
       @if (stats.totalBytes > 0) {
-        <div class="job-progress-section" role="rowgroup">
-          <div class="progress-header" role="row">
-            <span class="label" role="gridcell">{{
-              'generalOverview.jobs.progress' | translate
-            }}</span>
-            <span class="value" role="gridcell"
-              >{{ jobCompletionPercentage() | number: '1.0-1' }}%</span
-            >
+        <div class="job-progress-section">
+          <div class="progress-header">
+            <span class="label">{{ 'generalOverview.jobs.progress' | translate }}</span>
+            <span class="value">{{ jobCompletionPercentage() | number: '1.0-1' }}%</span>
           </div>
           <mat-progress-bar
             mode="determinate"
             [value]="jobCompletionPercentage()"
-            role="progressbar"
             [attr.aria-valuenow]="jobCompletionPercentage()"
             aria-valuemin="0"
             aria-valuemax="100"
           ></mat-progress-bar>
-          <div class="progress-details" role="row">
-            <span role="gridcell">
+          <div class="progress-details">
+            <span>
               {{ stats.bytes | formatFileSize }}
               {{ 'generalOverview.jobs.of' | translate }}
               {{ stats.totalBytes | formatFileSize }}
             </span>
-            <span role="gridcell">
+            <span>
               {{ 'generalOverview.jobs.eta' | translate }}
               {{ stats.eta | formatEta }}
             </span>
@@ -121,11 +116,11 @@
         </div>
       }
 
-      <div class="job-stats-grid" role="grid">
+      <div class="job-stats-grid">
         @for (item of jobStatsItems(); track $index) {
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">{{ item.labelKey | translate }}</span>
-            <span class="value" [class.error]="item.error" role="gridcell">
+          <div class="info-item">
+            <span class="label">{{ item.labelKey | translate }}</span>
+            <span class="value" [class.error]="item.error">
               @if (item.formatAsBytes) {
                 {{ $any(item.value) | formatRateValue }}
               } @else {
@@ -137,17 +132,15 @@
       </div>
 
       @if (stats.lastError) {
-        <section class="detail-section">
-          <span class="section-title error">
-            <mat-icon svgIcon="circle-exclamation"></mat-icon>
-            {{ 'generalOverview.jobs.lastError' | translate }}
-          </span>
-          <pre
-            class="error-entry"
-            [appCopyToClipboard]="stats.lastError"
-            [attr.title]="'common.copy' | translate"
-          ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ stats.lastError }}</span></pre>
-        </section>
+        <app-alert-banner
+          severity="error"
+          [title]="'generalOverview.jobs.lastError' | translate"
+          [description]="stats.lastError"
+          [appCopyToClipboard]="stats.lastError"
+          [attr.title]="'common.copy' | translate"
+          class="last-error-banner"
+        >
+        </app-alert-banner>
       }
 
       @if (runningJobs().length > 0) {
@@ -155,74 +148,154 @@
           <div class="section-heading">
             <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
             <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
+            <span class="app-pill p-primary pill-sm">{{ runningJobs().length }}</span>
           </div>
 
           <div class="running-jobs-list">
             @for (vm of runningJobViewModels(); track vm.job.jobid) {
               <div
-                class="running-job-row interactive"
+                class="running-job-card"
                 (click)="onJobRowClick(vm.job)"
+                (keydown.enter)="onJobRowClick(vm.job)"
                 tabindex="0"
                 role="button"
                 [attr.title]="'common.viewDetails' | translate"
               >
-                <div class="running-job-main">
-                  <mat-icon [svgIcon]="vm.typeIcon" class="running-job-icon"></mat-icon>
-                  <div class="running-job-text">
-                    <div class="running-job-title-row">
-                      <span class="running-job-title">{{ vm.label }}</span>
-                      <span class="app-pill {{ vm.originBadgeClass }} origin-pill">
-                        {{ vm.originLabel }}
-                      </span>
+                <!-- Card Header: Identity + Stop Action -->
+                <div class="card-header">
+                  <div class="card-identity">
+                    <div class="job-icon-wrap {{ vm.typeClass }}">
+                      <mat-icon [svgIcon]="vm.typeIcon" [class]="vm.animationClass"></mat-icon>
                     </div>
-                    <span class="running-job-path">{{ vm.job.destination || vm.job.source }}</span>
+
+                    <div class="job-details">
+                      <div class="job-title-row">
+                        <span class="job-title">{{ vm.label }}</span>
+                        <span class="job-tag job-id">#{{ vm.job.jobid }}</span>
+                        @if (vm.job.remote_name) {
+                          <span class="job-tag remote" [attr.title]="vm.job.remote_name">
+                            <mat-icon svgIcon="cloud"></mat-icon>
+                            <span>{{ vm.job.remote_name }}</span>
+                          </span>
+                        }
+                        @if (vm.job.profile) {
+                          <span class="job-tag profile">{{ vm.job.profile }}</span>
+                        }
+                        <span class="app-pill {{ vm.originBadgeClass }} pill-sm">
+                          {{ vm.originLabel }}
+                        </span>
+                        @if (vm.job.dry_run) {
+                          <span class="app-pill p-accent pill-sm">
+                            {{ 'detailShared.jobs.dryRun' | translate }}
+                          </span>
+                        }
+                      </div>
+
+                      <div class="job-path-row" [attr.title]="vm.job.destination || vm.job.source">
+                        <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
+                        <span class="path-text">{{ vm.job.destination || vm.job.source }}</span>
+                      </div>
+                    </div>
                   </div>
+
                   <button
-                    matIconButton
-                    class="stop-job-btn"
+                    type="button"
+                    class="action-button"
                     (click)="onStopJobClick(vm.job, $event)"
                     [attr.title]="'detailShared.jobs.actions.stop' | translate"
                   >
-                    <mat-icon svgIcon="stop"></mat-icon>
+                    <mat-icon svgIcon="stop" class="warn"></mat-icon>
                   </button>
                 </div>
 
-                @if (vm.job.stats; as jStats) {
-                  <div class="running-job-meta">
-                    <span>
-                      {{ jStats.bytes | formatFileSize }}
-                      @if (jStats.totalBytes > 0) {
-                        / {{ jStats.totalBytes | formatFileSize }}
+                <!-- Progress Section -->
+                @let jStats = vm.job.stats;
+                @let hasTotal = jStats && jStats.totalBytes > 0;
+
+                <div class="card-progress-section">
+                  <div class="progress-info-row">
+                    <span class="bytes-info">
+                      @if (jStats) {
+                        {{ jStats.bytes | formatFileSize }}
+                        @if (hasTotal) {
+                          <span class="dim-slash">/</span> {{ jStats.totalBytes | formatFileSize }}
+                        }
+                      } @else {
+                        {{ 0 | formatFileSize }}
                       }
                     </span>
-                    <span class="dot-separator">•</span>
-                    <span>{{
-                      jStats.speed > 0
-                        ? (jStats.speed | formatRateValue)
-                        : ('generalOverview.jobs.starting' | translate)
-                    }}</span>
-                    <span class="dot-separator">•</span>
-                    <span>{{ jStats.eta | formatEta }}</span>
+
+                    @if (hasTotal) {
+                      <span class="percentage-badge"
+                        >{{ vm.progressPercentage | number: '1.0-1' }}%</span
+                      >
+                    }
                   </div>
+
                   <mat-progress-bar
-                    mode="determinate"
-                    [value]="jStats.totalBytes > 0 ? (jStats.bytes / jStats.totalBytes) * 100 : 0"
-                    class="running-job-progress"
+                    [mode]="
+                      hasTotal
+                        ? 'determinate'
+                        : jStats && jStats.bytes > 0
+                          ? 'indeterminate'
+                          : 'determinate'
+                    "
+                    [value]="vm.progressPercentage"
+                    class="job-progress-bar"
                   ></mat-progress-bar>
-                } @else {
-                  <div class="running-job-meta">
-                    <span>{{ 0 | formatFileSize }}</span>
-                    <span class="dot-separator">•</span>
-                    <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
-                    <span class="dot-separator">•</span>
-                    <span>{{ 0 | formatEta }}</span>
-                  </div>
-                  <mat-progress-bar
-                    mode="determinate"
-                    [value]="0"
-                    class="running-job-progress"
-                  ></mat-progress-bar>
-                }
+                </div>
+
+                <!-- Footer Metrics: Speed, ETA, Transfers -->
+                <div class="card-metrics-row">
+                  @if (jStats) {
+                    <div
+                      class="metric-pill speed"
+                      [attr.title]="'generalOverview.jobs.speed' | translate"
+                    >
+                      <mat-icon svgIcon="bolt"></mat-icon>
+                      <span>{{
+                        jStats.speed > 0
+                          ? (jStats.speed | formatRateValue)
+                          : ('generalOverview.jobs.starting' | translate)
+                      }}</span>
+                    </div>
+
+                    @if (jStats.eta && jStats.eta > 0) {
+                      <div
+                        class="metric-pill eta"
+                        [attr.title]="'generalOverview.jobs.eta' | translate"
+                      >
+                        <mat-icon svgIcon="clock"></mat-icon>
+                        <span>{{ jStats.eta | formatEta }}</span>
+                      </div>
+                    }
+
+                    @if (jStats.totalTransfers > 0) {
+                      <div
+                        class="metric-pill transfers"
+                        [attr.title]="'generalOverview.jobs.transfers' | translate"
+                      >
+                        <mat-icon svgIcon="file"></mat-icon>
+                        <span>{{ jStats.transfers }} / {{ jStats.totalTransfers }}</span>
+                      </div>
+                    }
+
+                    @if (jStats.errors > 0) {
+                      <div
+                        class="metric-pill error"
+                        [attr.title]="'generalOverview.jobs.errors' | translate"
+                      >
+                        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                        <span>{{ jStats.errors }}</span>
+                      </div>
+                    }
+                  } @else {
+                    <div class="metric-pill speed">
+                      <mat-icon svgIcon="bolt"></mat-icon>
+                      <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
+                    </div>
+                  }
+                </div>
               </div>
             }
           </div>
@@ -230,7 +303,7 @@
       }
 
       @if (activeJobs === 0) {
-        <div class="no-jobs-message empty-state-message" role="status">
+        <div class="empty-state" role="status">
           <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
           <span>{{ 'generalOverview.jobs.noRunning' | translate }}</span>
         </div>

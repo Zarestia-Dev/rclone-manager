@@ -64,6 +64,18 @@ interface RemoteState {
   enriched: Signal<Remote>;
 }
 
+interface ScopedExecutionItem {
+  origin?: Origin;
+  quick_run_id?: string;
+  workflow_id?: string;
+}
+
+function isProfileScoped(item: ScopedExecutionItem): boolean {
+  return (
+    item.origin !== 'quickrun' && item.origin !== 'flow' && !item.quick_run_id && !item.workflow_id
+  );
+}
+
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService {
   private readonly jobService = inject(JobManagementService);
@@ -592,10 +604,7 @@ export class RemoteFacadeService {
   ): Promise<void> {
     if (type === 'serve') {
       const serves = this.runningServes().filter(
-        s =>
-          this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName &&
-          s.origin !== 'quickrun' &&
-          !s.quick_run_id
+        s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName && isProfileScoped(s)
       );
       const idToStop =
         serveId ?? (profileName ? serves.find(s => s.profile === profileName)?.id : serves[0]?.id);
@@ -606,10 +615,7 @@ export class RemoteFacadeService {
 
     if (type === 'mount') {
       const mounts = this.mountedRemotes().filter(
-        m =>
-          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
-          m.origin !== 'quickrun' &&
-          !m.quick_run_id
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
       const mountPoint =
         (profileName
@@ -628,10 +634,7 @@ export class RemoteFacadeService {
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
       const mount = this.mountedRemotes().find(
-        m =>
-          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
-          m.origin !== 'quickrun' &&
-          !m.quick_run_id
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
@@ -820,8 +823,8 @@ export class RemoteFacadeService {
     const mountConfigs = getProfiles('mount');
     const serveConfigs = getProfiles('serve');
 
-    const profileMounts = mounts.filter(m => m.origin !== 'quickrun' && !m.quick_run_id);
-    const profileServes = serves.filter(s => s.origin !== 'quickrun' && !s.quick_run_id);
+    const profileMounts = mounts.filter(isProfileScoped);
+    const profileServes = serves.filter(isProfileScoped);
 
     return {
       ...base,
@@ -868,9 +871,7 @@ export class RemoteFacadeService {
     jobs: JobInfo[],
     settings: RemoteSettings
   ): RemoteOperationState {
-    const typeJobs = jobs.filter(
-      j => j.job_type === type && j.origin !== 'quickrun' && !j.quick_run_id
-    );
+    const typeJobs = jobs.filter(j => j.job_type === type && isProfileScoped(j));
     const running = typeJobs.filter(j => j.status === 'Running');
     const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
     const profileNames = Object.keys(profiles);

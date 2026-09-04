@@ -1805,7 +1805,8 @@
         "statistics": "Статистика",
         "paths": "Пути",
         "errors": "Ошибки",
-        "profile": "Профиль"
+        "profile": "Профиль",
+        "serverSideFlags": "На стороне сервера и флаги"
       },
       "fields": {
         "type": "Тип задания",
@@ -2854,6 +2855,7 @@
       "noPending": "Нет ожидающего обновления",
       "invalidUrl": "Некорректный URL: {{error}}",
       "github": "Ошибка API GitHub: {{error}}",
+      "githubRateLimit": "Превышен лимит запросов к API GitHub. Пожалуйста, повторите попытку позже.",
       "updateFailed": "Ошибка обновления: {{error}}",
       "updateUnavailable": "Файл обновления больше недоступен: {{error}}",
       "relaunchFailed": "Не удалось повторно запустить приложение: {{error}}",

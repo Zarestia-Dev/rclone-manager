@@ -1,5 +1,5 @@
 <header data-tauri-drag-region>
-  <button>
+  <button tabindex="-1" aria-hidden="true">
     <mat-icon svgIcon="server"></mat-icon>
   </button>
   <p>{{ 'modals.backend.title' | translate }}</p>
@@ -41,18 +41,61 @@
             }
           </div>
 
-          <div class="backend-info">
-            <div class="backend-title">
-              <span class="name">{{ backend.name }}</span>
-              @if (backend.isActive) {
-                <span class="badge active">{{ 'modals.backend.active' | translate }}</span>
-              }
-              @if (switchingTo() === backend.name) {
-                <span class="badge connecting">
-                  {{ 'modals.backend.connecting' | translate }}
-                </span>
-              }
+          <div class="backend-content">
+            <div class="backend-header-row">
+              <div class="backend-title">
+                <span class="name">{{ backend.name }}</span>
+                @if (backend.isActive) {
+                  <span class="badge active">{{ 'modals.backend.active' | translate }}</span>
+                }
+                @if (switchingTo() === backend.name) {
+                  <span class="badge connecting">
+                    {{ 'modals.backend.connecting' | translate }}
+                  </span>
+                }
+              </div>
+
+              <div class="backend-actions">
+                <button
+                  class="action-button"
+                  (click)="$event.stopPropagation(); startEdit(backend)"
+                  [attr.title]="'modals.backend.editBackend' | translate"
+                  [attr.aria-label]="'modals.backend.editBackend' | translate"
+                >
+                  <mat-icon svgIcon="pen"></mat-icon>
+                </button>
+
+                <button
+                  class="action-button"
+                  (click)="$event.stopPropagation(); testBackend(backend.name)"
+                  [disabled]="testingBackend() !== null"
+                  [attr.title]="'modals.backend.testConnection' | translate"
+                  [attr.aria-label]="'modals.backend.testConnection' | translate"
+                >
+                  @if (testingBackend() === backend.name) {
+                    <mat-icon svgIcon="spinner"></mat-icon>
+                  } @else {
+                    <mat-icon svgIcon="bolt"></mat-icon>
+                  }
+                </button>
+
+                @if (backend.name !== 'Local') {
+                  <button
+                    class="action-button"
+                    (click)="$event.stopPropagation(); removeBackend(backend.name)"
+                    [disabled]="backend.isActive"
+                    [attr.title]="
+                      backend.isActive
+                        ? ('modals.backend.switchFirst' | translate)
+                        : ('modals.backend.removeTooltip' | translate)
+                    "
+                  >
+                    <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                  </button>
+                }
+              </div>
             </div>
+
             <div class="backend-subtitle">
               <span class="address">{{ backend.host }}:{{ backend.port }}</span>
               @if (backend.version) {
@@ -66,6 +109,7 @@
               @if (backend.runtimeConfigPath) {
                 <span class="separator">•</span>
                 <mat-icon
+                  class="config-icon"
                   svgIcon="file-lines"
                   [attr.title]="
                     ('modals.backend.activeConfigPath' | translate) +
@@ -75,47 +119,6 @@
                 ></mat-icon>
               }
             </div>
-          </div>
-
-          <div class="backend-actions">
-            <button
-              matIconButton
-              (click)="$event.stopPropagation(); startEdit(backend)"
-              [attr.title]="'modals.backend.editBackend' | translate"
-              [attr.aria-label]="'modals.backend.editBackend' | translate"
-            >
-              <mat-icon svgIcon="pen"></mat-icon>
-            </button>
-
-            <button
-              matIconButton
-              (click)="$event.stopPropagation(); testBackend(backend.name)"
-              [disabled]="testingBackend() !== null"
-              [attr.title]="'modals.backend.testConnection' | translate"
-              [attr.aria-label]="'modals.backend.testConnection' | translate"
-            >
-              @if (testingBackend() === backend.name) {
-                <mat-icon svgIcon="spinner"></mat-icon>
-              } @else {
-                <mat-icon svgIcon="bolt"></mat-icon>
-              }
-            </button>
-
-            @if (backend.name !== 'Local') {
-              <button
-                matIconButton
-                class="warn"
-                (click)="$event.stopPropagation(); removeBackend(backend.name)"
-                [disabled]="backend.isActive"
-                [attr.title]="
-                  backend.isActive
-                    ? ('modals.backend.switchFirst' | translate)
-                    : ('modals.backend.removeTooltip' | translate)
-                "
-              >
-                <mat-icon svgIcon="trash"></mat-icon>
-              </button>
-            }
           </div>
         </div>
       }
@@ -386,11 +389,6 @@
                   >
                     <mat-icon svgIcon="file"></mat-icon>
                   </button>
-                  <mat-icon
-                    matSuffix
-                    svgIcon="info"
-                    [attr.title]="'modals.backend.fields.configPath.description' | translate"
-                  ></mat-icon>
                 </mat-form-field>
               </div>
             </div>

@@ -42,7 +42,65 @@
   flex-direction: column;
 }
 
-// Sidebar Card (Remote / Quick Run)
+// Flow Section Header
+.flow-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-md) var(--space-xxs);
+  margin-top: var(--space-xs);
+  flex-shrink: 0;
+
+  &:first-of-type {
+    margin-top: 0;
+    padding-top: var(--space-sm);
+  }
+
+  &.active-section {
+    .section-icon,
+    .section-title {
+      color: var(--window-fg-color);
+      font-weight: 700;
+    }
+
+    .count-badge {
+      background: rgba(var(--accent-color-rgb), 0.15);
+      color: var(--accent-color);
+    }
+  }
+
+  .section-icon {
+    width: var(--icon-size-xs);
+    height: var(--icon-size-xs);
+    font-size: var(--icon-size-xs);
+    color: var(--dim-color);
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    flex: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--dim-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .count-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dim-color);
+    background: var(--hover-bg-color);
+    padding: 1px 7px;
+    border-radius: var(--radius-xs);
+    line-height: 1.3;
+  }
+}
+
+// Sidebar Card (Remote / Quick Run / Workflow)
 .sidebar-card,
 .remote-card {
   margin: var(--space-md);

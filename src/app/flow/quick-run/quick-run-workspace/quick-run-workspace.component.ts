@@ -49,7 +49,6 @@ export class QuickRunWorkspaceComponent {
 
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly selected = this.quickRunService.selected;
-  readonly runningIds = this.quickRunService.runningIds;
   readonly selectedRemote = this.uiStateService.selectedRemote;
 
   isShowOnTray(qr: QuickRun): boolean {
@@ -87,10 +86,6 @@ export class QuickRunWorkspaceComponent {
     this.modalService.openBackend();
   }
 
-  closeDetail(): void {
-    this.quickRunService.select(null);
-  }
-
   openRemoteDetail(remoteName: string): void {
     const cleanName = remoteName.replace(/:$/, '');
     const remote = this.remoteFacade
@@ -102,33 +97,25 @@ export class QuickRunWorkspaceComponent {
     }
   }
 
-  closeRemoteDetail(): void {
-    this.uiStateService.resetSelectedRemote();
-  }
-
   onSelectQuickRun(qr: QuickRun): void {
     this.uiStateService.resetSelectedRemote();
     this.quickRunService.select(qr.id);
   }
 
-  async startQuickRun(id: string): Promise<void> {
-    await this.quickRunService.start(id);
+  startQuickRun(id: string): void {
+    void this.quickRunService.start(id);
   }
 
-  async stopQuickRun(id: string): Promise<void> {
-    await this.quickRunService.stop(id);
+  stopQuickRun(id: string): void {
+    void this.quickRunService.stop(id);
   }
 
   duplicateQuickRun(id: string): void {
     this.quickRunService.duplicate(id);
   }
 
-  async removeQuickRun(id: string): Promise<void> {
-    await this.quickRunService.remove(id);
-  }
-
-  isRunning(id: string): boolean {
-    return this.runningIds().has(id);
+  removeQuickRun(id: string): void {
+    void this.quickRunService.remove(id);
   }
 
   async openInFiles(event: OpenInFilesEvent): Promise<void> {

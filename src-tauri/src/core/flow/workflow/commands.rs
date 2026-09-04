@@ -1,5 +1,7 @@
 //! Tauri commands for the Flow workspace Workflow feature.
 
+use std::collections::HashSet;
+
 use chrono::Utc;
 use log::info;
 use tauri::{AppHandle, Manager};
@@ -115,7 +117,7 @@ pub async fn duplicate_workflow(
         .ok_or_else(|| format!("Workflow '{workflow_id}' not found"))?;
 
     let all = get_all_workflows_sync(&manager)?;
-    let existing_names: Vec<String> = all.into_iter().map(|w| w.name).collect();
+    let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
     let base_name = format!("{} (Copy)", existing.name);
     let mut new_name = base_name.clone();
@@ -193,7 +195,7 @@ pub async fn import_workflow(
 
     let manager = app.state::<AppSettingsManager>();
     let all = get_all_workflows_sync(&manager)?;
-    let existing_names: Vec<String> = all.into_iter().map(|w| w.name).collect();
+    let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
     let base_name = if parsed.name.trim().is_empty() {
         "Imported Workflow".to_string()
@@ -234,7 +236,7 @@ pub fn get_all_workflows_sync(
         .filter_map(|v| serde_json::from_value::<WorkflowDefinition>(v).ok())
         .collect();
 
-    list.sort_by_key(|a| a.name.to_lowercase());
+    list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
 }
 

@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Automation, JobInfo, Remote, ServeListItem, AppTab } from '@app/types';
+import { Automation, JobInfo, Remote, ServeListItem, AppTab, QuickRun } from '@app/types';
 import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -46,30 +46,18 @@ export class NavigationDispatcherService {
     }
 
     if (job.origin === 'quickrun') {
-      this.uiStateService.setMainView('flow');
-      const qr = this.quickRunService
-        .quickRuns()
-        .find(q => q.id === job.profile || q.name === job.profile);
+      const qr = this.findQuickRun(job.profile);
       if (qr) {
-        this.quickRunService.select(qr.id);
+        this.navigateToQuickRun(qr.id);
       }
       return;
     }
 
     const remoteName = job.remote_name;
     if (remoteName) {
-      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-      if (remote) {
-        this.uiStateService.setMainView('main_menu');
-        if (job.job_type === 'mount') {
-          this.uiStateService.setTab('mount');
-        } else if (job.job_type === 'serve') {
-          this.uiStateService.setTab('serve');
-        } else {
-          this.uiStateService.setTab('operations');
-        }
-        this.uiStateService.setSelectedRemote(remote);
-      }
+      const tab: AppTab =
+        job.job_type === 'mount' ? 'mount' : job.job_type === 'serve' ? 'serve' : 'operations';
+      this.navigateToRemote(remoteName, tab);
     }
   }
 
@@ -79,22 +67,14 @@ export class NavigationDispatcherService {
   navigateToServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName) {
-      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-      if (remote) {
-        this.uiStateService.setMainView('main_menu');
-        this.uiStateService.setTab('serve');
-        this.uiStateService.setSelectedRemote(remote);
-        return;
-      }
+      this.navigateToRemote(remoteName, 'serve');
+      return;
     }
 
     if (serve.profile) {
-      const qr = this.quickRunService
-        .quickRuns()
-        .find(q => q.id === serve.profile || q.name === serve.profile);
+      const qr = this.findQuickRun(serve.profile);
       if (qr) {
-        this.uiStateService.setMainView('flow');
-        this.quickRunService.select(qr.id);
+        this.navigateToQuickRun(qr.id);
       }
     }
   }
@@ -110,21 +90,13 @@ export class NavigationDispatcherService {
 
     const remoteName = automation.remoteName || automation.args?.remoteName;
     if (remoteName && remoteName !== 'Workflow') {
-      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-      if (remote) {
-        this.uiStateService.setMainView('main_menu');
-        this.uiStateService.setTab('operations');
-        this.uiStateService.setSelectedRemote(remote);
-        return;
-      }
+      this.navigateToRemote(remoteName, 'operations');
+      return;
     }
 
-    const qr = this.quickRunService
-      .quickRuns()
-      .find(q => q.id === automation.profileName || q.name === automation.profileName);
+    const qr = this.findQuickRun(automation.profileName);
     if (qr) {
-      this.uiStateService.setMainView('flow');
-      this.quickRunService.select(qr.id);
+      this.navigateToQuickRun(qr.id);
     }
   }
 
@@ -149,6 +121,12 @@ export class NavigationDispatcherService {
    */
   navigateToQuickRun(quickRunId: string): void {
     this.uiStateService.setMainView('flow');
+    this.workflowState.requestedSubMode.set('quick_run');
     this.quickRunService.select(quickRunId);
+  }
+
+  private findQuickRun(idOrName?: string): QuickRun | undefined {
+    if (!idOrName) return undefined;
+    return this.quickRunService.quickRuns().find(q => q.id === idOrName || q.name === idOrName);
   }
 }

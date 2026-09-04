@@ -105,7 +105,12 @@ export class AppUpdaterService extends TauriBaseService {
       if (checkId !== this._latestCheckId) return null;
 
       console.error('Failed to check for updates:', error);
-      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.checkFailed', {
+          error: translatedError || this.translate.instant('common.error'),
+        })
+      );
       return null;
     } finally {
       if (checkId === this._latestCheckId) {

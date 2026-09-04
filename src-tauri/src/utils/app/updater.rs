@@ -25,12 +25,26 @@ fn emit_progress(app: &AppHandle, status: DownloadStatus) {
 #[bridge]
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();
+    let result = fetch_update_inner(&app, &channel, &updater_state).await;
+    if result.is_err() {
+        let mut data = updater_state.data.lock();
+        if data.state == UpdateState::Checking {
+            data.state = UpdateState::Idle;
+        }
+    }
+    result
+}
 
+async fn fetch_update_inner(
+    app: &AppHandle,
+    channel: &str,
+    updater_state: &AppUpdaterState,
+) -> Result<Option<UpdateInfo>> {
     {
         let mut data = updater_state.data.lock();
         if data.state == UpdateState::ReadyToRestart {
             if let Some(ref m) = data.last_metadata
-                && m.channel.as_deref() == Some(&channel)
+                && m.channel.as_deref() == Some(channel)
             {
                 return Ok(Some(UpdateInfo {
                     metadata: m.clone(),
@@ -49,7 +63,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
                     version: String::new(),
                     current_version: app.package_info().version.to_string(),
                     update_available: true,
-                    channel: Some(channel),
+                    channel: Some(channel.to_string()),
                     ..Default::default()
                 },
                 status: UpdateState::Downloading,
@@ -69,7 +83,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
     let Some(release) = releases
         .into_iter()
         .filter(|r| !r.draft)
-        .find(|r| is_release_for_channel(r, &channel))
+        .find(|r| is_release_for_channel(r, channel))
     else {
         info!("No suitable release found for channel: {channel}");
         updater_state.data.lock().state = UpdateState::Idle;
@@ -122,7 +136,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
                 release_date: release.published_at,
                 release_url: Some(release.html_url),
                 update_available: true,
-                channel: Some(channel.clone()),
+                channel: Some(channel.to_string()),
             };
             (Some(u), Some(metadata))
         }
@@ -151,7 +165,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
 
         if !is_skipped {
             notify(
-                &app,
+                app,
                 NotificationEvent::AppUpdate(UpdateStage::Available {
                     version: info.metadata.version.clone(),
                 }),

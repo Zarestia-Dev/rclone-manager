@@ -182,8 +182,8 @@ export class WorkflowStorageService extends TauriBaseService {
     const uniqueName = findUniqueName(tpl.definition.name, existingNames);
 
     const instantiated: WorkflowDefinition = {
-      id: `wf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       ...structuredClone(tpl.definition),
+      id: `wf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: uniqueName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

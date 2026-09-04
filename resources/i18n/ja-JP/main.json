@@ -1805,7 +1805,8 @@
         "statistics": "統計情報",
         "paths": "パス",
         "errors": "エラー",
-        "profile": "プロファイル"
+        "profile": "プロファイル",
+        "serverSideFlags": "サーバー側とフラグ"
       },
       "fields": {
         "type": "ジョブタイプ",
@@ -2854,6 +2855,7 @@
       "noPending": "保留中のアップデートはありません",
       "invalidUrl": "無効なURLです: {{error}}",
       "github": "GitHub API エラー: {{error}}",
+      "githubRateLimit": "GitHub APIのレート制限を超えました。後でもう一度お試しください。",
       "updateFailed": "アップデートに失敗しました: {{error}}",
       "updateUnavailable": "アップデートファイルは利用できなくなりました: {{error}}",
       "relaunchFailed": "再起動に失敗しました: {{error}}",

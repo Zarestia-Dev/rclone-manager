@@ -16,6 +16,11 @@ import type { ConfigValue } from './system';
 export type QuickRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
 
 /**
+ * Active sub-mode / panel in the Flow workspace.
+ */
+export type FlowSubMode = 'builder' | 'quick_run';
+
+/**
  * Payload sent to the backend when creating or updating a quick run.
  * The full rclone config (paths + flags) lives under `rclone`,
  * while app-level scheduling lives under `app` — the same split

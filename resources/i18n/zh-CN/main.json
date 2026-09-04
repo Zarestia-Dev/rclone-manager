@@ -1805,7 +1805,8 @@
         "statistics": "统计数据",
         "paths": "路径",
         "errors": "错误",
-        "profile": "配置文件"
+        "profile": "配置文件",
+        "serverSideFlags": "服务端与标志"
       },
       "fields": {
         "type": "任务类型",
@@ -2854,6 +2855,7 @@
       "noPending": "暂无待处理更新",
       "invalidUrl": "URL 无效：{{error}}",
       "github": "GitHub API 错误：{{error}}",
+      "githubRateLimit": "超出 GitHub API 请求频率限制，请稍后重试。",
       "updateFailed": "更新失败：{{error}}",
       "updateUnavailable": "更新文件不再可用：{{error}}",
       "relaunchFailed": "重新启动失败：{{error}}",

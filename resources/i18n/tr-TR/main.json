@@ -1805,7 +1805,8 @@
         "statistics": "İstatistikler",
         "paths": "Yollar",
         "errors": "Hatalar",
-        "profile": "Profil"
+        "profile": "Profil",
+        "serverSideFlags": "Sunucu Tarafı ve Bayraklar"
       },
       "fields": {
         "type": "İş Türü",
@@ -2854,6 +2855,7 @@
       "noPending": "Bekleyen güncelleme yok",
       "invalidUrl": "Geçersiz URL: {{error}}",
       "github": "GitHub API hatası: {{error}}",
+      "githubRateLimit": "GitHub API istek sınırı aşıldı. Lütfen daha sonra tekrar deneyin.",
       "updateFailed": "Güncelleme başarısız: {{error}}",
       "updateUnavailable": "Güncelleme dosyası artık mevcut değil: {{error}}",
       "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",

@@ -23,7 +23,6 @@ export class AutomationService extends TauriBaseService {
 
   async getAutomations(): Promise<Automation[]> {
     const automations = await this.invokeCommand<Automation[]>('get_automations');
-    console.log('[AutomationService] getAutomations:', automations);
     this._automations.set(automations);
     return automations;
   }

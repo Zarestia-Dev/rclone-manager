@@ -1805,7 +1805,8 @@
         "statistics": "Statistics",
         "paths": "Paths",
         "errors": "Errors",
-        "profile": "Profile"
+        "profile": "Profile",
+        "serverSideFlags": "Server-side & Flags"
       },
       "fields": {
         "type": "Job Type",
@@ -2854,6 +2855,7 @@
       "noPending": "There is no pending update",
       "invalidUrl": "Invalid URL: {{error}}",
       "github": "GitHub API error: {{error}}",
+      "githubRateLimit": "GitHub API rate limit exceeded. Please try again later.",
       "updateFailed": "Update failed: {{error}}",
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",

@@ -117,7 +117,6 @@
                           <app-quick-run-card
                             [quickRun]="qr"
                             [isRunning]="isRunning(qr.id)"
-                            variant="overview"
                             (selectedChange)="onSelectQuickRunById($event)"
                             (startRun)="onStartQuickRun($event)"
                             (stopRun)="onStopQuickRun($event)"
@@ -199,7 +198,6 @@
                     [expanded]="panelOpenStates()['jobs']"
                     (expandedChange)="setPanelOpenState('jobs', $event)"
                     [showFilterChips]="true"
-                    (jobClick)="handleJobClick($event)"
                     (stopJob)="handleStopJob($event)"
                   ></app-jobs-overview-panel>
                 }

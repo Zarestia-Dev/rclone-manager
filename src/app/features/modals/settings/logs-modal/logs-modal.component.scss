@@ -1,11 +1,13 @@
+@use "sass:map";
+
 // Toolbar
 .toolbar-section {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--header-gap);
+  gap: var(--space-md);
   padding: var(--space-md);
   background: var(--window-bg-color);
-  border-bottom: 1px solid var(--card-shade-color);
+  border-bottom: 1px solid var(--border-color);
   align-items: center;
   flex-shrink: 0;
 
@@ -14,10 +16,6 @@
     flex: 1;
     gap: var(--space-sm);
     min-width: 280px;
-
-    .compact {
-      font-size: var(--font-size-md);
-    }
   }
 
   .action-controls {
@@ -31,10 +29,6 @@
         background: rgba(var(--warn-color-rgb), 0.1);
       }
     }
-
-    .spinning {
-      animation: spin 1s linear infinite;
-    }
   }
 
   @media (max-width: 540px) {
@@ -47,7 +41,7 @@
 
     .action-controls {
       justify-content: flex-end;
-      border-top: 1px solid var(--card-shade-color);
+      border-top: 1px solid var(--border-color);
       padding-top: var(--space-sm);
       margin-top: var(--space-sm);
     }
@@ -75,6 +69,10 @@
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   line-height: 1.5;
+
+  &.has-context .log-header {
+    cursor: pointer;
+  }
 
   .log-header {
     display: flex;
@@ -164,7 +162,7 @@
         word-break: break-all;
 
         &.json-theme {
-          color: var(--gnome-orange-1);
+          color: var(--gnome-orange-2);
         }
 
         pre {
@@ -175,60 +173,52 @@
   }
 
   // --- Level Variants ---
-  &.error {
-    .level-tag {
-      color: var(--warn-color);
-      background: rgba(var(--warn-color-rgb), 0.15);
-    }
-    .message {
-      color: var(--warn-color);
-    }
-    &.expanded .log-header {
-      border-left: 3px solid var(--warn-color);
-      background: rgba(var(--warn-color-rgb), 0.05);
-    }
-  }
+  $levels: (
+    error: (
+      color: var(--warn-color),
+      rgb: var(--warn-color-rgb),
+      msg: var(--warn-color),
+    ),
+    warn: (
+      color: var(--orange),
+      rgb: var(--orange-rgb),
+      msg: var(--orange),
+    ),
+    info: (
+      color: var(--accent-color),
+      rgb: var(--accent-color-rgb),
+      msg: null,
+    ),
+    debug: (
+      color: var(--gnome-light-5),
+      rgb: var(--dim-color-rgb),
+      msg: var(--gnome-light-4),
+    ),
+  );
 
-  &.warn {
-    .level-tag {
-      color: var(--orange);
-      background: rgba(var(--orange-rgb), 0.15);
-    }
-    .message {
-      color: var(--orange);
-    }
-    &.expanded .log-header {
-      border-left: 3px solid var(--orange);
-      background: rgba(var(--orange-rgb), 0.05);
-    }
-  }
-
-  &.info {
-    .level-tag {
-      color: var(--accent-color);
-      background: rgba(var(--accent-color-rgb), 0.15);
-    }
-    &.expanded .log-header {
-      border-left: 3px solid var(--accent-color);
-      background: rgba(var(--accent-color-rgb), 0.05);
-    }
-  }
-
-  &.debug {
-    .level-tag {
-      color: var(--gnome-light-5);
-      background: rgba(var(--dim-color-rgb), 0.15);
-    }
-    .message {
-      color: var(--gnome-light-4);
-    }
-    &.expanded .log-header {
-      border-left: 3px solid var(--gnome-light-5);
-      background: rgba(var(--dim-color-rgb), 0.05);
+  @each $level, $cfg in $levels {
+    &.#{$level} {
+      .level-tag {
+        color: map.get($cfg, color);
+        background: rgba(map.get($cfg, rgb), 0.15);
+      }
+      @if map.get($cfg, msg) {
+        .message {
+          color: map.get($cfg, msg);
+        }
+      }
+      &.expanded .log-header {
+        border-left: 3px solid map.get($cfg, color);
+        background: rgba(map.get($cfg, rgb), 0.05);
+      }
     }
   }
 }
 
 .empty-state--dimmed {
-  color: color-mix(in srgb, white 55%, transparent);
+  color: var(--gnome-light-5);
+}
+
+.empty-state--loading {
+  color: var(--gnome-light-1);
 }

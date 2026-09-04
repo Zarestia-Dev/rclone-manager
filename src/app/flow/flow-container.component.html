@@ -41,6 +41,7 @@
     >
       <app-sidebar
         mode="flow"
+        [flowSubMode]="activeSubMode()"
         (itemSelected)="onItemSelected()"
         (quickRunSelected)="onQuickRunSelected()"
         (workflowSelected)="onWorkflowSelected()"

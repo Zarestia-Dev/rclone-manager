@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
-import { CommonModule } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { WorkflowToolbarComponent } from '../workflow-toolbar/workflow-toolbar.component';
 import { WorkflowPaletteComponent } from '../workflow-palette/workflow-palette.component';
@@ -25,7 +24,6 @@ import { NotificationService } from '../../../../services/ui/notification.servic
 @Component({
   selector: 'app-workflow-workspace',
   imports: [
-    CommonModule,
     MatSidenavModule,
     MatIconModule,
     TranslatePipe,

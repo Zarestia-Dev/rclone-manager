@@ -26,7 +26,7 @@
   background: var(--card-bg-color);
   height: 54px;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
+  box-shadow: var(--shadow-gnome);
   color: var(--window-fg-color) !important;
 
   --mat-ripple-color: var(--shadow-color);
@@ -216,14 +216,14 @@
         font-size: var(--font-size-xs);
         font-weight: 700;
 
-        &.stable {
-          background: rgba(var(--primary-color-rgb), 0.12);
-          color: var(--primary-color);
-        }
-
         &.beta {
           background: rgba(var(--orange-rgb), 0.12);
           color: var(--orange);
+        }
+
+        &.dev {
+          background: rgba(var(--purple-rgb), 0.12);
+          color: var(--purple);
         }
       }
     }
@@ -244,7 +244,7 @@
     align-items: center;
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
-    border-bottom: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+    border-bottom: 1px solid var(--card-shade-color);
 
     &:last-child {
       border-bottom: none;
@@ -278,27 +278,6 @@
     gap: var(--space-sm);
   }
 
-  .current-version-card {
-    padding-inline: var(--space-md);
-
-    .version-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-
-      .version-label {
-        font-weight: 500;
-        color: var(--dim-color);
-      }
-
-      .version-number {
-        font-weight: 600;
-        font-size: var(--font-size-base);
-        color: var(--primary-color);
-      }
-    }
-  }
-
   .update-card {
     display: flex;
     flex-direction: column;
@@ -310,7 +289,7 @@
 
     &.available {
       background: rgba(var(--accent-color-rgb), 0.05);
-      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
+      box-shadow: var(--ring-accent);
     }
 
     &.up-to-date {
@@ -391,42 +370,6 @@
         }
       }
     }
-
-    &.not-supported {
-      display: flex;
-      flex-direction: row;
-      align-items: flex-start;
-      gap: var(--space-md);
-      background: var(--bg-elevated-2);
-      box-shadow: var(--ring-border);
-
-      mat-icon {
-        color: var(--dim-color);
-      }
-
-      .status-text {
-        h4 {
-          margin: 0 0 var(--space-xs) 0;
-          color: var(--window-fg-color);
-          font-weight: 600;
-        }
-        p {
-          margin: 0;
-          color: var(--dim-color);
-          line-height: 1.5;
-
-          a {
-            color: var(--accent-color);
-            text-decoration: none;
-            font-weight: 500;
-
-            &:hover {
-              text-decoration: underline;
-            }
-          }
-        }
-      }
-    }
   }
 
   .settings-section {
@@ -448,23 +391,23 @@
 
       .setting-header {
         flex: 1;
+        min-width: 0;
 
         .setting-title {
-          font-weight: 500;
+          font-weight: 600;
           font-size: var(--font-size-base);
           color: var(--window-fg-color);
         }
       }
 
       .setting-control {
+        flex-shrink: 0;
+
         mat-form-field {
-          max-width: 100px;
+          min-width: 120px;
+          max-width: 160px;
         }
       }
-    }
-
-    .channel-name {
-      font-weight: 500;
     }
   }
 
@@ -602,6 +545,17 @@
 // ----------------------------------------------------------------------------
 // View: Debug & Memory
 // ----------------------------------------------------------------------------
+.info-section {
+  margin-bottom: var(--space-lg);
+
+  h4 {
+    margin: 0 0 var(--space-sm) 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--window-fg-color);
+  }
+}
+
 .debug-overlay {
   .debug-content {
     padding: var(--space-md) var(--space-lg);
@@ -619,18 +573,6 @@
       button {
         width: 100%;
       }
-    }
-
-    .folder-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-
-    .debug-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-sm);
     }
   }
 }
@@ -657,7 +599,7 @@
 
     p {
       margin: 0;
-      font-size: 0.85rem;
+      font-size: var(--font-size-sm);
       color: var(--dim-color);
       line-height: 1.55;
     }
@@ -688,9 +630,9 @@
     }
 
     mat-icon {
-      font-size: 1rem;
-      width: 1rem;
-      height: 1rem;
+      font-size: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
       color: var(--dim-color);
       transition: color 0.15s ease;
     }
@@ -707,5 +649,27 @@
     &:active {
       background: color-mix(in srgb, var(--accent-color) 10%, var(--view-bg-color));
     }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Responsive
+// ----------------------------------------------------------------------------
+@media (max-width: 540px) {
+  .whats-new-content {
+    padding: var(--space-md) var(--space-sm);
+
+    .release-header {
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+  }
+
+  .debug-overlay .debug-content {
+    padding: var(--space-md) var(--space-sm);
+  }
+
+  .managed-update-notice .command-block {
+    padding: var(--space-xs) var(--space-sm);
   }
 }

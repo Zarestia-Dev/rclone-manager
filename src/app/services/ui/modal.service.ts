@@ -235,7 +235,7 @@ export class ModalService extends TauriBaseService {
         m => m.PropertiesModalComponent
       ),
     'remote-about': () =>
-      import('../../features/modals/remote/remote-about-modal.component').then(
+      import('../../features/modals/remote-about/remote-about-modal.component').then(
         m => m.RemoteAboutModalComponent
       ),
     'keyboard-shortcuts': () =>
@@ -267,7 +267,7 @@ export class ModalService extends TauriBaseService {
         m => m.TemplateManagerModalComponent
       ),
     'delete-remote': () =>
-      import('../../features/modals/remote/delete-remote-modal/delete-remote-modal.component').then(
+      import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
         m => m.DeleteRemoteModalComponent
       ),
     'workflow-cron-editor': () =>

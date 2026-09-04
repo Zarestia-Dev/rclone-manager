@@ -9,6 +9,7 @@
 
   strong {
     display: block;
+    font-weight: 600;
     font-size: var(--font-size-md);
     margin-bottom: var(--space-xs);
   }
@@ -19,6 +20,8 @@
     font-size: var(--font-size-sm);
     color: var(--window-fg-color);
     line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
     opacity: 0.9;
 
     &:not(:last-child) {

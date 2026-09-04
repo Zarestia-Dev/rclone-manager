@@ -22,11 +22,11 @@
     @if (buildTypeVal) {
       <span
         class="platform-badge"
-        [ngClass]="buildTypeVal"
-        [attr.title]="getChannelLabel(buildTypeVal) | translate"
+        [class]="buildTypeVal"
+        [attr.title]="getPlatformLabel(buildTypeVal)"
       >
         <mat-icon svgIcon="package"></mat-icon>
-        {{ getChannelLabel(buildTypeVal) | translate }}
+        {{ getPlatformLabel(buildTypeVal) }}
       </span>
     }
   </div>
@@ -81,7 +81,6 @@
 @for (overlay of overlayStack(); track overlay.id; let i = $index) {
   <div
     class="overlay"
-    [class.whats-new-overlay]="overlay.id === 'whats-new-app' || overlay.id === 'whats-new-rclone'"
     [class.debug-overlay]="overlay.id === 'memory'"
     [style.z-index]="10 + i"
     animate.enter="slide-overlay-enter"
@@ -198,36 +197,18 @@
 
           @if (updaterEnabled()) {
             @if (appReadyToRestart()) {
-              <div class="update-card restart-required">
-                <div class="update-header">
-                  <mat-icon svgIcon="reset-wrench"></mat-icon>
-                  <div class="update-title">
-                    <h4>{{ 'modals.about.readyToRestart' | translate }}</h4>
-                    @if (appUpdateAvailable()) {
-                      <span class="new-version">
-                        {{ 'modals.about.version' | translate }}
-                        {{ appUpdateAvailable()!.version }}
-                      </span>
-                    }
-                    <p class="restart-description">
-                      {{ 'modals.about.restartDescription' | translate }}
-                    </p>
-                  </div>
-                </div>
-                <div class="update-buttons">
-                  <button
-                    matButton="filled"
-                    class="accent"
-                    (click)="finishUpdate()"
-                    [disabled]="restartingApp()"
-                  >
-                    @if (restartingApp()) {
-                      <mat-icon svgIcon="spinner"></mat-icon>
-                    }
-                    <span>{{ 'modals.about.restartNow' | translate }}</span>
-                  </button>
-                </div>
-              </div>
+              <ng-container
+                *ngTemplateOutlet="
+                  restartCard;
+                  context: {
+                    title: 'modals.about.readyToRestart',
+                    version: appUpdateAvailable()?.version,
+                    desc: 'modals.about.restartDescription',
+                    action: finishUpdate.bind(this),
+                    restarting: restartingApp(),
+                  }
+                "
+              ></ng-container>
             } @else if (appUpdateAvailable()) {
               @let update = appUpdateAvailable()!;
               <div class="update-card available">
@@ -274,26 +255,25 @@
                   </div>
                 }
 
-                @if (buildType()) {
-                  @let instructions = updateInstructions();
+                @if (updateInstructions(); as instructions) {
                   <div class="managed-update-notice">
                     <div class="managed-info">
                       <mat-icon svgIcon="circle-info"></mat-icon>
                       <p>{{ 'modals.about.managedBuildNotice' | translate }}</p>
                     </div>
-                    @if (instructions?.command) {
+                    @if (instructions.command) {
                       <button
                         class="command-block"
-                        [appCopyToClipboard]="instructions!.command!"
+                        [appCopyToClipboard]="instructions.command"
                         [attr.title]="'common.copy' | translate"
                       >
-                        <code>{{ instructions!.command }}</code>
+                        <code>{{ instructions.command }}</code>
                         <mat-icon svgIcon="copy"></mat-icon>
                       </button>
                     }
                   </div>
                   <div class="update-buttons">
-                    @for (link of instructions!.links; track link.url) {
+                    @for (link of instructions.links; track link.url) {
                       <a
                         matButton="filled"
                         [href]="link.url"
@@ -352,7 +332,6 @@
               matButton="outlined"
               (click)="checkForUpdates()"
               [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
-              class="check-button"
             >
               <mat-icon [svgIcon]="appIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
               {{
@@ -516,7 +495,7 @@
                     <button
                       matIconButton
                       class="about-button"
-                      (click)="showMemoryOverlay()"
+                      (click)="navigateTo('memory')"
                       [attr.title]="'modals.about.viewMemoryStats' | translate"
                     >
                       <mat-icon svgIcon="memory" class="purple"></mat-icon>
@@ -547,36 +526,18 @@
           </div>
           @if (rcloneUpdateEnabled()) {
             @if (rcloneReadyToRestart()) {
-              <div class="update-card restart-required">
-                <div class="update-header">
-                  <mat-icon svgIcon="reset-wrench"></mat-icon>
-                  <div class="update-title">
-                    <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
-                    @if (rcloneUpdateAvailable()) {
-                      <span class="new-version">
-                        {{ 'modals.about.version' | translate }}
-                        {{ rcloneUpdateAvailable()!.version }}
-                      </span>
-                    }
-                    <p class="restart-description">
-                      {{ 'modals.about.rcloneRestartDescription' | translate }}
-                    </p>
-                  </div>
-                </div>
-                <div class="update-buttons">
-                  <button
-                    matButton="filled"
-                    class="accent"
-                    (click)="applyRcloneUpdate()"
-                    [disabled]="restartingRcloneEngine()"
-                  >
-                    @if (restartingRcloneEngine()) {
-                      <mat-icon svgIcon="spinner"></mat-icon>
-                    }
-                    <span>{{ 'modals.about.restartNow' | translate }}</span>
-                  </button>
-                </div>
-              </div>
+              <ng-container
+                *ngTemplateOutlet="
+                  restartCard;
+                  context: {
+                    title: 'modals.about.rcloneRestartRequired',
+                    version: rcloneUpdateAvailable()?.version,
+                    desc: 'modals.about.rcloneRestartDescription',
+                    action: applyRcloneUpdate.bind(this),
+                    restarting: restartingRcloneEngine(),
+                  }
+                "
+              ></ng-container>
             } @else if (rcloneHasUpdates()) {
               @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
               <div class="update-card available">
@@ -644,7 +605,6 @@
               matButton="outlined"
               (click)="checkForRcloneUpdates()"
               [disabled]="rcloneIsChecking() || rcloneUpdateInProgress() || rcloneReadyToRestart()"
-              class="check-button"
             >
               <mat-icon [svgIcon]="rcloneIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
               {{
@@ -689,7 +649,7 @@
       }
       @case ('credits') {
         <div class="modal-content">
-          <div class="debug-section">
+          <div class="info-section">
             <h4>{{ 'modals.about.devTeam' | translate }}</h4>
             <div class="rclone-details">
               <div class="detail-row">
@@ -699,7 +659,7 @@
             </div>
           </div>
 
-          <div class="debug-section">
+          <div class="info-section">
             <h4>{{ 'modals.about.acknowledgments' | translate }}</h4>
             <p class="section-prose">{{ 'modals.about.ackText' | translate }}</p>
           </div>
@@ -707,7 +667,7 @@
       }
       @case ('legal') {
         <div class="modal-content">
-          <div class="debug-section">
+          <div class="info-section">
             <h4>{{ 'modals.about.license' | translate }}</h4>
             <p class="section-prose">
               {{ 'modals.about.licenseText1' | translate }}
@@ -723,78 +683,33 @@
             <p class="section-prose">{{ 'modals.about.licenseText2' | translate }}</p>
           </div>
 
-          <div class="debug-section">
+          <div class="info-section">
             <h4>{{ 'modals.about.thirdParty' | translate }}</h4>
             <p class="section-prose">{{ 'modals.about.thirdPartyText' | translate }}</p>
           </div>
         </div>
       }
       @case ('whats-new-app') {
-        <div class="modal-content whats-new-content">
-          @if (appUpdateAvailable()) {
-            @let update = appUpdateAvailable()!;
-            <div class="release-header">
-              <div class="release-version">
-                <h2>Version {{ update.version }}</h2>
-                @if (update.releaseDate) {
-                  <span class="release-date">
-                    {{ formatReleaseDate(update.releaseDate) }}
-                  </span>
-                }
-              </div>
-              @if (update.releaseUrl) {
-                <a
-                  matButton="outlined"
-                  [href]="update.releaseUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="whats-new-button"
-                >
-                  <mat-icon svgIcon="open-link"></mat-icon>
-                  <span class="text-nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
-                </a>
-              }
-            </div>
-
-            <div class="release-notes markdown-body" [innerHTML]="formattedAppReleaseNotes()"></div>
-          }
-        </div>
+        <ng-container
+          *ngTemplateOutlet="
+            whatsNewTemplate;
+            context: {
+              update: appUpdateAvailable(),
+              notes: formattedAppReleaseNotes(),
+            }
+          "
+        ></ng-container>
       }
       @case ('whats-new-rclone') {
-        <div class="modal-content whats-new-content">
-          @if (rcloneUpdateAvailable()) {
-            @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
-            <div class="release-header">
-              <div class="release-version">
-                <h2>
-                  {{ rcloneUpdateInfo.version }}
-                </h2>
-                @if (rcloneUpdateInfo.releaseDate) {
-                  <span class="release-date">
-                    {{ formatReleaseDate(rcloneUpdateInfo.releaseDate) }}
-                  </span>
-                }
-              </div>
-              @if (rcloneUpdateInfo.releaseUrl) {
-                <a
-                  matButton="outlined"
-                  [href]="rcloneUpdateInfo.releaseUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="whats-new-button"
-                >
-                  <mat-icon svgIcon="open-link"></mat-icon>
-                  {{ 'modals.about.viewOnGithub' | translate }}
-                </a>
-              }
-            </div>
-
-            <div
-              class="release-notes markdown-body"
-              [innerHTML]="formattedRcloneReleaseNotes()"
-            ></div>
-          }
-        </div>
+        <ng-container
+          *ngTemplateOutlet="
+            whatsNewTemplate;
+            context: {
+              update: rcloneUpdateAvailable(),
+              notes: formattedRcloneReleaseNotes(),
+            }
+          "
+        ></ng-container>
       }
 
       @case ('memory') {
@@ -946,9 +861,7 @@
           >
             @for (ch of channels; track ch.value) {
               <mat-option [value]="ch.value" [attr.title]="ch.description | translate">
-                <div class="channel-option">
-                  <span class="channel-name">{{ ch.label | translate }}</span>
-                </div>
+                <span>{{ ch.label | translate }}</span>
               </mat-option>
             }
           </mat-select>
@@ -973,6 +886,72 @@
           <mat-icon svgIcon="rotate-right"></mat-icon>
         </button>
       </div>
+    }
+  </div>
+</ng-template>
+
+<!-- Restart Required Card Template -->
+<ng-template
+  #restartCard
+  let-title="title"
+  let-version="version"
+  let-desc="desc"
+  let-action="action"
+  let-restarting="restarting"
+>
+  <div class="update-card restart-required">
+    <div class="update-header">
+      <mat-icon svgIcon="reset-wrench"></mat-icon>
+      <div class="update-title">
+        <h4>{{ title | translate }}</h4>
+        @if (version) {
+          <span class="new-version">
+            {{ 'modals.about.version' | translate }}
+            {{ version }}
+          </span>
+        }
+        <p>{{ desc | translate }}</p>
+      </div>
+    </div>
+    <div class="update-buttons">
+      <button matButton="filled" class="accent" (click)="action()" [disabled]="restarting">
+        @if (restarting) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        }
+        <span>{{ 'modals.about.restartNow' | translate }}</span>
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<!-- What's New Template -->
+<ng-template #whatsNewTemplate let-update="update" let-notes="notes">
+  <div class="modal-content whats-new-content">
+    @if (update) {
+      <div class="release-header">
+        <div class="release-version">
+          <h2>Version {{ update.version }}</h2>
+          @if (update.releaseDate) {
+            <span class="release-date">
+              {{ formatReleaseDate(update.releaseDate) }}
+            </span>
+          }
+        </div>
+        @if (update.releaseUrl) {
+          <a
+            matButton="outlined"
+            [href]="update.releaseUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="whats-new-button"
+          >
+            <mat-icon svgIcon="open-link"></mat-icon>
+            <span class="text-nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
+          </a>
+        }
+      </div>
+
+      <div class="release-notes markdown-body" [innerHTML]="notes"></div>
     }
   </div>
 </ng-template>

@@ -1805,7 +1805,8 @@
         "statistics": "Estatísticas",
         "paths": "Caminhos",
         "errors": "Erros",
-        "profile": "Perfil"
+        "profile": "Perfil",
+        "serverSideFlags": "Lado do servidor e flags"
       },
       "fields": {
         "type": "Tipo de Tarefa",
@@ -2854,6 +2855,7 @@
       "noPending": "Não há atualizações pendentes",
       "invalidUrl": "Endereço URL inválido: {{error}}",
       "github": "Erro de API do GitHub: {{error}}",
+      "githubRateLimit": "Limite de requisições da API do GitHub excedido. Tente novamente mais tarde.",
       "updateFailed": "Atualização falhou: {{error}}",
       "updateUnavailable": "O artefato de atualização não está mais disponível: {{error}}",
       "relaunchFailed": "Reinício falhou: {{error}}",

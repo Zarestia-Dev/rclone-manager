@@ -25,7 +25,7 @@
     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
   </div>
 } @else if (currentPage() === 'home') {
-  <main>
+  <main class="dull">
     @if (searchQuery()) {
       @if (globalSearchResults().length > 0) {
         <cdk-virtual-scroll-viewport itemSize="25" class="virtual-scroll-viewport">
@@ -99,56 +99,50 @@
               </mat-panel-title>
             </mat-expansion-panel-header>
 
-            <div class="main-category-services">
-              @for (service of mainCat.services; track service.name) {
-                <mat-expansion-panel
-                  [expanded]="service.expanded"
-                  (opened)="setServiceExpanded(service.name, true)"
-                  (closed)="setServiceExpanded(service.name, false)"
-                  class="service-panel"
-                >
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <mat-icon [svgIcon]="service.icon"></mat-icon>
-                      <div class="category-header-text">
-                        <span class="category-title">{{ service.name | titlecase }}</span>
-                        <small class="category-description">{{
-                          service.description | translate
-                        }}</small>
-                      </div>
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
+            @for (service of mainCat.services; track service.name) {
+              <mat-expansion-panel
+                [expanded]="service.expanded"
+                (opened)="setServiceExpanded(service.name, true)"
+                (closed)="setServiceExpanded(service.name, false)"
+                class="service-panel"
+              >
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon [svgIcon]="service.icon"></mat-icon>
+                    <div class="category-header-text">
+                      <span class="category-title">{{ service.name | titlecase }}</span>
+                      <small class="category-description">{{
+                        service.description | translate
+                      }}</small>
+                    </div>
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
 
-                  <div class="category-items">
-                    @for (category of service.categories; track category.category) {
-                      <div
-                        class="config-item"
-                        role="button"
-                        (click)="navigateTo(service.name, category.category)"
-                        (keydown)="
-                          handleKeyboardNavigation($event, service.name, category.category)
-                        "
-                        [tabindex]="0"
-                        [attr.aria-label]="
-                          'Navigate to ' + category.category + ' in ' + service.name
-                        "
-                      >
-                        <div class="config-item-content">
-                          <mat-icon [svgIcon]="category.icon"></mat-icon>
-                          <div class="config-item-text">
-                            <span class="config-item-title">{{ category.category }}</span>
-                            <small class="config-item-description">{{
-                              category.description | translate
-                            }}</small>
-                          </div>
+                <div class="category-items">
+                  @for (category of service.categories; track category.category) {
+                    <div
+                      class="config-item"
+                      role="button"
+                      (click)="navigateTo(service.name, category.category)"
+                      (keydown)="handleKeyboardNavigation($event, service.name, category.category)"
+                      [tabindex]="0"
+                      [attr.aria-label]="'Navigate to ' + category.category + ' in ' + service.name"
+                    >
+                      <div class="config-item-content">
+                        <mat-icon [svgIcon]="category.icon"></mat-icon>
+                        <div class="config-item-text">
+                          <span class="config-item-title">{{ category.category }}</span>
+                          <small class="config-item-description">{{
+                            category.description | translate
+                          }}</small>
                         </div>
-                        <mat-icon svgIcon="chevron-right"></mat-icon>
                       </div>
-                    }
-                  </div>
-                </mat-expansion-panel>
-              }
-            </div>
+                      <mat-icon svgIcon="chevron-right"></mat-icon>
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+            }
           </mat-expansion-panel>
         }
       </mat-accordion>

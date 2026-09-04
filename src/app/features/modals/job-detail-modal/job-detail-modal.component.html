@@ -1,6 +1,6 @@
 <header data-tauri-drag-region>
-  <button [aria-label]="'modals.jobDetail.title' | translate">
-    <mat-icon svgIcon="jobs" class="job-icon"></mat-icon>
+  <button tabindex="-1" aria-hidden="true">
+    <mat-icon svgIcon="jobs"></mat-icon>
   </button>
   <p>
     {{ 'modals.jobDetail.title' | translate: { id: jobData().jobid } }}
@@ -10,7 +10,12 @@
       </span>
     }
   </p>
-  <button matIconButton (click)="close()" class="close-button">
+  <button
+    matIconButton
+    (click)="close()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -92,47 +97,40 @@
       {{ 'modals.jobDetail.sections.paths' | translate }}
     </span>
     <app-path-display
-      class="embedded-path-display"
       [config]="pathDisplayConfig()"
       (openPath)="onOpenPath($event)"
     ></app-path-display>
   </div>
 
   @if (showStatistics()) {
-    <div class="dashboard-grids">
-      <div class="counter-grid">
-        <span class="grid-header">
-          <mat-icon svgIcon="chart"></mat-icon>
-          {{ statisticsTitle() | translate: { op: (jobData().job_type | titlecase) } }}
-        </span>
+    <div class="counter-grid">
+      <span class="grid-header">
+        <mat-icon svgIcon="chart"></mat-icon>
+        {{ statisticsTitle() | translate: { op: (jobData().job_type | titlecase) } }}
+      </span>
 
-        <div class="progress-details">
-          <div class="progress-info">
-            <span class="main-percentage">{{ progress() | number: '1.0-1' }}%</span>
-            <span class="main-bytes">
-              {{ jobData().stats.bytes | formatFileSize }} /
-              {{ jobData().stats.totalBytes | formatFileSize }}
-            </span>
-          </div>
-          <mat-progress-bar
-            mode="determinate"
-            [value]="progress()"
-            [color]="jobStatus() === 'running' ? 'primary' : ''"
-          ></mat-progress-bar>
+      <div class="progress-details">
+        <div class="progress-info">
+          <span class="main-percentage">{{ progress() | number: '1.0-1' }}%</span>
+          <span class="main-bytes">
+            {{ jobData().stats.bytes | formatFileSize }} /
+            {{ jobData().stats.totalBytes | formatFileSize }}
+          </span>
         </div>
+        <mat-progress-bar mode="determinate" [value]="progress()"></mat-progress-bar>
+      </div>
 
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
-          <span class="value">{{ jobData().stats.speed | formatFileSize }}/s</span>
-        </div>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.speedAvg' | translate }}</span>
-          <span class="value">{{ speedAvg() | formatFileSize }}/s</span>
-        </div>
-        <div class="grid-item highlight">
-          <span class="label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
-          <span class="value">{{ jobData().stats.eta | formatEta }}</span>
-        </div>
+      <div class="grid-item">
+        <span class="label">{{ 'modals.jobDetail.fields.speed' | translate }}</span>
+        <span class="value">{{ jobData().stats.speed | formatFileSize }}/s</span>
+      </div>
+      <div class="grid-item">
+        <span class="label">{{ 'modals.jobDetail.fields.speedAvg' | translate }}</span>
+        <span class="value">{{ speedAvg() | formatFileSize }}/s</span>
+      </div>
+      <div class="grid-item highlight">
+        <span class="label">{{ 'modals.jobDetail.fields.eta' | translate }}</span>
+        <span class="value">{{ jobData().stats.eta | formatEta }}</span>
       </div>
     </div>
 
@@ -164,7 +162,9 @@
       </div>
 
       <div class="counter-grid">
-        <span class="grid-header">Server-side & Flags</span>
+        <span class="grid-header">{{
+          'modals.jobDetail.sections.serverSideFlags' | translate
+        }}</span>
         <div class="grid-item" [class.active]="jobData().stats.serverSideCopies > 0">
           <span class="label">{{ 'modals.jobDetail.fields.serverSideCopies' | translate }}</span>
           <span class="value"
@@ -183,11 +183,15 @@
         </div>
         <div class="grid-item highlight-warn" [class.active]="healthStatus().retryError">
           <span class="label">{{ 'modals.jobDetail.fields.retryError' | translate }}</span>
-          <span class="value">{{ healthStatus().retryError ? 'YES' : 'NO' }}</span>
+          <span class="value">{{
+            (healthStatus().retryError ? 'common.yes' : 'common.no') | translate | uppercase
+          }}</span>
         </div>
         <div class="grid-item highlight-error" [class.active]="healthStatus().fatalError">
           <span class="label">{{ 'modals.jobDetail.fields.fatalError' | translate }}</span>
-          <span class="value">{{ healthStatus().fatalError ? 'YES' : 'NO' }}</span>
+          <span class="value">{{
+            (healthStatus().fatalError ? 'common.yes' : 'common.no') | translate | uppercase
+          }}</span>
         </div>
         <div class="grid-item" [class.error]="healthStatus().errors > 0">
           <span class="label">{{ 'modals.jobDetail.fields.errorsCount' | translate }}</span>

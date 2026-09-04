@@ -5,12 +5,7 @@
 }
 
 .dry-run-pill {
-  margin-left: var(--space-md);
-}
-
-.embedded-path-display {
-  display: block;
-  padding: 10px;
+  margin-left: var(--space-xs);
 }
 
 .dashboard-grids {
@@ -19,9 +14,10 @@
 
   .counter-grid {
     flex: 1;
+    min-width: 0;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 540px) {
     flex-direction: column;
   }
 }
@@ -32,6 +28,7 @@
 
   app-path-display {
     display: block;
+    padding: var(--space-xs);
     --path-item-bg: var(--view-bg-color);
     --path-item-padding: var(--space-xs);
   }
@@ -53,10 +50,10 @@
   }
 
   .progress-details {
-    gap: 8px;
+    gap: var(--space-xs);
     display: flex;
     flex-direction: column;
-    padding: 10px 10px var(--space-xs);
+    padding: var(--space-xs);
     --mat-sys-surface-variant: var(--window-bg-color);
 
     .progress-info {
@@ -70,7 +67,7 @@
         color: var(--primary-color);
       }
       .main-bytes {
-        font-size: 0.85rem;
+        font-size: var(--font-size-sm);
         color: var(--dim-color);
         font-weight: 500;
       }
@@ -80,9 +77,10 @@
   .grid-item {
     display: flex;
     justify-content: space-between;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    align-items: center;
+    padding: 6px var(--space-xs);
+    border-radius: var(--radius-xs);
+    font-size: var(--font-size-sm);
 
     .label {
       color: var(--dim-color);
@@ -91,25 +89,25 @@
       font-weight: 600;
 
       &.status-tag {
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 0.75rem;
+        padding: 2px var(--space-xs);
+        border-radius: var(--radius-xs);
+        font-size: var(--font-size-xs);
         background: var(--bg-elevated-2);
 
         &[data-status="running"] {
-          background: rgba(var(--accent-color-rgb), 0.1);
+          background: rgba(var(--accent-color-rgb), 0.15);
           color: var(--accent-color);
         }
         &[data-status="completed"] {
-          background: rgba(var(--primary-color-rgb), 0.1);
+          background: rgba(var(--primary-color-rgb), 0.15);
           color: var(--primary-color);
         }
         &[data-status="stopped"] {
-          background: rgba(var(--orange-rgb), 0.1);
+          background: rgba(var(--orange-rgb), 0.15);
           color: var(--orange);
         }
         &[data-status="failed"] {
-          background: rgba(var(--warn-color-rgb), 0.1);
+          background: rgba(var(--warn-color-rgb), 0.15);
           color: var(--warn-color);
         }
       }
@@ -119,19 +117,19 @@
       color: var(--accent-color);
     }
     &.active {
-      background: rgba(var(--primary-color-rgb), 0.05);
+      background: rgba(var(--primary-color-rgb), 0.08);
       .value {
         color: var(--primary-color);
       }
     }
     &.highlight-warn.active {
-      background: rgba(var(--accent-color-rgb), 0.1);
+      background: rgba(var(--orange-rgb), 0.12);
       .value {
-        color: var(--accent-color);
+        color: var(--orange);
       }
     }
     &.highlight-error.active {
-      background: rgba(var(--warn-color-rgb), 0.1);
+      background: rgba(var(--warn-color-rgb), 0.12);
       .value {
         color: var(--warn-color);
       }

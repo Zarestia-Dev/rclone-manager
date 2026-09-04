@@ -7,8 +7,6 @@ import {
   QuickRunInput,
   QuickRunStatus,
   PrimaryActionType,
-  MountedRemote,
-  ServeListItem,
   JobInfo,
   OperationExecutionResult,
 } from '@app/types';
@@ -100,20 +98,37 @@ export class QuickRunService extends TauriBaseService {
           const nextRunningIds = new Set<string>();
           const patches: { id: string; patch: Partial<QuickRun> }[] = [];
 
-          for (const qr of quickRuns) {
-            if (qr.operationType === 'mount') {
-              const isMounted = this.isMountActive(qr, mounts ?? []);
-              if (isMounted) {
-                nextRunningIds.add(qr.id);
-                if (qr.status !== 'running') {
-                  patches.push({ id: qr.id, patch: { status: 'running' } });
-                }
-              } else if (qr.status === 'running') {
-                patches.push({ id: qr.id, patch: { status: 'stopped' } });
+          // Pre-index active mounts and serves for O(1) membership checks
+          const activeMountIds = new Set(
+            (mounts ?? []).map(m => m.quick_run_id).filter((id): id is string => Boolean(id))
+          );
+          const activeServeIds = new Set(
+            (serves ?? []).map(s => s.quick_run_id).filter((id): id is string => Boolean(id))
+          );
+
+          // Pre-index latest job per quick_run_id in a single O(J) pass
+          const latestJobByQrId = new Map<string, JobInfo>();
+          for (const job of jobs ?? []) {
+            if (!job.quick_run_id) continue;
+            const existing = latestJobByQrId.get(job.quick_run_id);
+            if (!existing) {
+              latestJobByQrId.set(job.quick_run_id, job);
+            } else {
+              const ta = existing.start_time ? new Date(existing.start_time).getTime() : 0;
+              const tb = job.start_time ? new Date(job.start_time).getTime() : 0;
+              if (tb > ta || (tb === ta && job.jobid > existing.jobid)) {
+                latestJobByQrId.set(job.quick_run_id, job);
               }
-            } else if (qr.operationType === 'serve') {
-              const isServing = this.isServeActive(qr, serves ?? []);
-              if (isServing) {
+            }
+          }
+
+          for (const qr of quickRuns) {
+            if (qr.operationType === 'mount' || qr.operationType === 'serve') {
+              const isActive =
+                qr.operationType === 'mount'
+                  ? activeMountIds.has(qr.id)
+                  : activeServeIds.has(qr.id);
+              if (isActive) {
                 nextRunningIds.add(qr.id);
                 if (qr.status !== 'running') {
                   patches.push({ id: qr.id, patch: { status: 'running' } });
@@ -122,7 +137,7 @@ export class QuickRunService extends TauriBaseService {
                 patches.push({ id: qr.id, patch: { status: 'stopped' } });
               }
             } else {
-              const job = this.getMatchingJob(qr, jobs ?? []);
+              const job = latestJobByQrId.get(qr.id);
               if (job) {
                 const statusLower = job.status.toLowerCase();
                 if (statusLower === 'running') {
@@ -174,24 +189,6 @@ export class QuickRunService extends TauriBaseService {
           this.isUpdatingStatus = false;
         }
       });
-  }
-
-  private isMountActive(qr: QuickRun, mounts: MountedRemote[]): boolean {
-    return mounts.some(m => m.quick_run_id === qr.id);
-  }
-
-  private isServeActive(qr: QuickRun, serves: ServeListItem[]): boolean {
-    return serves.some(s => s.quick_run_id === qr.id);
-  }
-
-  private getMatchingJob(qr: QuickRun, jobs: JobInfo[]): JobInfo | undefined {
-    return jobs
-      .filter(j => j.quick_run_id === qr.id)
-      .sort((a, b) => {
-        const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
-        const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
-        return tb !== ta ? tb - ta : b.jobid - a.jobid;
-      })[0];
   }
 
   // ── Selection ────────────────────────────────────────────────────────────
@@ -257,9 +254,7 @@ export class QuickRunService extends TauriBaseService {
       const list = await this.invokeCommand<QuickRun[]>('list_quick_runs');
       const mappedList = (list ?? []).map(qr => ({ ...qr, status: qr.status ?? 'idle' }));
       this._quickRuns.set(mappedList);
-      void this.mountService.getMountedRemotes();
-      void this.serveService.refreshServes();
-      void this.jobService.refreshJobs();
+      this.refreshOperationStates();
       void this.automationService.refreshAutomations();
     } catch (err) {
       console.warn('[QuickRunService] list_quick_runs not available, running in-memory only:', err);
@@ -291,6 +286,7 @@ export class QuickRunService extends TauriBaseService {
       return itemToStore;
     } catch (err) {
       console.error('[QuickRunService] save failed, falling back to in-memory:', err);
+      this.notificationService.showError(err);
       const local = this.synthesizeLocal(input);
       this.mergeIntoStore(local);
       return local;
@@ -365,9 +361,7 @@ export class QuickRunService extends TauriBaseService {
           quickRunId: id,
         });
         this.patchInStore(id, { status: result?.status ?? 'running' });
-        void this.jobService.refreshJobs();
-        void this.mountService.getMountedRemotes();
-        void this.serveService.refreshServes();
+        this.refreshOperationStates();
         return result;
       } catch (err) {
         console.error('[QuickRunService] start_quick_run failed:', err);
@@ -388,10 +382,14 @@ export class QuickRunService extends TauriBaseService {
         this.notificationService.showError(err);
       }
       this.markStopped(id, { status: 'stopped' });
-      void this.jobService.refreshJobs();
-      void this.mountService.getMountedRemotes();
-      void this.serveService.refreshServes();
+      this.refreshOperationStates();
     });
+  }
+
+  private refreshOperationStates(): void {
+    void this.jobService.refreshJobs();
+    void this.mountService.getMountedRemotes();
+    void this.serveService.refreshServes();
   }
 
   // ── Runtime state helpers ────────────────────────────────────────────────

@@ -20,7 +20,6 @@ import {
   DashboardPanel,
   ALL_QUICK_RUN_PANELS,
   PanelConfig,
-  JobInfo,
   ServeListItem,
   Automation,
   OpenInFilesEvent,
@@ -104,20 +103,24 @@ export class QuickRunOverviewComponent {
     }
 
     const allRemotes = this.remoteFacade.orderedRemotes();
-    const result = allRemotes.map(r => ({
-      remoteName: r.name,
-      count: countMap.get(r.name) || 0,
-      icon: this.iconService.getIconName(r.type),
-    }));
+    const result: { remoteName: string; count: number; icon: string }[] = [];
+
+    for (const r of allRemotes) {
+      const count = countMap.get(r.name) ?? 0;
+      result.push({
+        remoteName: r.name,
+        count,
+        icon: this.iconService.getIconName(r.type),
+      });
+      countMap.delete(r.name);
+    }
 
     for (const [name, count] of countMap.entries()) {
-      if (!result.some(g => g.remoteName === name)) {
-        result.push({
-          remoteName: name,
-          count,
-          icon: 'cloud',
-        });
-      }
+      result.push({
+        remoteName: name,
+        count,
+        icon: name === 'local' ? 'hard-drive' : 'cloud',
+      });
     }
 
     return result;
@@ -126,7 +129,7 @@ export class QuickRunOverviewComponent {
   readonly filteredQuickRuns = computed(() => {
     const filter = this.selectedRemoteFilter();
     if (!filter) return this.quickRuns();
-    return this.quickRuns().filter(qr => qr.remoteName === filter);
+    return this.quickRuns().filter(qr => (qr.remoteName || 'local') === filter);
   });
 
   readonly panelOpenStates = signal<Record<string, boolean>>(
@@ -149,11 +152,7 @@ export class QuickRunOverviewComponent {
   );
 
   readonly totalCount = computed(() => this.quickRuns().length);
-  readonly activeCount = computed(() => {
-    const runningQrCount = this.runningIds().size;
-    const activeJobsCount = this.jobService.activeJobs().length;
-    return Math.max(runningQrCount, activeJobsCount);
-  });
+  readonly activeCount = computed(() => this.runningIds().size);
 
   constructor() {
     void this.loadLayoutSettings();
@@ -179,12 +178,12 @@ export class QuickRunOverviewComponent {
     this.quickRunService.select(id);
   }
 
-  async onStartQuickRun(qr: QuickRun): Promise<void> {
-    await this.quickRunService.start(qr.id);
+  onStartQuickRun(qr: QuickRun): void {
+    void this.quickRunService.start(qr.id);
   }
 
-  async onStopQuickRun(qr: QuickRun): Promise<void> {
-    await this.quickRunService.stop(qr.id);
+  onStopQuickRun(qr: QuickRun): void {
+    void this.quickRunService.stop(qr.id);
   }
 
   onEditQuickRun(qr: QuickRun): void {
@@ -244,10 +243,6 @@ export class QuickRunOverviewComponent {
   }
 
   // --- Smart Item Navigation Handlers ---
-  handleJobClick(job: JobInfo): void {
-    this.navigationDispatcher.navigateToJob(job);
-  }
-
   async handleStopJob(event: StopJobEvent): Promise<void> {
     const activeJobs = this.jobService.activeJobs();
     const target = activeJobs.find(

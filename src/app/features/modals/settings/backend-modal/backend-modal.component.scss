@@ -17,7 +17,7 @@
     display: inline-block;
     margin-left: var(--space-xs);
     padding: 2px 6px;
-    font-size: 0.7rem;
+    font-size: var(--font-size-xs);
     border-radius: var(--radius-xs);
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
@@ -29,11 +29,12 @@
   align-items: center;
   gap: var(--space-md);
   background: var(--view-bg-color);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-gnome);
   transition: var(--transition-standard);
   position: relative;
+  cursor: pointer;
 
   &:hover {
     background: var(--hover-bg-color);
@@ -41,11 +42,17 @@
 
   &.active {
     box-shadow: 0 0 0 2px var(--primary-color);
+    cursor: default;
   }
 
   &.switching {
     opacity: 0.6;
     pointer-events: none;
+  }
+
+  @media (max-width: 440px) {
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
   }
 }
 
@@ -139,51 +146,40 @@
     &.error {
       background: var(--warn-color);
     }
-
-    &.unknown {
-      background: var(--dim-color);
-    }
   }
 }
 
-.form-row {
-  display: flex;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-
-  .field-wrapper {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-
-    &.host-field {
-      flex: 2;
-    }
-
-    &.port-field {
-      flex: 1;
-    }
-  }
-}
-
-// Backend Info
-.backend-info {
+// Backend Content
+.backend-content {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+}
+
+.backend-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .backend-title {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  min-width: 0;
+  flex-wrap: wrap;
 
   .name {
     font-weight: 600;
     font-size: var(--font-size-base);
     color: var(--window-fg-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .badge {
@@ -192,6 +188,7 @@
     border-radius: var(--radius-xs);
     text-transform: uppercase;
     font-weight: 600;
+    white-space: nowrap;
 
     &.active {
       background: var(--primary-color);
@@ -205,12 +202,22 @@
   }
 }
 
+.backend-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  flex-shrink: 0;
+}
+
 .backend-subtitle {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  flex-wrap: wrap;
+  column-gap: var(--space-xs);
+  row-gap: 2px;
   font-size: var(--font-size-sm);
   color: var(--dim-color);
+  line-height: 1.4;
 
   .separator {
     opacity: 0.5;
@@ -225,12 +232,43 @@
   .os {
     opacity: 0.8;
   }
+
+  .config-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    color: var(--dim-color);
+    cursor: help;
+    flex-shrink: 0;
+
+    &:hover {
+      color: var(--primary-color);
+    }
+  }
 }
 
-.backend-actions {
+// Form Layout
+.form-row {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+
+  .field-wrapper {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+
+    &.host-field {
+      flex: 2;
+      min-width: 180px;
+    }
+
+    &.port-field {
+      flex: 1;
+      min-width: 100px;
+    }
+  }
 }
 
 .tab-content {
@@ -249,7 +287,8 @@
   gap: var(--space-md);
   padding: var(--space-md);
   border-radius: var(--radius-sm);
-  background: var(--surface-bg-color);
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
   box-shadow: var(--box-shadow);
 
   &.encrypted {
@@ -262,7 +301,6 @@
   }
 
   &.unencrypted {
-    border-color: var(--border-color);
     color: var(--dim-color);
 
     .status-text strong {
@@ -270,28 +308,13 @@
     }
   }
 
-  .status-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--dim-color);
-    border-radius: 50%;
-  }
-
   .status-text {
     display: flex;
     flex-direction: column;
 
     strong {
-      font-size: 1rem;
+      font-size: var(--font-size-base);
       font-weight: 500;
-    }
-
-    span {
-      font-size: 0.85rem;
-      color: var(--dim-color);
     }
   }
 }
@@ -307,29 +330,12 @@
 
   mat-icon {
     color: var(--primary-color);
+    flex-shrink: 0;
   }
 
   p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     line-height: 1.5;
-  }
-}
-
-// ============================================================================
-// Responsive
-// ============================================================================
-@media (max-width: 500px) {
-  .backend-card {
-    flex-wrap: wrap;
-
-    .backend-actions {
-      width: 100%;
-      justify-content: space-around;
-      margin-top: var(--space-sm);
-      padding-top: var(--space-sm);
-      border-top: 1px solid var(--border-color);
-      opacity: 1;
-    }
   }
 }

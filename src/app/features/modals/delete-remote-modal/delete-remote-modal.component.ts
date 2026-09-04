@@ -44,7 +44,7 @@ export interface ProfileItem {
     AlertBannerComponent,
   ],
   templateUrl: './delete-remote-modal.component.html',
-  styleUrls: ['./delete-remote-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: ['./delete-remote-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeleteRemoteModalComponent {

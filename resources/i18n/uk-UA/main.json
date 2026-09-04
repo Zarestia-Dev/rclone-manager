@@ -1805,7 +1805,8 @@
         "statistics": "Статистика",
         "paths": "Шляхи",
         "errors": "Помилки",
-        "profile": "Профіль"
+        "profile": "Профіль",
+        "serverSideFlags": "На стороні сервера та прапори"
       },
       "fields": {
         "type": "Тип завдання",
@@ -2854,6 +2855,7 @@
       "noPending": "Немає оновлень в очікуванні",
       "invalidUrl": "Невірний URL: {{error}}",
       "github": "Помилка GitHub API: {{error}}",
+      "githubRateLimit": "Перевищено ліміт запитів до API GitHub. Спробуйте пізніше.",
       "updateFailed": "Не вдалося оновити: {{error}}",
       "updateUnavailable": "Артефакт оновлення більше недоступний: {{error}}",
       "relaunchFailed": "Не вдалося перезапустити: {{error}}",

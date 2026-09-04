@@ -1805,7 +1805,8 @@
         "statistics": "Statistiques",
         "paths": "Chemins",
         "errors": "Erreurs",
-        "profile": "Profil"
+        "profile": "Profil",
+        "serverSideFlags": "Côté serveur et drapeaux"
       },
       "fields": {
         "type": "Type de job",
@@ -2854,6 +2855,7 @@
       "noPending": "Aucune mise à jour en attente",
       "invalidUrl": "URL invalide : {{error}}",
       "github": "GitHub API erreur : {{error}}",
+      "githubRateLimit": "Limite de requêtes de l'API GitHub dépassée. Veuillez réessayer plus tard.",
       "updateFailed": "Échec de la mise à jour : {{error}}",
       "updateUnavailable": "La mise à jour de l'artefact n'est plus disponible : {{error}}",
       "relaunchFailed": "La relance a échoué : {{error}}",

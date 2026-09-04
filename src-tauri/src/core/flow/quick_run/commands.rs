@@ -1,5 +1,7 @@
 //! Tauri commands for the Flow workspace Quick Run feature.
 
+use std::collections::HashMap;
+
 use log::{info, warn};
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
@@ -125,6 +127,21 @@ pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
     let _ = crate::core::tray::core::update_tray_menu(app.clone()).await;
 }
 
+fn lookup_dry_run_value(value: &Value) -> Option<bool> {
+    value
+        .get("dryRun")
+        .or_else(|| value.get("dry_run"))
+        .or_else(|| value.get("DryRun"))
+        .and_then(Value::as_bool)
+}
+
+fn lookup_dry_run_map(map: &HashMap<String, Value>) -> Option<bool> {
+    map.get("DryRun")
+        .or_else(|| map.get("dry_run"))
+        .or_else(|| map.get("dryRun"))
+        .and_then(Value::as_bool)
+}
+
 /// Start execution of a quick run.
 #[bridge]
 pub async fn start_quick_run(
@@ -208,30 +225,13 @@ pub async fn start_quick_run(
         .ok_or_else(|| format!("Quick run '{}' configuration is incomplete", qr.name))?;
 
     let dry_run = if qr.operation_type == OperationType::Bisync {
-        common
-            .rclone_config
-            .get("dryRun")
-            .or_else(|| common.rclone_config.get("dry_run"))
-            .or_else(|| common.rclone_config.get("DryRun"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        lookup_dry_run_value(&common.rclone_config).unwrap_or(false)
     } else {
         common
             .backend_options
             .as_ref()
-            .and_then(|opts| {
-                opts.get("DryRun")
-                    .or_else(|| opts.get("dry_run"))
-                    .or_else(|| opts.get("dryRun"))
-            })
-            .or_else(|| {
-                common
-                    .rclone_config
-                    .get("DryRun")
-                    .or_else(|| common.rclone_config.get("dry_run"))
-                    .or_else(|| common.rclone_config.get("dryRun"))
-            })
-            .and_then(Value::as_bool)
+            .and_then(lookup_dry_run_map)
+            .or_else(|| lookup_dry_run_value(&common.rclone_config))
             .unwrap_or(false)
     };
 
@@ -398,7 +398,7 @@ pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<Quick
         .filter_map(|v| serde_json::from_value::<QuickRun>(v).ok())
         .collect();
 
-    list.sort_by_key(|a| a.name.to_lowercase());
+    list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
 }
 

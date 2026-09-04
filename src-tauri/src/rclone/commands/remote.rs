@@ -40,20 +40,13 @@ fn spawn_oauth_status_poller(app: AppHandle) {
         use std::time::Duration;
 
         const POLL_INTERVAL: Duration = Duration::from_millis(200);
-        const POLL_TIMEOUT: Duration = Duration::from_secs(300);
 
         let transport = app.state::<RcloneState>().transport.clone();
         let mut url_emitted = false;
-        let start = std::time::Instant::now();
 
-        log::debug!("Starting OAuth status poller (timeout: {POLL_TIMEOUT:?})");
+        log::debug!("Starting OAuth status poller");
 
         loop {
-            if start.elapsed() > POLL_TIMEOUT {
-                log::warn!("OAuth status poller timed out after {POLL_TIMEOUT:?}");
-                return;
-            }
-
             if app.state::<RcloneState>().is_shutting_down() {
                 log::debug!("OAuth status poller exiting — app shutting down");
                 return;
@@ -88,9 +81,9 @@ fn spawn_oauth_status_poller(app: AppHandle) {
                     let _ = app.emit(RCLONE_OAUTH_URL, json!({ "url": url }));
                     url_emitted = true;
                 }
-            } else if url_emitted {
+            } else if url_emitted || !running {
                 log::debug!(
-                    "OAuth server stopped (authUrl is None) after URL was emitted — flow completed"
+                    "OAuth server stopped (running={running}, authUrl is None) — flow completed"
                 );
                 return;
             }

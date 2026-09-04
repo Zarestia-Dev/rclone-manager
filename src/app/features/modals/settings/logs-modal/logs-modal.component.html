@@ -1,6 +1,6 @@
 <!-- Header Section -->
 <header data-tauri-drag-region>
-  <button [attr.aria-label]="'modals.logs.aria.terminalLogs' | translate">
+  <button tabindex="-1" aria-hidden="true">
     <mat-icon svgIcon="terminal"></mat-icon>
   </button>
   <p data-tauri-drag-region>
@@ -14,7 +14,7 @@
 <!-- Controls Toolbar -->
 <div class="toolbar-section">
   <div class="filter-controls">
-    <mat-form-field class="compact no-subscript">
+    <mat-form-field class="no-subscript">
       <mat-label>{{ 'modals.logs.logLevel' | translate }}</mat-label>
       <mat-select [value]="selectedLevel()" (selectionChange)="selectedLevel.set($event.value)">
         <mat-option value="">{{ 'modals.logs.allLevels' | translate }}</mat-option>
@@ -24,7 +24,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field class="compact no-subscript">
+    <mat-form-field class="no-subscript">
       <mat-icon matPrefix svgIcon="search"></mat-icon>
       <input
         matInput
@@ -55,7 +55,7 @@
       [attr.title]="'common.refresh' | translate"
       [disabled]="loading()"
     >
-      <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
+      <mat-icon [class.animate-spin]="loading()" svgIcon="refresh"></mat-icon>
     </button>
     <button
       matIconButton
@@ -78,7 +78,7 @@
 <div class="terminal-viewport">
   <!-- Loading Overlay -->
   @if (loading() && logs().length !== 0) {
-    <div class="empty-state" style="color: white">
+    <div class="empty-state empty-state--loading">
       <mat-icon svgIcon="spinner"></mat-icon>
       <span>{{ 'modals.logs.fetching' | translate }}</span>
     </div>
@@ -140,14 +140,14 @@
             <div class="log-body">
               <!-- 1. Command Output (The one with ANSI colors) -->
               @if (vm?.output; as output) {
-                <div class="detail-block output">
+                <div class="detail-block">
                   <div class="block-label">{{ 'modals.logs.terminalOutput' | translate }}</div>
-                  <div class="code-block terminal-theme" [innerHTML]="output | ansiToHtml"></div>
+                  <div class="code-block" [innerHTML]="output | ansiToHtml"></div>
                 </div>
               }
 
               <!-- 2. Raw JSON Data -->
-              <div class="detail-block json">
+              <div class="detail-block">
                 <div class="block-label">{{ 'modals.logs.logContext' | translate }}</div>
                 <div class="code-block json-theme">
                   <pre>{{ vm?.contextStr }}</pre>

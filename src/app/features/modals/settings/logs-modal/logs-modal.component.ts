@@ -182,21 +182,24 @@ export class LogsModalComponent implements OnInit {
   getCommandOutput(log: RemoteLogEntry): string | null {
     if (!log.context) return null;
 
-    const ctx = log.context as any;
+    const ctx = log.context as Record<string, unknown>;
+    const status = ctx['status'] as Record<string, unknown> | undefined;
+    const statusOutput = status?.['output'] as Record<string, unknown> | undefined;
 
-    if (ctx?.status?.output?.output) return ctx.status.output.output;
-    if (typeof ctx?.output === 'string') return ctx.output;
-    if (ctx?.output && typeof ctx.output === 'object') return JSON.stringify(ctx.output, null, 2);
+    if (typeof statusOutput?.['output'] === 'string') return statusOutput['output'];
+    if (typeof ctx['output'] === 'string') return ctx['output'];
+    if (ctx['output'] && typeof ctx['output'] === 'object')
+      return JSON.stringify(ctx['output'], null, 2);
 
     return null;
   }
 
   formatContext(context: LogContext): string {
     try {
-      const displayContext = { ...context } as any;
-      if (typeof displayContext.response === 'string') {
+      const displayContext = { ...context } as Record<string, unknown>;
+      if (typeof displayContext['response'] === 'string') {
         try {
-          displayContext.response = JSON.parse(displayContext.response);
+          displayContext['response'] = JSON.parse(displayContext['response']);
         } catch {
           /* not valid JSON, keep as-is */
         }
