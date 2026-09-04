@@ -2024,8 +2024,6 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
-      "includeSecrets": "Inclua chaves secretas",
-      "includeSecretsHint": "Inclua credenciais sensíveis no backup. É necessário criptografia.",
       "exportNow": "Exportar Agora",
       "exporting": "Exportação...",
       "fullBackup": "Backup Completo",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "Alertas",
           "description": "Configuração de regras e ações de alerta"
+        },
+        "workflows": {
+          "label": "Fluxos de trabalho",
+          "description": "Regras de automação e gráficos de nós"
+        },
+        "templates": {
+          "label": "Modelos",
+          "description": "Modelos de configuração pré-definidos"
+        },
+        "quickRuns": {
+          "label": "Execuções rápidas",
+          "description": "Comandos e atalhos de execução rápida"
         }
       }
     },

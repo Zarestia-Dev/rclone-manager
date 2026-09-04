@@ -2024,8 +2024,6 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
-      "includeSecrets": "包含密钥",
-      "includeSecretsHint": "在备份中包含敏感凭据。需要加密。",
       "exportNow": "立即导出",
       "exporting": "正在导出...",
       "fullBackup": "完整备份",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "告警",
           "description": "告警规则和操作配置"
+        },
+        "workflows": {
+          "label": "工作流",
+          "description": "自动化工作流规则与节点图"
+        },
+        "templates": {
+          "label": "模板",
+          "description": "预设配置模板"
+        },
+        "quickRuns": {
+          "label": "快捷运行",
+          "description": "已配置的快捷运行命令与快捷方式"
         }
       }
     },

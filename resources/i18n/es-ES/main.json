@@ -2024,8 +2024,6 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
-      "includeSecrets": "Incluir claves secretas",
-      "includeSecretsHint": "Incluye credenciales sensibles en la copia de seguridad. Se requiere cifrado.",
       "exportNow": "Exportar ahora",
       "exporting": "Exportando...",
       "fullBackup": "Copia de seguridad completa",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "Alertas",
           "description": "Configuración de reglas y acciones de alerta"
+        },
+        "workflows": {
+          "label": "Flujos de trabajo",
+          "description": "Reglas de automatización y gráficos de nodos"
+        },
+        "templates": {
+          "label": "Plantillas",
+          "description": "Plantillas de configuración preestablecidas"
+        },
+        "quickRuns": {
+          "label": "Ejecuciones rápidas",
+          "description": "Comandos y accesos directos configurados"
         }
       }
     },

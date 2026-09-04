@@ -2024,8 +2024,6 @@
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
       "passwordHint": "Ce mot de passe sera requis pour restaurer la sauvegarde.",
-      "includeSecrets": "Inclure les clés secrètes",
-      "includeSecretsHint": "Inclure les identifiants sensibles dans la sauvegarde. Le chiffrement est requis.",
       "exportNow": "Exporter maintenant",
       "exporting": "Exportation en cours...",
       "fullBackup": "Sauvegarde complète",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "Alertes",
           "description": "Configuration des règles d'alerte et des actions"
+        },
+        "workflows": {
+          "label": "Flux de travail",
+          "description": "Règles d'automatisation et graphes de nœuds"
+        },
+        "templates": {
+          "label": "Modèles",
+          "description": "Modèles de configuration prédéfinis"
+        },
+        "quickRuns": {
+          "label": "Exécutions rapides",
+          "description": "Commandes et raccourcis d'exécution rapide"
         }
       }
     },

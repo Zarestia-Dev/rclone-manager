@@ -1,5 +1,5 @@
 <header data-tauri-drag-region>
-  <button [aria-label]="'modals.export.title' | translate">
+  <button>
     <mat-icon svgIcon="export"></mat-icon>
   </button>
   <p>{{ 'modals.export.title' | translate }}</p>
@@ -18,29 +18,34 @@
     <div class="section-group">
       <h3 class="section-label">{{ 'modals.export.selectType' | translate }}</h3>
 
-      <mat-radio-group
-        [ngModel]="selectedOption()"
-        (ngModelChange)="onExportOptionChange($event)"
-        class="options-grid"
+      <div
+        class="selection-list"
+        role="radiogroup"
+        [attr.aria-label]="'modals.export.selectType' | translate"
       >
         @for (option of exportOptions(); track option.id) {
-          <mat-radio-button
-            [value]="option.id"
-            class="option-card-radio"
+          <button
+            type="button"
+            role="radio"
+            class="selection-row opt-{{ option.id }}"
             [class.selected]="selectedOption() === option.id"
+            [attr.aria-checked]="selectedOption() === option.id"
+            (click)="onExportOptionChange(option.id)"
+            [disabled]="isExporting()"
           >
-            <div class="option-card-content">
-              <div class="icon-wrapper">
-                <mat-icon [svgIcon]="option.icon"></mat-icon>
-              </div>
-              <div class="text-wrapper">
-                <span class="option-label">{{ option.label | translate }}</span>
-                <span class="option-desc">{{ option.description | translate }}</span>
-              </div>
+            <div class="icon-wrapper">
+              <mat-icon [svgIcon]="option.icon"></mat-icon>
             </div>
-          </mat-radio-button>
+            <div class="text-wrapper">
+              <span class="option-label">{{ option.label | translate }}</span>
+              <span class="option-desc">{{ option.description | translate }}</span>
+            </div>
+            <div class="radio-indicator" aria-hidden="true">
+              <div class="radio-dot"></div>
+            </div>
+          </button>
         }
-      </mat-radio-group>
+      </div>
     </div>
 
     <div class="section-group config-section">
@@ -93,6 +98,7 @@
             [disabled]="isExporting()"
           />
           <button
+            type="button"
             matIconButton
             matSuffix
             (click)="selectFolder()"
@@ -149,22 +155,10 @@
               <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
             </button>
           </mat-form-field>
-          <p class="security-hint">
-            <mat-icon svgIcon="info"></mat-icon>
-            {{ 'modals.export.passwordHint' | translate }}
-          </p>
-
-          <mat-checkbox
-            class="secrets-checkbox"
-            [ngModel]="includeSecrets()"
-            (ngModelChange)="includeSecrets.set($event)"
-            [disabled]="isExporting()"
-          >
-            <div class="checkbox-label-content">
-              <span class="label-text">{{ 'modals.export.includeSecrets' | translate }}</span>
-              <span class="hint-text">{{ 'modals.export.includeSecretsHint' | translate }}</span>
-            </div>
-          </mat-checkbox>
+          <app-alert-banner
+            severity="info"
+            [description]="'modals.export.passwordHint' | translate"
+          ></app-alert-banner>
         </div>
       }
     </div>

@@ -2024,8 +2024,6 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
-      "includeSecrets": "秘密鍵・シークレットを含める",
-      "includeSecretsHint": "バックアップに機密資格情報を含めます。暗号化が必須です。",
       "exportNow": "今すぐエクスポート",
       "exporting": "エクスポート中...",
       "fullBackup": "完全バックアップ",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "アラート",
           "description": "アラートルールおよびアクションの設定"
+        },
+        "workflows": {
+          "label": "ワークフロー",
+          "description": "自動化ワークフロールールとノードグラフ"
+        },
+        "templates": {
+          "label": "テンプレート",
+          "description": "プリセット設定テンプレート"
+        },
+        "quickRuns": {
+          "label": "クイック実行",
+          "description": "設定済みのクイック実行コマンドとショートカット"
         }
       }
     },

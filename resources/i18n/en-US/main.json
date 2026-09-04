@@ -2024,8 +2024,6 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
-      "includeSecrets": "Include secret keys",
-      "includeSecretsHint": "Include sensitive credentials in the backup. Encryption is required.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "Alerts",
           "description": "Alert rules and actions configuration"
+        },
+        "workflows": {
+          "label": "Workflows",
+          "description": "Automated workflow rules and node graphs"
+        },
+        "templates": {
+          "label": "Templates",
+          "description": "Preset configuration templates"
+        },
+        "quickRuns": {
+          "label": "Quick Runs",
+          "description": "Configured quick run commands and shortcuts"
         }
       }
     },

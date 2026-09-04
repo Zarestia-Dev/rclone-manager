@@ -2024,8 +2024,6 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
-      "includeSecrets": "Gizli anahtarları dahil et",
-      "includeSecretsHint": "Hassas kimlik bilgilerini yedeğe dahil et. Şifreleme gereklidir.",
       "exportNow": "Şimdi Dışa Aktar",
       "exporting": "Dışa aktarılıyor...",
       "fullBackup": "Tam Yedekleme",
@@ -2057,6 +2055,18 @@
         "alerts": {
           "label": "Alarmlar",
           "description": "Alarm kuralları ve eylemleri yapılandırması"
+        },
+        "workflows": {
+          "label": "İş Akışları",
+          "description": "Otomasyon iş akışları ve düğüm grafikleri"
+        },
+        "templates": {
+          "label": "Şablonlar",
+          "description": "Önceden ayarlanmış yapılandırma şablonları"
+        },
+        "quickRuns": {
+          "label": "Hızlı Çalıştırmalar",
+          "description": "Yapılandırılmış hızlı çalıştırma komutları ve kısayolları"
         }
       }
     },
