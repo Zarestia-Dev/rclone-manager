@@ -58,6 +58,7 @@ import {
   BACKEND_PROFILE_SUPPORTED_OPS,
   QuickRun,
   Remote,
+  createDefaultRemoteFeatures,
   findInFlightAction,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
@@ -183,15 +184,7 @@ export class AppDetailComponent {
           cryptcheck: { active: false },
           serve: { active: false, count: 0, serves: [] },
         },
-        features: {
-          IsLocal: false,
-          About: false,
-          BucketBased: false,
-          CleanUp: false,
-          PublicLink: false,
-          ChangeNotify: false,
-          Hashes: [],
-        },
+        features: createDefaultRemoteFeatures(),
         primaryActions: [],
         syncActions: [],
       };

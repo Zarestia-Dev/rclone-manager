@@ -423,7 +423,8 @@
       "subject": "Subject",
       "mqttHost": "MQTT Host",
       "mqttPort": "MQTT Port",
-      "mqttTopic": "MQTT Topic"
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "ヘッダーを追加"
     },
     "noRulesHint": "アラートルールがまだ設定されていません。通知を受け取るためのルールを作成してください。",
     "noActionsHint": "アラートアクションがまだ設定されていません。アクションを作成してください。"
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "利用可能な機能情報はありません。",
       "example": "例",
       "readOnly": "読み取り専用",
-      "yes": "はい",
-      "no": "いいえ",
       "noMetadata": "利用可能なメタデータ仕様はありません。",
-      "close": "ダイアログを閉じる",
       "unknown": "不明",
       "error": "リモート情報の読み込みに失敗しました。",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "コピーされたファイル",
         "syncedFiles": "同期されたファイル",
         "processedFiles": "処理されたファイル"
+      },
+      "running": "実行中",
+      "filesCount": "{{count}} 件のファイル",
+      "types": {
+        "copy": "コピー",
+        "copyurl": "URLをコピー",
+        "move": "移動",
+        "rename": "名前を変更",
+        "delete": "削除",
+        "cleanup": "クリーンアップ",
+        "rmdirs": "空のディレクトリを削除",
+        "sync": "同期",
+        "bisync": "双方向同期",
+        "check": "チェック",
+        "upload": "アップロード",
+        "archivecreate": "圧縮",
+        "archiveextract": "アーカイブを展開"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "プレビューを表示",
       "zoomIn": "拡大",
       "zoomOut": "縮小",
-      "resetZoom": "ズームをリセット"
+      "resetZoom": "ズームをリセット",
+      "hexPreview": "16進プレビュー"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "サイドバー項目の設定",
-      "configureDescription": "ドラッグして並べ替えたり、目のアイコンでサイドバーのドライブやクラウドリモートの表示/非表示を切り替えたりできます。"
+      "configureDescription": "ドラッグして並べ替えたり、目のアイコンでサイドバーのドライブやクラウドリモートの表示/非表示を切り替えたりできます。",
+      "toggleSearch": "検索の切り替え"
     },
     "shortcuts": {
       "title": "Nautilus キーボードショートカット"
@@ -2555,7 +2572,10 @@
       "iconSize": "アイコンサイズ",
       "showHidden": "隠しファイルを表示",
       "toggleLayout": "レイアウトの切り替え",
-      "viewOptions": "表示オプション"
+      "viewOptions": "表示オプション",
+      "showingItems": "{{total}} 件中 {{count}} 件を表示中",
+      "decreaseIconSize": "アイコンサイズを縮小",
+      "increaseIconSize": "アイコンサイズを拡大"
     },
     "notifications": {
       "mkdirFailed": "ディレクトリの作成に失敗しました: {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "{{count}} 個の共有ファイルをこのフォルダにアップロード",
       "confirm": "ここにアップロード"
+    },
+    "toolbar": {
+      "goBack": "戻る",
+      "goForward": "進む",
+      "pathOptions": "パスのオプション"
+    },
+    "actions": {
+      "cancelLoading": "読み込みをキャンセル",
+      "star": "スターを追加",
+      "unstar": "スターを解除"
     }
   },
   "home": {

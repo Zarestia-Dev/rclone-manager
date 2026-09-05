@@ -1,10 +1,10 @@
 .sheet-header {
   flex: 1;
   display: flex;
+  flex-direction: column;
   overflow-y: auto;
   gap: var(--space-md);
   padding: var(--space-md);
-  flex-direction: column;
 
   .repair-header-top {
     display: flex;
@@ -55,18 +55,19 @@
         font-family: var(--font-mono);
         font-size: var(--font-size-sm);
         color: var(--window-fg-color);
+        overflow-wrap: anywhere;
       }
     }
   }
 
   .repair-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
     padding: var(--space-lg);
     background: rgba(var(--warn-color-rgb), 0.04);
     border-radius: var(--card-border-radius);
     box-shadow: var(--box-shadow);
-    gap: var(--space-sm);
-    display: flex;
-    flex-direction: column;
 
     .detail-item {
       display: flex;
@@ -92,20 +93,13 @@
   .port-config-container {
     display: flex;
     flex-direction: column;
+    gap: var(--space-sm);
 
     .port-buttons-row {
       display: flex;
       gap: var(--space-sm);
       width: 100%;
-
-      button {
-        flex: 1;
-      }
     }
-  }
-
-  app-alert-banner {
-    margin-top: var(--space-sm);
   }
 }
 
@@ -122,44 +116,41 @@ mat-icon.rotated {
 }
 
 mat-icon[svgIcon="caret-down"] {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-standard);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 540px) {
   .sheet-header {
     padding: var(--space-sm);
 
-    .repair-header-top .repair-content {
-      h3 {
-        font-size: var(--font-size-base);
-      }
-      p {
-        font-size: var(--font-size-md);
+    .repair-header-top {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: var(--space-sm);
+
+      .repair-content {
+        h3 {
+          font-size: var(--font-size-base);
+        }
+        p {
+          font-size: var(--font-size-md);
+        }
       }
     }
 
     .repair-details {
       padding: var(--space-md);
     }
+
+    .port-config-container .port-buttons-row {
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
   }
 
   .sheet-actions {
-    padding: var(--panel-padding-mobile);
-    padding-top: var(--space-sm);
-    flex-direction: column;
-    gap: var(--space-xs);
-  }
-}
-
-@media (max-width: 480px) {
-  .sheet-header .repair-header-top {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: var(--space-sm);
-  }
-
-  .port-config-container .port-buttons-row {
+    padding: var(--space-sm) var(--space-md) var(--space-md);
     flex-direction: column;
     gap: var(--space-xs);
   }

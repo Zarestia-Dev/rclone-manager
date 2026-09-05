@@ -111,9 +111,29 @@ export interface RemoteFeatures {
   CleanUp: boolean;
   PublicLink: boolean;
   ChangeNotify: boolean;
+  Purge?: boolean;
+  Copy?: boolean;
+  Move?: boolean;
+  DirMove?: boolean;
+  UserMetadata?: boolean;
+  CanHaveEmptyDirectories?: boolean;
   Hashes: string[];
   Error?: string;
   loading?: boolean;
+  [feature: string]: unknown;
+}
+
+export function createDefaultRemoteFeatures(isLocal = false, loading = false): RemoteFeatures {
+  return {
+    IsLocal: isLocal,
+    About: false,
+    BucketBased: false,
+    CleanUp: false,
+    PublicLink: false,
+    ChangeNotify: false,
+    Hashes: [],
+    loading,
+  };
 }
 
 export interface Remote {

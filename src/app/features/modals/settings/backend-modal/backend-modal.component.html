@@ -8,7 +8,7 @@
   </button>
 </header>
 
-@if (isLoading()) {
+@if (isLoading() && backends().length === 0) {
   <div class="loading-container">
     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
   </div>
@@ -123,7 +123,10 @@
         </div>
       }
     } @else {
-      <mat-tab-group>
+      <mat-tab-group
+        [selectedIndex]="selectedTabIndex()"
+        (selectedIndexChange)="selectedTabIndex.set($event)"
+      >
         <!-- Tab 1: Connection Settings -->
         <mat-tab [label]="'modals.backend.connectionTab' | translate">
           <form [formGroup]="backendForm" (ngSubmit)="saveBackend()" class="tab-content">

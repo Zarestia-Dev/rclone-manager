@@ -16,7 +16,7 @@ export class BackendService extends TauriBaseService {
   // Use Angular 19+ resource API for native async loading, caching, and state management
   readonly backendData = resource({
     loader: async () => {
-      const backends = await this.invokeCommand<BackendInfo[]>('list_backends');
+      const backends = (await this.invokeCommand<BackendInfo[]>('list_backends')) || [];
       const active = backends.find(b => b.isActive);
       if (active) this.activeBackend.set(active.name);
       return backends;

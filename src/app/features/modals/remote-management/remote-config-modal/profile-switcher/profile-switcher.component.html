@@ -22,7 +22,7 @@
             <div class="profile-option-row">
               <span class="profile-name">{{ profile.name }}</span>
               <button
-                mat-icon-button
+                matIconButton
                 type="button"
                 (click)="state.duplicateProfile(flagType(), profile.name); $event.stopPropagation()"
                 [attr.title]="'modals.remoteConfig.profile.duplicate' | translate"

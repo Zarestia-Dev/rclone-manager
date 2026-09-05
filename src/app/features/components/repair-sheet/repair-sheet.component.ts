@@ -20,15 +20,15 @@ import {
   CONFIG_TAB_OPTIONS,
   DEFAULT_INSTALLATION_DATA,
 } from '@app/types';
-import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
-import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
-import { ProvisionProgressComponent } from '../../../shared/components/provision-progress/provision-progress.component';
-import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
+import { InstallationOptionsComponent } from 'src/app/shared/components/installation-options/installation-options.component';
+import { PasswordManagerComponent } from 'src/app/shared/components/password-manager/password-manager.component';
+import { ProvisionProgressComponent } from 'src/app/shared/components/provision-progress/provision-progress.component';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { RepairService } from 'src/app/services/operations/repair.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
-import { BackendService } from '../../../services/infrastructure/system/backend.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
@@ -54,7 +54,6 @@ export class RepairSheetComponent {
   readonly installing = signal(false);
   readonly showAdvanced = signal(false);
   readonly showConfigOptions = signal(false);
-  readonly isRefreshingStatus = signal(false);
   readonly installationData = signal<InstallationOptionsData>({ ...DEFAULT_INSTALLATION_DATA });
   readonly installationValid = signal(true);
   readonly password = signal('');
@@ -77,11 +76,12 @@ export class RepairSheetComponent {
     if (this.isMountPluginRepair()) {
       return this.mountPluginProgress();
     }
-    if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+    if (this.isRcloneBinaryRepair()) {
       return this.rcloneProgress();
     }
     return null;
   });
+
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly passwordService = inject(RclonePasswordService);
   private readonly translate = inject(TranslateService);
@@ -136,7 +136,6 @@ export class RepairSheetComponent {
     () =>
       this.installing() ||
       this.isSubmittingPassword() ||
-      this.isRefreshingStatus() ||
       this.isSuggestingPort() ||
       this.isTestingPort()
   );
@@ -190,8 +189,7 @@ export class RepairSheetComponent {
   });
 
   readonly repairButtonIcon = computed(() => {
-    if (this.installing()) return 'spinner';
-    if (this.isSubmittingPassword()) return 'download';
+    if (this.installing() || this.isSubmittingPassword()) return 'spinner';
     if (this.showConfigOptions()) return 'file';
     if (this.isRclonePortRepair()) return 'rotate-right';
     if (this.isRemoteAuthRepair()) return 'lock';
@@ -425,6 +423,8 @@ export class RepairSheetComponent {
       this.dismissAfter('success', 1000);
     } catch (error) {
       console.error('Config repair failed:', error);
+      const errorMsg = this.backendTranslation.translateBackendMessage(error);
+      this.messageOverride.set(errorMsg);
     } finally {
       this.installing.set(false);
     }
@@ -433,7 +433,7 @@ export class RepairSheetComponent {
   async cancelRepair(): Promise<void> {
     if (this.isMountPluginRepair()) {
       await this.repairService.cancelMountPluginRepair();
-    } else if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+    } else if (this.isRcloneBinaryRepair()) {
       await this.repairService.cancelRcloneRepair();
     }
     this.installing.set(false);
@@ -500,18 +500,18 @@ export class RepairSheetComponent {
   }
 
   private getPasswordErrorMessage(error: unknown): string {
-    if (!(error instanceof Error)) {
-      return this.translate.instant('repairSheet.passwordErrors.validateFailed');
-    }
-    if (error.message.includes('invalid') || error.message.includes('wrong')) {
+    const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+    const lower = msg.toLowerCase();
+    if (lower.includes('invalid') || lower.includes('wrong') || lower.includes('incorrect')) {
       return this.translate.instant('repairSheet.passwordErrors.invalid');
     }
-    if (error.message.includes('locked') || error.message.includes('attempt')) {
+    if (lower.includes('locked') || lower.includes('attempt')) {
       return this.translate.instant('repairSheet.passwordErrors.locked');
     }
-    return this.translate.instant('repairSheet.passwordErrors.generic', {
-      error: error.message,
-    });
+    if (msg) {
+      return this.translate.instant('repairSheet.passwordErrors.generic', { error: msg });
+    }
+    return this.backendTranslation.translateBackendMessage(error);
   }
 
   private resetInstallationOptions(): void {

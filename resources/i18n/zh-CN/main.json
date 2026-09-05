@@ -423,7 +423,8 @@
       "subject": "Subject",
       "mqttHost": "MQTT Host",
       "mqttPort": "MQTT Port",
-      "mqttTopic": "MQTT Topic"
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "添加请求头"
     },
     "noRulesHint": "尚未配置警报规则。创建规则以接收通知。",
     "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。"
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "无功能信息",
       "example": "示例",
       "readOnly": "只读",
-      "yes": "是",
-      "no": "否",
       "noMetadata": "无元数据规范",
-      "close": "关闭对话框",
       "unknown": "未知",
       "error": "加载远程存储信息失败",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "已复制文件",
         "syncedFiles": "已同步文件",
         "processedFiles": "已处理文件"
+      },
+      "running": "运行中",
+      "filesCount": "{{count}} 个文件",
+      "types": {
+        "copy": "复制",
+        "copyurl": "复制 URL",
+        "move": "移动",
+        "rename": "重命名",
+        "delete": "删除",
+        "cleanup": "清理",
+        "rmdirs": "删除空目录",
+        "sync": "同步",
+        "bisync": "双向同步",
+        "check": "检查",
+        "upload": "上传",
+        "archivecreate": "归档",
+        "archiveextract": "解压归档"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "显示预览",
       "zoomIn": "放大",
       "zoomOut": "缩小",
-      "resetZoom": "重置缩放"
+      "resetZoom": "重置缩放",
+      "hexPreview": "十六进制预览"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "配置侧边栏项目",
-      "configureDescription": "拖动项目以重新排序，或使用眼睛图标隐藏或显示侧边栏中的磁盘和远程连接。"
+      "configureDescription": "拖动项目以重新排序，或使用眼睛图标隐藏或显示侧边栏中的磁盘和远程连接。",
+      "toggleSearch": "切换搜索"
     },
     "shortcuts": {
       "title": "Nautilus 键盘快捷键"
@@ -2555,7 +2572,10 @@
       "iconSize": "图标大小",
       "showHidden": "显示隐藏文件",
       "toggleLayout": "切换布局",
-      "viewOptions": "视图选项"
+      "viewOptions": "视图选项",
+      "showingItems": "显示第 {{count}} 个，共 {{total}} 个",
+      "decreaseIconSize": "缩小图标大小",
+      "increaseIconSize": "放大图标大小"
     },
     "notifications": {
       "mkdirFailed": "创建目录失败: {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "将 {{count}} 个共享文件上传至此文件夹",
       "confirm": "上传至此处"
+    },
+    "toolbar": {
+      "goBack": "后退",
+      "goForward": "前进",
+      "pathOptions": "路径选项"
+    },
+    "actions": {
+      "cancelLoading": "取消加载",
+      "star": "添加星标",
+      "unstar": "移除星标"
     }
   },
   "home": {

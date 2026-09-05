@@ -85,7 +85,9 @@ export interface WhatsappAction extends BaseAlertAction {
 
 export interface MqttAction extends BaseAlertAction {
   kind: 'mqtt';
-  broker_url: string;
+  host: string;
+  port: number;
+  use_tls: boolean;
   topic: string;
   username?: string;
   password?: string;
@@ -94,6 +96,7 @@ export interface MqttAction extends BaseAlertAction {
   body_template: string;
   timeout_secs: number;
   retry_count: number;
+  broker_url?: string;
 }
 
 export interface EmailAction extends BaseAlertAction {
@@ -108,6 +111,7 @@ export interface EmailAction extends BaseAlertAction {
   body_template: string;
   encryption: 'none' | 'tls' | 'starttls';
   timeout_secs: number;
+  retry_count: number;
 }
 
 export type AlertAction =

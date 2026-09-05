@@ -66,8 +66,6 @@
       matButton="filled"
       (click)="interactiveContinue.emit(flow.answer)"
       [disabled]="state.isInteractiveContinueDisabled()"
-      class="continue-button"
-      [class.loading]="flow.isProcessing || state.isAuthCancelled()"
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
       [attr.aria-label]="continueLabel"

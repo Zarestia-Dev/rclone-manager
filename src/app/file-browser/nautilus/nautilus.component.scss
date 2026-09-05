@@ -1,5 +1,3 @@
-@use "../../styles/slide-menu";
-
 /* ==========================================================================
    1. Main Container & Sidenav
    ========================================================================== */
@@ -55,7 +53,7 @@
    ========================================================================== */
 
 .split-divider {
-  width: 0.5rem;
+  width: var(--space-xs);
   background: var(--sidebar-bg-color);
   cursor: col-resize;
   position: relative;
@@ -89,7 +87,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-xs) var(--space-sm);
   min-height: 40px;
 
   .control-label {
@@ -100,7 +98,7 @@
 
   .control-buttons {
     display: flex;
-    gap: 4px;
+    gap: var(--space-xxs);
 
     .icon-button {
       all: unset;
@@ -109,9 +107,9 @@
       justify-content: center;
       width: 32px;
       height: 32px;
-      border-radius: 6px;
+      border-radius: var(--radius-xs);
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: var(--transition-fast);
       background: var(--sidebar-bg-color);
       color: var(--window-fg-color);
 
@@ -138,7 +136,7 @@
 }
 
 .menu-section-label {
-  padding: 8px 12px 4px;
+  padding: var(--space-xs) var(--space-sm) var(--space-xxs);
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -146,12 +144,13 @@
   color: var(--dim-color);
 }
 
-.selection-icon {
+.menu-item .selection-icon {
   margin-left: auto;
-  color: var(--accent-color) !important;
-  width: 18px !important;
-  height: 18px !important;
-  font-size: 18px !important;
+  margin-right: 0;
+  color: var(--accent-color);
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
 }
 
 /* ==========================================================================
@@ -221,10 +220,7 @@
     flex-shrink: 0;
   }
 
-  .share-cancel-btn {
-    font-size: var(--font-size-sm);
-  }
-
+  .share-cancel-btn,
   .share-confirm-btn {
     font-size: var(--font-size-sm);
   }

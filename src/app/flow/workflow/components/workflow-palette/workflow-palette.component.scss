@@ -17,7 +17,7 @@
     cursor: pointer;
     padding: 4px 6px;
     border-radius: var(--radius-xs);
-    transition: background var(--transition-fast);
+    transition: var(--transition-fast);
 
     &:hover {
       background: var(--hover-bg-color);
@@ -50,7 +50,7 @@
     border-radius: var(--radius-xs);
     color: var(--dim-color);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: var(--transition-fast);
 
     &:hover {
       background: var(--hover-bg-color);

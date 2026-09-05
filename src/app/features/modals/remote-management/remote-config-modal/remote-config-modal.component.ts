@@ -16,7 +16,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
@@ -29,7 +28,6 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
-import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
   RemoteConfigStateService,
@@ -61,7 +59,6 @@ import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-temp
     MatButtonModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatInputModule,
     MatExpansionModule,
     MatSidenavModule,
     RemoteConfigStepComponent,
@@ -93,7 +90,6 @@ export class RemoteConfigModalComponent {
   readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
     DialogData | undefined;
-  readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -151,6 +147,7 @@ export class RemoteConfigModalComponent {
   }
 
   private setupResponsiveLayout(): void {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
     const mql = window.matchMedia('(min-width: 768px)');
     const update = (matches: boolean): void => {
       this.sidebarMode.set(matches ? 'side' : 'over');
@@ -311,10 +308,13 @@ export class RemoteConfigModalComponent {
 
   saveCurrentStepProfile(): void {
     const editTargetValue = this.state.editTarget();
+    const stepIdx = this.state.currentStep() - 1;
     const type =
       editTargetValue && editTargetValue !== 'remote'
         ? editTargetValue
-        : this.state.stepConfigs()[this.state.currentStep() - 1]?.type;
+        : stepIdx >= 0
+          ? this.state.stepConfigs()[stepIdx]?.type
+          : undefined;
     if (type && type !== 'remote') this.state.saveCurrentProfile(type);
   }
 
@@ -323,7 +323,7 @@ export class RemoteConfigModalComponent {
     this.state.interactiveFlowState.update(s => ({
       ...s,
       isProcessing: true,
-      answer: String(answer),
+      answer: answer != null ? String(answer) : '',
     }));
     void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
       this.closeIfFlowComplete();
@@ -349,7 +349,7 @@ export class RemoteConfigModalComponent {
 
   scrollToSection(sectionId: string): void {
     this.hostEl.nativeElement
-      .querySelector('#' + sectionId)
+      .querySelector('#' + CSS.escape(sectionId))
       ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
@@ -426,9 +426,11 @@ export class RemoteConfigModalComponent {
     };
 
     const remoteRaw = this.state.remoteForm.getRawValue();
-    const cleanRemoteData = this.state.cleanFormData(remoteRaw) as Record<string, unknown>;
-    delete cleanRemoteData['name'];
-    delete cleanRemoteData['type'];
+    const {
+      name: _n,
+      type: _t,
+      ...cleanRemoteData
+    } = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
 
     return {
       vfs: getCleanOptions('vfsConfig', 'vfs'),

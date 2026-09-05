@@ -54,10 +54,10 @@ export class DeleteRemoteModalComponent {
   private readonly quickRunService = inject(QuickRunService);
   private readonly automationService = inject(AutomationService);
   private readonly pathService = inject(PathService);
-  public readonly iconService = inject(IconService);
+  readonly iconService = inject(IconService);
 
-  public readonly data: DeleteRemoteModalData = inject(MAT_DIALOG_DATA);
-  public readonly remoteName = this.data.remoteName;
+  private readonly data: DeleteRemoteModalData = inject(MAT_DIALOG_DATA);
+  readonly remoteName = this.data.remoteName;
 
   readonly isDeleting = signal(false);
 
@@ -73,10 +73,11 @@ export class DeleteRemoteModalComponent {
       .filter(m => this.pathService.getRemoteNameFromFs(m.fs) === this.remoteName)
   );
 
-  readonly activeServes = computed(() => {
-    const prefix = `${this.remoteName}:`;
-    return this.remoteFacade.runningServes().filter(s => s.params?.fs?.startsWith(prefix));
-  });
+  readonly activeServes = computed(() =>
+    this.remoteFacade
+      .runningServes()
+      .filter(s => this.pathService.getRemoteNameFromFs(s.params?.fs) === this.remoteName)
+  );
 
   readonly activeJobs = computed(() =>
     this.jobService.jobs().filter(j => j.remote_name === this.remoteName && j.status === 'Running')
@@ -133,13 +134,13 @@ export class DeleteRemoteModalComponent {
   @HostListener('document:keydown.escape', ['$event'])
   onEscapeKey(event: Event): void {
     if (!this.isDeleting()) {
-      const keyboardEvent = event as KeyboardEvent;
-      keyboardEvent.preventDefault();
+      event.preventDefault();
       this.onCancel();
     }
   }
 
   onConfirm(): void {
+    this.isDeleting.set(true);
     this.dialogRef.close(true);
   }
 

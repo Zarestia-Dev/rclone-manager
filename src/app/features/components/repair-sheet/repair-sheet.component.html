@@ -1,6 +1,6 @@
-<form [class.repairing]="installing()" (submit)="repair(); $event.preventDefault()">
+<form (submit)="repair(); $event.preventDefault()">
   <div class="sheet-header">
-    <div class="repair-header-top">
+    <div class="repair-header-top" data-tauri-drag-region>
       <div class="repair-icon">
         <mat-icon [svgIcon]="repairIcon()"></mat-icon>
       </div>
@@ -96,7 +96,7 @@
 
     @if (isRclonePortRepair()) {
       <div class="port-config-container">
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'repairSheet.portConfig.portLabel' | translate }}</mat-label>
           <input
             matInput
@@ -116,7 +116,6 @@
           <button
             type="button"
             matButton="outlined"
-            class="test-port-btn"
             (click)="testPort()"
             [disabled]="installing() || isTestingPort() || isSuggestingPort() || !!portInputError()"
             [attr.title]="'repairSheet.portConfig.testPortTooltip' | translate"
@@ -131,7 +130,7 @@
           <button
             type="button"
             matButton="filled"
-            class="accent suggest-port-btn"
+            class="accent"
             (click)="suggestNextPort()"
             [disabled]="installing() || isSuggestingPort() || isTestingPort()"
             [attr.title]="'repairSheet.portConfig.suggestPortTooltip' | translate"

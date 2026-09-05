@@ -138,3 +138,39 @@ footer {
     }
   }
 }
+
+// Form Sections & Alert Banners
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--dim-color);
+  letter-spacing: 0.06em;
+  padding: 0 var(--space-xxs);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.field-suffix {
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  margin-right: 2px;
+}
+
+app-alert-banner {
+  &:not(:last-child) {
+    margin-bottom: var(--space-xs);
+  }
+}

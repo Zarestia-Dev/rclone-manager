@@ -423,7 +423,8 @@
       "subject": "Konu",
       "mqttHost": "MQTT Sunucusu",
       "mqttPort": "MQTT Portu",
-      "mqttTopic": "MQTT Konusu"
+      "mqttTopic": "MQTT Konusu",
+      "addHeader": "Başlık Ekle"
     },
     "noRulesHint": "Henüz yapılandırılmış uyarı kuralı yok. Bildirim almak için bir kural oluşturun.",
     "noActionsHint": "Henüz yapılandırılmış uyarı eylemi yok. Uyarıların nasıl iletileceğini belirlemek için bir eylem oluşturun."
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "Özellik bilgisi mevcut değil.",
       "example": "Örnek",
       "readOnly": "Salt Okunur",
-      "yes": "Evet",
-      "no": "Hayır",
       "noMetadata": "Meta veri özellikleri mevcut değil.",
-      "close": "İletişim kutusunu kapat",
       "unknown": "Bilinmiyor",
       "error": "Bağlantı bilgileri yüklenemedi.",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "Kopyalanan dosyalar",
         "syncedFiles": "Senkronize edilen dosyalar",
         "processedFiles": "İşlenen dosyalar"
+      },
+      "running": "Çalışıyor",
+      "filesCount": "{{count}} dosya",
+      "types": {
+        "copy": "Kopyala",
+        "copyurl": "URL Kopyala",
+        "move": "Taşı",
+        "rename": "Yeniden Adlandır",
+        "delete": "Sil",
+        "cleanup": "Temizle",
+        "rmdirs": "Boş Dizinleri Kaldır",
+        "sync": "Eşitle",
+        "bisync": "Çift Yönlü Eşitle",
+        "check": "Kontrol Et",
+        "upload": "Yükle",
+        "archivecreate": "Arşivle",
+        "archiveextract": "Arşivi Çıkart"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "Önizlemeyi Göster",
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
-      "resetZoom": "Yakınlaştırmayı Sıfırla"
+      "resetZoom": "Yakınlaştırmayı Sıfırla",
+      "hexPreview": "Hex Önizleme"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "Kenar Çubuğu Öğelerini Yapılandır",
-      "configureDescription": "Sıralarını değiştirmek için öğeleri sürükleyin veya kenar çubuğunda diskleri ve bulut sunucularını gizlemek/göstermek için göz simgesini kullanın."
+      "configureDescription": "Sıralarını değiştirmek için öğeleri sürükleyin veya kenar çubuğunda diskleri ve bulut sunucularını gizlemek/göstermek için göz simgesini kullanın.",
+      "toggleSearch": "Aramayı aç/kapat"
     },
     "shortcuts": {
       "title": "Nautilus Klavye Kısayolları"
@@ -2555,7 +2572,10 @@
       "iconSize": "Simge Boyutu",
       "showHidden": "Gizli Dosyaları Göster",
       "toggleLayout": "Düzeni Değiştir",
-      "viewOptions": "Görünüm Seçenekleri"
+      "viewOptions": "Görünüm Seçenekleri",
+      "showingItems": "{{total}} ögeden {{count}} tanesi gösteriliyor",
+      "decreaseIconSize": "Simge boyutunu küçült",
+      "increaseIconSize": "Simge boyutunu büyüt"
     },
     "notifications": {
       "mkdirFailed": "Klasör oluşturulamadı: {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "{{count}} paylaşılan dosyayı bu klasöre yükle",
       "confirm": "Buraya yükle"
+    },
+    "toolbar": {
+      "goBack": "Geri dön",
+      "goForward": "İleri git",
+      "pathOptions": "Yol seçenekleri"
+    },
+    "actions": {
+      "cancelLoading": "Yüklemeyi iptal et",
+      "star": "Yıldızlılara ekle",
+      "unstar": "Yıldızlılardan kaldır"
     }
   },
   "home": {

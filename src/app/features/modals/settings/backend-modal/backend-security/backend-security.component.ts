@@ -1,11 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  AbstractControl,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,15 +7,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NotificationService } from 'src/app/services/ui/notification.service';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
-
-function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
-  const newPassword = group.get('newPassword')?.value;
-  const confirmPassword = group.get('confirmPassword')?.value;
-  return newPassword === confirmPassword ? null : { passwordMismatch: true };
-}
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 
 @Component({
   selector: 'app-backend-security',
@@ -42,9 +30,8 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 })
 export class BackendSecurityComponent implements OnInit {
   private readonly passwordService = inject(RclonePasswordService);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly fb = inject(FormBuilder);
-  private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
 
   readonly showCurrentPassword = signal(false);
   readonly showNewPassword = signal(false);
@@ -63,7 +50,9 @@ export class BackendSecurityComponent implements OnInit {
       newPassword: ['', [Validators.required]],
       confirmPassword: ['', [Validators.required]],
     },
-    { validators: passwordMatchValidator }
+    {
+      validators: this.validatorRegistry.passwordMatchValidator('newPassword', 'confirmPassword'),
+    }
   );
 
   readonly changePasswordForm = this.fb.group(
@@ -72,7 +61,9 @@ export class BackendSecurityComponent implements OnInit {
       newPassword: ['', [Validators.required]],
       confirmPassword: ['', [Validators.required]],
     },
-    { validators: passwordMatchValidator }
+    {
+      validators: this.validatorRegistry.passwordMatchValidator('newPassword', 'confirmPassword'),
+    }
   );
 
   readonly decryptPassword = this.fb.control('', [Validators.required]);
@@ -135,9 +126,6 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.validatePassword(password);
       await this.passwordService.storePassword(password);
-      this.notificationService.showSuccess(
-        this.translate.instant('modals.backend.security.passwordStored')
-      );
       this.showKeychainInput.set(false);
       this.keychainPassword.reset();
       this.showKeychainPassword.set(false);
@@ -166,14 +154,11 @@ export class BackendSecurityComponent implements OnInit {
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.encryptConfig(newPassword);
-      await this.passwordService.storePassword(newPassword);
+      await this.passwordService.storePassword(newPassword, { showSuccess: false });
       await this.loadEncryptionStatus();
-      this.notificationService.showSuccess(
-        this.translate.instant('modals.backend.security.encrypted')
-      );
       this.encryptForm.reset();
     } catch (error) {
-      this.notificationService.showError(this.translate.instant(String(error)));
+      console.error('Failed to encrypt config:', error);
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -189,14 +174,11 @@ export class BackendSecurityComponent implements OnInit {
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.unencryptConfig(password);
-      await this.passwordService.removeStoredPassword();
+      await this.passwordService.removeStoredPassword({ showSuccess: false });
       await this.loadEncryptionStatus();
-      this.notificationService.showSuccess(
-        this.translate.instant('modals.backend.security.removeEncryption')
-      );
       this.decryptPassword.reset();
     } catch (error) {
-      this.notificationService.showError(this.translate.instant(String(error)));
+      console.error('Failed to unencrypt config:', error);
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -214,14 +196,11 @@ export class BackendSecurityComponent implements OnInit {
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.changeConfigPassword(currentPassword, newPassword);
-      await this.passwordService.storePassword(newPassword);
+      await this.passwordService.storePassword(newPassword, { showSuccess: false });
       await this.loadEncryptionStatus();
-      this.notificationService.showSuccess(
-        this.translate.instant('modals.backend.security.passwordChanged')
-      );
       this.changePasswordForm.reset();
     } catch (error) {
-      this.notificationService.showError(this.translate.instant(String(error)));
+      console.error('Failed to change password:', error);
     } finally {
       this.encryptionLoading.set(false);
     }
@@ -232,11 +211,8 @@ export class BackendSecurityComponent implements OnInit {
     try {
       await this.passwordService.removeStoredPassword();
       await this.loadEncryptionStatus();
-      this.notificationService.showSuccess(
-        this.translate.instant('modals.backend.security.passwordRemoved')
-      );
     } catch (error) {
-      this.notificationService.showError(this.translate.instant(String(error)));
+      console.error('Failed to remove stored password:', error);
       await this.loadEncryptionStatus();
     } finally {
       this.encryptionLoading.set(false);

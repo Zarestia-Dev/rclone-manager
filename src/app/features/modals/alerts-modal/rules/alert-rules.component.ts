@@ -365,7 +365,6 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
       display: flex;
       flex-direction: column;
       gap: var(--space-xs);
-      padding: var(--space-xs) 0;
     }
 
     .filter-group {
@@ -386,7 +385,6 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
       align-items: center;
       flex-wrap: wrap;
       gap: var(--space-xs);
-      padding: var(--space-xs) 0;
     }
 
     .trigger-icon {
@@ -426,8 +424,8 @@ export class AlertRulesComponent {
   private readonly dialog = inject(MatDialog);
   private readonly notificationService = inject(NotificationService);
 
-  searchVisible = signal(false);
-  displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
+  readonly searchVisible = signal(false);
+  readonly displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
 
   onSearchChange(term: string): void {
     this.alerts.rulesSearchTerm.set(term);

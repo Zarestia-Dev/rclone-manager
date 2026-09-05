@@ -314,7 +314,7 @@
         height: var(--icon-size-xs);
         font-size: var(--icon-size-xs);
         color: var(--dim-color);
-        transition: color var(--transition-fast);
+        transition: var(--transition-fast);
       }
 
       .count-badge {

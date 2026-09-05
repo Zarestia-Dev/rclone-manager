@@ -15,6 +15,7 @@ import { AlertService } from 'src/app/services/alerts/alert.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({
   selector: 'app-alert-rule-editor',
@@ -30,6 +31,7 @@ import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.s
     MatSelectModule,
     MatSlideToggleModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -45,12 +47,13 @@ export class AlertRuleEditorComponent {
   readonly data?: AlertRule;
   readonly remotes = this.remoteFacade.activeRemotes;
   readonly backends = this.backendService.backends;
-  allProfiles = computed(() => {
+  readonly allProfiles = computed(() => {
     const profiles = new Set<string>();
     this.remotes().forEach(r => {
-      const s = r.status;
+      const s = r?.status;
+      if (!s) return;
       [s.sync, s.copy, s.bisync, s.move, s.mount, s.serve].forEach(op => {
-        op.configuredProfiles?.forEach(p => profiles.add(p));
+        op?.configuredProfiles?.forEach(p => profiles.add(p));
       });
     });
     return Array.from(profiles).sort();
@@ -91,7 +94,7 @@ export class AlertRuleEditorComponent {
     'quickrun',
   ];
 
-  form = this.fb.nonNullable.group({
+  readonly form = this.fb.nonNullable.group({
     id: [''],
     name: ['', Validators.required],
     enabled: [true],

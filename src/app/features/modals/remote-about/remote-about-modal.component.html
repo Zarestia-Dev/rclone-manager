@@ -1,12 +1,13 @@
 <header data-tauri-drag-region>
-  <button tabindex="-1" aria-hidden="true">
+  <button aria-hidden="true">
     <mat-icon [svgIcon]="iconService.getIconName(data.remote.type)"></mat-icon>
   </button>
   <p>{{ displayName }}</p>
   <button
+    type="button"
     matIconButton
     (click)="close()"
-    [attr.aria-label]="'fileBrowser.remoteAbout.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
   >
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
@@ -18,9 +19,9 @@
     <mat-tab [label]="'fileBrowser.remoteAbout.tabs.overview' | translate">
       <div class="tab-content">
         @if (loadingAbout()) {
-          <div class="loading-placeholder">
+          <div class="loading-container">
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
-            <p>{{ 'fileBrowser.remoteAbout.loading' | translate }}</p>
+            <span>{{ 'fileBrowser.remoteAbout.loading' | translate }}</span>
           </div>
         } @else if (errorAbout()) {
           <div class="error-state">
@@ -28,13 +29,54 @@
             <p>{{ errorAbout() }}</p>
           </div>
         } @else if (aboutInfo(); as about) {
-          <div class="fade-in">
-            <!-- Usage Card -->
-            @let usage = diskUsage();
-            <mat-card class="usage-card">
-              <div class="usage-item">
-                <span class="label">{{ 'fileBrowser.remoteAbout.totalSpace' | translate }}</span>
-                <span class="value">
+          <!-- Storage Card -->
+          @let usage = diskUsage();
+          <div class="card-section">
+            <div class="card-section-header">
+              <div class="header-info">
+                <mat-icon svgIcon="hard-drive"></mat-icon>
+                <span class="card-section-title">{{
+                  'fileBrowser.properties.storage' | translate
+                }}</span>
+              </div>
+              <button
+                type="button"
+                class="action-button"
+                (click)="fetchDiskUsage(true)"
+                [disabled]="usage.loading"
+                [attr.title]="'fileBrowser.remoteAbout.reloadUsage' | translate"
+                [attr.aria-label]="'fileBrowser.remoteAbout.reloadUsage' | translate"
+              >
+                <mat-icon svgIcon="refresh" [class.animate-spin]="usage.loading"></mat-icon>
+              </button>
+            </div>
+
+            @if (!usage.loading && usage.total && usage.used !== undefined) {
+              <div class="storage-bar-container">
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="usedPercentage()"
+                  [class.high-usage]="usedPercentage() > 85"
+                  [class.critical-usage]="usedPercentage() > 95"
+                ></mat-progress-bar>
+                <div class="storage-bar-legend">
+                  <span
+                    >{{ usedPercentage() }}% {{ 'fileBrowser.properties.used' | translate }}</span
+                  >
+                  <span
+                    >{{ usage.free | formatFileSize }}
+                    {{ 'fileBrowser.properties.free' | translate }}</span
+                  >
+                </div>
+              </div>
+            }
+
+            <div class="stats-grid">
+              <div class="stat-tile">
+                <span class="stat-label">{{
+                  'fileBrowser.remoteAbout.totalSpace' | translate
+                }}</span>
+                <span class="stat-value">
                   @if (usage.loading) {
                     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.total !== undefined) {
@@ -44,9 +86,12 @@
                   }
                 </span>
               </div>
-              <div class="usage-item">
-                <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
-                <span class="value">
+
+              <div class="stat-tile">
+                <span class="stat-label">{{
+                  'fileBrowser.remoteAbout.usedSpace' | translate
+                }}</span>
+                <span class="stat-value">
                   @if (usage.loading) {
                     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.used !== undefined) {
@@ -56,9 +101,12 @@
                   }
                 </span>
               </div>
-              <div class="usage-item">
-                <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
-                <span class="value">
+
+              <div class="stat-tile">
+                <span class="stat-label">{{
+                  'fileBrowser.remoteAbout.freeSpace' | translate
+                }}</span>
+                <span class="stat-value">
                   @if (usage.loading) {
                     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.free !== undefined) {
@@ -68,37 +116,44 @@
                   }
                 </span>
               </div>
-              <div class="usage-item">
-                <span class="label">{{ 'fileBrowser.remoteAbout.objectCount' | translate }}</span>
-                <span class="value">
+
+              <div class="stat-tile">
+                <span class="stat-label">{{
+                  'fileBrowser.remoteAbout.objectCount' | translate
+                }}</span>
+                <span class="stat-value">
                   @if (loadingSize()) {
                     <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else {
-                    {{ sizeInfo()?.count || 0 }}
+                    {{ sizeInfo()?.count || 0 | number }}
                   }
                 </span>
               </div>
-              <button
-                matIconButton
-                (click)="fetchDiskUsage(true)"
-                [disabled]="usage.loading"
-                [attr.title]="'fileBrowser.remoteAbout.reloadUsage' | translate"
-              >
-                <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
-              </button>
-            </mat-card>
+            </div>
+          </div>
 
-            <!-- Basic Info List -->
+          <!-- Basic Info Boxed List -->
+          <div class="card-section">
+            <div class="card-section-header">
+              <div class="header-info">
+                <mat-icon svgIcon="circle-info"></mat-icon>
+                <span class="card-section-title">{{
+                  'fileBrowser.properties.title' | translate
+                }}</span>
+              </div>
+            </div>
             <div class="info-list">
               <div class="info-row">
                 <span class="info-label">{{ 'fileBrowser.remoteAbout.type' | translate }}</span>
-                <span class="info-value">{{
+                <span class="app-pill p-primary">{{
                   data.remote.type || ('fileBrowser.remoteAbout.unknown' | translate) | titlecase
                 }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">{{ 'fileBrowser.remoteAbout.rootPath' | translate }}</span>
-                <span class="info-value code-font" [attr.title]="root()">{{ root() }}</span>
+                <span class="info-value">
+                  <code [attr.title]="root()">{{ root() }}</code>
+                </span>
               </div>
               <div class="info-row">
                 <span class="info-label">{{
@@ -107,23 +162,33 @@
                 <span class="info-value">{{ precision() }}</span>
               </div>
             </div>
+          </div>
 
-            <!-- Hashes -->
-            <div class="section-container">
-              <div class="section-header">
-                {{ 'fileBrowser.remoteAbout.supportedHashes' | translate }}
+          <!-- Supported Hashes -->
+          <div class="card-section">
+            <div class="card-section-header">
+              <div class="header-info">
+                <mat-icon svgIcon="shield"></mat-icon>
+                <span class="card-section-title">{{
+                  'fileBrowser.remoteAbout.supportedHashes' | translate
+                }}</span>
               </div>
-              <div class="chip-container">
-                @if (hashes().length > 0) {
+              @if (hashes().length > 0) {
+                <span class="count-badge">{{ hashes().length }}</span>
+              }
+            </div>
+            <div class="hashes-content">
+              @if (hashes().length > 0) {
+                <div class="chip-container">
                   @for (hash of hashes(); track hash) {
                     <span class="app-pill p-dim">{{ hash }}</span>
                   }
-                } @else {
-                  <span class="empty-text">{{
-                    'fileBrowser.remoteAbout.noneSupported' | translate
-                  }}</span>
-                }
-              </div>
+                </div>
+              } @else {
+                <span class="empty-text">{{
+                  'fileBrowser.remoteAbout.noneSupported' | translate
+                }}</span>
+              }
             </div>
           </div>
         }
@@ -134,10 +199,15 @@
     <mat-tab [label]="'fileBrowser.remoteAbout.tabs.features' | translate">
       <div class="tab-content">
         @if (loadingAbout()) {
-          <div class="loading-placeholder">
+          <div class="loading-container">
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         } @else if (features().length > 0) {
+          <div class="features-header">
+            <span class="count-badge">
+              {{ supportedFeaturesCount() }} / {{ features().length }}
+            </span>
+          </div>
           <div class="features-grid">
             @for (feat of features(); track feat.key) {
               <div
@@ -166,38 +236,38 @@
     <mat-tab [label]="'fileBrowser.remoteAbout.tabs.metadata' | translate">
       <div class="tab-content">
         @if (loadingAbout()) {
-          <div class="loading-placeholder">
+          <div class="loading-container">
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         } @else if (metadataGroups().length > 0) {
           <mat-accordion multi>
-            @for (group of metadataGroups(); track group.name) {
+            @for (group of metadataGroups(); track group.id) {
               @if (group.items.length > 0) {
-                <div class="group-header">{{ group.name }}</div>
+                <div class="section-label">{{ group.nameKey | translate }}</div>
               }
               @for (item of group.items; track item.key) {
                 <mat-expansion-panel>
                   <mat-expansion-panel-header>
                     <mat-panel-title>{{ item.key }}</mat-panel-title>
                     <mat-panel-description>
-                      {{ item.data['Type'] || ('fileBrowser.remoteAbout.unknown' | translate) }}
+                      {{ item.data.Type || ('fileBrowser.remoteAbout.unknown' | translate) }}
                     </mat-panel-description>
                   </mat-expansion-panel-header>
                   <div class="meta-details">
-                    <p class="meta-help">{{ item.data['Help'] }}</p>
+                    <p class="meta-help">{{ item.data.Help }}</p>
                     <div class="meta-props">
-                      @if (item.data['Example']) {
+                      @if (item.data.Example) {
                         <div class="prop-row">
                           <strong>{{ 'fileBrowser.remoteAbout.example' | translate }}:</strong>
-                          <span class="code-bg">{{ item.data['Example'] }}</span>
+                          <code>{{ item.data.Example }}</code>
                         </div>
                       }
                       <div class="prop-row">
                         <strong>{{ 'fileBrowser.remoteAbout.readOnly' | translate }}:</strong>
                         {{
-                          item.data['ReadOnly']
-                            ? ('fileBrowser.remoteAbout.yes' | translate)
-                            : ('fileBrowser.remoteAbout.no' | translate)
+                          item.data.ReadOnly
+                            ? ('common.yes' | translate)
+                            : ('common.no' | translate)
                         }}
                       </div>
                     </div>

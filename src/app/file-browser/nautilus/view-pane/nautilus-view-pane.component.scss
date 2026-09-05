@@ -71,6 +71,11 @@
     touch-action: pan-y;
     -webkit-user-drag: none;
 
+    &.unselectable {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
     .folder-card {
       padding: var(--space-xs);
     }
@@ -87,7 +92,7 @@
 
   .star-button {
     position: absolute;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     padding: var(--space-xxs);
     transition: var(--transition-fast);
     width: var(--icon-size-sm);
@@ -202,6 +207,11 @@ tr.folder-drag-over {
     touch-action: pan-y;
     -webkit-user-drag: none;
 
+    &.unselectable {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
     &:hover {
       background-color: var(--hover-bg-color);
     }
@@ -229,10 +239,19 @@ tr.folder-drag-over {
     color: var(--dim-color);
     border-bottom: none;
 
+    &.sortable-header {
+      cursor: pointer;
+      user-select: none;
+    }
+
     .header-content {
       display: flex;
       align-items: center;
       gap: var(--space-xxs);
+
+      &.right-aligned {
+        justify-content: flex-end;
+      }
 
       mat-icon {
         width: var(--icon-size-sm);
@@ -309,6 +328,29 @@ tr.folder-drag-over {
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--font-size-base);
+
+  .nav-button {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-circle);
+    cursor: pointer;
+    color: var(--window-fg-color);
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
+      font-size: var(--icon-size-xs);
+    }
+
+    &:hover {
+      background: var(--hover-bg-color);
+    }
+  }
 }
 
 .empty-folder-container {
@@ -356,6 +398,6 @@ tr.folder-drag-over {
   padding: var(--space-sm) var(--space-md);
   text-align: center;
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+  color: var(--dim-color);
   opacity: 0.7;
 }

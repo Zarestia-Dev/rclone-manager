@@ -6,7 +6,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { TranslatePipe } from '@ngx-translate/core';
 import { ACTION_CONFIGS, PrimaryActionType } from '@app/types';
 
-export interface ItemOrderVisibilityConfigItem<T = any> {
+export interface ItemOrderVisibilityConfigItem<T = unknown> {
   id: string;
   label: string;
   subLabel?: string;
@@ -15,10 +15,10 @@ export interface ItemOrderVisibilityConfigItem<T = any> {
   value?: T;
 }
 
-export interface ItemOrderVisibilityModalData<T = any> {
+export interface ItemOrderVisibilityModalData<T = unknown> {
   title: string;
   description?: string;
-  descriptionParams?: Record<string, any>;
+  descriptionParams?: Record<string, unknown>;
   items: ItemOrderVisibilityConfigItem<T>[];
   defaultItems?: ItemOrderVisibilityConfigItem<T>[];
   mode?: 'star' | 'visibility';
@@ -26,7 +26,7 @@ export interface ItemOrderVisibilityModalData<T = any> {
   iconHeader?: string;
 }
 
-export interface ItemOrderVisibilityResult<T = any> {
+export interface ItemOrderVisibilityResult<T = unknown> {
   items: ItemOrderVisibilityConfigItem<T>[];
   orderedVisibleIds: string[];
   hiddenIds: string[];
@@ -40,11 +40,19 @@ export function buildActionOrderItems(
   const allowedSet = allowedActions ? new Set(allowedActions) : null;
   const isAllowed = (key: PrimaryActionType): boolean => !allowedSet || allowedSet.has(key);
 
-  const starredSet = new Set<PrimaryActionType>(currentActions.filter(isAllowed));
+  const seen = new Set<PrimaryActionType>();
+  const starredSet = new Set<PrimaryActionType>();
+  for (const key of currentActions) {
+    if (isAllowed(key)) {
+      starredSet.add(key);
+    }
+  }
+
   const items: ItemOrderVisibilityConfigItem<PrimaryActionType>[] = [];
 
   for (const key of currentActions) {
-    if (!isAllowed(key)) continue;
+    if (!isAllowed(key) || seen.has(key)) continue;
+    seen.add(key);
     const config = ACTION_CONFIGS.find(c => c.key === key);
     if (config) {
       items.push({
@@ -58,7 +66,8 @@ export function buildActionOrderItems(
   }
 
   for (const config of ACTION_CONFIGS) {
-    if (isAllowed(config.key) && !starredSet.has(config.key)) {
+    if (isAllowed(config.key) && !starredSet.has(config.key) && !seen.has(config.key)) {
+      seen.add(config.key);
       items.push({
         id: config.key,
         label: config.label,
@@ -82,26 +91,28 @@ export function buildActionOrderItems(
     '(keydown.escape)': 'onCancel()',
   },
 })
-export class ItemOrderVisibilityModalComponent {
-  private readonly dialogRef = inject(MatDialogRef<ItemOrderVisibilityModalComponent>);
-  private readonly data = inject<ItemOrderVisibilityModalData>(MAT_DIALOG_DATA);
+export class ItemOrderVisibilityModalComponent<T = unknown> {
+  private readonly dialogRef = inject(MatDialogRef<ItemOrderVisibilityModalComponent<T>>);
+  private readonly data =
+    inject<ItemOrderVisibilityModalData<T>>(MAT_DIALOG_DATA, { optional: true }) ??
+    ({} as ItemOrderVisibilityModalData<T>);
 
-  readonly title = this.data.title;
+  readonly title = this.data.title ?? '';
   readonly description = this.data.description ?? '';
   readonly descriptionParams = this.data.descriptionParams ?? {};
   readonly mode = this.data.mode ?? 'visibility';
   readonly maxVisible = this.data.maxVisible;
   readonly iconHeader = this.data.iconHeader ?? (this.mode === 'star' ? 'operations' : 'tune');
 
-  private readonly defaultItems: ItemOrderVisibilityConfigItem[] = (
+  private readonly defaultItems: ItemOrderVisibilityConfigItem<T>[] = (
     this.data.defaultItems ?? []
   ).map(item => ({ ...item }));
 
-  private readonly initialItems: ItemOrderVisibilityConfigItem[] = (this.data.items ?? []).map(
+  private readonly initialItems: ItemOrderVisibilityConfigItem<T>[] = (this.data.items ?? []).map(
     item => ({ ...item })
   );
 
-  readonly items = signal<ItemOrderVisibilityConfigItem[]>(
+  readonly items = signal<ItemOrderVisibilityConfigItem<T>[]>(
     (this.data.items ?? []).map(item => ({ ...item }))
   );
 
@@ -136,7 +147,8 @@ export class ItemOrderVisibilityModalComponent {
     );
   });
 
-  onDrop(event: CdkDragDrop<ItemOrderVisibilityConfigItem[]>): void {
+  onDrop(event: CdkDragDrop<ItemOrderVisibilityConfigItem<T>[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
     this.isResetState.set(false);
     this.items.update(items => {
       const updated = [...items];
@@ -146,11 +158,15 @@ export class ItemOrderVisibilityModalComponent {
   }
 
   toggleVisibility(id: string): void {
+    const currentItems = this.items();
+    const targetItem = currentItems.find(i => i.id === id);
+    if (!targetItem) return;
+    if (!targetItem.isVisible && !this.canShowMore()) return;
+
     this.isResetState.set(false);
     this.items.update(items =>
       items.map(item => {
         if (item.id !== id) return item;
-        if (!item.isVisible && !this.canShowMore()) return item;
         return { ...item, isVisible: !item.isVisible };
       })
     );
@@ -164,7 +180,7 @@ export class ItemOrderVisibilityModalComponent {
 
   onSave(): void {
     const items = this.items();
-    const result: ItemOrderVisibilityResult = {
+    const result: ItemOrderVisibilityResult<T> = {
       items,
       orderedVisibleIds: items.filter(i => i.isVisible).map(i => i.id),
       hiddenIds: items.filter(i => !i.isVisible).map(i => i.id),

@@ -105,17 +105,11 @@ export class NautilusViewPaneComponent implements OnDestroy {
     this.starredMode() ? ['name', 'size', 'modified', 'star'] : ['name', 'size', 'modified']
   );
 
-  /** Grid items to actually render (progressive: slice of `files()`). */
-  protected readonly gridFiles = computed(() => this.files().slice(0, this._renderLimit()));
+  /** Items to actually render (progressive: slice of `files()`). */
+  protected readonly renderedFiles = computed(() => this.files().slice(0, this._renderLimit()));
 
-  /** True when the grid has more items to render than currently shown. */
-  protected readonly gridHasMore = computed(() => this._renderLimit() < this.files().length);
-
-  /** List items to actually render (progressive: slice of `files()`). */
-  protected readonly listFiles = computed(() => this.files().slice(0, this._renderLimit()));
-
-  /** True when the list has more items to render than currently shown. */
-  protected readonly listHasMore = computed(() => this._renderLimit() < this.files().length);
+  /** True when there are more items to render than currently shown. */
+  protected readonly hasMore = computed(() => this._renderLimit() < this.files().length);
 
   constructor() {
     effect(() => {
@@ -279,10 +273,6 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   protected isStarred(item: FileBrowserItem): boolean {
     return this.nautilusService.isSaved('starred', item.meta.remote || '', item.entry.Path);
-  }
-
-  protected isDraggingItem(item: FileBrowserItem): boolean {
-    return this._draggedItemPath() === item.entry.Path;
   }
 
   protected getItemKey(item: FileBrowserItem): string {
@@ -499,7 +489,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   protected onGridScroll(event: Event): void {
     const el = event.target as HTMLElement;
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-    if (nearBottom && this.gridHasMore()) {
+    if (nearBottom && this.hasMore()) {
       this._renderLimit.update(v => v + NautilusViewPaneComponent.GRID_RENDER_BATCH);
     }
   }

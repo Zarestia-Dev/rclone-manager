@@ -560,7 +560,7 @@ export class ModalService extends TauriBaseService {
       'restore-preview',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
       {
-        title: this.translate.instant('backup.restore.title') || 'Restore Backup',
+        title: this.translate.instant('backup.restore.title'),
         width: 680,
         height: 600,
         suffix: options.backupPath,
@@ -583,9 +583,9 @@ export class ModalService extends TauriBaseService {
   openBackend<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'backend',
-      { ...STANDARD_MODAL_SIZE, disableClose: false },
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
       {
-        title: this.translate.instant('modals.backend.title') || 'Backend Management',
+        title: this.translate.instant('modals.backend.title'),
         width: 680,
         height: 600,
       }
@@ -623,10 +623,10 @@ export class ModalService extends TauriBaseService {
         width: '90vw',
         maxWidth: '1200px',
         height: '85vh',
-        disableClose: false,
+        disableClose: true,
       },
       {
-        title: this.translate.instant('alerts.title') || 'Alerts & Notifications',
+        title: this.translate.instant('alerts.title'),
         width: 1200,
         height: 800,
       }
@@ -705,7 +705,7 @@ export class ModalService extends TauriBaseService {
       'delete-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
       {
-        title: this.translate.instant('home.deleteRemote.title') || 'Delete Remote',
+        title: this.translate.instant('home.deleteRemote.title'),
         width: 580,
         height: 520,
         suffix: remoteName,

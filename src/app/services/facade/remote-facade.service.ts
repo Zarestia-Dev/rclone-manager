@@ -470,8 +470,16 @@ export class RemoteFacadeService {
     return this.getOrCreateRemoteState(remoteName).disk;
   }
 
-  featuresSignal(remoteName: string): Signal<RemoteFeatures> {
-    return this.remoteService.getFeaturesSignal(remoteName, undefined);
+  featuresSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
+    return this.remoteService.getFeaturesSignal(remoteName, remoteType);
+  }
+
+  hasFeature(
+    remoteName: string,
+    feature: keyof RemoteFeatures | string,
+    remoteType?: string
+  ): boolean {
+    return this.remoteService.hasFeature(remoteName, feature, remoteType);
   }
 
   async executeAction<T>(

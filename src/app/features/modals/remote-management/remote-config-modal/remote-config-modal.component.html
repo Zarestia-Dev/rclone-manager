@@ -36,7 +36,7 @@
           <div class="init-skeleton__nav-item animate-shimmer"></div>
         }
       </div>
-      <div class="modal-content">
+      <div class="init-skeleton__content-container">
         <div class="init-skeleton__content">
           <div class="init-skeleton__heading animate-shimmer"></div>
           <div class="init-skeleton__field animate-shimmer"></div>
@@ -102,7 +102,7 @@
         ></app-obscure-tool>
 
         @if (state.oauthHelperUrl(); as oauthUrlValue) {
-          <section class="oauth-helper oauth-helper--actions" aria-live="polite">
+          <section class="oauth-helper" aria-live="polite">
             <div class="oauth-helper-text">
               <mat-icon svgIcon="globe"></mat-icon>
               <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
@@ -182,7 +182,7 @@
                     <mat-expansion-panel class="linked-profiles-panel">
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
+                          <mat-icon svgIcon="gear"></mat-icon>
                           <span>{{
                             'modals.remoteConfig.advancedProfiles.title' | translate
                           }}</span>

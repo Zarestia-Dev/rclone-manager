@@ -12,14 +12,14 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: rgba(var(--warn-color-rgb), 0.08);
   box-shadow: var(--ring-warn);
 
   .status-icon {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -31,7 +31,7 @@
   .status-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-xxs);
 
     strong {
       font-size: var(--font-size-base);
@@ -56,16 +56,15 @@
       width: fit-content;
 
       mat-icon {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
     }
   }
 
   &.encrypted {
     background: rgba(var(--primary-color-rgb), 0.08);
-    border-color: rgba(var(--primary-color-rgb), 0.2);
     box-shadow: 0 0 0 1px var(--primary-color);
 
     .status-icon {
@@ -79,17 +78,17 @@
 }
 
 // ============================================================================
-// Action Cards (Includes Accordion Styling)
+// Action Cards (Aligned with setting-item tokens)
 // ============================================================================
 .action-card {
   background: var(--view-bg-color);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: var(--space-md) var(--space-lg);
   box-shadow: var(--shadow-gnome);
   overflow: hidden;
 
   .card-form {
-    padding: var(--space-sm) 0 0 0;
+    padding-top: var(--space-sm);
   }
 }
 
@@ -107,8 +106,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    line-height: normal;
+    gap: var(--space-xxs);
 
     strong {
       font-size: var(--font-size-base);
@@ -128,7 +126,7 @@
   justify-content: flex-end;
   gap: var(--space-sm);
 
-  @media (max-width: 600px) {
+  @media (max-width: 540px) {
     flex-direction: column;
     align-items: stretch;
   }

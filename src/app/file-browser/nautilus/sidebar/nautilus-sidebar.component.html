@@ -1,7 +1,13 @@
 <div class="nautilus-layout">
   <mat-toolbar data-tauri-drag-region>
     <div class="header-start">
-      <button class="nav-button" (click)="onToggleSearch()" [class.active]="isSearchMode()">
+      <button
+        class="nav-button"
+        (click)="onToggleSearch()"
+        [class.active]="isSearchMode()"
+        [attr.title]="'nautilus.sidebar.toggleSearch' | translate"
+        [attr.aria-label]="'nautilus.sidebar.toggleSearch' | translate"
+      >
         <mat-icon svgIcon="search"></mat-icon>
       </button>
     </div>
@@ -16,6 +22,8 @@
           [cdkMenuPosition]="[
             { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
           ]"
+          [attr.title]="'nautilus.sidebar.configureTitle' | translate"
+          [attr.aria-label]="'nautilus.sidebar.configureTitle' | translate"
         >
           <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
@@ -58,7 +66,7 @@
         <button
           class="sidebar-item"
           [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
-          [class.selected]="selectedBookmarkKeys().has(item.key)"
+          [class.selected]="item.key === activeBookmarkKey()"
           [class.drag-over]="
             isDragging() && hoveredSidebarItem() === 'bookmark:' + item.bm.entry.Path
           "
@@ -193,8 +201,8 @@
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
-        @if (cleanupSupportedRemotes().has(remote.name)) {
-          <button class="menu-item danger" cdkMenuItem (click)="requestCleanup.emit(remote)">
+        @if (hasFeature(remote, 'CleanUp')) {
+          <button class="menu-item danger-item" cdkMenuItem (click)="requestCleanup.emit(remote)">
             <span class="item-label">{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
           </button>
           <mat-divider></mat-divider>
@@ -251,7 +259,7 @@
         </button>
         <mat-divider></mat-divider>
         <button
-          class="menu-item danger"
+          class="menu-item danger-item"
           cdkMenuItem
           (click)="requestBookmarkRemoval.emit(bookmark)"
         >

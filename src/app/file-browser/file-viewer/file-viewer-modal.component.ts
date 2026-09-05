@@ -9,15 +9,13 @@ import {
   computed,
   viewChild,
   ElementRef,
-  DestroyRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { Subject, of, firstValueFrom } from 'rxjs';
@@ -33,15 +31,20 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { DownloadService } from 'src/app/services/operations/download.service';
+import { OpenerService } from 'src/app/services/infrastructure/platform/opener.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
+import {
+  BinaryInspectorService,
+  DetectedSignature,
+  HexDumpRow,
+} from 'src/app/services/ui/binary-inspector.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry, FilePickerResult, ArchiveListItem } from '@app/types';
 
-import { FormsModule } from '@angular/forms';
 import {
   isHeadlessMode,
   isMobile,
@@ -50,7 +53,7 @@ import {
 @Component({
   selector: 'app-file-viewer-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, FormatFileSizePipe, TranslatePipe, FormsModule],
+  imports: [MatButtonModule, MatIconModule, FormatFileSizePipe, TranslatePipe],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
@@ -68,6 +71,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly fileViewerService = inject(FileViewerService);
   private readonly downloadService = inject(DownloadService);
+  private readonly openerService = inject(OpenerService);
   private readonly backendService = inject(BackendService);
   public readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
@@ -76,10 +80,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly binaryInspector = inject(BinaryInspectorService);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private activeProbeImg: HTMLImageElement | null = null;
+  private lastRenderedText: string | null = null;
 
   public currentUrl = signal<string>('');
+  public readonly detectedSignature = signal<DetectedSignature | null>(null);
+  public readonly hexDumpRows = signal<HexDumpRow[]>([]);
 
   // Zoom & Pan state for image preview
   zoomLevel = signal(1);
@@ -106,14 +114,17 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   });
 
   currentIndex = signal(0);
-  currentItem = computed(() => this.data.items[this.currentIndex()]);
-  fileName = computed(() => this.currentItem().Name);
-  fileSize = computed(() => this.currentItem().Size ?? null);
+  currentItem = computed(() => this.data?.items?.[this.currentIndex()] ?? null);
+  fileName = computed(() => this.currentItem()?.Name ?? '');
+  fileSize = computed(() => this.currentItem()?.Size ?? null);
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
   coverImage = signal<string | null>(null);
   rawUrl = signal<string>('');
-  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
+  fileCategory = computed(() => {
+    const item = this.currentItem();
+    return item ? this.iconService.getFileTypeCategory(item) : 'text';
+  });
   currentFileType = signal<string>('text');
   isHeadless = computed(() => isHeadlessMode());
 
@@ -173,6 +184,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cancelProbeImg();
+    this.cancelCurrentRequest$.next();
     this.cancelCurrentRequest$.complete();
     void this.stopReadJobs();
     if (this.editorView) {
@@ -180,6 +193,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.editorView = null;
     }
     this.fileViewerService.setActiveFileName(null);
+  }
+
+  private cancelProbeImg(): void {
+    if (this.activeProbeImg) {
+      this.activeProbeImg.onload = null;
+      this.activeProbeImg.onerror = null;
+      this.activeProbeImg.src = '';
+      this.activeProbeImg = null;
+    }
   }
 
   private async stopReadJobs(): Promise<void> {
@@ -231,6 +253,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   private async initEditor(readOnly = true, content = ''): Promise<void> {
+    if (this.currentFileType() !== 'text' || this.showMarkdownPreview()) {
+      return;
+    }
+
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
@@ -351,6 +377,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       await this.remoteOps.uploadFileSimple(this.fsName, dirPath, filename, content);
 
       this.textContent.set(this.editContent());
+      this.lastRenderedText = null;
       this.isEditing.set(false);
       this.setEditorReadOnly(true, this.textContent());
 
@@ -374,86 +401,74 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   async toggleMarkdownPreview(): Promise<void> {
     if (!this.showMarkdownPreview() && this.textContent()) {
       const item = this.currentItem();
-      let content = this.textContent();
+      if (!item) return;
 
-      // Helper to handle async replacements
-      const replaceAsync = async (
-        str: string,
-        regex: RegExp,
-        asyncFn: (match: string, ...args: string[]) => Promise<string>
-      ): Promise<string> => {
-        const promises: Promise<string>[] = [];
-        str.replace(regex, (match, ...args) => {
-          promises.push(asyncFn(match, ...args));
-          return match;
-        });
-        const data = await Promise.all(promises);
-        return str.replace(regex, () => data.shift() ?? '');
-      };
+      const currentText = this.textContent();
+      if (this.lastRenderedText !== currentText || !this.renderedMarkdown()) {
+        let content = currentText;
+        const resolveCache = new Map<string, Promise<string>>();
 
-      // Markdown Images: ![alt](path)
-      content = await replaceAsync(
-        content,
-        /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g,
-        async (_, alt, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `![${alt}](${res})`;
-        }
-      );
+        const resolveRelative = (path: string): Promise<string> => {
+          let cached = resolveCache.get(path);
+          if (!cached) {
+            cached = this.fileViewerService.resolveRelativePath(
+              item,
+              this.data.remoteName,
+              this.data.isLocal,
+              path
+            );
+            resolveCache.set(path, cached);
+          }
+          return cached;
+        };
 
-      // Markdown Links: [text](path)
-      content = await replaceAsync(
-        content,
-        /\[([^\]]+)\]\((?!https?:\/\/)([^)]+)\)/g,
-        async (_, text, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `[${text}](${res})`;
-        }
-      );
+        const replaceAsync = async (
+          str: string,
+          regex: RegExp,
+          asyncFn: (match: string, ...args: string[]) => Promise<string>
+        ): Promise<string> => {
+          const promises: Promise<string>[] = [];
+          str.replace(regex, (match, ...args) => {
+            promises.push(asyncFn(match, ...args));
+            return match;
+          });
+          const data = await Promise.all(promises);
+          return str.replace(regex, () => data.shift() ?? '');
+        };
 
-      // HTML Images: <img src="path">
-      content = await replaceAsync(
-        content,
-        /<img([^>]*)\ssrc=["']([^"']+)["']/gi,
-        async (_, attrs, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `<img${attrs} src="${res}"`;
-        }
-      );
+        // Markdown Images: ![alt](path)
+        content = await replaceAsync(
+          content,
+          /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g,
+          async (_, alt, path) => `![${alt}](${await resolveRelative(path)})`
+        );
 
-      // HTML Links: <a href="path">
-      content = await replaceAsync(
-        content,
-        /<a([^>]*)\shref=["']([^"']+)["']/gi,
-        async (_, attrs, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `<a${attrs} href="${res}"`;
-        }
-      );
+        // Markdown Links: [text](path)
+        content = await replaceAsync(
+          content,
+          /\[([^\]]+)\]\((?!https?:\/\/)([^)]+)\)/g,
+          async (_, text, path) => `[${text}](${await resolveRelative(path)})`
+        );
 
-      this.renderedMarkdown.set(
-        this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
-      );
+        // HTML Images: <img src="path">
+        content = await replaceAsync(
+          content,
+          /<img([^>]*)\ssrc=["']([^"']+)["']/gi,
+          async (_, attrs, path) => `<img${attrs} src="${await resolveRelative(path)}"`
+        );
+
+        // HTML Links: <a href="path">
+        content = await replaceAsync(
+          content,
+          /<a([^>]*)\shref=["']([^"']+)["']/gi,
+          async (_, attrs, path) => `<a${attrs} href="${await resolveRelative(path)}"`
+        );
+
+        this.renderedMarkdown.set(
+          this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
+        );
+        this.lastRenderedText = currentText;
+      }
     }
 
     this.showMarkdownPreview.update(v => !v);
@@ -564,7 +579,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.fileViewerService.setActiveFileName(item ? item.Name : null);
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
+    this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
+    this.lastRenderedText = null;
+    this.detectedSignature.set(null);
+    this.hexDumpRows.set([]);
     this.isLoading.set(true);
     this.currentFileType.set('loading');
     this.currentUrl.set('');
@@ -598,16 +617,19 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         // For non-media or extensionless URLs (e.g. Unsplash dynamic images), probe image loading first
         const probeImg = new Image();
+        this.activeProbeImg = probeImg;
         probeImg.referrerPolicy = 'no-referrer';
         probeImg.onload = (): void => {
-          if (this.rawUrl() === url) {
+          if (this.activeProbeImg === probeImg && this.rawUrl() === url) {
+            this.activeProbeImg = null;
             this.currentFileType.set('image');
             this.currentUrl.set(url);
             this.isLoading.set(false);
           }
         };
         probeImg.onerror = (): void => {
-          if (this.rawUrl() === url) {
+          if (this.activeProbeImg === probeImg && this.rawUrl() === url) {
+            this.activeProbeImg = null;
             this.isLoading.set(false);
           }
         };
@@ -627,66 +649,78 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
+        if (!item) return;
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
-        await this.remoteOps
-          .getSize(this.fsName, item.Path, 'filemanager', this.readJobGroup)
-          .then((size: { count: number; bytes: number }) => {
-            this.folderSize.set(size);
-          })
-          .catch(err => {
-            console.error('Failed to get folder size:', err);
-            this.notificationService.showError(
-              this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
-            );
-          })
-          .finally(() => {
-            this.isLoading.set(false);
-          });
+        try {
+          const size = await this.remoteOps.getSize(
+            this.fsName,
+            item.Path,
+            'filemanager',
+            this.readJobGroup
+          );
+          this.folderSize.set(size);
+        } catch (err) {
+          console.error('Failed to get folder size:', err);
+          this.notificationService.showError(
+            this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
+          );
+        } finally {
+          this.isLoading.set(false);
+        }
         return;
       }
 
-      if (this.fileCategory() === 'binary' || this.currentFileType() === 'binary') {
-        // Show "Cannot preview" immediately - no download needed
-        this.isLoading.set(false);
-        return;
-      }
+      // Content-inspectable files: text files or binary files (for hex preview & signature detection)
+      if (this.fileCategory() === 'text' || this.fileCategory() === 'binary') {
+        const isKnownBinary = this.fileCategory() === 'binary';
+        // For binary files, request only the first 64KB via Range header to be fast and avoid large downloads
+        const headers = isKnownBinary
+          ? new HttpHeaders({ Range: 'bytes=0-65535' })
+          : new HttpHeaders();
 
-      // Text-based files: try to load as text, browser will handle what it can
-      if (this.fileCategory() === 'text') {
         this.http
           .get(this.rawUrl(), {
-            responseType: 'text',
+            headers,
+            responseType: 'arraybuffer',
             observe: 'response',
           })
           .pipe(
             takeUntil(this.cancelCurrentRequest$),
-            takeUntilDestroyed(this.destroyRef),
             catchError(err => {
               console.warn('Browser cannot render file:', err);
               this.currentFileType.set('error');
-              const body = err.error instanceof Blob ? 'Binary data' : err.error;
-              this.errorMessage.set(body || err.message || 'Unknown error');
+              this.errorMessage.set(this.extractErrorMessage(err));
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
-              if (this.looksLikeBinary(res.body)) {
+              const uint8 = new Uint8Array(res.body);
+              const inspection = this.binaryInspector.inspect(uint8, this.fileName());
+
+              if (inspection.isBinary) {
                 // Special handling for LNK files to show target info even if binary
-                if (this.fileName().toLowerCase().endsWith('.lnk')) {
-                  const info = this.extractLnkInfo(res.body);
+                if (inspection.shortcutTargets && inspection.shortcutTargets.length > 0) {
+                  const info = this.binaryInspector.extractLnkSummary(
+                    uint8,
+                    this.translate.instant('fileBrowser.fileViewer.shortcutTargets')
+                  );
                   this.textContent.set(info);
                   this.safeInitEditor(true, info);
+                  this.currentFileType.set('text');
                 } else {
+                  this.detectedSignature.set(inspection.signature);
+                  this.hexDumpRows.set(inspection.hexDump ?? []);
                   this.currentFileType.set('binary');
                 }
               } else {
-                const repaired = this.repairText(res.body);
-                this.textContent.set(repaired);
+                this.currentFileType.set('text');
+                const text = this.binaryInspector.decodeText(uint8);
+                this.textContent.set(text);
                 // Initialize CodeMirror in read-only mode
-                this.safeInitEditor(true, repaired ?? '');
+                this.safeInitEditor(true, text);
               }
             }
             this.isLoading.set(false);
@@ -695,53 +729,55 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
 
       if (this.currentFileType() === 'audio') {
-        const targetPath = this.currentItem().Path;
-        this.isLoadingCover.set(true);
-        this.fileViewerService
-          .getAudioCover(this.currentItem(), this.data.remoteName, this.data.isLocal)
-          .then(cover => {
+        const item = this.currentItem();
+        if (item) {
+          const targetPath = item.Path;
+          this.isLoadingCover.set(true);
+          try {
+            const cover = await this.fileViewerService.getAudioCover(
+              item,
+              this.data.remoteName,
+              this.data.isLocal
+            );
             if (this.isStillViewing(targetPath)) {
               this.coverImage.set(cover);
             }
-          })
-          .catch(err => {
+          } catch (err) {
             console.warn('Failed to extract audio cover:', err);
-          })
-          .finally(() => {
+          } finally {
             if (this.isStillViewing(targetPath)) {
               this.isLoadingCover.set(false);
             }
-          });
+          }
+        }
       }
 
       if (this.currentFileType() === 'archive') {
         const item = this.currentItem();
+        if (!item) return;
         const targetPath = item.Path;
         const source = this.getArchiveSource(item);
 
-        this.remoteOps
-          .archiveList(source, true) // Use long format for more info
-          .then(res => {
-            if (!this.isStillViewing(targetPath)) return;
-            if (res && res.success) {
-              this.parsedArchiveItems.set(res.items);
-              this.archiveError.set(null);
-            } else {
-              this.archiveError.set('Unknown error');
-              this.parsedArchiveItems.set([]);
-            }
-          })
-          .catch(err => {
-            if (!this.isStillViewing(targetPath)) return;
-            console.error('Failed to list archive:', err);
-            this.archiveError.set(err.toString());
+        try {
+          const res = await this.remoteOps.archiveList(source, true); // Use long format for more info
+          if (!this.isStillViewing(targetPath)) return;
+          if (res?.success) {
+            this.parsedArchiveItems.set(res.items);
+            this.archiveError.set(null);
+          } else {
+            this.archiveError.set('Unknown error');
             this.parsedArchiveItems.set([]);
-          })
-          .finally(() => {
-            if (this.isStillViewing(targetPath)) {
-              this.isLoading.set(false);
-            }
-          });
+          }
+        } catch (err) {
+          if (!this.isStillViewing(targetPath)) return;
+          console.error('Failed to list archive:', err);
+          this.archiveError.set(err instanceof Error ? err.message : String(err));
+          this.parsedArchiveItems.set([]);
+        } finally {
+          if (this.isStillViewing(targetPath)) {
+            this.isLoading.set(false);
+          }
+        }
         return;
       }
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
@@ -758,109 +794,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       );
       this.isLoading.set(false);
     }
-  }
-
-  /**
-   * Check if text content appears to be binary data.
-   * Uses NULL byte detection and non-printable character ratio.
-   */
-  private looksLikeBinary(content: string): boolean {
-    if (!content) return false;
-
-    // Check for common BOMs (Byte Order Marks) which often indicate UTF-16/32 text
-    // UTF-16 LE: FF FE, UTF-16 BE: FE FF, UTF-8: EF BB BF
-    const firstTwo = content.substring(0, 2);
-    if (firstTwo === '\xFF\xFE' || firstTwo === '\xFE\xFF' || content.startsWith('\xEF\xBB\xBF')) {
-      return false; // Definitely text
-    }
-
-    // NULL byte detection with UTF-16 heuristic:
-    // If NULL bytes are frequent but alternating with printable chars, it's likely UTF-16.
-    let nullCount = 0;
-    const maxCheck = Math.min(content.length, 1024);
-    for (let i = 0; i < maxCheck; i++) {
-      if (content.charCodeAt(i) === 0) nullCount++;
-    }
-
-    // If more than 10% are NULL but content is large, or if any NULL in first few bytes of non-UTF-16
-    // But let's be more practical: if NULL count is extremely high (> 40%), it's probably binary.
-    // If NULLs are present but the ratio is exactly around 50%, it's likely UTF-16 text.
-    const nullRatio = nullCount / maxCheck;
-    if (nullRatio > 0.1 && (nullRatio < 0.4 || nullRatio > 0.6)) return true;
-
-    // Count non-printable characters (excluding whitespace and common text control chars)
-    let nonPrintable = 0;
-    for (let i = 0; i < maxCheck; i++) {
-      const code = content.charCodeAt(i);
-      if (code === 0) continue; // Handled by nullRatio
-      if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
-        nonPrintable++;
-      }
-    }
-
-    // Windows Shortcut (LNK) magic bytes: 4C 00 00 00
-    if (maxCheck >= 4 && content.startsWith('L\0\0\0')) {
-      return true;
-    }
-
-    // If >30% non-printable (excluding NULLs), likely binary
-    return nonPrintable / (maxCheck - nullCount) > 0.3;
-  }
-
-  /**
-   * Extremely basic LNK (Windows Shortcut) parser.
-   * Scans the binary content for likely target paths or descriptions.
-   */
-  private extractLnkInfo(content: string): string {
-    // Look for Windows-style paths (e.g. C:\...) or environment variables
-    const pathRegex = /[a-zA-Z]:\\[^ \ufffd\0\r\n\t]+(?:\.exe|\.dll|\.lnk|\.bat|\.cmd)/gi;
-    const envRegex = /%[a-zA-Z0-9_]+%\\[^ \ufffd\0\r\n\t]+/gi;
-
-    const paths = new Set<string>();
-    let match;
-
-    while ((match = pathRegex.exec(content)) !== null) {
-      paths.add(match[0]);
-    }
-    while ((match = envRegex.exec(content)) !== null) {
-      paths.add(match[0]);
-    }
-
-    if (paths.size > 0) {
-      let result = this.translate.instant('fileBrowser.fileViewer.shortcutTargets') + ':\n\n';
-      paths.forEach(p => (result += `- ${p}\n`));
-      return result;
-    }
-
-    return content;
-  }
-
-  /**
-   * Detects and repairs mangled UTF-16 text.
-   * Rclone cat returns raw bytes which can be misinterpreted as UTF-8 strings
-   * with embedded NULL bytes for UTF-16 encoded files (like Windows desktop.ini).
-   */
-  private repairText(content: string): string {
-    if (!content) return content;
-
-    let nullCount = 0;
-    const maxCheck = Math.min(content.length, 1024);
-    for (let i = 0; i < maxCheck; i++) {
-      if (content.charCodeAt(i) === 0) nullCount++;
-    }
-
-    const nullRatio = nullCount / maxCheck;
-
-    // If it's around 50% NULLs, it's almost certainly mangled UTF-16 text
-    if (nullRatio > 0.4 && nullRatio < 0.6) {
-      console.debug('Repairing mangled UTF-16 text...');
-      // 1. Remove the mangled BOM (replacement characters) if present
-      const repaired = content.replace(/^\ufffd\ufffd/, '');
-      // 2. Strip all NULL bytes - for ASCII range in UTF-16 this restores the text
-      return repaired.replace(/\0/g, '');
-    }
-
-    return content;
   }
 
   // Fired by Image/Video/Audio/Iframe onload events
@@ -888,6 +821,59 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Extracts a human-readable error string from an unknown error or HttpErrorResponse,
+   * properly decoding ArrayBuffer error payloads without displaying '[object ArrayBuffer]'.
+   */
+  private extractErrorMessage(err: unknown): string {
+    if (err instanceof HttpErrorResponse || (err && typeof err === 'object' && 'status' in err)) {
+      const httpErr = err as HttpErrorResponse;
+      let message = '';
+
+      const isArrayBuffer =
+        httpErr.error instanceof ArrayBuffer ||
+        Object.prototype.toString.call(httpErr.error) === '[object ArrayBuffer]';
+
+      const rawBytes = isArrayBuffer
+        ? new Uint8Array(httpErr.error as ArrayBuffer)
+        : ArrayBuffer.isView(httpErr.error)
+          ? new Uint8Array(httpErr.error.buffer, httpErr.error.byteOffset, httpErr.error.byteLength)
+          : null;
+
+      if (rawBytes) {
+        try {
+          const decoded = new TextDecoder('utf-8').decode(rawBytes).replace(/\0/g, '').trim();
+          if (decoded && !decoded.startsWith('<!DOCTYPE') && !decoded.startsWith('<html')) {
+            message = decoded;
+          }
+        } catch {
+          // ignore decode failure
+        }
+      } else if (typeof httpErr.error === 'string' && httpErr.error.trim()) {
+        const trimmed = httpErr.error.replace(/\0/g, '').trim();
+        if (!trimmed.startsWith('<!DOCTYPE') && !trimmed.startsWith('<html')) {
+          message = trimmed;
+        }
+      } else if (httpErr.error && typeof httpErr.error === 'object' && 'message' in httpErr.error) {
+        message = String((httpErr.error as { message: unknown }).message || '');
+      }
+
+      if (message) return message;
+
+      if (httpErr.status) {
+        const match = httpErr.message?.match(/:\s*(\d{3}\s+.*)$/);
+        return match ? match[1] : `HTTP ${httpErr.status}`;
+      }
+      return httpErr.message || 'Unknown error';
+    }
+
+    if (err instanceof Error) {
+      return err.message;
+    }
+
+    return typeof err === 'string' ? err : 'Unknown error';
+  }
+
   async back(): Promise<void> {
     if (this.currentIndex() > 0) {
       this.currentIndex.update(i => i - 1);
@@ -907,7 +893,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    */
   async download(): Promise<void> {
     if (this.data.isDirectUrl) {
-      window.open(this.data.url, '_blank');
+      await this.openerService.openUrl(this.data.url);
       return;
     }
     if (this.isDownloading()) return;

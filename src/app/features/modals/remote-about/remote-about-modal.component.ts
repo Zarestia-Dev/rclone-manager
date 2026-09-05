@@ -1,10 +1,9 @@
-import { TitleCasePipe } from '@angular/common';
+import { DecimalPipe, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
+  DestroyRef,
   OnInit,
-  OnDestroy,
   computed,
   inject,
   signal,
@@ -12,9 +11,9 @@ import {
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
@@ -24,27 +23,45 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
+import { FsInfo, RemoteAboutData } from '@app/types';
+
+export interface MetadataItem {
+  Help?: string;
+  Type?: string;
+  ReadOnly?: boolean;
+  Example?: string;
+}
+
+export interface MetadataGroup {
+  id: string;
+  nameKey: string;
+  items: { key: string; data: MetadataItem }[];
+}
 
 @Component({
   selector: 'app-remote-about-modal',
   imports: [
     TitleCasePipe,
-    MatDividerModule,
+    DecimalPipe,
     MatIconModule,
     MatButtonModule,
     MatTabsModule,
     MatExpansionModule,
     MatCardModule,
+    MatProgressBarModule,
     FormatFileSizePipe,
     TranslatePipe,
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(keydown.escape)': 'close()',
+  },
 })
-export class RemoteAboutModalComponent implements OnInit, OnDestroy {
+export class RemoteAboutModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly remoteService = inject(RemoteManagementService);
@@ -54,6 +71,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   public readonly iconService = inject(IconService);
   public readonly data: RemoteAboutData = inject(MAT_DIALOG_DATA);
   private readonly readJobGroup = `dashboard/remote-about/${this.data.remote.displayName}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private isDestroyed = false;
 
   // Plain properties — no need for a signal when value never changes
   readonly displayName = this.data.remote.displayName;
@@ -66,13 +84,17 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   readonly loadingSize = signal(true);
   readonly errorAbout = signal<string | null>(null);
 
-  // Facade signals — simplified, no double-cast needed
-  readonly diskUsage = computed<DiskUsage>(() =>
-    this.remoteFacadeService.diskUsageSignal(this.displayName)()
-  );
+  // Facade signals — direct reference, no unnecessary computed wrapper
+  readonly diskUsage = this.remoteFacadeService.diskUsageSignal(this.displayName);
 
-  // Derived computed signals — replaces template method calls
-  readonly root = computed(() => (this.aboutInfo()?.['Root'] as string) || '/');
+  readonly usedPercentage = computed(() => {
+    const usage = this.diskUsage();
+    if (!usage || !usage.total || usage.used === undefined) return 0;
+    return Math.min(100, Math.max(0, Math.round((usage.used / usage.total) * 100)));
+  });
+
+  // Derived computed signals — strongly typed
+  readonly root = computed(() => this.aboutInfo()?.Root || '/');
 
   readonly precision = computed(() => {
     const ns = this.aboutInfo()?.Precision;
@@ -85,7 +107,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   });
 
   readonly features = computed<{ key: string; value: boolean }[]>(() => {
-    const features = this.aboutInfo()?.Features as Record<string, unknown> | undefined;
+    const features = this.aboutInfo()?.Features;
     if (!features) return [];
     return Object.entries(features)
       .filter(([key]) => key !== 'IsLocal')
@@ -93,20 +115,23 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.key.localeCompare(b.key));
   });
 
-  readonly metadataGroups = computed(() => {
+  readonly supportedFeaturesCount = computed(() => this.features().filter(f => f.value).length);
+
+  readonly metadataGroups = computed<MetadataGroup[]>(() => {
     const info = this.aboutInfo()?.MetadataInfo as Record<string, unknown> | undefined;
     if (!info) return [];
 
-    const groups: { name: string; items: { key: string; data: Record<string, unknown> }[] }[] = [];
+    const groups: MetadataGroup[] = [];
 
     if (info['System']) {
-      const sysItems = Object.entries(info['System'] as Record<string, unknown>)
-        .map(([key, data]) => ({ key, data: data as Record<string, unknown> }))
+      const sysItems = Object.entries(info['System'] as Record<string, MetadataItem>)
+        .map(([key, data]) => ({ key, data }))
         .sort((a, b) => a.key.localeCompare(b.key));
 
       if (sysItems.length) {
         groups.push({
-          name: this.translate.instant('fileBrowser.remoteAbout.metadata.system'),
+          id: 'system',
+          nameKey: 'fileBrowser.remoteAbout.metadata.system',
           items: sysItems,
         });
       }
@@ -114,18 +139,26 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
 
     const otherItems = Object.entries(info)
       .filter(([key, val]) => key !== 'System' && typeof val === 'object' && val !== null)
-      .map(([key, data]) => ({ key, data: data as Record<string, unknown> }))
+      .map(([key, data]) => ({ key, data: data as MetadataItem }))
       .sort((a, b) => a.key.localeCompare(b.key));
 
     if (otherItems.length) {
       groups.push({
-        name: this.translate.instant('fileBrowser.remoteAbout.metadata.standard'),
+        id: 'standard',
+        nameKey: 'fileBrowser.remoteAbout.metadata.standard',
         items: otherItems,
       });
     }
 
     return groups;
   });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.isDestroyed = true;
+      void this.stopReadJobs();
+    });
+  }
 
   ngOnInit(): void {
     this.remoteService.clearCache(this.displayName);
@@ -143,12 +176,20 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
         'dashboard',
         this.readJobGroup
       );
-      this.aboutInfo.set(fsInfo);
+      if (!this.isDestroyed) {
+        this.aboutInfo.set(fsInfo);
+      }
     } catch (error) {
       console.error('Error loading fs info:', error);
-      this.errorAbout.set(`${this.translate.instant('fileBrowser.remoteAbout.error')} ${error}`);
+      if (!this.isDestroyed) {
+        this.errorAbout.set(
+          `${this.translate.instant('fileBrowser.remoteAbout.error')} ${this.extractErrorMessage(error)}`
+        );
+      }
     } finally {
-      this.loadingAbout.set(false);
+      if (!this.isDestroyed) {
+        this.loadingAbout.set(false);
+      }
     }
 
     // 2. Fetch both Disk Usage and Size in parallel background tasks
@@ -164,11 +205,15 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
         'dashboard',
         this.readJobGroup
       );
-      this.sizeInfo.set(sizeData);
+      if (!this.isDestroyed) {
+        this.sizeInfo.set(sizeData);
+      }
     } catch (error) {
       console.warn('Size check failed:', error);
     } finally {
-      this.loadingSize.set(false);
+      if (!this.isDestroyed) {
+        this.loadingSize.set(false);
+      }
     }
   }
 
@@ -182,10 +227,6 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
     );
   }
 
-  ngOnDestroy(): void {
-    void this.stopReadJobs();
-  }
-
   private async stopReadJobs(): Promise<void> {
     try {
       await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
@@ -194,9 +235,14 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  @HostListener('document:keydown.escape')
+  private extractErrorMessage(error: unknown): string {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    if (error instanceof Error) return error.message;
+    return String(error);
+  }
+
   close(): void {
-    void this.stopReadJobs();
     this.dialogRef.close();
   }
 }

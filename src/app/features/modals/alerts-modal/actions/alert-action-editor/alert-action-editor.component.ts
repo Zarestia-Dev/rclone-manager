@@ -1,5 +1,12 @@
 import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  Validators,
+  FormArray,
+  FormGroup,
+  FormControl,
+} from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,8 +18,27 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption } from '@app/types';
+import { AlertAction, AlertActionKind, ScriptAction, KindOption } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+
+export type HeaderFormGroup = FormGroup<{
+  key: FormControl<string>;
+  value: FormControl<string>;
+}>;
+
+type ActionFieldKey =
+  | 'url'
+  | 'command'
+  | 'bot_token'
+  | 'chat_id'
+  | 'phone'
+  | 'apikey'
+  | 'gateway_url'
+  | 'host'
+  | 'topic'
+  | 'smtp_server'
+  | 'to';
 
 @Component({
   selector: 'app-alert-action-editor',
@@ -28,6 +54,7 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
     MatSelectModule,
     MatSlideToggleModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -57,7 +84,7 @@ export class AlertActionEditorComponent {
     return this.alertService.getActionIcon(this.form.controls.kind.value);
   }
 
-  form = this.fb.nonNullable.group({
+  readonly form = this.fb.nonNullable.group({
     id: [''],
     name: ['', Validators.required],
     kind: ['webhook' as AlertActionKind, Validators.required],
@@ -69,7 +96,7 @@ export class AlertActionEditorComponent {
     timeout_secs: [10],
     tls_verify: [true],
     retry_count: [1],
-    headers: this.fb.array<any>([]),
+    headers: this.fb.array<HeaderFormGroup>([]),
     // Script
     command: [''],
     argsRaw: [''],
@@ -105,50 +132,122 @@ export class AlertActionEditorComponent {
     this.data = actionId ? this.alertService.actions().find(a => a.id === actionId) : undefined;
 
     if (this.data) {
-      const patch: any = { ...this.data };
-
-      if (this.data.kind === 'script') {
-        patch.argsRaw = (this.data as ScriptAction).args.join(' ');
-      }
-
-      if (this.data.kind === 'telegram') {
-        patch.telegram_mode = (this.data as any).mode || 'bot';
-      }
-
-      if (this.data.kind === 'whatsapp') {
-        patch.whatsapp_provider = (this.data as any).provider || 'callmebot';
-      }
-
-      if (this.data.kind === 'webhook') {
-        const webhook = this.data as WebhookAction;
-        this.headers.clear();
-        if (webhook.headers) {
-          Object.entries(webhook.headers).forEach(([key, value]) => {
-            this.headers.push(
-              this.fb.group({
-                key: [key, Validators.required],
-                value: [value, Validators.required],
-              }) as any
-            );
-          });
-        }
-        delete patch.headers;
-      }
-
-      // Migrate old MQTT broker_url string
-      if (this.data.kind === 'mqtt' && (this.data as any).broker_url) {
-        const url = (this.data as any).broker_url as string;
-        patch.use_tls = url.startsWith('mqtts://');
-        const parts = url.replace(/^mqtts?:\/\//, '').split(':');
-        patch.host = parts[0] || 'localhost';
-        patch.port = parts[1] ? parseInt(parts[1], 10) : patch.use_tls ? 8883 : 1883;
-      }
-
-      this.form.patchValue(patch);
+      this.patchFormWithAction(this.data);
     }
 
     this.onKindChange();
-    this.alertService.getTemplateKeys().then(keys => this.templateKeys.set(keys));
+    void this.alertService.getTemplateKeys().then(keys => this.templateKeys.set(keys));
+  }
+
+  private patchFormWithAction(action: AlertAction): void {
+    this.form.patchValue({
+      id: action.id,
+      name: action.name,
+      kind: action.kind,
+      enabled: action.enabled,
+    });
+
+    switch (action.kind) {
+      case 'webhook': {
+        this.headers.clear();
+        if (action.headers) {
+          Object.entries(action.headers).forEach(([key, value]) => {
+            this.headers.push(
+              this.fb.nonNullable.group({
+                key: [key, Validators.required],
+                value: [value, Validators.required],
+              })
+            );
+          });
+        }
+        this.form.patchValue({
+          url: action.url,
+          method: action.method,
+          body_template: action.body_template,
+          timeout_secs: action.timeout_secs,
+          tls_verify: action.tls_verify,
+          retry_count: action.retry_count,
+        });
+        break;
+      }
+
+      case 'script':
+        this.form.patchValue({
+          command: action.command,
+          argsRaw: action.args.join(' '),
+          timeout_secs: action.timeout_secs,
+        });
+        break;
+
+      case 'telegram':
+        this.form.patchValue({
+          telegram_mode: action.mode || 'bot',
+          bot_token: action.bot_token,
+          chat_id: action.chat_id,
+          body_template: action.body_template,
+          timeout_secs: action.timeout_secs,
+          retry_count: action.retry_count,
+        });
+        break;
+
+      case 'whatsapp':
+        this.form.patchValue({
+          phone: action.phone,
+          apikey: action.apikey,
+          whatsapp_provider: action.provider || 'callmebot',
+          gateway_url: action.gateway_url || '',
+          body_template: action.body_template,
+          timeout_secs: action.timeout_secs,
+          retry_count: action.retry_count,
+        });
+        break;
+
+      case 'mqtt': {
+        let host = action.host;
+        let port = action.port;
+        let useTls = action.use_tls;
+        // Migrate legacy MQTT broker_url string if present
+        if (action.broker_url && !action.host) {
+          useTls = action.broker_url.startsWith('mqtts://');
+          const parts = action.broker_url.replace(/^mqtts?:\/\//, '').split(':');
+          host = parts[0] || 'localhost';
+          port = parts[1] ? parseInt(parts[1], 10) : useTls ? 8883 : 1883;
+        }
+        this.form.patchValue({
+          host: host || 'localhost',
+          port: port || (useTls ? 8883 : 1883),
+          use_tls: useTls ?? false,
+          topic: action.topic,
+          username: action.username || '',
+          password: action.password || '',
+          qos: action.qos ?? 0,
+          retain: action.retain ?? false,
+          body_template: action.body_template,
+          timeout_secs: action.timeout_secs,
+          retry_count: action.retry_count ?? 0,
+        });
+        break;
+      }
+
+      case 'email':
+        this.form.patchValue({
+          smtp_server: action.smtp_server,
+          smtp_port: action.smtp_port,
+          username: action.username || '',
+          password: action.password || '',
+          from: action.from,
+          to: action.to,
+          subject_template: action.subject_template,
+          body_template: action.body_template,
+          encryption: action.encryption,
+          timeout_secs: action.timeout_secs,
+          retry_count: action.retry_count ?? 1,
+        });
+        break;
+
+      case 'os_toast':
+        break;
+    }
   }
 
   // ── Kind selection ───────────────────────────────────────────────
@@ -159,7 +258,7 @@ export class AlertActionEditorComponent {
   }
 
   onKindChange(): void {
-    const all = [
+    const dynamicFields: ActionFieldKey[] = [
       'url',
       'command',
       'bot_token',
@@ -172,26 +271,37 @@ export class AlertActionEditorComponent {
       'smtp_server',
       'to',
     ];
-    all.forEach(f => this.form.get(f)?.clearValidators());
+    dynamicFields.forEach(f => this.form.controls[f].clearValidators());
 
     const kind = this.form.controls.kind.value;
-    const required = (fields: string[]): void =>
-      fields.forEach(f => this.form.get(f)?.setValidators([Validators.required]));
+    const setRequired = (fields: ActionFieldKey[]): void =>
+      fields.forEach(f => this.form.controls[f].setValidators([Validators.required]));
 
-    if (kind === 'webhook') required(['url']);
-    else if (kind === 'script') required(['command']);
-    else if (kind === 'telegram') {
+    if (kind === 'webhook') {
+      setRequired(['url']);
+    } else if (kind === 'script') {
+      setRequired(['command']);
+    } else if (kind === 'telegram') {
       const mode = this.form.controls.telegram_mode.value;
-      if (mode === 'bot') required(['bot_token', 'chat_id']);
-      else required(['chat_id']);
+      if (mode === 'bot') {
+        setRequired(['bot_token', 'chat_id']);
+      } else {
+        setRequired(['chat_id']);
+      }
     } else if (kind === 'whatsapp') {
       const provider = this.form.controls.whatsapp_provider.value;
-      if (provider === 'callmebot') required(['phone', 'apikey']);
-      else required(['phone', 'gateway_url']);
-    } else if (kind === 'mqtt') required(['host', 'topic']);
-    else if (kind === 'email') required(['smtp_server', 'to']);
+      if (provider === 'callmebot') {
+        setRequired(['phone', 'apikey']);
+      } else {
+        setRequired(['phone', 'gateway_url']);
+      }
+    } else if (kind === 'mqtt') {
+      setRequired(['host', 'topic']);
+    } else if (kind === 'email') {
+      setRequired(['smtp_server', 'to']);
+    }
 
-    Object.keys(this.form.controls).forEach(k => this.form.get(k)?.updateValueAndValidity());
+    dynamicFields.forEach(f => this.form.controls[f].updateValueAndValidity());
   }
 
   setTelegramMode(mode: 'bot' | 'botless'): void {
@@ -206,13 +316,16 @@ export class AlertActionEditorComponent {
 
   // ── Headers ──────────────────────────────────────────────────────
 
-  get headers(): FormArray {
-    return this.form.get('headers') as FormArray;
+  get headers(): FormArray<HeaderFormGroup> {
+    return this.form.controls.headers;
   }
 
   addHeader(): void {
     this.headers.push(
-      this.fb.group({ key: ['', Validators.required], value: ['', Validators.required] }) as any
+      this.fb.nonNullable.group({
+        key: ['', Validators.required],
+        value: ['', Validators.required],
+      })
     );
   }
 
@@ -225,7 +338,9 @@ export class AlertActionEditorComponent {
   async browseScript(): Promise<void> {
     try {
       const path = await this.fileSystem.selectFile();
-      if (path) this.form.patchValue({ command: path });
+      if (path) {
+        this.form.patchValue({ command: path });
+      }
     } catch {
       /* user cancelled */
     }
@@ -234,9 +349,8 @@ export class AlertActionEditorComponent {
   // ── Presets ──────────────────────────────────────────────────────
 
   applyPreset(preset: 'discord' | 'slack'): void {
-    const contentType = { key: 'Content-Type', value: 'application/json' };
-    const hasContentType = this.headers.value.some(
-      (h: any) => h.key?.toLowerCase() === 'content-type'
+    const hasContentType = this.headers.controls.some(
+      h => h.controls.key.value.toLowerCase() === 'content-type'
     );
 
     if (preset === 'discord') {
@@ -275,7 +389,12 @@ export class AlertActionEditorComponent {
     }
 
     if (!hasContentType) {
-      this.headers.push(this.fb.group(contentType) as any);
+      this.headers.push(
+        this.fb.nonNullable.group({
+          key: ['Content-Type', Validators.required],
+          value: ['application/json', Validators.required],
+        })
+      );
     }
   }
 
@@ -285,84 +404,111 @@ export class AlertActionEditorComponent {
     if (this.form.invalid) return;
 
     const val = this.form.getRawValue();
-    const base = { id: val.id || '', name: val.name, kind: val.kind, enabled: val.enabled };
-    let action: any = base;
+    const base = { id: val.id || '', name: val.name, enabled: val.enabled };
+    let action: AlertAction;
 
-    if (val.kind === 'webhook') {
-      const headerMap: Record<string, string> = {};
-      this.headers.value.forEach((h: any) => {
-        if (h.key && h.value) headerMap[h.key] = h.value;
-      });
-      action = {
-        ...base,
-        url: val.url,
-        method: val.method,
-        headers: headerMap,
-        body_template: val.body_template,
-        timeout_secs: val.timeout_secs,
-        tls_verify: val.tls_verify,
-        retry_count: val.retry_count,
-      };
-    } else if (val.kind === 'script') {
-      action = {
-        ...base,
-        command: val.command,
-        args: val.argsRaw ? val.argsRaw.split(' ') : [],
-        timeout_secs: val.timeout_secs,
-        retry_count: val.retry_count,
-        env_vars: this.data?.kind === 'script' ? (this.data as ScriptAction).env_vars : {},
-      };
-    } else if (val.kind === 'telegram') {
-      action = {
-        ...base,
-        mode: val.telegram_mode,
-        bot_token: val.bot_token,
-        chat_id: val.chat_id,
-        body_template: val.body_template,
-        timeout_secs: val.timeout_secs,
-        retry_count: val.retry_count,
-      };
-    } else if (val.kind === 'whatsapp') {
-      action = {
-        ...base,
-        phone: val.phone,
-        apikey: val.apikey,
-        provider: val.whatsapp_provider,
-        gateway_url: val.gateway_url,
-        body_template: val.body_template,
-        timeout_secs: val.timeout_secs,
-        retry_count: val.retry_count,
-      };
-    } else if (val.kind === 'mqtt') {
-      action = {
-        ...base,
-        host: val.host,
-        port: val.port,
-        use_tls: val.use_tls,
-        topic: val.topic,
-        username: val.username,
-        password: val.password,
-        qos: val.qos,
-        retain: val.retain,
-        body_template: val.body_template,
-        timeout_secs: val.timeout_secs,
-        retry_count: val.retry_count,
-      };
-    } else if (val.kind === 'email') {
-      action = {
-        ...base,
-        smtp_server: val.smtp_server,
-        smtp_port: val.smtp_port,
-        username: val.username,
-        password: val.password,
-        from: val.from,
-        to: val.to,
-        subject_template: val.subject_template,
-        body_template: val.body_template,
-        encryption: val.encryption,
-        timeout_secs: val.timeout_secs,
-        retry_count: val.retry_count,
-      };
+    switch (val.kind) {
+      case 'webhook': {
+        const headerMap: Record<string, string> = {};
+        this.headers.controls.forEach(h => {
+          const key = h.controls.key.value.trim();
+          const value = h.controls.value.value;
+          if (key && value) headerMap[key] = value;
+        });
+        action = {
+          ...base,
+          kind: 'webhook',
+          url: val.url,
+          method: val.method,
+          headers: headerMap,
+          body_template: val.body_template,
+          timeout_secs: val.timeout_secs,
+          tls_verify: val.tls_verify,
+          retry_count: val.retry_count,
+        };
+        break;
+      }
+
+      case 'script':
+        action = {
+          ...base,
+          kind: 'script',
+          command: val.command,
+          args: val.argsRaw.trim() ? val.argsRaw.trim().split(/\s+/) : [],
+          timeout_secs: val.timeout_secs,
+          env_vars: this.data?.kind === 'script' ? (this.data as ScriptAction).env_vars : {},
+        };
+        break;
+
+      case 'telegram':
+        action = {
+          ...base,
+          kind: 'telegram',
+          mode: val.telegram_mode,
+          bot_token: val.bot_token,
+          chat_id: val.chat_id,
+          body_template: val.body_template,
+          timeout_secs: val.timeout_secs,
+          retry_count: val.retry_count,
+        };
+        break;
+
+      case 'whatsapp':
+        action = {
+          ...base,
+          kind: 'whatsapp',
+          phone: val.phone,
+          apikey: val.apikey,
+          provider: val.whatsapp_provider,
+          gateway_url: val.gateway_url || undefined,
+          body_template: val.body_template,
+          timeout_secs: val.timeout_secs,
+          retry_count: val.retry_count,
+        };
+        break;
+
+      case 'mqtt':
+        action = {
+          ...base,
+          kind: 'mqtt',
+          host: val.host,
+          port: val.port,
+          use_tls: val.use_tls,
+          topic: val.topic,
+          username: val.username || undefined,
+          password: val.password || undefined,
+          qos: val.qos,
+          retain: val.retain,
+          body_template: val.body_template,
+          timeout_secs: val.timeout_secs,
+          retry_count: val.retry_count,
+        };
+        break;
+
+      case 'email':
+        action = {
+          ...base,
+          kind: 'email',
+          smtp_server: val.smtp_server,
+          smtp_port: val.smtp_port,
+          username: val.username || undefined,
+          password: val.password || undefined,
+          from: val.from,
+          to: val.to,
+          subject_template: val.subject_template,
+          body_template: val.body_template,
+          encryption: val.encryption as 'none' | 'tls' | 'starttls',
+          timeout_secs: val.timeout_secs,
+          retry_count: val.retry_count,
+        };
+        break;
+
+      case 'os_toast':
+        action = {
+          ...base,
+          kind: 'os_toast',
+        };
+        break;
     }
 
     this.dialogRef.close(action);

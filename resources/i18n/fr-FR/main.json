@@ -423,7 +423,8 @@
       "subject": "Subject",
       "mqttHost": "MQTT Host",
       "mqttPort": "MQTT Port",
-      "mqttTopic": "MQTT Topic"
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "Ajouter un en-tête"
     },
     "noRulesHint": "Aucune règle d'alerte configurée. Créez une règle pour recevoir des notifications.",
     "noActionsHint": "Aucune action d'alerte configurée. Créez une action pour définir la distribution des alertes."
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "Aucune information disponible sur la fonctionnalité.",
       "example": "Exemple",
       "readOnly": "Lecture seule",
-      "yes": "Oui",
-      "no": "Non",
       "noMetadata": "Aucune spécification de métadonnées disponible.",
-      "close": "Fermer la conversation",
       "unknown": "Inconnu",
       "error": "Échec du chargement des informations du dépôt distant.",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "Fichiers copiés",
         "syncedFiles": "Fichiers synchronisés",
         "processedFiles": "Fichiers traités"
+      },
+      "running": "En cours",
+      "filesCount": "{{count}} fichiers",
+      "types": {
+        "copy": "Copier",
+        "copyurl": "Copier l'URL",
+        "move": "Déplacer",
+        "rename": "Renommer",
+        "delete": "Supprimer",
+        "cleanup": "Nettoyer",
+        "rmdirs": "Supprimer les dossiers vides",
+        "sync": "Synchroniser",
+        "bisync": "Synchronisation bidirectionnelle",
+        "check": "Vérifier",
+        "upload": "Téléverser",
+        "archivecreate": "Archiver",
+        "archiveextract": "Extraire l'archive"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "Afficher l'aperçu",
       "zoomIn": "Zoom avant",
       "zoomOut": "Zoom arrière",
-      "resetZoom": "Réinitialiser le zoom"
+      "resetZoom": "Réinitialiser le zoom",
+      "hexPreview": "Aperçu hexadécimal"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "Configurer les éléments de la barre latérale",
-      "configureDescription": "Faites glisser les éléments pour les réordonner, ou utilisez l'icône de l'œil pour masquer ou afficher les disques et distants."
+      "configureDescription": "Faites glisser les éléments pour les réordonner, ou utilisez l'icône de l'œil pour masquer ou afficher les disques et distants.",
+      "toggleSearch": "Basculer la recherche"
     },
     "shortcuts": {
       "title": "Afficher les raccourcis clavier"
@@ -2555,7 +2572,10 @@
       "iconSize": "Taille de l’icône",
       "showHidden": "Afficher les fichiers cachés",
       "toggleLayout": "Basculer la disposition",
-      "viewOptions": "Options d'affichage"
+      "viewOptions": "Options d'affichage",
+      "showingItems": "Affichage de {{count}} sur {{total}}",
+      "decreaseIconSize": "Diminuer la taille des icônes",
+      "increaseIconSize": "Agrandir la taille des icônes"
     },
     "notifications": {
       "mkdirFailed": "Échec de la création du répertoire : {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "Téléverser {{count}} fichier(s) partagé(s) dans ce dossier",
       "confirm": "Téléverser ici"
+    },
+    "toolbar": {
+      "goBack": "Retour",
+      "goForward": "Suivant",
+      "pathOptions": "Options de chemin"
+    },
+    "actions": {
+      "cancelLoading": "Annuler le chargement",
+      "star": "Ajouter aux favoris",
+      "unstar": "Retirer des favoris"
     }
   },
   "home": {

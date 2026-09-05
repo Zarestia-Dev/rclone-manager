@@ -32,13 +32,14 @@ export class RclonePasswordService extends TauriBaseService {
   /**
    * Store password securely
    */
-  async storePassword(password: string): Promise<void> {
+  async storePassword(password: string, options?: { showSuccess?: boolean }): Promise<void> {
     await this.invokeWithNotification(
       'store_config_password',
       { password },
       {
         successKey: 'backendSuccess.security.passwordStored',
         errorKey: 'backendErrors.security.storeFailed',
+        showSuccess: options?.showSuccess ?? true,
       }
     );
   }
@@ -46,10 +47,11 @@ export class RclonePasswordService extends TauriBaseService {
   /**
    * Remove stored password
    */
-  async removeStoredPassword(): Promise<void> {
+  async removeStoredPassword(options?: { showSuccess?: boolean }): Promise<void> {
     await this.invokeWithNotification('remove_config_password', undefined, {
       successKey: 'backendSuccess.security.passwordRemoved',
-      errorKey: 'backendErrors.security.passwordChangeUnavailable',
+      errorKey: 'backendErrors.security.rcloneError',
+      showSuccess: options?.showSuccess ?? true,
     });
   }
 

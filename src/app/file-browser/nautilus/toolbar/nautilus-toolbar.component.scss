@@ -90,13 +90,13 @@
 
   &::before {
     left: 0;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.15) 0%, transparent 100%);
+    background: linear-gradient(to right, var(--sidebar-bg-color) 0%, transparent 100%);
   }
 
   // The right fade stops before the options button (≈ 36 px wide).
   &::after {
     right: 36px;
-    background: linear-gradient(to left, rgba(0, 0, 0, 0.15) 0%, transparent 100%);
+    background: linear-gradient(to left, var(--sidebar-bg-color) 0%, transparent 100%);
   }
 
   &:has(.show-left-shadow)::before {

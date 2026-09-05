@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   input,
@@ -114,8 +115,10 @@ export class NautilusSidebarComponent {
   private readonly _activeKey = computed<string | null>(() => {
     const remote = this.nautilusRemote();
     if (this.starredMode() || !remote) return null;
-    return `${remote.name}::${this.currentPath()}`;
+    return `${this.pathService.normalizeRemoteName(remote.name)}::${this.currentPath()}`;
   });
+
+  readonly activeBookmarkKey = this._activeKey;
 
   readonly anyBookmarkSelected = computed(() => {
     const active = this._activeKey();
@@ -125,13 +128,6 @@ export class NautilusSidebarComponent {
   readonly bookmarkViewModels = computed<BookmarkViewModel[]>(() =>
     this.bookmarks().map(bm => ({ bm, key: this._bookmarkKey(bm) }))
   );
-
-  readonly selectedBookmarkKeys = computed<Set<string>>(() => {
-    const active = this._activeKey();
-    if (active === null) return new Set<string>();
-    const keys = this.bookmarkViewModels().map(vm => vm.key);
-    return new Set<string>(keys.filter(key => key === active));
-  });
 
   private readonly _orderMap = computed(
     () => new Map<string, number>(this.settings.sidebarDriveOrder().map((name, i) => [name, i]))
@@ -145,15 +141,18 @@ export class NautilusSidebarComponent {
     sortAndFilterRoots(this.cloudRemotes(), this.settings.sidebarHiddenDrives(), this._orderMap())
   );
 
-  readonly cleanupSupportedRemotes = computed<Set<string>>(() => {
-    const result = new Set<string>();
-    for (const remote of [...this.displayLocalDrives(), ...this.displayCloudRemotes()]) {
-      if (this.remoteFacadeService.featuresSignal(remote.name)().CleanUp) {
-        result.add(remote.name);
+  constructor() {
+    effect(() => {
+      const remotes = this.displayCloudRemotes();
+      for (const remote of remotes) {
+        this.remoteFacadeService.featuresSignal(remote.name, remote.type);
       }
-    }
-    return result;
-  });
+    });
+  }
+
+  hasFeature(remote: ExplorerRoot, feature: string): boolean {
+    return this.remoteFacadeService.hasFeature(remote.name, feature, remote.type);
+  }
 
   readonly driveTooltips = computed<Map<string, string>>(() => {
     const map = new Map<string, string>();

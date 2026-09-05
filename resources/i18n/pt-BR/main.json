@@ -423,7 +423,8 @@
       "subject": "Subject",
       "mqttHost": "MQTT Host",
       "mqttPort": "MQTT Port",
-      "mqttTopic": "MQTT Topic"
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "Adicionar cabeçalho"
     },
     "noRulesHint": "Nenhuma regra de alerta configurada ainda. Crie uma regra para receber notificações.",
     "noActionsHint": "Nenhuma ação de alerta configurada ainda. Crie uma ação para definir como os alertas são entregues."
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "Sem informações disponíveis sobre características.",
       "example": "Exemplo",
       "readOnly": "Somente Leitura",
-      "yes": "Sim",
-      "no": "Não",
       "noMetadata": "Nenhuma especificação de metadados disponível.",
-      "close": "Fechar diálogo",
       "unknown": "Desconhecido",
       "error": "Falha ao carregar informações remotos.",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "Arquivos copiados",
         "syncedFiles": "Arquivos sincronizados",
         "processedFiles": "Arquivos processados"
+      },
+      "running": "Em execução",
+      "filesCount": "{{count}} arquivos",
+      "types": {
+        "copy": "Copiar",
+        "copyurl": "Copiar URL",
+        "move": "Mover",
+        "rename": "Renomear",
+        "delete": "Excluir",
+        "cleanup": "Limpar",
+        "rmdirs": "Remover diretórios vazios",
+        "sync": "Sincronizar",
+        "bisync": "Sincronização bidirecional",
+        "check": "Verificar",
+        "upload": "Enviar",
+        "archivecreate": "Compactar",
+        "archiveextract": "Extrair arquivo"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "Mostrar pré-visualização",
       "zoomIn": "Aumentar zoom",
       "zoomOut": "Diminuir zoom",
-      "resetZoom": "Redefinir zoom"
+      "resetZoom": "Redefinir zoom",
+      "hexPreview": "Pré-visualização hexadecimal"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "Configurar Itens da Barra de Navegação",
-      "configureDescription": "Arraste os itens para reorganizá-los ou clique no ícone de olho para esconder ou mostrar unidades e remotos de nuvem na barra lateral."
+      "configureDescription": "Arraste os itens para reorganizá-los ou clique no ícone de olho para esconder ou mostrar unidades e remotos de nuvem na barra lateral.",
+      "toggleSearch": "Alternar busca"
     },
     "shortcuts": {
       "title": "Atalhos de teclado do Nautilus"
@@ -2555,7 +2572,10 @@
       "iconSize": "Tamanho do Ícone",
       "showHidden": "Mostrar Arquivos Ocultos",
       "toggleLayout": "Alternar layout",
-      "viewOptions": "Opções de visualização"
+      "viewOptions": "Opções de visualização",
+      "showingItems": "Mostrando {{count}} de {{total}}",
+      "decreaseIconSize": "Diminuir tamanho do ícone",
+      "increaseIconSize": "Aumentar tamanho do ícone"
     },
     "notifications": {
       "mkdirFailed": "Falha ao criar diretório: {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "Enviar {{count}} arquivo(s) compartilhado(s) para esta pasta",
       "confirm": "Enviar aqui"
+    },
+    "toolbar": {
+      "goBack": "Voltar",
+      "goForward": "Avançar",
+      "pathOptions": "Opções de caminho"
+    },
+    "actions": {
+      "cancelLoading": "Cancelar carregamento",
+      "star": "Adicionar aos favoritos",
+      "unstar": "Remover dos favoritos"
     }
   },
   "home": {

@@ -75,7 +75,6 @@
       (layoutChange)="settings.setLayout($event)"
       (closeOverlay)="closeOverlay.emit(null)"
       (popOutToWindow)="onPopOutToWindow()"
-      (copyUrl)="actions.openCopyUrlDialog()"
       (searchFilterChange)="searchFilter.set($event)"
       (isSearchModeChange)="isSearchMode.set($event)"
       (isEditingPathChange)="isEditingPath.set($event)"
@@ -217,6 +216,8 @@
           class="icon-button"
           (click)="settings.decreaseIconSize(); $event.stopPropagation()"
           [disabled]="settings.decreaseIconDisabled()"
+          [attr.title]="'nautilus.view.decreaseIconSize' | translate"
+          [attr.aria-label]="'nautilus.view.decreaseIconSize' | translate"
         >
           <mat-icon svgIcon="remove"></mat-icon>
         </button>
@@ -224,6 +225,8 @@
           class="icon-button"
           (click)="settings.increaseIconSize(); $event.stopPropagation()"
           [disabled]="settings.increaseIconDisabled()"
+          [attr.title]="'nautilus.view.increaseIconSize' | translate"
+          [attr.aria-label]="'nautilus.view.increaseIconSize' | translate"
         >
           <mat-icon svgIcon="plus"></mat-icon>
         </button>

@@ -155,7 +155,7 @@
     color: var(--dim-color);
     opacity: 0.75;
     vertical-align: middle;
-    transition: opacity var(--transition-fast);
+    transition: var(--transition-fast);
 
     &:hover {
       opacity: 1;

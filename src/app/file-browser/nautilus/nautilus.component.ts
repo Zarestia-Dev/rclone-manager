@@ -401,10 +401,7 @@ export class NautilusComponent implements OnInit {
       const targetPath = this.nautilusService.targetPath();
       if (targetPath) {
         untracked(() => {
-          const parsed = this.pathService.parseLocation(
-            targetPath,
-            this.nautilusService.allRemotesLookup()
-          );
+          const parsed = this.pathService.parseLocation(targetPath, this.allRemotesLookup());
           if (parsed && this.tabSvc.tabs().length > 0) {
             this.navigate(parsed.remote, parsed.path, true);
             this.nautilusService.targetPath.set(null);
@@ -606,10 +603,7 @@ export class NautilusComponent implements OnInit {
   navigateToPath(rawInput: string): void {
     this.isEditingPath.set(false);
 
-    const parsed = this.pathService.parseLocation(
-      rawInput,
-      this.nautilusService.allRemotesLookup()
-    );
+    const parsed = this.pathService.parseLocation(rawInput, this.allRemotesLookup());
     if (parsed) {
       this.navigate(parsed.remote, parsed.path, true);
       return;

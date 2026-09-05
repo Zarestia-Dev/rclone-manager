@@ -8,7 +8,7 @@
     >
       <mat-expansion-panel-header>
         <mat-panel-title>
-          <mat-icon svgIcon="download" class="drag-handle-icon"></mat-icon>
+          <mat-icon svgIcon="download"></mat-icon>
           <span>{{ 'fileBrowser.operations.title' | translate }}</span>
           @if (activeJobs().length > 0) {
             <span class="job-count">{{ activeJobs().length }}</span>
@@ -23,8 +23,9 @@
             [class.completed]="vm.job.status !== 'Running'"
             role="button"
             tabindex="0"
+            [attr.aria-label]="vm.typeLabel + ': ' + vm.actualFileName"
             [cdkMenuTriggerFor]="detailsMenu"
-            (cdkMenuOpened)="contextMenuJob.set(vm.job)"
+            (cdkMenuOpened)="contextMenuJobId.set(vm.job.jobid)"
             [cdkMenuPosition]="[
               {
                 originX: 'end',
@@ -45,8 +46,9 @@
                   vm.actualFileName
                 }}</span>
               </div>
-              <mat-icon
-                class="action-btn"
+              <button
+                type="button"
+                class="action-button"
                 (click)="
                   vm.job.status === 'Running' ? stopJob(vm.job) : deleteJob(vm.job);
                   $event.stopPropagation()
@@ -57,9 +59,15 @@
                     : 'fileBrowser.operations.removeJob'
                   ) | translate
                 "
-                svgIcon="circle-xmark"
+                [attr.aria-label]="
+                  (vm.job.status === 'Running'
+                    ? 'fileBrowser.operations.cancelJob'
+                    : 'fileBrowser.operations.removeJob'
+                  ) | translate
+                "
               >
-              </mat-icon>
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
             </div>
 
             @if (vm.job.status === 'Running') {
@@ -102,10 +110,10 @@
 <!-- Context Menu Template (Moved outside @for for performance) -->
 <ng-template #detailsMenu>
   @if (contextMenuJobVM(); as vm) {
-    <div class="details-content job-details-menu" cdkMenu>
+    <div class="job-details-menu" cdkMenu>
       <div class="detail-header">
         <mat-icon [svgIcon]="vm.typeIcon"></mat-icon>
-        <span class="detail-title">{{ vm.job.status }} - {{ vm.typeLabel }}</span>
+        <span class="detail-title">{{ vm.statusLabel }} - {{ vm.typeLabel }}</span>
       </div>
       <mat-divider></mat-divider>
 
@@ -181,7 +189,7 @@
           <span class="detail-label">{{
             'fileBrowser.operations.details.source' | translate
           }}</span>
-          <span class="path-text">{{ vm.formattedSource }}</span>
+          <span class="value">{{ vm.formattedSource }}</span>
         </div>
       }
 
@@ -190,7 +198,7 @@
           <span class="detail-label">{{
             'fileBrowser.operations.details.destination' | translate
           }}</span>
-          <span class="path-text">{{ vm.job.destination }}</span>
+          <span class="value">{{ vm.job.destination }}</span>
         </div>
       }
 
@@ -216,6 +224,7 @@
                 class="copy-error-btn"
                 [appCopyToClipboard]="vm.formattedError"
                 [attr.title]="'common.copy' | translate"
+                [attr.aria-label]="'common.copy' | translate"
               >
                 <mat-icon svgIcon="copy"></mat-icon>
               </button>

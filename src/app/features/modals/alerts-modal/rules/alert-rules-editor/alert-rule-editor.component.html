@@ -83,10 +83,7 @@
       </mat-form-field>
 
       @if (!actions().length) {
-        <div class="info-box accent">
-          <mat-icon svgIcon="info"></mat-icon>
-          <span>{{ 'alerts.rule.noActionsHint' | translate }}</span>
-        </div>
+        <app-alert-banner severity="info" [description]="'alerts.rule.noActionsHint' | translate" />
       }
     </div>
   </section>
@@ -98,7 +95,7 @@
     </div>
 
     <div class="panel no-subscript">
-      <div class="form-row two-col">
+      <div class="form-row">
         <mat-form-field>
           <mat-label>{{ 'alerts.rule.severityMin' | translate }}</mat-label>
           <mat-select formControlName="severity_min">
@@ -124,7 +121,7 @@
         <span>{{ 'alerts.rule.scopeFilters' | translate }}</span>
       </div>
 
-      <div class="form-row two-col">
+      <div class="form-row">
         <mat-form-field>
           <mat-label>{{ 'alerts.rule.eventFilter' | translate }}</mat-label>
           <mat-icon
@@ -154,7 +151,7 @@
         </mat-form-field>
       </div>
 
-      <div class="form-row two-col">
+      <div class="form-row">
         <mat-form-field>
           <mat-label>{{ 'alerts.rule.backendFilter' | translate }}</mat-label>
           <mat-icon
@@ -170,7 +167,7 @@
         </mat-form-field>
       </div>
 
-      <div class="form-row two-col">
+      <div class="form-row">
         <mat-form-field>
           <mat-label>{{ 'alerts.rule.profileFilter' | translate }}</mat-label>
           <mat-icon
@@ -214,10 +211,10 @@
         </mat-select>
       </mat-form-field>
 
-      <div class="info-box">
-        <mat-icon svgIcon="info"></mat-icon>
-        <span>{{ 'alerts.rule.filtersEmptyHint' | translate }}</span>
-      </div>
+      <app-alert-banner
+        severity="info"
+        [description]="'alerts.rule.filtersEmptyHint' | translate"
+      />
     </div>
   </section>
 </main>

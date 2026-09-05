@@ -7,7 +7,8 @@
     matIconButton
     (click)="onCancel()"
     [disabled]="isDeleting()"
-    [attr.aria-label]="'common.cancel' | translate"
+    [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
   >
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
@@ -37,7 +38,7 @@
 
   <!-- Active Operations Section (CRITICAL WARNING) -->
   @if (hasActiveOperations()) {
-    <div class="alert-section active-operations-card">
+    <div class="details-section">
       <app-alert-banner
         severity="warning"
         [title]="'home.deleteRemote.activeOperationsTitle' | translate"
@@ -46,7 +47,7 @@
 
       <div class="items-list">
         @for (mount of activeMounts(); track mount.mount_point) {
-          <div class="item-row warn-item">
+          <div class="item-row">
             <mat-icon svgIcon="mount" class="item-icon"></mat-icon>
             <div class="item-text">
               <span class="item-title">{{ 'home.deleteRemote.types.mount' | translate }}</span>
@@ -57,7 +58,7 @@
         }
 
         @for (serve of activeServes(); track serve.id) {
-          <div class="item-row warn-item">
+          <div class="item-row">
             <mat-icon svgIcon="serve" class="item-icon"></mat-icon>
             <div class="item-text">
               <span class="item-title"
@@ -71,7 +72,7 @@
         }
 
         @for (job of activeJobs(); track job.jobid) {
-          <div class="item-row warn-item">
+          <div class="item-row">
             <mat-icon [svgIcon]="getOpIcon(job.job_type)" class="item-icon"></mat-icon>
             <div class="item-text">
               <span class="item-title">#{{ job.jobid }} - {{ job.job_type | titlecase }}</span>
@@ -98,7 +99,7 @@
           <div class="app-pill p-{{ profile.cssClass }}">
             <mat-icon [svgIcon]="profile.icon"></mat-icon>
             <span class="profile-type">{{ profile.actionLabel | translate }}:</span>
-            <span class="profile-name">{{ profile.name }}</span>
+            <span>{{ profile.name }}</span>
           </div>
         }
       </div>
@@ -119,7 +120,7 @@
           <div class="app-pill {{ getOpPillClass(qr.operationType) }}">
             <mat-icon [svgIcon]="getOpIcon(qr.operationType)"></mat-icon>
             <span class="profile-type">{{ qr.name }}:</span>
-            <span class="profile-name">{{ qr.operationType | titlecase }}</span>
+            <span>{{ qr.operationType | titlecase }}</span>
           </div>
         }
       </div>
@@ -155,6 +156,7 @@
     (click)="onCancel()"
     [disabled]="isDeleting()"
     [attr.aria-label]="'common.cancel' | translate"
+    [attr.title]="'common.cancel' | translate"
   >
     {{ 'common.cancel' | translate }}
   </button>
@@ -165,6 +167,7 @@
     (click)="onConfirm()"
     [disabled]="isDeleting()"
     [attr.aria-label]="'common.delete' | translate"
+    [attr.title]="'common.delete' | translate"
   >
     <mat-icon svgIcon="trash"></mat-icon>
     <span>{{ 'common.delete' | translate }}</span>

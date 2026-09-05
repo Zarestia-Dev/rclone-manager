@@ -41,7 +41,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
-  border-bottom: 1px solid var(--mdc-outlined-button-outline-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .tabs-bar {
@@ -62,7 +62,7 @@
     min-width: 100px;
     margin: 0 2px;
     position: relative;
-    background: rgba(0, 0, 0, 0.01);
+    background: transparent;
     cursor: pointer;
     user-select: none;
     -webkit-user-drag: element;
@@ -154,7 +154,7 @@
       height: var(--icon-size-md);
       background: none;
       border: none;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-circle);
       color: var(--window-fg-color);
       cursor: pointer;
       padding: var(--space-xxs);

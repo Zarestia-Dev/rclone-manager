@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
@@ -14,7 +14,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
   selector: 'app-alert-history',
   imports: [
     DatePipe,
-    NgClass,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
@@ -26,6 +25,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       <div class="toolbar">
         <div class="quick-filters">
           <button
+            type="button"
             class="app-pill interactive"
             [style]="getFilterStyle(undefined)"
             (click)="setSeverityFilter(undefined)"
@@ -35,6 +35,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
 
           @for (sev of severities; track sev) {
             <button
+              type="button"
               class="app-pill interactive"
               [style]="getFilterStyle(sev)"
               (click)="setSeverityFilter(sev)"
@@ -53,28 +54,34 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         <div class="spacer"></div>
 
         <button
+          type="button"
           matIconButton
           [class.search-open]="searchVisible()"
           (click)="searchVisible.set(!searchVisible())"
           [attr.title]="'shared.search.toggle' | translate"
+          [attr.aria-label]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
         <button
+          type="button"
           matIconButton
           (click)="acknowledgeAll()"
           [disabled]="alerts.unacknowledged() === 0"
           [attr.title]="'alerts.acknowledgeAll' | translate"
+          [attr.aria-label]="'alerts.acknowledgeAll' | translate"
         >
           <mat-icon svgIcon="done-all"></mat-icon>
         </button>
 
         <button
+          type="button"
           matIconButton
           (click)="clearHistory()"
           [disabled]="alerts.history().length === 0"
           [attr.title]="'alerts.clearHistory' | translate"
+          [attr.aria-label]="'alerts.clearHistory' | translate"
         >
           <mat-icon svgIcon="trash"></mat-icon>
         </button>
@@ -90,27 +97,51 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       @if (hasActiveFilters()) {
         <div class="active-filter-tags">
           @if (alerts.filter().remote) {
-            <button class="app-pill p-accent" (click)="clearFilter('remote')">
+            <button
+              type="button"
+              class="app-pill interactive p-accent"
+              (click)="clearFilter('remote')"
+              [attr.title]="alerts.filter().remote"
+              [attr.aria-label]="alerts.filter().remote"
+            >
               <mat-icon svgIcon="server"></mat-icon>
               {{ alerts.filter().remote }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
           @if (alerts.filter().profile) {
-            <button class="app-pill p-primary" (click)="clearFilter('profile')">
+            <button
+              type="button"
+              class="app-pill interactive p-primary"
+              (click)="clearFilter('profile')"
+              [attr.title]="alerts.filter().profile"
+              [attr.aria-label]="alerts.filter().profile"
+            >
               <mat-icon svgIcon="user"></mat-icon>
               {{ alerts.filter().profile }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
           @if (alerts.filter().backend) {
-            <button class="app-pill p-dim" (click)="clearFilter('backend')">
+            <button
+              type="button"
+              class="app-pill interactive p-dim"
+              (click)="clearFilter('backend')"
+              [attr.title]="alerts.filter().backend"
+              [attr.aria-label]="alerts.filter().backend"
+            >
               <mat-icon svgIcon="database"></mat-icon>
               {{ alerts.filter().backend }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
-          <button matButton="text" (click)="clearFilters()">
+          <button
+            type="button"
+            matButton="text"
+            (click)="clearFilters()"
+            [attr.title]="'common.clearAll' | translate"
+            [attr.aria-label]="'common.clearAll' | translate"
+          >
             {{ 'common.clearAll' | translate }}
           </button>
         </div>
@@ -183,19 +214,19 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                   <span>{{ alert.rule_name }}</span>
                 </div>
                 @if (alert.profile) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.profile">
                     <mat-icon svgIcon="user"></mat-icon>
                     <span>{{ alert.profile }}</span>
                   </div>
                 }
                 @if (alert.remote) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.remote">
                     <mat-icon svgIcon="server"></mat-icon>
                     <span>{{ alert.remote }}</span>
                   </div>
                 }
                 @if (alert.backend) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.backend">
                     <mat-icon svgIcon="database"></mat-icon>
                     <span>{{ alert.backend }}</span>
                   </div>
@@ -225,11 +256,13 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                   }
 
                   <button
+                    type="button"
                     matIconButton
                     [class.btn-acked]="alert.acknowledged"
                     [disabled]="alert.acknowledged"
                     (click)="acknowledge(alert.id)"
                     [attr.title]="'common.acknowledge' | translate"
+                    [attr.aria-label]="'common.acknowledge' | translate"
                   >
                     <mat-icon svgIcon="check-circle"></mat-icon>
                   </button>
@@ -241,7 +274,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
-              [ngClass]="{ 'row-acked': row.acknowledged }"
+              [class.row-acked]="row.acknowledged"
               [style.--row-accent]="alerts.getSeverityStyle(row.severity).color"
             ></tr>
           </table>
@@ -275,8 +308,8 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     }
 
     .search-open {
-      background: rgba(var(--accent-color-rgb), 0.1) !important;
-      color: var(--accent-color) !important;
+      background: rgba(var(--accent-color-rgb), 0.1);
+      color: var(--accent-color);
     }
 
     .quick-filters {
@@ -290,21 +323,18 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
-      padding: 3px 10px;
+      padding: var(--space-xxs) var(--space-sm);
       font-size: var(--font-size-sm);
       color: var(--dim-color);
       background: var(--bg-elevated-1);
       border-radius: var(--radius-md);
       box-shadow: var(--ring-border);
-      transition:
-        color 0.2s,
-        background 0.2s,
-        box-shadow 0.2s;
+      transition: var(--transition-fast);
 
       mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
 
       strong {
@@ -464,7 +494,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     .meta-item {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: var(--space-xs);
       font-size: var(--font-size-sm);
       color: var(--dim-color);
       line-height: 1.6;
@@ -485,16 +515,16 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       padding: var(--space-xs) 0;
     }
 
-    .event-pill {
-      font-size: var(--font-size-xs) !important;
-      padding: 1px 6px !important;
-      min-height: unset !important;
+    .event-pill.app-pill {
+      font-size: var(--font-size-xs);
+      padding: 1px 6px;
+      min-height: unset;
     }
 
     .action-results {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: var(--space-xxs);
 
       mat-icon {
         width: var(--icon-size-sm);
@@ -538,7 +568,15 @@ export class AlertHistoryComponent {
   }
 
   setSeverityFilter(severity: AlertSeverity | undefined): void {
-    this.alerts.filter.update(f => ({ ...f, severity: severity }));
+    this.alerts.filter.update(f => {
+      const u = { ...f };
+      if (severity) {
+        u.severity = severity;
+      } else {
+        delete u.severity;
+      }
+      return u;
+    });
     this.alerts.fetchHistory();
   }
 
@@ -558,11 +596,19 @@ export class AlertHistoryComponent {
   }
 
   async acknowledge(id: string): Promise<void> {
-    await this.alerts.acknowledgeAlert(id);
+    try {
+      await this.alerts.acknowledgeAlert(id);
+    } catch (error) {
+      this.notificationService.showError(error);
+    }
   }
 
   async acknowledgeAll(): Promise<void> {
-    await this.alerts.acknowledgeAllAlerts();
+    try {
+      await this.alerts.acknowledgeAllAlerts();
+    } catch (error) {
+      this.notificationService.showError(error);
+    }
   }
 
   async clearHistory(): Promise<void> {
@@ -573,7 +619,11 @@ export class AlertHistoryComponent {
       'common.cancel'
     );
     if (confirmed) {
-      await this.alerts.clearAlertHistory();
+      try {
+        await this.alerts.clearAlertHistory();
+      } catch (error) {
+        this.notificationService.showError(error);
+      }
     }
   }
 }

@@ -423,7 +423,8 @@
       "subject": "Subject",
       "mqttHost": "MQTT Host",
       "mqttPort": "MQTT Port",
-      "mqttTopic": "MQTT Topic"
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "Add Header"
     },
     "noRulesHint": "No alert rules configured yet. Create a rule to receive notifications.",
     "noActionsHint": "No alert actions configured yet. Create an action to define how alerts are delivered."
@@ -1504,10 +1505,7 @@
       "noFeatureInfo": "No feature information available.",
       "example": "Example",
       "readOnly": "Read Only",
-      "yes": "Yes",
-      "no": "No",
       "noMetadata": "No metadata specifications available.",
-      "close": "Close dialog",
       "unknown": "Unknown",
       "error": "Failed to load remote information.",
       "tabs": {
@@ -1588,6 +1586,23 @@
         "copiedFiles": "Copied files",
         "syncedFiles": "Synced files",
         "processedFiles": "Processed files"
+      },
+      "running": "Running",
+      "filesCount": "{{count}} files",
+      "types": {
+        "copy": "Copy",
+        "copyurl": "Copy URL",
+        "move": "Move",
+        "rename": "Rename",
+        "delete": "Delete",
+        "cleanup": "Cleanup",
+        "rmdirs": "Remove Empty Dirs",
+        "sync": "Sync",
+        "bisync": "Bisync",
+        "check": "Check",
+        "upload": "Upload",
+        "archivecreate": "Archive",
+        "archiveextract": "Extract Archive"
       }
     },
     "fileViewer": {
@@ -1627,7 +1642,8 @@
       "showPreview": "Show Preview",
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
-      "resetZoom": "Reset Zoom"
+      "resetZoom": "Reset Zoom",
+      "hexPreview": "Hex Preview"
     }
   },
   "dashboard": {
@@ -2379,7 +2395,8 @@
   "nautilus": {
     "sidebar": {
       "configureTitle": "Configure Sidebar Items",
-      "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar."
+      "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar.",
+      "toggleSearch": "Toggle search"
     },
     "shortcuts": {
       "title": "Nautilus Keyboard Shortcuts"
@@ -2555,7 +2572,10 @@
       "iconSize": "Icon Size",
       "showHidden": "Show Hidden Files",
       "toggleLayout": "Toggle Layout",
-      "viewOptions": "View Options"
+      "viewOptions": "View Options",
+      "showingItems": "Showing {{count}} of {{total}}",
+      "decreaseIconSize": "Decrease icon size",
+      "increaseIconSize": "Increase icon size"
     },
     "notifications": {
       "mkdirFailed": "Failed to create directory: {{path}}",
@@ -2579,6 +2599,16 @@
     "androidShare": {
       "uploadHere": "Upload {{count}} shared file(s) to this folder",
       "confirm": "Upload here"
+    },
+    "toolbar": {
+      "goBack": "Go back",
+      "goForward": "Go forward",
+      "pathOptions": "Path options"
+    },
+    "actions": {
+      "cancelLoading": "Cancel loading",
+      "star": "Add to starred",
+      "unstar": "Remove from starred"
     }
   },
   "home": {

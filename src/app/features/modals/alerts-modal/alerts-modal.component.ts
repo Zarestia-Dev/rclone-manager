@@ -6,12 +6,14 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
+import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import { AlertHistoryComponent } from './history/alert-history.component';
 import { AlertRulesComponent } from './rules/alert-rules.component';
 import { AlertActionsComponent } from './actions/alert-actions.component';
 
 @Component({
   selector: 'app-alerts-modal',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     MatTabsModule,
     MatButtonModule,
@@ -24,10 +26,10 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header data-tauri-drag-region>
-      <button>
+      <button tabindex="-1" aria-hidden="true">
         <mat-icon svgIcon="bell"></mat-icon>
       </button>
-      <p class="header-title">{{ 'alerts.title' | translate }}</p>
+      <p>{{ 'alerts.title' | translate }}</p>
       <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
@@ -90,22 +92,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       opacity: 0.7;
     }
 
-    .tab-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-left: var(--space-xs);
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      border-radius: 9px;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
-      background: var(--warn-color);
-      color: #fff;
-    }
-
+    .tab-badge,
     .tab-count {
       display: inline-flex;
       align-items: center;
@@ -118,6 +105,14 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       font-size: 11px;
       font-weight: 700;
       line-height: 1;
+    }
+
+    .tab-badge {
+      background: var(--warn-color);
+      color: var(--accent-fg-color, #ffffff);
+    }
+
+    .tab-count {
       background: var(--bg-elevated-4);
       color: var(--dim-color);
     }

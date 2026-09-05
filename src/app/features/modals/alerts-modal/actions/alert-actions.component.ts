@@ -72,7 +72,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                 {{ 'alerts.action.kind' | translate }}
               </th>
               <td mat-cell *matCellDef="let action">
-                <span class="app-pill p-dim kind-pill">
+                <span class="app-pill p-dim">
                   <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
                   {{ 'alerts.action.' + action.kind | translate }}
                 </span>
@@ -212,8 +212,9 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
       font-weight: 700;
       font-size: var(--font-size-xs);
       letter-spacing: 0.05em;
-      color: var(--text-muted);
+      color: var(--dim-color);
       white-space: nowrap;
+      padding: 0 var(--space-sm) !important;
     }
 
     .mat-mdc-cell {
@@ -247,16 +248,6 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
       width: 136px;
     }
 
-    .kind-pill {
-      width: fit-content;
-
-      mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
-      }
-    }
-
     .action-name {
       font-weight: 600;
       font-size: var(--font-size-md);
@@ -278,8 +269,8 @@ export class AlertActionsComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
 
-  searchVisible = signal(false);
-  displayedColumns = ['kind', 'name', 'status', 'actions'];
+  readonly searchVisible = signal(false);
+  readonly displayedColumns = ['kind', 'name', 'status', 'actions'];
 
   onSearchChange(term: string): void {
     this.alerts.actionsSearchTerm.set(term);
@@ -338,12 +329,15 @@ export class AlertActionsComponent {
         this.notificationService.showSuccess(this.translate.instant('alerts.testActionSuccess'));
       } else {
         this.notificationService.showError(
-          this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
+          this.translate.instant('alerts.testActionFailed', {
+            error: this.translate.instant('common.error'),
+          })
         );
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       this.notificationService.showError(
-        this.translate.instant('alerts.testActionError', { error: err })
+        this.translate.instant('alerts.testActionError', { error: errorMsg })
       );
       console.error('Test failed', err);
     }

@@ -1,8 +1,5 @@
 <header data-tauri-drag-region>
-  <button
-    [attr.title]="'alerts.action.' + form.controls.kind.value | translate"
-    [attr.data-kind]="form.controls.kind.value"
-  >
+  <button [attr.title]="'alerts.action.' + form.controls.kind.value | translate">
     <mat-icon [svgIcon]="selectedKindIcon"></mat-icon>
   </button>
   <p>
@@ -49,7 +46,6 @@
         }
       </div>
 
-      <!-- Needs to change -->
       <div class="toggle-row">
         <mat-slide-toggle formControlName="enabled">
           {{ 'alerts.enabled' | translate }}
@@ -71,15 +67,17 @@
         <div class="presets-row">
           <span class="mini-label">{{ 'alerts.action.presets' | translate }}</span>
           <button matButton="outlined" type="button" (click)="applyPreset('discord')">
-            <mat-icon svgIcon="discord"></mat-icon> Discord
+            <mat-icon svgIcon="discord"></mat-icon>
+            {{ 'alerts.action.discord' | translate }}
           </button>
           <button matButton="outlined" type="button" (click)="applyPreset('slack')">
-            <mat-icon svgIcon="slack"></mat-icon> Slack
+            <mat-icon svgIcon="slack"></mat-icon>
+            {{ 'alerts.action.slack' | translate }}
           </button>
         </div>
 
         <div class="form-row">
-          <mat-form-field class="grow">
+          <mat-form-field>
             <mat-label>{{ 'alerts.action.url' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="link"></mat-icon>
             <input
@@ -96,7 +94,7 @@
           </div>
         </div>
 
-        <div class="form-row three-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.method' | translate }}</mat-label>
             <mat-select formControlName="method">
@@ -116,32 +114,35 @@
           </mat-form-field>
         </div>
 
-        <!-- Headers sub-panel -->
-        <div class="sub-panel">
-          <div class="sub-panel-header">
-            <span class="mini-label">{{ 'alerts.action.headers' | translate }}</span>
-            <button matIconButton type="button" (click)="addHeader()" title="Add Header">
-              <mat-icon svgIcon="plus"></mat-icon>
-            </button>
-          </div>
-          <div formArrayName="headers" class="headers-list">
-            @for (header of headers.controls; track header) {
-              <div [formGroupName]="$index" class="header-row">
-                <mat-form-field class="header-key">
-                  <input matInput formControlName="key" placeholder="Authorization" />
-                </mat-form-field>
-                <mat-form-field class="header-val">
-                  <input matInput formControlName="value" placeholder="Bearer …" />
-                  <button matIconButton matSuffix type="button" (click)="removeHeader($index)">
-                    <mat-icon svgIcon="trash"></mat-icon>
-                  </button>
-                </mat-form-field>
-              </div>
-            }
-            @if (headers.length === 0) {
-              <p class="empty-hint">{{ 'alerts.action.noHeaders' | translate }}</p>
-            }
-          </div>
+        <!-- Headers list -->
+        <div class="sub-panel-header">
+          <span class="mini-label">{{ 'alerts.action.headers' | translate }}</span>
+          <button
+            matIconButton
+            type="button"
+            (click)="addHeader()"
+            [attr.title]="'alerts.action.addHeader' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+          </button>
+        </div>
+        <div formArrayName="headers" class="headers-list">
+          @for (header of headers.controls; track header) {
+            <div [formGroupName]="$index" class="header-row">
+              <mat-form-field class="header-key">
+                <input matInput formControlName="key" placeholder="Authorization" />
+              </mat-form-field>
+              <mat-form-field class="header-val">
+                <input matInput formControlName="value" placeholder="Bearer …" />
+                <button matIconButton matSuffix type="button" (click)="removeHeader($index)">
+                  <mat-icon svgIcon="trash"></mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+          }
+          @if (headers.length === 0) {
+            <p class="empty-hint">{{ 'alerts.action.noHeaders' | translate }}</p>
+          }
         </div>
 
         <mat-form-field>
@@ -149,23 +150,19 @@
           <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
         </mat-form-field>
 
-        <div class="info-box">
-          <mat-icon svgIcon="info"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.bodyTemplateHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
-              }
-            </div>
+        <app-alert-banner severity="info" [title]="'alerts.action.bodyTemplateHint' | translate">
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
       }
 
       <!-- SCRIPT -->
       @if (form.controls.kind.value === 'script') {
         <div class="form-row">
-          <mat-form-field class="grow">
+          <mat-form-field>
             <mat-label>{{ 'alerts.action.command' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="terminal"></mat-icon>
             <input
@@ -196,7 +193,7 @@
           />
         </mat-form-field>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
             <input matInput type="number" formControlName="timeout_secs" />
@@ -208,25 +205,26 @@
           </mat-form-field>
         </div>
 
-        <div class="info-box">
-          <mat-icon svgIcon="terminal"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.scriptContextHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">ALERT_{{ key.toUpperCase() }}</code>
-              }
-            </div>
+        <app-alert-banner
+          severity="info"
+          icon="terminal"
+          [title]="'alerts.action.scriptContextHint' | translate"
+        >
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">ALERT_{{ key.toUpperCase() }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
       }
 
       <!-- OS TOAST -->
       @if (form.controls.kind.value === 'os_toast') {
-        <div class="info-box accent">
-          <mat-icon svgIcon="desktop"></mat-icon>
-          <span>{{ 'alerts.action.os_toast_info' | translate }}</span>
-        </div>
+        <app-alert-banner
+          severity="info"
+          icon="desktop"
+          [description]="'alerts.action.os_toast_info' | translate"
+        />
       }
 
       <!-- TELEGRAM -->
@@ -290,7 +288,7 @@
           }
         </mat-form-field>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
             <input matInput type="number" formControlName="timeout_secs" />
@@ -307,27 +305,23 @@
           <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
         </mat-form-field>
 
-        <div class="info-box">
-          <mat-icon svgIcon="info"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.messageTemplateHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
-              }
-            </div>
+        <app-alert-banner severity="info" [title]="'alerts.action.messageTemplateHint' | translate">
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
 
-        <div class="info-box accent">
-          <mat-icon svgIcon="info"></mat-icon>
-          <span>{{
+        <app-alert-banner
+          severity="info"
+          [description]="
             (form.controls.telegram_mode.value === 'botless'
               ? 'alerts.action.telegram_botless_info'
               : 'alerts.action.telegram_info'
             ) | translate
-          }}</span>
-        </div>
+          "
+        />
       }
 
       <!-- WHATSAPP -->
@@ -390,7 +384,7 @@
           </mat-form-field>
         }
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
             <input matInput type="number" formControlName="timeout_secs" />
@@ -407,33 +401,29 @@
           <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
         </mat-form-field>
 
-        <div class="info-box">
-          <mat-icon svgIcon="info"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.messageTemplateHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
-              }
-            </div>
+        <app-alert-banner severity="info" [title]="'alerts.action.messageTemplateHint' | translate">
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
 
-        <div class="info-box accent">
-          <mat-icon svgIcon="info"></mat-icon>
-          <span>{{
+        <app-alert-banner
+          severity="info"
+          [description]="
             (form.controls.whatsapp_provider.value === 'callmebot'
               ? 'alerts.action.whatsapp_callmebot_info'
               : 'alerts.action.whatsapp_gateway_info'
             ) | translate
-          }}</span>
-        </div>
+          "
+        />
       }
 
       <!-- MQTT -->
       @if (form.controls.kind.value === 'mqtt') {
         <div class="form-row">
-          <mat-form-field class="grow">
+          <mat-form-field>
             <mat-label>{{ 'alerts.action.host' | translate }}</mat-label>
             <mat-icon matPrefix svgIcon="link"></mat-icon>
             <input matInput formControlName="host" placeholder="localhost" />
@@ -446,7 +436,9 @@
             <input matInput type="number" formControlName="port" />
           </mat-form-field>
           <div class="toggle-row">
-            <mat-slide-toggle formControlName="use_tls">TLS</mat-slide-toggle>
+            <mat-slide-toggle formControlName="use_tls">
+              {{ 'alerts.action.useTls' | translate }}
+            </mat-slide-toggle>
           </div>
         </div>
 
@@ -459,7 +451,7 @@
           }
         </mat-form-field>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'common.username' | translate }}</mat-label>
             <input matInput formControlName="username" />
@@ -471,7 +463,7 @@
         </div>
 
         <div class="form-row">
-          <mat-form-field class="grow">
+          <mat-form-field>
             <mat-label>{{ 'alerts.action.qos' | translate }}</mat-label>
             <mat-select formControlName="qos">
               <mat-option [value]="0">0 – At most once</mat-option>
@@ -491,23 +483,19 @@
           <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
         </mat-form-field>
 
-        <div class="info-box">
-          <mat-icon svgIcon="info"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.messageTemplateHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
-              }
-            </div>
+        <app-alert-banner severity="info" [title]="'alerts.action.messageTemplateHint' | translate">
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
       }
 
       <!-- EMAIL -->
       @if (form.controls.kind.value === 'email') {
         <div class="form-row">
-          <mat-form-field class="grow">
+          <mat-form-field>
             <mat-label>{{ 'alerts.action.smtpServer' | translate }}</mat-label>
             <input matInput formControlName="smtp_server" placeholder="smtp.gmail.com" />
             @if (form.controls.smtp_server.hasError('required')) {
@@ -529,7 +517,7 @@
           </mat-select>
         </mat-form-field>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'common.username' | translate }}</mat-label>
             <input matInput formControlName="username" />
@@ -540,7 +528,7 @@
           </mat-form-field>
         </div>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.from' | translate }}</mat-label>
             <input matInput formControlName="from" placeholder="alerts@example.com" />
@@ -554,7 +542,7 @@
           </mat-form-field>
         </div>
 
-        <div class="form-row two-col">
+        <div class="form-row">
           <mat-form-field>
             <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
             <input matInput type="number" formControlName="timeout_secs" />
@@ -576,17 +564,13 @@
           <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
         </mat-form-field>
 
-        <div class="info-box">
-          <mat-icon svgIcon="info"></mat-icon>
-          <div class="info-content">
-            <span class="info-title">{{ 'alerts.action.messageTemplateHint' | translate }}</span>
-            <div class="tags-row">
-              @for (key of templateKeys(); track key) {
-                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
-              }
-            </div>
+        <app-alert-banner severity="info" [title]="'alerts.action.messageTemplateHint' | translate">
+          <div class="tags-row">
+            @for (key of templateKeys(); track key) {
+              <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+            }
           </div>
-        </div>
+        </app-alert-banner>
       }
     </div>
     <!-- /panel -->
