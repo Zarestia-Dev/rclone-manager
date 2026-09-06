@@ -19,25 +19,44 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { ErrorStateMatcher } from '@angular/material/core';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { FileBrowserItem, ExplorerRoot } from '@app/types';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { NotificationService } from 'src/app/services/ui/notification.service';
+import { FileBrowserItem, ExplorerRoot, RenameItem } from '@app/types';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
+import { NotificationService } from '../../../services/ui/notification.service';
 
 export interface MultiRenameData {
   items: FileBrowserItem[];
   remote: ExplorerRoot;
 }
 
+export type MultiRenameTargetScope = 'all' | 'files' | 'folders';
+export type MultiRenameCaseTransform = 'none' | 'lowercase' | 'uppercase' | 'titlecase';
+
 export interface MultiRenameFormValue {
+  targetScope?: MultiRenameTargetScope;
+  caseTransform?: MultiRenameCaseTransform;
+  preserveExtension?: boolean;
+  prefix?: string;
+  suffix?: string;
   template?: string;
   counterStart?: number;
   counterStep?: number;
   counterPadding?: number;
   findText?: string;
   replaceWith?: string;
+  useRegex?: boolean;
   caseSensitive?: boolean;
+}
+
+export interface MultiRenamePreviewItem {
+  item: FileBrowserItem;
+  originalName: string;
+  newName: string;
+  isDir: boolean;
+  hasError: boolean;
+  isChanged: boolean;
 }
 
 @Component({
@@ -73,17 +92,44 @@ export class MultiRenameModalComponent {
   readonly isSaving = signal(false);
 
   readonly form = new FormGroup({
-    template: new FormControl('[Original file name]', { nonNullable: true }),
-    counterStart: new FormControl(1, { nonNullable: true, validators: [Validators.min(0)] }),
-    counterStep: new FormControl(1, { nonNullable: true, validators: [Validators.min(1)] }),
-    counterPadding: new FormControl(2, { nonNullable: true }),
-    findText: new FormControl('', { nonNullable: true }),
-    replaceWith: new FormControl('', { nonNullable: true }),
-    caseSensitive: new FormControl(false, { nonNullable: true }),
+    targetScope: new FormControl<MultiRenameTargetScope>('all', { nonNullable: true }),
+    caseTransform: new FormControl<MultiRenameCaseTransform>('none', { nonNullable: true }),
+    preserveExtension: new FormControl<boolean>(true, { nonNullable: true }),
+    prefix: new FormControl<string>('', { nonNullable: true }),
+    suffix: new FormControl<string>('', { nonNullable: true }),
+    template: new FormControl<string>('[Original file name]', { nonNullable: true }),
+    counterStart: new FormControl<number>(1, {
+      nonNullable: true,
+      validators: [Validators.min(0)],
+    }),
+    counterStep: new FormControl<number>(1, { nonNullable: true, validators: [Validators.min(1)] }),
+    counterPadding: new FormControl<number>(2, { nonNullable: true }),
+    findText: new FormControl<string>('', { nonNullable: true }),
+    replaceWith: new FormControl<string>('', { nonNullable: true }),
+    useRegex: new FormControl<boolean>(false, { nonNullable: true }),
+    caseSensitive: new FormControl<boolean>(false, { nonNullable: true }),
   });
 
   // Track form values as a signal
   readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
+
+  // Validate regex syntax when in replace mode with useRegex enabled
+  readonly regexError = computed<string | null>(() => {
+    if (this.mode() !== 'replace') return null;
+    const val = this.formValue();
+    if (!val.useRegex || !val.findText) return null;
+    try {
+      new RegExp(val.findText, val.caseSensitive ? 'g' : 'gi');
+      return null;
+    } catch (e) {
+      return (e as Error).message || String(e);
+    }
+  });
+
+  // Error matcher for findText input when regex is invalid
+  readonly regexErrorMatcher: ErrorStateMatcher = {
+    isErrorState: () => !!this.regexError(),
+  };
 
   // Compute whether to show counter options
   readonly showCounterConfig = computed(() => {
@@ -92,28 +138,45 @@ export class MultiRenameModalComponent {
   });
 
   // Compute live preview of renamed items
-  readonly previewItems = computed(() => {
+  readonly previewItems = computed<MultiRenamePreviewItem[]>(() => {
     const items = this.data.items;
     const currentMode = this.mode();
     const val = this.formValue();
 
-    const results = items.map((item, index) => {
+    // Track index of matched items for sequential counter
+    let matchCounter = 0;
+
+    const results: MultiRenamePreviewItem[] = items.map(item => {
       const originalName = item.entry.Name;
-      const newName = this.calculateNewName(item, index, currentMode, val);
+      const isDir = !!item.entry.IsDir;
+      const scope = val.targetScope ?? 'all';
+
+      const isTargeted =
+        scope === 'all' || (scope === 'files' && !isDir) || (scope === 'folders' && isDir);
+
+      let newName = originalName;
+      if (isTargeted) {
+        newName = this.calculateNewName(item, matchCounter, currentMode, val);
+        matchCounter++;
+      }
+
+      const isInvalid = !this.isValidFilename(newName);
+
       return {
         item,
         originalName,
         newName,
-        hasError: !newName || newName.trim() === '',
+        isDir,
+        hasError: isInvalid,
+        isChanged: newName !== originalName,
       };
     });
 
-    // Check for duplicates
+    // Check for duplicates among targets
     const names = results.map(r => r.newName);
     results.forEach(r => {
-      if (!r.newName || r.newName.trim() === '') {
-        r.hasError = true;
-      } else if (names.filter(n => n === r.newName).length > 1) {
+      if (r.hasError) return;
+      if (names.filter(n => n === r.newName).length > 1) {
         r.hasError = true;
       }
     });
@@ -121,14 +184,21 @@ export class MultiRenameModalComponent {
     return results;
   });
 
-  // Returns true if any preview item has a validation error
+  // Summary counts
+  readonly totalCount = computed(() => this.previewItems().length);
+  readonly changedCount = computed(() => this.previewItems().filter(p => p.isChanged).length);
+  readonly unchangedCount = computed(() => this.previewItems().filter(p => !p.isChanged).length);
+  readonly conflictCount = computed(() => this.previewItems().filter(p => p.hasError).length);
+
+  // Returns true if any preview item has a validation error or invalid regex
   readonly hasErrors = computed(() => {
+    if (this.regexError()) return true;
     return this.previewItems().some(p => p.hasError);
   });
 
   // Returns true if any new name is different from the original name
   readonly hasChanges = computed(() => {
-    return this.previewItems().some(p => p.newName !== p.originalName);
+    return this.changedCount() > 0;
   });
 
   setMode(newMode: 'template' | 'replace'): void {
@@ -146,7 +216,6 @@ export class MultiRenameModalComponent {
 
     this.form.patchValue({ template: newVal });
 
-    // Defer resetting the cursor selection
     setTimeout(() => {
       inputEl.focus();
       inputEl.selectionStart = inputEl.selectionEnd = start + placeholder.length;
@@ -161,26 +230,24 @@ export class MultiRenameModalComponent {
     if (this.hasErrors() || !this.hasChanges() || this.isSaving()) return;
 
     this.isSaving.set(true);
-    const remoteName = this.pathService.normalizeRemoteForRclone(this.data.remote.name);
+    const remoteName = this.pathService.normalizeExplorerRoot(this.data.remote);
     const previews = this.previewItems();
 
     try {
-      // Execute all rename operations
-      const promises = previews
-        .filter(p => p.newName !== p.originalName)
+      const renameItems: RenameItem[] = previews
+        .filter(p => p.isChanged)
         .map(p => {
           const parentDir = this.pathService.getParentPath(p.item.entry.Path);
           const newPath = this.pathService.joinPath(parentDir, p.newName);
-          return this.remoteOps.rename(
-            remoteName,
-            p.item.entry.Path,
-            newPath,
-            !!p.item.entry.IsDir,
-            'filemanager'
-          );
+          return {
+            remote: remoteName,
+            srcPath: p.item.entry.Path,
+            dstPath: newPath,
+            isDir: p.isDir,
+          };
         });
 
-      await Promise.all(promises);
+      await this.remoteOps.renameBatch(renameItems, 'filemanager');
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.renameStarted')
       );
@@ -205,13 +272,17 @@ export class MultiRenameModalComponent {
     val: MultiRenameFormValue
   ): string {
     const filename = item.entry.Name;
-    const { base, ext } = this.getBaseAndExt(filename);
+    const isDir = !!item.entry.IsDir;
+    const preserveExt = !isDir && (val.preserveExtension ?? true);
+
+    const { base, ext } = preserveExt ? this.getBaseAndExt(filename) : { base: filename, ext: '' };
+
+    let transformedBase = base;
 
     if (currentMode === 'template') {
-      let tpl = val.template || '';
+      let tpl = val.template ?? '';
       if (!tpl) return filename;
 
-      // Replace placeholders
       tpl = tpl.replace(/\[Original file name\]/g, base);
       tpl = tpl.replace(/\[Name\]/g, base);
 
@@ -230,25 +301,61 @@ export class MultiRenameModalComponent {
       }
 
       if (tpl.includes('[Date]')) {
-        const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateStr = new Date().toISOString().split('T')[0];
         tpl = tpl.replace(/\[Date\]/g, dateStr);
       }
 
-      // If [Extension] placeholder is not explicitly typed, preserve original file extension
-      if (!val.template?.includes('[Extension]')) {
-        return tpl + ext;
+      if (tpl.includes('[ModDate]')) {
+        const modDate = item.entry.ModTime ? item.entry.ModTime.split('T')[0] : '';
+        const fallbackDate = new Date().toISOString().split('T')[0];
+        tpl = tpl.replace(/\[ModDate\]/g, modDate || fallbackDate);
       }
-      return tpl;
+
+      transformedBase = tpl;
     } else {
-      // Find & Replace mode
       const find = val.findText || '';
       const replace = val.replaceWith || '';
       const caseSensitive = val.caseSensitive ?? false;
+      const useRegex = val.useRegex ?? false;
 
-      if (!find) return filename;
+      if (find) {
+        transformedBase = this.replaceStr(base, find, replace, caseSensitive, useRegex);
+      }
+    }
 
-      const newBase = this.replaceStr(base, find, replace, caseSensitive);
-      return newBase + ext;
+    // Apply Prefix & Suffix
+    if (val.prefix) {
+      transformedBase = val.prefix + transformedBase;
+    }
+    if (val.suffix) {
+      transformedBase = transformedBase + val.suffix;
+    }
+
+    // Apply Case Transform
+    const caseType = val.caseTransform ?? 'none';
+    transformedBase = this.applyCaseTransform(transformedBase, caseType);
+
+    // If preserveExt is true and [Extension] was not in the template, re-attach extension
+    if (preserveExt) {
+      if (currentMode === 'template' && val.template?.includes('[Extension]')) {
+        return transformedBase;
+      }
+      return transformedBase + ext;
+    }
+
+    return transformedBase;
+  }
+
+  private applyCaseTransform(str: string, transform: MultiRenameCaseTransform): string {
+    switch (transform) {
+      case 'lowercase':
+        return str.toLowerCase();
+      case 'uppercase':
+        return str.toUpperCase();
+      case 'titlecase':
+        return str.replace(/\b\w/g, char => char.toUpperCase());
+      default:
+        return str;
     }
   }
 
@@ -266,16 +373,30 @@ export class MultiRenameModalComponent {
     return { base: filename, ext: '' };
   }
 
+  private isValidFilename(name: string): boolean {
+    if (!name || name.trim() === '') return false;
+    // Disallow control characters and cross-platform forbidden chars: < > : " / \ | ? *
+    // eslint-disable-next-line no-control-regex
+    if (/[\x00-\x1f<>:"/\\|?*]/.test(name)) return false;
+    // Cannot end with space or dot (Windows file system restriction)
+    if (/[. ]$/.test(name)) return false;
+    // Check reserved names (CON, PRN, AUX, NUL, COM1..9, LPT1..9)
+    const baseName = name.split('.')[0].toUpperCase();
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(baseName)) return false;
+    return true;
+  }
+
   private replaceStr(
     str: string,
     find: string,
     replaceVal: string,
-    caseSensitive: boolean
+    caseSensitive: boolean,
+    useRegex: boolean
   ): string {
     try {
-      const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = useRegex ? find : find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const flags = caseSensitive ? 'g' : 'gi';
-      const regex = new RegExp(escapedFind, flags);
+      const regex = new RegExp(pattern, flags);
       return str.replace(regex, replaceVal);
     } catch {
       return str;

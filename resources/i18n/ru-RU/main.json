@@ -42,7 +42,8 @@
     "acknowledge": "Подтвердить",
     "actions": "Действия",
     "savedSuccessfully": "Успешно сохранено",
-    "deletedSuccessfully": "Успешно удалено"
+    "deletedSuccessfully": "Успешно удалено",
+    "notConfigured": "Не настроено"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "Некорректный формат ограничения скорости",
     "fileMode": "Требуется восьмеричный формат (3–4 цифры от 0 до 7). Пример: 755",
     "enum": "Допустимые значения: {{values}}",
-    "invalidPath": "Путь должен быть абсолютным",
     "urlArray": "Все URL должны быть корректными и начинаться с http:// или https://",
     "bandwidth": "Некорректный формат скорости. Используйте: 10M, 1G, 100K или их сочетания",
     "passwordMismatch": "Пароли не совпадают",
@@ -810,7 +810,6 @@
         "invalid": "Некорректный исполняемый файл"
       },
       "errors": {
-        "invalidPath": "Введите корректный абсолютный путь",
         "required": "Это поле обязательно"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "Экспортировать конфигурацию",
       "toggleBrowser": "Показать или скрыть файловый менеджер",
       "openFlowOverlay": "Переключить рабочую область Flow",
-      "closeDialog": "Закрыть окно или отменить действие"
+      "closeDialog": "Закрыть окно или отменить действие",
+      "saveWorkflow": "Сохранить рабочий процесс",
+      "deleteSelected": "Удалить выбранные узлы/ребра"
     },
     "categories": {
       "global": "Глобальные",
@@ -1783,7 +1784,8 @@
       "fileOperations": "Файловые операции",
       "fileBrowser": "Файловый менеджер",
       "fileBrowserNautilus": "Файловый менеджер Nautilus",
-      "navigation": "Навигация"
+      "navigation": "Навигация",
+      "flowWorkspace": "Рабочее пространство Flow"
     },
     "quitError": "Не удалось завершить работу приложения: {{error}}",
     "mountsRefreshSuccess": "Состояние подключённых дисков успешно обновлено",
@@ -1966,9 +1968,6 @@
       "scrollTop": "В начало",
       "scrollBottom": "В конец",
       "fetching": "Получение журналов...",
-      "aria": {
-        "terminalLogs": "Журналы терминала"
-      },
       "remoteLogs": "Журналы подключения: {{ name }}",
       "noLogsFound": "Журналы не найдены",
       "adjustFilters": "Попробуйте изменить фильтры",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "Путь к конфигурации",
-          "placeholder": "Оставьте пустым для стандартного пути",
-          "description": "Отдельный путь к rclone.conf (необязательно)"
+          "placeholder": "Оставьте пустым для стандартного пути"
         }
       },
       "addBackend": "Добавить бэкенд",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "Конфигурация rclone будет расшифрована. Учётные данные сможет увидеть любой пользователь с доступом к файлам.",
         "enableEncryption": "Включить шифрование",
         "protectCredentials": "Защитить учётные данные паролем",
-        "passwordChanged": "Пароль изменён",
-        "passwordStored": "Пароль сохранён в системном хранилище",
         "passwordStoredInKeyring": "Пароль сохранён в системном хранилище ключей",
-        "passwordRemoved": "Пароль удалён из системного хранилища",
         "passwordsMismatch": "Пароли не совпадают"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "Новое имя",
         "counter": "Счётчик",
         "date": "Дата",
+        "modDate": "Дата изменения",
         "extension": "Расширение",
-        "duplicateOrInvalid": "Дублирующееся или недопустимое имя"
+        "duplicateOrInvalid": "Дублирующееся или недопустимое имя",
+        "invalidRegex": "Недопустимое регулярное выражение: {{error}}",
+        "targetScope": "Применить к",
+        "targetScopeAll": "Файлы и папки",
+        "targetScopeFiles": "Только файлы",
+        "targetScopeFolders": "Только папки",
+        "caseTransform": "Регистр символов",
+        "caseNone": "Без изменений",
+        "caseLower": "строчные",
+        "caseUpper": "ПРОПИСНЫЕ",
+        "caseTitle": "Как в заголовке",
+        "preserveExtension": "Сохранять расширение",
+        "useRegex": "Регулярные выражения",
+        "prefix": "Префикс",
+        "suffix": "Суффикс",
+        "statsChanged": "{{count}} к переименованию",
+        "statsUnchanged": "{{count}} без изменений",
+        "statsConflicts": "{{count}} конфликт(ов)"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "Пароль не может быть пустым",
       "noPasswordStored": "Сохранённый пароль отсутствует",
-      "passwordChangeUnavailable": "Изменение пароля недоступно на этой платформе",
       "incorrectPassword": "Неверный пароль конфигурации rclone",
       "storeFailed": "Не удалось сохранить пароль: {{error}}",
       "encryptFailed": "Не удалось зашифровать конфигурацию: {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "Сначала проверьте исполняемый файл"
     },
     "passwordErrors": {
-      "validateFailed": "Проверка не пройдена",
       "invalid": "Неверный пароль",
       "locked": "Учётная запись заблокирована из-за большого числа попыток",
       "generic": "Ошибка: {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "Фильтр",
         "tabBackend": "Бэкенд",
-        "tabRuntimeRemote": "Диск выполнения"
+        "tabRuntimeRemote": "Диск выполнения",
+        "noProfiles": "Нет доступных профилей"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "Рабочий процесс"
     },
     "workflow": {
-      "title": "Редактор рабочих процессов",
       "untitled": "Безымянный процесс",
       "savedWorkflows": "Сохраненные процессы",
       "presetRecipes": "Готовые шаблоны",
@@ -3338,7 +3349,6 @@
         "action": "Действие"
       },
       "actions": {
-        "configure": "Настроить узел",
         "duplicate": "Дублировать узел",
         "delete": "Удалить узел",
         "duplicateWorkflow": "Дублировать процесс",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "Экспорт JSON"
       },
       "toolbar": {
-        "togglePalette": "Библиотека узлов",
         "selectWorkflow": "Выбрать процесс",
         "newWorkflow": "Новый процесс",
         "run": "Запустить процесс",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "Привязать к сетке",
         "toggleLog": "Журнал выполнения",
         "toggleInspector": "Инспектор",
-        "cleanDuplicates": "Очистить дубликаты",
         "dryRun": "Тестовый запуск",
         "dryRunTooltip": "Имитация выполнения рабочего процесса без изменения данных и выполнения реальных команд"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "Напр. Ежедневное резервное копирование",
         "cronExpression": "Выражение Cron",
         "invalidCron": "Недопустимое выражение cron",
-        "cronHourly": "Каждый час",
         "cronDaily": "Ежедневно в 02:00",
-        "cronWeekly": "Еженедельно (Пн)",
         "watchFolder": "Путь к отслеживаемой папке",
         "debounceSeconds": "Задержка стабилизации (сек)",
         "remote": "Удаленный диск",
@@ -3393,7 +3399,6 @@
         "mountPoint": "Точка монтирования",
         "rcEndpoint": "Эндпоинт RC",
         "rcParameters": "Параметры RC (JSON)",
-        "rcParametersHint": "JSON-полезная нагрузка для команды RC (поддерживает токены {{nodes.id.field}})",
         "rcPresets": "Готовые эндпоинты",
         "presetCategoryAll": "Все",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "Вставить переменную",
         "formatJson": "Форматировать JSON",
         "clearJson": "Очистить",
-        "validJson": "Корректный JSON",
         "invalidJson": "Некорректный JSON",
         "templateJson": "Динамический шаблон",
         "noUpstreamNodesHint": "Добавьте другие узлы в рабочий процесс, чтобы динамически ссылаться на их вывод, как {{nodes.id.field}}",
@@ -3426,7 +3430,6 @@
         "alertMessage": "Текст оповещения",
         "severity": "Уровень важности",
         "severityInfo": "Информация",
-        "severitySuccess": "Успех",
         "severityError": "Ошибка / Предупреждение",
         "openDetailed": "Подробные настройки",
         "openDetailedTooltip": "Открыть панель расширенных параметров и флагов",
@@ -3454,9 +3457,6 @@
         "eventStateSuccess": "Only on Success",
         "eventStateFailed": "Only on Failure",
         "optionalPath": "Optional Subfolder Path",
-        "cryptRemote": "Crypt Remote",
-        "selectCryptRemote": "Select crypt remote...",
-        "cryptDstPath": "Encrypted Destination Path",
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
@@ -3625,6 +3625,9 @@
         "configureNode": "Настройка узла: {{type}}",
         "nodeSaved": "Настройки узла рабочего процесса обновлены"
       }
+    },
+    "shortcuts": {
+      "title": "Горячие клавиши Flow"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "Шаблон успешно удален."
   },
   "navigation": {
-    "dashboard": "Панель управления"
+    "dashboard": "Панель управления",
+    "files": "Файлы"
   },
   "provision": {
     "stages": {

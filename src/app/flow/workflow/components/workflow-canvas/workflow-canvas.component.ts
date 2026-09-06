@@ -20,6 +20,7 @@ import { WorkflowNode } from '../../types/workflow.types';
 import { ModalService } from '../../../../services/ui/modal.service';
 import { NODE_WIDTH, PORT_ROW_START_Y, PORT_ROW_HEIGHT } from '../../constants/workflow.constants';
 import { hasDetailedConfig } from '../../utils/node-style.util';
+import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
 
 @Component({
   selector: 'app-workflow-canvas',
@@ -178,17 +179,9 @@ export class WorkflowCanvasComponent {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
-    const activeEl = document.activeElement as HTMLElement | null;
-    const isEditing =
-      activeEl &&
-      (activeEl.tagName === 'INPUT' ||
-        activeEl.tagName === 'TEXTAREA' ||
-        activeEl.tagName === 'SELECT' ||
-        activeEl.isContentEditable);
+    if (isInputFocused(event)) return;
 
-    if (isEditing) return;
-
-    if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (matchesShortcut('Delete / Backspace', event)) {
       const selectedNodes = this.stateService.selectedNodeIds();
       const selectedEdges = this.stateService.selectedEdgeIds();
       if (selectedNodes.size > 0 || selectedEdges.size > 0) {

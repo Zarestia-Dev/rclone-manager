@@ -42,7 +42,8 @@
     "acknowledge": "Acknowledge",
     "actions": "Actions",
     "savedSuccessfully": "Saved successfully",
-    "deletedSuccessfully": "Deleted successfully"
+    "deletedSuccessfully": "Deleted successfully",
+    "notConfigured": "Not Configured"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "Invalid bandwidth format",
     "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
     "enum": "Must be one of: {{values}}",
-    "invalidPath": "Path must be absolute",
     "urlArray": "All URLs must be valid and start with http:// or https://",
     "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
     "passwordMismatch": "Passwords do not match",
@@ -810,7 +810,6 @@
         "invalid": "Invalid binary"
       },
       "errors": {
-        "invalidPath": "Please enter a valid absolute path",
         "required": "This field is required"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "Export Configuration",
       "toggleBrowser": "Toggle File Browser",
       "openFlowOverlay": "Toggle Flow Workspace",
-      "closeDialog": "Close Dialog/Cancel Action"
+      "closeDialog": "Close Dialog/Cancel Action",
+      "saveWorkflow": "Save Workflow",
+      "deleteSelected": "Delete Selected Nodes/Edges"
     },
     "categories": {
       "global": "Global",
@@ -1783,7 +1784,8 @@
       "fileOperations": "File Operations",
       "fileBrowser": "File Browser",
       "fileBrowserNautilus": "File Browser (Nautilus)",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "flowWorkspace": "Flow Workspace"
     },
     "quitError": "Failed to quit application: {{error}}",
     "mountsRefreshSuccess": "Mounts refreshed successfully",
@@ -1966,9 +1968,6 @@
       "scrollTop": "Scroll Top",
       "scrollBottom": "Scroll Bottom",
       "fetching": "Fetching logs...",
-      "aria": {
-        "terminalLogs": "Terminal logs"
-      },
       "remoteLogs": "Remote Logs: {{ name }}",
       "noLogsFound": "No logs found",
       "adjustFilters": "Try adjusting your filters",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "Config Path",
-          "placeholder": "Leave empty to use default",
-          "description": "Specific path to rclone.conf (optional)"
+          "placeholder": "Leave empty to use default"
         }
       },
       "addBackend": "Add Backend",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "This will decrypt your rclone configuration. Your credentials will be visible to anyone with access to your files.",
         "enableEncryption": "Enable Encryption",
         "protectCredentials": "Protect your credentials with a password",
-        "passwordChanged": "Password changed",
-        "passwordStored": "Password stored in keychain",
         "passwordStoredInKeyring": "Password stored in system keyring",
-        "passwordRemoved": "Password removed from keychain",
         "passwordsMismatch": "Passwords do not match"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "New name",
         "counter": "Counter",
         "date": "Date",
+        "modDate": "Modified date",
         "extension": "Extension",
-        "duplicateOrInvalid": "Duplicate or invalid name"
+        "duplicateOrInvalid": "Duplicate or invalid name",
+        "invalidRegex": "Invalid regular expression: {{error}}",
+        "targetScope": "Apply to",
+        "targetScopeAll": "Files and folders",
+        "targetScopeFiles": "Files only",
+        "targetScopeFolders": "Folders only",
+        "caseTransform": "Letter case",
+        "caseNone": "No change",
+        "caseLower": "lowercase",
+        "caseUpper": "UPPERCASE",
+        "caseTitle": "Title Case",
+        "preserveExtension": "Keep extension",
+        "useRegex": "Regular expressions",
+        "prefix": "Prefix",
+        "suffix": "Suffix",
+        "statsChanged": "{{count}} to rename",
+        "statsUnchanged": "{{count}} unchanged",
+        "statsConflicts": "{{count}} conflict(s)"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "Password cannot be empty",
       "noPasswordStored": "No password stored",
-      "passwordChangeUnavailable": "Password change is not available on this platform",
       "incorrectPassword": "Incorrect password for rclone configuration",
       "storeFailed": "Failed to store password: {{error}}",
       "encryptFailed": "Failed to encrypt configuration: {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "Please test the binary first"
     },
     "passwordErrors": {
-      "validateFailed": "Validation failed",
       "invalid": "Invalid password",
       "locked": "Account locked due to too many attempts",
       "generic": "Error: {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "Filter",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabRuntimeRemote": "Runtime Remote",
+        "noProfiles": "No profiles available"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "Workflow"
     },
     "workflow": {
-      "title": "Workflow Editor",
       "untitled": "Untitled Workflow",
       "savedWorkflows": "Saved Workflows",
       "presetRecipes": "Preset Recipes",
@@ -3338,7 +3349,6 @@
         "action": "Action"
       },
       "actions": {
-        "configure": "Configure Node",
         "duplicate": "Duplicate Node",
         "delete": "Delete Node",
         "duplicateWorkflow": "Duplicate Workflow",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "Export JSON"
       },
       "toolbar": {
-        "togglePalette": "Toggle Node Library",
         "selectWorkflow": "Select Workflow",
         "newWorkflow": "New Workflow",
         "run": "Run Workflow",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "Snap to Grid",
         "toggleLog": "Toggle Execution Log",
         "toggleInspector": "Toggle Inspector",
-        "cleanDuplicates": "Clean Duplicates",
         "dryRun": "Dry Run",
         "dryRunTooltip": "Simulate workflow execution without modifying files or executing real commands"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "e.g. Daily Documents Backup",
         "cronExpression": "Cron Expression",
         "invalidCron": "Invalid cron expression",
-        "cronHourly": "Hourly",
         "cronDaily": "Daily at 02:00",
-        "cronWeekly": "Weekly (Mon)",
         "watchFolder": "Watch Folder Path",
         "debounceSeconds": "Debounce Delay (seconds)",
         "remote": "Remote",
@@ -3393,7 +3399,6 @@
         "mountPoint": "Mount Point",
         "rcEndpoint": "RC Endpoint",
         "rcParameters": "RC Parameters (JSON)",
-        "rcParametersHint": "JSON payload passed to the RC command (supports {{nodes.id.field}} tokens)",
         "rcPresets": "Preset Endpoints",
         "presetCategoryAll": "All",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "Insert Token",
         "formatJson": "Format JSON",
         "clearJson": "Clear",
-        "validJson": "Valid JSON",
         "invalidJson": "Invalid JSON",
         "templateJson": "Dynamic Template",
         "noUpstreamNodesHint": "Add other nodes to your workflow to dynamically reference their outputs like {{nodes.id.field}}",
@@ -3426,7 +3430,6 @@
         "alertMessage": "Alert Message",
         "severity": "Severity Level",
         "severityInfo": "Informational",
-        "severitySuccess": "Success",
         "severityError": "Error / Alert",
         "manualDesc": "Manual trigger starts the workflow on demand. No additional configuration required.",
         "parallelForkDesc": "Splits execution into multiple concurrent branches.",
@@ -3458,9 +3461,6 @@
         "eventStateSuccess": "Only on Success",
         "eventStateFailed": "Only on Failure",
         "optionalPath": "Optional Subfolder Path",
-        "cryptRemote": "Crypt Remote",
-        "selectCryptRemote": "Select crypt remote...",
-        "cryptDstPath": "Encrypted Destination Path",
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
@@ -3625,6 +3625,9 @@
         "configureNode": "Configure Node: {{type}}",
         "nodeSaved": "Workflow node settings updated"
       }
+    },
+    "shortcuts": {
+      "title": "Flow Keyboard Shortcuts"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "Template deleted successfully."
   },
   "navigation": {
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "files": "Files"
   },
   "provision": {
     "stages": {

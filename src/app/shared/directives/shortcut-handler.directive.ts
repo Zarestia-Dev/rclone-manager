@@ -12,6 +12,8 @@ import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-sta
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
+import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
+import { MAIN_SHORTCUTS } from '../models/shortcut-definitions';
 
 @Directive({
   selector: '[appShortcutHandler]',
@@ -29,10 +31,26 @@ export class ShortcutHandlerDirective {
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
   private readonly flowOverlayService = inject(FlowOverlayService);
 
+  private readonly actionMap: Record<string, () => void | Promise<void>> = {
+    'app.quit': () => this.quitApplication(),
+    'app.toggleFileBrowser': () => this.toggleFileBrowser(),
+    'app.showShortcuts': () => this.showKeyboardShortcuts(),
+    'app.forceRefreshMountedRemotes': () => this.forceRefreshMountedRemotes(),
+    'app.forceRefreshServes': () => this.forceRefreshServes(),
+    'app.createNewRemoteDetailed': () => this.createNewRemoteDetailed(),
+    'app.createNewRemoteQuick': () => this.createNewRemoteQuick(),
+    'app.loadConfiguration': () => this.loadConfiguration(),
+    'app.exportConfiguration': () => this.exportConfiguration(),
+    'app.openPreferences': () => this.openPreferences(),
+    'app.openFlags': () => this.openRcloneFlags(),
+    'app.openAlerts': () => this.openAlerts(),
+    'app.toggleFlowOverlay': () => this.toggleFlowOverlay(),
+  };
+
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Skip if typing in input fields (except for critical shortcuts)
-    if (this.isInInputField(event) && !this.isCriticalShortcut(event)) {
+    if (isInputFocused(event) && !this.isCriticalShortcut(event)) {
       return;
     }
 
@@ -49,93 +67,16 @@ export class ShortcutHandlerDirective {
   }
 
   private handleShortcut(event: KeyboardEvent): boolean {
-    const { ctrlKey, shiftKey, altKey, key } = event;
-
-    // Global shortcuts
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'q') {
-      this.quitApplication();
+    const matched = MAIN_SHORTCUTS.find(s => matchesShortcut(s.keys, event));
+    if (matched && this.actionMap[matched.actionId]) {
+      void this.actionMap[matched.actionId]();
       return true;
     }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'b') {
-      this.toggleFileBrowser();
-      return true;
-    }
-
-    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === '?') {
-      this.showKeyboardShortcuts();
-      return true;
-    }
-
-    // Remote management shortcuts
-    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === 'm') {
-      this.forceRefreshMountedRemotes();
-      return true;
-    }
-
-    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === 's') {
-      this.forceRefreshServes();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'n') {
-      this.createNewRemoteDetailed();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'r') {
-      this.createNewRemoteQuick();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'i') {
-      this.loadConfiguration();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'e') {
-      this.exportConfiguration();
-      return true;
-    }
-
-    // Settings shortcuts
-    if (ctrlKey && !shiftKey && !altKey && key === ',') {
-      this.openPreferences();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key === '.') {
-      this.openRcloneFlags();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'a') {
-      this.openAlerts();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'f') {
-      this.toggleFlowOverlay();
-      return true;
-    }
-
     return false;
   }
 
-  private isInInputField(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement;
-    return (
-      target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.contentEditable === 'true' ||
-        target.isContentEditable)
-    );
-  }
-
   private isCriticalShortcut(event: KeyboardEvent): boolean {
-    // Ctrl+Q should always work, even in input fields
-    return event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'q';
+    return matchesShortcut('Ctrl + Q', event);
   }
 
   /**
@@ -144,6 +85,11 @@ export class ShortcutHandlerDirective {
    * Critical shortcuts (like Ctrl+Q) bypass this check
    */
   private shouldBlockShortcuts(event: KeyboardEvent): boolean {
+    // Block all shortcuts when keyboard shortcuts modal is open (so user can test them safely)
+    if (this.isShortcutsModalOpen()) {
+      return true;
+    }
+
     // Always allow critical shortcuts
     if (this.isCriticalShortcut(event)) {
       return false;
@@ -152,6 +98,13 @@ export class ShortcutHandlerDirective {
     return (
       this.isFileViewerOpen() || this.dialog.openDialogs.length > 0 || this.isOnboardingActive()
     );
+  }
+
+  /**
+   * Check if keyboard shortcuts cheat sheet modal is open
+   */
+  private isShortcutsModalOpen(): boolean {
+    return document.querySelector('app-keyboard-shortcuts-modal') !== null;
   }
 
   /**
@@ -207,7 +160,13 @@ export class ShortcutHandlerDirective {
   }
 
   private showKeyboardShortcuts(): void {
-    this.modalService.openKeyboardShortcuts();
+    if (this.flowOverlayService.isFlowOverlayOpen()) {
+      this.modalService.openKeyboardShortcuts({ context: 'flow' });
+    } else if (this.nautilusService.isBrowserOverlayOpen()) {
+      this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
+    } else {
+      this.modalService.openKeyboardShortcuts({ context: 'main' });
+    }
   }
 
   private createNewRemoteDetailed(): void {

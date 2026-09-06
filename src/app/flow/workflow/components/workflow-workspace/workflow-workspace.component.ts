@@ -20,6 +20,7 @@ import { WorkflowEngineService } from '../../../../services/flow/workflow-engine
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { WorkflowEventService } from '../../../../services/flow/workflow-event.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
+import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
 
 @Component({
   selector: 'app-workflow-workspace',
@@ -97,7 +98,8 @@ export class WorkflowWorkspaceComponent {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    if (isInputFocused(event)) return;
+    if (matchesShortcut('Ctrl + S', event)) {
       event.preventDefault();
       if (this.stateService.hasUnsavedChanges()) {
         void this.saveWorkflow();

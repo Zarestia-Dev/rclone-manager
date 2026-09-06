@@ -42,7 +42,8 @@
     "acknowledge": "Acquitter",
     "actions": "Actions",
     "savedSuccessfully": "Enregistré avec succès",
-    "deletedSuccessfully": "Supprimé avec succès"
+    "deletedSuccessfully": "Supprimé avec succès",
+    "notConfigured": "Non configuré"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "Format de bande passante invalide",
     "fileMode": "Doit être au format octal (3 à 4 chiffres, chacun entre 0 et 7). Exemple : 755",
     "enum": "Doit être l’une des valeurs suivantes : {{values}}",
-    "invalidPath": "Le chemin doit être absolu",
     "urlArray": "Toutes les URLs doivent être valides et commencer par http:// ou https://",
     "bandwidth": "Format de bande passante invalide. Utilisez : 10M, 1G, 100K ou combinaisons",
     "passwordMismatch": "Les mots de passe ne correspondent pas",
@@ -810,7 +810,6 @@
         "invalid": "Binaire invalide"
       },
       "errors": {
-        "invalidPath": "Veuillez entrer un chemin absolu valide",
         "required": "Ce champ est obligatoire"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "Exporter la configuration",
       "toggleBrowser": "Activer/désactiver Le navigateur de fichiers",
       "openFlowOverlay": "Activer/désactiver l'espace de travail Flow",
-      "closeDialog": "Fermer la boîte de dialogue / Annuler l'action"
+      "closeDialog": "Fermer la boîte de dialogue / Annuler l'action",
+      "saveWorkflow": "Enregistrer le flux de travail",
+      "deleteSelected": "Supprimer les nœuds/arêtes sélectionnés"
     },
     "categories": {
       "global": "Global",
@@ -1783,7 +1784,8 @@
       "fileOperations": "Opérations sur les fichiers",
       "fileBrowser": "Explorateur de fichiers",
       "fileBrowserNautilus": "Explorateur de fichiers (Nautilus)",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "flowWorkspace": "Espace de travail Flow"
     },
     "quitError": "Impossible de quitter l'application : {{error}}",
     "mountsRefreshSuccess": "Les montages ont été actualisées avec succès",
@@ -1966,9 +1968,6 @@
       "scrollTop": "Défilement en haut",
       "scrollBottom": "Défilement en bas",
       "fetching": "Récupération des journaux...",
-      "aria": {
-        "terminalLogs": "Journal du terminal"
-      },
       "remoteLogs": "Logs du dépôt distant : {{ name }}",
       "noLogsFound": "Pas de logs trouvés",
       "adjustFilters": "Essayez d'ajuster vos filtres",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "Chemin de configuration",
-          "placeholder": "Laisser vide pour utiliser les paramètres par défaut",
-          "description": "Chemin d'accès spécifique à rclone.conf (facultatif)"
+          "placeholder": "Laisser vide pour utiliser les paramètres par défaut"
         }
       },
       "addBackend": "Ajouter un backend",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "Ceci déchiffrera votre configuration de rclone. Vos identifiants seront visibles pour toute personne ayant accès à vos fichiers.",
         "enableEncryption": "Activer le chiffrement",
         "protectCredentials": "Protégez vos informations d'identification avec un mot de passe",
-        "passwordChanged": "Mot de passe changé",
-        "passwordStored": "Mot de passe stocké dans le trousseau",
         "passwordStoredInKeyring": "Mot de passe enregistré dans le trousseau système",
-        "passwordRemoved": "Mot de passe supprimé du trousseau",
         "passwordsMismatch": "Les mots de passe ne correspondent pas"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "Nouveau nom",
         "counter": "Compteur",
         "date": "Date",
+        "modDate": "Date de modification",
         "extension": "Extension",
-        "duplicateOrInvalid": "Nom dupliqué ou non valide"
+        "duplicateOrInvalid": "Nom dupliqué ou non valide",
+        "invalidRegex": "Expression régulière non valide : {{error}}",
+        "targetScope": "Appliquer à",
+        "targetScopeAll": "Fichiers et dossiers",
+        "targetScopeFiles": "Fichiers uniquement",
+        "targetScopeFolders": "Dossiers uniquement",
+        "caseTransform": "Casse des lettres",
+        "caseNone": "Aucun changement",
+        "caseLower": "minuscules",
+        "caseUpper": "MAJUSCULES",
+        "caseTitle": "Casse Titre",
+        "preserveExtension": "Conserver l'extension",
+        "useRegex": "Expressions régulières",
+        "prefix": "Préfixe",
+        "suffix": "Suffixe",
+        "statsChanged": "{{count}} à renommer",
+        "statsUnchanged": "{{count}} inchangé(s)",
+        "statsConflicts": "{{count}} conflit(s)"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
       "noPasswordStored": "Aucun mot de passe enregistré",
-      "passwordChangeUnavailable": "Le changement de mot de passe n'est pas disponible sur cette plateforme",
       "incorrectPassword": "Mot de passe incorrect pour la configuration de rclone",
       "storeFailed": "Échec de l'enregistrement du mot de passe : {{error}}",
       "encryptFailed": "Échec du chiffrement de la configuration : {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "Veuillez d'abord tester le binaire"
     },
     "passwordErrors": {
-      "validateFailed": "Échec de la validation",
       "invalid": "Mot de passe incorrect",
       "locked": "Compte bloqué en raison d'un trop grand nombre de tentatives",
       "generic": "Erreur : {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "Filtre",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Distant d’exécution"
+        "tabRuntimeRemote": "Distant d’exécution",
+        "noProfiles": "Aucun profil disponible"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "Flux de Travail"
     },
     "workflow": {
-      "title": "Éditeur de flux de travail",
       "untitled": "Flux sans titre",
       "savedWorkflows": "Flux enregistrés",
       "presetRecipes": "Recettes prédéfinies",
@@ -3338,7 +3349,6 @@
         "action": "Action"
       },
       "actions": {
-        "configure": "Configurer le nœud",
         "duplicate": "Dupliquer le nœud",
         "delete": "Supprimer le nœud",
         "duplicateWorkflow": "Dupliquer le flux",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "Exporter en JSON"
       },
       "toolbar": {
-        "togglePalette": "Bibliothèque de nœuds",
         "selectWorkflow": "Sélectionner un flux",
         "newWorkflow": "Nouveau flux",
         "run": "Exécuter le flux",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "Aligner sur la grille",
         "toggleLog": "Journal d’exécution",
         "toggleInspector": "Afficher/Masquer inspecteur",
-        "cleanDuplicates": "Nettoyer les doublons",
         "dryRun": "Simulation",
         "dryRunTooltip": "Simuler l'exécution du workflow sans modifier les données ni exécuter de vraies commandes"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "Ex. Sauvegarde quotidienne",
         "cronExpression": "Expression Cron",
         "invalidCron": "Expression cron invalide",
-        "cronHourly": "Toutes les heures",
         "cronDaily": "Tous les jours à 02:00",
-        "cronWeekly": "Hebdomadaire (Lun)",
         "watchFolder": "Dossier à surveiller",
         "debounceSeconds": "Délai de temporisation (secondes)",
         "remote": "Dépôt distant",
@@ -3393,7 +3399,6 @@
         "mountPoint": "Point de montage",
         "rcEndpoint": "Point de terminaison RC",
         "rcParameters": "Paramètres RC (JSON)",
-        "rcParametersHint": "Charge utile JSON transmise à la commande RC (prend en charge les jetons {{nodes.id.field}})",
         "rcPresets": "Points de terminaison prédéfinis",
         "presetCategoryAll": "Tous",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "Insérer la variable",
         "formatJson": "Formater JSON",
         "clearJson": "Effacer",
-        "validJson": "JSON valide",
         "invalidJson": "JSON invalide",
         "templateJson": "Modèle dynamique",
         "noUpstreamNodesHint": "Ajoutez d'autres nœuds à votre flux pour référencer dynamiquement leurs sorties comme {{nodes.id.field}}",
@@ -3426,7 +3430,6 @@
         "alertMessage": "Message de l’alerte",
         "severity": "Niveau de gravité",
         "severityInfo": "Information",
-        "severitySuccess": "Succès",
         "severityError": "Erreur / Alerte",
         "openDetailed": "Paramètres détaillés",
         "openDetailedTooltip": "Ouvrir l’éditeur avancé de paramètres et d’options",
@@ -3454,9 +3457,6 @@
         "eventStateSuccess": "Only on Success",
         "eventStateFailed": "Only on Failure",
         "optionalPath": "Optional Subfolder Path",
-        "cryptRemote": "Crypt Remote",
-        "selectCryptRemote": "Select crypt remote...",
-        "cryptDstPath": "Encrypted Destination Path",
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
@@ -3625,6 +3625,9 @@
         "configureNode": "Configurer le nœud : {{type}}",
         "nodeSaved": "Paramètres du nœud de flux de travail mis à jour"
       }
+    },
+    "shortcuts": {
+      "title": "Raccourcis clavier de Flow"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "Modèle supprimé avec succès."
   },
   "navigation": {
-    "dashboard": "Tableau de bord"
+    "dashboard": "Tableau de bord",
+    "files": "Fichiers"
   },
   "provision": {
     "stages": {

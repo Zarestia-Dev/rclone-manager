@@ -20,7 +20,10 @@ import {
   TemplateCategory,
   PrimaryActionType,
   WorkflowNode,
+  FileBrowserItem,
+  ExplorerRoot,
 } from '@app/types';
+import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { AppSettingsService } from '../settings/app-settings.service';
@@ -277,6 +280,10 @@ export class ModalService extends TauriBaseService {
     'workflow-rc-editor': () =>
       import('../../flow/workflow/modals/rc-editor-modal/rc-editor-modal.component').then(
         m => m.RcEditorModalComponent
+      ),
+    'multi-rename': () =>
+      import('../../shared/modals/multi-rename-modal/multi-rename-modal.component').then(
+        m => m.MultiRenameModalComponent
       ),
   };
 
@@ -664,7 +671,10 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openKeyboardShortcuts<TResult = any>(data?: { nautilus?: boolean }): DialogRefLike<TResult> {
+  openKeyboardShortcuts<TResult = any>(data?: {
+    context?: ShortcutContext;
+    nautilus?: boolean;
+  }): DialogRefLike<TResult> {
     return this.openModal('keyboard-shortcuts', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -711,5 +721,18 @@ export class ModalService extends TauriBaseService {
         suffix: remoteName,
       }
     );
+  }
+
+  openMultiRename<TResult = boolean>(data: {
+    items: FileBrowserItem[];
+    remote: ExplorerRoot;
+  }): DialogRefLike<TResult> {
+    return this.openModal('multi-rename', {
+      ...STANDARD_MODAL_SIZE,
+      maxWidth: '780px',
+      maxHeight: '850px',
+      disableClose: true,
+      data,
+    });
   }
 }

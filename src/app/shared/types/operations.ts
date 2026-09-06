@@ -223,3 +223,10 @@ export const BACKEND_PROFILE_SUPPORTED_OPS = [
   'archivecreate',
 ] as const satisfies readonly PrimaryActionType[];
 export const NON_JOB_OPS = ['mount', 'serve'] as const satisfies readonly PrimaryActionType[];
+
+export interface RenameItem {
+  remote: string;
+  srcPath: string;
+  dstPath: string;
+  isDir: boolean;
+}

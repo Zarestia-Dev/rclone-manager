@@ -1,9 +1,9 @@
 .shortcut-table {
-  border-radius: 0;
-  overflow: hidden;
+  width: 100%;
 
   .mat-mdc-row {
     transition: var(--transition-fast);
+    position: relative;
 
     &:hover {
       background: var(--hover-bg-color);
@@ -12,15 +12,53 @@
         animation: keyPress 0.2s ease-out;
       }
     }
+
+    &.shortcut-hit {
+      animation: cloudGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: var(--radius-sm);
+      z-index: 2;
+
+      .key {
+        background: var(--accent-color) !important;
+        color: #ffffff !important;
+        box-shadow:
+          0 0 16px rgba(var(--accent-color-rgb), 0.75),
+          0 0 32px rgba(var(--accent-color-rgb), 0.4),
+          inset 0 1px 2px rgba(255, 255, 255, 0.5) !important;
+        transform: scale(0.94);
+      }
+
+      .key-separator,
+      .combo-separator {
+        color: var(--accent-color);
+        font-weight: 600;
+      }
+
+      .shortcut-desc {
+        color: var(--window-fg-color);
+      }
+    }
   }
 
   .mat-mdc-cell {
     padding: var(--space-lg) var(--space-xl);
     border: none;
-    vertical-align: middle;
 
     &.shortcut-key {
-      width: 45%;
+      width: 42%;
+
+      .key-combo {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .combo-separator {
+        display: inline-flex;
+        align-items: center;
+        margin: 0 var(--space-sm);
+        font-size: var(--font-size-sm);
+        color: var(--dim-color);
+      }
 
       .key {
         display: inline-flex;
@@ -38,10 +76,6 @@
         text-transform: uppercase;
         box-shadow: var(--shadow-gnome);
         transition: var(--transition-fast);
-
-        &:last-child {
-          margin-right: 0;
-        }
 
         // Modifier keys
         &[data-key*="Ctrl"],
@@ -63,7 +97,8 @@
         &[data-key="Space"],
         &[data-key="Tab"],
         &[data-key="Escape"],
-        &[data-key="Delete"] {
+        &[data-key="Delete"],
+        &[data-key="Backspace"] {
           background: rgba(var(--accent-color-rgb), 0.08);
           color: var(--accent-color);
         }
@@ -71,8 +106,7 @@
     }
 
     &.shortcut-desc {
-      width: 60%;
-      font-weight: 400;
+      width: 58%;
       color: var(--dim-color);
       line-height: 1.5;
     }
@@ -85,7 +119,28 @@
   margin: 0 var(--space-xs);
   font-size: var(--font-size-sm);
   color: var(--dim-color);
-  font-weight: 400;
+}
+
+@keyframes cloudGlow {
+  0% {
+    background: rgba(var(--accent-color-rgb), 0.25);
+    box-shadow:
+      0 0 0 0 rgba(var(--accent-color-rgb), 0.7),
+      0 0 20px 4px rgba(var(--accent-color-rgb), 0.4);
+    transform: scale(1.01);
+  }
+  40% {
+    background: rgba(var(--accent-color-rgb), 0.14);
+    box-shadow:
+      0 0 35px 12px rgba(var(--accent-color-rgb), 0.25),
+      0 0 70px 24px rgba(var(--accent-color-rgb), 0.1);
+    transform: scale(1.015);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
+  }
 }
 
 // Responsive
@@ -94,11 +149,18 @@
     .mat-mdc-cell {
       padding: var(--space-md) var(--space-lg);
 
-      &.shortcut-key .key {
-        height: 24px;
-        min-width: 24px;
-        padding: 0 var(--space-xs);
-        font-size: var(--font-size-xs);
+      &.shortcut-key {
+        .key {
+          height: 24px;
+          min-width: 24px;
+          padding: 0 var(--space-xs);
+          font-size: var(--font-size-xs);
+        }
+
+        .combo-separator {
+          margin: 0 var(--space-xs);
+          font-size: var(--font-size-xs);
+        }
       }
 
       &.shortcut-desc {

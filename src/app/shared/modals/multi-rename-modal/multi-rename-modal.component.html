@@ -1,8 +1,8 @@
 <header data-tauri-drag-region>
-  <button class="header-icon" type="button">
+  <button type="button">
     <mat-icon svgIcon="pen"></mat-icon>
   </button>
-  <p class="header-title">
+  <p>
     {{ 'nautilus.modals.multiRename.title' | translate: { count: data.items.length } }}
   </p>
   <button
@@ -36,7 +36,7 @@
     <!-- Template Mode Inputs -->
     @if (mode() === 'template') {
       <div class="form-row">
-        <mat-form-field class="flex-grow">
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'nautilus.modals.multiRename.templateInput' | translate }}</mat-label>
           <input
             #templateInput
@@ -84,6 +84,14 @@
               class="menu-item"
               cdkMenuItem
               type="button"
+              (click)="insertPlaceholder('[ModDate]')"
+            >
+              {{ 'nautilus.modals.multiRename.modDate' | translate }}
+            </button>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              type="button"
               (click)="insertPlaceholder('[Extension]')"
             >
               {{ 'nautilus.modals.multiRename.extension' | translate }}
@@ -92,18 +100,18 @@
         </ng-template>
       </div>
 
-      <!-- Counter Config Panel (visible only when [Counter] is in template) -->
+      <!-- Counter Config Panel -->
       @if (showCounterConfig()) {
         <div class="counter-config-grid">
-          <mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'nautilus.modals.multiRename.counterStart' | translate }}</mat-label>
             <input matInput type="number" formControlName="counterStart" min="0" />
           </mat-form-field>
-          <mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'nautilus.modals.multiRename.counterStep' | translate }}</mat-label>
             <input matInput type="number" formControlName="counterStep" min="1" />
           </mat-form-field>
-          <mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'nautilus.modals.multiRename.counterPadding' | translate }}</mat-label>
             <mat-select formControlName="counterPadding">
               <mat-option [value]="1">1 (e.g. 1)</mat-option>
@@ -119,31 +127,119 @@
     <!-- Find & Replace Mode Inputs -->
     @if (mode() === 'replace') {
       <div class="form-row-grid">
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'nautilus.modals.multiRename.findLabel' | translate }}</mat-label>
-          <input matInput formControlName="findText" placeholder="text to find" />
+          <input
+            matInput
+            formControlName="findText"
+            [errorStateMatcher]="regexErrorMatcher"
+            placeholder="text to find"
+          />
+          @if (regexError(); as err) {
+            <mat-error>{{
+              'nautilus.modals.multiRename.invalidRegex' | translate: { error: err }
+            }}</mat-error>
+          }
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'nautilus.modals.multiRename.replaceLabel' | translate }}</mat-label>
           <input matInput formControlName="replaceWith" placeholder="replacement text" />
         </mat-form-field>
       </div>
-      <mat-checkbox formControlName="caseSensitive">
-        {{ 'nautilus.modals.multiRename.caseSensitive' | translate }}
-      </mat-checkbox>
+      <div class="checkbox-row">
+        <mat-checkbox formControlName="caseSensitive">
+          {{ 'nautilus.modals.multiRename.caseSensitive' | translate }}
+        </mat-checkbox>
+        <mat-checkbox formControlName="useRegex">
+          {{ 'nautilus.modals.multiRename.useRegex' | translate }}
+        </mat-checkbox>
+      </div>
     }
+
+    <!-- Options Section: Scope, Case Transform, Affixes, Extension -->
+    <div class="options-grid">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'nautilus.modals.multiRename.targetScope' | translate }}</mat-label>
+        <mat-select formControlName="targetScope">
+          <mat-option value="all">
+            {{ 'nautilus.modals.multiRename.targetScopeAll' | translate }}
+          </mat-option>
+          <mat-option value="files">
+            {{ 'nautilus.modals.multiRename.targetScopeFiles' | translate }}
+          </mat-option>
+          <mat-option value="folders">
+            {{ 'nautilus.modals.multiRename.targetScopeFolders' | translate }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'nautilus.modals.multiRename.caseTransform' | translate }}</mat-label>
+        <mat-select formControlName="caseTransform">
+          <mat-option value="none">
+            {{ 'nautilus.modals.multiRename.caseNone' | translate }}
+          </mat-option>
+          <mat-option value="lowercase">
+            {{ 'nautilus.modals.multiRename.caseLower' | translate }}
+          </mat-option>
+          <mat-option value="uppercase">
+            {{ 'nautilus.modals.multiRename.caseUpper' | translate }}
+          </mat-option>
+          <mat-option value="titlecase">
+            {{ 'nautilus.modals.multiRename.caseTitle' | translate }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'nautilus.modals.multiRename.prefix' | translate }}</mat-label>
+        <input matInput formControlName="prefix" />
+      </mat-form-field>
+
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'nautilus.modals.multiRename.suffix' | translate }}</mat-label>
+        <input matInput formControlName="suffix" />
+      </mat-form-field>
+    </div>
+
+    <div class="checkbox-row">
+      <mat-checkbox formControlName="preserveExtension">
+        {{ 'nautilus.modals.multiRename.preserveExtension' | translate }}
+      </mat-checkbox>
+    </div>
   </form>
+
+  <!-- Status / Statistics Bar -->
+  <div class="stats-bar">
+    <span class="stat-pill" [class.changed]="changedCount() > 0">
+      <mat-icon svgIcon="pen"></mat-icon>
+      {{ 'nautilus.modals.multiRename.statsChanged' | translate: { count: changedCount() } }}
+    </span>
+    <span class="stat-pill unchanged">
+      {{ 'nautilus.modals.multiRename.statsUnchanged' | translate: { count: unchangedCount() } }}
+    </span>
+    @if (conflictCount() > 0) {
+      <span class="stat-pill conflict">
+        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        {{ 'nautilus.modals.multiRename.statsConflicts' | translate: { count: conflictCount() } }}
+      </span>
+    }
+  </div>
 
   <!-- Preview Table -->
   <div class="preview-container">
     <div class="preview-header">
+      <span class="col-type"></span>
       <span class="col-orig">{{ 'nautilus.modals.multiRename.original' | translate }}</span>
       <span class="col-arrow"></span>
       <span class="col-new">{{ 'nautilus.modals.multiRename.newName' | translate }}</span>
     </div>
-    <cdk-virtual-scroll-viewport itemSize="34" class="preview-list">
+    <cdk-virtual-scroll-viewport itemSize="36" class="preview-list">
       @for (p of previewItems(); track p.item.entry.Path) {
-        <div class="preview-row" [class.has-error]="p.hasError">
+        <div class="preview-row" [class.has-error]="p.hasError" [class.is-changed]="p.isChanged">
+          <span class="col-type" [title]="p.isDir ? 'Folder' : 'File'">
+            <mat-icon [svgIcon]="p.isDir ? 'folder' : 'file'"></mat-icon>
+          </span>
           <span class="col-orig" [title]="p.originalName">{{ p.originalName }}</span>
           <span class="col-arrow">
             <mat-icon svgIcon="right-arrow"></mat-icon>

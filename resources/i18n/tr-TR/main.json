@@ -42,7 +42,8 @@
     "acknowledge": "Onayla",
     "actions": "İşlemler",
     "savedSuccessfully": "Başarıyla kaydedildi",
-    "deletedSuccessfully": "Başarıyla silindi"
+    "deletedSuccessfully": "Başarıyla silindi",
+    "notConfigured": "Yapılandırılmadı"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "Geçersiz bant genişliği formatı",
     "fileMode": "Sekizli formatta olmalıdır (3-4 rakam, her biri 0-7). Örnek: 755",
     "enum": "Şunlardan biri olmalıdır: {{values}}",
-    "invalidPath": "Yol mutlak olmalıdır",
     "urlArray": "Tüm URL'ler geçerli olmalı ve http:// veya https:// ile başlamalıdır",
     "bandwidth": "Geçersiz bant genişliği formatı. Kullanım: 10M, 1G, 100K veya kombinasyonlar",
     "passwordMismatch": "Şifreler eşleşmiyor",
@@ -810,7 +810,6 @@
         "invalid": "Geçersiz ikili"
       },
       "errors": {
-        "invalidPath": "Lütfen geçerli bir mutlak yol girin",
         "required": "Bu alan zorunludur"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "Yapılandırmayı Dışa Aktar",
       "toggleBrowser": "Dosya Tarayıcısını Aç/Kapat",
       "openFlowOverlay": "Akış Çalışma Alanını Aç/Kapat",
-      "closeDialog": "İletişim Kutusunu Kapat/İptal Et"
+      "closeDialog": "İletişim Kutusunu Kapat/İptal Et",
+      "saveWorkflow": "İş Akışını Kaydet",
+      "deleteSelected": "Seçili Düğümleri/Kenarları Sil"
     },
     "categories": {
       "global": "Genel",
@@ -1783,7 +1784,8 @@
       "fileOperations": "Dosya İşlemleri",
       "fileBrowser": "Dosya Gezgini",
       "fileBrowserNautilus": "Dosya Gezgini (Nautilus)",
-      "navigation": "Gezinti"
+      "navigation": "Gezinti",
+      "flowWorkspace": "Flow Çalışma Alanı"
     },
     "quitError": "Uygulama kapatılamadı: {{error}}",
     "mountsRefreshSuccess": "Bağlantılar başarıyla yenilendi",
@@ -1966,9 +1968,6 @@
       "scrollTop": "Başa Git",
       "scrollBottom": "Sona Git",
       "fetching": "Günlükler getiriliyor...",
-      "aria": {
-        "terminalLogs": "Terminal günlükleri"
-      },
       "remoteLogs": "Uzak Günlükler: {{ name }}",
       "noLogsFound": "Günlük bulunamadı",
       "adjustFilters": "Filtrelerinizi ayarlamayı deneyin",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "Yapılandırma Yolu",
-          "placeholder": "Varsayılanı kullanmak için boş bırakın",
-          "description": "rclone.conf için özel dosya yolu (isteğe bağlı)"
+          "placeholder": "Varsayılanı kullanmak için boş bırakın"
         }
       },
       "addBackend": "Arka Uç Ekle",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "Bu işlem rclone yapılandırmanızın şifresini çözecektir. Kimlik bilgileriniz dosyalarınıza erişimi olan herkes tarafından görülebilir hale gelecektir.",
         "enableEncryption": "Şifrelemeyi Etkinleştir",
         "protectCredentials": "Kimlik bilgilerinizi bir parola ile koruyun",
-        "passwordChanged": "Parola değiştirildi",
-        "passwordStored": "Parola anahtarlığa kaydedildi",
         "passwordStoredInKeyring": "Parola sistem anahtarlığında saklanıyor",
-        "passwordRemoved": "Parola anahtarlıktan kaldırıldı",
         "passwordsMismatch": "Parolalar eşleşmiyor"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "Yeni ad",
         "counter": "Sayaç",
         "date": "Tarih",
+        "modDate": "Değiştirilme tarihi",
         "extension": "Uzantı",
-        "duplicateOrInvalid": "Yinelenen veya geçersiz ad"
+        "duplicateOrInvalid": "Yinelenen veya geçersiz ad",
+        "invalidRegex": "Geçersiz düzenli ifade: {{error}}",
+        "targetScope": "Uygulama hedefi",
+        "targetScopeAll": "Dosyalar ve klasörler",
+        "targetScopeFiles": "Sadece dosyalar",
+        "targetScopeFolders": "Sadece klasörler",
+        "caseTransform": "Harf dönüşümü",
+        "caseNone": "Değişiklik yok",
+        "caseLower": "küçük harf",
+        "caseUpper": "BÜYÜK HARF",
+        "caseTitle": "Başlık Harfleri",
+        "preserveExtension": "Uzantıyı koru",
+        "useRegex": "Düzenli ifade (Regex)",
+        "prefix": "Ön ek",
+        "suffix": "Son ek",
+        "statsChanged": "{{count}} adlandırılacak",
+        "statsUnchanged": "{{count}} değişmeyecek",
+        "statsConflicts": "{{count}} çakışma"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "Şifre boş olamaz",
       "noPasswordStored": "Kayıtlı şifre yok",
-      "passwordChangeUnavailable": "Şifre değiştirme bu platformda kullanılamıyor",
       "incorrectPassword": "Rclone yapılandırması için yanlış şifre",
       "storeFailed": "Şifre kaydedilemedi: {{error}}",
       "encryptFailed": "Yapılandırma şifrelenemedi: {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "Lütfen önce ikili dosyayı test edin"
     },
     "passwordErrors": {
-      "validateFailed": "Doğrulama başarısız",
       "invalid": "Geçersiz parola",
       "locked": "Çok fazla deneme nedeniyle hesap kilitlendi",
       "generic": "Hata: {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "Filtre",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Çalışma Zamanı Remote"
+        "tabRuntimeRemote": "Çalışma Zamanı Remote",
+        "noProfiles": "Kullanılabilir profil yok"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "İş Akışı"
     },
     "workflow": {
-      "title": "İş Akışı Düzenleyici",
       "untitled": "İsimsiz İş Akışı",
       "savedWorkflows": "Kayıtlı İş Akışları",
       "presetRecipes": "Hazır Şablonlar & Tarifler",
@@ -3338,7 +3349,6 @@
         "action": "Eylem"
       },
       "actions": {
-        "configure": "Düğümü Yapılandır",
         "duplicate": "Düğümü Çoğalt",
         "delete": "Düğümü Sil",
         "duplicateWorkflow": "İş Akışını Çoğalt",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "JSON Dışa Aktar"
       },
       "toolbar": {
-        "togglePalette": "Düğüm Kitaplığını Aç/Kapat",
         "selectWorkflow": "İş Akışı Seç",
         "newWorkflow": "Yeni İş Akışı",
         "run": "İş Akışını Çalıştır",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "Izgaraya Hizala",
         "toggleLog": "Çalıştırma Günlüğünü Aç/Kapat",
         "toggleInspector": "Denetleyiciyi Aç/Kapat",
-        "cleanDuplicates": "Yinelenenleri Temizle",
         "dryRun": "Simülasyon (Dry Run)",
         "dryRunTooltip": "Verileri değiştirmeden veya gerçek komutlar çalıştırmadan iş akışını simüle et"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "Örn. Günlük Belgeler Yedeklemesi",
         "cronExpression": "Cron İfadesi",
         "invalidCron": "Geçersiz cron ifadesi",
-        "cronHourly": "Saatlik",
         "cronDaily": "Her gün 02:00'de",
-        "cronWeekly": "Haftalık (Pzt)",
         "watchFolder": "İzlenecek Klasör Yolu",
         "debounceSeconds": "Gecikme Süresi (saniye)",
         "remote": "Remote",
@@ -3393,7 +3399,6 @@
         "mountPoint": "Mount Noktası",
         "rcEndpoint": "RC Uç Noktası",
         "rcParameters": "RC Parametreleri (JSON)",
-        "rcParametersHint": "RC komutuna iletilen JSON yükü ({{nodes.id.field}} belirteçlerini destekler)",
         "rcPresets": "Hazır Uç Noktalar",
         "presetCategoryAll": "Tümü",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "Belirteç Ekle",
         "formatJson": "JSON Biçimlendir",
         "clearJson": "Temizle",
-        "validJson": "Geçerli JSON",
         "invalidJson": "Geçersiz JSON",
         "templateJson": "Dinamik Şablon",
         "noUpstreamNodesHint": "Çıktılarını {{nodes.id.field}} biçiminde dinamik kullanmak için akışa başka düğümler ekleyin",
@@ -3426,7 +3430,6 @@
         "alertMessage": "Uyarı Mesajı",
         "severity": "Önem Seviyesi",
         "severityInfo": "Bilgi",
-        "severitySuccess": "Başarılı",
         "severityError": "Hata / Uyarı",
         "manualDesc": "Elle tetikleme iş akışını isteğe bağlı olarak başlatır. Ek bir yapılandırma gerektirmez.",
         "parallelForkDesc": "Çalıştırmayı birden fazla eşzamanlı dala ayırır.",
@@ -3458,9 +3461,6 @@
         "eventStateSuccess": "Yalnızca Başarılı",
         "eventStateFailed": "Yalnızca Hatalı",
         "optionalPath": "İsteğe Bağlı Alt Klasör Yolu",
-        "cryptRemote": "Şifreli Uzak Depolama",
-        "selectCryptRemote": "Şifreli remote seçin...",
-        "cryptDstPath": "Şifreli Hedef Yolu",
         "scriptCommand": "Komut / Betik Yolu",
         "scriptArguments": "Argümanlar (isteğe bağlı)",
         "workingDir": "Çalışma Dizini (isteğe bağlı)",
@@ -3625,6 +3625,9 @@
         "configureNode": "Düğümü Yapılandır: {{type}}",
         "nodeSaved": "İş akışı düğüm ayarları güncellendi"
       }
+    },
+    "shortcuts": {
+      "title": "Flow Klavye Kısayolları"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "Şablon başarıyla silindi."
   },
   "navigation": {
-    "dashboard": "Kontrol Paneli"
+    "dashboard": "Kontrol Paneli",
+    "files": "Dosyalar"
   },
   "provision": {
     "stages": {

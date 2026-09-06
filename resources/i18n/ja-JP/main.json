@@ -42,7 +42,8 @@
     "acknowledge": "確認",
     "actions": "アクション",
     "savedSuccessfully": "正常に保存されました",
-    "deletedSuccessfully": "正常に削除されました"
+    "deletedSuccessfully": "正常に削除されました",
+    "notConfigured": "未設定"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "帯域幅の形式が無効です",
     "fileMode": "8進数形式（0〜7の3〜4桁）である必要があります。例: 755",
     "enum": "次のいずれかである必要があります: {{values}}",
-    "invalidPath": "パスは絶対パスである必要があります",
     "urlArray": "全てのURLは有効で、http:// または https:// で始まる必要があります",
     "bandwidth": "帯域幅の形式が無効です。使用例: 10M, 1G, 100K またはその組み合わせ",
     "passwordMismatch": "パスワードが一致しません",
@@ -810,7 +810,6 @@
         "invalid": "無効な実行ファイル"
       },
       "errors": {
-        "invalidPath": "有効な絶対パスを入力してください",
         "required": "この項目は必須です"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "設定をエクスポート",
       "toggleBrowser": "ファイルブラウザの切り替え",
       "openFlowOverlay": "Flow ワークスペースの切り替え",
-      "closeDialog": "ダイアログを閉じる / 操作をキャンセル"
+      "closeDialog": "ダイアログを閉じる / 操作をキャンセル",
+      "saveWorkflow": "ワークフローを保存",
+      "deleteSelected": "選択したノード/エッジを削除"
     },
     "categories": {
       "global": "グローバル",
@@ -1783,7 +1784,8 @@
       "fileOperations": "ファイル操作",
       "fileBrowser": "ファイルブラウザ",
       "fileBrowserNautilus": "ファイルブラウザ (Nautilus)",
-      "navigation": "ナビゲーション"
+      "navigation": "ナビゲーション",
+      "flowWorkspace": "Flow ワークスペース"
     },
     "quitError": "アプリの終了に失敗しました: {{error}}",
     "mountsRefreshSuccess": "マウント一覧を正常に更新しました",
@@ -1966,9 +1968,6 @@
       "scrollTop": "最上部へスクロール",
       "scrollBottom": "最下部へスクロール",
       "fetching": "ログを取得中...",
-      "aria": {
-        "terminalLogs": "ターミナルログ"
-      },
       "remoteLogs": "リモートログ: {{ name }}",
       "noLogsFound": "ログが見つかりません",
       "adjustFilters": "フィルタ条件を調整してください",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "設定パス",
-          "placeholder": "デフォルトを使用する場合は空欄",
-          "description": "rclone.conf への特定のパス（任意）"
+          "placeholder": "デフォルトを使用する場合は空欄"
         }
       },
       "addBackend": "バックエンドを追加",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "これによりrclone設定が復号化されます。ファイルにアクセスできる全員から資格情報が見える状態になります。",
         "enableEncryption": "暗号化を有効化",
         "protectCredentials": "パスワードで資格情報を保護します",
-        "passwordChanged": "パスワードを変更しました",
-        "passwordStored": "パスワードをキーチェーンに保存しました",
         "passwordStoredInKeyring": "パスワードをシステムキーリングに保存しました",
-        "passwordRemoved": "キーチェーンからパスワードを削除しました",
         "passwordsMismatch": "パスワードが一致しません"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "新しい名前",
         "counter": "連番",
         "date": "日付",
+        "modDate": "更新日時",
         "extension": "拡張子",
-        "duplicateOrInvalid": "重複しているか無効な名前です"
+        "duplicateOrInvalid": "重複しているか無効な名前です",
+        "invalidRegex": "無効な正規表現: {{error}}",
+        "targetScope": "適用先",
+        "targetScopeAll": "ファイルとフォルダー",
+        "targetScopeFiles": "ファイルのみ",
+        "targetScopeFolders": "フォルダーのみ",
+        "caseTransform": "大文字/小文字の変換",
+        "caseNone": "変更なし",
+        "caseLower": "すべて小文字",
+        "caseUpper": "すべて大文字",
+        "caseTitle": "タイトルケース",
+        "preserveExtension": "拡張子を保持",
+        "useRegex": "正規表現",
+        "prefix": "接頭辞",
+        "suffix": "接尾辞",
+        "statsChanged": "{{count}} 件の名前変更",
+        "statsUnchanged": "{{count}} 件の未変更",
+        "statsConflicts": "{{count}} 件の競合"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "パスワードを空欄にすることはできません",
       "noPasswordStored": "保存されているパスワードはありません",
-      "passwordChangeUnavailable": "このプラットフォームではパスワード変更を利用できません",
       "incorrectPassword": "rclone設定のパスワードが正しくありません",
       "storeFailed": "パスワードの保存に失敗しました: {{error}}",
       "encryptFailed": "設定の暗号化に失敗しました: {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "最初に実行ファイルをテストしてください"
     },
     "passwordErrors": {
-      "validateFailed": "検証に失敗しました",
       "invalid": "無効なパスワードです",
       "locked": "試行回数が多すぎるためアカウントがロックされました",
       "generic": "エラー: {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "フィルター",
         "tabBackend": "バックエンド",
-        "tabRuntimeRemote": "ランタイムリモート"
+        "tabRuntimeRemote": "ランタイムリモート",
+        "noProfiles": "利用可能なプロファイルがありません"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "ワークフロー"
     },
     "workflow": {
-      "title": "ワークフローエディター",
       "untitled": "無題のワークフロー",
       "savedWorkflows": "保存されたワークフロー",
       "presetRecipes": "プリセットレシピ",
@@ -3338,7 +3349,6 @@
         "action": "アクション"
       },
       "actions": {
-        "configure": "ノードを設定",
         "duplicate": "ノードを複製",
         "delete": "ノードを削除",
         "duplicateWorkflow": "ワークフローを複製",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "JSONをエクスポート"
       },
       "toolbar": {
-        "togglePalette": "ノードライブラリの切り替え",
         "selectWorkflow": "ワークフローを選択",
         "newWorkflow": "新規ワークフロー",
         "run": "ワークフローを実行",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "グリッドにスナップ",
         "toggleLog": "実行ログの切り替え",
         "toggleInspector": "インスペクターの切り替え",
-        "cleanDuplicates": "重複を削除",
         "dryRun": "ドライラン",
         "dryRunTooltip": "データを変更したり実際のコマンドを実行したりせずにワークフローの実行をシミュレートします"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "例: 日次ドキュメントバックアップ",
         "cronExpression": "Cron 式",
         "invalidCron": "無効な cron 式です",
-        "cronHourly": "毎時",
         "cronDaily": "毎日 02:00",
-        "cronWeekly": "毎週 (月曜日)",
         "watchFolder": "監視フォルダパス",
         "debounceSeconds": "デバウンス遅延 (秒)",
         "remote": "リモート",
@@ -3393,7 +3399,6 @@
         "mountPoint": "マウントポイント",
         "rcEndpoint": "RC エンドポイント",
         "rcParameters": "RC パラメーター (JSON)",
-        "rcParametersHint": "RC コマンドに渡される JSON ペイロード ({{nodes.id.field}} トークンをサポート)",
         "rcPresets": "プリセットエンドポイント",
         "presetCategoryAll": "すべて",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "トークンを挿入",
         "formatJson": "JSON 整形",
         "clearJson": "クリア",
-        "validJson": "有効な JSON",
         "invalidJson": "無効な JSON",
         "templateJson": "動的テンプレート",
         "noUpstreamNodesHint": "ワークフローに他のノードを追加して、{{nodes.id.field}} のように出力を動的に参照します",
@@ -3426,7 +3430,6 @@
         "alertMessage": "アラートメッセージ",
         "severity": "重要度レベル",
         "severityInfo": "情報",
-        "severitySuccess": "成功",
         "severityError": "エラー / アラート",
         "openDetailed": "詳細設定",
         "openDetailedTooltip": "詳細なパラメーターおよびフラグエディターを開く",
@@ -3454,9 +3457,6 @@
         "eventStateSuccess": "Only on Success",
         "eventStateFailed": "Only on Failure",
         "optionalPath": "Optional Subfolder Path",
-        "cryptRemote": "Crypt Remote",
-        "selectCryptRemote": "Select crypt remote...",
-        "cryptDstPath": "Encrypted Destination Path",
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
@@ -3625,6 +3625,9 @@
         "configureNode": "ノードを設定: {{type}}",
         "nodeSaved": "ワークフローノードの設定を更新しました"
       }
+    },
+    "shortcuts": {
+      "title": "Flow キーボードショートカット"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "テンプレートを正常に削除しました。"
   },
   "navigation": {
-    "dashboard": "ダッシュボード"
+    "dashboard": "ダッシュボード",
+    "files": "ファイル"
   },
   "provision": {
     "stages": {

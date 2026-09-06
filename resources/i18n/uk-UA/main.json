@@ -42,7 +42,8 @@
     "acknowledge": "Підтвердити",
     "actions": "Дії",
     "savedSuccessfully": "Успішно збережено",
-    "deletedSuccessfully": "Успішно видалено"
+    "deletedSuccessfully": "Успішно видалено",
+    "notConfigured": "Не налаштовано"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -64,7 +65,6 @@
     "bwTimetable": "Невірний формат пропускної здатності",
     "fileMode": "Має бути вісімковий формат (3–4 цифри, кожна 0–7). Приклад: 755",
     "enum": "Має бути одне з: {{values}}",
-    "invalidPath": "Шлях має бути абсолютним",
     "urlArray": "Усі URL мають бути коректними та починатися з http:// або https://",
     "bandwidth": "Невірний формат пропускної здатності. Приклад: 10M, 1G, 100K або комбінації",
     "passwordMismatch": "Паролі не збігаються",
@@ -810,7 +810,6 @@
         "invalid": "Недійсний виконуваний файл"
       },
       "errors": {
-        "invalidPath": "Введіть коректний абсолютний шлях",
         "required": "Це поле обовʼязкове"
       },
       "modes": {
@@ -1774,7 +1773,9 @@
       "exportConfig": "Експортувати конфігурацію",
       "toggleBrowser": "Перемкнути файловий браузер",
       "openFlowOverlay": "Перемкнути робочу область Flow",
-      "closeDialog": "Закрити вікно / скасувати дію"
+      "closeDialog": "Закрити вікно / скасувати дію",
+      "saveWorkflow": "Зберегти робочий процес",
+      "deleteSelected": "Видалити вибрані вузли/ребра"
     },
     "categories": {
       "global": "Глобальні",
@@ -1783,7 +1784,8 @@
       "fileOperations": "Операції з файлами",
       "fileBrowser": "Файловий браузер",
       "fileBrowserNautilus": "Файловий браузер (Nautilus)",
-      "navigation": "Навігація"
+      "navigation": "Навігація",
+      "flowWorkspace": "Робочий простір Flow"
     },
     "quitError": "Не вдалося вийти із застосунку: {{error}}",
     "mountsRefreshSuccess": "Монтування успішно оновлено",
@@ -1966,9 +1968,6 @@
       "scrollTop": "Прокрутити вгору",
       "scrollBottom": "Прокрутити вниз",
       "fetching": "Отримання журналів...",
-      "aria": {
-        "terminalLogs": "Журнали термінала"
-      },
       "remoteLogs": "Журнали сховища: {{ name }}",
       "noLogsFound": "Журналів не знайдено",
       "adjustFilters": "Спробуйте змінити фільтри",
@@ -2112,8 +2111,7 @@
         },
         "configPath": {
           "label": "Шлях до конфігурації",
-          "placeholder": "Залиште порожнім для типового",
-          "description": "Конкретний шлях до rclone.conf (необовʼязково)"
+          "placeholder": "Залиште порожнім для типового"
         }
       },
       "addBackend": "Додати бекенд",
@@ -2191,10 +2189,7 @@
         "decryptWarning": "Це розшифрує вашу конфігурацію rclone. Ваші облікові дані будуть видимі для будь-кого, хто має доступ до ваших файлів.",
         "enableEncryption": "Увімкнути шифрування",
         "protectCredentials": "Захистіть свої облікові дані паролем",
-        "passwordChanged": "Пароль змінено",
-        "passwordStored": "Пароль збережено у сховищі ключів",
         "passwordStoredInKeyring": "Пароль збережено у системному сховищі ключів",
-        "passwordRemoved": "Пароль вилучено зі сховища ключів",
         "passwordsMismatch": "Паролі не збігаються"
       }
     },
@@ -2498,8 +2493,26 @@
         "newName": "Нова назва",
         "counter": "Лічильник",
         "date": "Дата",
+        "modDate": "Дата зміни",
         "extension": "Розширення",
-        "duplicateOrInvalid": "Дубльоване або недійсне ім'я"
+        "duplicateOrInvalid": "Дубльоване або недійсне ім'я",
+        "invalidRegex": "Недійсний регулярний вираз: {{error}}",
+        "targetScope": "Застосувати до",
+        "targetScopeAll": "Файли та папки",
+        "targetScopeFiles": "Тільки файли",
+        "targetScopeFolders": "Тільки папки",
+        "caseTransform": "Регістр символів",
+        "caseNone": "Без змін",
+        "caseLower": "малі літери",
+        "caseUpper": "ВЕЛИКІ ЛІТЕРИ",
+        "caseTitle": "Як у заголовку",
+        "preserveExtension": "Зберігати розширення",
+        "useRegex": "Регулярні вирази",
+        "prefix": "Префікс",
+        "suffix": "Суфікс",
+        "statsChanged": "{{count}} для перейменування",
+        "statsUnchanged": "{{count}} без змін",
+        "statsConflicts": "{{count}} конфлікт(ів)"
       }
     },
     "errors": {
@@ -2827,7 +2840,6 @@
     "security": {
       "passwordEmpty": "Пароль не може бути порожнім",
       "noPasswordStored": "Пароль не збережено",
-      "passwordChangeUnavailable": "Зміна пароля недоступна на цій платформі",
       "incorrectPassword": "Невірний пароль для конфігурації rclone",
       "storeFailed": "Не вдалося зберегти пароль: {{error}}",
       "encryptFailed": "Не вдалося зашифрувати конфігурацію: {{error}}",
@@ -3234,7 +3246,6 @@
       "testBinaryFirst": "Спочатку перевірте виконуваний файл"
     },
     "passwordErrors": {
-      "validateFailed": "Перевірку не пройдено",
       "invalid": "Невірний пароль",
       "locked": "Обліковий запис заблоковано через надто багато спроб",
       "generic": "Помилка: {{error}}"
@@ -3314,7 +3325,8 @@
         "tabVfs": "VFS",
         "tabFilter": "Фільтр",
         "tabBackend": "Бекенд",
-        "tabRuntimeRemote": "Диск виконання"
+        "tabRuntimeRemote": "Диск виконання",
+        "noProfiles": "Немає доступних профілів"
       }
     },
     "tabs": {
@@ -3322,7 +3334,6 @@
       "workflow": "Робочий процес"
     },
     "workflow": {
-      "title": "Редактор робочих процесів",
       "untitled": "Процес без назви",
       "savedWorkflows": "Збережені процеси",
       "presetRecipes": "Готові шаблони",
@@ -3338,7 +3349,6 @@
         "action": "Дія"
       },
       "actions": {
-        "configure": "Налаштувати вузол",
         "duplicate": "Дублювати вузол",
         "delete": "Видалити вузол",
         "duplicateWorkflow": "Дублювати процес",
@@ -3346,7 +3356,6 @@
         "exportWorkflow": "Експорт JSON"
       },
       "toolbar": {
-        "togglePalette": "Бібліотека вузлів",
         "selectWorkflow": "Вибрати процес",
         "newWorkflow": "Новий процес",
         "run": "Запустити процес",
@@ -3361,7 +3370,6 @@
         "snapToGrid": "Прив’язати до сітки",
         "toggleLog": "Журнал виконання",
         "toggleInspector": "Інспектор",
-        "cleanDuplicates": "Очистити дублікати",
         "dryRun": "Тестовий запуск",
         "dryRunTooltip": "Імітація виконання робочого процесу без зміни даних та виконання реальних команд"
       },
@@ -3381,9 +3389,7 @@
         "subtitlePlaceholder": "Напр. Щоденне резервне копіювання",
         "cronExpression": "Вираз Cron",
         "invalidCron": "Некоректний вираз cron",
-        "cronHourly": "Щогодини",
         "cronDaily": "Щодня о 02:00",
-        "cronWeekly": "Щотижня (Пн)",
         "watchFolder": "Шлях до відстежуваної папки",
         "debounceSeconds": "Затримка стабілізації (сек)",
         "remote": "Віддалений диск",
@@ -3393,7 +3399,6 @@
         "mountPoint": "Точка монтування",
         "rcEndpoint": "Ендпоінт RC",
         "rcParameters": "Параметри RC (JSON)",
-        "rcParametersHint": "Корисне навантаження JSON для команди RC (підтримує токени {{nodes.id.field}})",
         "rcPresets": "Готові ендпоінти",
         "presetCategoryAll": "Всі",
         "presetCategoryVfs": "VFS",
@@ -3403,7 +3408,6 @@
         "insertTokenBtn": "Вставити змінну",
         "formatJson": "Форматувати JSON",
         "clearJson": "Очистити",
-        "validJson": "Коректний JSON",
         "invalidJson": "Некоректний JSON",
         "templateJson": "Динамічний шаблон",
         "noUpstreamNodesHint": "Додайте інші вузли до робочого процесу, щоб динамічно посилатися на їхній вивід, як {{nodes.id.field}}",
@@ -3426,7 +3430,6 @@
         "alertMessage": "Текст сповіщення",
         "severity": "Рівень важливості",
         "severityInfo": "Інформація",
-        "severitySuccess": "Успіх",
         "severityError": "Помилка / Попередження",
         "openDetailed": "Детальні налаштування",
         "openDetailedTooltip": "Відкрити панель розширених параметрів і прапорців",
@@ -3454,9 +3457,6 @@
         "eventStateSuccess": "Only on Success",
         "eventStateFailed": "Only on Failure",
         "optionalPath": "Optional Subfolder Path",
-        "cryptRemote": "Crypt Remote",
-        "selectCryptRemote": "Select crypt remote...",
-        "cryptDstPath": "Encrypted Destination Path",
         "scriptCommand": "Command / Script",
         "scriptArguments": "Arguments (optional)",
         "workingDir": "Working Directory (optional)",
@@ -3625,6 +3625,9 @@
         "configureNode": "Налаштування вузла: {{type}}",
         "nodeSaved": "Параметри вузла робочого процесу оновлено"
       }
+    },
+    "shortcuts": {
+      "title": "Гарячі клавіші Flow"
     }
   },
   "templates": {
@@ -3663,7 +3666,8 @@
     "deletedSuccess": "Шаблон успішно видалено."
   },
   "navigation": {
-    "dashboard": "Панель керування"
+    "dashboard": "Панель керування",
+    "files": "Файли"
   },
   "provision": {
     "stages": {

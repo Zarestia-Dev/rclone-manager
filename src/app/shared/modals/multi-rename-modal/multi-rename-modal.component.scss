@@ -1,7 +1,9 @@
 .segment-control {
+  width: 100%;
+  display: flex;
   border-radius: var(--radius-sm);
 
-  ::ng-deep .mat-button-toggle {
+  mat-button-toggle {
     flex: 1;
   }
 }
@@ -9,7 +11,7 @@
 form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .form-row {
@@ -17,13 +19,16 @@ form {
   gap: var(--space-sm);
   align-items: center;
 
-  .flex-grow {
-    flex-grow: 1;
+  mat-form-field {
+    flex: 1;
   }
 
   .add-placeholder-btn {
-    height: 56px;
-    margin-bottom: 22px; // Align with Material form field's height excluding hint/error space
+    height: 48px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
   }
 }
 
@@ -31,29 +36,92 @@ form {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-sm);
-  animation: fadeIn 0.2s ease-out;
+
+  @media (max-width: 580px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-row-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-sm);
+
+  @media (max-width: 580px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+
+  @media (max-width: 580px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    background: var(--card-shade-color);
+    color: var(--dim-color);
+
+    mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+    }
+
+    &.changed {
+      background: rgba(var(--accent-color-rgb), 0.12);
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    &.conflict {
+      background: rgba(var(--warn-color-rgb), 0.12);
+      color: var(--warn-color);
+      font-weight: 600;
+    }
+  }
 }
 
 .preview-container {
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
-  height: 250px;
-  background: var(--bg-elevated-2);
+  min-height: 220px;
+  height: 280px;
+  background: var(--view-bg-color);
   overflow: hidden;
 }
 
 .preview-header {
   display: flex;
+  align-items: center;
   padding: var(--space-xs) var(--space-md);
-  background: var(--bg-elevated-1);
+  background: var(--card-bg-color);
   font-weight: 600;
   font-size: var(--font-size-xs);
   color: var(--dim-color);
@@ -70,11 +138,19 @@ form {
   display: flex;
   align-items: center;
   padding: var(--space-xs) var(--space-md);
-  border-bottom: 1px solid var(--bg-elevated-1);
+  border-bottom: 1px solid var(--border-color);
   font-size: var(--font-size-sm);
+  transition: var(--transition-fast);
 
   &:last-child {
     border-bottom: none;
+  }
+
+  &.is-changed {
+    .col-new {
+      font-weight: 600;
+      color: var(--accent-color);
+    }
   }
 
   &.has-error {
@@ -87,24 +163,40 @@ form {
   }
 }
 
+.col-type {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--dim-color);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .col-orig {
   flex: 5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--dim-color);
 }
 
 .col-arrow {
-  flex: 1;
+  width: 32px;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   color: var(--dim-color);
 
   mat-icon {
-    transform: scale(0.8);
-    height: 18px;
-    width: 18px;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
   }
 }
 
@@ -119,7 +211,9 @@ form {
 
   .error-icon {
     color: var(--warn-color);
-    transform: scale(0.8);
+    width: 16px;
+    height: 16px;
     margin-left: var(--space-xxs);
+    flex-shrink: 0;
   }
 }
