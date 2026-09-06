@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { UserPresetTemplate } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 @Injectable({ providedIn: 'root' })
 export class UserTemplateService extends TauriBaseService {
@@ -36,7 +37,7 @@ export class UserTemplateService extends TauriBaseService {
   }
 
   saveTemplate(input: Omit<UserPresetTemplate, 'id'>): UserPresetTemplate {
-    const id = `usr-tpl-${crypto.randomUUID()}`;
+    const id = generatePrefixedId('usr-tpl');
     const newTemplate: UserPresetTemplate = { id, ...input };
     const previous = this._templates();
 

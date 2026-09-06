@@ -16,6 +16,7 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { AutomationService } from '../operations/automation.service';
 import { ModalService } from '../ui/modal.service';
 import { findUniqueName } from '../remote/utils/unique-name.util';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 /**
  * Front-end store for the Flow workspace's "Quick Run" feature.
@@ -443,9 +444,6 @@ export class QuickRunService extends TauriBaseService {
   }
 
   private generateId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID();
-    }
-    return `qr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return generatePrefixedId('qr');
   }
 }

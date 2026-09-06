@@ -31,6 +31,7 @@ import {
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 @Injectable({
   providedIn: 'root',
@@ -360,7 +361,7 @@ export class NautilusService extends TauriBaseService {
     try {
       this._filePickerState.set({
         isOpen: true,
-        options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
+        options: { ...options, requestId: options.requestId ?? generatePrefixedId('picker') },
       });
       await this.createPickerOverlay();
     } catch (err) {

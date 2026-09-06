@@ -6,6 +6,7 @@ import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 /**
  * Service for file system operations
@@ -74,11 +75,7 @@ export class FileSystemService extends TauriBaseService {
    * Select a path using the integrated Nautilus file browser
    */
   async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
-    const requestId =
-      config.requestId ??
-      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `picker_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const requestId = config.requestId ?? generatePrefixedId('picker');
 
     this.nautilusService.openFilePicker({ ...config, requestId });
     return firstValueFrom(

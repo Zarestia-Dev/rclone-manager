@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
 
 ### Fixed
+- **Blank Page in Nautilus & UI Over Non-Secure HTTP Contexts**: Resolved `TypeError: crypto.randomUUID is not a function` when accessing the application over non-secure HTTP / remote IP addresses. Replaced direct `crypto.randomUUID()` calls across Nautilus, File System, Quick Run, and User Template services with a robust, zero-dependency `generatePrefixedId` utility featuring base36 monotonic timestamping, sequence counting, and context prefixes. Fixes #292
 - **Canonical Rclone Preset Flag Mapping for macOS Mounts & S3 Backend**: Corrected preset flag definitions in `RemotePresetsService` to use upstream canonical Rclone flag names (`noappledouble`, `noapplexattr` instead of snake_case `no_apple_*` for macOS mounts, and `use_server_modtime` instead of `use_server_mod_time` for S3). Fixes #290
 
 

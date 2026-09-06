@@ -67,6 +67,10 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
    - New utility functions, data transformers, flag parsers, state machines, and business services should always have corresponding unit test suites.
    - Ensure tests cover both happy paths and edge cases (e.g. empty strings, null values, invalid inputs, error handling).
 
+9. **Unique ID Generation & Non-Secure HTTP Compatibility (CRITICAL)**
+   - **DO NOT** use `crypto.randomUUID()` or Web Crypto APIs directly in frontend code. They are restricted to secure contexts (HTTPS/localhost) by modern browsers and are `undefined` over plain HTTP (e.g., remote IP headless web server access), causing `TypeError: crypto.randomUUID is not a function` and blank screens.
+   - **ALWAYS** use `generatePrefixedId(prefix)` from `src/app/shared/utils` for generating unique IDs, request tokens, temporary keys, or job groups (e.g., `generatePrefixedId('qr')`, `generatePrefixedId('picker')`, `generatePrefixedId('usr-tpl')`).
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))
