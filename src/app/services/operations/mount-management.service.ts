@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { MountedRemote, Origin } from '@app/types';
+import { MountedRemote, OperationContext, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -96,6 +96,10 @@ export class MountManagementService extends TauriBaseService {
         errorParams: { remote: remoteName },
       }
     );
+  }
+
+  async unmountAllRemotes(context: OperationContext = 'normal'): Promise<void> {
+    await this.invokeCommand('unmount_all_remotes', { context });
   }
 
   async forceCheckMountedRemotes(): Promise<void> {

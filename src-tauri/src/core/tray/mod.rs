@@ -8,7 +8,7 @@ pub mod tray_action;
 
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
-use crate::utils::types::jobs::{JobStatus, JobType};
+use crate::utils::types::jobs::JobStatus;
 use crate::utils::types::origin::Origin;
 use crate::utils::types::remotes::{MountedRemote, OperationType, ServeInstance};
 use menu::MenuPlan;

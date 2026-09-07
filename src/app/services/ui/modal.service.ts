@@ -285,6 +285,10 @@ export class ModalService extends TauriBaseService {
       import('../../shared/modals/multi-rename-modal/multi-rename-modal.component').then(
         m => m.MultiRenameModalComponent
       ),
+    'power-menu': () =>
+      import('../../features/modals/power-menu-modal/power-menu-modal.component').then(
+        m => m.PowerMenuModalComponent
+      ),
   };
 
   async resolveDialogWindow(): Promise<void> {
@@ -684,6 +688,10 @@ export class ModalService extends TauriBaseService {
 
   openAbout<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
+  }
+
+  openPowerMenu<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal('power-menu', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
   openArchiveCreate<TResult = any>(data: {

@@ -167,7 +167,8 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     }
 }
 
-async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
+#[bridge]
+pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     let active_jobs = app
         .state::<BackendManager>()
         .job_cache

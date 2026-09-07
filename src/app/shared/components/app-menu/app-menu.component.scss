@@ -91,3 +91,18 @@
 .selected::before {
   box-shadow: 0 0 0 2px var(--accent-color);
 }
+
+.about-menu-item {
+  position: relative;
+  overflow: hidden;
+
+  .hold-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--warn-color);
+    pointer-events: none;
+    transition: width 0.04s linear;
+  }
+}

@@ -1,0 +1,116 @@
+<header data-tauri-drag-region>
+  @if (selectedAction(); as action) {
+    <button
+      matIconButton
+      type="button"
+      (click)="clearSelection()"
+      [disabled]="isExecuting()"
+      [attr.title]="'common.back' | translate"
+      [attr.aria-label]="'common.back' | translate"
+    >
+      <mat-icon svgIcon="left-arrow"></mat-icon>
+    </button>
+    <p>{{ action.titleKey | translate }}</p>
+  } @else {
+    <button tabindex="-1" aria-hidden="true">
+      <mat-icon svgIcon="power-off"></mat-icon>
+    </button>
+    <p>{{ 'powerMenu.title' | translate }}</p>
+  }
+  <button
+    matIconButton
+    type="button"
+    (click)="close()"
+    [disabled]="isExecuting()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  @if (hasActiveOperations()) {
+    <div class="active-ops-banner" role="alert">
+      <mat-icon svgIcon="warning" class="warning-icon" aria-hidden="true"></mat-icon>
+      <div class="banner-text">
+        <strong>{{ 'powerMenu.activeOpsTitle' | translate }}</strong>
+        <span>
+          {{
+            'powerMenu.activeOpsCount'
+              | translate
+                : {
+                    jobs: activeJobsCount(),
+                    mounts: activeMountsCount(),
+                    serves: activeServesCount(),
+                  }
+          }}
+        </span>
+      </div>
+    </div>
+  }
+
+  @if (selectedAction(); as action) {
+    <!-- Safe In-Modal Confirmation View -->
+    <div class="confirm-view">
+      <div class="confirm-icon-bubble" [attr.data-variant]="action.variant">
+        <mat-icon [svgIcon]="action.icon" aria-hidden="true"></mat-icon>
+      </div>
+
+      <div class="confirm-text">
+        <h3 class="confirm-title">{{ action.titleKey | translate }}</h3>
+        <p class="confirm-desc">{{ action.descKey | translate }}</p>
+      </div>
+
+      <div class="confirm-actions">
+        <button
+          matButton="tonal"
+          type="button"
+          (click)="clearSelection()"
+          [disabled]="isExecuting()"
+        >
+          {{ 'common.cancel' | translate }}
+        </button>
+        <button
+          matButton="filled"
+          type="button"
+          class="confirm-btn"
+          [attr.data-variant]="action.variant"
+          (click)="executeAction(action)"
+          [disabled]="isExecuting()"
+        >
+          {{ 'common.confirm' | translate }}
+        </button>
+      </div>
+    </div>
+  } @else {
+    <!-- 2-Column Material You Tiles Grid -->
+    <div class="tiles-grid" role="group" [attr.aria-label]="'powerMenu.title' | translate">
+      @for (action of powerActions(); track action.id) {
+        <button
+          type="button"
+          class="tile"
+          [attr.data-variant]="action.variant"
+          (click)="selectAction(action)"
+          [disabled]="isExecuting()"
+          [attr.title]="action.descKey | translate"
+        >
+          <div class="icon-bubble">
+            <mat-icon [svgIcon]="action.icon" aria-hidden="true"></mat-icon>
+          </div>
+          <span class="tile-title">{{ action.titleKey | translate }}</span>
+          <span class="tile-desc">{{ action.descKey | translate }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (isExecuting()) {
+    <div class="executing-overlay" aria-live="polite">
+      <div class="spinner-wrapper">
+        <mat-icon svgIcon="spinner" class="executing-spinner" aria-hidden="true"></mat-icon>
+      </div>
+      <p class="executing-text">{{ executingMessageKey() | translate }}</p>
+    </div>
+  }
+</main>

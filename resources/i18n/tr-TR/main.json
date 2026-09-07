@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "İptal",
+    "confirm": "Onayla",
     "save": "Kaydet",
     "create": "Oluştur",
     "show": "Göster",
@@ -1800,6 +1801,47 @@
       "confirmTitle": "Aktif İşlemler Devam Ediyor",
       "confirmMessage": "Rclone Manager üzerinde aktif işlemler çalışıyor ({{jobs}} transfer, {{mounts}} bağlama, {{serves}} sunum). Tüm aktif işlemleri durdurup çıkmak istediğinize emin misiniz?",
       "stopAndQuit": "Durdur ve Çık"
+    }
+  },
+  "powerMenu": {
+    "title": "Güç Seçenekleri",
+    "executing": "İşlem gerçekleştiriliyor...",
+    "activeOpsTitle": "Aktif İşlemler Devam Ediyor",
+    "activeOpsCount": "{{jobs}} transfer, {{mounts}} bağlama, {{serves}} sunum çalışıyor",
+    "actions": {
+      "shutdownApp": {
+        "title": "Uygulamayı Kapat",
+        "desc": "Rclone Manager sunucusunu ve işlemlerini sonlandırır"
+      },
+      "restartApp": {
+        "title": "Yeniden Başlat",
+        "desc": "Uygulamayı ve web sunucusunu yeniden başlatır"
+      },
+      "emergencyStop": {
+        "title": "Tümünü Durdur",
+        "desc": "Aktif transferleri ve bağlantıları anında durdurur"
+      },
+      "systemShutdown": {
+        "title": "Cihazı Kapat",
+        "desc": "İşletim sistemini (PC / Sunucu) tamamen kapatır"
+      },
+      "systemSleep": {
+        "title": "Askıya Al",
+        "desc": "Cihazı uyku moduna geçirir"
+      },
+      "systemLock": {
+        "title": "Ekranı Kilitle",
+        "desc": "Kullanıcı oturumunu kilitler"
+      }
+    },
+    "status": {
+      "shuttingDown": "Uygulama kapatılıyor...",
+      "restarting": "Uygulama yeniden başlatılıyor...",
+      "stoppingOperations": "Tüm işlemler durduruluyor...",
+      "emergencyStopSuccess": "Tüm aktif işlemler ve bağlantılar durduruldu",
+      "hostShuttingDown": "İşletim sistemi kapatılıyor...",
+      "hostSleeping": "Cihaz uyku moduna alınıyor...",
+      "hostLocking": "Oturum kilitleniyor..."
     }
   },
   "modals": {

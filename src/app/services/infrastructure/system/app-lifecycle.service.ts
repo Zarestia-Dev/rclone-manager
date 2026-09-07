@@ -7,6 +7,7 @@ import { NotificationService } from '../../ui/notification.service';
 import { NautilusService } from '../../ui/nautilus.service';
 import { FlowOverlayService } from '../../ui/flow-overlay.service';
 import { MainUiOverlayService } from '../../ui/main-ui-overlay.service';
+import { SystemPowerAction } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class AppLifecycleService {
@@ -50,9 +51,21 @@ export class AppLifecycleService {
         );
 
         if (confirmed) {
-          await this.apiClient.invoke('shutdown_app');
+          await this.shutdownApp();
         }
       });
+  }
+
+  async shutdownApp(): Promise<void> {
+    await this.apiClient.invoke('shutdown_app');
+  }
+
+  async relaunchApp(): Promise<void> {
+    await this.apiClient.invoke('relaunch_app');
+  }
+
+  async executeSystemPower(action: SystemPowerAction): Promise<void> {
+    await this.apiClient.invoke('execute_system_power', { action });
   }
 
   private isStandaloneWindow(): boolean {

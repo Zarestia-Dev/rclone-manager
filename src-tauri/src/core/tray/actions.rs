@@ -236,26 +236,11 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let backend_manager = app.state::<BackendManager>();
-        let active_jobs = backend_manager.job_cache.get_active_jobs().await;
-
-        if active_jobs.is_empty() {
-            return;
-        }
-
-        let mut stopped = 0usize;
-        for job in active_jobs {
-            match stop_job(app.clone(), job.jobid, job.remote_name.clone()).await {
-                Ok(()) => {
-                    stopped += 1;
-                    info!("Stopped job {}", job.jobid);
-                }
-                Err(e) => error!("Failed to stop job {}: {e}", job.jobid),
+        match crate::core::lifecycle::shutdown::stop_all_active_jobs(app.clone()).await {
+            Ok(()) => {
+                notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
             }
-        }
-
-        if stopped > 0 {
-            notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
+            Err(e) => error!("Failed to stop all active jobs: {e}"),
         }
     });
 }

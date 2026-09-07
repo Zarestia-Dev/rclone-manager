@@ -214,6 +214,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
+            (stop_all_active_jobs, $crate::core::lifecycle::shutdown::stop_all_active_jobs, []);
             (register_preparing_job, $crate::rclone::commands::job::register_preparing_job, [jobid: u64, remote: String, destination: String, total_files: usize, total_bytes: u64, origin: Option<$crate::utils::types::origin::Origin>]);
             (update_job_stats, $crate::rclone::commands::job::update_job_stats, [jobid: u64, stats: serde_json::Value]);
 
@@ -272,7 +273,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 
             // APPLICATION CONTROL
+            #[cfg(not(any(target_os = "ios")))]
             (shutdown_app, $crate::core::lifecycle::shutdown::shutdown_app, []);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (execute_system_power, $crate::core::power::actions::execute_system_power, [action: String], [no_app]);
 
             // SECURITY & PASSWORD MANAGEMENT
             (store_config_password, $crate::core::security::store_config_password, [password: String]);

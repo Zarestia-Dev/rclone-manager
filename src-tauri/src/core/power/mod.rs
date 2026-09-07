@@ -1,6 +1,5 @@
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod actions;
-
-pub use actions::execute_system_power;
 
 #[cfg(all(
     feature = "desktop",

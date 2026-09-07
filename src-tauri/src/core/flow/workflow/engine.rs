@@ -992,7 +992,7 @@ async fn execute_single_node(
                 })));
             }
 
-            crate::core::power::execute_system_power(action)
+            crate::core::power::actions::execute_system_power_internal(action)
                 .await
                 .map_err(|e| format!("Failed to execute system power action '{action}': {e}"))?;
 
@@ -2883,7 +2883,7 @@ mod tests {
                 "message": format!("Dry run simulation: power action '{action}' skipped")
             })))
         } else {
-            crate::core::power::execute_system_power(action)
+            crate::core::power::actions::execute_system_power_internal(action)
                 .await
                 .map(|_| {
                     NodeExecutionOutput::new(json!({ "powerAction": action, "executed": true }))

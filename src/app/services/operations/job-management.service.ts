@@ -153,4 +153,8 @@ export class JobManagementService extends TauriBaseService {
   async stopJobsByGroup(group: string): Promise<void> {
     await this.invokeCommand('stop_jobs_by_group', { group });
   }
+
+  async stopAllActiveJobs(): Promise<void> {
+    await this.invokeCommand('stop_all_active_jobs');
+  }
 }

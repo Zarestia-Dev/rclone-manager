@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Power Management & Fast Actions Modal**:
+  - **Quick Power Menu & Gestures**: Added a quick power and lifecycle management modal accessible via long-press (hold) gesture on "About Rclone Manager" in the app hamburger menu on mobile and desktop.
+  - **Comprehensive Power Actions**: Supports safe application termination (`Shut Down App`), application relaunch (`Restart App`), immediate operation halt (`Emergency Stop` unmounting all remotes and stopping all serves), host power off (`Power Off System`), system suspend/sleep (`Suspend / Sleep`), and user session locking (`Lock Session`).
+  - **Cross-Platform Gating & Mobile Compliance**: Native Android and iOS builds automatically filter out unsupported OS-level device power actions (phone shutdown/sleep/lock). iOS builds exclude the app exit action for Apple App Store compliance (Guideline 2.5.4), while Android preserves background service termination. Remote headless web server sessions preserve full server power management.
 - **Rclone Port Collision Detection & Auto-Repair Flow**:
   - Added automatic detection for occupied TCP ports prior to spawning local Rclone engines.
   - Non-blocking startup error handling with instant child status reaping (`try_wait`) to eliminate startup timeout delays on port bind failures.

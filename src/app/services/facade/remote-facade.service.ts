@@ -649,6 +649,14 @@ export class RemoteFacadeService {
     await this.jobService.stopJobsByGroup(groupName);
   }
 
+  async emergencyStopAll(): Promise<void> {
+    await Promise.all([
+      this.jobService.stopAllActiveJobs(),
+      this.mountService.unmountAllRemotes('normal'),
+      this.serveService.stopAllServes('normal'),
+    ]);
+  }
+
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
       const mount = this.mountedRemotes().find(

@@ -232,3 +232,8 @@ export type ViewId =
 export interface OverlayView {
   id: ViewId;
 }
+
+/**
+ * Host system power actions supported by the native power bridge (`execute_system_power`).
+ */
+export type SystemPowerAction = 'shutdown' | 'sleep' | 'lock' | 'hibernate';

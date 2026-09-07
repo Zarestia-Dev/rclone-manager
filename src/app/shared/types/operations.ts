@@ -30,6 +30,12 @@ export type FileOperationType =
 /** Single source of truth for `JobInfo.job_type`. */
 export type JobActionType = PrimaryActionType | FileOperationType;
 
+/**
+ * Context in which an operation (e.g., unmount_all, stop_all_serves) is invoked.
+ * Matches Rust's `crate::rclone::commands::common::OperationContext`.
+ */
+export type OperationContext = 'normal' | 'shutdown';
+
 // ── Runtime action state ────────────────────────────────────────────────────
 export interface ActionState {
   type: RemoteAction;

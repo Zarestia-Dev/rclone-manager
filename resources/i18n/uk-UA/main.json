@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Скасувати",
+    "confirm": "Підтвердити",
     "save": "Зберегти",
     "create": "Створити",
     "show": "Показати",
@@ -3754,6 +3755,47 @@
         "false": "Вимкнено (false)",
         "unset": "Не встановлено"
       }
+    }
+  },
+  "powerMenu": {
+    "title": "Power Options",
+    "executing": "Executing action...",
+    "activeOpsTitle": "Active Tasks in Progress",
+    "activeOpsCount": "{{jobs}} transfers, {{mounts}} mounts, {{serves}} serves running",
+    "actions": {
+      "shutdownApp": {
+        "title": "Shut Down App",
+        "desc": "Safely stops Rclone Manager and background tasks"
+      },
+      "restartApp": {
+        "title": "Restart App",
+        "desc": "Restarts the application and web server"
+      },
+      "emergencyStop": {
+        "title": "Emergency Stop",
+        "desc": "Stops all active transfers and unmounts immediately"
+      },
+      "systemShutdown": {
+        "title": "Power Off System",
+        "desc": "Completely shuts down the host PC/Server"
+      },
+      "systemSleep": {
+        "title": "Suspend / Sleep",
+        "desc": "Puts the host machine to sleep"
+      },
+      "systemLock": {
+        "title": "Lock Session",
+        "desc": "Locks the current user session"
+      }
+    },
+    "status": {
+      "shuttingDown": "Application is shutting down...",
+      "restarting": "Application is restarting...",
+      "stoppingOperations": "Stopping all operations...",
+      "emergencyStopSuccess": "All active operations and mounts stopped",
+      "hostShuttingDown": "Operating system is powering off...",
+      "hostSleeping": "Putting system to sleep...",
+      "hostLocking": "Locking system session..."
     }
   }
 }

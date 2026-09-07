@@ -1,5 +1,7 @@
 use log::info;
 
+use crate::core::bridge;
+
 /// Executes a native or OS-integrated system power action.
 ///
 /// Supported actions:
@@ -7,7 +9,12 @@ use log::info;
 /// - `"shutdown"`: Powers off the machine
 /// - `"hibernate"`: Hibernates the system
 /// - `"lock"`: Locks the current user screen/session
-pub async fn execute_system_power(action: &str) -> Result<(), String> {
+#[bridge]
+pub async fn execute_system_power(action: String) -> Result<(), String> {
+    execute_system_power_internal(&action).await
+}
+
+pub async fn execute_system_power_internal(action: &str) -> Result<(), String> {
     info!("Executing native system power action: {action}");
 
     #[cfg(target_os = "linux")]

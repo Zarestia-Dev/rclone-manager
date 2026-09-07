@@ -1,0 +1,242 @@
+// ── Variant Color Tokens (Scoped to Data Attributes) ─────────────────────────
+[data-variant="danger"] {
+  --tile-color: var(--destructive-color);
+}
+[data-variant="primary"] {
+  --tile-color: var(--accent-color);
+}
+[data-variant="warning"] {
+  --tile-color: var(--orange);
+}
+[data-variant="crimson"] {
+  --tile-color: var(--warn-color);
+}
+[data-variant="purple"] {
+  --tile-color: var(--purple);
+}
+[data-variant="neutral"] {
+  --tile-color: var(--dim-color);
+}
+
+// ── Active Operations Banner ──────────────────────────────────────────────────
+.active-ops-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--warn-color) 12%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--window-fg-color);
+  animation: fadeInUp var(--transition-cubic) both;
+
+  .warning-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--warn-color);
+    flex-shrink: 0;
+  }
+
+  .banner-text {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--font-size-sm);
+    gap: 2px;
+    min-width: 0;
+
+    strong {
+      color: var(--warn-color);
+      font-weight: 600;
+    }
+
+    span {
+      color: var(--dim-color);
+    }
+  }
+}
+
+// ── 2-Column Material You Tiles Grid ─────────────────────────────────────────
+.tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+  width: 100%;
+  animation: onboardingEntranceIn 200ms var(--transition-fast) both;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-sm);
+  background: var(--card-bg-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: var(--box-shadow);
+  color: var(--window-fg-color);
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px
+      color-mix(in srgb, var(--tile-color, var(--shadow-color)) 18%, transparent);
+
+    .icon-bubble {
+      background: color-mix(in srgb, var(--tile-color, var(--dim-color)) 20%, transparent);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .icon-bubble {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--tile-color, var(--dim-color)) 12%, transparent);
+    color: var(--tile-color);
+    transition: var(--transition-fast);
+  }
+
+  .tile-title {
+    display: block;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--window-fg-color);
+  }
+
+  .tile-desc {
+    display: -webkit-box;
+    font-size: var(--font-size-xs);
+    color: var(--dim-color);
+    line-height: 1.3;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+// ── In-Modal Confirmation View ───────────────────────────────────────────────
+.confirm-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-md);
+  width: 100%;
+  animation: onboardingEntranceIn 240ms var(--transition-cubic) both;
+
+  .confirm-icon-bubble {
+    width: 68px;
+    height: 68px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--tile-color, var(--accent-color)) 15%, transparent);
+    color: var(--tile-color);
+    animation: badge-pop 320ms var(--transition-cubic) both;
+
+    mat-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 32px;
+    }
+  }
+
+  .confirm-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+
+    .confirm-title {
+      margin: 0;
+      font-size: var(--font-size-lg, 1.15rem);
+      font-weight: 700;
+      color: var(--window-fg-color);
+    }
+
+    .confirm-desc {
+      margin: 0;
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      max-width: 320px;
+    }
+  }
+
+  .confirm-actions {
+    display: flex;
+    gap: var(--space-md);
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+    animation: fadeInUp 260ms var(--transition-cubic) 40ms both;
+
+    button {
+      flex: 1;
+    }
+
+    .confirm-btn {
+      background-color: var(--tile-color) !important;
+      color: #ffffff !important;
+    }
+  }
+}
+
+// ── Executing Overlay ────────────────────────────────────────────────────────
+.executing-overlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--window-bg-color) 85%, transparent);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  z-index: 10;
+  border-radius: inherit;
+  animation: fadeIn var(--transition-fast) both;
+
+  .spinner-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-circle);
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .executing-spinner {
+      width: 28px;
+      height: 28px;
+      font-size: 28px;
+      animation: spin 1s linear infinite;
+      color: var(--primary-color);
+    }
+  }
+
+  .executing-text {
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--window-fg-color);
+  }
+}

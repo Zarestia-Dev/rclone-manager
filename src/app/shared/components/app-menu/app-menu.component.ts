@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
@@ -16,6 +16,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
+import { LongPressDirective } from 'src/app/shared/directives/long-press.directive';
 import { Theme, MainView } from '@app/types';
 
 @Component({
@@ -28,6 +29,7 @@ import { Theme, MainView } from '@app/types';
     MatButtonModule,
     MatBadgeModule,
     TranslatePipe,
+    LongPressDirective,
   ],
   templateUrl: './app-menu.component.html',
   styleUrl: './app-menu.component.scss',
@@ -168,8 +170,31 @@ export class AppMenuComponent {
     this.backupRestoreUiService.launchRestoreFlow();
   }
 
+  readonly aboutHoldProgress = signal(0);
+  private longPressTriggered = false;
+
+  onAboutLongPress(): void {
+    this.longPressTriggered = true;
+    this.aboutHoldProgress.set(0);
+    this.openPowerMenuModal();
+    setTimeout(() => {
+      this.longPressTriggered = false;
+    }, 400);
+  }
+
+  onAboutClicked(): void {
+    if (this.longPressTriggered) {
+      return;
+    }
+    this.openAboutModal();
+  }
+
   openAboutModal(): void {
     this.modalService.openAbout();
+  }
+
+  openPowerMenuModal(): void {
+    this.modalService.openPowerMenu();
   }
 
   openAlertsModal(): void {
