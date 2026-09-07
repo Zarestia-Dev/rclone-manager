@@ -87,10 +87,8 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("Failed to refresh cache: {e1}, {e2}");
             }
 
-            let remote_names = cache.get_remotes().await;
             let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
                 app.state::<AppSettingsManager>().inner(),
-                &remote_names,
             );
 
             if let Err(e) = reload_automations_from_configs(app.clone(), all_configs).await {

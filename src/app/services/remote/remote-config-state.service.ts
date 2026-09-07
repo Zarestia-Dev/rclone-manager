@@ -1699,6 +1699,9 @@ export class RemoteConfigStateService {
         this.remoteForm.get('type')?.setValue(this.dialogData().remoteType || runtimeType || '');
       }
       if (profile) await this.populateProfileForm(type, profile);
+    } else if (!this.editTarget() && !this.cloneTarget()) {
+      const initialName = this.dialogData()?.name;
+      if (initialName) this.remoteForm.get('name')?.setValue(initialName);
     }
     if (this.cloneTarget()) this.generateNewCloneName();
   }

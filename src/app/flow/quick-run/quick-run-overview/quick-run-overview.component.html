@@ -101,7 +101,15 @@
                             type="button"
                             class="app-pill interactive"
                             [class.is-selected]="selectedRemoteFilter() === group.remoteName"
-                            [class.p-primary]="selectedRemoteFilter() === group.remoteName"
+                            [class.p-primary]="
+                              selectedRemoteFilter() === group.remoteName && !group.isMissing
+                            "
+                            [class.p-warn]="group.isMissing"
+                            [attr.title]="
+                              group.isMissing
+                                ? ('flow.quickRun.badges.missingRemote' | translate)
+                                : group.remoteName
+                            "
                             (click)="setRemoteFilter(group.remoteName)"
                           >
                             <mat-icon [svgIcon]="group.icon"></mat-icon>

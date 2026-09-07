@@ -3289,13 +3289,18 @@
       "new": "Nouvelle Exécution Rapide",
       "actions": {
         "start": "Démarrer",
-        "stop": "Arrêter"
+        "stop": "Arrêter",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote",
+        "deleteQuickRun": "Supprimer Quick Run"
       },
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer l'exécution rapide '{{name}}' ?",
       "badges": {
         "scheduled": "Tâche Planifiée",
         "watcher": "Surveillance de dossier active",
         "watcherChangedOnly": "Surveillance de dossier active (sous-dossiers uniquement)",
-        "autostart": "Démarrage automatique activé"
+        "autostart": "Démarrage automatique activé",
+        "missingRemote": "Remote Missing from Rclone"
       },
       "status": {
         "running": "En cours"
@@ -3327,6 +3332,11 @@
         "tabBackend": "Backend",
         "tabRuntimeRemote": "Distant d’exécution",
         "noProfiles": "Aucun profil disponible"
+      },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
       }
     },
     "tabs": {

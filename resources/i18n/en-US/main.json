@@ -3289,14 +3289,19 @@
       "new": "New Quick Run",
       "actions": {
         "start": "Start",
-        "stop": "Stop"
+        "stop": "Stop",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote"
       },
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
         "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "autostart": "Auto-Start Enabled",
+        "missingRemote": "Remote Missing from Rclone"
       },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "status": {
         "running": "Running"
       },

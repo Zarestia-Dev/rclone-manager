@@ -3289,13 +3289,18 @@
       "new": "新規クイック実行",
       "actions": {
         "start": "開始",
-        "stop": "停止"
+        "stop": "停止",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote",
+        "deleteQuickRun": "クイック実行を削除"
       },
+      "deleteConfirm": "クイック実行「{{name}}」を削除してもよろしいですか？",
       "badges": {
         "scheduled": "スケジュールタスク",
         "watcher": "フォルダ監視有効",
         "watcherChangedOnly": "フォルダ監視有効 (サブディレクトリのみ)",
-        "autostart": "自動開始有効"
+        "autostart": "自動開始有効",
+        "missingRemote": "Remote Missing from Rclone"
       },
       "status": {
         "running": "実行中"
@@ -3327,6 +3332,11 @@
         "tabBackend": "バックエンド",
         "tabRuntimeRemote": "ランタイムリモート",
         "noProfiles": "利用可能なプロファイルがありません"
+      },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
       }
     },
     "tabs": {

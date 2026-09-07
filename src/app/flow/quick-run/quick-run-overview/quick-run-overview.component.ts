@@ -103,7 +103,7 @@ export class QuickRunOverviewComponent {
     }
 
     const allRemotes = this.remoteFacade.orderedRemotes();
-    const result: { remoteName: string; count: number; icon: string }[] = [];
+    const result: { remoteName: string; count: number; icon: string; isMissing?: boolean }[] = [];
 
     for (const r of allRemotes) {
       const count = countMap.get(r.name) ?? 0;
@@ -116,10 +116,12 @@ export class QuickRunOverviewComponent {
     }
 
     for (const [name, count] of countMap.entries()) {
+      const isMissing = name !== 'local' && !this.remoteFacade.isRemoteActive(name);
       result.push({
         remoteName: name,
         count,
-        icon: name === 'local' ? 'hard-drive' : 'cloud',
+        icon: isMissing ? 'warning' : name === 'local' ? 'hard-drive' : 'cloud',
+        ...(isMissing ? { isMissing: true } : {}),
       });
     }
 

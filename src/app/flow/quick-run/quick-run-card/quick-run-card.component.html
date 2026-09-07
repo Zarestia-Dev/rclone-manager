@@ -17,12 +17,17 @@
         <button
           type="button"
           class="remote-link-btn"
+          [class.is-missing]="isRemoteMissing()"
           (click)="onRemoteNameClick($event)"
           [attr.title]="
-            ('dashboard.appDetail.remoteSettings' | translate) + ': ' + quickRun().remoteName
+            (isRemoteMissing()
+              ? ('flow.quickRun.badges.missingRemote' | translate)
+              : ('dashboard.appDetail.remoteSettings' | translate)) +
+            ': ' +
+            quickRun().remoteName
           "
         >
-          <mat-icon [svgIcon]="remoteIcon()"></mat-icon>
+          <mat-icon [svgIcon]="isRemoteMissing() ? 'warning' : remoteIcon()"></mat-icon>
           <span class="remote-name-text">{{ quickRun().remoteName }}</span>
         </button>
       </span>
@@ -68,17 +73,19 @@
   <button
     matMiniFab
     [class]="isRunning() ? 'warn' : operationDef()?.cssClass || 'primary'"
-    [disabled]="isActionInProgress()"
+    [disabled]="isActionInProgress() || isRemoteMissing()"
     [attr.title]="
-      (isRunning()
-        ? operationDef()?.stopTooltip || 'flow.quickRun.actions.stop'
-        : operationDef()?.startTooltip || 'flow.quickRun.actions.start'
+      (isRemoteMissing()
+        ? ('flow.quickRun.errors.remoteNotFound' | translate: { remote: quickRun().remoteName })
+        : isRunning()
+          ? operationDef()?.stopTooltip || 'flow.quickRun.actions.stop'
+          : operationDef()?.startTooltip || 'flow.quickRun.actions.start'
       ) | translate
     "
     (click)="isRunning() ? onStop($event) : onStart($event)"
   >
     @if (isActionInProgress()) {
-      <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+      <mat-icon svgIcon="spinner"></mat-icon>
     } @else {
       <mat-icon [svgIcon]="currentActionIcon()"></mat-icon>
     }
@@ -116,7 +123,7 @@
       (click)="onOpenFolderClick(openableFolders()[0].path, $event)"
     >
       @if (isFolderOpening()) {
-        <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+        <mat-icon svgIcon="spinner"></mat-icon>
       } @else {
         <mat-icon [svgIcon]="openableFolders()[0].icon"></mat-icon>
       }
@@ -167,7 +174,7 @@
       (click)="$event.stopPropagation()"
     >
       @if (isFolderOpening()) {
-        <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+        <mat-icon svgIcon="spinner"></mat-icon>
       } @else {
         <mat-icon svgIcon="folder"></mat-icon>
       }

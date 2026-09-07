@@ -3289,13 +3289,18 @@
       "new": "Новый быстрый запуск",
       "actions": {
         "start": "Запустить",
-        "stop": "Остановить"
+        "stop": "Остановить",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote",
+        "deleteQuickRun": "Удалить Quick Run"
       },
+      "deleteConfirm": "Вы уверены, что хотите удалить быстрый запуск «{{name}}»?",
       "badges": {
         "scheduled": "Запланированная задача",
         "watcher": "Отслеживание папки активно",
         "watcherChangedOnly": "Отслеживание папки активно (только подкаталоги)",
-        "autostart": "Автозапуск включен"
+        "autostart": "Автозапуск включен",
+        "missingRemote": "Remote Missing from Rclone"
       },
       "status": {
         "running": "Выполняется"
@@ -3327,6 +3332,11 @@
         "tabBackend": "Бэкенд",
         "tabRuntimeRemote": "Диск выполнения",
         "noProfiles": "Нет доступных профилей"
+      },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
       }
     },
     "tabs": {

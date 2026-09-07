@@ -121,6 +121,12 @@ export class RemoteFacadeService {
       .filter((r): r is Remote => !!r)
   );
 
+  isRemoteActive(name?: string | null): boolean {
+    if (!name) return false;
+    const clean = name.endsWith(':') ? name.slice(0, -1) : name;
+    return this.remoteNames().includes(clean);
+  }
+
   readonly selectedRemote = computed(() => {
     const name = this.uiStateService.selectedRemote()?.name;
     return this.activeRemotes().find(r => r.name === name);

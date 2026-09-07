@@ -18,9 +18,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let manager = app_handle.state::<AppSettingsManager>();
 
     let backend_manager = app_handle.state::<BackendManager>();
-    let remote_names = backend_manager.remote_cache.get_remotes().await;
-
-    let all_settings = get_all_remote_settings_sync(manager.inner(), &remote_names);
+    let all_settings = get_all_remote_settings_sync(manager.inner());
 
     info!("📋 Loading automations from remote configs...");
 

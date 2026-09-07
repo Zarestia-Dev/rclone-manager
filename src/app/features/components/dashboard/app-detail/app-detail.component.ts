@@ -82,6 +82,9 @@ import {
   buildActionOrderItems,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
+import { ModalService } from 'src/app/services/ui/modal.service';
+
 @Component({
   selector: 'app-app-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,6 +95,7 @@ import {
     MatButtonModule,
     MatTabsModule,
     CdkMenuModule,
+    AlertBannerComponent,
     OperationControlComponent,
     JobInfoPanelComponent,
     StatsPanelComponent,
@@ -136,6 +140,25 @@ export class AppDetailComponent {
   private readonly formatTime = inject(FormatTimePipe);
   private readonly localStorage = inject(LocalStorageService);
   private readonly dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
+
+  readonly isMissingRemote = computed<boolean>(() => {
+    if (this.mode() !== 'quickRun') return false;
+    const qr = this.quickRun();
+    if (!qr?.remoteName) return false;
+    return !this.remoteFacade.isRemoteActive(qr.remoteName);
+  });
+
+  onRecreateRemote(name: string): void {
+    this.modalService.openRemoteConfig({ remoteName: name });
+  }
+
+  onEditQuickRun(): void {
+    const qr = this.quickRun();
+    if (qr) {
+      this.quickRunService.openEditor(qr);
+    }
+  }
 
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });

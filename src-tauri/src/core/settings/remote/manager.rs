@@ -136,12 +136,8 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
 }
 
 /// **Get all remote settings as a map (for internal use)**
-pub fn get_all_remote_settings_sync(
-    manager: &AppSettingsManager,
-    remote_names: &[String],
-) -> serde_json::Value {
-    let all_settings =
-        crate::utils::types::remotes::RemoteSettings::load_all(manager, remote_names);
+pub fn get_all_remote_settings_sync(manager: &AppSettingsManager) -> serde_json::Value {
+    let all_settings = crate::utils::types::remotes::RemoteSettings::load_all(manager);
     serde_json::to_value(all_settings).unwrap_or_default()
 }
 

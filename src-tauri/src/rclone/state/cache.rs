@@ -552,15 +552,12 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
         .await)
 }
 
-/// Get all remote settings from rcman sub-settings
+/// Get all remote settings from rcman sub-settings (including orphaned remotes)
 #[bridge]
 pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     let manager = app.state::<AppSettingsManager>();
-    let backend_manager = app.state::<BackendManager>();
-    let remote_names = backend_manager.remote_cache.get_remotes().await;
 
-    let all_settings =
-        crate::utils::types::remotes::RemoteSettings::load_all(manager.inner(), &remote_names);
+    let all_settings = crate::utils::types::remotes::RemoteSettings::load_all(manager.inner());
 
     serde_json::to_value(all_settings).map_err(|e| e.to_string())
 }

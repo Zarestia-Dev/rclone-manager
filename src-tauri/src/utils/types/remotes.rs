@@ -455,10 +455,9 @@ impl RemoteSettings {
         serde_json::from_value(val).map_err(|e| format!("Invalid remote settings format: {e}"))
     }
 
-    /// Load settings for a list of remotes and parse them type-safely into a Map.
+    /// Load settings for all stored remotes and parse them type-safely into a Map.
     pub fn load_all(
         manager: &crate::core::settings::AppSettingsManager,
-        remote_names: &[String],
     ) -> std::collections::HashMap<String, Self> {
         let remotes = match manager.sub_settings("remotes") {
             Ok(r) => r,
@@ -467,7 +466,6 @@ impl RemoteSettings {
         let all_values = remotes.get_all_values().unwrap_or_default();
         all_values
             .into_iter()
-            .filter(|(name, _)| remote_names.contains(name))
             .filter_map(|(name, val)| {
                 serde_json::from_value::<Self>(val)
                     .ok()

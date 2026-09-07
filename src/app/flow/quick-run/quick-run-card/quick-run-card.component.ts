@@ -83,6 +83,11 @@ export class QuickRunCardComponent {
 
   readonly operationDef = computed(() => OPERATION_MAP.get(this.quickRun().operationType));
 
+  readonly isRemoteMissing = computed(() => {
+    const rName = this.quickRun().remoteName;
+    return !!rName && !this.remoteFacade.isRemoteActive(rName);
+  });
+
   readonly remote = computed(() =>
     this.remoteFacade.orderedRemotes().find(r => r.name === this.quickRun().remoteName)
   );

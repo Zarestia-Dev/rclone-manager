@@ -38,6 +38,40 @@
     </div>
   </header>
 
+  @if (isMissingRemote()) {
+    <app-alert-banner
+      severity="warning"
+      [title]="'flow.quickRun.missingRemoteTitle' | translate"
+      [description]="
+        'flow.quickRun.missingRemoteDesc' | translate: { remote: quickRun()?.remoteName }
+      "
+    >
+      <div class="missing-remote-actions">
+        <button
+          matButton="filled"
+          class="primary"
+          (click)="onRecreateRemote(quickRun()?.remoteName || '')"
+          [attr.title]="
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          "
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+          <span>{{
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          }}</span>
+        </button>
+        <button
+          matButton="tonal"
+          (click)="onEditQuickRun()"
+          [attr.title]="'flow.quickRun.actions.changeRemote' | translate"
+        >
+          <mat-icon svgIcon="pen"></mat-icon>
+          <span>{{ 'flow.quickRun.actions.changeRemote' | translate }}</span>
+        </button>
+      </div>
+    </app-alert-banner>
+  }
+
   @if (mode() === 'remote' && mainOperationType() === 'operations') {
     <div class="toggle-container">
       <div class="operation-toggle-group" role="group">

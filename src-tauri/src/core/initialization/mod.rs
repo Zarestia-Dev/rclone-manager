@@ -101,11 +101,8 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     initialize_caches(&app_handle).await?;
 
-    let remote_names = backend_manager.remote_cache.get_remotes().await;
-    let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
+    let all_configs =
+        crate::core::settings::remote::manager::get_all_remote_settings_sync(manager.inner());
     if let Err(e) = crate::core::automation::commands::reload_automations_from_configs(
         app_handle.clone(),
         all_configs,

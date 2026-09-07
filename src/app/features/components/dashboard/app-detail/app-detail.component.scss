@@ -522,3 +522,14 @@
     }
   }
 }
+app-alert-banner {
+  margin: var(--space-md);
+
+  .missing-remote-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+  }
+}

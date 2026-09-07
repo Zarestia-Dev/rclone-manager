@@ -3289,14 +3289,19 @@
       "new": "Yeni Hızlı Çalıştırma",
       "actions": {
         "start": "Başlat",
-        "stop": "Durdur"
+        "stop": "Durdur",
+        "createRemote": "'{{remote}}' Remote'unu Oluştur",
+        "changeRemote": "Remote'u Değiştir"
       },
       "badges": {
         "scheduled": "Zamanlanmış Görev",
         "watcher": "Klasör İzleyici Aktif",
         "watcherChangedOnly": "Klasör İzleyici Aktif (Yalnızca alt dizinler)",
-        "autostart": "Otomatik Başlatma Etkin"
+        "autostart": "Otomatik Başlatma Etkin",
+        "missingRemote": "Remote Rclone'da Bulunamadı"
       },
+      "missingRemoteTitle": "Remote Rclone'da Bulunamadı",
+      "missingRemoteDesc": "Bu Hızlı Çalıştırmanın bağlı olduğu '{{remote}}' remote'u Rclone konfigürasyonunda mevcut değil; ancak çalıştırma ayarları saklanmaktadır.",
       "status": {
         "running": "Çalışıyor"
       },

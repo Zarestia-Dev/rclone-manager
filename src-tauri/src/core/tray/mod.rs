@@ -94,10 +94,8 @@ impl TraySnapshot {
             })
             .collect();
 
-        let all_remote_settings = crate::utils::types::remotes::RemoteSettings::load_all(
-            settings_manager.inner(),
-            &remote_names,
-        );
+        let all_remote_settings =
+            crate::utils::types::remotes::RemoteSettings::load_all(settings_manager.inner());
 
         let remotes = remote_names
             .into_iter()
@@ -199,7 +197,7 @@ impl TraySnapshot {
                         &s_parsed.cryptcheck_configs,
                         &JobType::CryptCheck,
                     ),
-                    name,
+                    name: name.to_owned(),
                     show_on_tray,
                     primary_actions,
                     mount_profiles,

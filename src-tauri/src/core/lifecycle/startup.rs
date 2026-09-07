@@ -24,11 +24,7 @@ pub async fn handle_startup(app: AppHandle) {
     info!("Starting auto-start profiles check...");
     let manager = app.state::<AppSettingsManager>();
 
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = app.state::<BackendManager>();
-
-    let remote_names = backend_manager.remote_cache.get_remotes().await;
-    let settings_map = RemoteSettings::load_all(manager.inner(), &remote_names);
+    let settings_map = RemoteSettings::load_all(manager.inner());
 
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 

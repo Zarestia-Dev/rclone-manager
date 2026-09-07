@@ -3289,13 +3289,18 @@
       "new": "新建快捷运行",
       "actions": {
         "start": "启动",
-        "stop": "停止"
+        "stop": "停止",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote",
+        "deleteQuickRun": "删除快捷运行"
       },
+      "deleteConfirm": "您确定要删除快捷运行“{{name}}”吗？",
       "badges": {
         "scheduled": "定时任务",
         "watcher": "文件夹监控已启用",
         "watcherChangedOnly": "文件夹监控已启用 (仅限子目录)",
-        "autostart": "开机自启已启用"
+        "autostart": "开机自启已启用",
+        "missingRemote": "Remote Missing from Rclone"
       },
       "status": {
         "running": "运行中"
@@ -3327,6 +3332,11 @@
         "tabBackend": "后端",
         "tabRuntimeRemote": "运行时远程",
         "noProfiles": "没有可用的配置文件"
+      },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
       }
     },
     "tabs": {
