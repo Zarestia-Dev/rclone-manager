@@ -1802,16 +1802,16 @@
         "help": "Token de https://www.linkbox.to/admin/account"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "Correo electrónico",
+        "help": "Correo electrónico para iniciar sesión"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "Contraseña",
+        "help": "Contraseña para iniciar sesión"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
+        "title": "Token web",
+        "help": "Token de inicio de sesión de la API web: se establece automáticamente."
       }
     },
     "local": {
@@ -3872,16 +3872,16 @@
         "help": "Descripción del control remoto."
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "Concurrencia de subida",
+        "help": "Concurrencia para subidas multiparte.\n\nEste es el número de fragmentos del mismo archivo que se suben simultáneamente.\n\nTenga en cuenta que cada fragmento se almacena en búfer en la memoria."
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "Límite de subida",
+        "help": "Límite para cambiar a subida multiparte.\n\nCualquier archivo más grande que este se subirá en fragmentos de chunk_size.\nEl mínimo es 100 MiB y el máximo es 5 GiB."
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+        "title": "Tamaño del fragmento",
+        "help": "Tamaño del fragmento para subidas multiparte.\n\nLos archivos más grandes que upload_cutoff se subirán en fragmentos de este tamaño.\n\nEl uso de memoria es aproximadamente chunk_size * upload_concurrency."
       }
     },
     "huaweidrive": {

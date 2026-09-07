@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "デフォルトプリセットが正常に適用されました",
+      "noRemoteSelected": "最初にリモートを選択してください"
     }
   },
   "backup": {
@@ -3169,45 +3169,45 @@
       "description": "クイック実行またはワークフローを作成して、高速な操作とパイプラインを開始します。"
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "クイック実行",
+      "new": "新規クイック実行",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "スケジュールされたタスク",
+        "watcher": "フォルダ監視が有効",
+        "watcherChangedOnly": "フォルダ監視が有効（サブディレクトリのみ）",
+        "autostart": "自動起動が有効"
       },
       "status": {
-        "running": "Running"
+        "running": "実行中"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "設定"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "クイック実行を作成",
+        "editTitle": "クイック実行を編集",
+        "name": "名前",
+        "nameRequired": "名前は必須です",
+        "description": "説明（オプション）",
+        "remote": "リモート",
+        "noRemotes": "設定されたリモートがありません",
+        "remoteRequired": "リモートは必須です",
+        "selectRemoteFirst": "オートコンプリートを表示するにはまずリモートを選択してください",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabFilter": "フィルター",
+        "tabBackend": "バックエンド",
+        "tabRuntimeRemote": "ランタイムリモート"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "開始",
+        "stop": "停止"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "クイック実行の合計"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "クイック起動",
+        "createFirst": "プロファイルなしで素早く操作を始めるために、最初のクイック実行を作成してください。",
         "noRunsForRemote": "{{remote}} 用のクイック実行は設定されていません。",
         "createForRemote": "{{remote}} のクイック実行を作成"
       }

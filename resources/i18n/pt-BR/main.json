@@ -1035,7 +1035,7 @@
           "removeFailed": "O arquivo não pode ser removido",
           "cleared": "{{count}} itens foram removidos",
           "directoryRefreshed": "Diretório atualizado",
-          "intervalSet": "Conjunto de intervalo definido como {{{val}}",
+          "intervalSet": "Conjunto de intervalo definido como {{val}}",
           "error": "Erro: {{error}}"
         }
       },
@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Predefinições padrão aplicadas com sucesso",
+      "noRemoteSelected": "Por favor, selecione um remote primeiro"
     }
   },
   "backup": {
@@ -2092,7 +2092,7 @@
       "status": {
         "notTested": "Conexão não testada",
         "connected": "Conectado",
-        "error": "Erro: {{{message}}"
+        "error": "Erro: {{message}}"
       },
       "notifications": {
         "switchFailed": "Falha ao alternar: {{message}}",
@@ -2937,10 +2937,10 @@
     "syncCount": "Sincronizar [{{active}}/{{total}}]",
     "copyCount": "Cópia [{{active}}/{{total}}]",
     "moveCount": "Mover [{{active}}]/[{{total}}]",
-    "bisyncCount": "BiSync [{{active}}]/{{total}}]}",
+    "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "checkCount": "Verificar [{{active}}/{{total}}]",
     "cryptcheckCount": "Verificação de Criptografia [{{active}}/{{total}}]",
-    "deleteCount": "Exclusão [{{active}}/{{{total}}]",
+    "deleteCount": "Exclusão [{{active}}/{{total}}]",
     "copyurlCount": "Cópia de URL [{{active}}/{{total}}]",
     "archivecreateCount": "Arquivo [{{active}}]/[{{total}}]",
     "serveCount": "Servir [{{active}}/{{total}}]",
@@ -3013,7 +3013,7 @@
       "allUnmounted": "Desconectado com sucesso de todas as montagens remotos.",
       "automationStarted": "A automação {{type}} '{{automation}}' está em execução no {{backend}}.",
       "automationCompleted": "A automação {{type}} '{{automation}}' foi concluída com sucesso.",
-      "automationFailed": "A automação {{{type}}} encontrou o erro '{{{automation}}}': {{{error}}.",
+      "automationFailed": "A automação {{type}} encontrou o erro '{{automation}}': {{error}}.",
       "automationStopped": "A automação {{type}} '{{automation}}' foi interrompida no {{backend}}.",
       "updateFound": "Uma nova versão {{version}} do RClone Manager está disponível.",
       "updateStarted": "Baixando e instalando a versão {{version}}...",
@@ -3169,45 +3169,45 @@
       "description": "Crie uma execução rápida ou fluxo de trabalho para começar com operações e pipelines rápidos."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Execuções Rápidas",
+      "new": "Nova Execução Rápida",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Tarefa Agendada",
+        "watcher": "Monitor de Pastas Ativo",
+        "watcherChangedOnly": "Monitor de Pastas Ativo (apenas subdiretórios)",
+        "autostart": "Início Automático Ativado"
       },
       "status": {
-        "running": "Running"
+        "running": "Em Execução"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "Configuração"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
+        "createTitle": "Criar Execução Rápida",
+        "editTitle": "Editar Execução Rápida",
+        "name": "Nome",
+        "nameRequired": "O nome é obrigatório",
+        "description": "Descrição (opcional)",
         "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "noRemotes": "Nenhum remote configurado",
+        "remoteRequired": "O remote é obrigatório",
+        "selectRemoteFirst": "Selecione um remote para ver o preenchimento automático",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
+        "tabFilter": "Filtro",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabRuntimeRemote": "Remote em Tempo de Execução"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Iniciar",
+        "stop": "Parar"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Total de Execuções Rápidas"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Início Rápido",
+        "createFirst": "Crie sua primeira Execução Rápida para começar com operações ágeis e sem perfis.",
         "noRunsForRemote": "Nenhuma execução rápida configurada para {{remote}}.",
         "createForRemote": "Criar execução rápida para {{remote}}"
       }

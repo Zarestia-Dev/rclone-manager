@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Предустановки по умолчанию успешно применены",
+      "noRemoteSelected": "Пожалуйста, сначала выберите удаленное подключение"
     }
   },
   "backup": {
@@ -3169,45 +3169,45 @@
       "description": "Создайте быстрый запуск или рабочий процесс для быстрых операций и конвейеров."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Быстрые запуски",
+      "new": "Новый быстрый запуск",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Запланированная задача",
+        "watcher": "Отслеживание папки активно",
+        "watcherChangedOnly": "Отслеживание папки активно (только подкаталоги)",
+        "autostart": "Автозапуск включен"
       },
       "status": {
-        "running": "Running"
+        "running": "Выполняется"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "Конфигурация"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "Создать быстрый запуск",
+        "editTitle": "Редактировать быстрый запуск",
+        "name": "Имя",
+        "nameRequired": "Имя обязательно",
+        "description": "Описание (необязательно)",
+        "remote": "Удаленное подключение",
+        "noRemotes": "Нет настроенных удаленных подключений",
+        "remoteRequired": "Удаленное подключение обязательно",
+        "selectRemoteFirst": "Выберите подключение для автозаполнения",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabFilter": "Фильтр",
+        "tabBackend": "Бэкенд",
+        "tabRuntimeRemote": "Динамический remote"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Запустить",
+        "stop": "Остановить"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Всего быстрых запусков"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Быстрый запуск",
+        "createFirst": "Создайте свой первый быстрый запуск для простых операций без профиля.",
         "noRunsForRemote": "Для {{remote}} не настроено быстрых запусков.",
         "createForRemote": "Создать быстрый запуск для {{remote}}"
       }

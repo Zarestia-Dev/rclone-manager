@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Попередні налаштування за замовчуванням успішно застосовано",
+      "noRemoteSelected": "Будь ласка, спочатку виберіть віддалене підключення"
     }
   },
   "backup": {
@@ -3169,45 +3169,45 @@
       "description": "Створіть швидкий запуск або робочий процес для швидких операцій та конвеєрів."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Швидкі запуски",
+      "new": "Новий швидкий запуск",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Заплановане завдання",
+        "watcher": "Відстеження папки активне",
+        "watcherChangedOnly": "Відстеження папки активне (лише підкаталоги)",
+        "autostart": "Автозапуск увімкнено"
       },
       "status": {
-        "running": "Running"
+        "running": "Виконується"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "Конфігурація"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "Створити швидкий запуск",
+        "editTitle": "Редагувати швидкий запуск",
+        "name": "Назва",
+        "nameRequired": "Назва обов'язкова",
+        "description": "Опис (необов'язково)",
+        "remote": "Віддалене підключення",
+        "noRemotes": "Немає налаштованих підключень",
+        "remoteRequired": "Підключення обов'язкове",
+        "selectRemoteFirst": "Виберіть підключення для автозаповнення",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabFilter": "Фільтр",
+        "tabBackend": "Бекенд",
+        "tabRuntimeRemote": "Динамічний remote"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Запустити",
+        "stop": "Зупинити"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Усього швидких запусків"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Швидкий запуск",
+        "createFirst": "Створіть свій перший швидкий запуск для швидких операцій без профілів.",
         "noRunsForRemote": "Для {{remote}} не налаштовано швидких запусків.",
         "createForRemote": "Створити швидкий запуск для {{remote}}"
       }

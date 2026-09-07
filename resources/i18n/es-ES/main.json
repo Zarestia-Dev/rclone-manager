@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Ajustes preestablecidos predeterminados aplicados con éxito",
+      "noRemoteSelected": "Por favor, seleccione un remoto primero"
     }
   },
   "backup": {
@@ -2453,9 +2453,9 @@
       "undoFailed": "Error al deshacer para {{count}} elementos",
       "redoFailed": "Error al rehacer para {{count}} elementos",
       "rmdirsFailed": "Error al eliminar carpetas vacías en \"{{name}}\": {{error}}",
-      "createFolderFailed": "Error al crear la carpeta",
+      "createFolderFailed": "Error al crear la carpeta \"{{name}}\": {{error}}",
       "renameFailed": "Error al renombrar '{{name}}': {{error}}",
-      "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
+      "emptyTrashFailed": "Error al vaciar la papelera en {{remote}}: {{error}}",
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
@@ -3169,45 +3169,45 @@
       "description": "Cree una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones rápidas."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Ejecuciones rápidas",
+      "new": "Nueva ejecución rápida",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Tarea programada",
+        "watcher": "Vigilante de carpetas activo",
+        "watcherChangedOnly": "Vigilante de carpetas activo (solo subdirectorios)",
+        "autostart": "Inicio automático habilitado"
       },
       "status": {
-        "running": "Running"
+        "running": "En ejecución"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "Configuración"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "Crear ejecución rápida",
+        "editTitle": "Editar ejecución rápida",
+        "name": "Nombre",
+        "nameRequired": "El nombre es obligatorio",
+        "description": "Descripción (opcional)",
+        "remote": "Remoto",
+        "noRemotes": "No hay remotos configurados",
+        "remoteRequired": "El remoto es obligatorio",
+        "selectRemoteFirst": "Seleccione un remoto para ver el autocompletado",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
+        "tabFilter": "Filtro",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabRuntimeRemote": "Remoto en tiempo de ejecución"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Iniciar",
+        "stop": "Detener"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Total de ejecuciones rápidas"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Lanzamiento rápido",
+        "createFirst": "Cree su primera ejecución rápida para comenzar con operaciones rápidas y sin perfiles.",
         "noRunsForRemote": "No hay ejecuciones rápidas configuradas para {{remote}}.",
         "createForRemote": "Crear ejecución rápida para {{remote}}"
       }

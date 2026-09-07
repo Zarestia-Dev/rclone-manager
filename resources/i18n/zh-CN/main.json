@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "已成功应用默认预设",
+      "noRemoteSelected": "请先选择一个远程存储"
     }
   },
   "backup": {
@@ -3169,45 +3169,45 @@
       "description": "创建快捷运行或工作流以开始快速操作和管道。"
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "快速运行",
+      "new": "新建快速运行",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "计划任务",
+        "watcher": "文件夹监视已启用",
+        "watcherChangedOnly": "文件夹监视已启用（仅子目录）",
+        "autostart": "已启用自启动"
       },
       "status": {
-        "running": "Running"
+        "running": "运行中"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "配置"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "创建快速运行",
+        "editTitle": "编辑快速运行",
+        "name": "名称",
+        "nameRequired": "名称为必填项",
+        "description": "描述（可选）",
+        "remote": "远程存储",
+        "noRemotes": "未配置远程存储",
+        "remoteRequired": "远程存储为必填项",
+        "selectRemoteFirst": "请先选择远程存储以查看自动补全",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabFilter": "过滤器",
+        "tabBackend": "后端",
+        "tabRuntimeRemote": "运行时远程存储"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "启动",
+        "stop": "停止"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "快速运行总数"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "快速启动",
+        "createFirst": "创建您的第一个快速运行，体验快捷、无需配置文件的操作。",
         "noRunsForRemote": "未为 {{remote}} 配置快速运行。",
         "createForRemote": "为 {{remote}} 创建快速运行"
       }

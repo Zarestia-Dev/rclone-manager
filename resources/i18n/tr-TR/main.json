@@ -905,7 +905,7 @@
       "backendSwitchAria": "Mevcut mod: {{title}} - Arka uç değiştirmek için tıklayın"
     },
     "settingControl": {
-      "default": "Varsayılan: {{ value }}",
+      "default": "Varsayılan: {{value}}",
       "resetToDefault": "Varsayılana sıfırla",
       "obscureValue": "Şifreyi rclone kullanarak gizle",
       "enabled": "Etkin",
@@ -921,10 +921,10 @@
       "time": "Saat",
       "others": "diğerleri",
       "aria": {
-        "item": "Öge",
-        "removeItem": "Ögeyi kaldır",
-        "date": "Tarih",
-        "time": "Saat"
+        "item": "{{name}} ögesi {{index}}",
+        "removeItem": "{{name}} ögesini kaldır",
+        "date": "{{name}} tarihi",
+        "time": "{{name}} saati"
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Varsayılan hazır ayarlar başarıyla uygulandı",
+      "noRemoteSelected": "Lütfen önce bir uzak bağlantı seçin"
     }
   },
   "backup": {
@@ -2455,7 +2455,7 @@
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
-      "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
+      "emptyTrashFailed": "{{remote}} üzerindeki çöp kutusu boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
@@ -3169,45 +3169,45 @@
       "description": "Hızlı operasyonlar ve iş akışları ile başlamak için yeni bir quick run veya workflow oluşturun."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Hızlı Çalıştırmalar",
+      "new": "Yeni Hızlı Çalıştırma",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Zamanlanmış Görev",
+        "watcher": "Klasör İzleyici Aktif",
+        "watcherChangedOnly": "Klasör İzleyici Aktif (Yalnızca alt dizinler)",
+        "autostart": "Otomatik Başlatma Etkin"
       },
       "status": {
-        "running": "Running"
+        "running": "Çalışıyor"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "Yapılandırma"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "Hızlı Çalıştırma Oluştur",
+        "editTitle": "Hızlı Çalıştırmayı Düzenle",
+        "name": "İsim",
+        "nameRequired": "İsim zorunludur",
+        "description": "Açıklama (isteğe bağlı)",
+        "remote": "Uzak Bağlantı",
+        "noRemotes": "Yapılandırılmış uzak bağlantı yok",
+        "remoteRequired": "Uzak bağlantı zorunludur",
+        "selectRemoteFirst": "Otomatik tamamlamayı görmek için önce bir uzak bağlantı seçin",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
+        "tabFilter": "Filtre",
+        "tabBackend": "Arka Uç",
         "tabRuntimeRemote": "Çalışma Zamanı Remote"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Başlat",
+        "stop": "Durdur"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Toplam Hızlı Çalıştırma"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Hızlı Başlat",
+        "createFirst": "Hızlı ve profilsiz işlemlerle başlamak için ilk Hızlı Çalıştırmanızı oluşturun.",
         "noRunsForRemote": "{{remote}} için yapılandırılmış hızlı işlem yok.",
         "createForRemote": "{{remote}} için Hızlı İşlem Oluştur"
       }

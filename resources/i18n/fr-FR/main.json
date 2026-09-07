@@ -890,7 +890,7 @@
     "inputModal": {
       "name": "Nom",
       "required": "{{field}} est obligatoire",
-      "alreadyExists": "{name} existe déjà",
+      "alreadyExists": "{{name}} existe déjà",
       "forbiddenChars": "{{name}} contient des caractères interdits ('/' ou ':' )",
       "create": "Créer"
     },
@@ -1370,8 +1370,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Préréglages par défaut appliqués avec succès",
+      "noRemoteSelected": "Veuillez d'abord sélectionner un remote"
     }
   },
   "backup": {
@@ -3169,45 +3169,45 @@
       "description": "Créez une exécution rapide ou un flux de travail pour démarrer avec des opérations rapides."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Exécutions rapides",
+      "new": "Nouvelle exécution rapide",
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Tâche planifiée",
+        "watcher": "Surveillance de dossier active",
+        "watcherChangedOnly": "Surveillance de dossier active (sous-dossiers uniquement)",
+        "autostart": "Démarrage automatique activé"
       },
       "status": {
-        "running": "Running"
+        "running": "En cours d'exécution"
       },
       "detail": {
         "configuration": "Configuration"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
+        "createTitle": "Créer une exécution rapide",
+        "editTitle": "Modifier l'exécution rapide",
+        "name": "Nom",
+        "nameRequired": "Le nom est obligatoire",
+        "description": "Description (facultatif)",
         "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "noRemotes": "Aucun remote configuré",
+        "remoteRequired": "Le remote est obligatoire",
+        "selectRemoteFirst": "Sélectionnez un remote pour afficher l'autocomplétion",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
+        "tabFilter": "Filtre",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabRuntimeRemote": "Remote d'exécution"
       },
       "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "start": "Démarrer",
+        "stop": "Arrêter"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Total des exécutions rapides"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Lancement rapide",
+        "createFirst": "Créez votre première exécution rapide pour commencer des opérations rapides et sans profil.",
         "noRunsForRemote": "Aucune exécution rapide configurée pour {{remote}}.",
         "createForRemote": "Créer une exécution rapide pour {{remote}}"
       }
