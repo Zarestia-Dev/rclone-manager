@@ -195,6 +195,10 @@ export class RemoteFacadeService {
       }
     });
 
+    // Event-driven reactive store updates:
+    // REMOTE_CACHE_CHANGED (remotes created/edited/deleted),
+    // REMOTE_SETTINGS_CHANGED (profiles/settings modified/reset), and
+    // BACKEND_SWITCHED (active backend changed).
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
       this.eventListeners.listenToRemoteSettingsChanged(),

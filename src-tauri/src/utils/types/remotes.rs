@@ -157,7 +157,7 @@ pub struct AppConfig {
     pub runtime_remote_profile: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct ProfileConfig {
     #[serde(default)]
     pub app: AppConfig,
@@ -180,6 +180,42 @@ impl ProfileConfig {
                 app,
                 rclone: val.clone(),
             }
+        }
+    }
+
+    /// Return the raw source value (String or Array) if present in `rclone` config.
+    #[must_use]
+    pub fn source_value(&self) -> Option<&Value> {
+        if let Value::Object(ref map) = self.rclone {
+            SOURCE_KEYS.iter().find_map(|&key| map.get(key))
+        } else {
+            None
+        }
+    }
+
+    /// Return the raw destination value if present in `rclone` config.
+    #[must_use]
+    pub fn dest_value(&self) -> Option<&Value> {
+        if let Value::Object(ref map) = self.rclone {
+            DEST_KEYS.iter().find_map(|&key| map.get(key))
+        } else {
+            None
+        }
+    }
+
+    /// Return the destination path as a string slice if present.
+    #[must_use]
+    pub fn dest_str(&self) -> Option<&str> {
+        self.dest_value().and_then(Value::as_str)
+    }
+
+    /// Return the source path as a string slice if present (or the first element if array).
+    #[must_use]
+    pub fn source_str(&self) -> Option<&str> {
+        match self.source_value() {
+            Some(Value::String(s)) => Some(s.as_str()),
+            Some(Value::Array(arr)) => arr.first().and_then(Value::as_str),
+            _ => None,
         }
     }
 }
@@ -228,6 +264,11 @@ impl OperationType {
             Self::Archivecreate => "archivecreateConfigs",
             Self::Cryptcheck => "cryptcheckConfigs",
         }
+    }
+
+    /// Lookup OperationType from a config_key string like `"syncConfigs"`
+    pub fn from_config_key(key: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|op| op.config_key() == key)
     }
 
     /// Maps the operation to its corresponding `JobType`, if applicable.
@@ -472,5 +513,84 @@ impl RemoteSettings {
                     .map(|settings| (name, settings))
             })
             .collect()
+    }
+
+    /// Returns the profile configs map for the given operation type.
+    pub fn get_configs(
+        &self,
+        op: OperationType,
+    ) -> Option<&std::collections::HashMap<String, ProfileConfig>> {
+        match op {
+            OperationType::Mount => self.mount_configs.as_ref(),
+            OperationType::Sync => self.sync_configs.as_ref(),
+            OperationType::Copy => self.copy_configs.as_ref(),
+            OperationType::Move => self.move_configs.as_ref(),
+            OperationType::Bisync => self.bisync_configs.as_ref(),
+            OperationType::Serve => self.serve_configs.as_ref(),
+            OperationType::Check => self.check_configs.as_ref(),
+            OperationType::Delete => self.delete_configs.as_ref(),
+            OperationType::Copyurl => self.copyurl_configs.as_ref(),
+            OperationType::Archivecreate => self.archivecreate_configs.as_ref(),
+            OperationType::Cryptcheck => self.cryptcheck_configs.as_ref(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_profile_config_source_dest_helpers() {
+        let profile = ProfileConfig {
+            app: AppConfig::default(),
+            rclone: json!({
+                "srcFs": "remote:bucket/folder",
+                "dstFs": "/home/user/data",
+            }),
+        };
+
+        assert_eq!(profile.source_str(), Some("remote:bucket/folder"));
+        assert_eq!(profile.dest_str(), Some("/home/user/data"));
+
+        // Array source test
+        let array_profile = ProfileConfig {
+            app: AppConfig::default(),
+            rclone: json!({
+                "source": ["first:path", "second:path"],
+                "mountPoint": "/mnt/remote",
+            }),
+        };
+
+        assert_eq!(array_profile.source_str(), Some("first:path"));
+        assert_eq!(array_profile.dest_str(), Some("/mnt/remote"));
+
+        // Empty / missing test
+        let empty_profile = ProfileConfig::default();
+        assert_eq!(empty_profile.source_str(), None);
+        assert_eq!(empty_profile.dest_str(), None);
+    }
+
+    #[test]
+    fn test_operation_type_config_key_bidirectional() {
+        for &op in OperationType::ALL {
+            let key = op.config_key();
+            assert_eq!(OperationType::from_config_key(key), Some(op));
+        }
+
+        assert_eq!(OperationType::from_config_key("unknownKey"), None);
+    }
+
+    #[test]
+    fn test_remote_settings_get_configs() {
+        let mut settings = RemoteSettings::default();
+        let mut sync_map = std::collections::HashMap::new();
+        sync_map.insert("default".to_string(), ProfileConfig::default());
+        settings.sync_configs = Some(sync_map);
+
+        assert!(settings.get_configs(OperationType::Sync).is_some());
+        assert_eq!(settings.get_configs(OperationType::Sync).unwrap().len(), 1);
+        assert!(settings.get_configs(OperationType::Copy).is_none());
     }
 }

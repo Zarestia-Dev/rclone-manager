@@ -6,6 +6,7 @@
 
 use crate::core::{bridge, settings::AppSettingsManager};
 use log::{info, warn};
+use serde::Deserialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -60,11 +61,13 @@ pub async fn save_remote_settings(
     info!("Remote settings saved for '{remote_name}'");
 
     // Detect deleted profiles
-    if let Some(ref existing_val) = existing {
-        for config_key in OperationType::ALL {
-            let key = config_key.config_key();
-            if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
-                let new_configs = cleaned_settings.get(key).and_then(|v| v.as_object());
+    if let Some(existing_settings) = existing
+        .as_ref()
+        .and_then(|v| crate::utils::types::remotes::RemoteSettings::deserialize(v).ok())
+    {
+        for &op_type in OperationType::ALL {
+            if let Some(old_configs) = existing_settings.get_configs(op_type) {
+                let new_configs = parsed.get_configs(op_type);
                 for profile_name in old_configs.keys() {
                     let was_deleted = new_configs.is_none_or(|new| !new.contains_key(profile_name));
 
@@ -86,7 +89,7 @@ pub async fn save_remote_settings(
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
-        .add_or_update_automation_for_remote(&backend_name, &remote_name, &cleaned_settings)
+        .add_or_update_automation_for_remote(&backend_name, &remote_name, &parsed)
         .await
     {
         Ok(result) if result.has_changes() => {
@@ -130,15 +133,40 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
         |e| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => e),
     )?;
 
+    // Clean up any automations and watchers associated with this remote
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
+    let cache = app.state::<AutomationsCache>();
+    let scheduler = app.state::<crate::core::automation::engine::AutomationScheduler>();
+
+    if let Ok(removed) = cache
+        .remove_automations_for_remote(&backend_name, &remote_name, Some(&app))
+        .await
+        && !removed.is_empty()
+    {
+        info!(
+            "Removed {} automation(s) for deleted remote settings '{remote_name}'",
+            removed.len()
+        );
+        for automation in &removed {
+            if let Some(job_id_str) = &automation.scheduler_job_id
+                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+                && let Err(e) = scheduler.unschedule_automation(job_id).await
+            {
+                warn!("Failed to unschedule job {job_id} for remote '{remote_name}': {e}");
+            }
+        }
+        let watcher_manager = app.state::<crate::core::automation::watcher::WatcherManager>();
+        if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
+            warn!(
+                "Watcher sync incomplete after deleting remote settings for '{remote_name}': {e}"
+            );
+        }
+    }
+
     info!("Remote settings for '{remote_name}' deleted.");
     app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
-}
-
-/// **Get all remote settings as a map (for internal use)**
-pub fn get_all_remote_settings_sync(manager: &AppSettingsManager) -> serde_json::Value {
-    let all_settings = crate::utils::types::remotes::RemoteSettings::load_all(manager);
-    serde_json::to_value(all_settings).unwrap_or_default()
 }
 
 pub fn migrate_to_multi_profile(mut settings: Value) -> Value {

@@ -1,32 +1,19 @@
-import { Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
-import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
+import type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload } from '@app/types';
 
-export interface WorkflowNodeStatePayload {
-  workflowId: string;
-  nodeId: string;
-  state: WorkflowNodeExecutionState;
-  errorMessage?: string;
-  durationMs?: number;
-}
-
-export interface WorkflowExecutionStatePayload {
-  workflowId: string;
-  state: 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
-  progress?: {
-    total: number;
-    completed: number;
-    currentStepTitle: string;
-  };
-  message?: string;
-}
+export type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload };
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowEventService extends TauriBaseService {
   private readonly stateService = inject(WorkflowStateService);
   private readonly engineService = inject(WorkflowEngineService);
+  private readonly eventListeners = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
     super();
@@ -34,19 +21,21 @@ export class WorkflowEventService extends TauriBaseService {
   }
 
   private setupEventListeners(): void {
-    this.listenToEvent<WorkflowNodeStatePayload>('workflow_node_state_changed').subscribe(
-      payload => {
+    this.eventListeners
+      .listenToWorkflowNodeStateChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(payload => {
         if (!payload) return;
         this.handleNodeStateChanged(payload);
-      }
-    );
+      });
 
-    this.listenToEvent<WorkflowExecutionStatePayload>('workflow_execution_state_changed').subscribe(
-      payload => {
+    this.eventListeners
+      .listenToWorkflowExecutionStateChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(payload => {
         if (!payload) return;
         this.handleExecutionStateChanged(payload);
-      }
-    );
+      });
   }
 
   private handleNodeStateChanged(payload: WorkflowNodeStatePayload): void {

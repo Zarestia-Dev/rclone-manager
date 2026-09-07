@@ -13,7 +13,7 @@ use crate::{
         types::remotes::{OperationType, ProfileConfig, ProfileParams, RemoteSettings},
     },
 };
-use log::{error, info, warn};
+use log::{info, warn};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
@@ -29,86 +29,16 @@ pub async fn handle_startup(app: AppHandle) {
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     for (remote_name, settings) in &settings_map {
-        // Mount and serve have dedicated entry points.
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.mount_configs,
-            Op::Mount,
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.serve_configs,
-            Op::Serve,
-        );
-
-        // All transfer-style operations share `auto_start_sync`.
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.sync_configs,
-            Op::Sync("sync"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.copy_configs,
-            Op::Sync("copy"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.move_configs,
-            Op::Sync("move"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.bisync_configs,
-            Op::Sync("bisync"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.check_configs,
-            Op::Sync("check"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.delete_configs,
-            Op::Sync("delete"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.copyurl_configs,
-            Op::Sync("copyurl"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.archivecreate_configs,
-            Op::Sync("archivecreate"),
-        );
-        push_auto_start_tasks(
-            &mut tasks,
-            &app,
-            remote_name,
-            &settings.cryptcheck_configs,
-            Op::Sync("cryptcheck"),
-        );
+        for &op_type in OperationType::ALL {
+            if let Some(configs) = settings.get_configs(op_type) {
+                let op = match op_type {
+                    OperationType::Mount => Op::Mount,
+                    OperationType::Serve => Op::Serve,
+                    transfer => Op::Sync(transfer),
+                };
+                push_auto_start_tasks(&mut tasks, &app, remote_name, configs, op);
+            }
+        }
     }
 
     let task_count = tasks.len();
@@ -126,24 +56,20 @@ pub async fn handle_startup(app: AppHandle) {
 enum Op {
     Mount,
     Serve,
-    /// Transfers go through `start_profile_batch` with the given op-type string.
-    Sync(&'static str),
+    /// Transfers go through `start_profile_batch` with the given operation type.
+    Sync(OperationType),
 }
 
 /// Iterate a profile-config map, spawning a task for every profile with
-/// `app.auto_start == true`. Centralizes the 11 nearly-identical blocks that
-/// previously lived inline in `handle_startup`.
+/// `app.auto_start == true`.
 fn push_auto_start_tasks(
     tasks: &mut Vec<tokio::task::JoinHandle<()>>,
     app: &AppHandle,
     remote_name: &str,
-    configs: &Option<HashMap<String, ProfileConfig>>,
+    configs: &HashMap<String, ProfileConfig>,
     op: Op,
 ) {
-    let Some(map) = configs else {
-        return;
-    };
-    for (pname, cfg) in map {
+    for (pname, cfg) in configs {
         if !cfg.app.auto_start {
             continue;
         }
@@ -201,7 +127,12 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
     }
 }
 
-async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str, op_type: &str) {
+async fn auto_start_sync(
+    app: &AppHandle,
+    remote_name: &str,
+    profile_name: &str,
+    transfer_type: OperationType,
+) {
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
@@ -210,30 +141,16 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         scoped_targets: None,
     };
 
-    let transfer_type = match op_type {
-        "sync" => OperationType::Sync,
-        "copy" => OperationType::Copy,
-        "move" => OperationType::Move,
-        "bisync" => OperationType::Bisync,
-        "check" => OperationType::Check,
-        "delete" => OperationType::Delete,
-        "copyurl" => OperationType::Copyurl,
-        "archivecreate" => OperationType::Archivecreate,
-        "cryptcheck" => OperationType::Cryptcheck,
-        _ => {
-            error!("Unknown sync type: {op_type}");
-            return;
-        }
-    };
-
     let result = start_profile_batch(app.clone(), transfer_type, params).await;
 
     match result {
         Ok(_) => {
-            info!("Auto-started {op_type}: {remote_name} profile '{profile_name}'");
+            info!("Auto-started {transfer_type}: {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            warn!("Failed to auto-start {op_type} {remote_name} profile '{profile_name}': {e}");
+            warn!(
+                "Failed to auto-start {transfer_type} {remote_name} profile '{profile_name}': {e}"
+            );
         }
     }
 }

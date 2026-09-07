@@ -9,7 +9,7 @@ use crate::{
     rclone::{backend::BackendManager, state::automations::AutomationsCache},
 };
 
-use crate::core::settings::remote::manager::get_all_remote_settings_sync;
+use crate::utils::types::remotes::RemoteSettings;
 
 /// Initialize the cron scheduler with tasks loaded from remote configs.
 pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String> {
@@ -18,7 +18,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let manager = app_handle.state::<AppSettingsManager>();
 
     let backend_manager = app_handle.state::<BackendManager>();
-    let all_settings = get_all_remote_settings_sync(manager.inner());
+    let all_settings = RemoteSettings::load_all(manager.inner());
 
     info!("📋 Loading automations from remote configs...");
 
@@ -27,14 +27,6 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let result = cache_state
         .load_from_remote_configs(&all_settings, &backend_name, Some(&app_handle))
         .await?;
-
-    for automation in &result.removed {
-        if let Some(job_id_str) = &automation.scheduler_job_id
-            && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
-        {
-            let _ = scheduler_state.unschedule_automation(job_id).await;
-        }
-    }
 
     info!("📅 Loaded {} remote automation(s)", result.added.len());
 

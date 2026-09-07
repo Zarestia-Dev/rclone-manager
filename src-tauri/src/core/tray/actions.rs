@@ -155,13 +155,9 @@ pub fn handle_stop_job_profile(
 
 fn get_mount_dest(manager: &AppSettingsManager, remote: &str, profile: &str) -> Option<String> {
     let settings = crate::utils::types::remotes::RemoteSettings::load(manager, remote).ok()?;
-    let settings_val = serde_json::to_value(&settings).ok()?;
     let mount_configs = settings.mount_configs.as_ref()?;
-
     let config_profile = mount_configs.get(profile)?;
-    let config = serde_json::to_value(config_profile).ok()?;
-
-    crate::rclone::commands::common::parse_common_config(&config, &settings_val).map(|p| p.dest)
+    config_profile.dest_str().map(str::to_string)
 }
 
 pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {

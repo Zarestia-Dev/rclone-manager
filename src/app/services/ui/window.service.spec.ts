@@ -8,6 +8,7 @@ import { SseClientService } from '../infrastructure/platform/sse-client.service'
 import { NotificationService } from './notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 describe('WindowService', () => {
   let service: WindowService;
@@ -68,6 +69,13 @@ describe('WindowService', () => {
         {
           provide: BackendTranslationService,
           useValue: { translateBackendMessage: vi.fn((k: string) => k) },
+        },
+        {
+          provide: EventListenersService,
+          useValue: {
+            listenToSystemThemeChanged: vi.fn().mockReturnValue(new Subject()),
+            listenToWindowResize: vi.fn().mockReturnValue(new Subject()),
+          },
         },
       ],
     });

@@ -1,16 +1,11 @@
 import { inject, Injectable } from '@angular/core';
-import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { FileViewerService } from '../ui/file-viewer.service';
-import { NotificationService } from '../ui/notification.service';
-import { TranslateService } from '@ngx-translate/core';
 import { Entry } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
-export class DownloadService {
-  private readonly apiClient = inject(ApiClientService);
+export class DownloadService extends TauriBaseService {
   private readonly fileViewerService = inject(FileViewerService);
-  private readonly notificationService = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
 
   /**
    * Downloads a remote or local file directly to the client's PC filesystem.
@@ -28,7 +23,7 @@ export class DownloadService {
     isLocal: boolean,
     size?: number
   ): Promise<void> {
-    if (isHeadlessMode()) {
+    if (!this.isTauri) {
       // Headless / Web mode download: trigger direct browser download
       try {
         const rawUrl = await this.fileViewerService.generateUrl(
@@ -59,7 +54,7 @@ export class DownloadService {
     } else {
       // Desktop / Tauri mode download: prompt save path and download directly via Tauri Rust
       try {
-        const destination = await this.apiClient.invoke<string | null>('get_save_file_location', {
+        const destination = await this.invokeCommand<string | null>('get_save_file_location', {
           defaultName: fileName,
         });
 
@@ -72,7 +67,7 @@ export class DownloadService {
           this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
         );
 
-        await this.apiClient.invoke('download_file', {
+        await this.invokeCommand('download_file', {
           remote,
           path,
           destination,
@@ -137,7 +132,7 @@ export class DownloadService {
       );
 
       // Rust resolves the local path (or streams remote file to app cache) and returns the absolute path.
-      const localPath = await this.apiClient.invoke<string>('open_file_natively', {
+      const localPath = await this.invokeCommand<string>('open_file_natively', {
         remote,
         path,
         fileName,

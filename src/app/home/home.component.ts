@@ -8,7 +8,6 @@ import {
   linkedSignal,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
@@ -274,10 +273,11 @@ export class HomeComponent {
     if (!confirmed) return;
 
     try {
+      // Backend 'delete_remote_settings' deletes settings, unschedules automations,
+      // and emits REMOTE_SETTINGS_CHANGED & AUTOMATIONS_CACHE_CHANGED.
+      // RemoteFacadeService and AutomationService listen to these events and update reactively.
+      // AppSettingsService.resetRemoteSettings also handles the success toast notification.
       await this.appSettingsService.resetRemoteSettings(remoteName);
-      this.notificationService.showSuccess(
-        this.translate.instant('home.notifications.settingsReset', { name: remoteName })
-      );
     } catch (error) {
       console.error('Reset settings failed:', error);
       this.notificationService.showError(error);
@@ -287,13 +287,9 @@ export class HomeComponent {
   // --- Modals ---
 
   openQuickAddRemoteModal(): void {
-    this.modalService
-      .openQuickAddRemote()
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((saved: boolean) => {
-        if (saved) void this.remoteFacadeService.refreshAll();
-      });
+    // Note: Remote creation emits REMOTE_CACHE_CHANGED, automatically updating
+    // RemoteFacadeService.orderedRemotes without requiring manual refreshAll().
+    this.modalService.openQuickAddRemote();
   }
 
   openRemoteConfigModal(
@@ -303,20 +299,16 @@ export class HomeComponent {
     remoteType?: string,
     autoAddProfile?: boolean
   ): void {
-    this.modalService
-      .openRemoteConfig({
-        remoteName: this.selectedRemote()?.name,
-        remoteType,
-        editTarget,
-        initialSection,
-        targetProfile,
-        autoAddProfile,
-      })
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((saved: boolean) => {
-        if (saved) void this.remoteFacadeService.refreshAll();
-      });
+    // Note: Config changes emit REMOTE_CACHE_CHANGED / REMOTE_SETTINGS_CHANGED,
+    // which automatically updates RemoteFacadeService reactively.
+    this.modalService.openRemoteConfig({
+      remoteName: this.selectedRemote()?.name,
+      remoteType,
+      editTarget,
+      initialSection,
+      targetProfile,
+      autoAddProfile,
+    });
   }
 
   openLogsModal(remoteName: string): void {
@@ -326,16 +318,11 @@ export class HomeComponent {
   async cloneRemote(remoteName: string): Promise<void> {
     const remote = this.remoteFacadeService.activeRemotes().find(r => r.name === remoteName);
     if (!remote) return;
-    this.modalService
-      .openRemoteConfig({
-        cloneFrom: remoteName,
-        remoteType: remote.type,
-      })
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((saved: boolean) => {
-        if (saved) void this.remoteFacadeService.refreshAll();
-      });
+    // Note: Cloned remote creation emits REMOTE_CACHE_CHANGED which updates RemoteFacadeService.
+    this.modalService.openRemoteConfig({
+      cloneFrom: remoteName,
+      remoteType: remote.type,
+    });
   }
 
   openExportModal(remoteName: string): void {

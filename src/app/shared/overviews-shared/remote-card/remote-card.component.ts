@@ -349,9 +349,7 @@ export class RemoteCardComponent {
     const isActive = !startOnly && this.isOpActive(type);
     const isLoading = startOnly
       ? this.actionStates().some(a => a.type === type)
-      : type === 'mount' || type === 'serve'
-        ? inProgress
-        : inProgress && isActive;
+      : inProgress;
 
     const configuredCount = this.getConfiguredProfiles(type).length;
     const hasNoProfiles = configuredCount === 0;

@@ -111,13 +111,12 @@ impl TraySnapshot {
 
                 let target_remote = crate::utils::json_helpers::normalize_remote_name(&name);
 
-                let build_job_profiles = |configs: &Option<
-                    std::collections::HashMap<String, crate::utils::types::remotes::ProfileConfig>,
-                >,
-                                          jtype: &JobType|
-                 -> Vec<TrayProfileSummary> {
-                    configs
-                        .as_ref()
+                let build_job_profiles = |op: OperationType| -> Vec<TrayProfileSummary> {
+                    let Some(jtype) = op.as_job_type() else {
+                        return Vec::new();
+                    };
+                    s_parsed
+                        .get_configs(op)
                         .map(|m| {
                             m.keys()
                                 .map(|pname| TrayProfileSummary {
@@ -126,7 +125,7 @@ impl TraySnapshot {
                                             && j.quick_run_id.is_none()
                                             && j.remote_name == name
                                             && j.profile.as_ref() == Some(pname)
-                                            && j.job_type == *jtype
+                                            && j.job_type == jtype
                                     }),
                                     name: pname.clone(),
                                 })
@@ -179,24 +178,15 @@ impl TraySnapshot {
                     .unwrap_or_default();
 
                 TrayRemoteSummary {
-                    sync_profiles: build_job_profiles(&s_parsed.sync_configs, &JobType::Sync),
-                    copy_profiles: build_job_profiles(&s_parsed.copy_configs, &JobType::Copy),
-                    move_profiles: build_job_profiles(&s_parsed.move_configs, &JobType::Move),
-                    bisync_profiles: build_job_profiles(&s_parsed.bisync_configs, &JobType::Bisync),
-                    check_profiles: build_job_profiles(&s_parsed.check_configs, &JobType::Check),
-                    delete_profiles: build_job_profiles(&s_parsed.delete_configs, &JobType::Delete),
-                    copyurl_profiles: build_job_profiles(
-                        &s_parsed.copyurl_configs,
-                        &JobType::CopyUrl,
-                    ),
-                    archivecreate_profiles: build_job_profiles(
-                        &s_parsed.archivecreate_configs,
-                        &JobType::ArchiveCreate,
-                    ),
-                    cryptcheck_profiles: build_job_profiles(
-                        &s_parsed.cryptcheck_configs,
-                        &JobType::CryptCheck,
-                    ),
+                    sync_profiles: build_job_profiles(OperationType::Sync),
+                    copy_profiles: build_job_profiles(OperationType::Copy),
+                    move_profiles: build_job_profiles(OperationType::Move),
+                    bisync_profiles: build_job_profiles(OperationType::Bisync),
+                    check_profiles: build_job_profiles(OperationType::Check),
+                    delete_profiles: build_job_profiles(OperationType::Delete),
+                    copyurl_profiles: build_job_profiles(OperationType::Copyurl),
+                    archivecreate_profiles: build_job_profiles(OperationType::Archivecreate),
+                    cryptcheck_profiles: build_job_profiles(OperationType::Cryptcheck),
                     name: name.to_owned(),
                     show_on_tray,
                     primary_actions,

@@ -71,6 +71,16 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
    - **DO NOT** use `crypto.randomUUID()` or Web Crypto APIs directly in frontend code. They are restricted to secure contexts (HTTPS/localhost) by modern browsers and are `undefined` over plain HTTP (e.g., remote IP headless web server access), causing `TypeError: crypto.randomUUID is not a function` and blank screens.
    - **ALWAYS** use `generatePrefixedId(prefix)` from `src/app/shared/utils` for generating unique IDs, request tokens, temporary keys, or job groups (e.g., `generatePrefixedId('qr')`, `generatePrefixedId('picker')`, `generatePrefixedId('usr-tpl')`).
 
+10. **Event System & Reactive State Architecture (CRITICAL)**
+    - **Frontend Centralization & Strict Typing**:
+      - **ALWAYS** route frontend event subscriptions through the singleton `EventListenersService` (`src/app/services/infrastructure/system/event-listeners.service.ts`).
+      - **DO NOT** call `this.listenToEvent(...)` or import `@tauri-apps/api/event` directly in components or domain services. Bypassing `EventListenersService` causes duplicate Tauri IPC listeners and separate SSE pipelines.
+      - **ALWAYS** define event name constants and structured payload interfaces in `src/app/shared/types/events.ts` (re-exported from `@app/types`). Every method in `EventListenersService` must return a strongly-typed `Observable<T>`.
+    - **Backend Event Emission & Headless SSE Parity (Rust)**:
+      - All event strings **MUST** be declared as constants in `src-tauri/src/utils/types/events.rs` with docstrings identifying emitting sources and consuming listeners.
+      - Any event intended for frontend consumption across desktop and headless modes **MUST** be included in `SSE_FORWARD_EVENTS` in `src-tauri/src/utils/types/events.rs`.
+      - Internal backend listeners for system integration (tray re-render, power inhibition, engine restarts) **MUST** be registered inside `src-tauri/src/core/event_listener.rs`.
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))
@@ -135,7 +145,7 @@ cd src-tauri && cargo clippy --features mobile --no-default-features -- -D warni
 cd src-tauri && cargo fmt -- --check
 
 # 5. Run backend unit tests
-cd src-tauri && cargo test --features desktop --no-default-features
+cd src-tauri && cargo test --features desktop --no-default-features --lib
 ```
 
 ### 3. Local Development

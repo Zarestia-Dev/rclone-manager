@@ -43,12 +43,6 @@ export class AutomationService extends TauriBaseService {
     await this.invokeCommand('reload_automations');
   }
 
-  async reloadAutomationsFromConfigs(remoteConfigs: unknown): Promise<number> {
-    return this.invokeCommand<number>('reload_automations_from_configs', {
-      remote_configs: remoteConfigs,
-    });
-  }
-
   async clearAllAutomations(): Promise<void> {
     await this.invokeCommand('clear_all_automations');
   }

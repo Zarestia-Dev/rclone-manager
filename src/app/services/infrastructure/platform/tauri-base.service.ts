@@ -30,15 +30,15 @@ export class TauriBaseService {
   }
 
   protected listenToEvent<T>(eventName: string): Observable<T> {
-    if (!this.isTauri) {
-      return this.sseClient.listen<T>(eventName);
-    }
-
     let stream = this.tauriEventStreams.get(eventName);
     if (!stream) {
-      const subject = new Subject<T>();
-      void listen<T>(eventName, event => subject.next(event.payload));
-      stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      if (!this.isTauri) {
+        stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
+      } else {
+        const subject = new Subject<T>();
+        void listen<T>(eventName, event => subject.next(event.payload));
+        stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      }
       this.tauriEventStreams.set(eventName, stream);
     }
     return stream as Observable<T>;

@@ -21,7 +21,7 @@ use crate::{
         types::{
             automation::{Automation, AutomationArgs, AutomationStatus},
             events::AUTOMATIONS_CACHE_CHANGED,
-            remotes::{OperationType, ProfileParams},
+            remotes::{OperationType, ProfileParams, RemoteSettings},
         },
     },
 };
@@ -37,6 +37,20 @@ struct ProfileConfig {
     dest: Option<Value>,
 }
 
+impl ProfileConfig {
+    fn from_profile(profile: &crate::utils::types::remotes::ProfileConfig) -> Self {
+        ProfileConfig {
+            cron_enabled: profile.app.cron_enabled,
+            cron_expression: profile.app.cron_expression.clone(),
+            watch_enabled: profile.app.watch_enabled,
+            watch_delay: profile.app.watch_delay,
+            watch_changed_only: profile.app.watch_changed_only,
+            source: profile.source_value().cloned(),
+            dest: profile.dest_value().cloned(),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for ProfileConfig {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -47,21 +61,8 @@ impl<'de> Deserialize<'de> for ProfileConfig {
         // Deserialize using ProfileConfig or fall back if unpartitioned
         let profile = crate::utils::types::remotes::ProfileConfig::parse_from_value(&val);
 
-        let source = if let Value::Object(ref map) = profile.rclone {
-            crate::utils::types::remotes::SOURCE_KEYS
-                .iter()
-                .find_map(|&key| map.get(key).cloned())
-        } else {
-            None
-        };
-
-        let dest = if let Value::Object(ref map) = profile.rclone {
-            crate::utils::types::remotes::DEST_KEYS
-                .iter()
-                .find_map(|&key| map.get(key).cloned())
-        } else {
-            None
-        };
+        let source = profile.source_value().cloned();
+        let dest = profile.dest_value().cloned();
 
         Ok(ProfileConfig {
             cron_enabled: profile.app.cron_enabled,
@@ -130,16 +131,13 @@ impl AutomationsCache {
     /// Load automations from remote configs, preserving existing automation states.
     pub async fn load_from_remote_configs(
         &self,
-        all_settings: &Value,
+        all_settings: &HashMap<String, RemoteSettings>,
         backend_name: &str,
         app: Option<&AppHandle>,
     ) -> Result<CacheUpdateResult, String> {
-        let settings_obj = all_settings
-            .as_object()
-            .ok_or("Settings is not an object")?;
         let mut automations = Vec::new();
 
-        for (remote_name, remote_settings) in settings_obj {
+        for (remote_name, remote_settings) in all_settings {
             automations.extend(self.collect_automations_from_remote(
                 backend_name,
                 remote_name,
@@ -282,37 +280,25 @@ impl AutomationsCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        remote_settings: &Value,
+        remote_settings: &RemoteSettings,
     ) -> Vec<Automation> {
         let mut automations = Vec::new();
-        let Some(obj) = remote_settings.as_object() else {
-            return automations;
-        };
 
-        let operations = [
-            OperationType::Sync,
-            OperationType::Copy,
-            OperationType::Move,
-            OperationType::Bisync,
-            OperationType::Check,
-            OperationType::Delete,
-            OperationType::Copyurl,
-            OperationType::Archivecreate,
-            OperationType::Cryptcheck,
-        ];
-
-        for op_type in operations {
-            if let Some(profiles) = obj.get(op_type.config_key()).and_then(|v| v.as_object()) {
-                for (profile_name, profile_val) in profiles {
-                    if let Ok(config) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
-                        && let Some(automation) = self.create_automation_struct(
-                            backend_name,
-                            remote_name,
-                            profile_name,
-                            &op_type,
-                            &config,
-                        )
-                    {
+        for op_type in OperationType::ALL
+            .iter()
+            .copied()
+            .filter(|op| op.is_automation())
+        {
+            if let Some(profiles) = remote_settings.get_configs(op_type) {
+                for (profile_name, profile) in profiles {
+                    let config = ProfileConfig::from_profile(profile);
+                    if let Some(automation) = self.create_automation_struct(
+                        backend_name,
+                        remote_name,
+                        profile_name,
+                        &op_type,
+                        &config,
+                    ) {
                         automations.push(automation);
                     }
                 }
@@ -726,7 +712,7 @@ impl AutomationsCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        remote_settings: &Value,
+        remote_settings: &RemoteSettings,
     ) -> Result<CacheUpdateResult, String> {
         let automations =
             self.collect_automations_from_remote(backend_name, remote_name, remote_settings);
@@ -1548,7 +1534,7 @@ mod tests {
     #[test]
     fn test_collect_automations_from_remote() {
         let cache = make_cache();
-        let remote_settings = json!({
+        let remote_settings_val = json!({
             "syncConfigs": {
                 "watcher_profile": {
                     "app": {
@@ -1574,6 +1560,8 @@ mod tests {
                 }
             }
         });
+        let remote_settings: RemoteSettings =
+            serde_json::from_value(remote_settings_val).expect("valid RemoteSettings");
 
         let automations =
             cache.collect_automations_from_remote("local", "gdrive", &remote_settings);

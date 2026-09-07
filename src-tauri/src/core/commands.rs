@@ -242,7 +242,6 @@ macro_rules! MASTER_COMMAND_LIST {
             (toggle_automation, $crate::core::automation::commands::toggle_automation, [automation_id: String]);
             (validate_cron, $crate::core::automation::commands::validate_cron, [cron_expression: String], [no_app]);
             (reload_automations, $crate::core::automation::commands::reload_automations, []);
-            (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
             (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
             // QUICK RUNS (FLOW WORKSPACE)

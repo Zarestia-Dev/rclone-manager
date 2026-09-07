@@ -10,6 +10,7 @@ import {
   APP_EXIT_REQUESTED,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
+  BandwidthLimitResponse,
   SERVE_STATE_CHANGED,
   SYSTEM_STATUS,
   RCLONE_ENGINE_STATUS_CHANGED,
@@ -18,6 +19,7 @@ import {
   RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
+  SYSTEM_THEME_CHANGED,
   AUTOMATIONS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
@@ -31,6 +33,12 @@ import {
   ActiveOperationsSummary,
   PROVISION_PROGRESS,
   ProvisionProgressPayload,
+  ALERT_FIRED,
+  AlertRecord,
+  WORKFLOW_NODE_STATE_CHANGED,
+  WORKFLOW_EXECUTION_STATE_CHANGED,
+  WorkflowNodeStatePayload,
+  WorkflowExecutionStatePayload,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -168,24 +176,24 @@ export class EventListenersService extends TauriBaseService {
     );
   }
 
-  listenToMountCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>(MOUNT_STATE_CHANGED);
+  listenToMountCacheUpdated(): Observable<string> {
+    return this.listenToEvent<string>(MOUNT_STATE_CHANGED);
   }
 
-  listenToRemoteCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED);
+  listenToRemoteCacheUpdated(): Observable<string | undefined> {
+    return this.listenToEvent<string | undefined>(REMOTE_CACHE_CHANGED);
   }
 
-  listenToServeStateChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(SERVE_STATE_CHANGED);
+  listenToServeStateChanged(): Observable<string> {
+    return this.listenToEvent<string>(SERVE_STATE_CHANGED);
   }
 
   listenToJobCacheChanged(): Observable<JobChangeEvent> {
     return this.listenToEvent<JobChangeEvent>(JOB_CACHE_CHANGED);
   }
 
-  listenToMountPluginInstalled(): Observable<unknown> {
-    return this.listenToEvent<unknown>(MOUNT_PLUGIN_INSTALLED);
+  listenToMountPluginInstalled(): Observable<void> {
+    return this.listenToEvent<void>(MOUNT_PLUGIN_INSTALLED);
   }
 
   listenToRclonePasswordStored(): Observable<void> {
@@ -200,8 +208,8 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<{ isMetered: boolean }>(NETWORK_STATUS_CHANGED);
   }
 
-  listenToBandwidthLimitChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(BANDWIDTH_LIMIT_CHANGED);
+  listenToBandwidthLimitChanged(): Observable<BandwidthLimitResponse> {
+    return this.listenToEvent<BandwidthLimitResponse>(BANDWIDTH_LIMIT_CHANGED);
   }
 
   listenToBrowse(): Observable<string> {
@@ -212,12 +220,16 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<SettingsChangeEvent>(SYSTEM_SETTINGS_CHANGED);
   }
 
-  listenToAutomationsCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(AUTOMATIONS_CACHE_CHANGED);
+  listenToSystemThemeChanged(): Observable<boolean> {
+    return this.listenToEvent<boolean>(SYSTEM_THEME_CHANGED);
   }
 
-  listenToRemoteSettingsChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED);
+  listenToAutomationsCacheChanged(): Observable<string> {
+    return this.listenToEvent<string>(AUTOMATIONS_CACHE_CHANGED);
+  }
+
+  listenToRemoteSettingsChanged(): Observable<string> {
+    return this.listenToEvent<string>(REMOTE_SETTINGS_CHANGED);
   }
 
   listenToOAuthUrl(): Observable<OAuthUrlEvent> {
@@ -238,5 +250,17 @@ export class EventListenersService extends TauriBaseService {
 
   listenToProvisionProgress(): Observable<ProvisionProgressPayload> {
     return this.listenToEvent<ProvisionProgressPayload>(PROVISION_PROGRESS);
+  }
+
+  listenToAlertFired(): Observable<AlertRecord> {
+    return this.listenToEvent<AlertRecord>(ALERT_FIRED);
+  }
+
+  listenToWorkflowNodeStateChanged(): Observable<WorkflowNodeStatePayload> {
+    return this.listenToEvent<WorkflowNodeStatePayload>(WORKFLOW_NODE_STATE_CHANGED);
+  }
+
+  listenToWorkflowExecutionStateChanged(): Observable<WorkflowExecutionStatePayload> {
+    return this.listenToEvent<WorkflowExecutionStatePayload>(WORKFLOW_EXECUTION_STATE_CHANGED);
   }
 }

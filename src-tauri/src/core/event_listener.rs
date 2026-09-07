@@ -8,7 +8,6 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::{
     core::{
         automation::commands::reload_automations_from_configs, lifecycle::shutdown::shutdown_app,
-        settings::AppSettingsManager,
     },
     rclone::{backend::BackendManager, commands::system::bandwidth_limit},
     utils::{
@@ -74,7 +73,10 @@ fn handle_rclone_password_stored(app: &AppHandle) {
 
 fn handle_remote_presence_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(REMOTE_CACHE_CHANGED, move |_| {
+    app.listen(REMOTE_CACHE_CHANGED, move |event| {
+        if event.payload() == "\"system_refresh\"" || event.payload() == "system_refresh" {
+            return;
+        }
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             let cache = &app.state::<BackendManager>().remote_cache;
@@ -87,11 +89,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("Failed to refresh cache: {e1}, {e2}");
             }
 
-            let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-                app.state::<AppSettingsManager>().inner(),
-            );
-
-            if let Err(e) = reload_automations_from_configs(app.clone(), all_configs).await {
+            if let Err(e) = reload_automations_from_configs(&app).await {
                 error!("Failed to reload automations after remote change: {e}");
             }
 
@@ -198,7 +196,7 @@ fn handle_notifications_change(app: &AppHandle, enabled: bool) {
     tauri::async_runtime::spawn(async move {
         use crate::core::alerts::cache;
 
-        let manager = app.state::<AppSettingsManager>();
+        let manager = app.state::<crate::core::settings::AppSettingsManager>();
         let mut updated = false;
 
         if cache::get_action(&manager, "default-os-toast").is_none()

@@ -1,9 +1,10 @@
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
-import { SYSTEM_THEME_CHANGED, Theme } from '@app/types';
+import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 export type ResizeDirection =
   'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
@@ -15,6 +16,7 @@ export class WindowService extends TauriBaseService {
   private readonly _theme = signal<Theme>('system');
   public readonly theme = this._theme.asReadonly();
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly systemThemeQuery: MediaQueryList | null =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -55,7 +57,8 @@ export class WindowService extends TauriBaseService {
         }
       });
 
-      this.listenToEvent<boolean>(SYSTEM_THEME_CHANGED)
+      this.eventListeners
+        .listenToSystemThemeChanged()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(isDark => {
           if (this._theme() === 'system') {
@@ -72,7 +75,8 @@ export class WindowService extends TauriBaseService {
 
   private async initWindowListeners(): Promise<void> {
     this.checkMaximizedState();
-    this.listenToEvent('tauri://resize')
+    this.eventListeners
+      .listenToWindowResize()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.checkMaximizedState();

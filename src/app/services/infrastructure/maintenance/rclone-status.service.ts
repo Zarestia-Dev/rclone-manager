@@ -88,7 +88,7 @@ export class RcloneStatusService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(data => {
         if (data) {
-          this.bandwidthLimit.set(data as BandwidthLimitResponse);
+          this.bandwidthLimit.set(data);
         }
       });
 

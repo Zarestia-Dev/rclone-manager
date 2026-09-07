@@ -101,13 +101,8 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     initialize_caches(&app_handle).await?;
 
-    let all_configs =
-        crate::core::settings::remote::manager::get_all_remote_settings_sync(manager.inner());
-    if let Err(e) = crate::core::automation::commands::reload_automations_from_configs(
-        app_handle.clone(),
-        all_configs,
-    )
-    .await
+    if let Err(e) =
+        crate::core::automation::commands::reload_automations_from_configs(&app_handle).await
     {
         error!("Failed to reload automations: {e}");
     }
@@ -120,7 +115,10 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     }
 
     app_handle
-        .emit(crate::utils::types::events::REMOTE_CACHE_CHANGED, ())
+        .emit(
+            crate::utils::types::events::REMOTE_CACHE_CHANGED,
+            "system_refresh",
+        )
         .ok();
     app_handle
         .emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ())

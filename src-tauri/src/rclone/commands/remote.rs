@@ -408,15 +408,28 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
     let transport = app.state::<RcloneState>().transport.clone();
     let backend = app.state::<BackendManager>().get_active().await;
 
+    let scheduler = app.state::<crate::core::automation::engine::AutomationScheduler>();
     match cache
         .remove_automations_for_remote(&backend.name, &name, Some(&app))
         .await
     {
-        Ok(ids) if !ids.is_empty() => {
+        Ok(removed) if !removed.is_empty() => {
             info!(
                 "Removed {} automation(s) for deleted remote '{name}'",
-                ids.len()
+                removed.len()
             );
+            for automation in &removed {
+                if let Some(job_id_str) = &automation.scheduler_job_id
+                    && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+                    && let Err(e) = scheduler.unschedule_automation(job_id).await
+                {
+                    warn!("Failed to unschedule job {job_id} for remote '{name}': {e}");
+                }
+            }
+            let watcher_manager = app.state::<crate::core::automation::watcher::WatcherManager>();
+            if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
+                warn!("Watcher sync incomplete for deleted remote '{name}': {e}");
+            }
         }
         Err(e) => warn!("Failed to clean up automations for remote '{name}': {e}"),
         _ => {}

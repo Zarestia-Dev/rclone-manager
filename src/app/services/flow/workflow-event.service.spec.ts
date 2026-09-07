@@ -8,7 +8,9 @@ import {
 import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { provideTranslateService } from '@ngx-translate/core';
+import { Subject } from 'rxjs';
 
 describe('WorkflowEventService', () => {
   let service: WorkflowEventService;
@@ -26,6 +28,13 @@ describe('WorkflowEventService', () => {
           provide: ApiClientService,
           useValue: {
             invoke: vi.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: EventListenersService,
+          useValue: {
+            listenToWorkflowNodeStateChanged: vi.fn().mockReturnValue(new Subject()),
+            listenToWorkflowExecutionStateChanged: vi.fn().mockReturnValue(new Subject()),
           },
         },
       ],
