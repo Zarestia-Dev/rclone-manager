@@ -38,12 +38,12 @@ tempfile = "3"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
 netstat2 = "0.11"
-sysinfo = "0.38"
+sysinfo = "0.39"
 tokio-cron-scheduler = "0.15"
-croner = "3"
+croner = "4"
 clap = { version = "4", features = ["derive", "env"] }
-lofty = "0.24"
-base64 = "0.22"
+lofty = "0.25"
+base64 = "0.23"
 url = "2"
 handlebars = "6"
 rumqttc = "0.25"
@@ -98,7 +98,7 @@ rustls-platform-verifier = "0.7"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
-winreg = "0.52"
+winreg = "0.56"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
