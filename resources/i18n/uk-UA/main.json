@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Попередні налаштування за замовчуванням успішно застосовано",
+      "noRemoteSelected": "Будь ласка, спочатку виберіть віддалене підключення"
     }
   },
   "backup": {
@@ -3286,32 +3286,32 @@
       "description": "Створіть швидкий запуск або робочий процес для швидких операцій та автоматизацій."
     },
     "quickRun": {
-      "title": "Швидкі Запуски",
-      "new": "Новий Швидкий Запуск",
+      "title": "Швидкі запуски",
+      "new": "Новий швидкий запуск",
       "actions": {
         "start": "Запустити",
         "stop": "Зупинити",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "Видалити Quick Run"
+        "createRemote": "Створити підключення '{{remote}}'",
+        "changeRemote": "Змінити підключення"
       },
-      "deleteConfirm": "Ви впевнені, що хочете видалити швидкий запуск «{{name}}»?",
       "badges": {
         "scheduled": "Заплановане завдання",
         "watcher": "Відстеження папки активне",
         "watcherChangedOnly": "Відстеження папки активне (лише підкаталоги)",
         "autostart": "Автозапуск увімкнено",
-        "missingRemote": "Remote Missing from Rclone"
+        "missingRemote": "Підключення відсутнє в Rclone"
       },
+      "missingRemoteTitle": "Підключення не знайдено в Rclone",
+      "missingRemoteDesc": "Підключення '{{remote}}', пов'язане з цим швидким запуском, не існує в Rclone, але його конфігурацію збережено.",
       "status": {
         "running": "Виконується"
       },
       "overview": {
         "stats": {
-          "total": "Всього швидких запусків"
+          "total": "Усього швидких запусків"
         },
         "quickLaunch": "Швидкий запуск",
-        "createFirst": "Створіть свій перший швидкий запуск для виконання операцій без створення профілів.",
+        "createFirst": "Створіть свій перший швидкий запуск для швидких операцій без профілів.",
         "noRunsForRemote": "Для {{remote}} не налаштовано швидких запусків.",
         "createForRemote": "Створити швидкий запуск для {{remote}}"
       },
@@ -3322,22 +3322,20 @@
         "createTitle": "Створити швидкий запуск",
         "editTitle": "Редагувати швидкий запуск",
         "name": "Назва",
-        "nameRequired": "Назва обов’язкова",
-        "description": "Опис (необов’язково)",
-        "remote": "Віддалений диск",
-        "noRemotes": "Диски не налаштовані",
-        "remoteRequired": "Необхідно вибрати диск",
-        "selectRemoteFirst": "Виберіть диск для автодоповнення",
+        "nameRequired": "Назва обов'язкова",
+        "description": "Опис (необов'язково)",
+        "remote": "Віддалене підключення",
+        "noRemotes": "Немає налаштованих підключень",
+        "remoteRequired": "Підключення обов'язкове",
+        "selectRemoteFirst": "Виберіть підключення для автозаповнення",
         "tabVfs": "VFS",
         "tabFilter": "Фільтр",
         "tabBackend": "Бекенд",
-        "tabRuntimeRemote": "Диск виконання",
+        "tabRuntimeRemote": "Динамічний remote",
         "noProfiles": "Немає доступних профілів"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "Підключення '{{remote}}' не існує в конфігурації Rclone"
       }
     },
     "tabs": {

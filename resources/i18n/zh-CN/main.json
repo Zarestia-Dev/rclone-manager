@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "已成功应用默认预设",
+      "noRemoteSelected": "请先选择一个远程存储"
     }
   },
   "backup": {
@@ -3291,18 +3291,18 @@
       "actions": {
         "start": "启动",
         "stop": "停止",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "删除快捷运行"
+        "createRemote": "创建远程存储 '{{remote}}'",
+        "changeRemote": "更改远程存储"
       },
-      "deleteConfirm": "您确定要删除快捷运行“{{name}}”吗？",
       "badges": {
-        "scheduled": "定时任务",
-        "watcher": "文件夹监控已启用",
-        "watcherChangedOnly": "文件夹监控已启用 (仅限子目录)",
-        "autostart": "开机自启已启用",
-        "missingRemote": "Remote Missing from Rclone"
+        "scheduled": "计划任务",
+        "watcher": "文件夹监视已启用",
+        "watcherChangedOnly": "文件夹监视已启用（仅子目录）",
+        "autostart": "已启用自启动",
+        "missingRemote": "Rclone 中缺少该远程存储"
       },
+      "missingRemoteTitle": "Rclone 中未找到该远程存储",
+      "missingRemoteDesc": "与此快捷运行关联的远程存储 '{{remote}}' 在 Rclone 中不存在，但其配置已保留。",
       "status": {
         "running": "运行中"
       },
@@ -3311,7 +3311,7 @@
           "total": "快捷运行总数"
         },
         "quickLaunch": "快速启动",
-        "createFirst": "创建您的第一个快捷运行，免配置文件直接快速执行操作。",
+        "createFirst": "创建您的第一个快捷运行，体验快捷、无需配置文件的操作。",
         "noRunsForRemote": "未为 {{remote}} 配置快捷运行。",
         "createForRemote": "为 {{remote}} 创建快捷运行"
       },
@@ -3323,21 +3323,19 @@
         "editTitle": "编辑快捷运行",
         "name": "名称",
         "nameRequired": "名称为必填项",
-        "description": "描述 (可选)",
+        "description": "描述（可选）",
         "remote": "远程存储",
         "noRemotes": "未配置远程存储",
-        "remoteRequired": "必须选择远程存储",
-        "selectRemoteFirst": "请先选择一个远程存储以查看自动补全",
+        "remoteRequired": "远程存储为必填项",
+        "selectRemoteFirst": "请先选择远程存储以查看自动补全",
         "tabVfs": "VFS",
-        "tabFilter": "过滤",
+        "tabFilter": "过滤器",
         "tabBackend": "后端",
-        "tabRuntimeRemote": "运行时远程",
+        "tabRuntimeRemote": "运行时远程存储",
         "noProfiles": "没有可用的配置文件"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "远程存储 '{{remote}}' 在 Rclone 配置中不存在"
       }
     },
     "tabs": {

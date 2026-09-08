@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Предустановки по умолчанию успешно применены",
+      "noRemoteSelected": "Пожалуйста, сначала выберите удаленное подключение"
     }
   },
   "backup": {
@@ -3291,18 +3291,18 @@
       "actions": {
         "start": "Запустить",
         "stop": "Остановить",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "Удалить Quick Run"
+        "createRemote": "Создать подключение '{{remote}}'",
+        "changeRemote": "Сменить подключение"
       },
-      "deleteConfirm": "Вы уверены, что хотите удалить быстрый запуск «{{name}}»?",
       "badges": {
         "scheduled": "Запланированная задача",
         "watcher": "Отслеживание папки активно",
         "watcherChangedOnly": "Отслеживание папки активно (только подкаталоги)",
         "autostart": "Автозапуск включен",
-        "missingRemote": "Remote Missing from Rclone"
+        "missingRemote": "Подключение отсутствует в Rclone"
       },
+      "missingRemoteTitle": "Подключение не найдено в Rclone",
+      "missingRemoteDesc": "Подключение '{{remote}}', связанное с этим быстрым запуском, не существует в Rclone, но его конфигурация сохранена.",
       "status": {
         "running": "Выполняется"
       },
@@ -3311,7 +3311,7 @@
           "total": "Всего быстрых запусков"
         },
         "quickLaunch": "Быстрый запуск",
-        "createFirst": "Создайте свой первый быстрый запуск для выполнения быстрых операций без профилей.",
+        "createFirst": "Создайте свой первый быстрый запуск для простых операций без профиля.",
         "noRunsForRemote": "Для {{remote}} не настроено быстрых запусков.",
         "createForRemote": "Создать быстрый запуск для {{remote}}"
       },
@@ -3320,24 +3320,22 @@
       },
       "editor": {
         "createTitle": "Создать быстрый запуск",
-        "editTitle": "Изменить быстрый запуск",
-        "name": "Название",
-        "nameRequired": "Название обязательно",
+        "editTitle": "Редактировать быстрый запуск",
+        "name": "Имя",
+        "nameRequired": "Имя обязательно",
         "description": "Описание (необязательно)",
-        "remote": "Удаленный диск",
-        "noRemotes": "Диски не настроены",
-        "remoteRequired": "Необходимо выбрать диск",
-        "selectRemoteFirst": "Выберите диск для автозаполнения",
+        "remote": "Удаленное подключение",
+        "noRemotes": "Нет настроенных удаленных подключений",
+        "remoteRequired": "Удаленное подключение обязательно",
+        "selectRemoteFirst": "Выберите подключение для автозаполнения",
         "tabVfs": "VFS",
         "tabFilter": "Фильтр",
         "tabBackend": "Бэкенд",
-        "tabRuntimeRemote": "Диск выполнения",
+        "tabRuntimeRemote": "Динамический remote",
         "noProfiles": "Нет доступных профилей"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "Подключение '{{remote}}' не существует в конфигурации Rclone"
       }
     },
     "tabs": {

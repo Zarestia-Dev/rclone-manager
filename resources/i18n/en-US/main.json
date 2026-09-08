@@ -3374,6 +3374,9 @@
         "tabBackend": "Backend",
         "tabRuntimeRemote": "Runtime Remote",
         "noProfiles": "No profiles available"
+      },
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
       }
     },
     "tabs": {

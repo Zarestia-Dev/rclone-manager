@@ -1064,7 +1064,7 @@
           "removeFailed": "O arquivo não pode ser removido",
           "cleared": "{{count}} itens foram removidos",
           "directoryRefreshed": "Diretório atualizado",
-          "intervalSet": "Conjunto de intervalo definido como {{{val}}",
+          "intervalSet": "Conjunto de intervalo definido como {{val}}",
           "error": "Erro: {{error}}"
         }
       },
@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Predefinições padrão aplicadas com sucesso",
+      "noRemoteSelected": "Por favor, selecione um remote primeiro"
     }
   },
   "backup": {
@@ -2149,7 +2149,7 @@
       "status": {
         "notTested": "Conexão não testada",
         "connected": "Conectado",
-        "error": "Erro: {{{message}}"
+        "error": "Erro: {{message}}"
       },
       "notifications": {
         "switchFailed": "Falha ao alternar: {{message}}",
@@ -3023,10 +3023,10 @@
     "syncCount": "Sincronizar [{{active}}/{{total}}]",
     "copyCount": "Cópia [{{active}}/{{total}}]",
     "moveCount": "Mover [{{active}}]/[{{total}}]",
-    "bisyncCount": "BiSync [{{active}}]/{{total}}]}",
+    "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "checkCount": "Verificar [{{active}}/{{total}}]",
     "cryptcheckCount": "Verificação de Criptografia [{{active}}/{{total}}]",
-    "deleteCount": "Exclusão [{{active}}/{{{total}}]",
+    "deleteCount": "Exclusão [{{active}}/{{total}}]",
     "copyurlCount": "Cópia de URL [{{active}}/{{total}}]",
     "archivecreateCount": "Arquivo [{{active}}]/[{{total}}]",
     "serveCount": "Servir [{{active}}/{{total}}]",
@@ -3103,7 +3103,7 @@
       "allUnmounted": "Desconectado com sucesso de todas as montagens remotos.",
       "automationStarted": "A automação {{type}} '{{automation}}' está em execução no {{backend}}.",
       "automationCompleted": "A automação {{type}} '{{automation}}' foi concluída com sucesso.",
-      "automationFailed": "A automação {{{type}}} encontrou o erro '{{{automation}}}': {{{error}}.",
+      "automationFailed": "A automação {{type}} encontrou o erro '{{automation}}': {{error}}.",
       "automationStopped": "A automação {{type}} '{{automation}}' foi interrompida no {{backend}}.",
       "updateFound": "Uma nova versão {{version}} do RClone Manager está disponível.",
       "updateStarted": "Baixando e instalando a versão {{version}}...",
@@ -3291,27 +3291,27 @@
       "actions": {
         "start": "Iniciar",
         "stop": "Parar",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "Excluir Quick Run"
+        "createRemote": "Criar Remote '{{remote}}'",
+        "changeRemote": "Alterar Remote"
       },
-      "deleteConfirm": "Tem certeza de que deseja excluir o Quick Run '{{name}}'?",
       "badges": {
         "scheduled": "Tarefa Agendada",
-        "watcher": "Monitor de pasta ativo",
-        "watcherChangedOnly": "Monitor de pasta ativo (apenas subdiretórios)",
-        "autostart": "Inicialização automática ativada",
-        "missingRemote": "Remote Missing from Rclone"
+        "watcher": "Monitor de Pastas Ativo",
+        "watcherChangedOnly": "Monitor de Pastas Ativo (apenas subdiretórios)",
+        "autostart": "Início Automático Ativado",
+        "missingRemote": "Remote Ausente no Rclone"
       },
+      "missingRemoteTitle": "Remote Não Encontrado no Rclone",
+      "missingRemoteDesc": "O remote '{{remote}}' associado a esta Execução Rápida não existe no Rclone, mas sua configuração foi preservada.",
       "status": {
-        "running": "Em execução"
+        "running": "Em Execução"
       },
       "overview": {
         "stats": {
           "total": "Total de Execuções Rápidas"
         },
         "quickLaunch": "Início Rápido",
-        "createFirst": "Crie sua primeira execução rápida para executar operações sem necessidade de perfis.",
+        "createFirst": "Crie sua primeira Execução Rápida para começar com operações ágeis e sem perfis.",
         "noRunsForRemote": "Nenhuma execução rápida configurada para {{remote}}.",
         "createForRemote": "Criar Execução Rápida para {{remote}}"
       },
@@ -3324,20 +3324,18 @@
         "name": "Nome",
         "nameRequired": "O nome é obrigatório",
         "description": "Descrição (opcional)",
-        "remote": "Remoto",
-        "noRemotes": "Nenhum remoto configurado",
-        "remoteRequired": "O remoto é obrigatório",
-        "selectRemoteFirst": "Selecione um remoto para ver as opções",
+        "remote": "Remote",
+        "noRemotes": "Nenhum remote configurado",
+        "remoteRequired": "O remote é obrigatório",
+        "selectRemoteFirst": "Selecione um remote para ver o preenchimento automático",
         "tabVfs": "VFS",
         "tabFilter": "Filtro",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Remoto de Execução",
+        "tabRuntimeRemote": "Remote em Tempo de Execução",
         "noProfiles": "Nenhum perfil disponível"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "O remote '{{remote}}' não existe na configuração do Rclone"
       }
     },
     "tabs": {

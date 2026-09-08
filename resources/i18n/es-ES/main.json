@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Ajustes preestablecidos predeterminados aplicados con éxito",
+      "noRemoteSelected": "Por favor, seleccione un remoto primero"
     }
   },
   "backup": {
@@ -2526,9 +2526,9 @@
       "undoFailed": "Error al deshacer para {{count}} elementos",
       "redoFailed": "Error al rehacer para {{count}} elementos",
       "rmdirsFailed": "Error al eliminar carpetas vacías en \"{{name}}\": {{error}}",
-      "createFolderFailed": "Error al crear la carpeta",
+      "createFolderFailed": "Error al crear la carpeta \"{{name}}\": {{error}}",
       "renameFailed": "Error al renombrar '{{name}}': {{error}}",
-      "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
+      "emptyTrashFailed": "Error al vaciar la papelera en {{remote}}: {{error}}",
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
@@ -3286,56 +3286,56 @@
       "description": "Crea una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones."
     },
     "quickRun": {
-      "title": "Ejecuciones Rápidas",
-      "new": "Nueva Ejecución Rápida",
+      "title": "Ejecuciones rápidas",
+      "new": "Nueva ejecución rápida",
       "actions": {
         "start": "Iniciar",
         "stop": "Detener",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote"
+        "createRemote": "Crear remoto '{{remote}}'",
+        "changeRemote": "Cambiar remoto"
       },
       "badges": {
-        "scheduled": "Tarea Programada",
-        "watcher": "Vigilante de Carpeta Activo",
-        "watcherChangedOnly": "Vigilante de Carpeta Activo (solo subdirectorios)",
-        "autostart": "Inicio Automático Activado",
-        "missingRemote": "Remote Missing from Rclone"
+        "scheduled": "Tarea programada",
+        "watcher": "Vigilante de carpetas activo",
+        "watcherChangedOnly": "Vigilante de carpetas activo (solo subdirectorios)",
+        "autostart": "Inicio automático habilitado",
+        "missingRemote": "Remoto faltante en Rclone"
       },
+      "missingRemoteTitle": "Remoto no encontrado en Rclone",
+      "missingRemoteDesc": "El remoto '{{remote}}' asociado con esta ejecución rápida no existe en Rclone, pero su configuración se conserva.",
       "status": {
         "running": "En ejecución"
       },
       "overview": {
         "stats": {
-          "total": "Total de Ejecuciones Rápidas"
+          "total": "Total de ejecuciones rápidas"
         },
-        "quickLaunch": "Inicio Rápido",
-        "createFirst": "Crea tu primera Ejecución Rápida para realizar operaciones rápidas sin perfiles.",
+        "quickLaunch": "Lanzamiento rápido",
+        "createFirst": "Cree su primera ejecución rápida para comenzar con operaciones rápidas y sin perfiles.",
         "noRunsForRemote": "No hay ejecuciones rápidas configuradas para {{remote}}.",
-        "createForRemote": "Crear Ejecución Rápida para {{remote}}"
+        "createForRemote": "Crear ejecución rápida para {{remote}}"
       },
       "detail": {
         "configuration": "Configuración"
       },
       "editor": {
-        "createTitle": "Crear Ejecución Rápida",
-        "editTitle": "Editar Ejecución Rápida",
+        "createTitle": "Crear ejecución rápida",
+        "editTitle": "Editar ejecución rápida",
         "name": "Nombre",
         "nameRequired": "El nombre es obligatorio",
         "description": "Descripción (opcional)",
         "remote": "Remoto",
         "noRemotes": "No hay remotos configurados",
         "remoteRequired": "El remoto es obligatorio",
-        "selectRemoteFirst": "Selecciona un remoto para ver el autocompletado",
+        "selectRemoteFirst": "Seleccione un remoto para ver el autocompletado",
         "tabVfs": "VFS",
         "tabFilter": "Filtro",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Remoto en Tiempo de Ejecución",
+        "tabRuntimeRemote": "Remoto en tiempo de ejecución",
         "noProfiles": "No hay perfiles disponibles"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "El remoto '{{remote}}' no existe en la configuración de Rclone"
       }
     },
     "tabs": {

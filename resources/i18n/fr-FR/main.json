@@ -918,7 +918,7 @@
     "inputModal": {
       "name": "Nom",
       "required": "{{field}} est obligatoire",
-      "alreadyExists": "{name} existe déjà",
+      "alreadyExists": "{{name}} existe déjà",
       "forbiddenChars": "{{name}} contient des caractères interdits ('/' ou ':' )",
       "create": "Créer"
     },
@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Préréglages par défaut appliqués avec succès",
+      "noRemoteSelected": "Veuillez d'abord sélectionner un remote"
     }
   },
   "backup": {
@@ -3286,32 +3286,32 @@
       "description": "Créez une exécution rapide ou un flux de travail pour démarrer rapidement des opérations et des pipelines."
     },
     "quickRun": {
-      "title": "Exécutions Rapides",
-      "new": "Nouvelle Exécution Rapide",
+      "title": "Exécutions rapides",
+      "new": "Nouvelle exécution rapide",
       "actions": {
         "start": "Démarrer",
         "stop": "Arrêter",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "Supprimer Quick Run"
+        "createRemote": "Créer le remote '{{remote}}'",
+        "changeRemote": "Changer de remote"
       },
-      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer l'exécution rapide '{{name}}' ?",
       "badges": {
-        "scheduled": "Tâche Planifiée",
+        "scheduled": "Tâche planifiée",
         "watcher": "Surveillance de dossier active",
         "watcherChangedOnly": "Surveillance de dossier active (sous-dossiers uniquement)",
         "autostart": "Démarrage automatique activé",
-        "missingRemote": "Remote Missing from Rclone"
+        "missingRemote": "Remote manquant dans Rclone"
       },
+      "missingRemoteTitle": "Remote introuvable dans Rclone",
+      "missingRemoteDesc": "Le remote '{{remote}}' associé à cette exécution rapide n'existe pas dans Rclone, mais sa configuration est conservée.",
       "status": {
-        "running": "En cours"
+        "running": "En cours d'exécution"
       },
       "overview": {
         "stats": {
           "total": "Total des exécutions rapides"
         },
-        "quickLaunch": "Lancement Rapide",
-        "createFirst": "Créez votre première exécution rapide pour démarrer sans profil d’opération.",
+        "quickLaunch": "Lancement rapide",
+        "createFirst": "Créez votre première exécution rapide pour commencer des opérations rapides et sans profil.",
         "noRunsForRemote": "Aucune exécution rapide configurée pour {{remote}}.",
         "createForRemote": "Créer une exécution rapide pour {{remote}}"
       },
@@ -3320,24 +3320,22 @@
       },
       "editor": {
         "createTitle": "Créer une exécution rapide",
-        "editTitle": "Modifier l’exécution rapide",
+        "editTitle": "Modifier l'exécution rapide",
         "name": "Nom",
         "nameRequired": "Le nom est obligatoire",
-        "description": "Description (optionnel)",
-        "remote": "Dépôt distant",
-        "noRemotes": "Aucun distant configuré",
-        "remoteRequired": "Le distant est obligatoire",
-        "selectRemoteFirst": "Sélectionnez un distant pour voir l’autocomplétion",
+        "description": "Description (facultatif)",
+        "remote": "Remote",
+        "noRemotes": "Aucun remote configuré",
+        "remoteRequired": "Le remote est obligatoire",
+        "selectRemoteFirst": "Sélectionnez un remote pour afficher l'autocomplétion",
         "tabVfs": "VFS",
         "tabFilter": "Filtre",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Distant d’exécution",
+        "tabRuntimeRemote": "Remote d'exécution",
         "noProfiles": "Aucun profil disponible"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone"
       }
     },
     "tabs": {

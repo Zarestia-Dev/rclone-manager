@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "デフォルトプリセットが正常に適用されました",
+      "noRemoteSelected": "最初にリモートを選択してください"
     }
   },
   "backup": {
@@ -3291,18 +3291,18 @@
       "actions": {
         "start": "開始",
         "stop": "停止",
-        "createRemote": "Create Remote '{{remote}}'",
-        "changeRemote": "Change Remote",
-        "deleteQuickRun": "クイック実行を削除"
+        "createRemote": "リモート「{{remote}}」を作成",
+        "changeRemote": "リモートを変更"
       },
-      "deleteConfirm": "クイック実行「{{name}}」を削除してもよろしいですか？",
       "badges": {
-        "scheduled": "スケジュールタスク",
-        "watcher": "フォルダ監視有効",
-        "watcherChangedOnly": "フォルダ監視有効 (サブディレクトリのみ)",
-        "autostart": "自動開始有効",
-        "missingRemote": "Remote Missing from Rclone"
+        "scheduled": "スケジュールされたタスク",
+        "watcher": "フォルダ監視が有効",
+        "watcherChangedOnly": "フォルダ監視が有効（サブディレクトリのみ）",
+        "autostart": "自動起動が有効",
+        "missingRemote": "Rcloneにリモートが存在しません"
       },
+      "missingRemoteTitle": "Rcloneでリモートが見つかりません",
+      "missingRemoteDesc": "このクイック実行に関連付けられているリモート「{{remote}}」はRcloneに存在しませんが、設定は保持されています。",
       "status": {
         "running": "実行中"
       },
@@ -3311,9 +3311,9 @@
           "total": "クイック実行の合計"
         },
         "quickLaunch": "クイック起動",
-        "createFirst": "最初のクイック実行を作成して、プロファイル設定なしで高速な操作を開始します。",
-        "noRunsForRemote": "{{remote}} 用に設定されたクイック実行はありません。",
-        "createForRemote": "{{remote}} 用のクイック実行を作成"
+        "createFirst": "プロファイルなしで素早く操作を始めるために、最初のクイック実行を作成してください。",
+        "noRunsForRemote": "{{remote}} 用のクイック実行は設定されていません。",
+        "createForRemote": "{{remote}} のクイック実行を作成"
       },
       "detail": {
         "configuration": "設定"
@@ -3323,21 +3323,19 @@
         "editTitle": "クイック実行を編集",
         "name": "名前",
         "nameRequired": "名前は必須です",
-        "description": "説明 (省略可)",
+        "description": "説明（オプション）",
         "remote": "リモート",
-        "noRemotes": "リモートが設定されていません",
+        "noRemotes": "設定されたリモートがありません",
         "remoteRequired": "リモートは必須です",
-        "selectRemoteFirst": "オートコンプリートを表示するにはリモートを選択してください",
+        "selectRemoteFirst": "オートコンプリートを表示するにはまずリモートを選択してください",
         "tabVfs": "VFS",
         "tabFilter": "フィルター",
         "tabBackend": "バックエンド",
         "tabRuntimeRemote": "ランタイムリモート",
         "noProfiles": "利用可能なプロファイルがありません"
       },
-      "missingRemoteTitle": "Remote Not Found in Rclone",
-      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "リモート「{{remote}}」はRclone設定に存在しません"
       }
     },
     "tabs": {

@@ -933,7 +933,7 @@
       "backendSwitchAria": "Mevcut mod: {{title}} - Arka uç değiştirmek için tıklayın"
     },
     "settingControl": {
-      "default": "Varsayılan: {{ value }}",
+      "default": "Varsayılan: {{value}}",
       "resetToDefault": "Varsayılana sıfırla",
       "obscureValue": "Şifreyi rclone kullanarak gizle",
       "enabled": "Etkin",
@@ -949,10 +949,10 @@
       "time": "Saat",
       "others": "diğerleri",
       "aria": {
-        "item": "Öge",
-        "removeItem": "Ögeyi kaldır",
-        "date": "Tarih",
-        "time": "Saat"
+        "item": "{{name}} ögesi {{index}}",
+        "removeItem": "{{name}} ögesini kaldır",
+        "date": "{{name}} tarihi",
+        "time": "{{name}} saati"
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
@@ -1399,8 +1399,8 @@
       }
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "applied": "Varsayılan hazır ayarlar başarıyla uygulandı",
+      "noRemoteSelected": "Lütfen önce bir uzak bağlantı seçin"
     }
   },
   "backup": {
@@ -2569,7 +2569,7 @@
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
-      "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
+      "emptyTrashFailed": "{{remote}} üzerindeki çöp kutusu boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
@@ -3365,15 +3365,18 @@
         "name": "İsim",
         "nameRequired": "İsim zorunludur",
         "description": "Açıklama (isteğe bağlı)",
-        "remote": "Remote",
-        "noRemotes": "Yapılandırılmış remote yok",
-        "remoteRequired": "Remote seçimi zorunludur",
-        "selectRemoteFirst": "Otomatik tamamlamayı görmek için önce bir remote seçin",
+        "remote": "Uzak Bağlantı",
+        "noRemotes": "Yapılandırılmış uzak bağlantı yok",
+        "remoteRequired": "Uzak bağlantı zorunludur",
+        "selectRemoteFirst": "Otomatik tamamlamayı görmek için önce bir uzak bağlantı seçin",
         "tabVfs": "VFS",
         "tabFilter": "Filtre",
-        "tabBackend": "Backend",
+        "tabBackend": "Arka Uç",
         "tabRuntimeRemote": "Çalışma Zamanı Remote",
         "noProfiles": "Kullanılabilir profil yok"
+      },
+      "errors": {
+        "remoteNotFound": "'{{remote}}' remote'u Rclone konfigürasyonunda mevcut değil"
       }
     },
     "tabs": {
