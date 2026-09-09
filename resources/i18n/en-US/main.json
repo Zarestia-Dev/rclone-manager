@@ -2675,6 +2675,8 @@
     },
     "options": {
       "showInTray": "Show in Tray Menu",
+      "aboutRemote": "About Remote",
+      "emptyTrash": "Empty Trash",
       "viewLogs": "View Logs",
       "cloneRemote": "Clone Remote",
       "exportConfig": "Export Configuration",

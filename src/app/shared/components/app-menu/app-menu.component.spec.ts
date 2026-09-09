@@ -117,7 +117,6 @@ describe('AppMenuComponent', () => {
   it('should open power menu on long press and suppress subsequent click', () => {
     component.onAboutLongPress();
     expect(modalServiceSpy.openPowerMenu).toHaveBeenCalled();
-    expect(component.aboutHoldProgress()).toBe(0);
 
     component.onAboutClicked();
     expect(modalServiceSpy.openAbout).not.toHaveBeenCalled();

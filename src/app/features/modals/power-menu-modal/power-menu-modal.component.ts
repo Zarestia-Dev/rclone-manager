@@ -20,7 +20,13 @@ export interface PowerActionItem {
   icon: string;
   titleKey: string;
   descKey: string;
-  variant: 'danger' | 'primary' | 'warning' | 'crimson' | 'purple' | 'neutral';
+  color:
+    | 'var(--destructive-color)'
+    | 'var(--accent-color)'
+    | 'var(--orange)'
+    | 'var(--warn-color)'
+    | 'var(--purple)'
+    | 'var(--dim-color)';
   action: () => Promise<void>;
 }
 
@@ -66,7 +72,7 @@ export class PowerMenuModalComponent {
         icon: 'power-off',
         titleKey: 'powerMenu.actions.shutdownApp.title',
         descKey: 'powerMenu.actions.shutdownApp.desc',
-        variant: 'danger',
+        color: 'var(--destructive-color)',
         action: () => this.handleShutdownApp(),
       },
       {
@@ -74,7 +80,7 @@ export class PowerMenuModalComponent {
         icon: 'rotate-right',
         titleKey: 'powerMenu.actions.restartApp.title',
         descKey: 'powerMenu.actions.restartApp.desc',
-        variant: 'primary',
+        color: 'var(--accent-color)',
         action: () => this.handleRestartApp(),
       },
       {
@@ -82,7 +88,7 @@ export class PowerMenuModalComponent {
         icon: 'stop',
         titleKey: 'powerMenu.actions.emergencyStop.title',
         descKey: 'powerMenu.actions.emergencyStop.desc',
-        variant: 'warning',
+        color: 'var(--orange)',
         action: () => this.handleEmergencyStop(),
       },
       {
@@ -90,7 +96,7 @@ export class PowerMenuModalComponent {
         icon: 'server',
         titleKey: 'powerMenu.actions.systemShutdown.title',
         descKey: 'powerMenu.actions.systemShutdown.desc',
-        variant: 'crimson',
+        color: 'var(--warn-color)',
         action: () => this.handleSystemPower('shutdown'),
       },
       {
@@ -98,7 +104,7 @@ export class PowerMenuModalComponent {
         icon: 'bolt',
         titleKey: 'powerMenu.actions.systemSleep.title',
         descKey: 'powerMenu.actions.systemSleep.desc',
-        variant: 'purple',
+        color: 'var(--purple)',
         action: () => this.handleSystemPower('sleep'),
       },
       {
@@ -106,7 +112,7 @@ export class PowerMenuModalComponent {
         icon: 'lock',
         titleKey: 'powerMenu.actions.systemLock.title',
         descKey: 'powerMenu.actions.systemLock.desc',
-        variant: 'neutral',
+        color: 'var(--dim-color)',
         action: () => this.handleSystemPower('lock'),
       },
     ];

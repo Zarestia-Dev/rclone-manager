@@ -109,37 +109,11 @@ export class NautilusActionsService {
   }
 
   openAboutModal(remote: ExplorerRoot): void {
-    const normalized = this.pathSvc.normalizeExplorerRoot(remote);
-    this.modalService.openRemoteAbout({
-      displayName: remote.name,
-      normalizedName: normalized,
-      type: remote.type,
-    });
+    this.remoteFacadeSvc.openRemoteAbout(remote);
   }
 
   async confirmAndCleanup(r: ExplorerRoot): Promise<void> {
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('nautilus.modals.emptyTrash.title'),
-      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name }),
-      'common.delete',
-      'common.cancel',
-      { icon: 'trash', color: 'warn' }
-    );
-    if (!confirmed) return;
-
-    try {
-      const normalized = this.pathSvc.normalizeExplorerRoot(r);
-      await this.remoteOps.cleanup(normalized, undefined, 'filemanager');
-      this.notificationService.showInfo(
-        this.translate.instant('nautilus.notifications.trashEmptied')
-      );
-    } catch (e) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.emptyTrashFailed', {
-          error: (e as Error).message,
-        })
-      );
-    }
+    await this.remoteFacadeSvc.emptyTrash(r, 'filemanager');
   }
 
   async openFilePreview(item: FileBrowserItem, activePaneFiles: FileBrowserItem[]): Promise<void> {

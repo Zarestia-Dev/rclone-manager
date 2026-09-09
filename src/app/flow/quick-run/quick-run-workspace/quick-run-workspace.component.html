@@ -20,19 +20,6 @@
   </button>
   <ng-template #quickRunMenu>
     <div class="material-context-menu" cdkMenu>
-      <button class="menu-item" (click)="editQuickRun(qr.id)" cdkMenuItem>
-        <mat-icon svgIcon="pen" class="menu-item-icon"></mat-icon>
-        <span class="menu-item-label">{{ 'common.edit' | translate }}</span>
-      </button>
-      <button class="menu-item" (click)="openLogsModal(qr.remoteName)" cdkMenuItem>
-        <mat-icon svgIcon="terminal" class="menu-item-icon"></mat-icon>
-        <span class="menu-item-label">{{ 'home.options.viewLogs' | translate }}</span>
-      </button>
-      <button class="menu-item" (click)="duplicateQuickRun(qr.id)" cdkMenuItem>
-        <mat-icon svgIcon="copy" class="menu-item-icon"></mat-icon>
-        <span class="menu-item-label">{{ 'common.duplicate' | translate }}</span>
-      </button>
-      <mat-divider></mat-divider>
       <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
         <mat-checkbox
           labelPosition="before"
@@ -43,13 +30,36 @@
         </mat-checkbox>
       </button>
       <mat-divider></mat-divider>
+      <button class="menu-item" (click)="openLogsModal(qr.remoteName)" cdkMenuItem>
+        <mat-icon svgIcon="terminal" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.viewLogs' | translate }}</span>
+      </button>
+      @if (getTargetRemote(qr.remoteName); as targetRemote) {
+        <mat-divider></mat-divider>
+        <button class="menu-item" (click)="openRemoteAbout(targetRemote)" cdkMenuItem>
+          <mat-icon svgIcon="info" class="menu-item-icon"></mat-icon>
+          <span class="menu-item-label">{{ 'home.options.aboutRemote' | translate }}</span>
+        </button>
+        @if (canEmptyTrash(targetRemote)) {
+          <button class="menu-item danger-item" (click)="emptyTrash(targetRemote)" cdkMenuItem>
+            <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
+            <span class="menu-item-label">{{ 'home.options.emptyTrash' | translate }}</span>
+          </button>
+        }
+      }
+      <mat-divider></mat-divider>
+      <button class="menu-item" (click)="duplicateQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="copy" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.duplicate' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
       <button class="menu-item danger-item" (click)="removeQuickRun(qr.id)" cdkMenuItem>
         <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
         <span class="menu-item-label">{{ 'common.delete' | translate }}</span>
       </button>
     </div>
   </ng-template>
-} @else if (selectedRemote()) {
+} @else if (selectedRemote(); as activeRemote) {
   <app-general-detail
     [showStatusIndicators]="false"
     [showQuickRuns]="true"
@@ -60,6 +70,53 @@
     (retryDiskUsage)="onRetryDiskUsage()"
     (selectQuickRun)="onSelectQuickRun($event)"
   />
+
+  <button
+    matIconButton
+    [cdkMenuTriggerFor]="remoteOptionsMenu"
+    [attr.title]="'common.moreActions' | translate"
+    [attr.aria-label]="'common.moreActions' | translate"
+    class="ellipsis-button"
+  >
+    <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+  </button>
+  <ng-template #remoteOptionsMenu>
+    <div class="material-context-menu" cdkMenu>
+      <button class="menu-item" (click)="openRemoteAbout(activeRemote)" cdkMenuItem>
+        <mat-icon svgIcon="info" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.aboutRemote' | translate }}</span>
+      </button>
+      @if (canEmptyTrash(activeRemote)) {
+        <button class="menu-item danger-item" (click)="emptyTrash(activeRemote)" cdkMenuItem>
+          <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
+          <span class="menu-item-label">{{ 'home.options.emptyTrash' | translate }}</span>
+        </button>
+      }
+      <mat-divider></mat-divider>
+      <button class="menu-item" (click)="openLogsModal(activeRemote.name)" cdkMenuItem>
+        <mat-icon svgIcon="terminal" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.viewLogs' | translate }}</span>
+      </button>
+      <button class="menu-item" (click)="cloneRemote(activeRemote.name)" cdkMenuItem>
+        <mat-icon svgIcon="copy" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.cloneRemote' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button class="menu-item" (click)="openExportModal(activeRemote.name)" cdkMenuItem>
+        <mat-icon svgIcon="download" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.exportConfig' | translate }}</span>
+      </button>
+      <button class="menu-item" (click)="resetRemoteSettings(activeRemote.name)" cdkMenuItem>
+        <mat-icon svgIcon="refresh" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.resetSettings' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button class="menu-item danger-item" (click)="deleteRemote(activeRemote.name)" cdkMenuItem>
+        <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'home.options.deleteRemote' | translate }}</span>
+      </button>
+    </div>
+  </ng-template>
 } @else {
   <app-quick-run-overview
     (openRemoteDetail)="openRemoteDetail($event)"

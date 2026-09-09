@@ -173,8 +173,7 @@
             }
 
             @default {
-              @if (state.currentStep() < state.stepConfigs().length) {
-                @let flagType = $any(state.stepConfigs()[state.currentStep() - 1].type);
+              @if (state.activeFlagType(); as flagType) {
                 <section class="step-container">
                   <app-profile-switcher [flagType]="flagType" />
 
@@ -201,11 +200,7 @@
                             <mat-label>{{ field.labelKey | translate }}</mat-label>
                             <mat-select
                               [formControl]="
-                                $any(
-                                  state.remoteConfigForm.get(
-                                    flagType + 'Config.' + field.profileKey
-                                  )
-                                )
+                                state.getLinkedProfileControl(flagType, field.profileKey)
                               "
                               (selectionChange)="state.selectProfile(field.type, $event.value)"
                             >
@@ -221,7 +216,7 @@
 
                   @if (!['vfs', 'filter', 'backend'].includes(flagType)) {
                     <app-operation-config
-                      [opFormGroup]="$any(state.remoteConfigForm.get(flagType + 'Config'))"
+                      [opFormGroup]="state.getOperationConfigGroup(flagType)"
                       [operationType]="flagType"
                       [currentRemoteName]="state.currentRemoteName()"
                       [existingRemotes]="state.existingRemotes()"
@@ -243,11 +238,7 @@
                     [existingRemotes]="state.existingRemotes()"
                     [currentRemoteName]="state.currentRemoteName()"
                     [searchQuery]="state.searchQuery()"
-                    [dynamicFlagFields]="
-                      flagType === 'serve'
-                        ? state.dynamicServeFields()
-                        : $any(state.dynamicFlagFields())[flagType]
-                    "
+                    [dynamicFlagFields]="state.getDynamicFlagFields(flagType)"
                     [isLoadingServeFields]="state.isLoadingServeFields()"
                     [highlightedFields]="state.highlightedFieldsForActiveProfiles()"
                     (serveTypeChange)="state.onServeTypeChange($event)"

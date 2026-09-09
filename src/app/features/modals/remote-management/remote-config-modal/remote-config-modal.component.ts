@@ -6,7 +6,6 @@ import {
   ElementRef,
   inject,
   signal,
-  viewChild,
   afterNextRender,
 } from '@angular/core';
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
@@ -48,6 +47,7 @@ import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -87,7 +87,6 @@ export class RemoteConfigModalComponent {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
     DialogData | undefined;
   private readonly notificationService = inject(NotificationService);
@@ -113,53 +112,14 @@ export class RemoteConfigModalComponent {
     },
   ] as const;
 
-  /**
-   * Sections currently visible in the remote-edit view.
-   *
-   * ⚠️ Known anti-pattern: this computed reads 6 internal computeds of the
-   * `RemoteConfigStepComponent` via `viewChild()`, which breaks OnPush
-   * isolation between parent and child and creates a one-cycle CD lag (the
-   * viewChild is `undefined` on first render).
-   *
-   * The proper fix is to move the underlying `showNameField`, `providerField`,
-   * `showAdvancedOptions`, `advancedFields`, `providerReady` computeds into
-   * `RemoteConfigStateService` (which already owns `showAdvancedOptions()`)
-   * and read them from there. Deferred to a follow-up PR because the step
-   * component currently computes them locally from its `remoteFields` input.
-   */
-  readonly visibleSections = computed(() => {
-    const step = this.configStep();
-    if (!step) return new Set<string>();
-
-    const visible = new Set<string>();
-    if (step.showNameField() || step.showAdvancedToggle()) visible.add('section-general');
-    if (step.providerField()) visible.add('section-auth');
-    if (step.showAdvancedOptions() && step.advancedFields().length > 0 && step.providerReady()) {
-      visible.add('section-advanced');
-    }
-    return visible;
-  });
+  readonly visibleSections = this.state.remoteEditVisibleSections;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() =>
+      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef)
+    );
     this.initializeState();
-  }
-
-  private setupResponsiveLayout(): void {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mql = window.matchMedia('(min-width: 768px)');
-    const update = (matches: boolean): void => {
-      this.sidebarMode.set(matches ? 'side' : 'over');
-      if (!matches) {
-        this.isSidebarOpen.set(false);
-      }
-    };
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   private async initializeState(): Promise<void> {

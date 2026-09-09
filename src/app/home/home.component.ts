@@ -43,6 +43,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-home',
@@ -118,7 +119,9 @@ export class HomeComponent {
   readonly isLoading = this.remoteFacadeService.loading;
 
   constructor() {
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() => {
+      syncResponsiveSidebar(768, this.sidebarMode, undefined, this.destroyRef);
+    });
 
     this.uiStateService.registerMobileSidebar({
       view: 'main_menu',
@@ -137,16 +140,6 @@ export class HomeComponent {
   setSidebarOpen(open: boolean): void {
     this.isSidebarOpen.set(open);
     this.localStorage.set('ui.sidebarOpen', open);
-  }
-
-  private setupResponsiveLayout(): void {
-    const mql = window.matchMedia('(min-width: 900px)');
-    const update = (matches: boolean): void => this.sidebarMode.set(matches ? 'side' : 'over');
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   // --- Remote Selection ---
@@ -245,6 +238,18 @@ export class HomeComponent {
       undefined,
       true
     );
+  }
+
+  openRemoteAbout(remote: Remote): void {
+    this.remoteFacadeService.openRemoteAbout(remote);
+  }
+
+  hasCleanUpFeature(remote: Remote): boolean {
+    return this.remoteFacadeService.canEmptyTrash(remote);
+  }
+
+  async emptyTrash(remote: Remote): Promise<void> {
+    await this.remoteFacadeService.emptyTrash(remote, 'dashboard');
   }
 
   // --- Settings ---

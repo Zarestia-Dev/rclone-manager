@@ -74,6 +74,7 @@ import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/plat
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const ALL_FLAG_TYPES = [
@@ -259,7 +260,9 @@ export class QuickRunEditorComponent implements OnInit {
   );
 
   constructor() {
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() => {
+      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef);
+    });
 
     effect(() => {
       const all = this.flagConfigService.allFlagFields();
@@ -710,21 +713,6 @@ export class QuickRunEditorComponent implements OnInit {
           }
         });
     }
-  }
-
-  private setupResponsiveLayout(): void {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const update = (matches: boolean): void => {
-      this.sidebarMode.set(matches ? 'side' : 'over');
-      if (!matches) {
-        this.isSidebarOpen.set(false);
-      }
-    };
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────

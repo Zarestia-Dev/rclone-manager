@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
@@ -170,12 +170,10 @@ export class AppMenuComponent {
     this.backupRestoreUiService.launchRestoreFlow();
   }
 
-  readonly aboutHoldProgress = signal(0);
   private longPressTriggered = false;
 
   onAboutLongPress(): void {
     this.longPressTriggered = true;
-    this.aboutHoldProgress.set(0);
     this.openPowerMenuModal();
     setTimeout(() => {
       this.longPressTriggered = false;

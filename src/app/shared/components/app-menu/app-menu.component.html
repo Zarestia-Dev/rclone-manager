@@ -154,13 +154,9 @@
       (click)="onAboutClicked()"
       appLongPress
       (longPress)="onAboutLongPress()"
-      (longPressProgress)="aboutHoldProgress.set($event)"
       [attr.aria-label]="'titlebar.menu.about' | translate"
     >
       <span>{{ 'titlebar.menu.about' | translate }}</span>
-      @if (aboutHoldProgress() > 0) {
-        <span class="hold-progress-bar" [style.width.%]="aboutHoldProgress()"></span>
-      }
       @if (readyToRestart() || rcloneRestartRequired() || hasUpdates() || rcloneUpdateAvailable()) {
         <span
           [matBadge]="aboutMenuBadge()"

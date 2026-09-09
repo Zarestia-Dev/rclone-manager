@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   OpenInFilesEvent,
   QuickRun,
   QuickRunConfig,
+  Remote,
   StartJobEvent,
   StopJobEvent,
 } from '@app/types';
@@ -17,6 +19,8 @@ import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { AppDetailComponent } from 'src/app/features/components/dashboard/app-detail/app-detail.component';
 import { GeneralDetailComponent } from 'src/app/features/components/dashboard/general-detail/general-detail.component';
 import { QuickRunOverviewComponent } from '../quick-run-overview/quick-run-overview.component';
@@ -46,6 +50,9 @@ export class QuickRunWorkspaceComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly uiStateService = inject(UiStateService);
   private readonly modalService = inject(ModalService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly translate = inject(TranslateService);
 
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly selected = this.quickRunService.selected;
@@ -162,5 +169,73 @@ export class QuickRunWorkspaceComponent {
       remoteName: remote?.name,
       editTarget,
     });
+  }
+
+  // ── Remote action helpers ──────────────────────────────────────────────────
+  getTargetRemote(remoteName: string): Remote | undefined {
+    const cleanName = remoteName.replace(/:$/, '');
+    return this.remoteFacade
+      .orderedRemotes()
+      .find(r => r.name === remoteName || r.name === cleanName);
+  }
+
+  openRemoteAbout(remote: Remote): void {
+    this.remoteFacade.openRemoteAbout(remote);
+  }
+
+  canEmptyTrash(remote: Remote): boolean {
+    return this.remoteFacade.canEmptyTrash(remote);
+  }
+
+  async emptyTrash(remote: Remote): Promise<void> {
+    await this.remoteFacade.emptyTrash(remote, 'flow');
+  }
+
+  async cloneRemote(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+    try {
+      await this.remoteFacade.cloneRemote(remoteName);
+    } catch (error) {
+      console.error('Clone remote failed:', error);
+      this.notificationService.showError(error);
+    }
+  }
+
+  openExportModal(remoteName: string): void {
+    this.modalService.openExport({ remoteName });
+  }
+
+  async resetRemoteSettings(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('home.resetRemote.title'),
+      this.translate.instant('home.resetRemote.message', { name: remoteName }),
+      'common.yes',
+      'common.no',
+      { icon: 'rotate-right', color: 'warn' }
+    );
+    if (!confirmed) return;
+    try {
+      await this.appSettingsService.resetRemoteSettings(remoteName);
+    } catch (error) {
+      console.error('Reset remote settings failed:', error);
+      this.notificationService.showError(error);
+    }
+  }
+
+  async deleteRemote(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+    const dialogRef = this.modalService.openDeleteRemote<boolean>(remoteName);
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    if (!confirmed) return;
+    try {
+      await this.remoteFacade.deleteRemote(remoteName);
+      if (this.selectedRemote()?.name === remoteName) {
+        this.uiStateService.resetSelectedRemote();
+      }
+    } catch (error) {
+      console.error('Delete remote failed:', error);
+      this.notificationService.showError(error);
+    }
   }
 }

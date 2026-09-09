@@ -52,8 +52,8 @@
 
   @if (selectedAction(); as action) {
     <!-- Safe In-Modal Confirmation View -->
-    <div class="confirm-view">
-      <div class="confirm-icon-bubble" [attr.data-variant]="action.variant">
+    <div class="confirm-view" [style.--tile-color]="action.color">
+      <div class="confirm-icon-bubble">
         <mat-icon [svgIcon]="action.icon" aria-hidden="true"></mat-icon>
       </div>
 
@@ -75,7 +75,6 @@
           matButton="filled"
           type="button"
           class="confirm-btn"
-          [attr.data-variant]="action.variant"
           (click)="executeAction(action)"
           [disabled]="isExecuting()"
         >
@@ -90,7 +89,7 @@
         <button
           type="button"
           class="tile"
-          [attr.data-variant]="action.variant"
+          [style.--tile-color]="action.color"
           (click)="selectAction(action)"
           [disabled]="isExecuting()"
           [attr.title]="action.descKey | translate"

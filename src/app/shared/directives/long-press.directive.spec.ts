@@ -9,6 +9,8 @@ import { LongPressDirective } from './long-press.directive';
       appLongPress
       [longPressDuration]="duration"
       [longPressDisabled]="isDisabled()"
+      [showIndicator]="showIndicator()"
+      [indicatorColor]="indicatorColor()"
       (longPress)="onLongPress()"
       (longPressProgress)="onProgress($event)"
       (longPressCancel)="onCancel()"
@@ -21,6 +23,8 @@ import { LongPressDirective } from './long-press.directive';
 class TestHostComponent {
   duration = 500;
   readonly isDisabled = signal(false);
+  readonly showIndicator = signal(true);
+  readonly indicatorColor = signal('var(--warn-color)');
   pressTriggered = false;
   cancelled = false;
   lastProgress = 0;
@@ -135,5 +139,45 @@ describe('LongPressDirective', () => {
     const clickEvent = new MouseEvent('click', { cancelable: true });
     const prevented = !button.dispatchEvent(clickEvent);
     expect(prevented).toBe(true);
+  });
+
+  it('should create and update visual progress bar element during press', () => {
+    const pointerDown = new PointerEvent('pointerdown', { button: 0 });
+    button.dispatchEvent(pointerDown);
+
+    vi.advanceTimersByTime(250);
+    const indicator = button.querySelector<HTMLElement>('.long-press-progress-bar');
+    expect(indicator).toBeTruthy();
+    expect(button.classList.contains('is-long-pressing')).toBe(true);
+    const progressVal = parseInt(indicator?.style.width || '0', 10);
+    expect(progressVal).toBeGreaterThanOrEqual(40);
+    expect(progressVal).toBeLessThanOrEqual(60);
+
+    // Releasing should remove indicator
+    button.dispatchEvent(new PointerEvent('pointerup'));
+    expect(button.querySelector('.long-press-progress-bar')).toBeNull();
+    expect(button.classList.contains('is-long-pressing')).toBe(false);
+  });
+
+  it('should remove indicator when long press finishes triggering', () => {
+    const pointerDown = new PointerEvent('pointerdown', { button: 0 });
+    button.dispatchEvent(pointerDown);
+
+    vi.advanceTimersByTime(600);
+    expect(component.pressTriggered).toBe(true);
+    expect(button.querySelector('.long-press-progress-bar')).toBeNull();
+    expect(button.classList.contains('is-long-pressing')).toBe(false);
+  });
+
+  it('should not create indicator if showIndicator is false', () => {
+    component.showIndicator.set(false);
+    fixture.detectChanges();
+
+    const pointerDown = new PointerEvent('pointerdown', { button: 0 });
+    button.dispatchEvent(pointerDown);
+
+    vi.advanceTimersByTime(250);
+    expect(button.querySelector('.long-press-progress-bar')).toBeNull();
+    expect(component.lastProgress).toBeGreaterThanOrEqual(40);
   });
 });

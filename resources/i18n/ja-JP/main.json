@@ -2634,6 +2634,8 @@
     },
     "options": {
       "showInTray": "トレイメニューに表示",
+      "aboutRemote": "リモートについて",
+      "emptyTrash": "ゴミ箱を空にする",
       "viewLogs": "ログを表示",
       "cloneRemote": "リモートを複製",
       "exportConfig": "設定をエクスポート",

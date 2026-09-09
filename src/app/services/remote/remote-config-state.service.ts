@@ -34,6 +34,7 @@ import {
   mapFormToConfigProfile,
   mapConfigToFormProfile,
   OPERATION_PATH_MAPPINGS,
+  matchesConfigSearch,
 } from './utils/remote-config.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
@@ -332,6 +333,65 @@ export class RemoteConfigStateService {
     const t = this.editTarget();
     return !t || t === 'remote' ? null : (t as SharedProfileType);
   });
+
+  readonly providerField = computed(() => {
+    const fields = this.dynamicRemoteFields();
+    const byName = fields.find(f => f.Name === 'provider' && f.Examples?.length);
+    if (byName) return byName;
+    if (!fields.some(f => f.Provider)) return null;
+    return fields.find(f => f.Examples?.length) ?? null;
+  });
+
+  readonly hasAdvancedFields = computed(() => {
+    const term = (this.searchQuery() ?? '').toLowerCase().trim();
+    return this.dynamicRemoteFields().some(f => {
+      if (!f.Advanced) return false;
+      return matchesConfigSearch(f, term);
+    });
+  });
+
+  readonly isProviderReady = computed(() => {
+    const type = this.remoteTypeSignal();
+    const provider = this.providerField();
+    if (!type) return false;
+    if (!provider) return true;
+    const providerValue = this.remoteForm.get('provider')?.value;
+    return !!providerValue;
+  });
+
+  readonly remoteEditVisibleSections = computed(() => {
+    const visible = new Set<string>();
+    visible.add('section-general');
+    if (this.providerField()) visible.add('section-auth');
+    if (this.showAdvancedOptions() && this.hasAdvancedFields() && this.isProviderReady()) {
+      visible.add('section-advanced');
+    }
+    return visible;
+  });
+
+  readonly activeFlagType = computed<FlagType | null>(() => {
+    const current = this.currentStep();
+    const configs = this.stepConfigs();
+    if (current <= 1 || current >= configs.length) return null;
+    const type = configs[current - 1]?.type;
+    return (type as FlagType) || null;
+  });
+
+  getOperationConfigGroup(flagType: string): FormGroup {
+    return (this.remoteConfigForm.get(`${flagType}Config`) as FormGroup) ?? this.fb.group({});
+  }
+
+  getLinkedProfileControl(flagType: string, profileKey: string): FormControl {
+    return (
+      (this.remoteConfigForm.get(`${flagType}Config.${profileKey}`) as FormControl) ??
+      this.fb.control('')
+    );
+  }
+
+  getDynamicFlagFields(flagType: FlagType): RcConfigOption[] {
+    if (flagType === 'serve') return this.dynamicServeFields();
+    return this.dynamicFlagFields()[flagType] ?? [];
+  }
 
   private getFieldsForStep(stepType: NonNullable<EditTarget>): RcConfigOption[] {
     if (stepType === 'remote') return this.dynamicRemoteFields();
@@ -679,42 +739,7 @@ export class RemoteConfigStateService {
 
   constructor() {
     effect(() => this.setFormState(this.isAuthInProgress()));
-    effect(() => {
-      const rName = this.currentRemoteName();
-      if (!this.isNewRemoteCreation() || !rName) return;
-
-      for (const type of ['mount', 'bisync'] as const) {
-        const group = this.remoteConfigForm.get(`${type}Config`) as FormGroup;
-        if (!group) continue;
-        const dstCtrl = group.get('dest') as FormGroup;
-        if (!dstCtrl) continue;
-
-        const pathCtrl = dstCtrl.get('path');
-        if (pathCtrl && pathCtrl.pristine) {
-          this.runPathResolve(type, rName, dstCtrl, pathCtrl);
-        }
-      }
-    });
   }
-
-  private runPathResolve(
-    type: 'mount' | 'bisync',
-    remoteName: string,
-    dstCtrl: FormGroup,
-    pathCtrl: unknown
-  ): void {
-    const token = ++this.pathResolveTokens[type];
-    this.pathInspectionService
-      .resolveDefaultPath(remoteName, type)
-      .then(defaultPath => {
-        if (token !== this.pathResolveTokens[type]) return;
-        if ((pathCtrl as { pristine: boolean }).pristine) {
-          dstCtrl.patchValue({ type: 'local', path: defaultPath });
-        }
-      })
-      .catch(err => console.warn(`[RemoteConfigState] resolveDefaultPath(${type}) failed:`, err));
-  }
-  private readonly pathResolveTokens: Record<'mount' | 'bisync', number> = { mount: 0, bisync: 0 };
 
   async init(dialogData: DialogData | undefined): Promise<void> {
     this.dialogData.set(dialogData ?? { remoteType: '' });

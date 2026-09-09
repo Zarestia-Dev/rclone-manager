@@ -2634,6 +2634,8 @@
     },
     "options": {
       "showInTray": "在托盘菜单显示",
+      "aboutRemote": "关于远程",
+      "emptyTrash": "清空回收站",
       "viewLogs": "查看日志",
       "cloneRemote": "克隆远程存储",
       "exportConfig": "导出配置",

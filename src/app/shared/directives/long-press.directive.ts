@@ -4,6 +4,7 @@ import {
   HostListener,
   NgZone,
   OnDestroy,
+  Renderer2,
   inject,
   input,
   output,
@@ -15,10 +16,13 @@ import {
 })
 export class LongPressDirective implements OnDestroy {
   private readonly ngZone = inject(NgZone);
+  private readonly renderer = inject(Renderer2);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly longPressDuration = input(1200);
   readonly longPressDisabled = input(false);
+  readonly showIndicator = input(true);
+  readonly indicatorColor = input<string>('var(--warn-color)');
 
   readonly longPress = output<void>();
   readonly longPressProgress = output<number>();
@@ -32,6 +36,9 @@ export class LongPressDirective implements OnDestroy {
   private startY = 0;
   private lastProgress = 0;
   private readonly moveThreshold = 10;
+
+  private indicatorEl: HTMLElement | null = null;
+  private originalPosition: string | null = null;
 
   private get isDisabled(): boolean {
     return (
@@ -118,6 +125,11 @@ export class LongPressDirective implements OnDestroy {
 
     if (progress !== this.lastProgress) {
       this.lastProgress = progress;
+
+      if (this.showIndicator()) {
+        this.updateIndicator(progress);
+      }
+
       this.ngZone.run(() => {
         this.longPressProgress.emit(progress);
       });
@@ -126,6 +138,7 @@ export class LongPressDirective implements OnDestroy {
     if (progress >= 100) {
       this.hasTriggered = true;
       this.isPressing = false;
+      this.removeIndicator();
 
       // Haptic feedback for mobile/touch
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -147,9 +160,62 @@ export class LongPressDirective implements OnDestroy {
     this.animFrameId = requestAnimationFrame(() => this.tick());
   }
 
+  private updateIndicator(progress: number): void {
+    const host = this.elementRef.nativeElement;
+    if (!host) return;
+
+    if (!this.indicatorEl) {
+      // Ensure host has a non-static position for absolute child placement
+      const currentPos = host.style.position || window.getComputedStyle?.(host)?.position;
+      if (!currentPos || currentPos === 'static') {
+        this.originalPosition = host.style.position;
+        this.renderer.setStyle(host, 'position', 'relative');
+      }
+
+      this.indicatorEl = this.renderer.createElement('span');
+      this.renderer.addClass(this.indicatorEl, 'long-press-progress-bar');
+      this.renderer.setStyle(this.indicatorEl, 'position', 'absolute');
+      this.renderer.setStyle(this.indicatorEl, 'bottom', '0');
+      this.renderer.setStyle(this.indicatorEl, 'left', '0');
+      this.renderer.setStyle(this.indicatorEl, 'height', '3px');
+      this.renderer.setStyle(this.indicatorEl, 'backgroundColor', this.indicatorColor());
+      this.renderer.setStyle(this.indicatorEl, 'pointerEvents', 'none');
+      this.renderer.setStyle(this.indicatorEl, 'transition', 'width 0.04s linear');
+      this.renderer.setStyle(this.indicatorEl, 'zIndex', '10');
+      this.renderer.setStyle(this.indicatorEl, 'borderRadius', 'inherit');
+
+      this.renderer.appendChild(host, this.indicatorEl);
+      this.renderer.addClass(host, 'is-long-pressing');
+    }
+
+    this.renderer.setStyle(this.indicatorEl, 'width', `${progress}%`);
+    this.renderer.setStyle(host, '--long-press-progress', `${progress}%`);
+  }
+
+  private removeIndicator(): void {
+    const host = this.elementRef.nativeElement;
+    if (this.indicatorEl) {
+      this.renderer.removeChild(host, this.indicatorEl);
+      this.indicatorEl = null;
+    }
+    if (host) {
+      this.renderer.removeClass(host, 'is-long-pressing');
+      this.renderer.removeStyle(host, '--long-press-progress');
+      if (this.originalPosition !== null) {
+        if (this.originalPosition) {
+          this.renderer.setStyle(host, 'position', this.originalPosition);
+        } else {
+          this.renderer.removeStyle(host, 'position');
+        }
+        this.originalPosition = null;
+      }
+    }
+  }
+
   private cleanup(): void {
     this.isPressing = false;
     this.lastProgress = 0;
+    this.removeIndicator();
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;

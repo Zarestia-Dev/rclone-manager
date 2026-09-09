@@ -9,6 +9,7 @@ import {
   WritableSignal,
   signal,
   linkedSignal,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
@@ -194,6 +195,7 @@ export class OperationConfigComponent {
   );
 
   pathStates = new Map<string, WritableSignal<PathSelectionState>>();
+  private pathResolveToken = 0;
   private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
 
   private matchesSearch(keywords: string[]): boolean {
@@ -319,6 +321,39 @@ export class OperationConfigComponent {
           dest.pathControl.setValue(`saf://${this.currentRemoteName()}`, { emitEvent: false });
         }
       }
+    });
+
+    effect(() => {
+      const type = this.operationType();
+      const rName = this.currentRemoteName()?.trim();
+      const isNew = this.isNewRemote();
+      const form = this.opFormGroup();
+
+      if (!isNew || !rName || (type !== 'mount' && type !== 'bisync')) {
+        return;
+      }
+
+      const isMobileSaf = type === 'mount' && untracked(() => this.isLocalMobileSafMount());
+      if (isMobileSaf) {
+        return;
+      }
+
+      const dstCtrl = form.get('dest') as FormGroup | null;
+      const pathCtrl = dstCtrl?.get('path') as FormControl | null;
+      if (!dstCtrl || !pathCtrl || !pathCtrl.pristine) {
+        return;
+      }
+
+      const token = ++this.pathResolveToken;
+      this.pathInspectionService
+        .resolveDefaultPath(rName, type as 'mount' | 'bisync')
+        .then(defaultPath => {
+          if (token !== this.pathResolveToken) return;
+          if (pathCtrl.pristine && pathCtrl.value !== defaultPath) {
+            dstCtrl.patchValue({ type: 'local', path: defaultPath });
+          }
+        })
+        .catch(err => console.warn(`[OperationConfig] resolveDefaultPath(${type}) failed:`, err));
     });
 
     effect(() => {

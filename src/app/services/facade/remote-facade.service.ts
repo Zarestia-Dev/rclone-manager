@@ -28,6 +28,7 @@ import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status
 import { QuickRunService } from '../flow/quick-run.service';
 import { AutomationService } from '../operations/automation.service';
 import { NotificationService } from '../ui/notification.service';
+import { ModalService } from '../ui/modal.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
@@ -97,6 +98,7 @@ export class RemoteFacadeService {
   private readonly translate = inject(TranslateService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly automationService = inject(AutomationService);
+  private readonly modalService = inject(ModalService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -490,6 +492,55 @@ export class RemoteFacadeService {
     remoteType?: string
   ): boolean {
     return this.remoteService.hasFeature(remoteName, feature, remoteType);
+  }
+
+  canEmptyTrash(remote: { name: string; type?: string }): boolean {
+    return this.hasFeature(remote.name, 'CleanUp', remote.type);
+  }
+
+  openRemoteAbout(remote: { name: string; type: string; isLocal?: boolean }): void {
+    const isLocal = remote.isLocal ?? false;
+    const normalized = isLocal
+      ? remote.name
+      : this.pathService.normalizeRemoteForRclone(remote.name);
+    this.modalService.openRemoteAbout({
+      displayName: remote.name,
+      normalizedName: normalized,
+      type: remote.type,
+    });
+  }
+
+  async emptyTrash(
+    remote: { name: string; type?: string; isLocal?: boolean },
+    origin: Origin = 'dashboard'
+  ): Promise<boolean> {
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('nautilus.modals.emptyTrash.title'),
+      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: remote.name }),
+      'common.delete',
+      'common.cancel',
+      { icon: 'trash', color: 'warn' }
+    );
+    if (!confirmed) return false;
+
+    try {
+      const isLocal = remote.isLocal ?? false;
+      const normalized = isLocal
+        ? remote.name
+        : this.pathService.normalizeRemoteForRclone(remote.name);
+      await this.remoteOpsService.cleanup(normalized, undefined, origin);
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.trashEmptied')
+      );
+      return true;
+    } catch (e) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.emptyTrashFailed', {
+          error: (e as Error).message,
+        })
+      );
+      return false;
+    }
   }
 
   async executeAction<T>(

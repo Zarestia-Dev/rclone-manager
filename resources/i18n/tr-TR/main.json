@@ -2675,6 +2675,8 @@
     },
     "options": {
       "showInTray": "Tepsi Menüsünde Göster",
+      "aboutRemote": "Remote Hakkında",
+      "emptyTrash": "Çöpü Boşalt",
       "viewLogs": "Günlükleri Görüntüle",
       "cloneRemote": "Uzak Sunucuyu Kopyala",
       "exportConfig": "Yapılandırmayı Dışa Aktar",

@@ -19,6 +19,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 import { TitlebarComponent } from 'src/app/layout/titlebar/titlebar.component';
 import { SidebarComponent } from 'src/app/layout/sidebar/sidebar.component';
@@ -87,7 +88,9 @@ export class FlowContainerComponent {
   }
 
   constructor() {
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() => {
+      syncResponsiveSidebar(768, this.sidebarMode, undefined, this.destroyRef);
+    });
 
     effect(() => {
       const mode = this.workflowState.requestedSubMode();
@@ -117,19 +120,6 @@ export class FlowContainerComponent {
     if (this.sidebarMode() === 'over') {
       this.setSidebarOpen(false);
     }
-  }
-
-  private setupResponsiveLayout(): void {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-    const mql = window.matchMedia('(min-width: 900px)');
-    const update = (matches: boolean): void => this.sidebarMode.set(matches ? 'side' : 'over');
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   setSubMode(mode: FlowSubMode | string): void {

@@ -165,6 +165,14 @@
       </button>
       <mat-divider></mat-divider>
       <!-- Remote Actions -->
+      <button class="menu-item" cdkMenuItem (click)="openRemoteAbout(activeRemote)">
+        <span>{{ 'home.options.aboutRemote' | translate }}</span>
+      </button>
+      @if (hasCleanUpFeature(activeRemote)) {
+        <button class="menu-item danger-item" cdkMenuItem (click)="emptyTrash(activeRemote)">
+          <span>{{ 'home.options.emptyTrash' | translate }}</span>
+        </button>
+      }
       <button class="menu-item" cdkMenuItem (click)="openLogsModal(activeRemote.name)">
         <span>{{ 'home.options.viewLogs' | translate }}</span>
       </button>
