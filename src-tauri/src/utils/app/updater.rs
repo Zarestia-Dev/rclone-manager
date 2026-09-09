@@ -12,11 +12,11 @@ use crate::utils::{
     github_client,
 };
 use log::{debug, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_updater::UpdaterExt;
 
-fn emit_progress(app: &AppHandle, status: DownloadStatus) {
-    let _ = app.emit(
+fn emit_progress(status: DownloadStatus) {
+    crate::core::bridge::emit(
         APP_EVENT,
         serde_json::json!({ "status": "download_progress", "data": status }),
     );
@@ -149,7 +149,7 @@ async fn fetch_update_inner(
     });
 
     if let Some(ref info) = update_info {
-        let _ = app.emit(
+        crate::core::bridge::emit(
             APP_EVENT,
             serde_json::json!({ "status": "update_found", "data": info }),
         );
@@ -288,19 +288,16 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 
                     let now = std::time::Instant::now();
                     if now.duration_since(last_emit).as_millis() >= 200 {
-                        emit_progress(
-                            &progress_app,
-                            DownloadStatus {
-                                downloaded_bytes: downloaded,
-                                total_bytes: total,
-                                percentage: if total > 0 {
-                                    (downloaded as f64 / total as f64) * 100.0
-                                } else {
-                                    0.0
-                                },
-                                state: DownloadState::InProgress,
+                        emit_progress(DownloadStatus {
+                            downloaded_bytes: downloaded,
+                            total_bytes: total,
+                            percentage: if total > 0 {
+                                (downloaded as f64 / total as f64) * 100.0
+                            } else {
+                                0.0
                             },
-                        );
+                            state: DownloadState::InProgress,
+                        });
                         last_emit = now;
                     }
                 },
@@ -324,15 +321,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                         version: update_clone.version.clone(),
                     }),
                 );
-                emit_progress(
-                    &app_clone,
-                    DownloadStatus {
-                        downloaded_bytes: downloaded,
-                        total_bytes: total,
-                        percentage: 100.0,
-                        state: DownloadState::Complete,
-                    },
-                );
+                emit_progress(DownloadStatus {
+                    downloaded_bytes: downloaded,
+                    total_bytes: total,
+                    percentage: 100.0,
+                    state: DownloadState::Complete,
+                });
             }
             Err(e) => {
                 warn!("App update download failed: {e}");
@@ -349,15 +343,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                         error: e.to_string(),
                     }),
                 );
-                emit_progress(
-                    &app_clone,
-                    DownloadStatus {
-                        downloaded_bytes: downloaded,
-                        total_bytes: total,
-                        percentage: 0.0,
-                        state: DownloadState::Failed(e.to_string()),
-                    },
-                );
+                emit_progress(DownloadStatus {
+                    downloaded_bytes: downloaded,
+                    total_bytes: total,
+                    percentage: 0.0,
+                    state: DownloadState::Failed(e.to_string()),
+                });
             }
         }
     });

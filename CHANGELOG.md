@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Workflow Engine & Visual Canvas UI**:
+  - **Interactive Node-Based Canvas**: Introduced a full-featured visual workflow canvas (`WorkflowCanvasComponent`) with drag-and-drop node placement, dynamic Bezier curve connection wires (`WorkflowWireComponent`), minimap navigation with viewport panning (`WorkflowMinimapComponent`), and a contextual node inspector (`WorkflowInspectorComponent`).
+  - **Native Rust Execution Engine**: Built an in-process, non-blocking workflow execution engine in Rust (`src-tauri/src/core/flow/workflow/engine.rs` & `executor.rs`) supporting conditional branching, parallel executions, loop iterations, configurable error recovery policies, and persistent execution state.
+  - **Comprehensive Node Taxonomy**:
+    - *Triggers*: Manual trigger, Cron Schedule (with dedicated visual `CronEditorModalComponent`), Webhook listeners, and File System Event monitoring.
+    - *Tasks*: Direct execution of native Rclone operations (Sync, Copy, Move, Mount, Serve, Check, Bisync, Delete, Purge) with real-time parameter inspection and an RC command editor modal (`RcEditorModalComponent`).
+    - *Logic*: Conditional branching (IF/ELSE conditions, step status checks), configurable delays and timers, concurrent branch execution, and loop iterators.
+    - *Actions*: Native desktop/OS notifications, external webhooks, custom shell scripts, and system/application power controls.
+  - **Pre-Built Workflow Recipes**: Integrated built-in workflow recipes for common synchronization, backup, and automation patterns (`workflow-recipes.ts`).
+  - **Execution Logging & Real-Time Monitoring**: Live execution log drawer (`WorkflowExecutionLogComponent`) with per-node status badges, step duration tracking, and detailed payload inspection data.
+- **Centralized Keyboard Shortcut Management System**:
+  - **Centralized Shortcut Architecture**: Unified keyboard shortcut handling via `ShortcutHandlerDirective`, `keyboard-utils.ts`, and a centralized registry (`shortcut-definitions.ts`) to eliminate fragmented listeners.
+  - **Visual Shortcut Viewer Modal**: Enhanced `KeyboardShortcutsModalComponent` with categorized shortcut groupings, platform-adaptive modifier glyphs (macOS Cmd vs Ctrl), and visual badge styling.
+  - **Contextual Key Bindings**: Added key bindings for global navigation, tab switching, file browsing actions, search filtering, and modal dismissals.
 - **Power Management & Fast Actions Modal**:
   - **Quick Power Menu & Gestures**: Added a quick power and lifecycle management modal accessible via long-press (hold) gesture on "About Rclone Manager" in the app hamburger menu on mobile and desktop.
   - **Comprehensive Power Actions**: Supports safe application termination (`Shut Down App`), application relaunch (`Restart App`), immediate operation halt (`Emergency Stop` unmounting all remotes and stopping all serves), host power off (`Power Off System`), system suspend/sleep (`Suspend / Sleep`), and user session locking (`Lock Session`).
@@ -18,6 +32,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added system error banner notification for port errors with dedicated translations across all 9 supported locales.
 - **Smart Remote vs. Local Authentication Error Handling**:
   - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
+- **URL Preview Component & Utilities**:
+  - Added `UrlPreviewComponent` and accompanying `url.utils.ts` for real-time URL inspection, domain and protocol extraction, file name and extension inference, and destination path previewing across download and transfer dialogs.
+- **Binary File Inspector & MIME Sniffing**:
+  - Added `BinaryInspectorService` capable of inspecting binary file headers, parsing MIME signatures and magic numbers, and generating hex/byte dumps for unknown files in Nautilus file browser.
+- **Missing Remote Detection & UI Alerts for Quick Runs**:
+  - Added automated detection for unconfigured or missing remotes referenced by Quick Run configurations, showing visual warning badges and actionable alert banners to prevent failed job launches.
+- **Rclone-Specific Form Validation Suite**:
+  - Extended `ValidatorRegistryService` with rclone-specific validation rules: remote name validation, forbidden character filtering, port availability checking, and uniqueness guards.
+- **System Theme Event Synchronization**:
+  - Added real-time native OS theme change listeners in the Tauri backend, forwarding theme transition events to the frontend for instant dark/light mode switching without polling.
+- **Extended Backup & Export Options**:
+  - Extended `.rcman` backup format and export manager to include Workflows, Templates, and Quick Runs alongside Remotes, Automations, and Application Settings.
+
+### Changed
+- **Export Modal UI Overhaul**:
+  - Redesigned `ExportModalComponent` with a Libadwaita-inspired selection list, item counters, and category-level selection controls.
+- **Multi-Rename Modal Enhancements**:
+  - Upgraded `MultiRenameModalComponent` with multi-pattern search & replace, prefix/suffix additions, automatic sequence numbering, case transforms, and a real-time before-and-after preview table.
+- **Jobs Overview & Core Modal UI Polish**:
+  - Refactored `JobsOverviewPanelComponent` with cleaner layout hierarchy, responsive card formatting, and real-time execution status badges.
+  - Polished responsive layouts and type safety across `AboutModalComponent`, `BackendModalComponent`, `LogsModalComponent`, `JobDetailModalComponent`, and `RepairSheetComponent`.
+
+### Removed
+- **Obsolete Path Validation Service**: Removed deprecated `PathValidationService` in favor of centralized path resolution utilities and backend validation. Fixes #288
 
 ### Fixed
 - **Blank Page in Nautilus & UI Over Non-Secure HTTP Contexts**: Resolved `TypeError: crypto.randomUUID is not a function` when accessing the application over non-secure HTTP / remote IP addresses. Replaced direct `crypto.randomUUID()` calls across Nautilus, File System, Quick Run, and User Template services with a robust, zero-dependency `generatePrefixedId` utility featuring base36 monotonic timestamping, sequence counting, and context prefixes. Fixes #292

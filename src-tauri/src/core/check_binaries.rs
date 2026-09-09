@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use log::{debug, error, info};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::bridge,
@@ -100,9 +100,7 @@ pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool
             )),
         }
     } else {
-        if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError) {
-            error!("Failed to emit path error event: {e}");
-        }
+        crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError);
         Err(crate::localized_error!(
             "backendErrors.rclone.notFound",
             "path" => rclone_binary.display()

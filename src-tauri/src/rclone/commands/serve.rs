@@ -225,7 +225,6 @@ pub async fn start_serve(
             params.execute_id.clone(),
             params.workflow_id.clone(),
             params.node_id.clone(),
-            Some(&app),
         )
         .await;
     refresh_serves_quietly(&app).await;

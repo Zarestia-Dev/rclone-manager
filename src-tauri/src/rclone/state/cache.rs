@@ -1,6 +1,6 @@
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -111,11 +111,7 @@ impl RemoteCache {
 
     /// Update mounted remotes cache and emit event if changed.
     /// Carries profiles forward from the existing cache. Returns true if changed.
-    pub async fn update_mounts_if_changed(
-        &self,
-        new_mounts: Vec<MountedRemote>,
-        app_handle: &AppHandle,
-    ) -> bool {
+    pub async fn update_mounts_if_changed(&self, new_mounts: Vec<MountedRemote>) -> bool {
         let mut cache = self.mounted.write().await;
         let merged = Self::merge_mount_profiles(new_mounts, &cache);
         if *cache == merged {
@@ -125,7 +121,7 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Mount cache changed");
-        let _ = app_handle.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        crate::core::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
 
         #[cfg(target_os = "android")]
         {
@@ -138,11 +134,7 @@ impl RemoteCache {
 
     /// Update serves cache and emit event if changed.
     /// Carries profiles forward from the existing cache. Returns true if changed.
-    pub async fn update_serves_if_changed(
-        &self,
-        new_serves: Vec<ServeInstance>,
-        app_handle: &AppHandle,
-    ) -> bool {
+    pub async fn update_serves_if_changed(&self, new_serves: Vec<ServeInstance>) -> bool {
         let mut cache = self.serves.write().await;
         let merged = Self::merge_serve_profiles(new_serves, &cache);
         if *cache == merged {
@@ -152,7 +144,7 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Serve cache changed");
-        let _ = app_handle.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        crate::core::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         true
     }
 
@@ -190,7 +182,10 @@ impl RemoteCache {
                 *mounted = Self::merge_mount_profiles(remotes, &existing);
                 debug!("🔄 Updated mounted remotes cache");
                 drop(mounted);
-                let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+                crate::core::bridge::emit(
+                    MOUNT_STATE_CHANGED,
+                    crate::utils::constants::CACHE_UPDATED,
+                );
                 Ok(())
             }
             Err(e) => {
@@ -213,7 +208,10 @@ impl RemoteCache {
                     cache_serves.len()
                 );
                 drop(cache_serves);
-                let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+                crate::core::bridge::emit(
+                    SERVE_STATE_CHANGED,
+                    crate::utils::constants::CACHE_UPDATED,
+                );
                 Ok(())
             }
             Err(e) => {
@@ -261,7 +259,6 @@ impl RemoteCache {
         execute_id: Option<String>,
         workflow_id: Option<String>,
         node_id: Option<String>,
-        app_handle: Option<&AppHandle>,
     ) {
         let norm = normalize_mount_path(mount_point);
         let mut mounts = self.mounted.write().await;
@@ -290,14 +287,12 @@ impl RemoteCache {
         }
         drop(mounts);
 
-        if let Some(app) = app_handle {
-            info!("📡 Mount cache preseeded, emitting change");
-            let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
-            #[cfg(target_os = "android")]
-            {
-                let cache_read = self.mounted.read().await;
-                crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
-            }
+        info!("📡 Mount cache preseeded, emitting change");
+        crate::core::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        #[cfg(target_os = "android")]
+        {
+            let cache_read = self.mounted.read().await;
+            crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
         }
     }
 
@@ -315,7 +310,6 @@ impl RemoteCache {
         execute_id: Option<String>,
         workflow_id: Option<String>,
         node_id: Option<String>,
-        app_handle: Option<&AppHandle>,
     ) {
         let mut serves = self.serves.write().await;
         if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
@@ -340,10 +334,8 @@ impl RemoteCache {
         }
         drop(serves);
 
-        if let Some(app) = app_handle {
-            info!("📡 Serve cache preseeded, emitting change");
-            let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
-        }
+        info!("📡 Serve cache preseeded, emitting change");
+        crate::core::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     /// Write profile and execution metadata directly onto the matching mount cache entry.
@@ -358,7 +350,6 @@ impl RemoteCache {
         execute_id: Option<String>,
         workflow_id: Option<String>,
         node_id: Option<String>,
-        app_handle: Option<&AppHandle>,
     ) {
         let norm = normalize_mount_path(mount_point);
         let mut mounts = self.mounted.write().await;
@@ -376,9 +367,7 @@ impl RemoteCache {
             m.workflow_id = workflow_id;
             m.node_id = node_id;
             drop(mounts);
-            if let Some(app) = app_handle {
-                let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
-            }
+            crate::core::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         }
     }
 
@@ -392,7 +381,6 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
-        app_handle: Option<&AppHandle>,
     ) {
         let mut serves = self.serves.write().await;
         if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
@@ -404,9 +392,7 @@ impl RemoteCache {
             s.origin = origin;
             s.execute_id = execute_id;
             drop(serves);
-            if let Some(app) = app_handle {
-                let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
-            }
+            crate::core::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         }
     }
 
@@ -601,7 +587,7 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        crate::core::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)
@@ -622,7 +608,7 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        crate::core::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)

@@ -25,7 +25,6 @@ pub async fn stream_download_to_file(
         tokio::select! {
             () = token.cancelled() => {
                 provision_state.set_stage(
-                    app_handle,
                     component.clone(),
                     ProvisionStage::Cancelled,
                     0,
@@ -39,7 +38,6 @@ pub async fn stream_download_to_file(
                     Err(e) => {
                         let err = crate::localized_error!("backendErrors.request.failed", "error" => e);
                         provision_state.set_stage(
-                            app_handle,
                             component,
                             ProvisionStage::Error,
                             0,
@@ -55,13 +53,7 @@ pub async fn stream_download_to_file(
             Ok(r) => r,
             Err(e) => {
                 let err = crate::localized_error!("backendErrors.request.failed", "error" => e);
-                provision_state.set_stage(
-                    app_handle,
-                    component,
-                    ProvisionStage::Error,
-                    0,
-                    Some(err.clone()),
-                );
+                provision_state.set_stage(component, ProvisionStage::Error, 0, Some(err.clone()));
                 return Err(err);
             }
         }
@@ -72,13 +64,7 @@ pub async fn stream_download_to_file(
             "backendErrors.rclone.downloadFailed",
             "error" => format!("HTTP {}", resp.status())
         );
-        provision_state.set_stage(
-            app_handle,
-            component,
-            ProvisionStage::Error,
-            0,
-            Some(err.clone()),
-        );
+        provision_state.set_stage(component, ProvisionStage::Error, 0, Some(err.clone()));
         return Err(err);
     }
 
@@ -87,16 +73,13 @@ pub async fn stream_download_to_file(
     let mut last_emit = Instant::now();
 
     // Initial 0% progress emission
-    provision_state.update_progress(
-        app_handle,
-        ProvisionProgressPayload {
-            component: component.clone(),
-            stage: ProvisionStage::Downloading,
-            downloaded_bytes: 0,
-            total_bytes,
-            error: None,
-        },
-    );
+    provision_state.update_progress(ProvisionProgressPayload {
+        component: component.clone(),
+        stage: ProvisionStage::Downloading,
+        downloaded_bytes: 0,
+        total_bytes,
+        error: None,
+    });
 
     let mut file = tokio::fs::File::create(dest_path)
         .await
@@ -110,7 +93,6 @@ pub async fn stream_download_to_file(
                     drop(file);
                     let _ = tokio::fs::remove_file(dest_path).await;
                     provision_state.set_stage(
-                        app_handle,
                         component.clone(),
                         ProvisionStage::Cancelled,
                         downloaded_bytes,
@@ -132,7 +114,6 @@ pub async fn stream_download_to_file(
                 let _ = tokio::fs::remove_file(dest_path).await;
                 let err = crate::localized_error!("backendErrors.request.failed", "error" => e);
                 provision_state.set_stage(
-                    app_handle,
                     component,
                     ProvisionStage::Error,
                     downloaded_bytes,
@@ -147,7 +128,6 @@ pub async fn stream_download_to_file(
             let _ = tokio::fs::remove_file(dest_path).await;
             let err = format!("Failed to write chunk: {e}");
             provision_state.set_stage(
-                app_handle,
                 component,
                 ProvisionStage::Error,
                 downloaded_bytes,
@@ -159,16 +139,13 @@ pub async fn stream_download_to_file(
 
         let now = Instant::now();
         if now.duration_since(last_emit).as_millis() >= 150 {
-            provision_state.update_progress(
-                app_handle,
-                ProvisionProgressPayload {
-                    component: component.clone(),
-                    stage: ProvisionStage::Downloading,
-                    downloaded_bytes,
-                    total_bytes,
-                    error: None,
-                },
-            );
+            provision_state.update_progress(ProvisionProgressPayload {
+                component: component.clone(),
+                stage: ProvisionStage::Downloading,
+                downloaded_bytes,
+                total_bytes,
+                error: None,
+            });
             last_emit = now;
         }
     }
@@ -178,7 +155,6 @@ pub async fn stream_download_to_file(
         let _ = tokio::fs::remove_file(dest_path).await;
         let err = format!("Failed to flush destination file: {e}");
         provision_state.set_stage(
-            app_handle,
             component,
             ProvisionStage::Error,
             downloaded_bytes,
@@ -188,16 +164,13 @@ pub async fn stream_download_to_file(
     }
 
     // Final download complete emission for stage
-    provision_state.update_progress(
-        app_handle,
-        ProvisionProgressPayload {
-            component,
-            stage: ProvisionStage::Downloading,
-            downloaded_bytes,
-            total_bytes,
-            error: None,
-        },
-    );
+    provision_state.update_progress(ProvisionProgressPayload {
+        component,
+        stage: ProvisionStage::Downloading,
+        downloaded_bytes,
+        total_bytes,
+        error: None,
+    });
 
     Ok(())
 }

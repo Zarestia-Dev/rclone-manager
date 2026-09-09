@@ -24,9 +24,7 @@ pub async fn toggle_automation(
     let cache = app.state::<AutomationsCache>();
     let scheduler = app.state::<AutomationScheduler>();
 
-    let automation = cache
-        .toggle_automation_status(&automation_id, Some(&app))
-        .await?;
+    let automation = cache.toggle_automation_status(&automation_id).await?;
 
     if let Err(e) = scheduler
         .reschedule_automation(&automation, cache.clone())
@@ -107,7 +105,7 @@ pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    cache.clear_all_automations(Some(&app)).await?;
+    cache.clear_all_automations().await?;
 
     info!("All automations cleared");
     Ok(())
@@ -126,7 +124,7 @@ pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, S
     let backend_name = backend_manager.get_active_name().await;
 
     let result = cache
-        .load_from_remote_configs(&all_settings, &backend_name, Some(app))
+        .load_from_remote_configs(&all_settings, &backend_name)
         .await?;
 
     let counts = (

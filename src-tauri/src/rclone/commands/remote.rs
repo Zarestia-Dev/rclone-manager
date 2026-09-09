@@ -2,7 +2,7 @@ use futures::future::join_all;
 use log::{error, info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{
@@ -78,7 +78,7 @@ fn spawn_oauth_status_poller(app: AppHandle) {
             if let Some(url) = auth_url {
                 if !url_emitted {
                     info!("OAuth auth URL available, emitting to frontend");
-                    let _ = app.emit(RCLONE_OAUTH_URL, json!({ "url": url }));
+                    crate::core::bridge::emit(RCLONE_OAUTH_URL, json!({ "url": url }));
                     url_emitted = true;
                 }
             } else if url_emitted || !running {
@@ -220,8 +220,7 @@ pub async fn continue_create_remote_interactive(
         warn!("Failed to clear fscache after interactive remote update: {e}");
     }
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     log_operation(
         LogLevel::Info,
@@ -314,8 +313,7 @@ pub async fn create_remote(
         None,
     );
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     let _ = get_fscache_entries(app).await;
 
@@ -388,8 +386,7 @@ pub async fn update_remote(
         None,
     );
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     if let Err(e) = clear_fscache(app.clone()).await {
         warn!("Failed to clear fscache after remote update: {e}");
@@ -410,7 +407,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
 
     let scheduler = app.state::<crate::core::automation::engine::AutomationScheduler>();
     match cache
-        .remove_automations_for_remote(&backend.name, &name, Some(&app))
+        .remove_automations_for_remote(&backend.name, &name)
         .await
     {
         Ok(removed) if !removed.is_empty() => {
@@ -522,8 +519,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
             msg
         })?;
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     app.state::<LogCache>().clear_for_remote(&name).await;
 

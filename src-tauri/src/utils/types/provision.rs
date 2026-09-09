@@ -1,6 +1,5 @@
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use tauri::Emitter;
 use tokio_util::sync::CancellationToken;
 
 use crate::utils::types::events::PROVISION_PROGRESS;
@@ -88,11 +87,7 @@ impl ProvisionState {
         }
     }
 
-    pub fn update_progress(
-        &self,
-        app_handle: &tauri::AppHandle,
-        payload: ProvisionProgressPayload,
-    ) {
+    pub fn update_progress(&self, payload: ProvisionProgressPayload) {
         let is_terminal = matches!(
             payload.stage,
             ProvisionStage::Completed | ProvisionStage::Cancelled | ProvisionStage::Error
@@ -115,27 +110,23 @@ impl ProvisionState {
             }
         }
 
-        let _ = app_handle.emit(PROVISION_PROGRESS, payload);
+        crate::core::bridge::emit(PROVISION_PROGRESS, payload);
     }
 
     pub fn set_stage(
         &self,
-        app_handle: &tauri::AppHandle,
         component: ProvisionComponent,
         stage: ProvisionStage,
         bytes: u64,
         error: Option<String>,
     ) {
-        self.update_progress(
-            app_handle,
-            ProvisionProgressPayload {
-                component,
-                stage,
-                downloaded_bytes: bytes,
-                total_bytes: if bytes > 0 { Some(bytes) } else { None },
-                error,
-            },
-        );
+        self.update_progress(ProvisionProgressPayload {
+            component,
+            stage,
+            downloaded_bytes: bytes,
+            total_bytes: if bytes > 0 { Some(bytes) } else { None },
+            error,
+        });
     }
 
     pub fn get_progress(&self, component: ProvisionComponent) -> Option<ProvisionProgressPayload> {

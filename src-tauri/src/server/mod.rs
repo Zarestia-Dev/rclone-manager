@@ -12,15 +12,16 @@ use axum_server::tls_rustls::RustlsConfig;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use log::info;
 use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Listener, Manager};
-use tokio::sync::{RwLock, broadcast};
+use tauri::{AppHandle, Manager};
+use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::utils::types::events::SSE_FORWARD_EVENTS;
+use crate::core::bridge::EventBridge;
 
 pub async fn start_web_server(
     app_handle: AppHandle,
+    event_bridge: Arc<EventBridge>,
     host: String,
     port: u16,
     auth_credentials: Option<(String, String)>,
@@ -40,11 +41,6 @@ pub async fn start_web_server(
         info!("   → API server: http://localhost:{port}/api");
     }
 
-    let (event_tx, _) = broadcast::channel::<TauriEvent>(100);
-    let event_tx = Arc::new(event_tx);
-
-    register_sse_forwarders(&app_handle, &event_tx);
-
     let encoded_auth = auth_credentials.map(|(username, password)| {
         let encoded = STANDARD.encode(format!("{username}:{password}").as_bytes());
         (username, encoded)
@@ -52,7 +48,7 @@ pub async fn start_web_server(
 
     let state = WebServerState {
         app_handle: app_handle.clone(),
-        event_tx,
+        event_bridge,
         auth_credentials: encoded_auth,
         sessions: Arc::new(RwLock::new(HashSet::new())),
     };
@@ -62,23 +58,6 @@ pub async fn start_web_server(
     let addr: std::net::SocketAddr = format!("{host}:{port}").parse()?;
 
     serve(app, addr, tls_cert, tls_key).await
-}
-
-fn register_sse_forwarders(app_handle: &AppHandle, event_tx: &Arc<broadcast::Sender<TauriEvent>>) {
-    for &event_name in SSE_FORWARD_EVENTS {
-        let event_tx_for_listener = event_tx.clone();
-        let event_name_owned = event_name.to_string();
-        app_handle.listen(event_name, move |event| {
-            let payload_str = event.payload();
-            let payload_val: serde_json::Value = serde_json::from_str(payload_str)
-                .unwrap_or_else(|_| serde_json::Value::String(payload_str.to_string()));
-
-            let _ = event_tx_for_listener.send(TauriEvent {
-                event: event_name_owned.clone(),
-                payload: payload_val,
-            });
-        });
-    }
 }
 
 async fn serve(

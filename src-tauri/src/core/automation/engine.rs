@@ -164,13 +164,9 @@ impl AutomationScheduler {
         )?;
 
         cache
-            .update_automation(
-                &automation.id,
-                |t| {
-                    t.scheduler_job_id = Some(job_id.to_string());
-                },
-                Some(&app_handle),
-            )
+            .update_automation(&automation.id, |t| {
+                t.scheduler_job_id = Some(job_id.to_string());
+            })
             .await
             .ok();
 
@@ -220,7 +216,7 @@ impl AutomationScheduler {
                 Err(e) => {
                     error!("Failed to reschedule '{automation_name}': {e}");
                     cache
-                        .update_automation(&automation.id, |t| t.mark_failure(e.clone()), None)
+                        .update_automation(&automation.id, |t| t.mark_failure(e.clone()))
                         .await?;
                     return Err(e);
                 }
@@ -228,13 +224,9 @@ impl AutomationScheduler {
         } else {
             info!("Automation '{automation_name}' is disabled or realtime-only — clearing job ID.");
             cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.scheduler_job_id = None;
-                    },
-                    None,
-                )
+                .update_automation(&automation.id, |t| {
+                    t.scheduler_job_id = None;
+                })
                 .await
                 .ok();
         }
@@ -399,13 +391,9 @@ pub async fn execute_automation(
     }
 
     cache
-        .update_automation(
-            automation_id,
-            |t| {
-                let _ = t.mark_starting();
-            },
-            Some(app_handle),
-        )
+        .update_automation(automation_id, |t| {
+            let _ = t.mark_starting();
+        })
         .await?;
 
     if automation.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun) {
@@ -426,14 +414,10 @@ pub async fn execute_automation(
                     .map(|id| id.to_string())
                     .unwrap_or_else(|| res.execute_id.clone());
                 cache
-                    .update_automation(
-                        automation_id,
-                        |t| {
-                            t.mark_running(job_handle);
-                            t.next_run = next_run;
-                        },
-                        Some(app_handle),
-                    )
+                    .update_automation(automation_id, |t| {
+                        t.mark_running(job_handle);
+                        t.next_run = next_run;
+                    })
                     .await
                     .ok();
                 notify(
@@ -451,14 +435,10 @@ pub async fn execute_automation(
             Err(e) => {
                 let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
                 cache
-                    .update_automation(
-                        automation_id,
-                        |t| {
-                            t.mark_failure(e.clone());
-                            t.next_run = next_run;
-                        },
-                        Some(app_handle),
-                    )
+                    .update_automation(automation_id, |t| {
+                        t.mark_failure(e.clone());
+                        t.next_run = next_run;
+                    })
                     .await?;
                 return Err(e);
             }
@@ -469,14 +449,10 @@ pub async fn execute_automation(
         info!("Executing workflow automation: {wf_id}");
         let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
         let _ = cache
-            .update_automation(
-                automation_id,
-                |t| {
-                    t.mark_running(wf_id.clone());
-                    t.next_run = next_run;
-                },
-                Some(app_handle),
-            )
+            .update_automation(automation_id, |t| {
+                t.mark_running(wf_id.clone());
+                t.next_run = next_run;
+            })
             .await;
 
         // execute_workflow emits its own dedicated NotificationEvent::Workflow events
@@ -492,14 +468,10 @@ pub async fn execute_automation(
             Ok(exec_res) => {
                 if exec_res.success {
                     let _ = cache
-                        .update_automation(
-                            automation_id,
-                            |t| {
-                                t.mark_success();
-                                t.next_run = next_run;
-                            },
-                            Some(app_handle),
-                        )
+                        .update_automation(automation_id, |t| {
+                            t.mark_success();
+                            t.next_run = next_run;
+                        })
                         .await;
                     return Ok(());
                 } else {
@@ -507,28 +479,20 @@ pub async fn execute_automation(
                         .error
                         .unwrap_or_else(|| "Workflow execution failed".to_string());
                     let _ = cache
-                        .update_automation(
-                            automation_id,
-                            |t| {
-                                t.mark_failure(err.clone());
-                                t.next_run = next_run;
-                            },
-                            Some(app_handle),
-                        )
+                        .update_automation(automation_id, |t| {
+                            t.mark_failure(err.clone());
+                            t.next_run = next_run;
+                        })
                         .await;
                     return Err(err);
                 }
             }
             Err(e) => {
                 let _ = cache
-                    .update_automation(
-                        automation_id,
-                        |t| {
-                            t.mark_failure(e.clone());
-                            t.next_run = next_run;
-                        },
-                        Some(app_handle),
-                    )
+                    .update_automation(automation_id, |t| {
+                        t.mark_failure(e.clone());
+                        t.next_run = next_run;
+                    })
                     .await;
                 return Err(e);
             }
@@ -546,14 +510,10 @@ pub async fn execute_automation(
         Ok(job_id) => {
             let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
             cache
-                .update_automation(
-                    automation_id,
-                    |t| {
-                        t.mark_running(job_id);
-                        t.next_run = next_run;
-                    },
-                    Some(app_handle),
-                )
+                .update_automation(automation_id, |t| {
+                    t.mark_running(job_id);
+                    t.next_run = next_run;
+                })
                 .await
                 .ok();
             notify(
@@ -571,14 +531,10 @@ pub async fn execute_automation(
         Err(e) => {
             let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
             cache
-                .update_automation(
-                    automation_id,
-                    |t| {
-                        t.mark_failure(e.clone());
-                        t.next_run = next_run;
-                    },
-                    Some(app_handle),
-                )
+                .update_automation(automation_id, |t| {
+                    t.mark_failure(e.clone());
+                    t.next_run = next_run;
+                })
                 .await?;
             Err(e)
         }

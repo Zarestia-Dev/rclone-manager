@@ -36,7 +36,7 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     crate::utils::logging::log::update_log_level(&settings.developer.log_level);
 
     // Language
-    crate::utils::i18n::apply_language_change(app_handle, &settings.general.language);
+    crate::utils::i18n::apply_language_change(&settings.general.language);
 }
 
 /// Apply `RClone` backend settings from rcman settings in a single bulk API request

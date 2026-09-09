@@ -25,7 +25,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let backend_name = backend_manager.get_active_name().await;
 
     let result = cache_state
-        .load_from_remote_configs(&all_settings, &backend_name, Some(&app_handle))
+        .load_from_remote_configs(&all_settings, &backend_name)
         .await?;
 
     info!("📅 Loaded {} remote automation(s)", result.added.len());
@@ -37,7 +37,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
 
         let _ = cache_state
-            .load_from_quick_runs(&quick_runs, &backend_name, Some(&app_handle))
+            .load_from_quick_runs(&quick_runs, &backend_name)
             .await;
 
         for qr in &quick_runs {
@@ -62,7 +62,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         info!("🌀 Syncing {} Workflow(s)...", workflows.len());
 
         let _ = cache_state
-            .load_from_workflows(&workflows, &backend_name, Some(&app_handle))
+            .load_from_workflows(&workflows, &backend_name)
             .await;
 
         for wf in &workflows {

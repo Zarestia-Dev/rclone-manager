@@ -114,10 +114,7 @@ pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
     let backend_name = backend_manager.get_active_name().await;
 
     if let Ok(quick_runs) = get_all_quick_runs_sync(&manager) {
-        if let Ok(result) = cache
-            .load_from_quick_runs(&quick_runs, &backend_name, Some(app))
-            .await
-        {
+        if let Ok(result) = cache.load_from_quick_runs(&quick_runs, &backend_name).await {
             let _ = scheduler.apply_cache_result(&result, cache).await;
         }
         let _ = watcher.sync_watchers(app.clone()).await;

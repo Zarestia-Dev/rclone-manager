@@ -152,7 +152,7 @@ pub fn is_metered() -> bool {
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes() {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
@@ -185,9 +185,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
             is_metered: is_metered(),
         };
 
-        if let Err(e) = tauri::Emitter::emit(&app_handle, NETWORK_STATUS_CHANGED, payload) {
-            log::error!("Failed to emit network status change event: {e}");
-        }
+        crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
     }
 }
 
@@ -204,12 +202,9 @@ pub fn is_metered() -> bool {
     target_os = "macos",
     all(target_os = "linux", not(feature = "desktop"))
 ))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+pub async fn monitor_network_changes() {
     let payload = NetworkStatusPayload { is_metered: false };
-    if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-        log::error!("Failed to emit network status change event: {e}");
-    }
+    crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
 }
 
 #[cfg(target_os = "macos")]
@@ -241,17 +236,13 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+pub async fn monitor_network_changes() {
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
-
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
-        if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-            log::error!("Failed to emit network status change event: {e}");
-        }
+        crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
         Ok(())
     });
 
@@ -311,8 +302,7 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(target_os = "android")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+pub async fn monitor_network_changes() {
     use tokio::time::{Duration, sleep};
 
     let mut last_metered = is_metered();
@@ -329,9 +319,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
             let payload = NetworkStatusPayload {
                 is_metered: current_metered,
             };
-            if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-                log::error!("Failed to emit network status change event: {e}");
-            }
+            crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
         }
     }
 }

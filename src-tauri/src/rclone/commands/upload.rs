@@ -297,7 +297,7 @@ pub async fn execute_upload_batch(
 
     if existing_jobid.is_none() {
         job_cache
-            .create_job(jobid, metadata.clone(), backend.name.clone(), Some(&app))
+            .create_job(jobid, metadata.clone(), backend.name.clone())
             .await;
     }
 
@@ -539,7 +539,7 @@ pub async fn execute_upload_batch(
     }
 
     let _ = job_cache
-        .complete_job(jobid, success, error_msg.clone(), Some(&app))
+        .complete_job(jobid, success, error_msg.clone())
         .await;
 
     if let Some(dir) = cleanup_dir {

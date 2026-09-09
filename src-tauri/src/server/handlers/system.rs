@@ -15,7 +15,7 @@ use crate::server::state::WebServerState;
 pub async fn sse_handler(
     State(state): State<WebServerState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let mut rx = state.event_tx.subscribe();
+    let mut rx = state.event_bridge.subscribe();
     let stream = async_stream::stream! {
         loop {
             match rx.recv().await {

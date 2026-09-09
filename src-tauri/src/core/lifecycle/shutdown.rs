@@ -1,6 +1,6 @@
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge},
@@ -17,7 +17,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     app_handle.state::<RcloneState>().set_shutting_down();
 
-    let _ = app_handle.emit(
+    bridge::emit(
         APP_EVENT,
         json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
     );

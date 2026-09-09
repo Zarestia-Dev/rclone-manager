@@ -1,5 +1,5 @@
 use log::debug;
-use tauri::{AppHandle, Emitter, Window};
+use tauri::{AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -335,7 +335,7 @@ pub async fn download_file(
             .map_err(|e| format!("Error writing destination file: {e}"))?;
         downloaded_bytes += n as u64;
 
-        let _ = app.emit(
+        crate::core::bridge::emit(
             "download-file-progress",
             DownloadProgressPayload {
                 destination: destination.clone(),
@@ -350,7 +350,7 @@ pub async fn download_file(
         .await
         .map_err(|e| format!("Error flushing destination file: {e}"))?;
 
-    let _ = app.emit(
+    crate::core::bridge::emit(
         "download-file-progress",
         DownloadProgressPayload {
             destination: destination.clone(),

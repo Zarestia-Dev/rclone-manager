@@ -3,6 +3,7 @@ pub mod apply_settings;
 pub mod automation;
 pub mod bootstrap;
 
+use crate::core::bridge;
 use crate::core::lifecycle::startup::handle_startup;
 use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
@@ -11,7 +12,7 @@ use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 #[cfg(feature = "tray")]
 use crate::core::tray::core::update_tray_menu;
@@ -22,7 +23,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     if let Err(e) = async_core_setup(&app_handle).await {
         error!("Phase 0 Core Setup failed: {e}");
-        let _ = app_handle.emit(
+        bridge::emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
@@ -31,7 +32,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     if let Err(e) = bootstrap::init_all(&app_handle).await {
         error!("Phase 1 Bootstrap failed: {e}");
-        let _ = app_handle.emit(
+        bridge::emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
@@ -114,25 +115,19 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
-    app_handle
-        .emit(
-            crate::utils::types::events::REMOTE_CACHE_CHANGED,
-            "system_refresh",
-        )
-        .ok();
-    app_handle
-        .emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ())
-        .ok();
-    app_handle
-        .emit(
-            SYSTEM_SETTINGS_CHANGED,
-            crate::utils::types::events::SettingsChangeEvent {
-                category: "*".to_string(),
-                key: "*".to_string(),
-                value: serde_json::Value::Null,
-            },
-        )
-        .ok();
+    bridge::emit(
+        crate::utils::types::events::REMOTE_CACHE_CHANGED,
+        "system_refresh",
+    );
+    bridge::emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ());
+    bridge::emit(
+        SYSTEM_SETTINGS_CHANGED,
+        crate::utils::types::events::SettingsChangeEvent {
+            category: "*".to_string(),
+            key: "*".to_string(),
+            value: serde_json::Value::Null,
+        },
+    );
 
     info!("System successfully refreshed");
     Ok(())

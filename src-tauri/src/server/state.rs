@@ -11,7 +11,9 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 use tauri::AppHandle;
-use tokio::sync::{RwLock, broadcast};
+use tokio::sync::RwLock;
+
+use crate::core::bridge::EventBridge;
 
 pub type SessionStore = Arc<RwLock<HashSet<String>>>;
 
@@ -19,16 +21,9 @@ pub type SessionStore = Arc<RwLock<HashSet<String>>>;
 #[derive(Clone)]
 pub struct WebServerState {
     pub app_handle: AppHandle,
-    pub event_tx: Arc<broadcast::Sender<TauriEvent>>,
+    pub event_bridge: Arc<EventBridge>,
     pub auth_credentials: Option<(String, String)>,
     pub sessions: SessionStore,
-}
-
-/// Event message for SSE
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TauriEvent {
-    pub event: String,
-    pub payload: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

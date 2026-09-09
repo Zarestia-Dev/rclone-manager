@@ -277,7 +277,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         record.action_results = action_results;
 
         let history_cache = app.state::<AlertHistoryCache>();
-        history_cache.push(record, Some(&app)).await;
+        history_cache.push(record).await;
     }
 }
 

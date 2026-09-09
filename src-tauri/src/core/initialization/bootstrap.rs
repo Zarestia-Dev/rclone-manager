@@ -30,15 +30,14 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     // Monitor Network Changes (Background task)
     #[cfg(not(target_os = "ios"))]
     {
-        let handle = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            crate::utils::io::network::monitor_network_changes(handle).await;
+            crate::utils::io::network::monitor_network_changes().await;
         });
     }
 
     // Monitor OS Theme Changes (Background task)
     #[cfg(not(feature = "web-server"))]
-    crate::utils::app::ui::monitor_theme_changes(app_handle.clone());
+    crate::utils::app::ui::monitor_theme_changes();
 
     Ok(())
 }

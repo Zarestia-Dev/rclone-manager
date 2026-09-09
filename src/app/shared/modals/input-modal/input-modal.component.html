@@ -1,61 +1,85 @@
-<div class="properties-modal input-modal">
-  <header>
+<header data-tauri-drag-region>
+  <button tabindex="-1" aria-hidden="true">
     <mat-icon [svgIcon]="data.icon"></mat-icon>
-    <p>
-      {{ data.title }}
-    </p>
-  </header>
+  </button>
+  <p>
+    {{ data.title }}
+  </p>
+  <button
+    matIconButton
+    type="button"
+    (click)="onCancel()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
 
-  <div class="modal-content">
-    @for (field of fields; track field.key) {
-      <mat-form-field style="width: 100%">
-        <mat-label>{{
-          field.label || data.existingNameType || ('shared.inputModal.name' | translate)
-        }}</mat-label>
-        <input
-          matInput
-          [placeholder]="field.placeholder || ''"
-          [formControl]="getControl(field.key)"
-          [type]="field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'"
-        />
-        @if (getControl(field.key).hasError('required')) {
-          <mat-error>{{
-            'shared.inputModal.required'
-              | translate: { field: field.label || ('shared.inputModal.name' | translate) }
-          }}</mat-error>
-        } @else if (getControl(field.key).hasError('alreadyExists')) {
-          <mat-error>{{
-            'shared.inputModal.alreadyExists'
-              | translate
-                : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) }
-          }}</mat-error>
-        } @else if (getControl(field.key).hasError('forbiddenChars')) {
-          <mat-error>{{
-            data.forbiddenCharsMessage ||
-              ('shared.inputModal.forbiddenChars'
-                | translate
-                  : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) })
-          }}</mat-error>
-        }
-      </mat-form-field>
-    }
-
-    @if (hasUrlField() && urlValue()) {
-      <app-url-preview
-        [url]="urlValue()"
-        [customFilename]="filenameValue()"
-        [destinationPath]="data.destinationPath"
-        [compact]="true"
+<main>
+  @for (field of fields; track field.key) {
+    <mat-form-field>
+      <mat-label>{{
+        field.label || data.existingNameType || ('shared.inputModal.name' | translate)
+      }}</mat-label>
+      <input
+        matInput
+        [placeholder]="field.placeholder || ''"
+        [formControl]="getControl(field.key)"
+        [type]="field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'"
       />
-    }
-  </div>
+      @if (getControl(field.key).hasError('required')) {
+        <mat-error>{{
+          'shared.inputModal.required'
+            | translate: { field: field.label || ('shared.inputModal.name' | translate) }
+        }}</mat-error>
+      } @else if (getControl(field.key).hasError('alreadyExists')) {
+        <mat-error>{{
+          'shared.inputModal.alreadyExists'
+            | translate
+              : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) }
+        }}</mat-error>
+      } @else if (getControl(field.key).hasError('forbiddenChars')) {
+        <mat-error>{{
+          data.forbiddenCharsMessage ||
+            ('shared.inputModal.forbiddenChars'
+              | translate
+                : { name: field.uniqueness?.typeLabel || ('shared.inputModal.name' | translate) })
+        }}</mat-error>
+      }
+    </mat-form-field>
+  }
 
-  <div class="modal-actions">
-    <button matButton="filled" class="primary" [disabled]="!form.valid" (click)="onConfirm()">
-      {{ data.createLabel || ('shared.inputModal.create' | translate) }}
-    </button>
-    <button matButton="filled" class="accent" (click)="onCancel()">
-      {{ 'common.cancel' | translate }}
-    </button>
-  </div>
-</div>
+  @if (hasUrlField() && urlValue()) {
+    <app-url-preview
+      [url]="urlValue()"
+      [customFilename]="filenameValue()"
+      [destinationPath]="data.destinationPath"
+      [compact]="true"
+    />
+  }
+</main>
+
+<footer>
+  <button
+    matButton="filled"
+    class="accent"
+    type="button"
+    (click)="onCancel()"
+    [attr.title]="'common.cancel' | translate"
+    [attr.aria-label]="'common.cancel' | translate"
+  >
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    matButton="filled"
+    class="primary"
+    type="button"
+    [disabled]="!form.valid"
+    (click)="onConfirm()"
+    [attr.title]="data.createLabel || ('shared.inputModal.create' | translate)"
+    [attr.aria-label]="data.createLabel || ('shared.inputModal.create' | translate)"
+  >
+    {{ data.createLabel || ('shared.inputModal.create' | translate) }}
+  </button>
+</footer>

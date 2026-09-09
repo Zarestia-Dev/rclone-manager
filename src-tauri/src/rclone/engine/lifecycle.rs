@@ -1,6 +1,6 @@
 use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 
@@ -228,7 +228,7 @@ fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
     }
 
     let status: EngineStatus = phase.into();
-    app.emit(RCLONE_ENGINE_STATUS_CHANGED, status).ok();
+    crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, status);
 }
 
 /// Desktop path: decide whether we need to spawn / respawn the rcd daemon,
@@ -454,24 +454,22 @@ pub fn restart_for_config_change(app: &AppHandle, change_type: &str) {
         match restart_engine(&app, &change_type).await {
             Ok(()) => {
                 info!("Engine restarted for {change_type} change");
-                app.emit(
+                crate::core::bridge::emit(
                     RCLONE_ENGINE_STATUS_CHANGED,
                     EngineStatus::Restarted {
                         reason: change_type,
                     },
-                )
-                .ok();
+                );
                 notify(&app, NotificationEvent::Engine(EngineStage::Restarted));
             }
             Err(e) => {
                 error!("Failed to restart engine for {change_type} change: {e}");
-                app.emit(
+                crate::core::bridge::emit(
                     RCLONE_ENGINE_STATUS_CHANGED,
                     EngineStatus::Error {
                         message: e.to_string(),
                     },
-                )
-                .ok();
+                );
                 notify(
                     &app,
                     NotificationEvent::Engine(EngineStage::RestartFailed {

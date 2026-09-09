@@ -284,7 +284,7 @@ pub async fn sync_workflow_automations_bg(app: &AppHandle) {
     if let Ok(workflows) = get_all_workflows_sync(&manager) {
         let backend_name = backend_manager.get_active_name().await;
         if let Ok(result) = cache_state
-            .load_from_workflows(&workflows, &backend_name, Some(app))
+            .load_from_workflows(&workflows, &backend_name)
             .await
         {
             let _ = scheduler_state

@@ -13,7 +13,7 @@ use chrono::Utc;
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde_json::{Value, json};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use super::dag::validate_workflow;
 use super::types::{
@@ -1684,7 +1684,7 @@ async fn execute_notification_node(
             ack_at: None,
         };
 
-        history_cache.push(record, Some(app)).await;
+        history_cache.push(record).await;
     }
 
     match res {
@@ -1720,7 +1720,7 @@ pub async fn execute_workflow(
     let val_res = validate_workflow(&workflow);
     if !val_res.valid {
         let err_msg = val_res.errors.join("; ");
-        let _ = app.emit(
+        crate::core::bridge::emit(
             WORKFLOW_EXECUTION_STATE_CHANGED,
             WorkflowExecutionStateEvent {
                 workflow_id: workflow_id.clone(),
@@ -1752,7 +1752,7 @@ pub async fn execute_workflow(
     let mut failed_nodes = 0;
     let mut skipped_nodes = 0;
 
-    let _ = app.emit(
+    crate::core::bridge::emit(
         WORKFLOW_EXECUTION_STATE_CHANGED,
         WorkflowExecutionStateEvent {
             workflow_id: workflow_id.clone(),
@@ -1760,7 +1760,7 @@ pub async fn execute_workflow(
             progress: Some(WorkflowProgress {
                 total: total_nodes,
                 completed: 0,
-                current_step_title: "Initializing".to_string(),
+                current_step_title: "Starting workflow".to_string(),
             }),
             message: Some(format!("Workflow '{}' started", workflow.name)),
         },
@@ -1836,7 +1836,7 @@ pub async fn execute_workflow(
                 if let Some(node) = node_map.get(&node_id) {
                     node_statuses.insert(node_id.clone(), NodeStatus::Running);
 
-                    let _ = app.emit(
+                    crate::core::bridge::emit(
                         WORKFLOW_NODE_STATE_CHANGED,
                         WorkflowNodeStateEvent {
                             workflow_id: workflow_id.clone(),
@@ -1900,7 +1900,7 @@ pub async fn execute_workflow(
             .collect::<Vec<_>>()
             .join(", ");
 
-        let _ = app.emit(
+        crate::core::bridge::emit(
             WORKFLOW_EXECUTION_STATE_CHANGED,
             WorkflowExecutionStateEvent {
                 workflow_id: workflow_id.clone(),
@@ -1945,7 +1945,7 @@ pub async fn execute_workflow(
                     cancel_flag.store(true, Ordering::SeqCst);
                 }
 
-                let _ = app.emit(
+                crate::core::bridge::emit(
                     WORKFLOW_NODE_STATE_CHANGED,
                     WorkflowNodeStateEvent {
                         workflow_id: workflow_id.clone(),
@@ -1960,7 +1960,7 @@ pub async fn execute_workflow(
                 failed_nodes += 1;
                 node_statuses.insert(node_id.clone(), NodeStatus::Failed(err.clone()));
 
-                let _ = app.emit(
+                crate::core::bridge::emit(
                     WORKFLOW_NODE_STATE_CHANGED,
                     WorkflowNodeStateEvent {
                         workflow_id: workflow_id.clone(),
@@ -2029,7 +2029,7 @@ pub async fn execute_workflow(
                         skipped_nodes += 1;
                         node_statuses.insert(candidate_id.clone(), NodeStatus::Skipped);
 
-                        let _ = app.emit(
+                        crate::core::bridge::emit(
                             WORKFLOW_NODE_STATE_CHANGED,
                             WorkflowNodeStateEvent {
                                 workflow_id: workflow_id.clone(),
@@ -2058,7 +2058,7 @@ pub async fn execute_workflow(
         if *status == NodeStatus::Pending {
             *status = NodeStatus::Skipped;
             skipped_nodes += 1;
-            let _ = app.emit(
+            crate::core::bridge::emit(
                 WORKFLOW_NODE_STATE_CHANGED,
                 WorkflowNodeStateEvent {
                     workflow_id: workflow_id.clone(),
@@ -2096,7 +2096,7 @@ pub async fn execute_workflow(
         "failed"
     };
 
-    let _ = app.emit(
+    crate::core::bridge::emit(
         WORKFLOW_EXECUTION_STATE_CHANGED,
         WorkflowExecutionStateEvent {
             workflow_id: workflow_id.clone(),

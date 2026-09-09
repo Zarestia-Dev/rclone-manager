@@ -154,7 +154,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         let mut current_mounts = cache.get_mounted_remotes().await;
         current_mounts.retain(|m| m.mount_point != mount_point);
         current_mounts.push(mounted_remote);
-        cache.update_mounts_if_changed(current_mounts, &app).await;
+        cache.update_mounts_if_changed(current_mounts).await;
         cache
             .store_mount_profile(
                 &mount_point,
@@ -164,7 +164,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 params.execute_id.clone(),
                 params.workflow_id.clone(),
                 params.node_id.clone(),
-                Some(&app),
             )
             .await;
 
@@ -253,7 +252,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             params.execute_id.clone(),
             params.workflow_id.clone(),
             params.node_id.clone(),
-            Some(&app),
         )
         .await;
     refresh_mounts_quietly(&app).await;
@@ -328,7 +326,7 @@ pub async fn unmount_remote(
             .retain(|m| m.mount_point != mount_point && m.fs != remote_name && m.fs != fs_name);
         backend_manager
             .remote_cache
-            .update_mounts_if_changed(current_mounts, &app)
+            .update_mounts_if_changed(current_mounts)
             .await;
 
         let transport = crate::rclone::commands::common::transport(&app);
@@ -451,7 +449,7 @@ pub async fn unmount_all_remotes(
         }
         backend_manager
             .remote_cache
-            .update_mounts_if_changed(vec![], &app)
+            .update_mounts_if_changed(vec![])
             .await;
         crate::rclone::backend::saf_bridge::notify_roots_changed();
         if !context.is_shutdown() {

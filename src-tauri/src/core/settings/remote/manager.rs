@@ -8,7 +8,7 @@ use crate::core::{bridge, settings::AppSettingsManager};
 use log::{info, warn};
 use serde::Deserialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHANGED};
@@ -106,12 +106,12 @@ pub async fn save_remote_settings(
                 warn!("Watcher sync incomplete for remote '{remote_name}': {e}");
             }
 
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "remote_settings_update");
+            crate::core::bridge::emit(AUTOMATIONS_CACHE_CHANGED, "remote_settings_update");
         }
         _ => {}
     }
 
-    app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+    crate::core::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
     Ok(())
 }
 
@@ -125,7 +125,7 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
 
     if remotes.get_value(&remote_name).is_err() {
         warn!("Remote settings for '{remote_name}' not found, but that's okay.");
-        app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+        crate::core::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
         return Ok(());
     }
 
@@ -140,7 +140,7 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
     let scheduler = app.state::<crate::core::automation::engine::AutomationScheduler>();
 
     if let Ok(removed) = cache
-        .remove_automations_for_remote(&backend_name, &remote_name, Some(&app))
+        .remove_automations_for_remote(&backend_name, &remote_name)
         .await
         && !removed.is_empty()
     {
@@ -165,7 +165,7 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
     }
 
     info!("Remote settings for '{remote_name}' deleted.");
-    app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
+    crate::core::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
     Ok(())
 }
 

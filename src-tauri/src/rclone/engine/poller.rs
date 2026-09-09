@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use log::{debug, error, warn};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::time;
 
 use crate::rclone::queries::parse_serves_response;
@@ -88,7 +88,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
             if status.should_skip_poll() {
                 burst_ticks = BURST_TICK_COUNT;
                 if !status.running {
-                    let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
+                    crate::core::bridge::emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
                     if status.auth_failed {
                         crate::rclone::engine::lifecycle::emit_block_status_for_phase(&app_handle)
                             .await;
@@ -124,7 +124,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                     if burst_ticks > 0 {
                         burst_ticks = burst_ticks.saturating_sub(1);
                     }
-                    let _ = app_handle.emit(SYSTEM_STATUS, payload);
+                    crate::core::bridge::emit(SYSTEM_STATUS, payload);
                 }
                 Err(batch_err) => {
                     if is_auth_error(&batch_err) {
@@ -136,7 +136,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                         start_engine_if_not_running(&app_handle).await;
                     }
                     burst_ticks = BURST_TICK_COUNT;
-                    let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::error());
+                    crate::core::bridge::emit(SYSTEM_STATUS, SystemStatusPayload::error());
                 }
             }
 
@@ -290,7 +290,7 @@ async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
 
     app.state::<BackendManager>()
         .remote_cache
-        .update_mounts_if_changed(mounts, app)
+        .update_mounts_if_changed(mounts)
         .await;
 }
 
@@ -298,6 +298,6 @@ async fn update_serve_cache(app: &AppHandle, result: &serde_json::Value) {
     let serves = parse_serves_response(result);
     app.state::<BackendManager>()
         .remote_cache
-        .update_serves_if_changed(serves, app)
+        .update_serves_if_changed(serves)
         .await;
 }

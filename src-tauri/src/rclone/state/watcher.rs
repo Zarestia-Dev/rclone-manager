@@ -26,9 +26,7 @@ async fn check_and_reconcile_mounts(
     };
 
     // Use reactive cache update - it will emit event only if changed
-    let changed = cache
-        .update_mounts_if_changed(api_mounts, &app_handle)
-        .await;
+    let changed = cache.update_mounts_if_changed(api_mounts).await;
     if changed {
         debug!("🔍 Mount cache updated via watcher for {api_url}");
     }
@@ -65,9 +63,7 @@ async fn check_and_reconcile_serves(
     };
 
     // Use reactive cache update - it will emit event only if changed
-    let changed = cache
-        .update_serves_if_changed(api_serves, &app_handle)
-        .await;
+    let changed = cache.update_serves_if_changed(api_serves).await;
     if changed {
         debug!("🔍 Serve cache updated via watcher for {api_url}");
     }

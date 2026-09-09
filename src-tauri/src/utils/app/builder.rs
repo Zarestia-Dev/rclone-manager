@@ -137,7 +137,7 @@ pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bo
                 _ => String::new(),
             };
             use crate::utils::types::events::BROWSE;
-            let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
+            crate::core::bridge::emit(BROWSE, full_path);
         }
         return false;
     }

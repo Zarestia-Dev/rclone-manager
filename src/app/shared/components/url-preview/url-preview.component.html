@@ -90,18 +90,6 @@
             <span class="app-pill p-accent font-mono">.{{ extension() }}</span>
           }
         </div>
-
-        @if (canOpenViewer()) {
-          <button
-            type="button"
-            class="action-button"
-            (click)="openInViewer()"
-            [attr.title]="'shared.urlPreview.openViewerTooltip' | translate"
-            [attr.aria-label]="'shared.urlPreview.openViewer' | translate"
-          >
-            <mat-icon svgIcon="open-link"></mat-icon>
-          </button>
-        }
       </div>
 
       <div class="preview-filename-row">

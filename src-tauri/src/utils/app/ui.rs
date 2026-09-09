@@ -1,6 +1,5 @@
 #![cfg(not(feature = "web-server"))]
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Emitter;
 
 use crate::core::bridge;
 
@@ -44,7 +43,7 @@ pub fn is_system_dark() -> bool {
 }
 
 /// Apply a detected system theme change, updating tray and notifying webview frontend.
-pub async fn apply_theme_change(app_handle: &tauri::AppHandle, is_dark: bool) {
+pub async fn apply_theme_change(is_dark: bool) {
     let prev = SYSTEM_THEME_IS_DARK.swap(is_dark, Ordering::Relaxed);
     if prev != is_dark {
         log::info!(
@@ -55,10 +54,12 @@ pub async fn apply_theme_change(app_handle: &tauri::AppHandle, is_dark: bool) {
 
         #[cfg(feature = "tray")]
         {
-            let _ = crate::core::tray::core::update_tray_menu(app_handle.clone()).await;
+            if let Some(app) = crate::core::bridge::get_app_handle() {
+                let _ = crate::core::tray::core::update_tray_menu(app).await;
+            }
         }
 
-        let _ = app_handle.emit(crate::utils::types::events::SYSTEM_THEME_CHANGED, is_dark);
+        crate::core::bridge::emit(crate::utils::types::events::SYSTEM_THEME_CHANGED, is_dark);
     }
 }
 
@@ -413,31 +414,31 @@ pub fn detect_macos_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 /// Starts background monitoring for OS theme changes.
-pub fn monitor_theme_changes(_app_handle: tauri::AppHandle) {
+pub fn monitor_theme_changes() {
     #[cfg(all(feature = "desktop", target_os = "linux"))]
     {
         tauri::async_runtime::spawn(async move {
-            run_linux_portal_watcher(_app_handle).await;
+            run_linux_portal_watcher().await;
         });
     }
 
     #[cfg(all(feature = "desktop", windows))]
     {
         tauri::async_runtime::spawn(async move {
-            run_windows_theme_watcher(_app_handle).await;
+            run_windows_theme_watcher().await;
         });
     }
 
     #[cfg(all(feature = "desktop", target_os = "macos"))]
     {
         tauri::async_runtime::spawn(async move {
-            run_macos_theme_watcher(_app_handle).await;
+            run_macos_theme_watcher().await;
         });
     }
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-async fn run_linux_portal_watcher(app_handle: tauri::AppHandle) {
+async fn run_linux_portal_watcher() {
     use futures_lite::stream::StreamExt;
     use zbus::Connection;
 
@@ -464,7 +465,6 @@ async fn run_linux_portal_watcher(app_handle: tauri::AppHandle) {
         }
     };
 
-    // Initial read from portal if available
     if let Ok(res) = proxy
         .call::<_, _, zbus::zvariant::OwnedValue>(
             "Read",
@@ -473,7 +473,7 @@ async fn run_linux_portal_watcher(app_handle: tauri::AppHandle) {
         .await
         && let Some(is_dark) = extract_portal_color_scheme(&res)
     {
-        apply_theme_change(&app_handle, is_dark).await;
+        apply_theme_change(is_dark).await;
     }
 
     let signal_res = proxy.receive_signal("SettingChanged").await;
@@ -495,16 +495,16 @@ async fn run_linux_portal_watcher(app_handle: tauri::AppHandle) {
             && key == "color-scheme"
         {
             if let Some(is_dark) = extract_portal_color_scheme(&value) {
-                apply_theme_change(&app_handle, is_dark).await;
+                apply_theme_change(is_dark).await;
             } else if let Some(is_dark) = detect_linux_theme() {
-                apply_theme_change(&app_handle, is_dark).await;
+                apply_theme_change(is_dark).await;
             }
         }
     }
 }
 
 #[cfg(all(feature = "desktop", windows))]
-async fn run_windows_theme_watcher(app_handle: tauri::AppHandle) {
+async fn run_windows_theme_watcher() {
     use windows_sys::Win32::Foundation::{CloseHandle, FALSE, WAIT_OBJECT_0};
     use windows_sys::Win32::System::Registry::{
         HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET, RegCloseKey,
@@ -554,9 +554,8 @@ async fn run_windows_theme_watcher(app_handle: tauri::AppHandle) {
 
                 if WaitForSingleObject(event, INFINITE) == WAIT_OBJECT_0 {
                     let is_dark = detect_windows_theme().unwrap_or(false);
-                    let handle = app_handle.clone();
                     tauri::async_runtime::block_on(async move {
-                        apply_theme_change(&handle, is_dark).await;
+                        apply_theme_change(is_dark).await;
                     });
                 }
             }
@@ -568,9 +567,8 @@ async fn run_windows_theme_watcher(app_handle: tauri::AppHandle) {
 }
 
 #[cfg(all(feature = "desktop", target_os = "macos"))]
-async fn run_macos_theme_watcher(app_handle: tauri::AppHandle) {
+async fn run_macos_theme_watcher() {
     use std::ffi::c_void;
-    use std::sync::OnceLock;
 
     extern "C" {
         fn CFNotificationCenterGetDistributedCenter() -> *const c_void;
@@ -596,8 +594,6 @@ async fn run_macos_theme_watcher(app_handle: tauri::AppHandle) {
         fn CFRelease(cf: *const c_void);
     }
 
-    static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
-
     extern "C" fn theme_changed_callback(
         _center: *const c_void,
         _observer: *mut c_void,
@@ -606,15 +602,11 @@ async fn run_macos_theme_watcher(app_handle: tauri::AppHandle) {
         _user_info: *const c_void,
     ) {
         let is_dark = detect_macos_theme().unwrap_or(false);
-        if let Some(handle) = APP_HANDLE.get() {
-            let handle_clone = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                apply_theme_change(&handle_clone, is_dark).await;
-            });
-        }
+        tauri::async_runtime::spawn(async move {
+            apply_theme_change(is_dark).await;
+        });
     }
 
-    let _ = APP_HANDLE.set(app_handle);
     unsafe {
         let center = CFNotificationCenterGetDistributedCenter();
         let notification_name = CFStringCreateWithCString(

@@ -322,6 +322,12 @@ fn setup_app(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
 
+    let event_bridge = Arc::new(crate::core::bridge::EventBridge::new(1000));
+    crate::core::bridge::init_event_bridge(event_bridge.clone());
+    #[cfg(not(feature = "web-server"))]
+    event_bridge.set_app_handle(app_handle.clone());
+    app.manage(event_bridge.clone());
+
     let app_paths = AppPaths::setup(app_handle)?;
 
     #[cfg(target_os = "android")]
@@ -464,6 +470,7 @@ fn setup_app(
 
         let web_handle = app.handle().clone();
         let args = cli_args.clone();
+        let bridge = event_bridge.clone();
 
         log::info!(
             "Initializing Web Server on {}:{}...",
@@ -474,6 +481,7 @@ fn setup_app(
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
                 web_handle.clone(),
+                bridge,
                 args.headless.host.clone(),
                 args.headless.port,
                 args.auth_credentials(),

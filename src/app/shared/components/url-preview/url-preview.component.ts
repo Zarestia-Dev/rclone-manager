@@ -7,7 +7,6 @@ import {
   signal,
   effect,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -18,7 +17,7 @@ import { Entry } from '@app/types';
 @Component({
   selector: 'app-url-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe],
   templateUrl: './url-preview.component.html',
   styleUrls: ['./url-preview.component.scss'],
 })

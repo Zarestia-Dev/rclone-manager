@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use log::{debug, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge, settings::AppSettingsManager},
@@ -519,8 +519,8 @@ async fn refresh_and_verify_cache(
     {
         Ok(Ok(())) => {
             info!("Cache refreshed for backend '{name}'");
-            let _ = app.emit(REMOTE_CACHE_CHANGED, ());
-            let _ = app.emit(BACKEND_SWITCHED, name);
+            crate::core::bridge::emit(REMOTE_CACHE_CHANGED, ());
+            crate::core::bridge::emit(BACKEND_SWITCHED, name);
             Ok(())
         }
         Ok(Err(e)) => {
