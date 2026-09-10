@@ -421,6 +421,8 @@
     "resetFailed": "Не вдалося скинути {{key}} до типового значення.",
     "loadFailed": "Не вдалося завантажити налаштування застосунку.",
     "remoteResetSuccess": "Налаштування для {{remote}} успішно скинуто",
+    "remoteSaved": "Віддалене сховище успішно збережено",
+    "remoteSaveFailed": "Не вдалося зберегти віддалене сховище: {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Увімкнути значок у треї",
@@ -586,9 +588,7 @@
         "label": "Закладки",
         "description": "Список збережених у закладках розташувань для швидкого доступу."
       }
-    },
-    "remoteSaved": "Віддалене сховище успішно збережено",
-    "remoteSaveFailed": "Не вдалося зберегти віддалене сховище: {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -862,6 +862,10 @@
         "successDownload": "Файл успішно завантажено",
         "failDownload": "Не вдалося завантажити файл"
       },
+      "messages": {
+        "resolveStarted": "Розв'язання невідповідності файлів розпочато",
+        "resolveFailed": "Не вдалося вирішити розбіжність файлів: {{error}}"
+      },
       "empty": {
         "noActive": "Немає активних передавань",
         "activeHint": "Передавання зʼявляться тут, коли розпочнеться операція",
@@ -881,10 +885,6 @@
           "seconds": "{{seconds}} с",
           "lessThanSecond": "<1 с"
         }
-      },
-      "messages": {
-        "resolveFailed": "Не вдалося вирішити розбіжність файлів: {{error}}",
-        "resolveStarted": "Розв'язання невідповідності файлів розпочато"
       }
     },
     "inputModal": {
@@ -1110,6 +1110,10 @@
       "resultHelp": "Натисніть кнопку копіювання та вставте це значення туди, де потрібно.",
       "applyToField": "Застосувати замасковане значення до поля",
       "apply": "Застосувати до поля"
+    },
+    "presets": {
+      "applied": "Попередні налаштування за замовчуванням успішно застосовано",
+      "noRemoteSelected": "Будь ласка, спочатку виберіть віддалене підключення"
     },
     "remoteConfig": {
       "remoteName": "Назва сховища",
@@ -1368,10 +1372,6 @@
         "title": "Першого числа місяця",
         "description": "1-го числа опівночі"
       }
-    },
-    "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -2727,6 +2727,7 @@
     },
     "rclone": {
       "unsupportedPlatform": "Непідтримувана платформа",
+      "downloadCancelled": "Завантаження скасовано користувачем",
       "mountPluginInstallFailed": "Не вдалося встановити плагін монтування: {{error}}",
       "mountPluginVerificationFailed": "Встановлення вдалося, але перевірку не пройдено. Може знадобитися перезапуск.",
       "configEncrypted": "Конфігурацію зашифровано, але пароль не надано",
@@ -2749,8 +2750,7 @@
       "invalidFlags": "Виявлено невірні flags rclone: {{error}}",
       "updateRemoteUnsupported": "Оновлення сховища не підтримується для цієї версії rclone",
       "backupFailed": "Не вдалося створити резервну копію поточного виконуваного файлу rclone: {{error}}",
-      "rcAuthFailed": "Помилка автентифікації віддаленого керування rclone: {{error}}",
-      "downloadCancelled": "Завантаження скасовано користувачем"
+      "rcAuthFailed": "Помилка автентифікації віддаленого керування rclone: {{error}}"
     },
     "security": {
       "passwordEmpty": "Пароль не може бути порожнім",
@@ -3169,47 +3169,47 @@
       "description": "Створіть швидкий запуск або робочий процес для швидких операцій та конвеєрів."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Швидкі запуски",
+      "new": "Новий швидкий запуск",
+      "actions": {
+        "start": "Запустити",
+        "stop": "Зупинити"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Заплановане завдання",
+        "watcher": "Відстеження папки активне",
+        "watcherChangedOnly": "Відстеження папки активне (лише підкаталоги)",
+        "autostart": "Автозапуск увімкнено"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "Виконується"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Усього швидких запусків"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Швидкий запуск",
+        "createFirst": "Створіть свій перший швидкий запуск для швидких операцій без профілів.",
         "noRunsForRemote": "Для {{remote}} не налаштовано швидких запусків.",
         "createForRemote": "Створити швидкий запуск для {{remote}}"
+      },
+      "detail": {
+        "configuration": "Конфігурація"
+      },
+      "editor": {
+        "createTitle": "Створити швидкий запуск",
+        "editTitle": "Редагувати швидкий запуск",
+        "name": "Назва",
+        "nameRequired": "Назва обов'язкова",
+        "description": "Опис (необов'язково)",
+        "remote": "Віддалене підключення",
+        "noRemotes": "Немає налаштованих підключень",
+        "remoteRequired": "Підключення обов'язкове",
+        "selectRemoteFirst": "Виберіть підключення для автозаповнення",
+        "tabVfs": "VFS",
+        "tabFilter": "Фільтр",
+        "tabBackend": "Бекенд",
+        "tabRuntimeRemote": "Динамічний remote"
       }
     },
     "tabs": {
