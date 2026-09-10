@@ -421,6 +421,8 @@
     "resetFailed": "Échec de la réinitialisation de {{key}} par défaut.",
     "loadFailed": "Impossible de charger les paramètres de l'application.",
     "remoteResetSuccess": "Les paramètres {{remote}} ont été réinitialisés avec succès",
+    "remoteSaved": "Remote enregistré avec succès",
+    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Activer l'icône dans la zone de notification",
@@ -586,9 +588,7 @@
         "label": "Signets",
         "description": "Liste des signets pour un accès rapide."
       }
-    },
-    "remoteSaved": "Remote enregistré avec succès",
-    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -862,6 +862,10 @@
         "successDownload": "Fichier téléchargé avec succès",
         "failDownload": "Échec du téléchargement du fichier"
       },
+      "messages": {
+        "resolveStarted": "La résolution du conflit de fichiers a commencé",
+        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
+      },
       "empty": {
         "noActive": "Aucun transfert actif",
         "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
@@ -881,16 +885,12 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      },
-      "messages": {
-        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}",
-        "resolveStarted": "La résolution du conflit de fichiers a commencé"
       }
     },
     "inputModal": {
       "name": "Nom",
       "required": "{{field}} est obligatoire",
-      "alreadyExists": "{name} existe déjà",
+      "alreadyExists": "{{name}} existe déjà",
       "forbiddenChars": "{{name}} contient des caractères interdits ('/' ou ':' )",
       "create": "Créer"
     },
@@ -1110,6 +1110,10 @@
       "resultHelp": "Cliquez sur le bouton de copie et collez cette valeur là où c'est nécessaire.",
       "applyToField": "Appliquer la valeur masquée au champ",
       "apply": "Appliquer au champ"
+    },
+    "presets": {
+      "applied": "Préréglages par défaut appliqués avec succès",
+      "noRemoteSelected": "Veuillez d'abord sélectionner un remote"
     },
     "remoteConfig": {
       "remoteName": "Nom du dépôt distant",
@@ -1368,10 +1372,6 @@
         "title": "Premier du mois",
         "description": "1er jour à minuit"
       }
-    },
-    "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -2727,6 +2727,7 @@
     },
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
+      "downloadCancelled": "Téléchargement annulé par l'utilisateur",
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
       "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",
       "configEncrypted": "La configuration est chiffrée et aucun mot de passe n'est fourni",
@@ -2749,8 +2750,7 @@
       "invalidFlags": "Flags rclone non valides détectés : {{error}}",
       "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}",
-      "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}",
-      "downloadCancelled": "Téléchargement annulé par l'utilisateur"
+      "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}"
     },
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
@@ -3169,47 +3169,47 @@
       "description": "Créez une exécution rapide ou un flux de travail pour démarrer avec des opérations rapides."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Exécutions rapides",
+      "new": "Nouvelle exécution rapide",
+      "actions": {
+        "start": "Démarrer",
+        "stop": "Arrêter"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Tâche planifiée",
+        "watcher": "Surveillance de dossier active",
+        "watcherChangedOnly": "Surveillance de dossier active (sous-dossiers uniquement)",
+        "autostart": "Démarrage automatique activé"
       },
       "status": {
-        "running": "Running"
+        "running": "En cours d'exécution"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total des exécutions rapides"
+        },
+        "quickLaunch": "Lancement rapide",
+        "createFirst": "Créez votre première exécution rapide pour commencer des opérations rapides et sans profil.",
+        "noRunsForRemote": "Aucune exécution rapide configurée pour {{remote}}.",
+        "createForRemote": "Créer une exécution rapide pour {{remote}}"
       },
       "detail": {
         "configuration": "Configuration"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
+        "createTitle": "Créer une exécution rapide",
+        "editTitle": "Modifier l'exécution rapide",
+        "name": "Nom",
+        "nameRequired": "Le nom est obligatoire",
+        "description": "Description (facultatif)",
         "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "noRemotes": "Aucun remote configuré",
+        "remoteRequired": "Le remote est obligatoire",
+        "selectRemoteFirst": "Sélectionnez un remote pour afficher l'autocomplétion",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
+        "tabFilter": "Filtre",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
-      },
-      "overview": {
-        "stats": {
-          "total": "Total Quick Runs"
-        },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
-        "noRunsForRemote": "Aucune exécution rapide configurée pour {{remote}}.",
-        "createForRemote": "Créer une exécution rapide pour {{remote}}"
+        "tabRuntimeRemote": "Remote d'exécution"
       }
     },
     "tabs": {
