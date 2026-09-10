@@ -1802,16 +1802,16 @@
         "help": "从 https://www.linkbox.to/admin/account 获取的令牌。"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "电子邮箱",
+        "help": "登录邮箱"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "密码",
+        "help": "登录密码"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
+        "title": "Web 令牌",
+        "help": "Web API 登录令牌 - 自动设置。"
       }
     },
     "local": {
@@ -3872,16 +3872,16 @@
         "help": "远程连接的描述"
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "上传并发数",
+        "help": "分块上传的并发数。\n\n这是同时上传同一文件的块数。\n\n请注意，每个块都会缓存在内存中。"
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "分块上传阈值",
+        "help": "切换到分块上传的阈值。\n\n任何大于此大小的文件都将按 chunk_size 分块上传。\n最小值为 100 MiB，最大值为 5 GiB。"
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+        "title": "分块大小",
+        "help": "分块上传的块大小。\n\n大于 upload_cutoff 的文件将按此大小的分块上传。\n\n内存使用量大约为 chunk_size * upload_concurrency。"
       }
     },
     "huaweidrive": {
