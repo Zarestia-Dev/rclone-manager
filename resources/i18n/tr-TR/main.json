@@ -421,6 +421,8 @@
     "resetFailed": "{{key}} varsayılana sıfırlanamadı.",
     "loadFailed": "Uygulama ayarları yüklenemedi.",
     "remoteResetSuccess": "{{remote}} ayarları başarıyla sıfırlandı",
+    "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
+    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Tepsi Simgesini Etkinleştir",
@@ -586,9 +588,7 @@
         "label": "Yer İmleri",
         "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
       }
-    },
-    "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
-    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -862,6 +862,10 @@
         "successDownload": "Dosya başarıyla indirildi",
         "failDownload": "Dosya indirilemedi"
       },
+      "messages": {
+        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı",
+        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}"
+      },
       "empty": {
         "noActive": "Aktif transfer yok",
         "activeHint": "Transferler bir işlem başladığında burada görünecektir",
@@ -881,10 +885,6 @@
           "seconds": "{{seconds}}sn",
           "lessThanSecond": "<1sn"
         }
-      },
-      "messages": {
-        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}",
-        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı"
       }
     },
     "inputModal": {
@@ -905,7 +905,7 @@
       "backendSwitchAria": "Mevcut mod: {{title}} - Arka uç değiştirmek için tıklayın"
     },
     "settingControl": {
-      "default": "Varsayılan: {{ value }}",
+      "default": "Varsayılan: {{value}}",
       "resetToDefault": "Varsayılana sıfırla",
       "obscureValue": "Şifreyi rclone kullanarak gizle",
       "enabled": "Etkin",
@@ -921,10 +921,10 @@
       "time": "Saat",
       "others": "diğerleri",
       "aria": {
-        "item": "Öge",
-        "removeItem": "Ögeyi kaldır",
-        "date": "Tarih",
-        "time": "Saat"
+        "item": "{{name}} ögesi {{index}}",
+        "removeItem": "{{name}} ögesini kaldır",
+        "date": "{{name}} tarihi",
+        "time": "{{name}} saati"
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
@@ -1110,6 +1110,10 @@
       "resultHelp": "Kopyala düğmesine tıklayın ve bu değeri gereken yere yapıştırın.",
       "applyToField": "Gizlenmiş değeri alana uygula",
       "apply": "Alana Uygula"
+    },
+    "presets": {
+      "applied": "Varsayılan hazır ayarlar başarıyla uygulandı",
+      "noRemoteSelected": "Lütfen önce bir uzak bağlantı seçin"
     },
     "remoteConfig": {
       "remoteName": "Uzak Bağlantı Adı",
@@ -1368,10 +1372,6 @@
         "title": "Ayın 1'i",
         "description": "1. gün gece yarısı"
       }
-    },
-    "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -2455,7 +2455,7 @@
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
-      "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
+      "emptyTrashFailed": "{{remote}} üzerindeki çöp kutusu boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
@@ -3169,47 +3169,47 @@
       "description": "Hızlı operasyonlar ve iş akışları ile başlamak için yeni bir quick run veya workflow oluşturun."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Hızlı Çalıştırmalar",
+      "new": "Yeni Hızlı Çalıştırma",
+      "actions": {
+        "start": "Başlat",
+        "stop": "Durdur"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Zamanlanmış Görev",
+        "watcher": "Klasör İzleyici Aktif",
+        "watcherChangedOnly": "Klasör İzleyici Aktif (Yalnızca alt dizinler)",
+        "autostart": "Otomatik Başlatma Etkin"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Çalışma Zamanı Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "Çalışıyor"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Toplam Hızlı Çalıştırma"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Hızlı Başlat",
+        "createFirst": "Hızlı ve profilsiz işlemlerle başlamak için ilk Hızlı Çalıştırmanızı oluşturun.",
         "noRunsForRemote": "{{remote}} için yapılandırılmış hızlı işlem yok.",
         "createForRemote": "{{remote}} için Hızlı İşlem Oluştur"
+      },
+      "detail": {
+        "configuration": "Yapılandırma"
+      },
+      "editor": {
+        "createTitle": "Hızlı Çalıştırma Oluştur",
+        "editTitle": "Hızlı Çalıştırmayı Düzenle",
+        "name": "İsim",
+        "nameRequired": "İsim zorunludur",
+        "description": "Açıklama (isteğe bağlı)",
+        "remote": "Uzak Bağlantı",
+        "noRemotes": "Yapılandırılmış uzak bağlantı yok",
+        "remoteRequired": "Uzak bağlantı zorunludur",
+        "selectRemoteFirst": "Otomatik tamamlamayı görmek için önce bir uzak bağlantı seçin",
+        "tabVfs": "VFS",
+        "tabFilter": "Filtre",
+        "tabBackend": "Arka Uç",
+        "tabRuntimeRemote": "Çalışma Zamanı Remote"
       }
     },
     "tabs": {
