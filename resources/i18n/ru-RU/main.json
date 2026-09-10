@@ -1111,6 +1111,10 @@
       "applyToField": "Подставить обфусцированное значение в поле",
       "apply": "Подставить в поле"
     },
+    "presets": {
+      "applied": "Предустановки по умолчанию успешно применены",
+      "noRemoteSelected": "Пожалуйста, сначала выберите удаленное подключение"
+    },
     "remoteConfig": {
       "remoteName": "Название подключения",
       "remoteNameRequired": "Укажите название подключения",
@@ -1368,10 +1372,6 @@
         "title": "Первого числа каждого месяца",
         "description": "Первого числа в полночь"
       }
-    },
-    "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -2727,6 +2727,7 @@
     },
     "rclone": {
       "unsupportedPlatform": "Платформа не поддерживается",
+      "downloadCancelled": "Загрузка отменена пользователем",
       "mountPluginInstallFailed": "Не удалось установить компонент подключения дисков: {{error}}",
       "mountPluginVerificationFailed": "Установка завершена, но проверка не пройдена. Может потребоваться перезапуск.",
       "configEncrypted": "Конфигурация зашифрована, но пароль не указан",
@@ -2749,8 +2750,7 @@
       "invalidFlags": "Обнаружены некорректные флаги rclone: {{error}}",
       "updateRemoteUnsupported": "Удалённое обновление не поддерживается этой версией rclone",
       "backupFailed": "Не удалось создать резервную копию текущего исполняемого файла rclone: {{error}}",
-      "rcAuthFailed": "Ошибка аутентификации удалённого управления Rclone: {{error}}",
-      "downloadCancelled": "Загрузка отменена пользователем"
+      "rcAuthFailed": "Ошибка аутентификации удалённого управления Rclone: {{error}}"
     },
     "security": {
       "passwordEmpty": "Пароль не может быть пустым",
@@ -3169,47 +3169,47 @@
       "description": "Создайте быстрый запуск или рабочий процесс для быстрых операций и конвейеров."
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "Быстрые запуски",
+      "new": "Новый быстрый запуск",
+      "actions": {
+        "start": "Запустить",
+        "stop": "Остановить"
+      },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "scheduled": "Запланированная задача",
+        "watcher": "Отслеживание папки активно",
+        "watcherChangedOnly": "Отслеживание папки активно (только подкаталоги)",
+        "autostart": "Автозапуск включен"
       },
       "status": {
-        "running": "Running"
-      },
-      "detail": {
-        "configuration": "Configuration"
-      },
-      "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
-        "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
-      },
-      "actions": {
-        "start": "Start",
-        "stop": "Stop"
+        "running": "Выполняется"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "Всего быстрых запусков"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "Быстрый запуск",
+        "createFirst": "Создайте свой первый быстрый запуск для простых операций без профиля.",
         "noRunsForRemote": "Для {{remote}} не настроено быстрых запусков.",
         "createForRemote": "Создать быстрый запуск для {{remote}}"
+      },
+      "detail": {
+        "configuration": "Конфигурация"
+      },
+      "editor": {
+        "createTitle": "Создать быстрый запуск",
+        "editTitle": "Редактировать быстрый запуск",
+        "name": "Имя",
+        "nameRequired": "Имя обязательно",
+        "description": "Описание (необязательно)",
+        "remote": "Удаленное подключение",
+        "noRemotes": "Нет настроенных удаленных подключений",
+        "remoteRequired": "Удаленное подключение обязательно",
+        "selectRemoteFirst": "Выберите подключение для автозаполнения",
+        "tabVfs": "VFS",
+        "tabFilter": "Фильтр",
+        "tabBackend": "Бэкенд",
+        "tabRuntimeRemote": "Динамический remote"
       }
     },
     "tabs": {
