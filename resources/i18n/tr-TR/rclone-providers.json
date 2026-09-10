@@ -1802,16 +1802,16 @@
         "help": "https://www.linkbox.to/admin/account adresinden alınan jeton"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "E-posta",
+        "help": "Giriş için e-posta adresi"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "Parola",
+        "help": "Giriş için parola"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
+        "title": "Web Jetonu",
+        "help": "Web API giriş belirteci - otomatik olarak ayarlanır."
       }
     },
     "local": {
@@ -3872,16 +3872,16 @@
         "help": "Uzak bağlantı açıklaması."
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "Yükleme Eşzamanlılığı",
+        "help": "Çok parçalı yüklemeler için eşzamanlılık.\n\nBu, aynı dosyanın aynı anda yüklenen parça sayısıdır.\n\nHer parçanın bellekte arabelleğe alındığını unutmayın."
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "Yükleme Kesme Sınırı",
+        "help": "Çok parçalı yüklemeye geçiş sınırı.\n\nBu boyuttan büyük tüm dosyalar parça boyutu (chunk_size) kadar parçalar halinde yüklenecektir.\nMinimum 100 MiB, maksimum 5 GiB'dir."
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+        "title": "Parça Boyutu",
+        "help": "Çok parçalı yüklemeler için parça boyutu.\n\nYükleme kesme sınırından büyük dosyalar bu boyuttaki parçalar halinde yüklenecektir.\n\nBellek kullanımı yaklaşık olarak parça boyutu * yükleme eşzamanlılığı kadardır."
       }
     },
     "huaweidrive": {
