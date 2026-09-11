@@ -6,12 +6,17 @@ import { WorkflowNode } from '../../../types/workflow.types';
 import { provideTranslateService } from '@ngx-translate/core';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { MountManagementService } from '../../../../../services/operations/mount-management.service';
+import { JobManagementService } from '../../../../../services/operations/job-management.service';
+import { ModalService } from '../../../../../services/ui/modal.service';
 import { MountedRemote } from '../../../../../shared/types/remotes';
+import { JobInfo } from '@app/types';
 
 describe('WorkflowNodeComponent', () => {
   let fixture: ComponentFixture<WorkflowNodeComponent>;
   let component: WorkflowNodeComponent;
   let mountedRemotesSignal: ReturnType<typeof signal<MountedRemote[]>>;
+  let mockJobService: { getLatestJobForWorkflowNode: ReturnType<typeof vi.fn> };
+  let mockModalService: { openJobDetail: ReturnType<typeof vi.fn> };
 
   const mockNode: WorkflowNode = {
     id: 'node-sync-1',
@@ -32,6 +37,12 @@ describe('WorkflowNodeComponent', () => {
 
   beforeEach(async () => {
     mountedRemotesSignal = signal<MountedRemote[]>([]);
+    mockJobService = {
+      getLatestJobForWorkflowNode: vi.fn().mockReturnValue(null),
+    };
+    mockModalService = {
+      openJobDetail: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [WorkflowNodeComponent],
@@ -44,6 +55,14 @@ describe('WorkflowNodeComponent', () => {
             mountedRemotes: mountedRemotesSignal,
             unmountRemote: vi.fn(),
           },
+        },
+        {
+          provide: JobManagementService,
+          useValue: mockJobService,
+        },
+        {
+          provide: ModalService,
+          useValue: mockModalService,
         },
       ],
     }).compileComponents();
@@ -206,5 +225,118 @@ describe('WorkflowNodeComponent', () => {
     fixture.componentRef.setInput('node', cronNode);
     fixture.detectChanges();
     expect(component.displaySubtitle()).toContain('2:00 AM');
+  });
+
+  it('detects nodeJob and opens job detail when inspect job button is clicked', () => {
+    const stateService = TestBed.inject(WorkflowStateService);
+    stateService.createNewWorkflow('Job Test');
+    const wfId = stateService.currentWorkflow()?.id ?? 'wf-1';
+
+    const mockJob: JobInfo = {
+      jobid: 42,
+      execute_id: 'exec-42',
+      job_type: 'sync',
+      source: '/local',
+      destination: 'remote:dest',
+      start_time: '2026-09-10T12:00:00Z',
+      status: 'Running',
+      remote_name: 'remote',
+      stats: {
+        bytes: 100,
+        totalBytes: 500,
+        speed: 50,
+        eta: 10,
+        transfers: 1,
+        totalTransfers: 5,
+        errors: 0,
+        checks: 0,
+        totalChecks: 0,
+        deletedDirs: 0,
+        deletes: 0,
+        renames: 0,
+        serverSideCopies: 0,
+        serverSideMoves: 0,
+        elapsedTime: 10,
+        lastError: '',
+        fatalError: false,
+        retryError: false,
+        serverSideCopyBytes: 0,
+        serverSideMoveBytes: 0,
+        transferTime: 10,
+        transferring: [],
+        listed: 0,
+        completed: [],
+      },
+      workflow_id: wfId,
+      node_id: mockNode.id,
+    };
+
+    mockJobService.getLatestJobForWorkflowNode.mockReturnValue(mockJob);
+    fixture.detectChanges();
+
+    expect(component.nodeJob()).toEqual(mockJob);
+
+    const jobBtn = fixture.nativeElement.querySelector('.action-btn.job-btn');
+    expect(jobBtn).toBeTruthy();
+    expect(jobBtn.classList.contains('is-running')).toBe(true);
+
+    jobBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(mockModalService.openJobDetail).toHaveBeenCalledWith(mockJob);
+  });
+
+  it('opens job detail modal when execution badge with job is clicked', () => {
+    const stateService = TestBed.inject(WorkflowStateService);
+    stateService.createNewWorkflow('Badge Job Test');
+    const wfId = stateService.currentWorkflow()?.id ?? 'wf-1';
+
+    const mockJob: JobInfo = {
+      jobid: 99,
+      execute_id: 'exec-99',
+      job_type: 'copy',
+      source: '/src',
+      destination: 'dest:',
+      start_time: '2026-09-10T12:00:00Z',
+      status: 'Completed',
+      remote_name: 'remote',
+      stats: {
+        bytes: 500,
+        totalBytes: 500,
+        speed: 0,
+        eta: 0,
+        transfers: 5,
+        totalTransfers: 5,
+        errors: 0,
+        checks: 0,
+        totalChecks: 0,
+        deletedDirs: 0,
+        deletes: 0,
+        renames: 0,
+        serverSideCopies: 0,
+        serverSideMoves: 0,
+        elapsedTime: 12,
+        lastError: '',
+        fatalError: false,
+        retryError: false,
+        serverSideCopyBytes: 0,
+        serverSideMoveBytes: 0,
+        transferTime: 12,
+        transferring: [],
+        listed: 0,
+        completed: [],
+      },
+      workflow_id: wfId,
+      node_id: mockNode.id,
+    };
+
+    mockJobService.getLatestJobForWorkflowNode.mockReturnValue(mockJob);
+    fixture.componentRef.setInput('node', { ...mockNode, state: 'success' });
+    fixture.detectChanges();
+
+    const badge = fixture.nativeElement.querySelector('.node-execution-badge');
+    expect(badge).toBeTruthy();
+    expect(badge.classList.contains('has-job')).toBe(true);
+
+    badge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(mockModalService.openJobDetail).toHaveBeenCalledWith(mockJob);
   });
 });

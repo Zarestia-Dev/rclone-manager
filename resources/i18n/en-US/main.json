@@ -3403,6 +3403,7 @@
       "actions": {
         "duplicate": "Duplicate Node",
         "delete": "Delete Node",
+        "inspectJob": "Inspect Job",
         "duplicateWorkflow": "Duplicate Workflow",
         "deleteWorkflow": "Delete Workflow",
         "exportWorkflow": "Export JSON"
@@ -3570,7 +3571,11 @@
         "archiveFormat": "Archive Format",
         "archivePrefix": "Internal Prefix (Optional)",
         "downloadUrl": "Download URL",
-        "autoFilename": "Auto Determine Filename"
+        "autoFilename": "Auto Determine Filename",
+        "jobDetailsTitle": "Job Details",
+        "inspectJobBtn": "Inspect Job Details",
+        "transfers": "Transfers",
+        "errors": "Errors"
       },
       "liveStatus": {
         "mounted": "Mounted",
@@ -3676,6 +3681,10 @@
       "editor": {
         "configureNode": "Configure Node: {{type}}",
         "nodeSaved": "Workflow node settings updated"
+      },
+      "emptyState": {
+        "title": "Welcome to Workflow Builder",
+        "subtitle": "Create a new workflow to automate your rclone operations, or pick an existing one to continue editing."
       }
     },
     "shortcuts": {

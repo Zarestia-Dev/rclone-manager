@@ -769,7 +769,8 @@ export class QuickRunEditorComponent implements OnInit {
       return;
     }
 
-    await this.quickRunService.save(input);
+    const saved = await this.quickRunService.save(input);
+    if (!saved) return;
     this.closed.emit();
     this.dialogRef?.close(true);
   }

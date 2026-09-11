@@ -1,113 +1,192 @@
 <div class="workflow-workspace-wrapper">
-  <!-- Top Toolbar -->
-  <app-workflow-toolbar
-    [isPaletteOpen]="isPaletteOpen()"
-    [isLogOpen]="isLogOpen()"
-    (togglePalette)="palette.toggle()"
-    (toggleLog)="toggleLog()"
-  ></app-workflow-toolbar>
+  @if (hasWorkflow()) {
+    <!-- Top Toolbar -->
+    <app-workflow-toolbar
+      [isPaletteOpen]="isPaletteOpen()"
+      [isLogOpen]="isLogOpen()"
+      (togglePalette)="togglePalette()"
+      (toggleLog)="toggleLog()"
+    ></app-workflow-toolbar>
 
-  <!-- Middle Content (Palette Sidenav + Canvas + Inspector Sidenav) -->
-  <mat-sidenav-container class="workflow-sidenav-container" autosize>
-    <!-- Left: Node Library Sidenav -->
-    <mat-sidenav
-      #palette
-      class="palette-sidenav"
-      [opened]="isPaletteOpen()"
-      (openedChange)="isPaletteOpen.set($event)"
-      mode="side"
-      position="start"
-    >
-      <app-workflow-palette (closePalette)="isPaletteOpen.set(false)"></app-workflow-palette>
-    </mat-sidenav>
+    <!-- Middle Content (Palette Sidenav + Canvas + Inspector Sidenav) -->
+    <mat-sidenav-container class="workflow-sidenav-container" autosize>
+      <!-- Left: Node Library Sidenav -->
+      <mat-sidenav
+        #palette
+        class="palette-sidenav"
+        [opened]="isPaletteOpen()"
+        (openedChange)="isPaletteOpen.set($event)"
+        [mode]="sidebarMode()"
+        position="start"
+      >
+        <app-workflow-palette
+          (closePalette)="isPaletteOpen.set(false)"
+          (nodeAdded)="onNodeAdded()"
+        ></app-workflow-palette>
+      </mat-sidenav>
 
-    <!-- Right: Inspector Sidenav -->
-    <mat-sidenav
-      #inspector
-      class="inspector-sidenav"
-      [opened]="isInspectorOpen()"
-      (openedChange)="isInspectorOpen.set($event)"
-      mode="side"
-      position="end"
-    >
-      <app-workflow-inspector
-        (closeInspector)="isInspectorOpen.set(false)"
-      ></app-workflow-inspector>
-    </mat-sidenav>
+      <!-- Right: Inspector Sidenav -->
+      <mat-sidenav
+        #inspector
+        class="inspector-sidenav"
+        [opened]="isInspectorOpen()"
+        (openedChange)="isInspectorOpen.set($event)"
+        [mode]="sidebarMode()"
+        position="end"
+      >
+        <app-workflow-inspector
+          (closeInspector)="isInspectorOpen.set(false)"
+        ></app-workflow-inspector>
+      </mat-sidenav>
 
-    <!-- Content: Canvas -->
-    <mat-sidenav-content class="workflow-sidenav-content">
-      <div class="canvas-area-wrapper">
-        <!-- Floating Node Library Toggle Pill when palette is closed -->
-        @if (!isPaletteOpen()) {
-          <button
-            type="button"
-            class="palette-open-trigger"
-            (click)="isPaletteOpen.set(true)"
-            [attr.title]="'flow.workflow.palette.title' | translate"
-            [attr.aria-label]="'flow.workflow.palette.title' | translate"
-          >
-            <mat-icon svgIcon="workflow" class="palette-trigger-icon"></mat-icon>
-            <span class="palette-trigger-label">{{
-              'flow.workflow.palette.title' | translate
-            }}</span>
-            <mat-icon svgIcon="chevron-right" class="palette-trigger-arrow"></mat-icon>
-          </button>
-        }
+      <!-- Content: Canvas -->
+      <mat-sidenav-content class="workflow-sidenav-content">
+        <div class="canvas-area-wrapper">
+          <!-- Floating Node Library Toggle Pill when palette is closed -->
+          @if (!isPaletteOpen()) {
+            <button
+              type="button"
+              class="palette-open-trigger"
+              (click)="openPalette()"
+              [attr.title]="'flow.workflow.palette.title' | translate"
+              [attr.aria-label]="'flow.workflow.palette.title' | translate"
+            >
+              <mat-icon svgIcon="workflow" class="palette-trigger-icon"></mat-icon>
+              <span class="palette-trigger-label">{{
+                'flow.workflow.palette.title' | translate
+              }}</span>
+              <mat-icon svgIcon="chevron-right" class="palette-trigger-arrow"></mat-icon>
+            </button>
+          }
 
-        <!-- Floating Inspector Toggle Pill when inspector is closed -->
-        @if (!isInspectorOpen()) {
-          <button
-            type="button"
-            class="inspector-open-trigger"
-            (click)="isInspectorOpen.set(true)"
-            [attr.title]="'flow.workflow.toolbar.toggleInspector' | translate"
-            [attr.aria-label]="'flow.workflow.toolbar.toggleInspector' | translate"
-          >
-            <mat-icon svgIcon="chevron-left" class="inspector-trigger-arrow"></mat-icon>
-            <span class="inspector-trigger-label">{{
-              'flow.workflow.toolbar.toggleInspector' | translate
-            }}</span>
-            <mat-icon svgIcon="tune" class="inspector-trigger-icon"></mat-icon>
-          </button>
-        }
+          <!-- Floating Inspector Toggle Pill when inspector is closed -->
+          @if (!isInspectorOpen()) {
+            <button
+              type="button"
+              class="inspector-open-trigger"
+              (click)="openInspector()"
+              [attr.title]="'flow.workflow.toolbar.toggleInspector' | translate"
+              [attr.aria-label]="'flow.workflow.toolbar.toggleInspector' | translate"
+            >
+              <mat-icon svgIcon="chevron-left" class="inspector-trigger-arrow"></mat-icon>
+              <span class="inspector-trigger-label">{{
+                'flow.workflow.toolbar.toggleInspector' | translate
+              }}</span>
+              <mat-icon svgIcon="tune" class="inspector-trigger-icon"></mat-icon>
+            </button>
+          }
 
-        <!-- Center: Visual Canvas -->
-        <app-workflow-canvas class="canvas-host"></app-workflow-canvas>
+          <!-- Center: Visual Canvas -->
+          <app-workflow-canvas class="canvas-host"></app-workflow-canvas>
 
-        <!-- Floating Unsaved Changes / Save Bar at Bottom Center -->
-        @if (stateService.hasUnsavedChanges()) {
-          <div class="workflow-unsaved-banner" role="status" aria-live="polite">
-            <div class="unsaved-status-group">
-              <span class="unsaved-indicator-dot" aria-hidden="true"></span>
-              <span class="unsaved-label">{{ 'flow.workflow.unsavedChanges' | translate }}</span>
+          <!-- Floating Unsaved Changes / Save Bar at Bottom Center -->
+          @if (stateService.hasUnsavedChanges()) {
+            <div class="workflow-unsaved-banner" role="status" aria-live="polite">
+              <div class="unsaved-status-group">
+                <span class="unsaved-indicator-dot" aria-hidden="true"></span>
+                <span class="unsaved-label">{{ 'flow.workflow.unsavedChanges' | translate }}</span>
+              </div>
+
+              <div class="unsaved-actions-group">
+                <button
+                  type="button"
+                  class="unsaved-save-btn"
+                  (click)="saveWorkflow()"
+                  [disabled]="isSaving()"
+                  [attr.title]="'common.save' | translate"
+                >
+                  @if (isSaving()) {
+                    <mat-icon svgIcon="spinner" class="save-spinner animate-spin"></mat-icon>
+                    <span>{{ 'flow.workflow.saving' | translate }}</span>
+                  } @else {
+                    <mat-icon svgIcon="floppy-disk"></mat-icon>
+                    <span>{{ 'common.save' | translate }}</span>
+                  }
+                </button>
+              </div>
             </div>
+          }
+        </div>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
 
-            <div class="unsaved-actions-group">
-              <button
-                type="button"
-                class="unsaved-save-btn"
-                (click)="saveWorkflow()"
-                [disabled]="isSaving()"
-                [attr.title]="'common.save' | translate"
-              >
-                @if (isSaving()) {
-                  <mat-icon svgIcon="spinner" class="save-spinner animate-spin"></mat-icon>
-                  <span>{{ 'flow.workflow.saving' | translate }}</span>
-                } @else {
-                  <mat-icon svgIcon="floppy-disk"></mat-icon>
-                  <span>{{ 'common.save' | translate }}</span>
-                }
-              </button>
+    <!-- Bottom: Execution Log Console -->
+    @if (isLogOpen()) {
+      <app-workflow-execution-log
+        (closeConsole)="isLogOpen.set(false)"
+      ></app-workflow-execution-log>
+    }
+  } @else {
+    <!-- Empty State: No workflow loaded -->
+    <div class="workflow-empty-state">
+      <div class="workflow-empty-state-content">
+        <div class="workflow-empty-state-icon-ring">
+          <mat-icon svgIcon="workflow"></mat-icon>
+        </div>
+
+        <h2 class="workflow-empty-state-title">
+          {{ 'flow.workflow.emptyState.title' | translate }}
+        </h2>
+        <p class="workflow-empty-state-subtitle">
+          {{ 'flow.workflow.emptyState.subtitle' | translate }}
+        </p>
+
+        <div class="workflow-empty-state-actions">
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="createNewWorkflow()"
+            [attr.title]="'flow.workflow.toolbar.newWorkflow' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'flow.workflow.toolbar.newWorkflow' | translate }}</span>
+          </button>
+        </div>
+
+        <!-- Existing Workflows Quick-Pick -->
+        @if (storageService.workflows().length > 0) {
+          <div class="workflow-empty-state-section">
+            <span class="workflow-empty-state-section-label">
+              {{ 'flow.workflow.savedWorkflows' | translate }}
+            </span>
+            <div class="workflow-empty-state-pill-group">
+              @for (wf of storageService.workflows(); track wf.id) {
+                <button
+                  type="button"
+                  class="app-pill interactive p-accent"
+                  (click)="loadWorkflowById(wf.id)"
+                  [attr.title]="wf.name"
+                >
+                  <mat-icon svgIcon="workflow"></mat-icon>
+                  <span>{{ wf.name }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Template Quick-Pick -->
+        @if (presetTemplates().length > 0) {
+          <div class="workflow-empty-state-section">
+            <span class="workflow-empty-state-section-label">
+              {{ 'flow.workflow.toolbar.presets' | translate }}
+            </span>
+            <div class="workflow-empty-state-pill-group">
+              @for (tpl of presetTemplates(); track tpl.id) {
+                <button
+                  type="button"
+                  class="app-pill interactive {{ getTemplatePillClass(tpl.category) }}"
+                  (click)="loadTemplate(tpl)"
+                  [attr.title]="tpl.description"
+                >
+                  <mat-icon [svgIcon]="tpl.icon"></mat-icon>
+                  <span>{{ tpl.name }}</span>
+                </button>
+              }
             </div>
           </div>
         }
       </div>
-    </mat-sidenav-content>
-  </mat-sidenav-container>
-
-  <!-- Bottom: Execution Log Console -->
-  @if (isLogOpen()) {
-    <app-workflow-execution-log (closeConsole)="isLogOpen.set(false)"></app-workflow-execution-log>
+    </div>
   }
 </div>

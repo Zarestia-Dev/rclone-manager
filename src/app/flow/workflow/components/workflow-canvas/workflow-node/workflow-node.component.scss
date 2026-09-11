@@ -172,6 +172,20 @@ $badge-states: (
           background: rgba(var(--destructive-color-rgb), 0.15);
           color: var(--destructive-bg-color);
         }
+
+        &.job-btn {
+          color: var(--accent-color);
+
+          &:hover {
+            background: rgba(var(--accent-color-rgb), 0.15);
+            color: var(--accent-color);
+          }
+
+          &.is-running {
+            color: var(--primary-color);
+            animation: pulseBlue 2s infinite ease-in-out;
+          }
+        }
       }
     }
   }
@@ -255,6 +269,22 @@ $badge-states: (
           color: var(--#{$var});
         }
       }
+
+      &.has-job {
+        cursor: pointer;
+        padding: 4px;
+        border-radius: var(--radius-xs);
+        transition: var(--transition-fast);
+
+        &:hover {
+          background: var(--hover-bg-color);
+          transform: scale(1.15);
+        }
+
+        &:active {
+          transform: scale(0.95);
+        }
+      }
     }
   }
 
@@ -321,11 +351,20 @@ $badge-states: (
         background: var(--card-bg-color);
         box-shadow: 0 0 0 2px var(--accent-color);
         cursor: crosshair;
+        touch-action: manipulation;
         z-index: 2;
         transition:
           transform 0.15s ease,
           background-color 0.15s ease,
           box-shadow 0.15s ease;
+
+        // Expanded touch target for mobile/tablets
+        &::before {
+          content: "";
+          position: absolute;
+          inset: -8px;
+          border-radius: var(--radius-circle);
+        }
 
         &.input-handle {
           left: -7px;

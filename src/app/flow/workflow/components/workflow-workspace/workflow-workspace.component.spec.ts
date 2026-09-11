@@ -76,13 +76,27 @@ describe('WorkflowWorkspaceComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders workspace layout with toolbar and canvas', () => {
+  it('renders empty state when no workflow is loaded', () => {
     const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.workflow-empty-state')).toBeTruthy();
+    expect(el.querySelector('app-workflow-toolbar')).toBeNull();
+    expect(el.querySelector('app-workflow-canvas')).toBeNull();
+  });
+
+  it('renders workspace layout with toolbar and canvas when workflow is loaded', () => {
+    stateService.createNewWorkflow('Test Flow');
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.workflow-empty-state')).toBeNull();
     expect(el.querySelector('app-workflow-toolbar')).toBeTruthy();
     expect(el.querySelector('app-workflow-canvas')).toBeTruthy();
   });
 
-  it('renders palette sidenav at start and inspector sidenav at end', () => {
+  it('renders palette sidenav at start and inspector sidenav at end when workflow is loaded', () => {
+    stateService.createNewWorkflow('Test Flow');
+    fixture.detectChanges();
+
     const el: HTMLElement = fixture.nativeElement;
     const paletteSidenav = el.querySelector('mat-sidenav.palette-sidenav');
     const inspectorSidenav = el.querySelector('mat-sidenav.inspector-sidenav');
@@ -101,6 +115,7 @@ describe('WorkflowWorkspaceComponent', () => {
   });
 
   it('renders floating palette-open-trigger when palette is closed and clicking it opens palette', () => {
+    stateService.createNewWorkflow('Test Flow');
     component.isPaletteOpen.set(false);
     fixture.detectChanges();
 
@@ -123,6 +138,7 @@ describe('WorkflowWorkspaceComponent', () => {
   });
 
   it('renders floating inspector-open-trigger when inspector is closed and clicking it opens inspector', () => {
+    stateService.createNewWorkflow('Test Flow');
     component.isInspectorOpen.set(false);
     fixture.detectChanges();
 
@@ -191,5 +207,114 @@ describe('WorkflowWorkspaceComponent', () => {
     await component.saveWorkflow();
 
     expect(notificationService.showError).toHaveBeenCalled();
+  });
+
+  it('creates new workflow from empty state', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.workflow-empty-state')).toBeTruthy();
+
+    component.createNewWorkflow();
+    fixture.detectChanges();
+
+    expect(stateService.currentWorkflow()).toBeTruthy();
+    expect(el.querySelector('.workflow-empty-state')).toBeNull();
+    expect(el.querySelector('app-workflow-toolbar')).toBeTruthy();
+  });
+
+  it('loads workflow by ID from empty state', () => {
+    const wf: WorkflowDefinition = {
+      id: 'wf-test',
+      name: 'Existing Flow',
+      nodes: [],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    };
+
+    vi.spyOn(storageService, 'workflows').mockReturnValue([wf]);
+    fixture.detectChanges();
+
+    component.loadWorkflowById('wf-test');
+    fixture.detectChanges();
+
+    expect(stateService.currentWorkflow()?.id).toBe('wf-test');
+  });
+
+  describe('getTemplatePillClass', () => {
+    it('returns p-primary for backup category', () => {
+      expect(component.getTemplatePillClass('backup')).toBe('p-primary');
+    });
+
+    it('returns p-orange for automation category', () => {
+      expect(component.getTemplatePillClass('automation')).toBe('p-orange');
+    });
+
+    it('returns p-accent for sync category', () => {
+      expect(component.getTemplatePillClass('sync')).toBe('p-accent');
+    });
+
+    it('returns p-purple for utility category', () => {
+      expect(component.getTemplatePillClass('utility')).toBe('p-purple');
+    });
+
+    it('returns p-accent for unknown categories as fallback', () => {
+      expect(component.getTemplatePillClass('custom')).toBe('p-accent');
+    });
+  });
+
+  describe('Responsive & Mobile Sidenav Behavior', () => {
+    it('initializes sidebarMode to side by default', () => {
+      expect(component.sidebarMode()).toBe('side');
+      expect(component.isSidebarOver()).toBe(false);
+    });
+
+    it('coordinates palette and inspector in over mode so only one opens at a time', () => {
+      component.sidebarMode.set('over');
+      expect(component.isSidebarOver()).toBe(true);
+
+      // Open palette
+      component.openPalette();
+      expect(component.isPaletteOpen()).toBe(true);
+      expect(component.isInspectorOpen()).toBe(false);
+
+      // Open inspector -> closes palette
+      component.openInspector();
+      expect(component.isInspectorOpen()).toBe(true);
+      expect(component.isPaletteOpen()).toBe(false);
+
+      // Toggle palette back open -> closes inspector
+      component.togglePalette();
+      expect(component.isPaletteOpen()).toBe(true);
+      expect(component.isInspectorOpen()).toBe(false);
+    });
+
+    it('closes palette on nodeAdded when in over mode', () => {
+      component.sidebarMode.set('over');
+      component.isPaletteOpen.set(true);
+
+      component.onNodeAdded();
+      expect(component.isPaletteOpen()).toBe(false);
+    });
+
+    it('does not close palette on nodeAdded when in side mode', () => {
+      component.sidebarMode.set('side');
+      component.isPaletteOpen.set(true);
+
+      component.onNodeAdded();
+      expect(component.isPaletteOpen()).toBe(true);
+    });
+
+    it('auto-opens inspector in over mode when a node is selected', () => {
+      stateService.createNewWorkflow('Mobile Select Test');
+      const node = stateService.addNode('sync', 'task', 'Node 1', 10, 10);
+      component.sidebarMode.set('over');
+      component.isPaletteOpen.set(true);
+      component.isInspectorOpen.set(false);
+
+      stateService.selectNode(node.id);
+      TestBed.tick();
+
+      expect(component.isInspectorOpen()).toBe(true);
+      expect(component.isPaletteOpen()).toBe(false);
+    });
   });
 });

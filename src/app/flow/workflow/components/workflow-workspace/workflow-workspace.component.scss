@@ -171,6 +171,24 @@
       animation: unsavedBannerSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
       pointer-events: auto;
+      max-width: calc(100% - 32px);
+      box-sizing: border-box;
+
+      @media (max-width: 480px) {
+        bottom: 12px;
+        gap: 8px;
+        padding: 4px 6px 4px 12px;
+
+        .unsaved-status-group .unsaved-label {
+          font-size: var(--font-size-xs);
+        }
+
+        .unsaved-actions-group .unsaved-save-btn {
+          height: 28px;
+          padding: 0 10px;
+          font-size: var(--font-size-xs);
+        }
+      }
 
       .unsaved-status-group {
         display: inline-flex;
@@ -248,15 +266,149 @@
   }
 }
 
+@media (max-width: 600px) {
+  .workflow-sidenav-content .canvas-area-wrapper {
+    .palette-open-trigger {
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      justify-content: center;
+
+      .palette-trigger-label,
+      .palette-trigger-arrow {
+        display: none;
+      }
+    }
+
+    .inspector-open-trigger {
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      justify-content: center;
+
+      .inspector-trigger-label,
+      .inspector-trigger-arrow {
+        display: none;
+      }
+    }
+  }
+}
+
 // Override mat-sidenav panel styles
 mat-sidenav {
   background: var(--sidebar-bg-color);
-
   width: 320px;
+  max-width: 85vw;
+  box-sizing: border-box;
+
+  @media (max-width: 480px) {
+    width: 90vw;
+  }
+
   app-workflow-inspector {
     display: block;
     height: 100%;
     width: 100%;
+  }
+}
+
+// ── Empty State ─────────────────────────────────────────────────────────────
+
+.workflow-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(var(--accent-color-rgb), 0.04) 0%, transparent 60%),
+    radial-gradient(circle at 70% 80%, rgba(var(--primary-color-rgb), 0.03) 0%, transparent 60%),
+    var(--view-bg-color);
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  .workflow-empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .workflow-empty-state-icon-ring {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border: 2px solid rgba(var(--accent-color-rgb), 0.15);
+    margin-bottom: var(--space-xs);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+
+    mat-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 36px;
+      color: var(--accent-color);
+      opacity: 0.85;
+    }
+  }
+
+  .workflow-empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--window-fg-color);
+    margin: 0;
+    text-align: center;
+    letter-spacing: -0.01em;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+
+  .workflow-empty-state-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+    margin: 0;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 380px;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  }
+
+  .workflow-empty-state-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
+
+  .workflow-empty-state-section {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+
+    .workflow-empty-state-section-label {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--dim-color);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-left: var(--space-xxs);
+    }
+  }
+
+  .workflow-empty-state-pill-group {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 }
 

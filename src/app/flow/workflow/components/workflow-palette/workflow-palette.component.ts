@@ -1,6 +1,7 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  DestroyRef,
   inject,
   signal,
   computed,
@@ -12,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
+import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag-drop.service';
 import { NodePaletteItem, WorkflowNodeCategory } from '../../types/workflow.types';
 import { PALETTE_ITEMS } from '../../constants/palette.registry';
 
@@ -36,12 +38,25 @@ export { PALETTE_ITEMS };
 })
 export class WorkflowPaletteComponent {
   private readonly stateService = inject(WorkflowStateService);
+  private readonly dragDropService = inject(WorkflowDragDropService);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly closePalette = output<void>();
+  readonly nodeAdded = output<NodePaletteItem>();
   readonly searchQuery = signal<string>('');
   readonly selectedCategory = signal<WorkflowNodeCategory | 'all'>('all');
   readonly isSearchOpen = signal<boolean>(false);
+
+  private _pendingPointerDrag: {
+    item: NodePaletteItem;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    started: boolean;
+    svgIcon: SVGElement | null;
+  } | null = null;
+  private _ignoreNextItemClick = false;
 
   readonly categories: { id: WorkflowNodeCategory | 'all'; label: string; icon: string }[] = [
     { id: 'all', label: 'flow.workflow.categories.all', icon: 'grid' },
@@ -50,6 +65,13 @@ export class WorkflowPaletteComponent {
     { id: 'logic', label: 'flow.workflow.category.logic', icon: 'flow' },
     { id: 'action', label: 'flow.workflow.category.action', icon: 'bell' },
   ];
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this._removePointerListeners();
+      this.dragDropService.cancelDrag();
+    });
+  }
 
   readonly filteredItems = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -79,14 +101,86 @@ export class WorkflowPaletteComponent {
     this.isSearchOpen.update(v => !v);
   }
 
-  onDragStart(item: NodePaletteItem, event: DragEvent): void {
-    if (event.dataTransfer) {
-      event.dataTransfer.setData('application/json', JSON.stringify(item));
-      event.dataTransfer.effectAllowed = 'copy';
+  onItemPointerDown(item: NodePaletteItem, event: PointerEvent): void {
+    if (event.button !== 0) return;
+
+    this._removePointerListeners();
+    const cardEl = event.currentTarget as HTMLElement | null;
+    const svgIcon = cardEl?.querySelector('svg') ?? null;
+
+    this._pendingPointerDrag = {
+      item,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      started: false,
+      svgIcon,
+    };
+
+    window.addEventListener('pointermove', this._onWindowPointerMove);
+    window.addEventListener('pointerup', this._onWindowPointerUp);
+    window.addEventListener('pointercancel', this._onWindowPointerCancel);
+  }
+
+  private readonly _onWindowPointerMove = (event: PointerEvent): void => {
+    if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
+
+    const dx = Math.abs(event.clientX - this._pendingPointerDrag.startX);
+    const dy = Math.abs(event.clientY - this._pendingPointerDrag.startY);
+
+    if (!this._pendingPointerDrag.started) {
+      if (dx < 8 && dy < 8) return;
+
+      this._pendingPointerDrag.started = true;
+      this.dragDropService.beginDrag(
+        this._pendingPointerDrag.item,
+        { x: event.clientX, y: event.clientY },
+        this._pendingPointerDrag.svgIcon
+      );
+      event.preventDefault();
+      return;
     }
+
+    this.dragDropService.updateDrag({ x: event.clientX, y: event.clientY });
+    event.preventDefault();
+  };
+
+  private readonly _onWindowPointerUp = (event: PointerEvent): void => {
+    if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
+
+    const wasDragging = this._pendingPointerDrag.started;
+    const item = this._pendingPointerDrag.item;
+    this._pendingPointerDrag = null;
+    this._removePointerListeners();
+
+    if (wasDragging) {
+      this._ignoreNextItemClick = true;
+      setTimeout(() => {
+        this._ignoreNextItemClick = false;
+      }, 50);
+
+      const result = this.dragDropService.commitDrag({ x: event.clientX, y: event.clientY });
+      if (result) {
+        this.nodeAdded.emit(item);
+      }
+    }
+  };
+
+  private readonly _onWindowPointerCancel = (): void => {
+    this._pendingPointerDrag = null;
+    this._removePointerListeners();
+    this.dragDropService.cancelDrag();
+  };
+
+  private _removePointerListeners(): void {
+    window.removeEventListener('pointermove', this._onWindowPointerMove);
+    window.removeEventListener('pointerup', this._onWindowPointerUp);
+    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
   }
 
   addNodeToCanvas(item: NodePaletteItem): void {
+    if (this._ignoreNextItemClick) return;
+
     const vp = this.stateService.viewport();
     // Center node relative to current canvas camera
     const canvasX = (400 - vp.x) / vp.zoom;
@@ -99,5 +193,6 @@ export class WorkflowPaletteComponent {
       outputs: item.defaultOutputs,
       config: item.defaultConfig,
     });
+    this.nodeAdded.emit(item);
   }
 }

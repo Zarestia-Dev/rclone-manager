@@ -25,6 +25,17 @@
 
     <!-- Quick action buttons -->
     <div class="node-actions">
+      @if (nodeJob(); as job) {
+        <button
+          type="button"
+          class="action-btn job-btn"
+          [class.is-running]="job.status === 'Running'"
+          (click)="onInspectJob($event)"
+          [attr.title]="'flow.workflow.actions.inspectJob' | translate"
+        >
+          <mat-icon svgIcon="jobs"></mat-icon>
+        </button>
+      }
       <button
         type="button"
         class="action-btn"
@@ -60,9 +71,18 @@
       <div
         class="node-execution-badge"
         [ngClass]="'badge-' + node().state"
+        [class.has-job]="!!nodeJob()"
+        role="button"
+        tabindex="0"
+        (click)="onBadgeClick($event)"
+        (keydown.enter)="onBadgeClick($event)"
         [attr.title]="
-          ('flow.workflow.status.' + node().state | translate) +
-          (node().lastDurationMs ? ' (' + node().lastDurationMs + 'ms)' : '')
+          nodeJob()
+            ? ('flow.workflow.status.' + node().state | translate) +
+              ' - ' +
+              ('flow.workflow.actions.inspectJob' | translate)
+            : ('flow.workflow.status.' + node().state | translate) +
+              (node().lastDurationMs ? ' (' + node().lastDurationMs + 'ms)' : '')
         "
       >
         @if (node().state === 'running') {

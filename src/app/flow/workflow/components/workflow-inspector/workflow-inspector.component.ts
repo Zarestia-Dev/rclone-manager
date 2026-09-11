@@ -23,7 +23,15 @@ import { ModalService } from '../../../../services/ui/modal.service';
 import { QuickRunService } from '../../../../services/flow/quick-run.service';
 import { MountManagementService } from '../../../../services/operations/mount-management.service';
 import { ServeManagementService } from '../../../../services/operations/serve-management.service';
-import { ALL_PRIMARY_ACTIONS, PrimaryActionType, MountedRemote, ServeListItem } from '@app/types';
+import { JobManagementService } from '../../../../services/operations/job-management.service';
+import {
+  ALL_PRIMARY_ACTIONS,
+  PrimaryActionType,
+  MountedRemote,
+  ServeListItem,
+  JobInfo,
+} from '@app/types';
+import { FormatFileSizePipe } from '@app/pipes';
 import {
   getNodeStyleMeta,
   getNotificationIcon,
@@ -56,6 +64,7 @@ export { ActiveConfigItem, PRIMARY_EXCLUDED_KEYS };
     MatSelectModule,
     MatOptionModule,
     TranslatePipe,
+    FormatFileSizePipe,
     TriggerNodeFormComponent,
     TaskNodeFormComponent,
     LogicNodeFormComponent,
@@ -71,6 +80,7 @@ export class WorkflowInspectorComponent {
   readonly storageService = inject(WorkflowStorageService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
   private readonly quickRunService = inject(QuickRunService, { optional: true });
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
@@ -260,6 +270,24 @@ export class WorkflowInspectorComponent {
     const urlProto = proto === 'webdav' || proto === 'restic' ? 'http' : proto;
     return `${urlProto}://${addr}`;
   });
+
+  readonly selectedNodeJob = computed<JobInfo | null>(() => {
+    const node = this.selectedNode();
+    const currentWf = this.activeWorkflow();
+    if (!node || !currentWf) return null;
+    const qrId = node.config?.['quickRunId'] as string | undefined;
+    return this.jobService.getLatestJobForWorkflowNode(currentWf.id, node.id, qrId);
+  });
+
+  openJobDetail(job: JobInfo): void {
+    this.modalService.openJobDetail(job);
+  }
+
+  jobProgressPercent(job: JobInfo): number {
+    const stats = job.stats;
+    if (!stats || !stats.totalBytes || stats.totalBytes === 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((stats.bytes / stats.totalBytes) * 100)));
+  }
 
   readonly activeConfigEntries = computed<ActiveConfigItem[]>(() =>
     extractActiveConfigEntries(this.nodeConfig())

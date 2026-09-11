@@ -7,7 +7,10 @@ import { getNodeStyleMeta, getNotificationIcon } from '../../../utils/node-style
 import { formatCronHumanReadable } from '../../../../../services/i18n/cron-locale.mapper';
 import { MountManagementService } from '../../../../../services/operations/mount-management.service';
 import { ServeManagementService } from '../../../../../services/operations/serve-management.service';
+import { JobManagementService } from '../../../../../services/operations/job-management.service';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
+import { ModalService } from '../../../../../services/ui/modal.service';
+import { JobInfo } from '@app/types';
 
 export interface NodePortRow {
   inputPort?: WorkflowPort;
@@ -24,12 +27,22 @@ export interface NodePortRow {
 export class WorkflowNodeComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
+  private readonly jobService = inject(JobManagementService);
+  private readonly modalService = inject(ModalService);
   private readonly stateService = inject(WorkflowStateService);
   private readonly translate = inject(TranslateService);
 
   readonly node = input.required<WorkflowNode>();
   readonly isSelected = input<boolean>(false);
   readonly zoom = input<number>(1);
+
+  readonly nodeJob = computed<JobInfo | null>(() => {
+    const n = this.node();
+    const currentWfId = this.stateService.currentWorkflow()?.id;
+    if (!currentWfId) return null;
+    const qrId = n.config?.['quickRunId'] as string | undefined;
+    return this.jobService.getLatestJobForWorkflowNode(currentWfId, n.id, qrId);
+  });
 
   readonly displaySubtitle = computed(() => {
     const n = this.node();
@@ -130,6 +143,20 @@ export class WorkflowNodeComponent {
   onInspect(event: MouseEvent): void {
     event.stopPropagation();
     this.inspectNode.emit(this.node().id);
+  }
+
+  onInspectJob(event: Event): void {
+    event.stopPropagation();
+    const job = this.nodeJob();
+    if (job) {
+      this.modalService.openJobDetail(job);
+    }
+  }
+
+  onBadgeClick(event: Event): void {
+    if (this.nodeJob()) {
+      this.onInspectJob(event);
+    }
   }
 
   onPortMouseDown(port: WorkflowPort, event: MouseEvent): void {

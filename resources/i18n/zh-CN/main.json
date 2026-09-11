@@ -3364,7 +3364,8 @@
         "delete": "删除节点",
         "duplicateWorkflow": "复制工作流",
         "deleteWorkflow": "删除工作流",
-        "exportWorkflow": "导出 JSON"
+        "exportWorkflow": "导出 JSON",
+        "inspectJob": "检查任务"
       },
       "toolbar": {
         "selectWorkflow": "选择工作流",
@@ -3529,7 +3530,11 @@
         "archiveFormat": "归档格式",
         "archivePrefix": "内部前缀（可选）",
         "downloadUrl": "下载链接",
-        "autoFilename": "自动确定文件名"
+        "autoFilename": "自动确定文件名",
+        "jobDetailsTitle": "任务详情",
+        "inspectJobBtn": "检查任务详情",
+        "transfers": "传输",
+        "errors": "错误"
       },
       "status": {
         "running": "运行中",
@@ -3635,6 +3640,10 @@
       "editor": {
         "configureNode": "配置节点：{{type}}",
         "nodeSaved": "工作流节点设置已更新"
+      },
+      "emptyState": {
+        "title": "欢迎使用工作流构建器",
+        "subtitle": "创建新的工作流以自动化您的rclone操作，或选择一个已有工作流继续编辑。"
       }
     },
     "shortcuts": {

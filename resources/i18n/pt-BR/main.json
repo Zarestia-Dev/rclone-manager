@@ -3364,7 +3364,8 @@
         "delete": "Excluir Nó",
         "duplicateWorkflow": "Duplicar Fluxo",
         "deleteWorkflow": "Excluir Fluxo",
-        "exportWorkflow": "Exportar JSON"
+        "exportWorkflow": "Exportar JSON",
+        "inspectJob": "Inspecionar Tarefa"
       },
       "toolbar": {
         "selectWorkflow": "Selecionar Fluxo",
@@ -3529,7 +3530,11 @@
         "archiveFormat": "Formato do arquivo",
         "archivePrefix": "Prefixo interno (opcional)",
         "downloadUrl": "URL de download",
-        "autoFilename": "Determinar nome de arquivo automaticamente"
+        "autoFilename": "Determinar nome de arquivo automaticamente",
+        "jobDetailsTitle": "Detalhes da Tarefa",
+        "inspectJobBtn": "Inspecionar Detalhes da Tarefa",
+        "transfers": "Transferências",
+        "errors": "Erros"
       },
       "status": {
         "running": "Executando",
@@ -3635,6 +3640,10 @@
       "editor": {
         "configureNode": "Configurar Nó: {{type}}",
         "nodeSaved": "Configurações do nó de fluxo de trabalho atualizadas"
+      },
+      "emptyState": {
+        "title": "Bem-vindo ao Construtor de Fluxos",
+        "subtitle": "Crie um novo fluxo de trabalho para automatizar suas operações rclone ou escolha um existente para continuar editando."
       }
     },
     "shortcuts": {

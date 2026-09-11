@@ -79,6 +79,10 @@ export interface JobChangeEvent {
   remote?: string;
   source?: string;
   destination?: string;
+  profile?: string;
+  quickRunId?: string;
+  workflowId?: string;
+  nodeId?: string;
 }
 
 export interface SystemStatusPayload {

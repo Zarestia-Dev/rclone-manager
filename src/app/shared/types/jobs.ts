@@ -130,6 +130,7 @@ export interface JobInfo {
   profile?: string;
   quick_run_id?: string;
   workflow_id?: string;
+  node_id?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */

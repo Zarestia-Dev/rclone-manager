@@ -50,7 +50,7 @@ export class JobDetailModalComponent {
 
   readonly jobData = computed<JobInfo>(() => {
     return (
-      this.jobService.jobs().find(j => j.jobid === this.initialData.jobid) ??
+      this.jobService.getJob(this.initialData.execute_id ?? '', this.initialData.jobid) ??
       ({
         jobid: this.initialData.jobid,
         execute_id: this.initialData.execute_id ?? '',

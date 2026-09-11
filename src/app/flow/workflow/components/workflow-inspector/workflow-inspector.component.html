@@ -79,6 +79,81 @@
         </div>
       }
 
+      <!-- Associated Rclone Job Section -->
+      @if (selectedNodeJob(); as job) {
+        <div class="inspector-section job-detail-section">
+          <div class="section-title">
+            <mat-icon svgIcon="jobs"></mat-icon>
+            <span>{{ 'flow.workflow.inspector.jobDetailsTitle' | translate }}</span>
+            <span class="job-id-pill">#{{ job.jobid }}</span>
+          </div>
+
+          <div class="job-summary-card" [attr.data-status]="job.status">
+            <div class="job-summary-header">
+              <div class="job-meta-left">
+                <span class="job-type-pill">{{ job.job_type | titlecase }}</span>
+                @if (job.dry_run) {
+                  <span class="app-pill p-accent dry-run-pill">
+                    {{ 'detailShared.jobs.dryRun' | translate }}
+                  </span>
+                }
+              </div>
+              <span class="job-status-tag" [attr.data-status]="job.status">
+                @if (job.status === 'Running') {
+                  <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+                }
+                {{ job.status | titlecase }}
+              </span>
+            </div>
+
+            @if (job.stats) {
+              <div class="job-stats-mini">
+                @if (job.stats.totalBytes > 0) {
+                  <div class="stat-progress-bar">
+                    <div class="stat-progress-fill" [style.width.%]="jobProgressPercent(job)"></div>
+                  </div>
+                  <div class="stat-row">
+                    <span class="stat-bytes">
+                      {{ job.stats.bytes | formatFileSize }} /
+                      {{ job.stats.totalBytes | formatFileSize }} ({{ jobProgressPercent(job) }}%)
+                    </span>
+                    @if (job.stats.speed > 0) {
+                      <span class="stat-speed">{{ job.stats.speed | formatFileSize }}/s</span>
+                    }
+                  </div>
+                }
+                @if (job.stats.transfers > 0 || job.stats.totalTransfers > 0) {
+                  <div class="stat-row sub-row">
+                    <span>
+                      {{ 'flow.workflow.inspector.transfers' | translate }}:
+                      {{ job.stats.transfers }} / {{ job.stats.totalTransfers }}
+                    </span>
+                    @if (job.stats.errors > 0) {
+                      <span class="stat-errors"
+                        >{{ job.stats.errors }}
+                        {{ 'flow.workflow.inspector.errors' | translate }}</span
+                      >
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="job-actions">
+              <button
+                matButton="filled"
+                type="button"
+                class="inspect-job-action-btn"
+                (click)="openJobDetail(job)"
+              >
+                <mat-icon svgIcon="jobs"></mat-icon>
+                <span>{{ 'flow.workflow.inspector.inspectJobBtn' | translate }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Live Active Service Section (Mount or Serve) -->
       @if (activeMount(); as mount) {
         <div class="inspector-section live-service-section">

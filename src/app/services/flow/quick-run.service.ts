@@ -16,7 +16,6 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { AutomationService } from '../operations/automation.service';
 import { ModalService } from '../ui/modal.service';
 import { findUniqueName } from '../remote/utils/unique-name.util';
-import { generatePrefixedId } from 'src/app/shared/utils';
 
 /**
  * Front-end store for the Flow workspace's "Quick Run" feature.
@@ -278,19 +277,16 @@ export class QuickRunService extends TauriBaseService {
           })
         : await this.invokeCommand<QuickRun>('create_quick_run', { quickRun: input });
 
-      const itemToStore = saved
-        ? { ...saved, status: saved.status ?? 'idle' }
-        : this.synthesizeLocal(input);
+      if (!saved) return null;
 
+      const itemToStore: QuickRun = { ...saved, status: saved.status ?? 'idle' };
       this.mergeIntoStore(itemToStore);
       void this.automationService.refreshAutomations();
       return itemToStore;
     } catch (err) {
-      console.error('[QuickRunService] save failed, falling back to in-memory:', err);
+      console.error('[QuickRunService] save failed:', err);
       this.notificationService.showError(err);
-      const local = this.synthesizeLocal(input);
-      this.mergeIntoStore(local);
-      return local;
+      return null;
     } finally {
       this._isSaving.set(false);
     }
@@ -300,12 +296,13 @@ export class QuickRunService extends TauriBaseService {
   async remove(id: string): Promise<void> {
     try {
       await this.invokeCommand('delete_quick_run', { quickRunId: id });
+      this._quickRuns.update(list => list.filter(qr => qr.id !== id));
+      if (this._selectedId() === id) this._selectedId.set(null);
+      void this.automationService.refreshAutomations();
     } catch (err) {
-      console.warn('[QuickRunService] delete_quick_run not available, removing locally:', err);
+      console.error('[QuickRunService] delete_quick_run failed:', err);
+      this.notificationService.showError(err);
     }
-    this._quickRuns.update(list => list.filter(qr => qr.id !== id));
-    if (this._selectedId() === id) this._selectedId.set(null);
-    void this.automationService.refreshAutomations();
   }
 
   /**
@@ -425,25 +422,5 @@ export class QuickRunService extends TauriBaseService {
 
   private patchInStore(id: string, patch: Partial<QuickRun>): void {
     this._quickRuns.update(list => list.map(qr => (qr.id === id ? { ...qr, ...patch } : qr)));
-  }
-
-  /**
-   * Build a fully-formed {@link QuickRun} from a {@link QuickRunInput} when
-   * the backend isn't available. The synthesised record uses a random id and `status: 'idle'`.
-   */
-  private synthesizeLocal(input: QuickRunInput): QuickRun {
-    return {
-      id: input.id ?? this.generateId(),
-      name: input.name,
-      description: input.description,
-      operationType: input.operationType,
-      remoteName: input.remoteName,
-      config: input.config,
-      status: 'idle' satisfies QuickRunStatus,
-    };
-  }
-
-  private generateId(): string {
-    return generatePrefixedId('qr');
   }
 }

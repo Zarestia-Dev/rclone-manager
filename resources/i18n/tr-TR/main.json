@@ -3403,6 +3403,7 @@
       "actions": {
         "duplicate": "Düğümü Çoğalt",
         "delete": "Düğümü Sil",
+        "inspectJob": "Görevi İncele",
         "duplicateWorkflow": "İş Akışını Çoğalt",
         "deleteWorkflow": "İş Akışını Sil",
         "exportWorkflow": "JSON Dışa Aktar"
@@ -3570,7 +3571,11 @@
         "archiveFormat": "Arşiv Formatı",
         "archivePrefix": "Dahili Ön Ek (İsteğe Bağlı)",
         "downloadUrl": "İndirme URL'si",
-        "autoFilename": "Dosya Adını Otomatik Belirle"
+        "autoFilename": "Dosya Adını Otomatik Belirle",
+        "jobDetailsTitle": "Görev Detayları",
+        "inspectJobBtn": "Görev Detaylarını İncele",
+        "transfers": "Aktarımlar",
+        "errors": "Hata"
       },
       "liveStatus": {
         "mounted": "Bağlı",
@@ -3676,6 +3681,10 @@
       "editor": {
         "configureNode": "Düğümü Yapılandır: {{type}}",
         "nodeSaved": "İş akışı düğüm ayarları güncellendi"
+      },
+      "emptyState": {
+        "title": "İş Akışı Oluşturucu",
+        "subtitle": "Rclone işlemlerinizi otomatikleştirmek için yeni bir iş akışı oluşturun veya mevcut birini seçerek düzenlemeye devam edin."
       }
     },
     "shortcuts": {

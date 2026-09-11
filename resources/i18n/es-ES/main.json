@@ -3364,7 +3364,8 @@
         "delete": "Eliminar nodo",
         "duplicateWorkflow": "Duplicar flujo",
         "deleteWorkflow": "Eliminar flujo",
-        "exportWorkflow": "Exportar JSON"
+        "exportWorkflow": "Exportar JSON",
+        "inspectJob": "Inspeccionar Tarea"
       },
       "toolbar": {
         "selectWorkflow": "Seleccionar flujo",
@@ -3529,7 +3530,11 @@
         "archiveFormat": "Formato de archivo",
         "archivePrefix": "Prefijo interno (opcional)",
         "downloadUrl": "URL de descarga",
-        "autoFilename": "Determinar nombre de archivo automáticamente"
+        "autoFilename": "Determinar nombre de archivo automáticamente",
+        "jobDetailsTitle": "Detalles de la Tarea",
+        "inspectJobBtn": "Inspeccionar Detalles de la Tarea",
+        "transfers": "Transferencias",
+        "errors": "Errores"
       },
       "status": {
         "running": "En ejecución",
@@ -3635,6 +3640,10 @@
       "editor": {
         "configureNode": "Configurar nodo: {{type}}",
         "nodeSaved": "Ajustes del nodo de flujo de trabajo actualizados"
+      },
+      "emptyState": {
+        "title": "Bienvenido al Constructor de Flujos",
+        "subtitle": "Crea un nuevo flujo de trabajo para automatizar tus operaciones de rclone, o elige uno existente para seguir editando."
       }
     },
     "shortcuts": {

@@ -24,11 +24,11 @@ use super::types::{
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::{
-    common::{FromConfig, is_directory, parse_common_config},
-    job::{JobMetadata, SubmitJobOptions, submit_batch_job, submit_job_with_options},
+    common::{FromConfig, parse_common_config},
+    job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
     mount::{MountParams, mount_remote},
     serve::{ServeParams, start_serve},
-    sync::GenericTransferParams,
+    sync::submit_transfer_batch,
 };
 use crate::utils::{
     app::notification::{NotificationEvent, WorkflowStage, notify},
@@ -904,6 +904,8 @@ async fn execute_single_node(
             let res = crate::core::flow::quick_run::commands::start_quick_run(
                 app.clone(),
                 qr_id.to_string(),
+                Some(workflow.id.clone()),
+                Some(node.id.clone()),
             )
             .await?;
 
@@ -1353,6 +1355,11 @@ async fn execute_single_node(
                         p["include"] = inc.clone();
                     }
                 }
+                if dry_run {
+                    p["dryRun"] = json!(true);
+                    p["dry_run"] = json!(true);
+                    p["_config"] = json!({ "DryRun": true });
+                }
                 (crate::utils::rclone::endpoints::operations::ARCHIVE, p)
             } else {
                 let mut args = vec!["create".to_string(), source.clone(), final_dest.clone()];
@@ -1442,11 +1449,6 @@ async fn execute_single_node(
             let common = parse_common_config(op.config, &op.empty_settings)
                 .ok_or_else(|| format!("Incomplete transfer config for node '{}'", node.title))?;
 
-            let mut backend_opts = common.backend_options.unwrap_or_default();
-            if dry_run {
-                backend_opts.insert("DryRun".to_string(), json!(true));
-            }
-
             let dest_resolved = if !op.remote.is_empty() && !common.dest.contains(':') {
                 if common.dest.is_empty() {
                     format!("{}:", op.remote)
@@ -1457,31 +1459,11 @@ async fn execute_single_node(
                 common.dest.clone()
             };
 
-            let mut inputs = Vec::new();
-            for source in &common.source {
-                let is_dir = if op_type == OperationType::Copyurl {
-                    false
-                } else {
-                    is_directory(app, source, common.runtime_remote_options.as_ref())
-                        .await
-                        .unwrap_or(true)
-                };
-
-                let body = GenericTransferParams {
-                    source: source.clone(),
-                    dest: dest_resolved.clone(),
-                    rclone_config: common.rclone_config.clone(),
-                    filter_options: common.filter_options.clone(),
-                    backend_options: Some(backend_opts.clone()),
-                    runtime_remote_options: common.runtime_remote_options.clone(),
-                    transfer_type: op_type,
-                    is_dir,
-                }
-                .to_rclone_body()
-                .map_err(|e| format!("Transfer body error: {e}"))?;
-
-                inputs.push(body);
-            }
+            let target_pairs: Vec<(String, String)> = common
+                .source
+                .iter()
+                .map(|s| (s.clone(), dest_resolved.clone()))
+                .collect();
 
             let metadata = JobMetadata::new(
                 op.remote.to_string(),
@@ -1494,7 +1476,16 @@ async fn execute_single_node(
             .with_node_id(Some(node.id.clone()))
             .with_dry_run(dry_run);
 
-            let job_id_str = submit_batch_job(app.clone(), inputs, metadata).await?;
+            let job_id_str = submit_transfer_batch(
+                app.clone(),
+                op_type,
+                target_pairs,
+                &common,
+                dry_run,
+                metadata,
+            )
+            .await?;
+
             let job_id = job_id_str
                 .parse::<u64>()
                 .map_err(|e| format!("Invalid job ID returned by batch submission: {e}"))?;
@@ -2668,6 +2659,7 @@ mod tests {
             runtime_remote_options: copyurl_common.runtime_remote_options.clone(),
             transfer_type: OperationType::Copyurl,
             is_dir: false,
+            dry_run: None,
         }
         .to_rclone_body()
         .expect("Failed to generate copyurl rclone body");
@@ -2808,6 +2800,94 @@ mod tests {
         assert_eq!(metadata.workflow_id.as_deref(), Some("wf-123"));
         assert_eq!(metadata.node_id.as_deref(), Some("node-456"));
         assert!(metadata.dry_run);
+    }
+
+    #[test]
+    fn test_workflow_bisync_and_transfer_dry_run_payload_generation() {
+        let dry_run = true;
+
+        // 1. Bisync payload verification: GenericTransferParams automatically injects
+        // both modern flat dryRun/dry_run and legacy _config.DryRun without manual map mutations
+        let bisync_params = crate::rclone::commands::sync::GenericTransferParams {
+            source: "remote:path1".to_string(),
+            dest: "local:/path2".to_string(),
+            rclone_config: json!({
+                "resync": true
+            }),
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: None,
+            transfer_type: OperationType::Bisync,
+            is_dir: true,
+            dry_run: Some(dry_run),
+        };
+
+        let bisync_body = bisync_params
+            .to_rclone_body()
+            .expect("Bisync body generation must succeed");
+        let bisync_obj = bisync_body
+            .as_object()
+            .expect("Payload must be a JSON object");
+
+        assert_eq!(
+            bisync_obj.get("path1").and_then(Value::as_str),
+            Some("remote:path1")
+        );
+        assert_eq!(
+            bisync_obj.get("path2").and_then(Value::as_str),
+            Some("local:/path2")
+        );
+        assert_eq!(
+            bisync_obj.get("dryRun").and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            bisync_obj.get("dry_run").and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            bisync_obj.get("resync").and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            bisync_obj
+                .get("_config")
+                .and_then(|c| c.get("DryRun"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+
+        // 2. Standard Sync payload verification
+        let sync_params = crate::rclone::commands::sync::GenericTransferParams {
+            source: "src:".to_string(),
+            dest: "dst:".to_string(),
+            rclone_config: json!({}),
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: None,
+            transfer_type: OperationType::Sync,
+            is_dir: true,
+            dry_run: Some(dry_run),
+        };
+
+        let sync_body = sync_params
+            .to_rclone_body()
+            .expect("Sync body generation must succeed");
+        let sync_obj = sync_body
+            .as_object()
+            .expect("Payload must be a JSON object");
+
+        assert_eq!(sync_obj.get("srcFs").and_then(Value::as_str), Some("src:"));
+        assert_eq!(sync_obj.get("dstFs").and_then(Value::as_str), Some("dst:"));
+        assert_eq!(sync_obj.get("dryRun").and_then(Value::as_bool), Some(true));
+        assert_eq!(sync_obj.get("dry_run").and_then(Value::as_bool), Some(true));
+        assert_eq!(
+            sync_obj
+                .get("_config")
+                .and_then(|c| c.get("DryRun"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
     }
 
     #[test]

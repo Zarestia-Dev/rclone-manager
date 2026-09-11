@@ -120,13 +120,7 @@ pub async fn duplicate_workflow(
     let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
 
     let base_name = format!("{} (Copy)", existing.name);
-    let mut new_name = base_name.clone();
-    let mut counter = 2;
-
-    while existing_names.contains(&new_name) {
-        new_name = format!("{base_name} {counter}");
-        counter += 1;
-    }
+    let new_name = find_unique_name(&existing_names, &base_name);
 
     let now = Utc::now().to_rfc3339();
     let new_id = format!("wf-{}", uuid::Uuid::new_v4());
@@ -202,13 +196,7 @@ pub async fn import_workflow(
     } else {
         format!("{} (Imported)", parsed.name)
     };
-
-    let mut new_name = base_name.clone();
-    let mut counter = 2;
-    while existing_names.contains(&new_name) {
-        new_name = format!("{base_name} {counter}");
-        counter += 1;
-    }
+    let new_name = find_unique_name(&existing_names, &base_name);
 
     let now = Utc::now().to_rfc3339();
     parsed.id = format!("wf-{}", uuid::Uuid::new_v4());
@@ -222,6 +210,21 @@ pub async fn import_workflow(
 }
 
 // ── Persistence Helpers ──────────────────────────────────────────────────
+
+/// Finds a unique workflow name by appending sequential numbers if a collision occurs with existing names.
+pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> String {
+    if !existing_names.contains(base_name) {
+        return base_name.to_string();
+    }
+    let mut counter = 2;
+    loop {
+        let candidate = format!("{base_name} {counter}");
+        if !existing_names.contains(&candidate) {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
 
 pub fn get_all_workflows_sync(
     manager: &AppSettingsManager,
@@ -276,30 +279,20 @@ pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Res
 }
 
 pub async fn sync_workflow_automations_bg(app: &AppHandle) {
+    use crate::core::automation::engine::apply_and_sync_automations;
+    use crate::core::settings::AppSettingsManager;
+    use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
+
     let manager = app.state::<AppSettingsManager>();
-    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    let cache_state = app.state::<crate::rclone::state::automations::AutomationsCache>();
-    let scheduler_state = app.state::<crate::core::automation::engine::AutomationScheduler>();
+    let cache = app.state::<AutomationsCache>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
 
-    if let Ok(workflows) = get_all_workflows_sync(&manager) {
-        let backend_name = backend_manager.get_active_name().await;
-        if let Ok(result) = cache_state
-            .load_from_workflows(&workflows, &backend_name)
-            .await
-        {
-            let _ = scheduler_state
-                .apply_cache_result(&result, cache_state)
-                .await;
-        }
-
-        let watcher_manager = app.state::<crate::core::automation::watcher::WatcherManager>();
-        if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
-            log::error!("Failed to sync watchers for workflows: {e}");
-        }
+    if let Ok(workflows) = get_all_workflows_sync(&manager)
+        && let Ok(result) = cache.load_from_workflows(&workflows, &backend_name).await
+    {
+        apply_and_sync_automations(app, &result).await;
     }
-
-    #[cfg(all(desktop, feature = "tray"))]
-    let _ = crate::core::tray::core::update_tray_menu(app.clone()).await;
 }
 
 #[cfg(test)]
@@ -362,5 +355,26 @@ mod tests {
         delete_workflow_by_id_sync(&manager, "wf-test-1").unwrap();
         let after_delete = get_workflow_by_id(&manager, "wf-test-1").unwrap();
         assert!(after_delete.is_none());
+    }
+
+    #[test]
+    fn test_find_unique_name() {
+        let mut names = HashSet::new();
+        assert_eq!(
+            find_unique_name(&names, "Workflow (Copy)"),
+            "Workflow (Copy)"
+        );
+
+        names.insert("Workflow (Copy)".to_string());
+        assert_eq!(
+            find_unique_name(&names, "Workflow (Copy)"),
+            "Workflow (Copy) 2"
+        );
+
+        names.insert("Workflow (Copy) 2".to_string());
+        assert_eq!(
+            find_unique_name(&names, "Workflow (Copy)"),
+            "Workflow (Copy) 3"
+        );
     }
 }

@@ -134,4 +134,32 @@ export class WorkflowToolbarComponent {
     this.stateService.loadWorkflow(instantiated);
     void this.storageService.saveWorkflow(instantiated);
   }
+
+  undo(): void {
+    this.stateService.undo();
+  }
+
+  redo(): void {
+    this.stateService.redo();
+  }
+
+  zoomIn(): void {
+    this.stateService.zoomIn();
+  }
+
+  zoomOut(): void {
+    this.stateService.zoomOut();
+  }
+
+  resetZoom(): void {
+    this.stateService.resetZoom();
+  }
+
+  fitToView(): void {
+    this.stateService.fitToView();
+  }
+
+  toggleSnapToGrid(): void {
+    this.stateService.snapToGrid.set(!this.stateService.snapToGrid());
+  }
 }

@@ -46,9 +46,13 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
                 let app = app_handle.clone();
                 let qr_id = qr.id.clone();
                 tokio::spawn(async move {
-                    if let Err(e) =
-                        crate::core::flow::quick_run::commands::start_quick_run(app, qr_id.clone())
-                            .await
+                    if let Err(e) = crate::core::flow::quick_run::commands::start_quick_run(
+                        app,
+                        qr_id.clone(),
+                        None,
+                        None,
+                    )
+                    .await
                     {
                         log::error!("Failed to auto-start Quick Run {qr_id}: {e}");
                     }

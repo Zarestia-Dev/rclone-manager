@@ -18,6 +18,7 @@ import { WorkflowMinimapComponent } from './workflow-minimap/workflow-minimap.co
 import { generateCubicBezierPath } from '../../utils/bezier.util';
 import { WorkflowNode } from '../../types/workflow.types';
 import { ModalService } from '../../../../services/ui/modal.service';
+import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag-drop.service';
 import { NODE_WIDTH, PORT_ROW_START_Y, PORT_ROW_HEIGHT } from '../../constants/workflow.constants';
 import { hasDetailedConfig } from '../../utils/node-style.util';
 import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
@@ -31,6 +32,7 @@ import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboa
 })
 export class WorkflowCanvasComponent {
   readonly stateService = inject(WorkflowStateService);
+  readonly dragDropService = inject(WorkflowDragDropService);
   readonly engineService = inject(WorkflowEngineService);
   private readonly modalService = inject(ModalService);
 
@@ -229,6 +231,124 @@ export class WorkflowCanvasComponent {
     };
   }
 
+  onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
+    if (event.touches.length !== 1) return;
+    event.stopPropagation();
+
+    this.draggingNodeId.set(node.id);
+    this.stateService.selectNode(node.id, false);
+
+    const container = this.canvasContainer()?.nativeElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const vp = this.viewport();
+
+    const touch = event.touches[0];
+    const canvasX = (touch.clientX - rect.left - vp.x) / vp.zoom;
+    const canvasY = (touch.clientY - rect.top - vp.y) / vp.zoom;
+
+    this.dragOffset = {
+      x: canvasX - node.x,
+      y: canvasY - node.y,
+    };
+  }
+
+  // ── Touch Gestures (Canvas Pan & Pinch-to-Zoom) ───────────────────────────
+
+  private isPinching = false;
+  private initialPinchDist = 0;
+  private initialPinchZoom = 1;
+  private pinchMidpoint = { x: 0, y: 0 };
+
+  onCanvasTouchStart(event: TouchEvent): void {
+    const touches = event.touches;
+    if (touches.length === 1) {
+      const target = event.target as HTMLElement | null;
+      const isNode = target?.closest('.workflow-node-positioned');
+      if (!isNode) {
+        this.isPanning.set(true);
+        this.isPinching = false;
+        this.panStart = { x: touches[0].clientX, y: touches[0].clientY };
+        this.initialViewport = { ...this.viewport() };
+        this.stateService.clearSelection();
+      }
+    } else if (touches.length === 2) {
+      this.isPanning.set(false);
+      this.isPinching = true;
+      const container = this.canvasContainer()?.nativeElement;
+      const rect = container?.getBoundingClientRect();
+      const t1 = touches[0];
+      const t2 = touches[1];
+      this.initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      this.initialPinchZoom = this.viewport().zoom;
+      if (rect) {
+        this.pinchMidpoint = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+      }
+    }
+  }
+
+  onCanvasTouchMove(event: TouchEvent): void {
+    const touches = event.touches;
+    if (this.isPinching && touches.length === 2) {
+      event.preventDefault();
+      const t1 = touches[0];
+      const t2 = touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      if (this.initialPinchDist > 0) {
+        const scale = dist / this.initialPinchDist;
+        this.stateService.setZoom(
+          this.initialPinchZoom * scale,
+          this.pinchMidpoint.x,
+          this.pinchMidpoint.y
+        );
+      }
+      return;
+    }
+
+    if (this.isPanning() && touches.length === 1) {
+      event.preventDefault();
+      const dx = touches[0].clientX - this.panStart.x;
+      const dy = touches[0].clientY - this.panStart.y;
+      this.stateService.setPan(this.initialViewport.x + dx, this.initialViewport.y + dy);
+      return;
+    }
+
+    const dragId = this.draggingNodeId();
+    if (dragId && touches.length === 1) {
+      event.preventDefault();
+      const container = this.canvasContainer()?.nativeElement;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const vp = this.viewport();
+
+      const canvasX = (touches[0].clientX - rect.left - vp.x) / vp.zoom;
+      const canvasY = (touches[0].clientY - rect.top - vp.y) / vp.zoom;
+
+      this.stateService.updateNodePosition(
+        dragId,
+        canvasX - this.dragOffset.x,
+        canvasY - this.dragOffset.y
+      );
+      return;
+    }
+  }
+
+  onCanvasTouchEnd(event: TouchEvent): void {
+    if (event.touches.length === 0) {
+      this.isPanning.set(false);
+      this.isPinching = false;
+      this.draggingNodeId.set(null);
+    } else if (event.touches.length === 1 && this.isPinching) {
+      this.isPinching = false;
+      this.isPanning.set(true);
+      this.panStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      this.initialViewport = { ...this.viewport() };
+    }
+  }
+
   onStartConnecting(sourceNodeId: string, portId: string, event: MouseEvent): void {
     const container = this.canvasContainer()?.nativeElement;
     if (!container) return;
@@ -243,49 +363,6 @@ export class WorkflowCanvasComponent {
 
   onPortMouseUp(targetNodeId: string, portId: string): void {
     this.stateService.finishConnecting(targetNodeId, portId);
-  }
-
-  // ── HTML5 Drag & Drop from Palette ───────────────────────────────────────
-
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  }
-
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    const dataStr = event.dataTransfer?.getData('application/json');
-    if (!dataStr) return;
-
-    try {
-      const paletteItem = JSON.parse(dataStr);
-      const container = this.canvasContainer()?.nativeElement;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const vp = this.viewport();
-
-      const canvasX = (event.clientX - rect.left - vp.x) / vp.zoom;
-      const canvasY = (event.clientY - rect.top - vp.y) / vp.zoom;
-
-      this.stateService.addNode(
-        paletteItem.type,
-        paletteItem.category,
-        paletteItem.title,
-        canvasX,
-        canvasY,
-        {
-          icon: paletteItem.icon,
-          inputs: paletteItem.defaultInputs,
-          outputs: paletteItem.defaultOutputs,
-          config: paletteItem.defaultConfig,
-        }
-      );
-    } catch (err) {
-      console.warn('[WorkflowCanvas] Failed to parse dropped palette item:', err);
-    }
   }
 
   onMinimapPanTo(pos: { x: number; y: number }): void {

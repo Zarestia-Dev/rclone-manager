@@ -1,5 +1,5 @@
 import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
-import { interval, merge } from 'rxjs';
+import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { BatchApiLabel, JobInfo, Origin } from '@app/types';
@@ -27,22 +27,9 @@ export class JobManagementService extends TauriBaseService {
   constructor() {
     super();
     this.initializeEventListeners();
-    this.initializePolling();
     this.refreshJobs().catch(err =>
       console.error('[JobManagementService] initial job load failed:', err)
     );
-  }
-
-  private initializePolling(): void {
-    interval(1000)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        if (this.activeJobs().length === 0) return;
-
-        this.refreshJobs().catch(() => {
-          /* empty */
-        });
-      });
   }
 
   private initializeEventListeners(): void {
@@ -84,10 +71,46 @@ export class JobManagementService extends TauriBaseService {
     })[0];
   }
 
+  getJob(executeId: string, jobid?: number): JobInfo | undefined {
+    const foundByExec = this._jobs().find(j => j.execute_id === executeId);
+    if (foundByExec) return foundByExec;
+    return jobid !== undefined ? this._jobs().find(j => j.jobid === jobid) : undefined;
+  }
+
+  getActiveJobForWorkflowNode(workflowId: string, nodeId: string): JobInfo | null {
+    return (
+      this.activeJobs().find(
+        job => !job.parent_job_id && job.workflow_id === workflowId && job.node_id === nodeId
+      ) ?? null
+    );
+  }
+
+  getLatestJobForWorkflowNode(
+    workflowId: string,
+    nodeId: string,
+    quickRunId?: string
+  ): JobInfo | null {
+    const matching = this._jobs().filter(
+      job =>
+        !job.parent_job_id &&
+        ((job.workflow_id === workflowId && job.node_id === nodeId) ||
+          (Boolean(quickRunId) && job.quick_run_id === quickRunId))
+    );
+    if (matching.length === 0) return null;
+
+    const running = matching.find(j => j.status === 'Running');
+    if (running) return running;
+
+    return matching.sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
+      const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
+      return tb !== ta ? tb - ta : b.jobid - a.jobid;
+    })[0];
+  }
+
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
     this._jobs.set(jobs);
-    console.log('[JobManagementService] refreshJobs:', jobs);
     return jobs;
   }
 

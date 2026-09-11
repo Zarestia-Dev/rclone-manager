@@ -314,6 +314,23 @@ impl Default for AutomationScheduler {
     }
 }
 
+/// Unified helper to apply automations cache update result, resync watchers, and update system tray.
+pub async fn apply_and_sync_automations(app: &AppHandle, result: &CacheUpdateResult) {
+    let cache = app.state::<AutomationsCache>();
+    let scheduler = app.state::<AutomationScheduler>();
+    let watcher = app.state::<crate::core::automation::watcher::WatcherManager>();
+
+    if let Err(e) = scheduler.apply_cache_result(result, cache).await {
+        warn!("Failed to apply cache result to automation scheduler: {e}");
+    }
+    if let Err(e) = watcher.sync_watchers(app.clone()).await {
+        error!("Failed to sync watchers: {e}");
+    }
+
+    #[cfg(all(desktop, feature = "tray"))]
+    let _ = crate::core::tray::core::update_tray_menu(app.clone()).await;
+}
+
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
     if cron_expr.split_whitespace().count() == 6 {
         return Err(
@@ -396,122 +413,74 @@ pub async fn execute_automation(
         })
         .await?;
 
-    if automation.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun) {
-        let qr_id = &automation.id;
+    enum AutomationExecutionOutcome {
+        Running(String),
+        Success,
+    }
 
-        info!("Executing quick run automation: {qr_id}");
-        let result = crate::core::flow::quick_run::commands::start_quick_run(
-            app_handle.clone(),
-            qr_id.to_string(),
-        )
-        .await;
+    let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
 
-        match result {
-            Ok(res) => {
-                let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+    let execution_result: Result<AutomationExecutionOutcome, String> =
+        match automation.args.params.source {
+            Some(crate::utils::types::origin::Origin::QuickRun) => {
+                let qr_id = &automation.id;
+                info!("Executing quick run automation: {qr_id}");
+                let res = crate::core::flow::quick_run::commands::start_quick_run(
+                    app_handle.clone(),
+                    qr_id.to_string(),
+                    None,
+                    None,
+                )
+                .await?;
+
                 let job_handle = res
                     .job_id
                     .map(|id| id.to_string())
-                    .unwrap_or_else(|| res.execute_id.clone());
-                cache
-                    .update_automation(automation_id, |t| {
-                        t.mark_running(job_handle);
-                        t.next_run = next_run;
-                    })
-                    .await
-                    .ok();
-                notify(
-                    app_handle,
-                    NotificationEvent::Automation(AutomationStage::Started {
-                        backend: automation.backend_name.clone(),
-                        remote: automation.remote_name.clone(),
-                        profile: automation.profile_name.clone(),
-                        automation_name: automation.display_name(),
-                        automation_type: automation.automation_type,
-                    }),
-                );
-                return Ok(());
+                    .unwrap_or_else(|| res.execute_id);
+                Ok(AutomationExecutionOutcome::Running(job_handle))
             }
-            Err(e) => {
-                let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
-                cache
-                    .update_automation(automation_id, |t| {
-                        t.mark_failure(e.clone());
-                        t.next_run = next_run;
-                    })
-                    .await?;
-                return Err(e);
-            }
-        }
-    } else if automation.args.params.source == Some(crate::utils::types::origin::Origin::Flow) {
-        let wf_id = &automation.id;
-
-        info!("Executing workflow automation: {wf_id}");
-        let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
-        let _ = cache
-            .update_automation(automation_id, |t| {
-                t.mark_running(wf_id.clone());
-                t.next_run = next_run;
-            })
-            .await;
-
-        // execute_workflow emits its own dedicated NotificationEvent::Workflow events
-        let result = crate::core::flow::workflow::commands::execute_workflow(
-            app_handle.clone(),
-            wf_id.to_string(),
-            None,
-        )
-        .await;
-
-        let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
-        match result {
-            Ok(exec_res) => {
-                if exec_res.success {
-                    let _ = cache
-                        .update_automation(automation_id, |t| {
-                            t.mark_success();
-                            t.next_run = next_run;
-                        })
-                        .await;
-                    return Ok(());
-                } else {
-                    let err = exec_res
-                        .error
-                        .unwrap_or_else(|| "Workflow execution failed".to_string());
-                    let _ = cache
-                        .update_automation(automation_id, |t| {
-                            t.mark_failure(err.clone());
-                            t.next_run = next_run;
-                        })
-                        .await;
-                    return Err(err);
-                }
-            }
-            Err(e) => {
+            Some(crate::utils::types::origin::Origin::Flow) => {
+                let wf_id = &automation.id;
+                info!("Executing workflow automation: {wf_id}");
                 let _ = cache
                     .update_automation(automation_id, |t| {
-                        t.mark_failure(e.clone());
+                        t.mark_running(wf_id.clone());
                         t.next_run = next_run;
                     })
                     .await;
-                return Err(e);
+
+                // execute_workflow emits its own dedicated NotificationEvent::Workflow events
+                let exec_res = crate::core::flow::workflow::commands::execute_workflow(
+                    app_handle.clone(),
+                    wf_id.to_string(),
+                    None,
+                )
+                .await?;
+
+                if exec_res.success {
+                    Ok(AutomationExecutionOutcome::Success)
+                } else {
+                    Err(exec_res
+                        .error
+                        .unwrap_or_else(|| "Workflow execution failed".to_string()))
+                }
             }
-        }
-    }
+            _ => {
+                let mut params = automation.args.params.clone();
+                params.source = Some(crate::utils::types::origin::Origin::Automation);
+                params.scoped_targets = scoped_targets;
 
-    let mut params = automation.args.params.clone();
-    params.source = Some(crate::utils::types::origin::Origin::Automation);
-    params.scoped_targets = scoped_targets;
+                let transfer_type = automation.automation_type;
+                let job_id = start_profile_batch(app_handle.clone(), transfer_type, params).await?;
+                Ok(AutomationExecutionOutcome::Running(job_id))
+            }
+        };
 
-    let transfer_type = automation.automation_type;
-    let result = start_profile_batch(app_handle.clone(), transfer_type, params).await;
-
-    match result {
-        Ok(job_id) => {
-            let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+    match execution_result {
+        Ok(AutomationExecutionOutcome::Running(job_handle)) => {
             cache
                 .update_automation(automation_id, |t| {
-                    t.mark_running(job_id);
+                    t.mark_running(job_handle);
                     t.next_run = next_run;
                 })
                 .await
@@ -528,8 +497,17 @@ pub async fn execute_automation(
             );
             Ok(())
         }
+        Ok(AutomationExecutionOutcome::Success) => {
+            cache
+                .update_automation(automation_id, |t| {
+                    t.mark_success();
+                    t.next_run = next_run;
+                })
+                .await
+                .ok();
+            Ok(())
+        }
         Err(e) => {
-            let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
             cache
                 .update_automation(automation_id, |t| {
                     t.mark_failure(e.clone());

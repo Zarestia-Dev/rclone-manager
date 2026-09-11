@@ -17,12 +17,11 @@ describe('WorkflowStateService', () => {
     expect(service.viewport()).toEqual({ x: 0, y: 0, zoom: 1 });
   });
 
-  it('creates a new workflow with default manual trigger', () => {
+  it('creates a new workflow with empty nodes', () => {
     const wf = service.createNewWorkflow('Test Flow');
     expect(wf.name).toBe('Test Flow');
     expect(service.currentWorkflow()?.name).toBe('Test Flow');
-    expect(service.currentWorkflow()?.nodes.length).toBe(1);
-    expect(service.currentWorkflow()?.nodes[0].category).toBe('trigger');
+    expect(service.currentWorkflow()?.nodes.length).toBe(0);
   });
 
   it('adds and selects a new node with snap to grid', () => {
@@ -60,7 +59,7 @@ describe('WorkflowStateService', () => {
     expect(copy).not.toBeNull();
     expect(copy?.title).toBe('Sync 1 (Copy)');
     expect(copy?.x).toBe(node.x + 32);
-    expect(service.currentWorkflow()?.nodes.length).toBe(3); // 1 initial trigger + 1 added + 1 copy
+    expect(service.currentWorkflow()?.nodes.length).toBe(2); // 1 added + 1 copy
   });
 
   it('removes node and cascade-deletes attached edges', () => {

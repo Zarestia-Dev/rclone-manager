@@ -3364,7 +3364,8 @@
         "delete": "ノードを削除",
         "duplicateWorkflow": "ワークフローを複製",
         "deleteWorkflow": "ワークフローを削除",
-        "exportWorkflow": "JSONをエクスポート"
+        "exportWorkflow": "JSONをエクスポート",
+        "inspectJob": "ジョブを検査"
       },
       "toolbar": {
         "selectWorkflow": "ワークフローを選択",
@@ -3529,7 +3530,11 @@
         "archiveFormat": "アーカイブ形式",
         "archivePrefix": "内部プレフィックス (任意)",
         "downloadUrl": "ダウンロードURL",
-        "autoFilename": "ファイル名を自動決定"
+        "autoFilename": "ファイル名を自動決定",
+        "jobDetailsTitle": "ジョブの詳細",
+        "inspectJobBtn": "ジョブの詳細を検査",
+        "transfers": "転送",
+        "errors": "エラー"
       },
       "status": {
         "running": "実行中",
@@ -3635,6 +3640,10 @@
       "editor": {
         "configureNode": "ノードを設定: {{type}}",
         "nodeSaved": "ワークフローノードの設定を更新しました"
+      },
+      "emptyState": {
+        "title": "ワークフロービルダーへようこそ",
+        "subtitle": "rclone操作を自動化する新しいワークフローを作成するか、既存のワークフローを選択して編集を続けてください。"
       }
     },
     "shortcuts": {

@@ -148,6 +148,7 @@ impl AutomationsCache {
             .sync_automations(backend_name, automations, |t| {
                 t.backend_name == backend_name
                     && t.args.params.source != Some(crate::utils::types::origin::Origin::QuickRun)
+                    && t.args.params.source != Some(crate::utils::types::origin::Origin::Flow)
             })
             .await?;
 
@@ -1633,5 +1634,67 @@ mod tests {
         let loaded = cache.get_automation("wf-watcher-1").await;
         assert!(loaded.is_some());
         assert!(loaded.unwrap().watch_enabled);
+    }
+
+    #[tokio::test]
+    async fn test_load_from_remote_configs_preserves_quickrun_and_flow_automations() {
+        let cache = make_cache();
+
+        // 1. Load a workflow automation
+        let wf = WorkflowDefinition {
+            id: "wf-preserve".to_string(),
+            name: "Preserve Me".to_string(),
+            description: None,
+            cron_expression: Some("0 1 * * *".to_string()),
+            nodes: vec![],
+            edges: vec![],
+            viewport: Default::default(),
+            auto_start: false,
+            created_at: None,
+            updated_at: None,
+            last_executed_at: None,
+        };
+        cache
+            .load_from_workflows(&[wf], "local")
+            .await
+            .expect("load_from_workflows");
+
+        // 2. Load a quick run automation
+        let qr = QuickRun {
+            id: "qr-preserve".to_string(),
+            name: "QR Preserve".to_string(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: "drive:".to_string(),
+            config: serde_json::json!({
+                "app": {
+                    "cronEnabled": true,
+                    "cronExpression": "0 2 * * *"
+                },
+                "rclone": {
+                    "srcFs": "drive:src",
+                    "dstFs": "/tmp/dst"
+                }
+            }),
+        };
+        cache
+            .load_from_quick_runs(&[qr], "local")
+            .await
+            .expect("load_from_quick_runs");
+
+        assert!(cache.get_automation("wf-preserve").await.is_some());
+        assert!(cache.get_automation("qr-preserve").await.is_some());
+
+        // 3. Now trigger load_from_remote_configs with an empty remote map
+        let empty_remotes = HashMap::new();
+        let res = cache
+            .load_from_remote_configs(&empty_remotes, "local")
+            .await
+            .expect("load_from_remote_configs");
+
+        // Should not remove either the workflow or quick run automation!
+        assert_eq!(res.removed.len(), 0);
+        assert!(cache.get_automation("wf-preserve").await.is_some());
+        assert!(cache.get_automation("qr-preserve").await.is_some());
     }
 }

@@ -99,17 +99,17 @@
           [attr.title]="'flow.workflow.toolbar.run' | translate"
         >
           <mat-icon svgIcon="play"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.run' | translate }}</span>
+          <span class="btn-text">{{ 'flow.workflow.toolbar.run' | translate }}</span>
         </button>
 
         <button
           type="button"
-          class="dry-run-workflow-btn"
+          class="dry-run-workflow-btn desktop-only"
           (click)="runWorkflowDryRun()"
           [attr.title]="'flow.workflow.toolbar.dryRunTooltip' | translate"
         >
           <mat-icon svgIcon="eye"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.dryRun' | translate }}</span>
+          <span class="btn-text">{{ 'flow.workflow.toolbar.dryRun' | translate }}</span>
         </button>
       </div>
     } @else {
@@ -121,7 +121,7 @@
           [attr.title]="'flow.workflow.toolbar.stop' | translate"
         >
           <mat-icon svgIcon="pause"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.stop' | translate }}</span>
+          <span class="btn-text">{{ 'flow.workflow.toolbar.stop' | translate }}</span>
         </button>
 
         <div class="toolbar-execution-status" [class.is-simulation]="engineService.isDryRun()">
@@ -139,15 +139,15 @@
       </div>
     }
 
-    <!-- Templates / Recipes Dropdown -->
+    <!-- Templates / Recipes Dropdown (Desktop & Tablet) -->
     <button
       type="button"
-      class="toolbar-pill-btn"
+      class="toolbar-pill-btn desktop-only"
       [cdkMenuTriggerFor]="recipesMenu"
       [attr.title]="'flow.workflow.toolbar.presets' | translate"
     >
       <mat-icon svgIcon="experiment"></mat-icon>
-      <span>{{ 'flow.workflow.toolbar.presets' | translate }}</span>
+      <span class="btn-text">{{ 'flow.workflow.toolbar.presets' | translate }}</span>
       <mat-icon svgIcon="chevron-down" class="pill-arrow"></mat-icon>
     </button>
 
@@ -169,12 +169,12 @@
 
   <!-- Right: Zoom, History, Grid Snap, Inspector & Console Toggle -->
   <div class="toolbar-right">
-    <!-- Undo / Redo -->
-    <div class="button-group">
+    <!-- Undo / Redo (Desktop & Tablet) -->
+    <div class="button-group desktop-only">
       <button
         matIconButton
         type="button"
-        (click)="stateService.undo()"
+        (click)="undo()"
         [disabled]="!stateService.canUndo()"
         [attr.title]="'flow.workflow.toolbar.undo' | translate"
       >
@@ -183,7 +183,7 @@
       <button
         matIconButton
         type="button"
-        (click)="stateService.redo()"
+        (click)="redo()"
         [disabled]="!stateService.canRedo()"
         [attr.title]="'flow.workflow.toolbar.redo' | translate"
       >
@@ -191,12 +191,12 @@
       </button>
     </div>
 
-    <!-- Zoom Controls -->
-    <div class="zoom-controls-group">
+    <!-- Zoom Controls (Desktop & Tablet) -->
+    <div class="zoom-controls-group desktop-only">
       <button
         matIconButton
         type="button"
-        (click)="stateService.zoomOut()"
+        (click)="zoomOut()"
         [attr.title]="'flow.workflow.toolbar.zoomOut' | translate"
       >
         <mat-icon svgIcon="remove"></mat-icon>
@@ -204,7 +204,7 @@
       <button
         type="button"
         class="zoom-label"
-        (click)="stateService.resetZoom()"
+        (click)="resetZoom()"
         [attr.title]="'flow.workflow.toolbar.resetZoom' | translate"
       >
         {{ zoomPercentage() }}%
@@ -212,7 +212,7 @@
       <button
         matIconButton
         type="button"
-        (click)="stateService.zoomIn()"
+        (click)="zoomIn()"
         [attr.title]="'flow.workflow.toolbar.zoomIn' | translate"
       >
         <mat-icon svgIcon="plus"></mat-icon>
@@ -220,25 +220,26 @@
       <button
         matIconButton
         type="button"
-        (click)="stateService.fitToView()"
+        (click)="fitToView()"
         [attr.title]="'flow.workflow.toolbar.fitToView' | translate"
       >
         <mat-icon svgIcon="expand"></mat-icon>
       </button>
     </div>
 
-    <!-- Grid Snap Toggle -->
+    <!-- Grid Snap Toggle (Desktop & Tablet) -->
     <button
       matIconButton
       type="button"
+      class="desktop-only"
       [class.active-btn]="stateService.snapToGrid()"
-      (click)="stateService.snapToGrid.set(!stateService.snapToGrid())"
+      (click)="toggleSnapToGrid()"
       [attr.title]="'flow.workflow.toolbar.snapToGrid' | translate"
     >
       <mat-icon svgIcon="grid"></mat-icon>
     </button>
 
-    <!-- Console / Execution Log Toggle -->
+    <!-- Console / Execution Log Toggle (Always visible) -->
     <button
       matIconButton
       type="button"
@@ -248,5 +249,95 @@
     >
       <mat-icon svgIcon="terminal"></mat-icon>
     </button>
+
+    <!-- Mobile More Actions Menu (Visible only on mobile) -->
+    <button
+      matIconButton
+      type="button"
+      class="mobile-more-btn"
+      [cdkMenuTriggerFor]="mobileMoreMenu"
+      [attr.title]="'common.moreActions' | translate"
+    >
+      <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+    </button>
+
+    <ng-template #mobileMoreMenu>
+      <div class="material-context-menu" cdkMenu>
+        <!-- Undo / Redo Actions -->
+        <div class="menu-group-label">
+          {{ 'flow.workflow.toolbar.undo' | translate }} /
+          {{ 'flow.workflow.toolbar.redo' | translate }}
+        </div>
+        <button
+          cdkMenuItem
+          class="menu-item"
+          [disabled]="!stateService.canUndo()"
+          (cdkMenuItemTriggered)="undo()"
+        >
+          <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.undo' | translate }}</span>
+        </button>
+        <button
+          cdkMenuItem
+          class="menu-item"
+          [disabled]="!stateService.canRedo()"
+          (cdkMenuItemTriggered)="redo()"
+        >
+          <mat-icon svgIcon="rotate-right"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.redo' | translate }}</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Dry Run Option -->
+        @if (!engineService.isExecuting()) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="runWorkflowDryRun()">
+            <mat-icon svgIcon="eye"></mat-icon>
+            <span>{{ 'flow.workflow.toolbar.dryRun' | translate }}</span>
+          </button>
+        }
+
+        <!-- Presets & Recipes Submenu -->
+        <button cdkMenuItem class="menu-item" [cdkMenuTriggerFor]="recipesMenu">
+          <mat-icon svgIcon="experiment"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.presets' | translate }}</span>
+          <mat-icon svgIcon="chevron-right" class="menu-arrow"></mat-icon>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Zoom Controls -->
+        <div class="menu-group-label">
+          {{ 'flow.workflow.toolbar.fitToView' | translate }} ({{ zoomPercentage() }}%)
+        </div>
+        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="fitToView()">
+          <mat-icon svgIcon="expand"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.fitToView' | translate }}</span>
+        </button>
+        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="resetZoom()">
+          <mat-icon svgIcon="refresh"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.resetZoom' | translate }} (100%)</span>
+        </button>
+        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="zoomIn()">
+          <mat-icon svgIcon="plus"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.zoomIn' | translate }}</span>
+        </button>
+        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="zoomOut()">
+          <mat-icon svgIcon="remove"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.zoomOut' | translate }}</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Grid Snap Toggle -->
+        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="toggleSnapToGrid()">
+          <mat-icon svgIcon="grid"></mat-icon>
+          <span>{{ 'flow.workflow.toolbar.snapToGrid' | translate }}</span>
+          @if (stateService.snapToGrid()) {
+            <mat-icon svgIcon="check-circle" class="check-icon"></mat-icon>
+          }
+        </button>
+      </div>
+    </ng-template>
   </div>
 </div>

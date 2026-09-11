@@ -171,6 +171,23 @@ describe('QuickRunService', () => {
       expect(service.quickRuns().some(q => q.id === 'qr-new')).toBe(true);
     });
 
+    it('save should return null and show error notification on backend failure', async () => {
+      const input: QuickRunInput = {
+        name: 'Failing Quick Run',
+        operationType: 'copy',
+        remoteName: 'drive:',
+        config: { app: { autoStart: false }, rclone: {} },
+      };
+
+      invokeSpy.mockRejectedValue(new Error('Disk write failed'));
+
+      const result = await service.save(input);
+
+      expect(result).toBeNull();
+      expect(service.quickRuns().some(q => q.name === 'Failing Quick Run')).toBe(false);
+      expect(notificationSpy.showError).toHaveBeenCalled();
+    });
+
     it('remove should delete quick run from backend and store', async () => {
       invokeSpy.mockResolvedValue([mockQuickRun]);
       await service.refresh();

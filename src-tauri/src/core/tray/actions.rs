@@ -52,8 +52,13 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
 
 pub fn handle_start_quick_run(app: AppHandle, quick_run_id: String) {
     tauri::async_runtime::spawn(async move {
-        match crate::core::flow::quick_run::commands::start_quick_run(app, quick_run_id.clone())
-            .await
+        match crate::core::flow::quick_run::commands::start_quick_run(
+            app,
+            quick_run_id.clone(),
+            None,
+            None,
+        )
+        .await
         {
             Ok(res) => info!(
                 "Started quick run {quick_run_id} (job id: {:?}, exec id: {})",

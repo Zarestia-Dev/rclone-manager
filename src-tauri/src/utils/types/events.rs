@@ -240,6 +240,14 @@ pub struct JobChangeEvent {
     pub remote: Option<String>,
     pub source: Option<String>,
     pub destination: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
 }
 
 impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
@@ -250,6 +258,10 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
             remote: Some(job.remote_name.clone()),
             source: Some(job.source.join(", ")),
             destination: Some(job.destination.clone()),
+            profile: job.profile.clone(),
+            quick_run_id: job.quick_run_id.clone(),
+            workflow_id: job.workflow_id.clone(),
+            node_id: job.node_id.clone(),
         }
     }
 }
@@ -320,5 +332,55 @@ mod tests {
                 message: "Address already in use".to_string(),
             }
         );
+    }
+
+    #[test]
+    fn test_job_change_event_from_job_info() {
+        use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
+        use chrono::Utc;
+
+        let job = JobInfo {
+            jobid: 42,
+            execute_id: Some("exec-42".to_string()),
+            quick_run_id: Some("qr-99".to_string()),
+            job_type: JobType::Sync,
+            remote_name: "gdrive".to_string(),
+            source: vec!["/local/dir".to_string()],
+            destination: "gdrive:backup".to_string(),
+            start_time: Utc::now(),
+            end_time: None,
+            status: JobStatus::Running,
+            error: None,
+            stats: None,
+            group: "job/42".to_string(),
+            profile: Some("daily-backup".to_string()),
+            origin: None,
+            backend_name: "default".to_string(),
+            dry_run: false,
+            parent_job_id: None,
+            workflow_id: Some("wf-alpha".to_string()),
+            node_id: Some("node-beta".to_string()),
+        };
+
+        let ev: JobChangeEvent = (&job).into();
+        assert_eq!(ev.job_id, "42");
+        assert_eq!(ev.status, JobStatus::Running);
+        assert_eq!(ev.remote.as_deref(), Some("gdrive"));
+        assert_eq!(ev.source.as_deref(), Some("/local/dir"));
+        assert_eq!(ev.destination.as_deref(), Some("gdrive:backup"));
+        assert_eq!(ev.profile.as_deref(), Some("daily-backup"));
+        assert_eq!(ev.quick_run_id.as_deref(), Some("qr-99"));
+        assert_eq!(ev.workflow_id.as_deref(), Some("wf-alpha"));
+        assert_eq!(ev.node_id.as_deref(), Some("node-beta"));
+
+        let serialized = serde_json::to_string(&ev).unwrap();
+        assert!(serialized.contains(r#""jobId":"42""#));
+        assert!(serialized.contains(r#""quickRunId":"qr-99""#));
+        assert!(serialized.contains(r#""workflowId":"wf-alpha""#));
+        assert!(serialized.contains(r#""nodeId":"node-beta""#));
+        assert!(serialized.contains(r#""profile":"daily-backup""#));
+
+        let deserialized: JobChangeEvent = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, ev);
     }
 }

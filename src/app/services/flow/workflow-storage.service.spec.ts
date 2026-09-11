@@ -242,4 +242,13 @@ describe('WorkflowStorageService', () => {
     expect(result).toBe(false);
     expect(service.workflows().some(w => w.id === 'wf-keep')).toBe(true);
   });
+
+  it('returns empty array when backend has no workflows', async () => {
+    backendWorkflows = [];
+
+    const list = await service.loadAllWorkflows();
+    expect(list).toEqual([]);
+    expect(service.workflows()).toEqual([]);
+    expect(mockApiClient.invoke).not.toHaveBeenCalledWith('create_workflow', expect.anything());
+  });
 });

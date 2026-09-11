@@ -19,6 +19,7 @@ describe('JobDetailModalComponent', () => {
   let jobManagementSpy: {
     jobs: ReturnType<typeof signal<JobInfo[]>>;
     deleteJob: ReturnType<typeof vi.fn>;
+    getJob: ReturnType<typeof vi.fn>;
   };
   let fileSystemSpy: {
     openInFiles: ReturnType<typeof vi.fn>;
@@ -87,6 +88,7 @@ describe('JobDetailModalComponent', () => {
     jobManagementSpy = {
       jobs: signal([mockJob]),
       deleteJob: vi.fn().mockResolvedValue(undefined),
+      getJob: vi.fn().mockReturnValue(mockJob),
     };
     fileSystemSpy = {
       openInFiles: vi.fn().mockResolvedValue(undefined),
@@ -145,5 +147,9 @@ describe('JobDetailModalComponent', () => {
   it('should open nautilus window when remote path is passed', async () => {
     await component.onOpenPath('remote:backup');
     expect(nautilusSpy.newNautilusWindow).toHaveBeenCalledWith('remote', 'backup');
+  });
+
+  it('should query jobService.getJob with execute_id and jobid', () => {
+    expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42);
   });
 });

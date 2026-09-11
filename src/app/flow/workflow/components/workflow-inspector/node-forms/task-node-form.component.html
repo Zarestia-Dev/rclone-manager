@@ -20,23 +20,21 @@
     </div>
 
     <!-- Source / Download URL -->
-    @if (node().type !== 'mount' && node().type !== 'serve') {
-      <div class="summary-prop-row">
-        <span class="prop-label">{{
-          (node().type === 'copyurl'
-            ? 'flow.workflow.inspector.downloadUrl'
-            : 'flow.workflow.inspector.sourcePath'
-          ) | translate
-        }}</span>
-        @if (inspectorSource()) {
-          <span class="prop-value code-font path-val" [attr.title]="inspectorSource()">
-            {{ inspectorSource() }}
-          </span>
-        } @else {
-          <span class="empty-val">-</span>
-        }
-      </div>
-    }
+    <div class="summary-prop-row">
+      <span class="prop-label">{{
+        (node().type === 'copyurl'
+          ? 'flow.workflow.inspector.downloadUrl'
+          : 'flow.workflow.inspector.sourcePath'
+        ) | translate
+      }}</span>
+      @if (inspectorSource()) {
+        <span class="prop-value code-font path-val" [attr.title]="inspectorSource()">
+          {{ inspectorSource() }}
+        </span>
+      } @else {
+        <span class="empty-val">-</span>
+      }
+    </div>
 
     <!-- Destination / Mount Point / Serve Address -->
     @if (node().type !== 'delete') {

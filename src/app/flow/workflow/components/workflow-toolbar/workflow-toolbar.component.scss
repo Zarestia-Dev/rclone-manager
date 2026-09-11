@@ -232,9 +232,89 @@
     }
   }
 
+  .mobile-more-btn {
+    display: none;
+  }
+
   .active-btn {
     color: var(--accent-color) !important;
     background: rgba(var(--accent-color-rgb), 0.15) !important;
+  }
+
+  // ── Responsive Breakpoints ───────────────────────────────────────────────
+
+  @media (max-width: 900px) {
+    .btn-text {
+      display: none;
+    }
+
+    .workflow-title-group .workflow-name-input {
+      max-width: 160px;
+      min-width: 90px;
+    }
+
+    .toolbar-execution-group .toolbar-execution-status .status-text {
+      max-width: 110px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 0 var(--space-xs);
+
+    .toolbar-left,
+    .toolbar-center,
+    .toolbar-right {
+      gap: 4px;
+    }
+
+    .toolbar-left {
+      padding-left: 40px;
+    }
+
+    .workflow-title-group {
+      padding: 1px 2px 1px 6px;
+
+      .workflow-name-input {
+        max-width: 110px;
+        min-width: 50px;
+        font-size: var(--font-size-xs);
+      }
+
+      .action-button {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    .run-workflow-btn,
+    .stop-workflow-btn {
+      padding: 6px 10px;
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+    }
+
+    .toolbar-execution-group .toolbar-execution-status {
+      padding: 2px 6px;
+      font-size: 11px;
+
+      .status-text {
+        max-width: 70px;
+      }
+    }
+
+    .desktop-only {
+      display: none !important;
+    }
+
+    .mobile-more-btn {
+      display: inline-flex !important;
+      width: 32px;
+      height: 32px;
+    }
   }
 }
 
@@ -318,5 +398,21 @@
     &:focus-within .row-actions {
       opacity: 1;
     }
+  }
+
+  .check-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-left: auto;
+    color: var(--accent-color);
+  }
+
+  .menu-arrow {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    margin-left: auto;
+    color: var(--dim-color);
   }
 }

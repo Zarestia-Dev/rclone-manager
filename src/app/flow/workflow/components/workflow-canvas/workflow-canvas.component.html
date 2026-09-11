@@ -2,10 +2,13 @@
   #canvasContainer
   class="workflow-canvas-container"
   [class.is-panning]="isPanning()"
+  [class.is-drag-target]="dragDropService.isDragging()"
   (mousedown)="onCanvasMouseDown($event)"
   (wheel)="onCanvasWheel($event)"
-  (dragover)="onDragOver($event)"
-  (drop)="onDrop($event)"
+  (touchstart)="onCanvasTouchStart($event)"
+  (touchmove)="onCanvasTouchMove($event)"
+  (touchend)="onCanvasTouchEnd($event)"
+  (touchcancel)="onCanvasTouchEnd($event)"
 >
   <!-- Dot Grid & Scalable Plane -->
   <div class="workflow-canvas-plane" [style.transform]="canvasTransform()">
@@ -46,6 +49,7 @@
             [class.selected]="stateService.selectedNodeIds().has(node.id)"
             [class.is-dragging]="draggingNodeId() === node.id"
             (mousedown)="onNodeMouseDown(node, $event)"
+            (touchstart)="onNodeTouchStart(node, $event)"
             (selectNode)="stateService.selectNode($event)"
             (deleteNode)="stateService.removeNode($event)"
             (duplicateNode)="stateService.duplicateNode($event)"

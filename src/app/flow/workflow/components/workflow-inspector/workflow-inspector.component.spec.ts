@@ -10,15 +10,24 @@ import { ModalService } from '../../../../services/ui/modal.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { MountManagementService } from '../../../../services/operations/mount-management.service';
 import { ServeManagementService } from '../../../../services/operations/serve-management.service';
+import { JobManagementService } from '../../../../services/operations/job-management.service';
 import { AlertService } from '../../../../services/alerts/alert.service';
 import { MountedRemote } from '../../../../shared/types/remotes';
 import { ServeListItem } from '../../../../shared/types/serve';
+import { JobInfo } from '@app/types';
 
 describe('WorkflowInspectorComponent', () => {
   let fixture: ComponentFixture<WorkflowInspectorComponent>;
   let component: WorkflowInspectorComponent;
   let stateService: WorkflowStateService;
-  let modalServiceSpy: { openWorkflowNodeEditor: ReturnType<typeof vi.fn> };
+  let modalServiceSpy: {
+    openWorkflowNodeEditor: ReturnType<typeof vi.fn>;
+    openJobDetail: ReturnType<typeof vi.fn>;
+  };
+  let jobServiceSpy: {
+    jobs: ReturnType<typeof signal<JobInfo[]>>;
+    getLatestJobForWorkflowNode: ReturnType<typeof vi.fn>;
+  };
   let storageServiceSpy: {
     saveWorkflow: ReturnType<typeof vi.fn>;
     duplicateWorkflow: ReturnType<typeof vi.fn>;
@@ -35,7 +44,14 @@ describe('WorkflowInspectorComponent', () => {
   let runningServesSignal: ReturnType<typeof signal<ServeListItem[]>>;
 
   beforeEach(async () => {
-    modalServiceSpy = { openWorkflowNodeEditor: vi.fn() };
+    modalServiceSpy = {
+      openWorkflowNodeEditor: vi.fn(),
+      openJobDetail: vi.fn(),
+    };
+    jobServiceSpy = {
+      jobs: signal<JobInfo[]>([]),
+      getLatestJobForWorkflowNode: vi.fn().mockReturnValue(null),
+    };
     storageServiceSpy = {
       saveWorkflow: vi.fn().mockResolvedValue({}),
       duplicateWorkflow: vi
@@ -73,6 +89,10 @@ describe('WorkflowInspectorComponent', () => {
         {
           provide: ModalService,
           useValue: modalServiceSpy,
+        },
+        {
+          provide: JobManagementService,
+          useValue: jobServiceSpy,
         },
         {
           provide: WorkflowStorageService,
@@ -285,5 +305,69 @@ describe('WorkflowInspectorComponent', () => {
     component.onConfigFieldChange('actionKind', 'telegram');
     expect(component.nodeIcon()).toBe('telegram');
     expect(stateService.selectedNode()?.icon).toBe('telegram');
+  });
+
+  it('detects selectedNodeJob, computes progress, and opens job detail modal', () => {
+    const wf = stateService.currentWorkflow();
+    const wfId = wf ? wf.id : 'wf-1';
+    const syncNode = stateService.addNode('sync', 'task', 'Sync Step', 0, 0, {});
+    stateService.selectNode(syncNode.id);
+
+    const mockJob: JobInfo = {
+      jobid: 777,
+      execute_id: 'exec-777',
+      job_type: 'sync',
+      source: '/data',
+      destination: 'backup:',
+      start_time: '2026-09-10T12:00:00Z',
+      status: 'Running',
+      remote_name: 'backup',
+      stats: {
+        bytes: 250,
+        totalBytes: 1000,
+        speed: 125,
+        eta: 6,
+        transfers: 1,
+        totalTransfers: 4,
+        errors: 0,
+        checks: 0,
+        totalChecks: 0,
+        deletedDirs: 0,
+        deletes: 0,
+        renames: 0,
+        serverSideCopies: 0,
+        serverSideMoves: 0,
+        elapsedTime: 2,
+        lastError: '',
+        fatalError: false,
+        retryError: false,
+        serverSideCopyBytes: 0,
+        serverSideMoveBytes: 0,
+        transferTime: 2,
+        transferring: [],
+        listed: 0,
+        completed: [],
+      },
+      workflow_id: wfId,
+      node_id: syncNode.id,
+    };
+
+    jobServiceSpy.getLatestJobForWorkflowNode.mockReturnValue(mockJob);
+    fixture.detectChanges();
+
+    expect(component.selectedNodeJob()).toEqual(mockJob);
+    expect(component.jobProgressPercent(mockJob)).toBe(25);
+
+    const el: HTMLElement = fixture.nativeElement;
+    const jobSection = el.querySelector('.job-detail-section');
+    expect(jobSection).toBeTruthy();
+    expect(jobSection?.textContent).toContain('#777');
+    expect(jobSection?.textContent).toContain('Running');
+
+    const inspectBtn = el.querySelector('.inspect-job-action-btn') as HTMLButtonElement;
+    expect(inspectBtn).toBeTruthy();
+    inspectBtn.click();
+
+    expect(modalServiceSpy.openJobDetail).toHaveBeenCalledWith(mockJob);
   });
 });

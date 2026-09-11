@@ -4,7 +4,6 @@ import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/
 import { BUILTIN_WORKFLOW_TEMPLATES } from './recipes/workflow-recipes';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import { WorkflowStateService } from './workflow-state.service';
-
 @Injectable({ providedIn: 'root' })
 export class WorkflowStorageService extends TauriBaseService {
   private readonly stateService = inject(WorkflowStateService);
@@ -23,16 +22,10 @@ export class WorkflowStorageService extends TauriBaseService {
   async loadAllWorkflows(): Promise<WorkflowDefinition[]> {
     this.isLoading.set(true);
     try {
-      let list = await this.invokeCommand<WorkflowDefinition[]>('list_workflows');
-      if (!list || list.length === 0) {
-        const initial = this.instantiateTemplate('tpl-daily-backup-notify');
-        const created = await this.invokeCommand<WorkflowDefinition>('create_workflow', {
-          workflow: initial,
-        });
-        list = [created ?? initial];
-      }
-      this.workflows.set(list || []);
-      return list || [];
+      const list = await this.invokeCommand<WorkflowDefinition[]>('list_workflows');
+      const workflows = list || [];
+      this.workflows.set(workflows);
+      return workflows;
     } catch (err) {
       console.error('[WorkflowStorageService] Failed to load workflows:', err);
       return [];
@@ -135,8 +128,7 @@ export class WorkflowStorageService extends TauriBaseService {
       if (remaining.length > 0) {
         this.stateService.loadWorkflow(remaining[0]);
       } else {
-        const newWf = this.stateService.createNewWorkflow();
-        await this.saveWorkflow(newWf);
+        this.stateService.currentWorkflow.set(null);
       }
     }
     this.notificationService.showSuccess(this.translate.instant('common.deletedSuccessfully'));

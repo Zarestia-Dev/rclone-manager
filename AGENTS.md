@@ -81,6 +81,12 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
       - Any event intended for frontend consumption across desktop and headless modes **MUST** be included in `SSE_FORWARD_EVENTS` in `src-tauri/src/utils/types/events.rs`.
       - Internal backend listeners for system integration (tray re-render, power inhibition, engine restarts) **MUST** be registered inside `src-tauri/src/core/event_listener.rs`.
 
+11. **Drag & Drop / HTML5 Drag Prohibition in UI (CRITICAL)**
+    - **DO NOT** use the native HTML5 Drag and Drop API (`draggable="true"`, `(dragstart)`, `(dragover)`, `(drop)`, `event.dataTransfer`) for internal UI dragging interactions.
+    - Native HTML5 drag causes severe webview freezes, crashes, dropped payloads, or erratic behavior in Tauri (WebKitGTK on Linux and WebView2 on Windows) and does not support mobile touch gestures natively.
+    - **ALWAYS** implement internal Pointer Drag systems using pointer events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) with floating ghost elements and `document.elementFromPoint()` or bounding box hit-testing. Refer to `NautilusDragDropService` (`src/app/services/ui/nautilus-drag-drop.service.ts`) and `WorkflowDragDropService` (`src/app/services/flow/workflow-drag-drop.service.ts`) as reference implementations.
+    - Always enforce a pointer movement threshold (e.g. 6–8px) before initiating a drag so that regular `click` and touch tap actions continue to work seamlessly.
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))

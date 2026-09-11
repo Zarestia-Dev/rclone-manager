@@ -3364,7 +3364,8 @@
         "delete": "Supprimer le nœud",
         "duplicateWorkflow": "Dupliquer le flux",
         "deleteWorkflow": "Supprimer le flux",
-        "exportWorkflow": "Exporter en JSON"
+        "exportWorkflow": "Exporter en JSON",
+        "inspectJob": "Inspecter la Tâche"
       },
       "toolbar": {
         "selectWorkflow": "Sélectionner un flux",
@@ -3529,7 +3530,11 @@
         "archiveFormat": "Format d'archive",
         "archivePrefix": "Préfixe interne (optionnel)",
         "downloadUrl": "URL de téléchargement",
-        "autoFilename": "Déterminer automatiquement le nom de fichier"
+        "autoFilename": "Déterminer automatiquement le nom de fichier",
+        "jobDetailsTitle": "Détails de la Tâche",
+        "inspectJobBtn": "Inspecter les Détails de la Tâche",
+        "transfers": "Transferts",
+        "errors": "Erreurs"
       },
       "status": {
         "running": "En cours",
@@ -3635,6 +3640,10 @@
       "editor": {
         "configureNode": "Configurer le nœud : {{type}}",
         "nodeSaved": "Paramètres du nœud de flux de travail mis à jour"
+      },
+      "emptyState": {
+        "title": "Bienvenue dans le constructeur de flux",
+        "subtitle": "Créez un nouveau flux de travail pour automatiser vos opérations rclone, ou choisissez-en un existant pour continuer l'édition."
       }
     },
     "shortcuts": {

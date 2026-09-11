@@ -80,14 +80,14 @@
     padding var(--transition-cubic);
 
   &.is-open {
-    max-height: 80px;
+    max-height: 120px;
     padding: var(--space-xs) var(--space-md) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
   }
 
   .app-pill {
-    min-height: 24px;
-    padding: 2px 8px;
+    min-height: 28px;
+    padding: 2px 10px;
     font-size: var(--font-size-xs);
   }
 }
@@ -96,6 +96,7 @@
 .palette-items-list {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: var(--space-sm);
   display: flex;
   flex-direction: column;
@@ -111,6 +112,7 @@
     box-shadow: var(--shadow-gnome);
     cursor: grab;
     user-select: none;
+    touch-action: manipulation;
     transition: var(--transition-fast);
 
     &:hover {
