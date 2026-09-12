@@ -1902,6 +1902,7 @@
       "skippedRcloneUpdates": "已跳过的 Rclone 更新",
       "devTeam": "开发团队",
       "leadDeveloper": "主开发者",
+      "contributors": "贡献者",
       "acknowledgments": "致谢",
       "ackText": "本应用基于现代 Web 技术构建，并依赖优秀的 Rclone 项目进行云存储管理。",
       "noReleaseNotes": "暂无更新说明",

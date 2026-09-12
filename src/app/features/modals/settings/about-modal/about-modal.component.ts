@@ -223,6 +223,17 @@ export class AboutModalComponent implements OnInit {
     { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];
 
+  readonly contributors = [
+    { name: 'ふぁんなんよ', github: 'fuannanyo' },
+    { name: 'Eduardo Mozart de Oliveira', github: 'eduardomozart' },
+    { name: 'korsun009', github: 'korsun009' },
+    { name: 'Willi Yang (YangLeDuo)', github: 'why25' },
+    { name: 'Gh0sti', github: 'gh0sti' },
+    { name: 'dikler', github: 'dikler' },
+    { name: 'maksam07', github: 'maksam07' },
+    { name: 'DraftingDreamer', github: 'DraftingDreamer' },
+  ] as const;
+
   readonly rcloneNavBadge = computed(() => {
     return this.rcloneHasUpdates() || this.rcloneReadyToRestart();
   });

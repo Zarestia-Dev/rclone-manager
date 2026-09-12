@@ -1943,6 +1943,7 @@
       "skippedRcloneUpdates": "Skipped Rclone Updates",
       "devTeam": "Development Team",
       "leadDeveloper": "Lead Developer",
+      "contributors": "Contributors",
       "acknowledgments": "Acknowledgments",
       "ackText": "This application is built with modern web technologies and relies on the excellent Rclone project for cloud storage management.",
       "noReleaseNotes": "No release notes available.",

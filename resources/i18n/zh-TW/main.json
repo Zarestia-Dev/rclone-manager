@@ -1943,6 +1943,7 @@
       "skippedRcloneUpdates": "已跳過的 Rclone 更新",
       "devTeam": "開發團隊",
       "leadDeveloper": "主開發者",
+      "contributors": "貢獻者",
       "acknowledgments": "致謝",
       "ackText": "本應用基於現代 Web 技術構建，並依賴優秀的 Rclone 專案進行雲端儲存管理。",
       "noReleaseNotes": "暫無更新說明",

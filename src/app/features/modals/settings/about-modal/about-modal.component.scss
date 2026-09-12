@@ -491,6 +491,34 @@
   }
 }
 
+.contributor-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.contributor-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: var(--transition-fast);
+
+  mat-icon {
+    width: var(--icon-size-xs);
+    height: var(--icon-size-xs);
+    font-size: var(--icon-size-xs);
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 // ----------------------------------------------------------------------------
 // View: What's New
 // ----------------------------------------------------------------------------

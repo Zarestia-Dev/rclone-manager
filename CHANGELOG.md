@@ -47,6 +47,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **New Traditional Chinese Translations**: Added support for Traditional Chinese language and translations. Thanks to [@DraftingDreamer](https://github.com/DraftingDreamer)!
 
 ### Changed
+- **Contributor Credits in About Modal & Documentation**:
+  - Added a dedicated Contributors section to the About modal under Credits, crediting all code, docs, and translation contributors with direct links to their GitHub profiles.
 - **Export Modal UI Overhaul**:
   - Redesigned `ExportModalComponent` with a Libadwaita-inspired selection list, item counters, and category-level selection controls.
 - **Multi-Rename Modal Enhancements**:

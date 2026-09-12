@@ -1902,6 +1902,7 @@
       "skippedRcloneUpdates": "Mises à jour de rclone ignorées",
       "devTeam": "Équipe de développement",
       "leadDeveloper": "Développeur Principal",
+      "contributors": "Contributeurs",
       "acknowledgments": "Remerciements",
       "ackText": "Cette application est construite avec des technologies web modernes et repose sur l'excellent projet rclone pour la gestion du stockage cloud.",
       "noReleaseNotes": "Aucune note de version disponible.",

@@ -1943,6 +1943,7 @@
       "skippedRcloneUpdates": "Atlanan Rclone Güncellemeleri",
       "devTeam": "Geliştirme Ekibi",
       "leadDeveloper": "Baş Geliştirici",
+      "contributors": "Katkıda Bulunanlar",
       "acknowledgments": "Teşekkürler",
       "ackText": "Bu uygulama modern web teknolojileri ile geliştirilmiştir ve bulut depolama yönetimi için mükemmel Rclone projesini temel alır.",
       "noReleaseNotes": "Sürüm notu bulunamadı.",

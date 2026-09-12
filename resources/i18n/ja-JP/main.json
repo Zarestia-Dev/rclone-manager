@@ -1902,6 +1902,7 @@
       "skippedRcloneUpdates": "スキップされたRcloneアップデート",
       "devTeam": "開発チーム",
       "leadDeveloper": "リードデベロッパー",
+      "contributors": "コントリビューター",
       "acknowledgments": "謝辞",
       "ackText": "本アプリケーションはモダンなWeb技術で構築されており、クラウドストレージ管理のために優れた Rclone プロジェクトを利用しています。",
       "noReleaseNotes": "リリースノートはありません。",

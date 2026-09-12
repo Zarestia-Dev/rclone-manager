@@ -653,9 +653,44 @@
             <h4>{{ 'modals.about.devTeam' | translate }}</h4>
             <div class="rclone-details">
               <div class="detail-row">
-                <span class="detail-label">Hakan İSMAİL</span>
-                <span class="detail-value">{{ 'modals.about.leadDeveloper' | translate }}</span>
+                <div class="contributor-info">
+                  <span class="detail-label">Hakan İSMAİL</span>
+                  <span class="app-pill p-primary">{{
+                    'modals.about.leadDeveloper' | translate
+                  }}</span>
+                </div>
+                <a
+                  class="contributor-link"
+                  href="https://github.com/Hakanbaban53"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.title]="'modals.about.leadDeveloper' | translate"
+                >
+                  <span>@Hakanbaban53</span>
+                  <mat-icon svgIcon="open-link"></mat-icon>
+                </a>
               </div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h4>{{ 'modals.about.contributors' | translate }}</h4>
+            <div class="rclone-details">
+              @for (c of contributors; track c.github) {
+                <div class="detail-row">
+                  <span class="detail-label">{{ c.name }}</span>
+                  <a
+                    class="contributor-link"
+                    [href]="'https://github.com/' + c.github"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    [attr.title]="c.name"
+                  >
+                    <span>@{{ c.github }}</span>
+                    <mat-icon svgIcon="open-link"></mat-icon>
+                  </a>
+                </div>
+              }
             </div>
           </div>
 
