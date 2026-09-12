@@ -62,7 +62,6 @@
   overflow: hidden;
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px);
     box-shadow: 0 4px 14px
       color-mix(in srgb, var(--tile-color, var(--shadow-color)) 18%, transparent);
 
@@ -184,8 +183,7 @@
 .executing-overlay {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--window-bg-color) 85%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--window-bg-color) 92%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;

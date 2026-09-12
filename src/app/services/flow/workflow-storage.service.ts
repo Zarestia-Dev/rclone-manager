@@ -25,6 +25,17 @@ export class WorkflowStorageService extends TauriBaseService {
       const list = await this.invokeCommand<WorkflowDefinition[]>('list_workflows');
       const workflows = list || [];
       this.workflows.set(workflows);
+
+      if (workflows.length > 0) {
+        const current = this.stateService.currentWorkflow();
+        const currentStillExists = current && workflows.some(w => w.id === current.id);
+        if (!currentStillExists) {
+          this.stateService.loadWorkflow(workflows[0]);
+        }
+      } else {
+        this.stateService.currentWorkflow.set(null);
+      }
+
       return workflows;
     } catch (err) {
       console.error('[WorkflowStorageService] Failed to load workflows:', err);

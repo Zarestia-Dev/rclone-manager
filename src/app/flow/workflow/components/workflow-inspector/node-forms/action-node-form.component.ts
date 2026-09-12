@@ -142,7 +142,6 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         &:hover {
           background: var(--bg-active, rgba(255, 255, 255, 0.12));
           border-color: var(--accent-color, #4dabf7);
-          transform: translateY(-1px);
         }
       }
 

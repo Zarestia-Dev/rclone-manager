@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { WorkflowStorageService } from './workflow-storage.service';
+import { WorkflowStateService } from './workflow-state.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -250,5 +251,37 @@ describe('WorkflowStorageService', () => {
     expect(list).toEqual([]);
     expect(service.workflows()).toEqual([]);
     expect(mockApiClient.invoke).not.toHaveBeenCalledWith('create_workflow', expect.anything());
+  });
+
+  it('automatically loads the first workflow when workflows exist and none is active', async () => {
+    const stateService = TestBed.inject(WorkflowStateService);
+    stateService.currentWorkflow.set(null);
+
+    const wf1: WorkflowDefinition = {
+      id: 'wf-auto-1',
+      name: 'Flow Auto 1',
+      nodes: [],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    };
+    const wf2: WorkflowDefinition = {
+      id: 'wf-auto-2',
+      name: 'Flow Auto 2',
+      nodes: [],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    };
+    backendWorkflows = [wf1, wf2];
+
+    await service.loadAllWorkflows();
+    expect(stateService.currentWorkflow()?.id).toBe('wf-auto-1');
+  });
+
+  it('sets currentWorkflow to null when workflows are empty', async () => {
+    const stateService = TestBed.inject(WorkflowStateService);
+    backendWorkflows = [];
+
+    await service.loadAllWorkflows();
+    expect(stateService.currentWorkflow()).toBeNull();
   });
 });

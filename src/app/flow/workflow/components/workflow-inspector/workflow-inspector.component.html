@@ -15,26 +15,15 @@
           </span>
         </div>
       </div>
-      <div class="header-actions">
-        @if (hasDetailedConfig()) {
-          <button
-            matIconButton
-            type="button"
-            (click)="openDetailedSettings()"
-            [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
-          >
-            <mat-icon svgIcon="tune"></mat-icon>
-          </button>
-        }
-        <button
-          matIconButton
-          type="button"
-          (click)="closeInspectorPanel()"
-          [attr.title]="'common.close' | translate"
-        >
-          <mat-icon svgIcon="close"></mat-icon>
-        </button>
-      </div>
+
+      <button
+        matIconButton
+        type="button"
+        (click)="closeInspectorPanel()"
+        [attr.title]="'common.close' | translate"
+      >
+        <mat-icon svgIcon="close"></mat-icon>
+      </button>
     </div>
 
     <!-- Scrollable Content -->
@@ -59,7 +48,7 @@
               <div class="status-card-header">
                 <div class="status-badge-pill" [ngClass]="'badge-' + node.state">
                   @if (node.state === 'running') {
-                    <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+                    <mat-icon svgIcon="spinner"></mat-icon>
                     <span>{{ 'flow.workflow.status.running' | translate }}</span>
                   } @else if (node.state === 'success') {
                     <mat-icon svgIcon="check-circle"></mat-icon>
@@ -100,7 +89,7 @@
               </div>
               <span class="job-status-tag" [attr.data-status]="job.status">
                 @if (job.status === 'Running') {
-                  <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+                  <mat-icon svgIcon="spinner"></mat-icon>
                 }
                 {{ job.status | titlecase }}
               </span>
@@ -139,17 +128,10 @@
               </div>
             }
 
-            <div class="job-actions">
-              <button
-                matButton="filled"
-                type="button"
-                class="inspect-job-action-btn"
-                (click)="openJobDetail(job)"
-              >
-                <mat-icon svgIcon="jobs"></mat-icon>
-                <span>{{ 'flow.workflow.inspector.inspectJobBtn' | translate }}</span>
-              </button>
-            </div>
+            <button matButton="filled" type="button" (click)="openJobDetail(job)">
+              <mat-icon svgIcon="jobs"></mat-icon>
+              <span>{{ 'flow.workflow.inspector.inspectJobBtn' | translate }}</span>
+            </button>
           </div>
         </div>
       }

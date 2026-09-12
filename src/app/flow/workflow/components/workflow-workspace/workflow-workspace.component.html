@@ -143,28 +143,6 @@
           </button>
         </div>
 
-        <!-- Existing Workflows Quick-Pick -->
-        @if (storageService.workflows().length > 0) {
-          <div class="workflow-empty-state-section">
-            <span class="workflow-empty-state-section-label">
-              {{ 'flow.workflow.savedWorkflows' | translate }}
-            </span>
-            <div class="workflow-empty-state-pill-group">
-              @for (wf of storageService.workflows(); track wf.id) {
-                <button
-                  type="button"
-                  class="app-pill interactive p-accent"
-                  (click)="loadWorkflowById(wf.id)"
-                  [attr.title]="wf.name"
-                >
-                  <mat-icon svgIcon="workflow"></mat-icon>
-                  <span>{{ wf.name }}</span>
-                </button>
-              }
-            </div>
-          </div>
-        }
-
         <!-- Template Quick-Pick -->
         @if (presetTemplates().length > 0) {
           <div class="workflow-empty-state-section">

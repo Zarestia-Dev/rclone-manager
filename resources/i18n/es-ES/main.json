@@ -3643,7 +3643,7 @@
       },
       "emptyState": {
         "title": "Bienvenido al Constructor de Flujos",
-        "subtitle": "Crea un nuevo flujo de trabajo para automatizar tus operaciones de rclone, o elige uno existente para seguir editando."
+        "subtitle": "Crea un nuevo flujo de trabajo o elige una plantilla para automatizar tus operaciones de rclone."
       }
     },
     "shortcuts": {

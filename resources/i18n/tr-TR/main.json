@@ -3683,8 +3683,8 @@
         "nodeSaved": "İş akışı düğüm ayarları güncellendi"
       },
       "emptyState": {
-        "title": "İş Akışı Oluşturucu",
-        "subtitle": "Rclone işlemlerinizi otomatikleştirmek için yeni bir iş akışı oluşturun veya mevcut birini seçerek düzenlemeye devam edin."
+        "title": "İş Akışı Oluşturucu'ya Hoş Geldiniz",
+        "subtitle": "Rclone işlemlerinizi otomatikleştirmek için yeni bir iş akışı oluşturun veya hazır bir şablon seçerek başlayın."
       }
     },
     "shortcuts": {

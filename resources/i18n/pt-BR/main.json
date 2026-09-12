@@ -3643,7 +3643,7 @@
       },
       "emptyState": {
         "title": "Bem-vindo ao Construtor de Fluxos",
-        "subtitle": "Crie um novo fluxo de trabalho para automatizar suas operações rclone ou escolha um existente para continuar editando."
+        "subtitle": "Crie um novo fluxo de trabalho ou escolha um modelo para automatizar suas operações do rclone."
       }
     },
     "shortcuts": {

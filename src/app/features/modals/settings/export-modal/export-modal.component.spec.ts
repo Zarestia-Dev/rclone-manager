@@ -146,6 +146,37 @@ describe('ExportModalComponent', () => {
     );
   });
 
+  it('toggles type menu expansion', () => {
+    expect(component.isTypeMenuExpanded()).toBe(false);
+    component.toggleTypeMenu();
+    expect(component.isTypeMenuExpanded()).toBe(true);
+    component.toggleTypeMenu();
+    expect(component.isTypeMenuExpanded()).toBe(false);
+  });
+
+  it('selectOption updates selectedOption and collapses menu', () => {
+    component.toggleTypeMenu();
+    expect(component.isTypeMenuExpanded()).toBe(true);
+
+    component.selectOption('workflows');
+    expect(component.selectedOption()).toBe('workflows');
+    expect(component.isTypeMenuExpanded()).toBe(false);
+    expect(component.selectedOptionDetails()?.id).toBe('workflows');
+  });
+
+  it('closes type menu first on escape when menu is expanded', () => {
+    component.toggleTypeMenu();
+    expect(component.isTypeMenuExpanded()).toBe(true);
+
+    component.close();
+    expect(component.isTypeMenuExpanded()).toBe(false);
+    expect(dialogRefSpy.close).not.toHaveBeenCalled();
+
+    // Next close call closes the dialog
+    component.close();
+    expect(dialogRefSpy.close).toHaveBeenCalledWith(false);
+  });
+
   it('closes dialog when cancel is triggered', () => {
     component.close();
     expect(dialogRefSpy.close).toHaveBeenCalledWith(false);

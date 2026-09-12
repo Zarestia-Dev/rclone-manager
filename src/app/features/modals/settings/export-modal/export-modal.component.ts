@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { ExportModalData, ExportType, BackupExportOption } from '@app/types';
@@ -71,6 +72,7 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatButtonModule,
     MatSlideToggleModule,
     MatCheckboxModule,
+    MatExpansionModule,
     TranslatePipe,
     AlertBannerComponent,
   ],
@@ -98,6 +100,11 @@ export class ExportModalComponent implements OnInit {
   readonly isExporting = signal(false);
   readonly userNote = signal('');
   readonly exportOptions = signal<BackupExportOption[]>([]);
+  readonly isTypeMenuExpanded = signal(false);
+
+  readonly selectedOptionDetails = computed(
+    () => this.exportOptions().find(o => o.id === this.selectedOption()) ?? this.exportOptions()[0]
+  );
   readonly includeSecrets = computed(() => this.withPassword());
 
   readonly canExport = computed(() => {
@@ -244,6 +251,10 @@ export class ExportModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   close(): void {
+    if (this.isTypeMenuExpanded()) {
+      this.isTypeMenuExpanded.set(false);
+      return;
+    }
     if (!this.isExporting()) {
       this.dialogRef.close(false);
     }
@@ -307,6 +318,18 @@ export class ExportModalComponent implements OnInit {
   }
   togglePasswordVisibility(): void {
     this.showPassword.update(v => !v);
+  }
+
+  toggleTypeMenu(): void {
+    if (!this.isExporting()) {
+      this.isTypeMenuExpanded.update(v => !v);
+    }
+  }
+
+  selectOption(optionId: string): void {
+    if (this.isExporting()) return;
+    this.onExportOptionChange(optionId);
+    this.isTypeMenuExpanded.set(false);
   }
 
   onExportOptionChange(optionId: string): void {

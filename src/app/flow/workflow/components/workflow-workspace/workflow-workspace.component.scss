@@ -61,10 +61,8 @@
       &:hover {
         background: var(--hover-bg-color);
         border-color: var(--accent-color);
-        transform: translateX(2px);
 
         .palette-trigger-arrow {
-          transform: translateX(2px);
           color: var(--accent-color);
         }
       }
@@ -113,10 +111,8 @@
       &:hover {
         background: var(--hover-bg-color);
         border-color: var(--accent-color);
-        transform: translateX(-2px);
 
         .inspector-trigger-arrow {
-          transform: translateX(-2px);
           color: var(--accent-color);
         }
       }
@@ -166,8 +162,6 @@
       box-shadow:
         0 10px 30px rgba(0, 0, 0, 0.25),
         0 4px 12px rgba(0, 0, 0, 0.15);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       animation: unsavedBannerSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
       pointer-events: auto;
@@ -243,12 +237,10 @@
 
           &:hover:not(:disabled) {
             background: var(--gnome-green-5, color-mix(in srgb, var(--primary-color) 85%, #ffffff));
-            transform: translateY(-1px);
             box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.45);
           }
 
           &:active:not(:disabled) {
-            transform: translateY(0);
             box-shadow: 0 1px 3px rgba(var(--primary-color-rgb), 0.3);
           }
 

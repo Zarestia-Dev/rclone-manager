@@ -364,10 +364,6 @@ describe('WorkflowInspectorComponent', () => {
     expect(jobSection?.textContent).toContain('#777');
     expect(jobSection?.textContent).toContain('Running');
 
-    const inspectBtn = el.querySelector('.inspect-job-action-btn') as HTMLButtonElement;
-    expect(inspectBtn).toBeTruthy();
-    inspectBtn.click();
-
     expect(modalServiceSpy.openJobDetail).toHaveBeenCalledWith(mockJob);
   });
 });

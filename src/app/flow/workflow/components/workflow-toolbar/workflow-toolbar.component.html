@@ -116,7 +116,7 @@
       <div class="toolbar-execution-group">
         <button
           type="button"
-          class="stop-workflow-btn animate-pulse-red"
+          class="stop-workflow-btn warn"
           (click)="stopWorkflow()"
           [attr.title]="'flow.workflow.toolbar.stop' | translate"
         >
@@ -125,7 +125,7 @@
         </button>
 
         <div class="toolbar-execution-status" [class.is-simulation]="engineService.isDryRun()">
-          <mat-icon svgIcon="sync" class="animate-spin"></mat-icon>
+          <mat-icon svgIcon="spinner"></mat-icon>
           <span class="status-text">
             @if (engineService.isDryRun()) {
               <span class="simulation-tag">[{{ 'flow.workflow.toolbar.dryRun' | translate }}]</span>

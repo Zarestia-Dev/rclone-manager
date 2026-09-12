@@ -264,7 +264,6 @@ export interface RcPresetItem {
           &:hover {
             background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
             border-color: var(--accent-color, #3b82f6);
-            transform: translateY(-1px);
           }
         }
 

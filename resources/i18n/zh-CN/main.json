@@ -3643,7 +3643,7 @@
       },
       "emptyState": {
         "title": "欢迎使用工作流构建器",
-        "subtitle": "创建新的工作流以自动化您的rclone操作，或选择一个已有工作流继续编辑。"
+        "subtitle": "创建新的工作流或选择预设模板，以自动化您的 rclone 操作。"
       }
     },
     "shortcuts": {

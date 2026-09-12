@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added real-time native OS theme change listeners in the Tauri backend, forwarding theme transition events to the frontend for instant dark/light mode switching without polling.
 - **Extended Backup & Export Options**:
   - Extended `.rcman` backup format and export manager to include Workflows, Templates, and Quick Runs alongside Remotes, Automations, and Application Settings.
+- **New Traditional Chinese Translations**: Added support for Traditional Chinese language and translations. Thanks to [@DraftingDreamer](https://github.com/DraftingDreamer)!
 
 ### Changed
 - **Export Modal UI Overhaul**:

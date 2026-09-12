@@ -157,15 +157,14 @@
       align-items: center;
       gap: 2px;
       padding: 4px 6px;
-      background: rgba(var(--view-bg-color-rgb), 0.78);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: var(--card-bg-color);
+      border: 1px solid var(--border-color);
       border-radius: 999px;
       box-shadow:
         0 8px 32px rgba(0, 0, 0, 0.28),
         0 2px 8px rgba(0, 0, 0, 0.18);
       z-index: 20;
-      opacity: 0.85;
+      opacity: 0.95;
       transition: var(--transition-fast);
 
       &:hover {

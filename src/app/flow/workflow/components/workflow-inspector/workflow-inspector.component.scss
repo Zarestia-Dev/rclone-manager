@@ -468,23 +468,6 @@
       font-style: italic;
     }
   }
-
-  .summary-card-footer {
-    margin-top: 4px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-color);
-
-    .btn-edit-config {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-weight: 600;
-      font-size: var(--font-size-xs);
-      padding: 6px 12px;
-    }
-  }
 }
 
 .detailed-action-box {
@@ -816,30 +799,6 @@
           color: var(--destructive-bg-color);
           font-weight: 600;
         }
-      }
-    }
-  }
-
-  .job-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 2px;
-
-    .inspect-job-action-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: var(--radius-xs);
-
-      mat-icon {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
       }
     }
   }

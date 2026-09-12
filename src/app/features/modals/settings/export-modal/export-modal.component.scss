@@ -1,87 +1,40 @@
-// Sections
-.section-group {
-  display: flex;
-  flex-direction: column;
+// Labels & Headings
+.section-label {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--window-fg-color);
+  margin: 0 0 var(--space-sm);
+  display: block;
+}
 
-  .section-label {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-    margin-bottom: var(--space-sm);
+// Form Field Icons
+.field-icon {
+  color: var(--dim-color);
+}
+
+// Category Theme Colors
+$category-colors: (
+  full: var(--primary-color),
+  alerts: var(--warning-color),
+  settings: var(--dim-color),
+  quick_runs: var(--orange),
+  connections: var(--accent-color),
+  workflows: var(--purple),
+  remotes: var(--gnome-blue-3),
+  templates: var(--gnome-purple-2),
+  backend: var(--gnome-blue-4),
+  specific_remote: var(--accent-color),
+);
+
+@each $cat, $color in $category-colors {
+  .opt-#{$cat} {
+    --row-color: #{$color};
   }
 }
 
-// Selection List (Libadwaita Boxed List)
-.selection-list {
-  display: flex;
-  flex-direction: column;
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-gnome);
-  overflow: hidden;
-}
-
-.selection-row {
-  --row-color: var(--accent-color);
-
-  &.opt-full {
-    --row-color: var(--primary-color);
-  }
-  &.opt-alerts {
-    --row-color: var(--warning-color);
-  }
-  &.opt-settings {
-    --row-color: var(--dim-color);
-  }
-  &.opt-quick_runs {
-    --row-color: var(--orange);
-  }
-  &.opt-connections {
-    --row-color: var(--accent-color);
-  }
-  &.opt-workflows {
-    --row-color: var(--purple);
-  }
-  &.opt-remotes {
-    --row-color: var(--gnome-blue-3);
-  }
-  &.opt-templates {
-    --row-color: var(--gnome-purple-2);
-  }
-  &.opt-backend {
-    --row-color: var(--gnome-blue-4);
-  }
-  &.opt-specific_remote {
-    --row-color: var(--accent-color);
-  }
-
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  transition: var(--transition-fast);
-
-  &:not(:last-child) {
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  &:first-child {
-    border-top-left-radius: var(--radius-md);
-    border-top-right-radius: var(--radius-md);
-  }
-
-  &:last-child {
-    border-bottom-left-radius: var(--radius-md);
-    border-bottom-right-radius: var(--radius-md);
-  }
-
-  &:only-child {
-    border-radius: var(--radius-md);
-  }
+// Shared Option & Panel Header Layout (Icon + Two-line Text)
+%option-content-layout {
+  --item-color: var(--row-color, var(--primary-color));
 
   .icon-wrapper {
     display: flex;
@@ -90,8 +43,8 @@
     width: 36px;
     height: 36px;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--row-color) 12%, var(--view-bg-color));
-    color: var(--row-color);
+    background: color-mix(in srgb, var(--item-color) 12%, var(--view-bg-color));
+    color: var(--item-color);
     flex-shrink: 0;
     transition: var(--transition-fast);
 
@@ -109,10 +62,6 @@
     flex: 1;
     min-width: 0;
 
-    span {
-      display: block;
-    }
-
     .option-label {
       font-weight: 600;
       font-size: var(--font-size-md);
@@ -127,6 +76,76 @@
       line-height: 1.35;
     }
   }
+}
+
+// Export Type Accordion Panel
+.export-type-panel {
+  background: var(--view-bg-color) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-gnome);
+  overflow: hidden;
+  transition: var(--transition-fast);
+
+  ::ng-deep .mat-expansion-panel-body {
+    padding: 0 !important;
+  }
+
+  .mat-expansion-panel-header {
+    @extend %option-content-layout;
+    padding: var(--space-sm) var(--space-md);
+    height: auto !important;
+    min-height: 52px !important;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--hover-bg-color);
+
+      .icon-wrapper {
+        background: color-mix(in srgb, var(--item-color) 20%, var(--view-bg-color));
+        transform: scale(1.05);
+      }
+    }
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin: 0;
+      width: 100%;
+    }
+
+    ::ng-deep .mat-expansion-indicator {
+      color: var(--dim-color);
+    }
+  }
+}
+
+// Export Types Dropdown List
+.options-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 250px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// Selection Row Item
+.selection-row {
+  @extend %option-content-layout;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+  }
 
   .radio-indicator {
     display: flex;
@@ -139,7 +158,8 @@
     flex-shrink: 0;
     transition: var(--transition-fast);
 
-    .radio-dot {
+    &::after {
+      content: "";
       width: 10px;
       height: 10px;
       border-radius: 50%;
@@ -152,39 +172,39 @@
     background: var(--hover-bg-color);
 
     .icon-wrapper {
-      background: color-mix(in srgb, var(--row-color) 20%, var(--view-bg-color));
+      background: color-mix(in srgb, var(--item-color) 20%, var(--view-bg-color));
       transform: scale(1.05);
     }
 
     .radio-indicator {
-      border-color: var(--row-color);
+      border-color: var(--item-color);
     }
   }
 
   &.selected {
-    background: color-mix(in srgb, var(--row-color) 8%, var(--view-bg-color));
+    background: color-mix(in srgb, var(--item-color) 8%, var(--view-bg-color));
 
     .icon-wrapper {
-      background: var(--row-color);
+      background: var(--item-color);
       color: white;
-      box-shadow: 0 2px 6px color-mix(in srgb, var(--row-color) 30%, transparent);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--item-color) 30%, transparent);
     }
 
     .text-wrapper .option-label {
-      color: var(--row-color);
+      color: var(--item-color);
     }
 
     .radio-indicator {
-      border-color: var(--row-color);
+      border-color: var(--item-color);
 
-      .radio-dot {
-        background: var(--row-color);
+      &::after {
+        background: var(--item-color);
       }
     }
   }
 
   &:focus-visible {
-    outline: 2px solid var(--row-color);
+    outline: 2px solid var(--item-color);
     outline-offset: -2px;
   }
 
@@ -194,30 +214,20 @@
   }
 }
 
-// Form Fields
+// Config Section Card
 .config-section {
+  display: flex;
+  flex-direction: column;
   background: var(--view-bg-color);
   padding: var(--space-lg);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-gnome);
 
-  .field-icon {
-    color: var(--dim-color);
-  }
-
   // Profile Selection Special Styling
   .profile-section {
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
     border-bottom: 1px solid var(--border-color);
-
-    .subsection-label {
-      font-size: var(--font-size-md);
-      font-weight: 600;
-      color: var(--window-fg-color);
-      margin-top: 0;
-      margin-bottom: var(--space-md);
-      display: block;
-    }
 
     .profiles-grid {
       display: grid;
@@ -233,25 +243,22 @@
         border: 1px solid transparent;
         border-radius: var(--radius-sm);
         transition: var(--transition-fast);
-        position: relative;
 
         &:hover {
           background: var(--bg-hover);
         }
 
         &.mat-mdc-checkbox-checked {
-          background: rgba(var(--primary-color-rgb), 0.08);
+          background: color-mix(in srgb, var(--primary-color) 8%, transparent);
           border-color: var(--primary-color);
         }
 
-        ::ng-deep label {
-          &::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-            cursor: pointer;
-          }
+        ::ng-deep label::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          cursor: pointer;
         }
       }
     }
@@ -259,25 +266,18 @@
     .section-hint {
       font-size: var(--font-size-sm);
       color: var(--dim-color);
-      margin-top: var(--space-xs);
+      margin: var(--space-xs) 0 0;
     }
   }
 }
 
-// Security Section
+// Security Section Card
 .security-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
   padding: var(--space-lg);
   border-radius: var(--radius-md);
-  box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.8);
-  background: rgba(var(--yellow-rgb), 0.05);
-
-  .security-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .password-field-wrapper {
-    margin-top: var(--space-md);
-  }
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning-color) 70%, transparent);
+  background: color-mix(in srgb, var(--warning-color) 6%, transparent);
 }

@@ -3684,7 +3684,7 @@
       },
       "emptyState": {
         "title": "Welcome to Workflow Builder",
-        "subtitle": "Create a new workflow to automate your rclone operations, or pick an existing one to continue editing."
+        "subtitle": "Create a new workflow or choose a template to automate your rclone operations."
       }
     },
     "shortcuts": {

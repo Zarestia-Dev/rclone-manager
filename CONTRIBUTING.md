@@ -135,6 +135,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
    When translating native Android components (such as foreground services, SAF notifications, and channel descriptions), add or update the language `strings.xml` file under `src-tauri/gen/android/app/src/main/res/values-YOUR-LANG/strings.xml` (e.g., `values-tr`, `values-es`, `values-fr`, `values-ja`, `values-pt-rBR`, `values-ru`, `values-uk`, `values-zh-rCN`).
 
    Example (`values-tr/strings.xml`):
+
    ```xml
    <?xml version="1.0" encoding="utf-8"?>
    <resources>
@@ -184,14 +185,15 @@ If you'd like to go the extra mile, you can also translate the main README:
 
 Common language codes:
 
-| Code    | Language             |
-| ------- | -------------------- |
-| `en-US` | English (US)         |
-| `tr-TR` | Turkish (Turkey)     |
-| `de-DE` | German (Germany)     |
-| `fr-FR` | French (France)      |
-| `pt-BR` | Portuguese (Brazil)  |
-| `zh-CN` | Chinese (Simplified) |
+| Code    | Language              |
+| ------- | --------------------- |
+| `en-US` | English (US)          |
+| `tr-TR` | Turkish (Turkey)      |
+| `de-DE` | German (Germany)      |
+| `fr-FR` | French (France)       |
+| `pt-BR` | Portuguese (Brazil)   |
+| `zh-CN` | Chinese (Simplified)  |
+| `zh-TW` | Chinese (Traditional) |
 
 ### Cron Expressions
 

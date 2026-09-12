@@ -76,7 +76,7 @@
     <!-- Live Execution Status / Progress -->
     @if (engineService.isExecuting()) {
       <div class="live-progress">
-        <mat-icon svgIcon="sync" class="animate-spin progress-icon"></mat-icon>
+        <mat-icon svgIcon="spinner"></mat-icon>
         <span class="progress-step">{{ engineService.executionProgress()?.currentStepTitle }}</span>
       </div>
     }
