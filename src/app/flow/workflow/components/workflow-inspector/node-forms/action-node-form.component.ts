@@ -71,9 +71,9 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         flex-direction: column;
         gap: 4px;
         padding: 8px 12px;
-        background: var(--surface-bg-subtle, rgba(255, 255, 255, 0.03));
-        border-radius: 6px;
-        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+        background: var(--bg-elevated);
+        border-radius: var(--radius-xs);
+        border: 1px solid var(--border-color);
 
         .summary-header {
           display: flex;
@@ -84,7 +84,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             width: 16px;
             height: 16px;
             font-size: 16px;
-            color: var(--accent-color, #4dabf7);
+            color: var(--accent-color);
           }
 
           .action-name {
@@ -100,17 +100,17 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             font-size: 0.72rem;
             text-transform: uppercase;
             padding: 1px 6px;
-            border-radius: 4px;
-            background: rgba(var(--accent-color-rgb, 77, 171, 247), 0.15);
-            color: var(--accent-color, #4dabf7);
+            border-radius: var(--radius-xxs);
+            background: rgba(var(--accent-color-rgb), 0.15);
+            color: var(--accent-color);
             font-weight: 600;
           }
         }
 
         .summary-detail {
           font-size: 0.78rem;
-          color: var(--text-secondary);
-          font-family: var(--font-mono, monospace);
+          color: var(--dim-color);
+          font-family: var(--font-mono);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -124,29 +124,29 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
       }
 
       .tag-btn {
-        background: var(--bg-hover, rgba(255, 255, 255, 0.06));
-        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        background: var(--hover-bg-color);
+        border: 1px solid var(--border-color);
         padding: 2px 6px;
-        border-radius: 4px;
+        border-radius: var(--radius-xxs);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        transition: all 0.15s ease;
+        transition: var(--transition-fast);
 
         code {
-          font-family: var(--font-mono, monospace);
+          font-family: var(--font-mono);
           font-size: 0.8rem;
-          color: var(--accent-color, #4dabf7);
+          color: var(--accent-color);
         }
 
         &:hover {
-          background: var(--bg-active, rgba(255, 255, 255, 0.12));
-          border-color: var(--accent-color, #4dabf7);
+          background: var(--selected-bg-color);
+          border-color: var(--accent-color);
         }
       }
 
       .code-font {
-        font-family: var(--font-mono, monospace) !important;
+        font-family: var(--font-mono) !important;
         font-size: 0.88rem !important;
       }
 
@@ -157,9 +157,9 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         text-align: center;
         gap: 8px;
         padding: 12px;
-        border-radius: 8px;
-        background: var(--surface-bg-subtle, rgba(255, 255, 255, 0.03));
-        border: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
 
         mat-icon {
           opacity: 0.5;
@@ -167,7 +167,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
 
         .hint-text {
           font-size: 0.85rem;
-          color: var(--text-secondary);
+          color: var(--dim-color);
         }
       }
     `,

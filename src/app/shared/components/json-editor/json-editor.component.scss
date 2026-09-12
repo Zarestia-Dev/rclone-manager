@@ -29,7 +29,7 @@
   gap: var(--space-xs);
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
-  background: var(--headerbar-bg-color, rgba(var(--window-fg-color-rgb), 0.03));
+  background: var(--headerbar-bg-color);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
@@ -63,7 +63,7 @@
 
     .cm-gutters {
       border-right: 1px solid var(--border-color) !important;
-      background: var(--headerbar-bg-color, rgba(var(--window-fg-color-rgb), 0.02)) !important;
+      background: var(--headerbar-bg-color) !important;
     }
 
     .cm-line {

@@ -68,7 +68,7 @@ export interface RcPresetItem {
         margin-bottom: 2px;
 
         .section-label {
-          font-size: var(--font-size-xs, 11px);
+          font-size: var(--font-size-xs);
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -78,28 +78,28 @@ export interface RcPresetItem {
         .preset-filter-tabs {
           display: flex;
           gap: 2px;
-          background: var(--bg-elevated-05, rgba(255, 255, 255, 0.04));
+          background: var(--bg-elevated);
           padding: 2px;
-          border-radius: var(--radius-xs, 4px);
+          border-radius: var(--radius-xs);
 
           .tab-btn {
             background: transparent;
             border: none;
-            color: var(--text-secondary, #a0a0a0);
+            color: var(--dim-color);
             font-size: 10px;
             font-weight: 500;
             padding: 2px 6px;
             border-radius: 3px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: var(--transition-fast);
 
             &:hover {
-              color: var(--window-fg-color, #fff);
+              color: var(--window-fg-color);
             }
 
             &.active {
-              background: var(--bg-elevated-2, rgba(255, 255, 255, 0.12));
-              color: var(--accent-color, #3b82f6);
+              background: var(--bg-elevated-2);
+              color: var(--accent-color);
               font-weight: 600;
             }
           }
@@ -107,12 +107,12 @@ export interface RcPresetItem {
       }
 
       .preset-pill {
-        transition: all 0.15s ease;
+        transition: var(--transition-fast);
 
         &.active {
-          background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
-          border-color: var(--accent-color, #3b82f6);
-          color: var(--accent-color, #3b82f6);
+          background: rgba(var(--accent-color-rgb), 0.2);
+          border-color: var(--accent-color);
+          color: var(--accent-color);
           font-weight: 600;
         }
       }
@@ -130,7 +130,7 @@ export interface RcPresetItem {
           gap: 8px;
 
           .section-label {
-            font-size: var(--font-size-xs, 11px);
+            font-size: var(--font-size-xs);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -143,7 +143,7 @@ export interface RcPresetItem {
             gap: 4px;
             font-size: 10px;
             padding: 1px 6px;
-            border-radius: var(--radius-xs, 4px);
+            border-radius: var(--radius-xs);
             font-weight: 500;
 
             mat-icon {
@@ -153,36 +153,13 @@ export interface RcPresetItem {
             }
 
             &.template {
-              background: rgba(var(--primary-color-rgb, 59, 130, 246), 0.12);
-              color: var(--primary-color, #3b82f6);
+              background: rgba(var(--primary-color-rgb), 0.12);
+              color: var(--primary-color);
             }
 
             &.invalid {
-              background: rgba(var(--warn-color-rgb, 239, 68, 68), 0.12);
-              color: var(--warn-color, #ef4444);
-            }
-          }
-        }
-
-        .params-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-
-          .action-mini-btn {
-            background: transparent;
-            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-            color: var(--text-secondary, #a0a0a0);
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: var(--radius-xs, 4px);
-            cursor: pointer;
-            transition: all 0.15s ease;
-
-            &:hover {
-              color: var(--window-fg-color, #fff);
-              border-color: var(--accent-color, #3b82f6);
-              background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.1);
+              background: rgba(var(--warn-color-rgb), 0.12);
+              color: var(--warn-color);
             }
           }
         }
@@ -197,9 +174,9 @@ export interface RcPresetItem {
         flex-direction: column;
         gap: 8px;
         padding: 10px;
-        border-radius: var(--radius-sm, 8px);
-        background: var(--bg-elevated-05, rgba(255, 255, 255, 0.03));
-        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
 
         .var-helper-header {
           display: flex;
@@ -210,7 +187,7 @@ export interface RcPresetItem {
             width: 14px;
             height: 14px;
             font-size: 14px;
-            color: var(--accent-color, #3b82f6);
+            color: var(--accent-color);
           }
 
           .helper-title {
@@ -239,13 +216,13 @@ export interface RcPresetItem {
           gap: 6px;
           width: 100%;
           padding: 6px 10px;
-          background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.1);
-          border: 1px dashed rgba(var(--accent-color-rgb, 59, 130, 246), 0.35);
-          border-radius: var(--radius-xs, 6px);
-          color: var(--accent-color, #3b82f6);
+          background: rgba(var(--accent-color-rgb), 0.1);
+          border: 1px dashed rgba(var(--accent-color-rgb), 0.35);
+          border-radius: var(--radius-xs);
+          color: var(--accent-color);
           font-size: 11px;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: var(--transition-fast);
 
           mat-icon {
             width: 14px;
@@ -254,16 +231,16 @@ export interface RcPresetItem {
           }
 
           code {
-            font-family: var(--font-mono, monospace);
+            font-family: var(--font-mono);
             font-size: 11px;
-            background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.15);
+            background: rgba(var(--accent-color-rgb), 0.15);
             padding: 1px 5px;
             border-radius: 4px;
           }
 
           &:hover {
-            background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
-            border-color: var(--accent-color, #3b82f6);
+            background: rgba(var(--accent-color-rgb), 0.2);
+            border-color: var(--accent-color);
           }
         }
 

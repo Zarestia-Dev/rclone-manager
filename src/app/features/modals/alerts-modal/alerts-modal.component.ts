@@ -109,7 +109,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
 
     .tab-badge {
       background: var(--warn-color);
-      color: var(--accent-fg-color, #ffffff);
+      color: var(--accent-fg-color);
     }
 
     .tab-count {

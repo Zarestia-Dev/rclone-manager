@@ -24,8 +24,8 @@
       <div class="log-filter-chips">
         <button
           type="button"
-          class="filter-chip"
-          [class.active]="activeFilter() === 'all'"
+          class="app-pill interactive"
+          [class.is-selected]="activeFilter() === 'all'"
           (click)="setFilter('all')"
         >
           <span>{{ 'flow.workflow.logs.filterAll' | translate }}</span>
@@ -35,8 +35,8 @@
         @if (errorCount() > 0) {
           <button
             type="button"
-            class="filter-chip error"
-            [class.active]="activeFilter() === 'error'"
+            class="app-pill interactive p-warn"
+            [class.is-selected]="activeFilter() === 'error'"
             (click)="setFilter('error')"
           >
             <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -48,8 +48,8 @@
         @if (warnCount() > 0) {
           <button
             type="button"
-            class="filter-chip warn"
-            [class.active]="activeFilter() === 'warn'"
+            class="app-pill interactive p-yellow"
+            [class.is-selected]="activeFilter() === 'warn'"
             (click)="setFilter('warn')"
           >
             <mat-icon svgIcon="warning"></mat-icon>
@@ -61,8 +61,8 @@
         @if (successCount() > 0) {
           <button
             type="button"
-            class="filter-chip success"
-            [class.active]="activeFilter() === 'success'"
+            class="app-pill interactive p-primary"
+            [class.is-selected]="activeFilter() === 'success'"
             (click)="setFilter('success')"
           >
             <mat-icon svgIcon="check-circle"></mat-icon>

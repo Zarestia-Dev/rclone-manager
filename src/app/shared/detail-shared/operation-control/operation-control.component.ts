@@ -155,31 +155,29 @@ import { TranslatePipe } from '@ngx-translate/core';
           </div>
         }
 
-        <div class="panel-actions">
-          <button
-            matButton="filled"
-            [class]="buttonClass()"
-            (click)="
-              config().isActive
-                ? stopJob.emit(config().operationType)
-                : startJob.emit(config().operationType)
-            "
-            [disabled]="config().isLoading"
-            class="full-action-button"
-          >
-            @if (config().isLoading) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <mat-icon
-                [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
-              ></mat-icon>
-            }
-            <span>{{
-              (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
-                | translate
-            }}</span>
-          </button>
-        </div>
+        <button
+          matButton="filled"
+          [class]="buttonClass()"
+          (click)="
+            config().isActive
+              ? stopJob.emit(config().operationType)
+              : startJob.emit(config().operationType)
+          "
+          [disabled]="config().isLoading"
+          class="full-action-button"
+        >
+          @if (config().isLoading) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon
+              [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+            ></mat-icon>
+          }
+          <span>{{
+            (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
+              | translate
+          }}</span>
+        </button>
       </div>
     </mat-expansion-panel>
   `,
@@ -201,12 +199,9 @@ import { TranslatePipe } from '@ngx-translate/core';
         }
       }
 
-      .panel-actions {
+      .full-action-button {
         margin-top: var(--space-md);
-
-        .full-action-button {
-          width: 100%;
-        }
+        width: 100%;
       }
 
       .profile-info {

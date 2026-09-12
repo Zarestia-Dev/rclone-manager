@@ -90,8 +90,6 @@ import { ModalService } from 'src/app/services/ui/modal.service';
                 <button
                   type="button"
                   class="action-button"
-                  [class.stop-button]="job.statusLower === 'running'"
-                  [class.delete-button]="job.statusLower !== 'running'"
                   [attr.title]="
                     (job.statusLower === 'running'
                       ? 'detailShared.jobs.actions.stop'
@@ -107,7 +105,10 @@ import { ModalService } from 'src/app/services/ui/modal.service';
                   [matRippleUnbounded]="false"
                   tabindex="-1"
                 >
-                  <mat-icon [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"></mat-icon>
+                  <mat-icon
+                    [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"
+                    [class]="job.statusLower === 'running' ? 'warn' : 'orange'"
+                  ></mat-icon>
                 </button>
               </div>
             </div>

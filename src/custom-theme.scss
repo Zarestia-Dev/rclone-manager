@@ -585,14 +585,11 @@ $dark-theme: (
   --status-bar-height: 48px;
 
   // Global UI Variables
-  --text-muted: var(--dim-color);
-  --bg-elevated: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-elevated: color-mix(in srgb, var(--window-fg-color) 2%, transparent);
   --bg-elevated-1: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
   --bg-elevated-2: color-mix(in srgb, var(--window-fg-color) 5%, transparent);
   --bg-elevated-3: color-mix(in srgb, var(--window-fg-color) 8%, transparent);
   --bg-elevated-4: color-mix(in srgb, var(--window-fg-color) 10%, transparent);
-  --bg-hover: var(--hover-bg-color);
-  --bg-selected: var(--selected-bg-color);
 
   --ring-border: inset 0 0 0 1px var(--border-color);
   --ring-accent: inset 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
@@ -1224,6 +1221,26 @@ mat-accordion:not(.dull) {
   }
 }
 
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--card-shade-color);
+  color: var(--dim-color);
+  margin-left: auto;
+  line-height: 1.2;
+}
+
 .no-subscript .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }
@@ -1240,7 +1257,7 @@ mat-accordion:not(.dull) {
   }
 
   .option-description {
-    color: var(--text-muted);
+    color: var(--dim-color);
     font-size: var(--font-size-sm);
   }
 }
@@ -1781,7 +1798,7 @@ mat-accordion:not(.dull) {
 
   &:hover,
   &:focus-visible {
-    background: var(--bg-hover);
+    background: var(--hover-bg-color);
   }
 
   &:last-child {

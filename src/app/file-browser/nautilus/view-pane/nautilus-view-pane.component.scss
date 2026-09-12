@@ -67,9 +67,7 @@
 
   .grid-item {
     outline: none;
-    user-select: none;
     touch-action: pan-y;
-    -webkit-user-drag: none;
 
     &.unselectable {
       opacity: 0.45;
@@ -203,9 +201,7 @@ tr.folder-drag-over {
   tr.mat-mdc-row {
     transition: none;
     border-radius: var(--border-radius);
-    user-select: none;
     touch-action: pan-y;
-    -webkit-user-drag: none;
 
     &.unselectable {
       opacity: 0.45;
@@ -241,7 +237,6 @@ tr.folder-drag-over {
 
     &.sortable-header {
       cursor: pointer;
-      user-select: none;
     }
 
     .header-content {

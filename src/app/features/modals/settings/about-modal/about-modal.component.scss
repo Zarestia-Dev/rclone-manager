@@ -430,7 +430,7 @@
       transition: var(--transition-fast);
 
       &:hover {
-        background: var(--bg-hover);
+        background: var(--hover-bg-color);
       }
 
       .version {

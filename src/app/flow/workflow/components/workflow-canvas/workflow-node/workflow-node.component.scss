@@ -27,7 +27,6 @@ $badge-states: (
   background: var(--card-bg-color);
   border-radius: var(--card-border-radius);
   box-shadow: var(--box-shadow);
-  user-select: none;
   cursor: grab;
   box-sizing: border-box;
   transition:
@@ -73,11 +72,11 @@ $badge-states: (
   }
 
   &.status-success {
-    box-shadow: 0 0 0 2px rgba(var(--success-color-rgb), 0.3);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.3);
   }
 
   &.status-failed {
-    box-shadow: 0 0 0 2px rgba(var(--destructive-color-rgb), 0.3);
+    box-shadow: 0 0 0 2px rgba(var(--warn-color-rgb), 0.3);
   }
 
   &.status-skipped {

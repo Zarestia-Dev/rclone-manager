@@ -14,7 +14,7 @@
   margin-bottom: 2px;
 
   .section-label {
-    font-size: var(--font-size-xs, 11px);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -24,28 +24,28 @@
   .preset-filter-tabs {
     display: flex;
     gap: 2px;
-    background: var(--bg-elevated-05, rgba(255, 255, 255, 0.04));
+    background: var(--bg-elevated-1);
     padding: 2px;
-    border-radius: var(--radius-xs, 4px);
+    border-radius: var(--radius-xs);
 
     .tab-btn {
       background: transparent;
       border: none;
-      color: var(--text-secondary, #a0a0a0);
+      color: var(--dim-color);
       font-size: 10px;
       font-weight: 500;
       padding: 2px 8px;
       border-radius: 3px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: var(--transition-fast);
 
       &:hover {
-        color: var(--window-fg-color, #fff);
+        color: var(--window-fg-color);
       }
 
       &.active {
-        background: var(--bg-elevated-2, rgba(255, 255, 255, 0.12));
-        color: var(--accent-color, #3b82f6);
+        background: var(--bg-elevated-2);
+        color: var(--accent-color);
         font-weight: 600;
       }
     }
@@ -58,13 +58,13 @@
   gap: 6px;
 
   .preset-pill {
-    transition: all 0.15s ease;
+    transition: var(--transition-fast);
     cursor: pointer;
 
     &.active {
-      background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
-      border-color: var(--accent-color, #3b82f6);
-      color: var(--accent-color, #3b82f6);
+      background: rgba(var(--accent-color-rgb), 0.2);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
       font-weight: 600;
     }
   }
@@ -83,7 +83,7 @@
     gap: 8px;
 
     .section-label {
-      font-size: var(--font-size-xs, 11px);
+      font-size: var(--font-size-xs);
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -96,7 +96,7 @@
       gap: 4px;
       font-size: 10px;
       padding: 1px 6px;
-      border-radius: var(--radius-xs, 4px);
+      border-radius: var(--radius-xs);
       font-weight: 500;
 
       mat-icon {
@@ -106,13 +106,13 @@
       }
 
       &.template {
-        background: rgba(var(--primary-color-rgb, 59, 130, 246), 0.12);
-        color: var(--primary-color, #3b82f6);
+        background: rgba(var(--primary-color-rgb), 0.12);
+        color: var(--primary-color);
       }
 
       &.invalid {
-        background: rgba(var(--warn-color-rgb, 239, 68, 68), 0.12);
-        color: var(--warn-color, #ef4444);
+        background: rgba(var(--warn-color-rgb), 0.12);
+        color: var(--warn-color);
       }
     }
   }
@@ -124,26 +124,26 @@
 
     .action-mini-btn {
       background: transparent;
-      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-      color: var(--text-secondary, #a0a0a0);
+      border: 1px solid var(--border-color);
+      color: var(--dim-color);
       font-size: 10px;
       padding: 2px 8px;
-      border-radius: var(--radius-xs, 4px);
+      border-radius: var(--radius-xs);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: var(--transition-fast);
 
       &:hover {
-        color: var(--window-fg-color, #fff);
-        border-color: var(--accent-color, #3b82f6);
-        background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.1);
+        color: var(--window-fg-color);
+        border-color: var(--accent-color);
+        background: rgba(var(--accent-color-rgb), 0.1);
       }
     }
   }
 }
 
 .code-font {
-  font-family: var(--font-mono, monospace);
-  font-size: var(--font-size-sm, 12px);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
 }
 
 .var-helper-panel {
@@ -151,9 +151,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm, 8px);
-  background: var(--bg-elevated-05, rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated-1);
+  border: 1px solid var(--border-color);
 
   .var-helper-header {
     display: flex;
@@ -164,7 +164,7 @@
       width: 14px;
       height: 14px;
       font-size: 14px;
-      color: var(--accent-color, #3b82f6);
+      color: var(--accent-color);
     }
 
     .helper-title {
@@ -192,22 +192,22 @@
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
-    border-radius: var(--radius-xs, 4px);
-    background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.12);
-    border: 1px solid rgba(var(--accent-color-rgb, 59, 130, 246), 0.3);
-    color: var(--accent-color, #3b82f6);
+    border-radius: var(--radius-xs);
+    background: rgba(var(--accent-color-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+    color: var(--accent-color);
     font-size: 11px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: var(--transition-fast);
 
     &:hover {
-      background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.22);
-      border-color: var(--accent-color, #3b82f6);
+      background: rgba(var(--accent-color-rgb), 0.22);
+      border-color: var(--accent-color);
     }
 
     code {
-      font-family: var(--font-mono, monospace);
+      font-family: var(--font-mono);
       font-weight: 600;
       background: rgba(0, 0, 0, 0.2);
       padding: 1px 4px;

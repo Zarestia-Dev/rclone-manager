@@ -183,8 +183,14 @@
   }
 
   &.job-detail-section {
-    .section-title mat-icon {
-      color: var(--accent-color);
+    .section-title {
+      mat-icon {
+        color: var(--accent-color);
+      }
+
+      .app-pill {
+        margin-left: auto;
+      }
     }
   }
 
@@ -353,8 +359,8 @@
     margin-bottom: 6px;
 
     &.invalid {
-      background: rgba(var(--warn-color-rgb, 244, 67, 54), 0.12);
-      color: var(--warn-color, #f44336);
+      background: rgba(var(--warn-color-rgb), 0.12);
+      color: var(--warn-color);
     }
 
     .preview-icon {
@@ -390,7 +396,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  background: var(--bg-elevated-05);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
 
@@ -493,7 +499,7 @@
       align-items: center;
       gap: 6px;
       padding: 6px 8px;
-      background: var(--bg-elevated-05);
+      background: var(--bg-elevated);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-xs);
       font-size: var(--font-size-xs);
@@ -545,24 +551,24 @@
         }
 
         &:hover {
-          color: var(--color-danger, #ff4444);
-          background: rgba(255, 68, 68, 0.1);
+          color: var(--warn-color);
+          background: rgba(var(--warn-color-rgb), 0.1);
         }
       }
 
       &.chip-filter .category-tag {
-        background: rgba(40, 167, 69, 0.15);
-        color: #28a745;
+        background: rgba(var(--primary-color-rgb), 0.15);
+        color: var(--primary-color);
       }
 
       &.chip-vfs .category-tag {
-        background: rgba(255, 193, 7, 0.15);
-        color: #ffc107;
+        background: rgba(var(--yellow-rgb), 0.15);
+        color: var(--yellow);
       }
 
       &.chip-backend .category-tag {
-        background: rgba(23, 162, 184, 0.15);
-        color: #17a2b8;
+        background: rgba(var(--accent-color-rgb), 0.15);
+        color: var(--accent-color);
       }
     }
   }
@@ -572,7 +578,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px;
-    background: var(--bg-elevated-05);
+    background: var(--bg-elevated-1);
     border: 1px dashed var(--border-color);
     border-radius: var(--radius-xs);
     text-align: center;
@@ -663,18 +669,6 @@
       }
     }
   }
-}
-
-// ── Job Inspection Card ────────────────────────────────────────────────────
-
-.job-id-pill {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: var(--radius-xs);
-  background: rgba(var(--accent-color-rgb), 0.15);
-  color: var(--accent-color);
-  margin-left: auto;
 }
 
 .job-summary-card {

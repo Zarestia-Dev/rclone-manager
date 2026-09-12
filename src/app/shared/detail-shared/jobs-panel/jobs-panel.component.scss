@@ -44,24 +44,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.action-button {
-  &.stop-button {
-    color: var(--warn-color);
-    background: color-mix(in srgb, var(--warn-color) 10%, transparent);
-
-    &:hover {
-      background: color-mix(in srgb, var(--warn-color) 20%, transparent);
-    }
-  }
-
-  &.delete-button {
-    color: var(--dim-color);
-    background: var(--border-color);
-
-    &:hover {
-      background: color-mix(in srgb, var(--warn-color) 10%, transparent);
-      color: var(--warn-color);
-    }
-  }
-}

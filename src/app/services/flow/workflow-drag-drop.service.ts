@@ -151,19 +151,18 @@ export class WorkflowDragDropService {
     const card = document.createElement('div');
     card.style.cssText = `
       width: 100%; height: 100%; display: flex; align-items: center; gap: 10px;
-      padding: 0 12px; border-radius: var(--card-border-radius, 10px);
-      background: var(--popover-bg-color, #272a2f);
-      border: 1.5px solid var(--accent-color, #0ea5e9);
-      box-shadow: var(--shadow-popover, 0 10px 25px rgba(0, 0, 0, 0.45));
+      padding: 0 12px; border-radius: var(--card-border-radius);
+      background: var(--popover-bg-color);
+      border: 1.5px solid var(--accent-color);
       box-sizing: border-box; overflow: hidden;
     `;
 
     const iconBox = document.createElement('div');
     iconBox.style.cssText = `
-      width: 32px; height: 32px; border-radius: var(--radius-xs, 6px);
+      width: 32px; height: 32px; border-radius: var(--radius-xs);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      background: rgba(var(--accent-color-rgb, 14, 165, 233), 0.15);
-      color: var(--accent-color, #0ea5e9);
+      background: rgba(var(--accent-color-rgb), 0.15);
+      color: var(--accent-color);
     `;
 
     if (svgIcon) {
@@ -180,7 +179,7 @@ export class WorkflowDragDropService {
 
     const titleEl = document.createElement('span');
     titleEl.style.cssText = `
-      font-size: 13px; font-weight: 600; color: var(--window-fg-color, #f3f4f6);
+      font-size: 13px; font-weight: 600; color: var(--window-fg-color);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     `;
     titleEl.textContent = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
@@ -188,7 +187,7 @@ export class WorkflowDragDropService {
 
     const catEl = document.createElement('span');
     catEl.style.cssText = `
-      font-size: 10px; font-weight: 500; color: var(--dim-color, #9ca3af);
+      font-size: 10px; font-weight: 500; color: var(--dim-color);
       text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px;
     `;
     catEl.textContent = item.category;

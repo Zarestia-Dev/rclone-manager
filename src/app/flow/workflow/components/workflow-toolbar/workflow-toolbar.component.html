@@ -31,11 +31,11 @@
             @if (hasDuplicateWorkflows()) {
               <button
                 type="button"
-                class="action-button clean-duplicates-btn"
+                class="action-button"
                 (click)="cleanDuplicates()"
                 [attr.title]="'flow.workflow.cleanDuplicates' | translate"
               >
-                <mat-icon svgIcon="broom"></mat-icon>
+                <mat-icon svgIcon="broom" class="orange"></mat-icon>
               </button>
             }
           </div>
@@ -68,11 +68,11 @@
                 </button>
                 <button
                   type="button"
-                  class="action-button danger"
+                  class="action-button"
                   (click)="deleteWorkflow($event, wf.id)"
                   [attr.title]="'flow.workflow.actions.deleteWorkflow' | translate"
                 >
-                  <mat-icon svgIcon="trash"></mat-icon>
+                  <mat-icon svgIcon="trash" class="warn"></mat-icon>
                 </button>
               </div>
             </div>

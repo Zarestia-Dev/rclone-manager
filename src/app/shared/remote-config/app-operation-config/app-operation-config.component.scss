@@ -262,7 +262,7 @@ app-alert-banner {
       color: var(--window-fg-color);
 
       &::placeholder {
-        color: var(--text-muted);
+        color: var(--dim-color);
         opacity: 0.6;
       }
     }

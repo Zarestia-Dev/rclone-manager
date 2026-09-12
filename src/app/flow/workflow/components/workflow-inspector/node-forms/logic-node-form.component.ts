@@ -54,12 +54,12 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           align-items: flex-start;
           gap: 8px;
           padding: 8px 10px;
-          border-radius: var(--radius-xs, 6px);
-          background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.08);
-          border: 1px solid rgba(var(--accent-color-rgb, 59, 130, 246), 0.18);
+          border-radius: var(--radius-xs);
+          background: rgba(var(--accent-color-rgb), 0.08);
+          border: 1px solid rgba(var(--accent-color-rgb), 0.18);
           font-size: 11px;
           line-height: 1.4;
-          color: var(--window-fg-color, #e0e0e0);
+          color: var(--window-fg-color);
 
           mat-icon {
             width: 15px;
@@ -67,7 +67,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             font-size: 15px;
             flex-shrink: 0;
             margin-top: 1px;
-            color: var(--accent-color, #3b82f6);
+            color: var(--accent-color);
           }
 
           span {
@@ -81,9 +81,9 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         flex-direction: column;
         gap: 12px;
         padding: 12px;
-        border-radius: var(--radius-sm, 8px);
-        background: var(--bg-elevated-1, rgba(255, 255, 255, 0.03));
-        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated-1);
+        border: 1px solid var(--border-color);
 
         .card-header {
           display: flex;
@@ -95,7 +95,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--dim-color, #999);
+            color: var(--dim-color);
           }
 
           .card-badge {
@@ -103,9 +103,9 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             font-weight: 600;
             padding: 1px 7px;
             border-radius: 999px;
-            background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.12);
-            color: var(--accent-color, #3b82f6);
-            border: 1px solid rgba(var(--accent-color-rgb, 59, 130, 246), 0.25);
+            background: rgba(var(--accent-color-rgb), 0.12);
+            color: var(--accent-color);
+            border: 1px solid rgba(var(--accent-color-rgb), 0.25);
           }
         }
 
@@ -120,12 +120,12 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           align-items: center;
           gap: 6px;
           padding: 5px 10px;
-          border-radius: var(--radius-xs, 6px);
-          background: var(--bg-elevated-2, rgba(255, 255, 255, 0.06));
-          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+          border-radius: var(--radius-xs);
+          background: var(--bg-elevated-2);
+          border: 1px solid var(--border-color);
           font-size: 12px;
           font-weight: 500;
-          color: var(--window-fg-color, #fff);
+          color: var(--window-fg-color);
           transition:
             background 0.15s ease,
             border-color 0.15s ease;
@@ -138,8 +138,8 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--accent-color, #3b82f6);
-            box-shadow: 0 0 6px rgba(var(--accent-color-rgb, 59, 130, 246), 0.6);
+            background: var(--accent-color);
+            box-shadow: 0 0 6px rgba(var(--accent-color-rgb), 0.6);
           }
 
           .chip-text {
@@ -157,10 +157,10 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             border: none;
             border-radius: 50%;
             background: transparent;
-            color: var(--dim-color, #999);
+            color: var(--dim-color);
             cursor: pointer;
             margin-left: 2px;
-            transition: all 0.15s ease;
+            transition: var(--transition-fast);
 
             mat-icon {
               width: 12px;
@@ -169,8 +169,8 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
             }
 
             &:hover {
-              background: rgba(var(--destructive-color-rgb, 239, 68, 68), 0.2);
-              color: var(--destructive-bg-color, #ef4444);
+              background: rgba(var(--warn-color-rgb), 0.2);
+              color: var(--warn-color);
               transform: scale(1.1);
             }
           }
@@ -184,15 +184,15 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           width: 100%;
           height: 34px;
           padding: 0 14px;
-          border-radius: var(--radius-xs, 6px);
-          border: 1px dashed rgba(var(--accent-color-rgb, 59, 130, 246), 0.45);
-          background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.05);
-          color: var(--accent-color, #3b82f6);
+          border-radius: var(--radius-xs);
+          border: 1px dashed rgba(var(--accent-color-rgb), 0.45);
+          background: rgba(var(--accent-color-rgb), 0.05);
+          color: var(--accent-color);
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
           white-space: nowrap;
-          transition: all 0.15s ease;
+          transition: var(--transition-fast);
 
           mat-icon {
             width: 16px;
@@ -201,8 +201,8 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           }
 
           &:hover {
-            background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.12);
-            border-color: var(--accent-color, #3b82f6);
+            background: rgba(var(--accent-color-rgb), 0.12);
+            border-color: var(--accent-color);
             border-style: solid;
           }
 
@@ -238,20 +238,20 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         align-items: center;
         gap: 8px;
         padding: 6px 10px;
-        border-radius: var(--radius-xs, 6px);
-        background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.08);
-        border: 1px dashed rgba(var(--accent-color-rgb, 59, 130, 246), 0.25);
+        border-radius: var(--radius-xs);
+        background: rgba(var(--accent-color-rgb), 0.08);
+        border: 1px dashed rgba(var(--accent-color-rgb), 0.25);
         font-size: 0.8rem;
-        color: var(--text-secondary, #a0a0a0);
+        color: var(--dim-color);
 
         .token-label {
           font-weight: 500;
         }
 
         code {
-          font-family: var(--font-mono, monospace);
+          font-family: var(--font-mono);
           font-size: 0.82rem;
-          color: var(--accent-color, #3b82f6);
+          color: var(--accent-color);
           word-break: break-all;
         }
       }

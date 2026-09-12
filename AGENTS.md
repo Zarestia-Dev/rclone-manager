@@ -87,6 +87,41 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **ALWAYS** implement internal Pointer Drag systems using pointer events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) with floating ghost elements and `document.elementFromPoint()` or bounding box hit-testing. Refer to `NautilusDragDropService` (`src/app/services/ui/nautilus-drag-drop.service.ts`) and `WorkflowDragDropService` (`src/app/services/flow/workflow-drag-drop.service.ts`) as reference implementations.
     - Always enforce a pointer movement threshold (e.g. 6–8px) before initiating a drag so that regular `click` and touch tap actions continue to work seamlessly.
 
+12. **Dead Code & Compiler Warning Suppression Prohibition (CRITICAL)**
+    - **DO NOT** use `#[allow(dead_code)]`, `#[allow(unused)]`, or similar compiler warning suppression attributes to silence unused structs, methods, fields, functions, or imports in backend code.
+    - Every function, struct, field, or method introduced must be actively used or properly integrated.
+    - If an item is target- or feature-specific, use exact conditional compilation attributes (`#[cfg(feature = "...")]` or `#[cfg(not(feature = "..."))]`) instead of silencing warnings with `allow`.
+    - Unused code must be removed rather than suppressed. Backend code must compile cleanly with `-D warnings` across all target configurations (Desktop, Web Server, Mobile) without suppressing dead code.
+
+13. **Design System First, Global SCSS & Anti-Duplication Rule (CRITICAL)**
+    - **Never Reinvent Existing Classes (Single Canonical Class Rule)**: Before adding any new CSS class to a component's `.scss` file, AI agents **MUST** inspect `src/custom-theme.scss` and `src/app/styles/`. There is **exactly ONE** canonical global class for each UI primitive. You **MUST** reuse it instead of inventing a custom class or alias with duplicate styling:
+      - **Pills / Badges / Chips**: Always use `.app-pill` (with `.interactive`, `.is-selected`, and semantic color variants `.p-primary`, `.p-accent`, `.p-orange`, `.p-yellow`, `.p-purple`, `.p-warn`, `.p-dim`). **DO NOT** create custom `.filter-chip`, `.badge`, `.status-tag`, `.job-id-pill`, `.stat-pill`, or `.chip` classes.
+      - **Action / Icon Buttons**: Always use `.action-button` (standard 32x32px icon button) or `.action-button.sm` (compact 22x22px icon button). **DO NOT** create custom `.action-btn`, `.icon-btn`, `.tool-btn`, `.chip-delete-btn`, `.action-mini-btn`, or `.custom-icon-button` classes.
+      - **Text Truncation (Ellipsis)**: Always use the single canonical `.truncate` class. **DO NOT** re-declare `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` in component SCSS files.
+      - **Counter Badges**: Always use the single canonical `.count-badge` class. **DO NOT** create custom `.cat-count-badge`, `.log-count-badge`, or `.config-count-badge` classes.
+      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, or component-specific empty-state clones.
+      - **Loaders / Overlays**: Always use `.loading-container` (inline spinner) or `.loading-overlay` (modal absolute overlay from `_shared-modal.scss`).
+      - **Context Menus**: Always use `.material-context-menu` and `.menu-item` (see Rule 5).
+      - **Scrollbar Concealing**: Always use `.hide-scrollbar`. **DO NOT** write custom `::-webkit-scrollbar { display: none; }` or `scrollbar-width: none` in components.
+      - **Detail Sections & Rows**: Always use `.detail-section`, `.section-title`, `.error-entry`, and `.card-row-item`.
+      - **Modal Scaffolding**: Standard modals should extend or include `src/app/styles/_shared-modal.scss` via `styleUrls: ['...', 'path/to/_shared-modal.scss']` and use standard `header`, `main`, `footer`, `.form-section`, and `.section-label`.
+    - **Global Inherited Resets Prohibition**:
+      - `html, body` globally enforces `user-select: none;` and `-webkit-user-drag: none;` across the entire application.
+      - **DO NOT** declare redundant `user-select: none;` or `-webkit-user-drag: none;` in component SCSS files.
+      - **ONLY** use `user-select: text;` or `user-select: all;` when explicitly opting-in to allow text selection (e.g. copyable IDs, tokens, paths, or interactive log outputs).
+    - **Design System Tokens & Strict Token Integrity (CRITICAL)**:
+      - Never hardcode raw pixel sizes, margins, paddings, or arbitrary hex colors (e.g. Bootstrap `#28a745`, `#ffc107`, `#17a2b8` or Tailwind `#3b82f6`, `#ef4444`).
+      - **DO NOT invent CSS variables or alias tokens**: Every semantic role maps to exactly ONE canonical variable (1-to-1 token mapping). Defining alias/duplicate variables (e.g. `--text-secondary`, `--text-muted`, `--color-danger`, `--bg-hover`, `--bg-selected`, `--bg-elevated-05`) is strictly prohibited.
+      - **DO NOT write fallbacks** into `var()` calls (e.g. `var(--accent-color, #3b82f6)`, `var(--dim-color, #a0a0a0)`, or `var(--bg-elevated, rgba(...))`). Global tokens in `src/custom-theme.scss` are guaranteed to exist at `:root`.
+      - Always use canonical CSS variables:
+        - Spacing: `var(--space-xxs)` through `var(--space-2xl)`
+        - Border Radius: `var(--radius-xxs)` through `var(--radius-lg)`
+        - Typography: `var(--font-size-xs)` through `var(--font-size-3xl)`, `var(--font-mono)`
+        - Transitions: `var(--transition-fast)`, `var(--transition-standard)`
+        - Elevated Backgrounds: `var(--bg-elevated)` (base 2%), and `var(--bg-elevated-1)` through `var(--bg-elevated-4)`
+        - Interactive States: `var(--hover-bg-color)`, `var(--selected-bg-color)`
+        - Semantic Colors: `var(--window-bg-color)`, `var(--window-fg-color)`, `var(--dim-color)` (for all muted/secondary text), `var(--accent-color)`, `var(--primary-color)`, `var(--warn-color)` (for all errors/danger), `var(--yellow)`, `var(--orange)`, `var(--purple)`, `var(--card-bg-color)`, `var(--border-color)`
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))

@@ -245,7 +245,7 @@ $category-colors: (
         transition: var(--transition-fast);
 
         &:hover {
-          background: var(--bg-hover);
+          background: var(--hover-bg-color);
         }
 
         &.mat-mdc-checkbox-checked {

@@ -21,7 +21,6 @@ export interface PowerActionItem {
   titleKey: string;
   descKey: string;
   color:
-    | 'var(--destructive-color)'
     | 'var(--accent-color)'
     | 'var(--orange)'
     | 'var(--warn-color)'
@@ -72,7 +71,7 @@ export class PowerMenuModalComponent {
         icon: 'power-off',
         titleKey: 'powerMenu.actions.shutdownApp.title',
         descKey: 'powerMenu.actions.shutdownApp.desc',
-        color: 'var(--destructive-color)',
+        color: 'var(--warn-color)',
         action: () => this.handleShutdownApp(),
       },
       {

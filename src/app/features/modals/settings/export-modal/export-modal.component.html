@@ -98,6 +98,8 @@
           <mat-label>{{ 'modals.export.selectRemote' | translate }}</mat-label>
           <mat-icon matPrefix svgIcon="hard-drive" class="field-icon"></mat-icon>
           <mat-select
+            required
+            #remoteSelect="ngModel"
             [ngModel]="selectedRemoteName()"
             (ngModelChange)="onRemoteSelectionChange($event)"
             [disabled]="isExporting()"
@@ -107,6 +109,9 @@
               <mat-option [value]="remote">{{ remote }}</mat-option>
             }
           </mat-select>
+          @if (remoteSelect.invalid && remoteSelect.touched) {
+            <mat-error>{{ 'common.required' | translate }}</mat-error>
+          }
         </mat-form-field>
       }
 
@@ -115,6 +120,7 @@
         <mat-icon matPrefix svgIcon="folder" class="field-icon"></mat-icon>
         <input
           matInput
+          required
           [value]="exportPath()"
           readonly
           [placeholder]="'modals.export.selectDestination' | translate"
@@ -161,6 +167,8 @@
           <mat-icon matPrefix svgIcon="lock" class="field-icon"></mat-icon>
           <input
             matInput
+            required
+            #passwordInput="ngModel"
             [ngModel]="password()"
             (ngModelChange)="onPasswordChange($event)"
             [type]="showPassword() ? 'text' : 'password'"
@@ -178,6 +186,9 @@
           >
             <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
+          @if (passwordInput.invalid && passwordInput.touched) {
+            <mat-error>{{ 'common.required' | translate }}</mat-error>
+          }
         </mat-form-field>
         <app-alert-banner
           severity="info"

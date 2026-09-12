@@ -7,7 +7,6 @@
   background: var(--headerbar-bg-color);
   border-bottom: 1px solid var(--border-color);
   box-sizing: border-box;
-  user-select: none;
 
   .toolbar-left,
   .toolbar-center,
@@ -277,11 +276,6 @@
         min-width: 50px;
         font-size: var(--font-size-xs);
       }
-
-      .action-button {
-        width: 24px;
-        height: 24px;
-      }
     }
 
     .run-workflow-btn,
@@ -323,22 +317,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    .clean-duplicates-btn {
-      color: var(--orange);
-      width: 24px;
-      height: 24px;
-
-      mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
-      }
-
-      &:hover {
-        background: rgba(var(--orange-rgb), var(--active-opacity));
-      }
-    }
   }
 
   .workflow-menu-row {
@@ -375,21 +353,6 @@
       padding-right: 4px;
       opacity: 0.35;
       transition: var(--transition-fast);
-
-      .action-button {
-        width: 24px;
-        height: 24px;
-
-        mat-icon {
-          width: 14px;
-          height: 14px;
-          font-size: 14px;
-        }
-
-        &.danger:hover {
-          color: var(--warn-color);
-        }
-      }
     }
 
     &:hover .row-actions,
