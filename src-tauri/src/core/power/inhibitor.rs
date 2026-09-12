@@ -93,7 +93,7 @@ impl PowerInhibitorState {
                         match proxy
                             .call::<_, _, zbus::zvariant::OwnedFd>(
                                 "Inhibit",
-                                &("shutdown:sleep", "RClone Manager", reason, "block"),
+                                &("shutdown:sleep", "RClone Manager", reason, "delay"),
                             )
                             .await
                         {
@@ -119,6 +119,7 @@ impl PowerInhibitorState {
                                     }
                                 });
 
+                                let app_handle = _app.clone();
                                 tauri::async_runtime::spawn(async move {
                                     if let Ok(mut shutdown_stream) =
                                         proxy.receive_signal("PrepareForShutdown").await
@@ -127,8 +128,13 @@ impl PowerInhibitorState {
                                         while let Some(signal) = shutdown_stream.next().await {
                                             if let Ok(true) = signal.body().deserialize::<bool>() {
                                                 info!(
-                                                    "⚠️ OS Shutdown requested while power inhibitor is active"
+                                                    "⚠️ OS Shutdown requested while power inhibitor is active, releasing lock to allow shutdown"
                                                 );
+                                                if let Some(state) =
+                                                    app_handle.try_state::<PowerInhibitorState>()
+                                                {
+                                                    state.release().await;
+                                                }
                                             }
                                         }
                                     }
