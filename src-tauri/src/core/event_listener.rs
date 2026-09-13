@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use log::warn;
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
@@ -43,14 +45,41 @@ fn trigger_tray_update(app: AppHandle) {
     });
 }
 
-fn handle_ctrl_c(app: &AppHandle) {
+fn handle_termination_signals(app: &AppHandle) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = tokio::signal::ctrl_c().await {
-            error!("Failed to install Ctrl+C handler: {e}");
-            return;
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{SignalKind, signal};
+            let mut sigterm = signal(SignalKind::terminate()).ok();
+            if sigterm.is_none() {
+                warn!("Failed to register SIGTERM handler");
+            }
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    info!("Ctrl+C / SIGINT received, initiating shutdown");
+                }
+                _ = async {
+                    if let Some(ref mut sig) = sigterm {
+                        sig.recv().await;
+                    } else {
+                        std::future::pending::<()>().await;
+                    }
+                } => {
+                    info!("SIGTERM received, initiating graceful shutdown");
+                }
+            }
         }
-        info!("Ctrl+C received, initiating shutdown");
+
+        #[cfg(not(unix))]
+        {
+            if let Err(e) = tokio::signal::ctrl_c().await {
+                error!("Failed to install Ctrl+C handler: {e}");
+                return;
+            }
+            info!("Ctrl+C received, initiating shutdown");
+        }
+
         let _ = shutdown_app(app_clone.clone()).await;
         app_clone.exit(0);
     });
@@ -371,7 +400,7 @@ pub fn setup_event_listener(app: &AppHandle) {
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     register_operation_state_listeners(app);
 
-    handle_ctrl_c(app);
+    handle_termination_signals(app);
     handle_rclone_password_stored(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
