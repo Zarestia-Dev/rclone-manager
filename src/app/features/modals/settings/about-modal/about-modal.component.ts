@@ -232,6 +232,7 @@ export class AboutModalComponent implements OnInit {
     { name: 'dikler', github: 'dikler' },
     { name: 'maksam07', github: 'maksam07' },
     { name: 'DraftingDreamer', github: 'DraftingDreamer' },
+    { name: 'nvdx', github: 'nvandamme' },
   ] as const;
 
   readonly rcloneNavBadge = computed(() => {

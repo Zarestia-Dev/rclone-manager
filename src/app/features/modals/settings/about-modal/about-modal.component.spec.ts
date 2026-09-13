@@ -119,6 +119,10 @@ describe('AboutModalComponent', () => {
     expect(draftingDreamer).toBeDefined();
     expect(draftingDreamer?.name).toBe('DraftingDreamer');
 
+    const nvdx = component.contributors.find(c => c.github === 'nvandamme');
+    expect(nvdx).toBeDefined();
+    expect(nvdx?.name).toBe('nvdx');
+
     const eduardo = component.contributors.find(c => c.github === 'eduardomozart');
     expect(eduardo).toBeDefined();
   });
@@ -135,6 +139,7 @@ describe('AboutModalComponent', () => {
 
     const hrefs = Array.from(links).map(l => l.getAttribute('href'));
     expect(hrefs).toContain('https://github.com/DraftingDreamer');
+    expect(hrefs).toContain('https://github.com/nvandamme');
     expect(hrefs).toContain('https://github.com/Hakanbaban53');
   });
 

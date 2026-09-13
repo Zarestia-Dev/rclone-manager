@@ -20,6 +20,7 @@ Thank you to everyone who has contributed to **RClone Manager**!
 | **dikler**                     | `32301811+dikler@users.noreply.github.com`           | [@dikler](https://github.com/dikler)                   |
 | **maksam07**                   | `maksam07@gmail.com`                                 | [@maksam07](https://github.com/maksam07)               |
 | **DraftingDreamer**            | `264591489+DraftingDreamer@users.noreply.github.com` | [@DraftingDreamer](https://github.com/DraftingDreamer) |
+| **nvdx**                       | `n.vandamme@firis-system.lu`                         | [@nvandamme](https://github.com/nvandamme)             |
 
 ## Translators
 
