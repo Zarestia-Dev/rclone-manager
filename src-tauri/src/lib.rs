@@ -65,6 +65,11 @@ fn build_send_to_params(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
+    // webview is created; skipped in headless web-server and mobile builds.
+    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    crate::utils::app::platform::apply_linux_graphics_quirks();
+
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
