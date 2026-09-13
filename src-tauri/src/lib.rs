@@ -63,70 +63,12 @@ fn build_send_to_params(
     }
 }
 
-/// Applies WebKitGTK environment workarounds for the known Linux NVIDIA + Wayland
-/// rendering failures (blank windows, "Error 71" protocol errors). See
-/// https://v2.tauri.app/develop/debug/linux-graphics/. Must run before any webview is
-/// created: these variables are read by native libraries during initialization.
-#[cfg(target_os = "linux")]
-// Sound: invoked from main() single-threaded, before the async runtime spawns threads.
-#[allow(clippy::disallowed_methods)]
-fn apply_linux_webkit_workarounds() {
-    let display = std::env::var("WAYLAND_DISPLAY").ok();
-    let session_type = std::env::var("XDG_SESSION_TYPE").ok();
-
-    if !is_wayland_session(display.as_deref(), session_type.as_deref()) || !nvidia_gpu_present() {
-        return;
-    }
-
-    // Sound: runs single-threaded in main before the runtime spawns any threads.
-    unsafe {
-        if std::env::var("GDK_BACKEND").is_err() {
-            std::env::set_var("GDK_BACKEND", "x11");
-        }
-        if std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err() {
-            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-        }
-    }
-}
-
-/// Returns true when the given environment indicates a Wayland session.
-#[cfg(target_os = "linux")]
-fn is_wayland_session(display: Option<&str>, session_type: Option<&str>) -> bool {
-    display.is_some_and(|d| !d.trim().is_empty())
-        || session_type.is_some_and(|t| t.eq_ignore_ascii_case("wayland"))
-}
-
-/// Returns true when an NVIDIA GPU is present (driver loaded or PCI vendor 0x10de).
-#[cfg(target_os = "linux")]
-fn nvidia_gpu_present() -> bool {
-    // NVIDIA driver loaded (proprietary or open kernel module).
-    if std::path::Path::new("/proc/driver/nvidia/version").exists() {
-        return true;
-    }
-
-    // Any DRM card with PCI vendor 0x10de (NVIDIA).
-    let Ok(cards) = std::fs::read_dir("/sys/class/drm") else {
-        return false;
-    };
-
-    cards.flatten().any(|entry| {
-        let file_name = entry.file_name();
-        let Some(name) = file_name.to_str() else {
-            return false;
-        };
-        if !name.starts_with("card") || !name[4..].chars().all(|c| c.is_ascii_digit()) {
-            return false;
-        }
-
-        std::fs::read_to_string(format!("/sys/class/drm/{name}/device/vendor"))
-            .is_ok_and(|vendor| vendor.trim() == "0x10de")
-    })
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(target_os = "linux")]
-    apply_linux_webkit_workarounds();
+    // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
+    // webview is created; skipped in headless web-server and mobile builds.
+    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    crate::utils::app::platform::apply_linux_graphics_quirks();
 
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
@@ -755,28 +697,4 @@ fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
         "http"
     };
     format!("{scheme}://{host}:{}{path}", args.headless.port)
-}
-
-#[cfg(all(test, target_os = "linux"))]
-mod tests {
-    use super::is_wayland_session;
-
-    #[test]
-    fn wayland_detected_via_display_var() {
-        assert!(is_wayland_session(Some("wayland-0"), None));
-        assert!(is_wayland_session(Some("wl-1"), Some("x11")));
-    }
-
-    #[test]
-    fn wayland_detected_via_session_type_case_insensitive() {
-        assert!(is_wayland_session(None, Some("wayland")));
-        assert!(is_wayland_session(None, Some("Wayland")));
-    }
-
-    #[test]
-    fn not_wayland_without_display_or_session_type() {
-        assert!(!is_wayland_session(None, None));
-        assert!(!is_wayland_session(Some(""), Some("x11")));
-        assert!(!is_wayland_session(Some("   "), Some("X11")));
-    }
 }
