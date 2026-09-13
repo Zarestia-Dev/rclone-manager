@@ -4,7 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { JobManagementService } from './job-management.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { DEFAULT_JOB_STATS, JobInfo } from '@app/types';
+import { DEFAULT_JOB_STATS, JobInfo, JobStatsUpdatedEvent } from '@app/types';
 
 import { provideTranslateService } from '@ngx-translate/core';
 
@@ -12,6 +12,7 @@ describe('JobManagementService', () => {
   let service: JobManagementService;
   let mockApiClient: { invoke: ReturnType<typeof vi.fn> };
   let jobCacheChanged$: Subject<JobInfo[]>;
+  let jobStatsUpdated$: Subject<JobStatsUpdatedEvent>;
   let rcloneReady$: Subject<void>;
 
   const createMockJob = (overrides: Partial<JobInfo>): JobInfo => ({
@@ -30,6 +31,7 @@ describe('JobManagementService', () => {
 
   beforeEach(() => {
     jobCacheChanged$ = new Subject<JobInfo[]>();
+    jobStatsUpdated$ = new Subject<JobStatsUpdatedEvent>();
     rcloneReady$ = new Subject<void>();
     mockApiClient = {
       invoke: vi.fn().mockResolvedValue([]),
@@ -47,6 +49,7 @@ describe('JobManagementService', () => {
           provide: EventListenersService,
           useValue: {
             listenToJobCacheChanged: (): Observable<JobInfo[]> => jobCacheChanged$,
+            listenToJobStatsUpdated: (): Observable<JobStatsUpdatedEvent> => jobStatsUpdated$,
             listenToRcloneEngineReady: (): Observable<void> => rcloneReady$,
           },
         },
@@ -191,6 +194,24 @@ describe('JobManagementService', () => {
     it('returns undefined when neither matches', () => {
       const job = service.getJob('unknown-exec', 999);
       expect(job).toBeUndefined();
+    });
+  });
+
+  describe('Job Stats Updates', () => {
+    it('updates job stats directly without invoking get_jobs', async () => {
+      const initialJob = createMockJob({ jobid: 42, stats: { ...DEFAULT_JOB_STATS, bytes: 100 } });
+      mockApiClient.invoke.mockResolvedValueOnce([initialJob]);
+      await service.refreshJobs();
+
+      expect(service.jobs()[0].stats.bytes).toBe(100);
+      mockApiClient.invoke.mockClear();
+
+      const newStats = { ...DEFAULT_JOB_STATS, bytes: 500, speed: 50 };
+      jobStatsUpdated$.next({ jobId: 42, stats: newStats });
+
+      expect(service.jobs()[0].stats.bytes).toBe(500);
+      expect(service.jobs()[0].stats.speed).toBe(50);
+      expect(mockApiClient.invoke).not.toHaveBeenCalled();
     });
   });
 });

@@ -16,6 +16,7 @@ export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked' as const;
 export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
 export const SYSTEM_THEME_CHANGED = 'system_theme_changed' as const;
 export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
+export const JOB_STATS_UPDATED = 'job_stats_updated' as const;
 export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;
 export const SERVE_STATE_CHANGED = 'serve_state_changed' as const;
 export const SYSTEM_STATUS = 'system_status' as const;
@@ -83,6 +84,11 @@ export interface JobChangeEvent {
   quickRunId?: string;
   workflowId?: string;
   nodeId?: string;
+}
+
+export interface JobStatsUpdatedEvent {
+  jobId: number;
+  stats: GlobalStats;
 }
 
 export interface SystemStatusPayload {

@@ -5,6 +5,7 @@ import {
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_CHANGED,
   JOB_CACHE_CHANGED,
+  JOB_STATS_UPDATED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
   APP_EXIT_REQUESTED,
@@ -26,6 +27,7 @@ import {
   RCLONE_OAUTH_URL,
   OAuthUrlEvent,
   JobChangeEvent,
+  JobStatsUpdatedEvent,
   SystemStatusPayload,
   UpdateInfo,
   DownloadStatus,
@@ -190,6 +192,10 @@ export class EventListenersService extends TauriBaseService {
 
   listenToJobCacheChanged(): Observable<JobChangeEvent> {
     return this.listenToEvent<JobChangeEvent>(JOB_CACHE_CHANGED);
+  }
+
+  listenToJobStatsUpdated(): Observable<JobStatsUpdatedEvent> {
+    return this.listenToEvent<JobStatsUpdatedEvent>(JOB_STATS_UPDATED);
   }
 
   listenToMountPluginInstalled(): Observable<void> {

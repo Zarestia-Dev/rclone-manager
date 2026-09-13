@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use super::job_resolver::{link_resolving_jobs, sanitize_finished_stats};
 use crate::utils::types::{
-    events::JOB_CACHE_CHANGED,
+    events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobStatsUpdatedEvent},
     jobs::{JobCache, JobInfo, JobStatus, JobType},
 };
 
@@ -195,17 +195,58 @@ impl JobCache {
         Ok(result)
     }
 
-    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        self.update_job(jobid, |j| {
-            let mut stats = stats;
-            if j.status.is_finished() {
-                sanitize_finished_stats(&mut stats);
+    pub async fn update_job_stats(&self, jobid: u64, mut stats: Value) -> Result<(), String> {
+        let mut jobs = self.jobs.write().await;
+        let job = jobs
+            .get_mut(&jobid)
+            .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
+
+        if job.status.is_finished() {
+            sanitize_finished_stats(&mut stats);
+        }
+        job.stats = Some(stats);
+        job.normalize_job_stats();
+
+        let parent_id = job.parent_job_id;
+        let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
+        let mut job_stats = job.stats.clone().unwrap_or(Value::Null);
+
+        let mut parent_stats: Option<(u64, Value)> = None;
+
+        if let Some(p_id) = parent_id {
+            link_resolving_jobs(&mut jobs, p_id);
+            if let Some(p_stats) = jobs.get(&p_id).and_then(|p| p.stats.clone()) {
+                parent_stats = Some((p_id, p_stats));
             }
-            j.stats = Some(stats);
-            j.normalize_job_stats();
-        })
-        .await
-        .map(|_| ())
+        }
+        if is_check {
+            link_resolving_jobs(&mut jobs, jobid);
+            if let Some(updated_stats) = jobs.get(&jobid).and_then(|j| j.stats.clone()) {
+                job_stats = updated_stats;
+            }
+        }
+
+        drop(jobs);
+
+        if let Some((p_id, p_stats)) = parent_stats {
+            crate::core::bridge::emit(
+                JOB_STATS_UPDATED,
+                JobStatsUpdatedEvent {
+                    job_id: p_id,
+                    stats: p_stats,
+                },
+            );
+        }
+
+        crate::core::bridge::emit(
+            JOB_STATS_UPDATED,
+            JobStatsUpdatedEvent {
+                job_id: jobid,
+                stats: job_stats,
+            },
+        );
+
+        Ok(())
     }
 
     pub async fn complete_job(

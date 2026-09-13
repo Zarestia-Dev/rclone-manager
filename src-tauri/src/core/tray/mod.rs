@@ -15,15 +15,54 @@ use menu::MenuPlan;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
 
+#[derive(Default, Clone)]
+pub struct TrayVisualCache {
+    pub plan: Option<MenuPlan>,
+    pub tooltip: Option<String>,
+    pub is_active: Option<bool>,
+    pub icon_theme: Option<String>,
+}
+
+impl TrayVisualCache {
+    /// Compares incoming visual components against the cached state.
+    /// Updates the cache in-place for any components that changed and returns
+    /// `(plan_changed, tooltip_changed, icon_changed)`.
+    pub fn diff_and_update(
+        &mut self,
+        new_plan: &MenuPlan,
+        new_tooltip: &str,
+        is_active: bool,
+        icon_theme: &str,
+    ) -> (bool, bool, bool) {
+        let plan_changed = self.plan.as_ref() != Some(new_plan);
+        let tooltip_changed = self.tooltip.as_deref() != Some(new_tooltip);
+        let icon_changed =
+            self.is_active != Some(is_active) || self.icon_theme.as_deref() != Some(icon_theme);
+
+        if plan_changed {
+            self.plan = Some(new_plan.clone());
+        }
+        if tooltip_changed {
+            self.tooltip = Some(new_tooltip.to_string());
+        }
+        if icon_changed {
+            self.is_active = Some(is_active);
+            self.icon_theme = Some(icon_theme.to_string());
+        }
+
+        (plan_changed, tooltip_changed, icon_changed)
+    }
+}
+
 pub struct TrayMenuState {
-    pub last_plan: Mutex<Option<MenuPlan>>,
+    pub cache: Mutex<TrayVisualCache>,
     pub update_lock: tokio::sync::Mutex<()>,
 }
 
 impl Default for TrayMenuState {
     fn default() -> Self {
         Self {
-            last_plan: Mutex::new(None),
+            cache: Mutex::new(TrayVisualCache::default()),
             update_lock: tokio::sync::Mutex::new(()),
         }
     }

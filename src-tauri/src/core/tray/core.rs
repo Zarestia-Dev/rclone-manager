@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{debug, error};
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::menu::{MenuPlan, create_tray_menu_from_plan};
@@ -31,31 +31,36 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
 
     let plan = MenuPlan::build(&snapshot, max_tray_items);
 
-    // Track whether the menu plan structure actually changed.
-    // This allows us to skip rebuilding the menu (avoiding hover loss/flashing) but still
-    // update the icon/tooltip if needed.
-    let plan_changed = {
-        let mut last = state.last_plan.lock().unwrap();
-        if last.as_ref() == Some(&plan) {
-            false
-        } else {
-            *last = Some(plan.clone());
-            true
-        }
+    let (plan_changed, tooltip_changed, icon_changed) =
+        state.cache.lock().unwrap().diff_and_update(
+            &plan,
+            &tooltip,
+            is_active,
+            &settings.general.tray_icon_theme,
+        );
+
+    if !plan_changed && !tooltip_changed && !icon_changed {
+        return Ok(());
+    }
+
+    let icon = if icon_changed {
+        super::icon::get_icon(is_active, &settings.general.tray_icon_theme).ok()
+    } else {
+        None
     };
 
-    let icon = super::icon::get_icon(is_active, &settings.general.tray_icon_theme).ok();
+    let plan_to_set = if plan_changed { Some(plan) } else { None };
+    let tooltip_to_set = if tooltip_changed { Some(tooltip) } else { None };
 
     let app_clone = app.clone();
     app.run_on_main_thread(move || {
         let Some(tray) = app_clone.tray_by_id("main-tray") else {
-            info!("Tray menu update failed: tray not found");
+            debug!("Tray menu update skipped: tray not found");
             return;
         };
 
-        // Only rebuild and set the menu if the plan changed
-        if plan_changed {
-            match create_tray_menu_from_plan(&app_clone, &plan) {
+        if let Some(ref plan) = plan_to_set {
+            match create_tray_menu_from_plan(&app_clone, plan) {
                 Ok(menu) => {
                     if let Err(e) = tray.set_menu(Some(menu)) {
                         error!("Failed to set tray menu: {e}");
@@ -72,8 +77,13 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
             let _ = tray.set_icon(Some(image));
         }
 
-        let _ = tray.set_tooltip(Some(tooltip));
-        info!("Tray menu (changed={plan_changed}) and icon updated on main thread");
+        if let Some(tooltip) = tooltip_to_set {
+            let _ = tray.set_tooltip(Some(tooltip));
+        }
+
+        debug!(
+            "Tray visuals updated on main thread (plan_changed={plan_changed}, icon_changed={icon_changed}, tooltip_changed={tooltip_changed})"
+        );
     })?;
 
     Ok(())

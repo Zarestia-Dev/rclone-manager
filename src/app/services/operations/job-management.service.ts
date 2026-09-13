@@ -43,6 +43,23 @@ export class JobManagementService extends TauriBaseService {
           console.error('[JobManagementService] Failed to refresh jobs:', err)
         );
       });
+
+    this.eventListeners
+      .listenToJobStatsUpdated()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(event => {
+        this.updateJobStats(event.jobId, event.stats);
+      });
+  }
+
+  private updateJobStats(jobId: number, stats: JobInfo['stats']): void {
+    this._jobs.update(jobs => {
+      const idx = jobs.findIndex(j => j.jobid === jobId);
+      if (idx === -1) return jobs;
+      const updated = [...jobs];
+      updated[idx] = { ...updated[idx], stats };
+      return updated;
+    });
   }
 
   getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {

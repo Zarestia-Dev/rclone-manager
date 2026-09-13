@@ -72,10 +72,15 @@ pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 /// - Handled by: `WindowService`
 pub const SYSTEM_THEME_CHANGED: &str = "system_theme_changed";
 
-/// Emitted when a background job starts, makes progress, or completes.
+/// Emitted when a background job starts, completes, fails, stops, or is removed (lifecycle change).
 /// - Emitted by: `rclone::state::job`
 /// - Handled by: `core::event_listener` (tray update & workflow engine), `JobManagementService`
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
+
+/// Emitted during ongoing job monitoring when transfer progress or speed statistics are updated.
+/// - Emitted by: `rclone::state::job`
+/// - Handled by: `JobManagementService`
+pub const JOB_STATS_UPDATED: &str = "job_stats_updated";
 
 /// Emitted when a remote mount state changes (mounted, unmounted, error).
 /// - Emitted by: `rclone::state::cache`
@@ -160,6 +165,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     UPDATE_TRAY_MENU,
     SYSTEM_THEME_CHANGED,
     JOB_CACHE_CHANGED,
+    JOB_STATS_UPDATED,
     MOUNT_STATE_CHANGED,
     SERVE_STATE_CHANGED,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -223,8 +229,25 @@ impl From<&crate::utils::types::state::EnginePhase> for EngineStatus {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(tag = "status", content = "payload", rename_all = "camelCase")]
+pub enum ProvisionProgressPayload {
+    InProgress(String),
+    Complete(String),
+    Error(String),
+}
+
+/// Strongly typed payload for job stats update events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct JobStatsUpdatedEvent {
+    pub job_id: u64,
+    pub stats: serde_json::Value,
+}
+
 /// Strongly typed payload for settings change events
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct SettingsChangeEvent {
     pub category: String,
     pub key: String,
@@ -381,6 +404,25 @@ mod tests {
         assert!(serialized.contains(r#""profile":"daily-backup""#));
 
         let deserialized: JobChangeEvent = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, ev);
+    }
+
+    #[test]
+    fn test_job_stats_updated_event_serialization() {
+        let ev = JobStatsUpdatedEvent {
+            job_id: 585,
+            stats: json!({
+                "bytes": 1024,
+                "speed": 128.5,
+                "eta": 10
+            }),
+        };
+
+        let serialized = serde_json::to_string(&ev).unwrap();
+        assert!(serialized.contains(r#""jobId":585"#));
+        assert!(serialized.contains(r#""bytes":1024"#));
+
+        let deserialized: JobStatsUpdatedEvent = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, ev);
     }
 }
