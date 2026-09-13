@@ -23,13 +23,27 @@ pub fn is_librclone() -> bool {
     cfg!(feature = "librclone")
 }
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ActiveOperationsSummary {
     pub has_active_operations: bool,
     pub active_jobs_count: usize,
     pub active_mounts_count: usize,
     pub active_serves_count: usize,
+}
+
+static PENDING_APP_EXIT_SUMMARY: once_cell::sync::Lazy<
+    parking_lot::Mutex<Option<ActiveOperationsSummary>>,
+> = once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(None));
+
+pub fn set_pending_app_exit_summary(summary: ActiveOperationsSummary) {
+    *PENDING_APP_EXIT_SUMMARY.lock() = Some(summary);
+}
+
+#[bridge]
+#[must_use]
+pub fn check_pending_app_exit() -> Option<ActiveOperationsSummary> {
+    PENDING_APP_EXIT_SUMMARY.lock().take()
 }
 
 pub async fn get_active_operations_summary(
@@ -59,20 +73,28 @@ pub async fn get_active_operations_summary(
 
 #[bridge]
 pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        desktop,
+        not(feature = "web-server"),
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     use tauri::Manager;
 
     let summary = get_active_operations_summary(app.clone()).await?;
 
     if summary.has_active_operations {
-        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.show();
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+        #[cfg(all(
+            desktop,
+            not(feature = "web-server"),
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        {
+            if app.get_webview_window("main").is_none() {
+                set_pending_app_exit_summary(summary.clone());
+            }
+            crate::utils::app::builder::present_main_window(&app);
+            crate::core::bridge::emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
         }
-        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-        crate::core::bridge::emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
     } else {
         crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
         app.exit(0);

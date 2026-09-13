@@ -24,18 +24,8 @@ use crate::{
 
 #[cfg(not(feature = "web-server"))]
 pub fn show_main_window(app: AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        info!("Showing main window");
-        window.show().unwrap_or_else(|_| {
-            error!("Failed to show main window");
-        });
-        #[cfg(target_os = "macos")]
-        crate::utils::app::platform::update_macos_dock_visibility(&app);
-    } else {
-        use crate::utils::app::builder::create_app_window;
-        info!("Main window not found, building a new one");
-        create_app_window(app);
-    }
+    info!("Presenting main window");
+    crate::utils::app::builder::present_main_window(&app);
 }
 
 fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {

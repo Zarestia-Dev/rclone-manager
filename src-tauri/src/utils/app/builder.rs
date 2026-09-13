@@ -84,6 +84,25 @@ fn apply_platform_config(
 }
 
 #[cfg(not(feature = "web-server"))]
+pub fn focus_window(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
+#[cfg(not(feature = "web-server"))]
+pub fn present_main_window(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        focus_window(&window);
+        #[cfg(target_os = "macos")]
+        crate::utils::app::platform::update_macos_dock_visibility(app);
+    } else {
+        create_app_window(app.clone());
+    }
+}
+
+#[cfg(not(feature = "web-server"))]
 pub fn create_app_window(app_handle: tauri::AppHandle) {
     let builder =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
@@ -93,9 +112,7 @@ pub fn create_app_window(app_handle: tauri::AppHandle) {
         .build()
         .expect("Failed to build main window");
 
-    window
-        .show()
-        .unwrap_or_else(|e| log::error!("Failed to show main window: {e}"));
+    focus_window(&window);
 
     #[cfg(target_os = "macos")]
     crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
@@ -120,9 +137,7 @@ use crate::core::bridge;
 #[bridge]
 pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
-        let _ = existing.show();
-        let _ = existing.unminimize();
-        let _ = existing.set_focus();
+        focus_window(&existing);
 
         // Special case: if this is a nautilus window, emit BROWSE event with the path
         if opts.label.starts_with("nautilus-") || opts.label == "nautilus" {
@@ -156,7 +171,7 @@ pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bo
 
     match apply_platform_config(builder).build() {
         Ok(window) => {
-            let _ = window.show();
+            focus_window(&window);
             #[cfg(target_os = "macos")]
             crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
             true

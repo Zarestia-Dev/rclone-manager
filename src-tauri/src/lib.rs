@@ -133,24 +133,8 @@ pub fn run() {
 
                             let app_for_main = app_clone.clone();
                             let _ = app_clone.run_on_main_thread(move || {
-                                if let Some(window) = app_for_main.get_webview_window("main") {
-                                    log::info!(
-                                        "Second instance detected, showing existing window"
-                                    );
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                } else {
-                                    log::info!(
-                                        "Second instance detected, but window was destroyed. \
-                                         Recreating main window."
-                                    );
-                                    crate::utils::app::builder::create_app_window(
-                                        app_for_main.clone(),
-                                    );
-                                    if let Some(window) = app_for_main.get_webview_window("main") {
-                                        let _ = window.set_focus();
-                                    }
-                                }
+                                log::info!("Second instance detected, presenting main window");
+                                crate::utils::app::builder::present_main_window(&app_for_main);
                             });
                         });
                     }
