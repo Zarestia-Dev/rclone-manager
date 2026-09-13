@@ -237,3 +237,124 @@ pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
 pub fn is_updater_enabled() -> bool {
     cfg!(feature = "updater")
 }
+
+/// Applies WebKitGTK environment workarounds for known Linux NVIDIA rendering
+/// failures (blank windows on X11, "Error 71" protocol errors on strict Wayland
+/// compositors). See https://v2.tauri.app/develop/debug/linux-graphics/. Must run
+/// before any webview is created: these variables are read by native libraries
+/// during initialization. Only NVIDIA GPUs are affected; Mesa (Intel/AMD) users
+/// keep the default rendering path untouched, and `GDK_BACKEND` is left alone so
+/// sessions stay on their native backend.
+#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+// Sound: invoked from main() single-threaded, before the async runtime spawns threads.
+#[allow(clippy::disallowed_methods)]
+pub fn apply_linux_graphics_quirks() {
+    if !nvidia_gpu_present() {
+        return;
+    }
+
+    // Sound: runs single-threaded in main before the runtime spawns any threads.
+    unsafe {
+        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+        if std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        }
+    }
+}
+
+/// Returns true when an NVIDIA GPU is present (driver loaded or PCI vendor 0x10de).
+#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+fn nvidia_gpu_present() -> bool {
+    // NVIDIA driver loaded (proprietary or open kernel module).
+    if std::path::Path::new("/proc/driver/nvidia/version").exists() {
+        return true;
+    }
+
+    nvidia_vendor_in_drm_root(std::path::Path::new("/sys/class/drm"))
+}
+
+/// Returns true when any DRM card under `drm_root` has PCI vendor 0x10de (NVIDIA).
+#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+fn nvidia_vendor_in_drm_root(drm_root: &std::path::Path) -> bool {
+    let Ok(cards) = std::fs::read_dir(drm_root) else {
+        return false;
+    };
+
+    cards.flatten().any(|entry| {
+        let file_name = entry.file_name();
+        let Some(name) = file_name.to_str() else {
+            return false;
+        };
+        if !name.starts_with("card") || !name[4..].chars().all(|c| c.is_ascii_digit()) {
+            return false;
+        }
+
+        std::fs::read_to_string(drm_root.join(name).join("device/vendor"))
+            .is_ok_and(|vendor| vendor.trim() == "0x10de")
+    })
+}
+
+#[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
+mod graphics_quirks_tests {
+    use super::nvidia_vendor_in_drm_root;
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "rclone-manager-nvidia-test-{}-{}",
+            name,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Creates a fake DRM card with the given PCI vendor ID (e.g. "0x10de").
+    fn write_fake_card(drm_root: &std::path::Path, name: &str, vendor: &str) {
+        let device_path = drm_root.join(name).join("device");
+        std::fs::create_dir_all(&device_path).unwrap();
+        std::fs::write(device_path.join("vendor"), vendor).unwrap();
+    }
+
+    #[test]
+    fn nvidia_card_detected_by_vendor() {
+        let dir = temp_dir("nvidia");
+        write_fake_card(&dir, "card0", "0x10de");
+        assert!(nvidia_vendor_in_drm_root(&dir));
+    }
+
+    #[test]
+    fn non_nvidia_cards_ignored() {
+        let dir = temp_dir("other_vendors");
+        write_fake_card(&dir, "card0", "0x8086"); // Intel
+        write_fake_card(&dir, "card1", "0x1002"); // AMD
+        assert!(!nvidia_vendor_in_drm_root(&dir));
+    }
+
+    #[test]
+    fn nvidia_detected_among_other_cards() {
+        let dir = temp_dir("mixed");
+        write_fake_card(&dir, "card0", "0x8086"); // Intel iGPU
+        write_fake_card(&dir, "card1", "0x10de"); // NVIDIA dGPU
+        assert!(nvidia_vendor_in_drm_root(&dir));
+    }
+
+    #[test]
+    fn non_card_entries_ignored() {
+        let dir = temp_dir("non_cards");
+        write_fake_card(&dir, "card0", "0x8086");
+        std::fs::write(dir.join("card0-video-D0"), "noise").unwrap();
+        assert!(!nvidia_vendor_in_drm_root(&dir));
+    }
+
+    #[test]
+    fn empty_or_missing_dir_is_false() {
+        let dir = temp_dir("empty");
+        assert!(!nvidia_vendor_in_drm_root(&dir));
+        assert!(!nvidia_vendor_in_drm_root(std::path::Path::new(
+            "/nonexistent/drm/root"
+        )));
+    }
+}
