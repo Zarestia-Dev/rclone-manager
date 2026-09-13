@@ -553,23 +553,6 @@ fn setup_app(
         });
     }
 
-    #[cfg(unix)]
-    {
-        let app_handle_for_signal = app.handle().clone();
-        tauri::async_runtime::spawn(async move {
-            use tokio::signal::unix::{SignalKind, signal as signal_handler};
-            if let Ok(mut sigterm) = signal_handler(SignalKind::terminate()) {
-                sigterm.recv().await;
-                log::info!("SIGTERM received — running graceful shutdown sequence");
-                crate::core::lifecycle::shutdown::handle_shutdown(app_handle_for_signal.clone())
-                    .await;
-                app_handle_for_signal.exit(0);
-            } else {
-                log::warn!("Failed to register SIGTERM handler");
-            }
-        });
-    }
-
     #[cfg(target_os = "macos")]
     crate::utils::app::platform::update_macos_dock_visibility(app.handle());
 
