@@ -8,6 +8,7 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
@@ -51,6 +52,8 @@
 
 - 📂 **Nautilus 文件管理器:** 浏览、编辑、移动、复制、重命名和删除远程文件。
 - 👁️ **文件查看器:** 视频、图像、PDF、音频和文本的行内预览。
+- ⚡ **可视化工作流 (Visual Workflows):** 通过交互式节点画布、Cron 定时器、文件夹监视器和即时警报通知，设计并自动化多步骤云端管道。
+- 🚀 **快捷运行 (Quick Runs):** 从状态感知的卡片网格中一键触发云端操作与自定义 CLI 参数预设。
 - ⚙️ **挂载与服务:** 简便的挂载控制和服务管理（WebDAV、SFTP、HTTP、FTP）。
 - 🔄 **任务监视器:** 实时传输监控和带宽控制。
 - 🌐 **无头（Headless）模式:** 访问 [RClone Manager Headless](headless/README.md) 在 VPS/NAS 上将其作为 Web 服务器运行！

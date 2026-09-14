@@ -255,6 +255,21 @@ describe('remote-config.utils', () => {
       expect(rclone['mountType']).toBe('saf');
     });
 
+    it('should default linked profiles (vfs, filter, backend) to "Default" when omitted', () => {
+      const formValue = {
+        autoStart: false,
+        source: { type: 'currentRemote', path: '', remote: '' },
+        dest: { type: 'local', path: '/mnt/cloud', remote: '' },
+      };
+
+      const result = mapFormToConfigProfile('mount', formValue, formCtx);
+      const app = result['app'] as Record<string, unknown>;
+
+      expect(app['vfsProfile']).toBe('Default');
+      expect(app['filterProfile']).toBe('Default');
+      expect(app['backendProfile']).toBe('Default');
+    });
+
     it('should serialize multi-source paths for sync', () => {
       const formValue = {
         source: [

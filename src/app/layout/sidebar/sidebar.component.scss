@@ -175,10 +175,9 @@
         }
 
         .hidden-indicator {
-          flex-shrink: 0;
-          width: 16px;
-          height: 16px;
-          font-size: 16px;
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
+          font-size: var(--icon-size-sm);
           color: var(--dim-color);
           opacity: 0.8;
         }
@@ -278,11 +277,10 @@
       text-overflow: ellipsis;
 
       mat-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         color: var(--dim-color);
-        flex-shrink: 0;
       }
 
       .separator {

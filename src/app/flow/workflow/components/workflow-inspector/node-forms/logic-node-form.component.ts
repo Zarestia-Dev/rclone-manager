@@ -195,9 +195,9 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           transition: var(--transition-fast);
 
           mat-icon {
-            width: 16px;
-            height: 16px;
-            font-size: 16px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
+            font-size: var(--icon-size-sm);
           }
 
           &:hover {

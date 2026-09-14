@@ -8,6 +8,7 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
@@ -51,6 +52,8 @@
 
 - 📂 **Gestor de archivos Nautilus:** Navega, edita, mueve, copia, renombra y elimina archivos remotos.
 - 👁️ **Visor de archivos:** Vista previa integrada para vídeos, imágenes, PDFs, audio y texto.
+- ⚡ **Flujos de trabajo visuales (Workflows):** Diseñe y automatice canalizaciones en la nube con un lienzo interactivo basado en nodos, disparadores cron, monitoreo de carpetas y alertas instantáneas.
+- 🚀 **Ejecuciones rápidas (Quick Runs):** Inicie operaciones en la nube con un solo clic y aplique ajustes preestablecidos de CLI desde una cuadrícula de tarjetas intuitiva.
 - ⚙️ **Montar y Servir:** Controles de montaje sencillos y gestión de servidores (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Monitor de trabajos:** Supervisión de transferencias y control de ancho de banda en tiempo real.
 - 🌐 **Modo Headless (Sin cabecera):** ¡Consulta [RClone Manager Headless](headless/README.md) para ejecutarlo como servidor web en VPS/NAS!

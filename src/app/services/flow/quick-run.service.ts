@@ -272,10 +272,10 @@ export class QuickRunService extends TauriBaseService {
     this._isSaving.set(true);
     try {
       const saved = input.id
-        ? await this.invokeCommand<QuickRun>('update_quick_run', {
+        ? await this.invokeWithNotification<QuickRun>('update_quick_run', {
             quickRun: { ...input, id: input.id },
           })
-        : await this.invokeCommand<QuickRun>('create_quick_run', { quickRun: input });
+        : await this.invokeWithNotification<QuickRun>('create_quick_run', { quickRun: input });
 
       if (!saved) return null;
 
@@ -285,7 +285,6 @@ export class QuickRunService extends TauriBaseService {
       return itemToStore;
     } catch (err) {
       console.error('[QuickRunService] save failed:', err);
-      this.notificationService.showError(err);
       return null;
     } finally {
       this._isSaving.set(false);
@@ -295,13 +294,12 @@ export class QuickRunService extends TauriBaseService {
   /** Delete a quick run by id. */
   async remove(id: string): Promise<void> {
     try {
-      await this.invokeCommand('delete_quick_run', { quickRunId: id });
+      await this.invokeWithNotification('delete_quick_run', { quickRunId: id });
       this._quickRuns.update(list => list.filter(qr => qr.id !== id));
       if (this._selectedId() === id) this._selectedId.set(null);
       void this.automationService.refreshAutomations();
     } catch (err) {
       console.error('[QuickRunService] delete_quick_run failed:', err);
-      this.notificationService.showError(err);
     }
   }
 
@@ -355,15 +353,15 @@ export class QuickRunService extends TauriBaseService {
     return await this.executeAction(id, 'start', async () => {
       this.markRunning(id);
       try {
-        const result = await this.invokeCommand<OperationExecutionResult>('start_quick_run', {
-          quickRunId: id,
-        });
+        const result = await this.invokeWithNotification<OperationExecutionResult>(
+          'start_quick_run',
+          { quickRunId: id }
+        );
         this.patchInStore(id, { status: result?.status ?? 'running' });
         this.refreshOperationStates();
         return result;
       } catch (err) {
         console.error('[QuickRunService] start_quick_run failed:', err);
-        this.notificationService.showError(err);
         this.markStopped(id, { status: 'failed' });
         return null;
       }
@@ -374,10 +372,9 @@ export class QuickRunService extends TauriBaseService {
   async stop(id: string): Promise<void> {
     await this.executeAction(id, 'stop', async () => {
       try {
-        await this.invokeCommand('stop_quick_run', { quickRunId: id });
+        await this.invokeWithNotification('stop_quick_run', { quickRunId: id });
       } catch (err) {
         console.warn('[QuickRunService] stop_quick_run failed:', err);
-        this.notificationService.showError(err);
       }
       this.markStopped(id, { status: 'stopped' });
       this.refreshOperationStates();

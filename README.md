@@ -8,6 +8,7 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
@@ -51,6 +52,8 @@
 
 - 📂 **Nautilus File Manager:** Browse, edit, move, copy, rename, and delete remote files.
 - 👁️ **File Viewer:** Inline previews for videos, images, PDFs, audio, and text.
+- ⚡ **Visual Workflows:** Design and automate multi-step cloud pipelines with an interactive node-based canvas, cron triggers, folder watchers, and instant alert notifications.
+- 🚀 **Quick Runs:** Trigger one-click cloud operations and custom CLI flag presets directly from a status-aware card grid.
 - ⚙️ **Mount & Serve:** Easy mount controls and serve management (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Job Watcher:** Real-time transfer monitoring and bandwidth control.
 - 🌐 **Headless Mode:** Check out [RClone Manager Headless](headless/README.md) to run as a web server on VPS/NAS!

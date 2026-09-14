@@ -46,7 +46,10 @@ describe('UserTemplateService', () => {
         },
         {
           provide: BackendTranslationService,
-          useValue: { translateError: vi.fn((k: string) => k) },
+          useValue: {
+            translateError: vi.fn((k: string) => k),
+            translateBackendMessage: vi.fn((k: unknown) => String(k)),
+          },
         },
         {
           provide: ApiClientService,
@@ -139,7 +142,7 @@ describe('UserTemplateService', () => {
       await Promise.resolve();
 
       expect(service.userTemplates().length).toBe(0);
-      expect(notificationSpy.showError).toHaveBeenCalledWith(error);
+      expect(notificationSpy.showError).toHaveBeenCalledWith(String(error));
     });
   });
 
@@ -194,7 +197,7 @@ describe('UserTemplateService', () => {
       await Promise.resolve();
 
       expect(service.userTemplates()[0].name).toBe('Fast Sync');
-      expect(notificationSpy.showError).toHaveBeenCalledWith(error);
+      expect(notificationSpy.showError).toHaveBeenCalledWith(String(error));
     });
 
     it('should ignore update for non-existent template ID', () => {
@@ -224,7 +227,7 @@ describe('UserTemplateService', () => {
       await Promise.resolve();
 
       expect(invokeSpy).toHaveBeenCalledWith('delete_user_template', { id: 'tpl-1' });
-      expect(notificationSpy.showInfo).toHaveBeenCalled();
+      expect(notificationSpy.showSuccess).toHaveBeenCalled();
     });
 
     it('should roll back template state on backend failure', async () => {
@@ -242,7 +245,7 @@ describe('UserTemplateService', () => {
 
       expect(service.userTemplates().length).toBe(1);
       expect(service.userTemplates()[0].id).toBe('tpl-1');
-      expect(notificationSpy.showError).toHaveBeenCalledWith(error);
+      expect(notificationSpy.showError).toHaveBeenCalledWith(String(error));
     });
   });
 });

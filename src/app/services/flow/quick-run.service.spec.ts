@@ -78,7 +78,10 @@ describe('QuickRunService', () => {
         },
         {
           provide: BackendTranslationService,
-          useValue: { translateError: vi.fn((k: string) => k) },
+          useValue: {
+            translateError: vi.fn((k: string) => k),
+            translateBackendMessage: vi.fn((k: unknown) => String(k)),
+          },
         },
         {
           provide: ApiClientService,

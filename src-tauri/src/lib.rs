@@ -313,7 +313,7 @@ fn setup_app(
 
     let event_bridge = Arc::new(crate::core::bridge::EventBridge::new(1000));
     crate::core::bridge::init_event_bridge(event_bridge.clone());
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
     event_bridge.set_app_handle(app_handle.clone());
     app.manage(event_bridge.clone());
 

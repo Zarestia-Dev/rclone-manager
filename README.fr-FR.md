@@ -8,13 +8,13 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
-  <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
-  <a href="CONTRIBUTING.md#adding-translations">Aider à traduire</a> •
+  <a href="CONTRIBUTING.md#adding-translations">Aidez à traduire</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
@@ -52,6 +52,8 @@
 
 - 📂 **Gestionnaire de fichiers Nautilus:** Parcourez, modifiez, déplacez, copiez, renommez et supprimez des fichiers distants.
 - 👁️ **Visionneuse de fichiers:** Aperçus intégrés pour les vidéos, images, PDF, fichiers audio et textes.
+- ⚡ **Flux de travail visuels (Workflows):** Concevez et automatisez des pipelines cloud multi-étapes avec un canevas interactif basé sur des nœuds, des déclencheurs cron, la surveillance de dossiers et des alertes instantanées.
+- 🚀 **Exécutions rapides (Quick Runs):** Déclenchez des opérations cloud en un clic et gérez des préconfigurations d'arguments CLI depuis une grille de cartes interactive.
 - ⚙️ **Montage & Diffusion:** Contrôles de montage simples et gestion des serveurs de diffusion (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Suivi des tâches:** Surveillance des transferts en temps réel et contrôle de la bande passante.
 - 🌐 **Mode Headless (Sans tête):** Consultez [RClone Manager Headless](headless/README.md) pour l'exécuter en tant que serveur web sur VPS/NAS !

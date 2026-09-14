@@ -228,11 +228,19 @@ export class QuickAddRemoteComponent {
   }
 
   private createOperationGroup(opType: OperationType): FormGroup {
+    const defaultProfiles = {
+      vfsProfile: 'Default',
+      filterProfile: 'Default',
+      backendProfile: 'Default',
+      runtimeRemoteProfile: 'Default',
+    };
+
     if (opType === 'mount') {
       return this.fb.group({
         autoStart: false,
         source: this.createOperationPathGroup('currentRemote'),
         dest: this.createOperationPathGroup('local'),
+        ...defaultProfiles,
       });
     }
 
@@ -240,6 +248,7 @@ export class QuickAddRemoteComponent {
       return this.fb.group({
         autoStart: false,
         source: this.createOperationPathGroup('currentRemote'),
+        ...defaultProfiles,
       });
     }
 
@@ -251,6 +260,7 @@ export class QuickAddRemoteComponent {
       watchEnabled: false,
       watchDelay: 5,
       watchChangedOnly: false,
+      ...defaultProfiles,
     };
 
     if (opType === 'bisync') {

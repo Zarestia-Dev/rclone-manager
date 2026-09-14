@@ -68,9 +68,9 @@
       }
 
       .palette-trigger-icon {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         color: var(--accent-color);
       }
 
@@ -80,9 +80,9 @@
       }
 
       .palette-trigger-arrow {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         color: var(--dim-color);
         transition: var(--transition-fast);
       }
@@ -118,9 +118,9 @@
       }
 
       .inspector-trigger-icon {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         color: var(--accent-color);
       }
 
@@ -229,9 +229,9 @@
           transition: var(--transition-fast);
 
           mat-icon {
-            width: 16px;
-            height: 16px;
-            font-size: 16px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
+            font-size: var(--icon-size-sm);
           }
 
           &:hover:not(:disabled) {

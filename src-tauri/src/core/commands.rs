@@ -108,7 +108,7 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // SERVE OPERATIONS
             (start_serve_profile, $crate::rclone::commands::serve::start_serve_profile, [params: $crate::utils::types::remotes::ProfileParams]);
-            (stop_serve, $crate::rclone::commands::serve::stop_serve, [id: String, remote_name: String]);
+            (stop_serve, $crate::rclone::commands::serve::stop_serve, [server_id: String, remote_name: String]);
             (stop_all_serves, $crate::rclone::commands::serve::stop_all_serves, [context: $crate::rclone::commands::common::OperationContext]);
             (get_serve_types, $crate::rclone::queries::get_serve_types, []);
             (get_serve_flags, $crate::rclone::queries::flags::get_serve_flags, [serve_type: Option<String>]);

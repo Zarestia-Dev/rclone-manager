@@ -228,13 +228,11 @@ export interface FilePickerResult {
   requestId?: string;
 }
 
-export interface NotifyOptions {
+export interface NotifyOptions<T = unknown> {
   successKey?: string;
-  successParams?: Record<string, unknown>;
+  successParams?: Record<string, unknown> | ((result: T) => Record<string, unknown>);
   errorKey?: string;
   errorParams?: Record<string, unknown>;
-  showSuccess?: boolean;
-  showError?: boolean;
 }
 
 export interface BackupAnalysis {

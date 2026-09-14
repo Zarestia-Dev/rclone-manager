@@ -70,9 +70,9 @@
     transition: var(--transition-fast);
 
     mat-icon {
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
     }
   }
 
@@ -107,9 +107,9 @@
     transition: var(--transition-fast);
 
     mat-icon {
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
     }
 
     &:hover {
@@ -180,15 +180,15 @@
     transition: var(--transition-fast);
 
     mat-icon {
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
     }
 
     .pill-arrow {
-      width: 14px;
-      height: 14px;
-      font-size: 14px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
       color: var(--dim-color);
     }
 
@@ -362,17 +362,17 @@
   }
 
   .check-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
     margin-left: auto;
     color: var(--accent-color);
   }
 
   .menu-arrow {
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
     margin-left: auto;
     color: var(--dim-color);
   }

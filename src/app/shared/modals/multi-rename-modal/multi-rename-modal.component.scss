@@ -194,9 +194,9 @@ form {
   color: var(--dim-color);
 
   mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
   }
 }
 
@@ -211,9 +211,9 @@ form {
 
   .error-icon {
     color: var(--warn-color);
-    width: 16px;
-    height: 16px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
     margin-left: var(--space-xxs);
-    flex-shrink: 0;
   }
 }

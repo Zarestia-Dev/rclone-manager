@@ -112,7 +112,7 @@ export class RcloneUpdateService extends TauriBaseService {
       const result = await this.invokeWithNotification<UpdateResult>(
         'update_rclone',
         { channel: this.settings.updateChannel() },
-        { errorKey: 'rcloneUpdate.failed', showSuccess: false }
+        { errorKey: 'rcloneUpdate.failed' }
       );
 
       if (result.success) {
@@ -143,15 +143,15 @@ export class RcloneUpdateService extends TauriBaseService {
     if (!this.downloading()) return;
 
     try {
-      await this.invokeCommand('cancel_rclone_update');
+      await this.invokeWithNotification('cancel_rclone_update', undefined, {
+        successKey: 'rcloneUpdate.cancelled',
+        errorKey: 'rcloneUpdate.cancelFailed',
+      });
       this._error.set(null);
 
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
-
-      this.notificationService.showInfo(this.translate.instant('rcloneUpdate.cancelled'));
     } catch (error) {
       console.error('Failed to cancel rclone update:', error);
-      this.notificationService.showError(this.translate.instant('rcloneUpdate.cancelFailed'));
     }
   }
 
@@ -163,7 +163,6 @@ export class RcloneUpdateService extends TauriBaseService {
 
       await this.invokeWithNotification<void>('apply_rclone_update', undefined, {
         errorKey: 'rcloneUpdate.failed',
-        showSuccess: false,
       });
 
       await restarted$;

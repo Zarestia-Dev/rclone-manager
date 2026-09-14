@@ -91,16 +91,14 @@ export class AppSettingsService extends TauriBaseService {
 
   async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
-
-    try {
-      return await this.invokeCommand('reset_setting', { category, key });
-    } catch (err) {
-      console.error(`Failed to reset setting ${fullKey}:`, err);
-      this.notificationService.showError(
-        this.translate.instant('settings.resetFailed', { key: fullKey })
-      );
-      throw err;
-    }
+    return this.invokeWithNotification(
+      'reset_setting',
+      { category, key },
+      {
+        errorKey: 'settings.resetFailed',
+        errorParams: { key: fullKey },
+      }
+    );
   }
 
   async resetSettings(): Promise<boolean> {
@@ -116,8 +114,9 @@ export class AppSettingsService extends TauriBaseService {
     );
 
     if (confirmed) {
-      await this.invokeCommand('reset_settings');
-      this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
+      await this.invokeWithNotification('reset_settings', undefined, {
+        successKey: 'settings.resetSuccess',
+      });
       return true;
     }
     return false;
@@ -184,9 +183,13 @@ export class AppSettingsService extends TauriBaseService {
    * Reset settings for a specific remote
    */
   async resetRemoteSettings(remoteName: string): Promise<void> {
-    await this.invokeCommand('delete_remote_settings', { remoteName });
-    this.notificationService.showSuccess(
-      this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
+    await this.invokeWithNotification(
+      'delete_remote_settings',
+      { remoteName },
+      {
+        successKey: 'settings.remoteResetSuccess',
+        successParams: { remote: remoteName },
+      }
     );
   }
 

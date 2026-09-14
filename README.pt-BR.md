@@ -8,6 +8,7 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
@@ -51,6 +52,8 @@ O **RClone Manager** simplifica o gerenciamento e a sincronização de arquivos 
 
 - 📂 **Gerenciador de Arquivos Nautilus:** Navegue, edite, mova, copie, renomeie e exclua arquivos remotos.
 - 👁️ **Visualizador de Arquivos:** Visualizações integradas para vídeos, imagens, PDFs, áudio e texto.
+- ⚡ **Fluxos de Trabalho Visuais (Workflows):** Projete e automatize pipelines em nuvem com um canvas interativo baseado em nós, agendamentos cron, monitoramento de pastas e notificações de alerta instantâneas.
+- 🚀 **Execuções Rápidas (Quick Runs):** Inicie operações na nuvem com um clique e acesse predefinições de argumentos CLI diretamente de uma grade de cartões com status em tempo real.
 - ⚙️ **Montar e Servir:** Controles fáceis de montagem e gerenciamento de servidores (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Monitor de Tarefas:** Monitoramento de transferências em tempo real e controle de largura de banda.
 - 🌐 **Modo Headless:** Confira o [RClone Manager Headless](headless/README.md) para executá-lo como um servidor web no seu VPS/NAS!

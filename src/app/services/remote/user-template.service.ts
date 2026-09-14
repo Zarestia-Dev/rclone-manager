@@ -43,17 +43,17 @@ export class UserTemplateService extends TauriBaseService {
 
     this._templates.set([newTemplate, ...previous]);
 
-    this.invokeCommand('save_user_template', { id, template: input })
-      .then(() => {
-        this.notificationService.showSuccess(
-          this.translate.instant('templates.savedSuccess', { name: newTemplate.name })
-        );
-      })
-      .catch(err => {
-        console.warn('[UserTemplateService] Failed to save template to rcman backend:', err);
-        this._templates.set(previous);
-        this.notificationService.showError(err);
-      });
+    this.invokeWithNotification(
+      'save_user_template',
+      { id, template: input },
+      {
+        successKey: 'templates.savedSuccess',
+        successParams: { name: newTemplate.name },
+      }
+    ).catch(err => {
+      console.warn('[UserTemplateService] Failed to save template to rcman backend:', err);
+      this._templates.set(previous);
+    });
 
     return newTemplate;
   }
@@ -71,17 +71,17 @@ export class UserTemplateService extends TauriBaseService {
     this._templates.set(list);
 
     const { id, ...template } = updated;
-    this.invokeCommand('update_user_template', { id, template })
-      .then(() => {
-        this.notificationService.showSuccess(
-          this.translate.instant('templates.savedSuccess', { name: updated.name })
-        );
-      })
-      .catch(err => {
-        console.warn('[UserTemplateService] Failed to update template on rcman backend:', err);
-        this._templates.set(previous);
-        this.notificationService.showError(err);
-      });
+    this.invokeWithNotification(
+      'update_user_template',
+      { id, template },
+      {
+        successKey: 'templates.savedSuccess',
+        successParams: { name: updated.name },
+      }
+    ).catch(err => {
+      console.warn('[UserTemplateService] Failed to update template on rcman backend:', err);
+      this._templates.set(previous);
+    });
   }
 
   deleteTemplate(id: string): void {
@@ -89,14 +89,15 @@ export class UserTemplateService extends TauriBaseService {
     const updated = previous.filter(t => t.id !== id);
     this._templates.set(updated);
 
-    this.invokeCommand('delete_user_template', { id })
-      .then(() => {
-        this.notificationService.showInfo(this.translate.instant('templates.deletedSuccess'));
-      })
-      .catch(err => {
-        console.warn('[UserTemplateService] Failed to delete template on rcman backend:', err);
-        this._templates.set(previous);
-        this.notificationService.showError(err);
-      });
+    this.invokeWithNotification(
+      'delete_user_template',
+      { id },
+      {
+        successKey: 'templates.deletedSuccess',
+      }
+    ).catch(err => {
+      console.warn('[UserTemplateService] Failed to delete template on rcman backend:', err);
+      this._templates.set(previous);
+    });
   }
 }

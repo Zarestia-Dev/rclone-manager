@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
-#[cfg(not(feature = "web-server"))]
+#[cfg(any(not(feature = "web-server"), feature = "tray"))]
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -24,7 +24,7 @@ static GLOBAL_EVENT_BRIDGE: OnceCell<Arc<EventBridge>> = OnceCell::new();
 /// Manages event subscriptions and distribution across desktop IPC and web-server SSE.
 pub struct EventBridge {
     tx: broadcast::Sender<BridgeEvent>,
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
     app_handle: Arc<RwLock<Option<tauri::AppHandle>>>,
 }
 
@@ -34,13 +34,13 @@ impl EventBridge {
         let (tx, _) = broadcast::channel(capacity);
         Self {
             tx,
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(any(not(feature = "web-server"), feature = "tray"))]
             app_handle: Arc::new(RwLock::new(None)),
         }
     }
 
     /// Associates the desktop Tauri `AppHandle` with this bridge.
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
     pub fn set_app_handle(&self, app_handle: tauri::AppHandle) {
         *self.app_handle.write() = Some(app_handle);
     }

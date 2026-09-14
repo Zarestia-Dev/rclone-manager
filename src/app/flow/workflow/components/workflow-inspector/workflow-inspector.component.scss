@@ -148,9 +148,9 @@
           font-weight: 600;
 
           mat-icon {
-            width: 16px;
-            height: 16px;
-            font-size: 16px;
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
+            font-size: var(--icon-size-sm);
           }
 
           &.badge-running {
@@ -364,10 +364,9 @@
     }
 
     .preview-icon {
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
-      flex-shrink: 0;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
     }
 
     .cron-preview-text {

@@ -8,12 +8,13 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
-  <a href="CONTRIBUTING.md#adding-translations">翻訳に参加する</a> •
+  <a href="CONTRIBUTING.md#adding-translations">翻訳を手伝う</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
@@ -51,6 +52,8 @@
 
 - 📂 **Nautilus ファイルマネージャー:** リモートファイルの閲覧、編集、移動、コピー、名前変更、削除が可能です。
 - 👁️ **ファイルビューアー:** 動画、画像、PDF、音声、テキストファイルのインラインプレビューに対応しています。
+- ⚡ **ビジュアルワークフロー (Visual Workflows):** ノードベースのインタラクティブなキャンバス、Cron スケジューラ、フォルダ監視、即時アラート通知を使用して、マルチステップのクラウドパイプラインを設計・自動化します。
+- 🚀 **クイックラン (Quick Runs):** 状態をリアルタイム表示するカードグリッドから、ワンクリックでクラウド操作やカスタム CLI フラグプリセットを実行できます。
 - ⚙️ **マウント & 公開:** 簡単なマウント操作と公開（WebDAV、SFTP、HTTP、FTP）の管理が行えます。
 - 🔄 **ジョブウォッチャー:** 転送のリアルタイムモニタリングと帯域幅制御が可能です。
 - 🌐 **ヘッドレスモード:** VPS や NAS 上で Web サーバーとして実行したい場合は [RClone Manager Headless](headless/README.md) をご覧ください！

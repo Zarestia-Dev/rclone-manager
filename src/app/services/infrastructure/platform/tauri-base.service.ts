@@ -47,26 +47,29 @@ export class TauriBaseService {
   protected async invokeWithNotification<T>(
     command: string,
     args?: Record<string, unknown>,
-    options?: NotifyOptions
+    options?: NotifyOptions<T>
   ): Promise<T> {
     try {
       const result = await this.invokeCommand<T>(command, args);
 
-      if (options?.showSuccess !== false && options?.successKey) {
-        this.notificationService.showSuccess(
-          this.translate.instant(options.successKey, options.successParams)
-        );
+      if (options?.successKey) {
+        const params =
+          typeof options.successParams === 'function'
+            ? options.successParams(result)
+            : options.successParams;
+        this.notificationService.showSuccess(this.translate.instant(options.successKey, params));
       }
 
       return result;
     } catch (error) {
-      if (options?.showError !== false) {
-        const errorKey = options?.errorKey ?? 'common.error';
-        const translatedError = this.backendTranslation.translateBackendMessage(error);
-        this.notificationService.showError(
-          this.translate.instant(errorKey, { ...options?.errorParams, error: translatedError })
-        );
-      }
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      const message = options?.errorKey
+        ? this.translate.instant(options.errorKey, {
+            ...options?.errorParams,
+            error: translatedError,
+          })
+        : translatedError;
+      this.notificationService.showError(message);
       throw error;
     }
   }
