@@ -65,6 +65,7 @@ rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain
 
 urlencoding = "2"
 futures = "0.3"
+http = "1"
 
 # Web server dependencies (optional)
 axum = { version = "0.8", features = ["multipart"], optional = true }

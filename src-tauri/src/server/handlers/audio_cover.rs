@@ -4,7 +4,7 @@ use std::path::Path;
 
 use axum::{
     extract::{Query, State},
-    http::header,
+    http::{StatusCode, header},
     response::IntoResponse,
 };
 use serde::Deserialize;
@@ -13,6 +13,10 @@ use tokio::io::AsyncReadExt;
 
 use crate::server::state::{AppError, WebServerState};
 use crate::utils::app::audio::{self, PictureData};
+use crate::utils::io::http_helpers::{
+    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name,
+};
+use crate::utils::types::state::RcloneState;
 
 #[derive(Deserialize)]
 pub struct AudioCoverQuery {
@@ -24,26 +28,38 @@ pub async fn audio_cover_handler(
     State(state): State<WebServerState>,
     Query(query): Query<AudioCoverQuery>,
 ) -> Result<impl IntoResponse, AppError> {
+    if query.path.contains("..") {
+        return Err(AppError::BadRequest(anyhow::anyhow!(
+            "Path traversal denied"
+        )));
+    }
+
     // Extension hint helps lofty identify the format from raw bytes
     let extension = Path::new(&query.path)
         .extension()
         .and_then(|ext| ext.to_str());
 
-    if let Some(mut remote) = query.remote {
-        // Ensure remote ends with a colon for rclone
-        if !remote.ends_with(':') {
-            remote.push(':');
-        }
+    if let Some(raw_remote) = query.remote {
+        let remote = decode_remote_name(&raw_remote);
 
-        let rclone_state = state
-            .app_handle
-            .state::<crate::utils::types::state::RcloneState>();
+        let rclone_state = state.app_handle.state::<RcloneState>();
         let transport = rclone_state.transport.clone();
 
         let mut reader = transport
-            .read_file(&remote, &query.path, Some((0, Some(10_485_760))))
+            .read_file(
+                &remote,
+                &query.path,
+                Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES))),
+            )
             .await
-            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
+            .map_err(|e| {
+                let err_msg = e.to_string();
+                let status = classify_error_status(&err_msg);
+                match status {
+                    StatusCode::NOT_FOUND => AppError::NotFound(err_msg),
+                    _ => AppError::InternalServerError(anyhow::anyhow!(err_msg)),
+                }
+            })?;
 
         let mut bytes = Vec::new();
         reader

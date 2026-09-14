@@ -1,9 +1,16 @@
+use std::io::SeekFrom;
 use std::path::Path;
 
 use log::{debug, error, warn};
 use tauri::{Builder, Manager, Runtime};
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 use crate::utils::app::audio;
+use crate::utils::io::http_helpers::{
+    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name, normalize_asset_path,
+    parse_byte_range, strip_protocol_prefix, strip_protocol_prefix_trimmed, url_decode,
+};
+use crate::utils::types::state::RcloneState;
 
 pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder = register_rclone_protocol(builder);
@@ -22,6 +29,21 @@ fn cors_preflight_response() -> tauri::http::Response<Vec<u8>> {
         .unwrap()
 }
 
+/// Helper to construct a standard CORS-enabled error/status HTTP response.
+pub fn error_response(
+    status: impl TryInto<tauri::http::StatusCode>,
+    body: impl Into<Vec<u8>>,
+) -> tauri::http::Response<Vec<u8>> {
+    let status_code = status
+        .try_into()
+        .unwrap_or(tauri::http::StatusCode::INTERNAL_SERVER_ERROR);
+    tauri::http::Response::builder()
+        .status(status_code)
+        .header("Access-Control-Allow-Origin", "*")
+        .body(body.into())
+        .unwrap()
+}
+
 fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
@@ -30,7 +52,7 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 return;
             }
 
-            // capture an incoming Range header so we can forward it later
+            // Capture an incoming Range header so we can forward it later
             let range_header = request
                 .headers()
                 .get("Range")
@@ -38,77 +60,37 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 .map(std::string::ToString::to_string);
 
             let uri = request.uri().to_string();
-            // On Linux/macOS (WebKit) the URI is "rclone://remote/path".
-            // On Windows (WebView2), frontend sends "http://rclone.localhost/remote/path"
-            // but WebView2 transforms it to "rclone://localhost/remote/path" when routing to handler.
             debug!("🔍 rclone protocol handler received URI: {uri}");
-            let path_part = if let Some(stripped) = uri.strip_prefix("rclone://localhost/") {
-                // Windows WebView2 format after transformation
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("rclone://") {
-                // Unix format
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("http://rclone.localhost/") {
-                // Fallback if WebView2 doesn't transform
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("https://rclone.localhost/") {
-                stripped
-            } else {
-                &uri
-            };
+            let path_part = strip_protocol_prefix_trimmed(&uri, "rclone");
 
             // Find the first slash to separate remote from path
-            let (remote, path) = match path_part.find('/') {
+            let (remote_part, path_part) = match path_part.find('/') {
                 Some(idx) => (&path_part[..idx], &path_part[idx + 1..]),
                 None => (path_part, ""),
             };
 
-            let app_handle = app.app_handle().clone();
-            let remote = if let Ok(decoded) = urlencoding::decode(remote) {
-                let mut r = decoded.into_owned();
-                // Restore the trailing colon stripped from the URL host by the frontend
-                // (rclone remote names have the format "name:", but colons are invalid
-                // in URL hostnames so the frontend omits it)
-                if !r.ends_with(':') {
-                    r.push(':');
-                }
-                r
-            } else {
-                let mut r = remote.to_string();
-                if !r.ends_with(':') {
-                    r.push(':');
-                }
-                r
-            };
-            let path = match urlencoding::decode(path) {
-                Ok(decoded) => decoded.into_owned(),
-                Err(_) => path.to_string(),
-            };
+            let remote = decode_remote_name(remote_part);
+            let path = url_decode(path_part);
 
             debug!("🔍 Parsed remote: '{remote}', path: '{path}'");
 
+            let app_handle = app.app_handle().clone();
             crate::utils::spawn(async move {
                 let rclone_state = app_handle.state::<crate::utils::types::state::RcloneState>();
                 let transport = rclone_state.transport.clone();
 
-                let (offset, count) = range_header
-                    .as_deref()
-                    .map_or((None, None), parse_range_header);
-                let range_tuple =
-                    offset.map(|o| (o as u64, count.map(|c| c as u64 - 1 + o as u64)));
-
+                let byte_range = range_header.as_deref().and_then(parse_byte_range);
                 let mime_type = mime_guess::from_path(&path)
                     .first_or_octet_stream()
                     .to_string();
 
-                match transport.read_file(&remote, &path, range_tuple).await {
+                match transport.read_file(&remote, &path, byte_range).await {
                     Ok(mut reader) => {
-                        use tokio::io::AsyncReadExt;
                         let mut bytes = Vec::new();
                         match reader.read_to_end(&mut bytes).await {
                             Ok(_) => {
                                 let mut builder = tauri::http::Response::builder()
-                                    .status(if offset.is_some() { 206 } else { 200 })
+                                    .status(if byte_range.is_some() { 206 } else { 200 })
                                     .header(tauri::http::header::CONTENT_TYPE, mime_type)
                                     .header("Access-Control-Allow-Origin", "*")
                                     .header("Accept-Ranges", "bytes");
@@ -121,42 +103,18 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             }
                             Err(e) => {
                                 error!("Stream read error for {remote}:{path}: {e}");
-                                responder.respond(
-                                    tauri::http::Response::builder()
-                                        .status(500)
-                                        .header("Access-Control-Allow-Origin", "*")
-                                        .body(format!("Stream read error: {e}").into_bytes())
-                                        .unwrap(),
-                                );
+                                responder.respond(error_response(
+                                    500,
+                                    format!("Stream read error: {e}"),
+                                ));
                             }
                         }
                     }
                     Err(e) => {
                         error!("read_file failed for {remote}:{path}: {e}");
-
-                        let status = if e.to_string().contains("not found")
-                            || e.to_string().contains("directory not found")
-                        {
-                            tauri::http::StatusCode::NOT_FOUND
-                        } else if e.to_string().contains("being used by another process")
-                            || e.to_string().contains("locked")
-                        {
-                            tauri::http::StatusCode::LOCKED
-                        } else if e.to_string().contains("Access is denied")
-                            || e.to_string().contains("permission denied")
-                        {
-                            tauri::http::StatusCode::FORBIDDEN
-                        } else {
-                            tauri::http::StatusCode::INTERNAL_SERVER_ERROR
-                        };
-
-                        responder.respond(
-                            tauri::http::Response::builder()
-                                .status(status)
-                                .header("Access-Control-Allow-Origin", "*")
-                                .body(format!("{e}").into_bytes())
-                                .unwrap(),
-                        );
+                        let err_str = e.to_string();
+                        let status = classify_error_status(&err_str);
+                        responder.respond(error_response(status, err_str));
                     }
                 }
             });
@@ -165,256 +123,185 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
 }
 
 fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
-    builder = builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
-        if request.method() == tauri::http::Method::OPTIONS {
-            responder.respond(cors_preflight_response());
-            return;
-        }
-
-        let uri = request.uri().to_string();
-        debug!("🔍 local-asset protocol handler received URI: {uri}");
-
-        // Handle the prefix mapping across different OS webviews
-        let path_part = if let Some(stripped) = uri.strip_prefix("local-asset://localhost") {
-            stripped // Leaves the leading slash, e.g., "/home/user"
-        } else if let Some(stripped) = uri.strip_prefix("http://local-asset.localhost") {
-            stripped
-        } else if let Some(stripped) = uri.strip_prefix("https://local-asset.localhost") {
-            stripped
-        } else if let Some(stripped) = uri.strip_prefix("local-asset://") {
-            stripped
-        } else {
-            &uri
-        };
-
-        // Decode URL encoding (e.g., %20 to space)
-        let decoded_path = match urlencoding::decode(path_part) {
-            Ok(decoded) => decoded.into_owned(),
-            Err(_) => path_part.to_string(),
-        };
-
-        // Normalize multiple leading slashes (e.g., "//sdcard/music/..." -> "/sdcard/music/...")
-        let mut final_path = decoded_path;
-        while final_path.starts_with("//") {
-            final_path.remove(0);
-        }
-
-        // Strip leading slash if it looks like a Windows drive path (e.g., /C:/folder)
-        // This is now done at runtime for all platforms to handle cases where
-        // Windows-style paths are passed to a Linux manager.
-        if final_path.starts_with('/') && final_path.chars().nth(2) == Some(':') {
-            final_path = final_path[1..].to_string();
-        }
-
-        debug!("🔍 Final decoded path: '{final_path}'");
-
-        // SECURITY 1: Prevent basic path traversal attacks
-        if final_path.contains("..") {
-            error!("❌ Path traversal attempt blocked: '{final_path}'");
-            responder.respond(tauri::http::Response::builder()
-                .status(403)
-                .header("Access-Control-Allow-Origin", "*")
-                .body("Path traversal denied".as_bytes().to_vec())
-                .unwrap());
-            return;
-        }
-
-        // Android path alias mapping (/sdcard/ -> /storage/emulated/0/)
-        if final_path.starts_with("/sdcard/") {
-            let alt_path = final_path.replacen("/sdcard/", "/storage/emulated/0/", 1);
-            if std::path::Path::new(&alt_path).exists() {
-                final_path = alt_path;
+    builder =
+        builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
+            if request.method() == tauri::http::Method::OPTIONS {
+                responder.respond(cors_preflight_response());
+                return;
             }
-        }
 
-        let file_path = std::path::Path::new(&final_path);
+            let uri = request.uri().to_string();
+            debug!("🔍 local-asset protocol handler received URI: {uri}");
 
-        // SECURITY 2: Ensure the target is actually a file
-        if file_path.is_dir() {
-            error!(
-                "❌ Attempted to access directory as asset: '{final_path}'"
-            );
-            responder.respond(tauri::http::Response::builder()
-                .status(403)
-                .header("Access-Control-Allow-Origin", "*")
-                .body(
-                    "Directories are not supported by the local-asset protocol"
-                        .as_bytes()
-                        .to_vec(),
-                )
-                .unwrap());
-            return;
-        }
+            let path_part = strip_protocol_prefix(&uri, "local-asset");
+            let decoded_path = url_decode(path_part);
+            let mut final_path = normalize_asset_path(decoded_path);
 
-        // Determine mime type
-        let mime_type = mime_guess::from_path(&final_path)
-            .first_or_octet_stream()
-            .to_string();
+            debug!("🔍 Final decoded path: '{final_path}'");
 
-        let app_handle = app.app_handle().clone();
-        let final_path_clone = final_path.clone();
-        let mime_type_clone = mime_type.clone();
+            // SECURITY 1: Prevent basic path traversal attacks
+            if final_path.contains("..") {
+                error!("❌ Path traversal attempt blocked: '{final_path}'");
+                responder.respond(error_response(403, "Path traversal denied"));
+                return;
+            }
 
-        // Use async runtime to support cat fallback
-        crate::utils::spawn(async move {
-            use std::io::{Read, Seek, SeekFrom};
-            use crate::utils::types::state::RcloneState;
-
-            // Try to open the file directly
-            match std::fs::File::open(&final_path_clone) {
-                Ok(mut file) => {
-                    let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
-                    debug!(
-                        "✅ Opened local asset: {final_path_clone} (size: {file_size} bytes)"
-                    );
-
-                    // Check for HTTP Range request
-                    let range_header = request.headers().get("Range").and_then(|v| v.to_str().ok());
-                    let mut is_range_request = false;
-                    let mut start: u64 = 0;
-                    let mut end: u64 = if file_size > 0 { file_size - 1 } else { 0 };
-
-                    if let Some(range_val) = range_header
-                        && let Some(stripped) = range_val.strip_prefix("bytes=")
-                    {
-                        let parts: Vec<&str> = stripped.split('-').collect();
-                        if let Some(s) = parts.first().and_then(|s| s.parse::<u64>().ok()) {
-                            start = s;
-                            is_range_request = true;
-                        }
-                        if parts.len() > 1
-                            && !parts[1].is_empty()
-                            && let Ok(e) = parts[1].parse::<u64>()
-                        {
-                            end = e;
-                            is_range_request = true;
-                        }
-                    }
-
-                    if is_range_request && file_size > 0 {
-                        if end >= file_size {
-                            end = file_size - 1;
-                        }
-
-                        if start > end {
-                            responder.respond(tauri::http::Response::builder()
-                                .status(416) // Range Not Satisfiable
-                                .header("Access-Control-Allow-Origin", "*")
-                                .header("Content-Range", format!("bytes */{file_size}"))
-                                .body(vec![])
-                                .unwrap());
-                            return;
-                        }
-
-                        let chunk_size = (end - start + 1) as usize;
-                        let mut buffer = vec![0; chunk_size];
-                        if let Err(e) = file.seek(SeekFrom::Start(start)) {
-                            error!("❌ Seek error in local asset '{final_path_clone}': {e}");
-                            responder.respond(tauri::http::Response::builder()
-                                .status(500)
-                                .header("Access-Control-Allow-Origin", "*")
-                                .body(format!("Seek error: {e}").into_bytes())
-                                .unwrap());
-                            return;
-                        }
-                        let _ = file.read_exact(&mut buffer);
-
-                        responder.respond(tauri::http::Response::builder()
-                            .status(206)
-                            .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
-                            .header("Access-Control-Allow-Origin", "*")
-                            .header("Accept-Ranges", "bytes")
-                            .header("Content-Range", format!("bytes {start}-{end}/{file_size}"))
-                            .header("Content-Length", chunk_size.to_string())
-                            .body(buffer)
-                            .unwrap());
-                    } else {
-                        let mut buffer = Vec::with_capacity(file_size as usize);
-                        if file_size > 0 && let Err(e) = file.read_to_end(&mut buffer) {
-                            error!("❌ Read error in local asset '{final_path_clone}': {e}");
-                            responder.respond(tauri::http::Response::builder()
-                                .status(500)
-                                .header("Access-Control-Allow-Origin", "*")
-                                .body(format!("Read error: {e}").into_bytes())
-                                .unwrap());
-                            return;
-                        }
-
-                        responder.respond(tauri::http::Response::builder()
-                            .status(200)
-                            .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
-                            .header("Access-Control-Allow-Origin", "*")
-                            .header("Accept-Ranges", "bytes")
-                            .header("Content-Length", buffer.len().to_string())
-                            .body(buffer)
-                            .unwrap());
-                    }
+            // Android path alias mapping (/sdcard/ -> /storage/emulated/0/)
+            if final_path.starts_with("/sdcard/") {
+                let alt_path = final_path.replacen("/sdcard/", "/storage/emulated/0/", 1);
+                if std::path::Path::new(&alt_path).exists() {
+                    final_path = alt_path;
                 }
-                Err(e) => {
-                    warn!("Standard open failed for local asset {final_path_clone}, attempting transport fallback: {e}");
+            }
 
-                    let rclone_state = app_handle.state::<RcloneState>();
-                    let transport = rclone_state.transport.clone();
+            let file_path = std::path::Path::new(&final_path);
 
-                    let (offset, count) = request.headers().get("Range")
-                        .and_then(|v| v.to_str().ok())
-                        .map_or((None, None), parse_range_header);
+            // SECURITY 2: Ensure the target is actually a file
+            if file_path.is_dir() {
+                error!("❌ Attempted to access directory as asset: '{final_path}'");
+                responder.respond(error_response(
+                    403,
+                    "Directories are not supported by the local-asset protocol",
+                ));
+                return;
+            }
 
-                    let range_tuple = offset.map(|o| {
-                        (o as u64, count.map(|c| c as u64 - 1 + o as u64))
-                    });
+            // Determine mime type
+            let mime_type = mime_guess::from_path(&final_path)
+                .first_or_octet_stream()
+                .to_string();
 
-                    match transport.read_file("", &final_path_clone, range_tuple).await {
-                        Ok(mut reader) => {
-                            use tokio::io::AsyncReadExt;
-                            let mut bytes = Vec::new();
-                            match reader.read_to_end(&mut bytes).await {
-                                Ok(_) => {
-                                    let mut builder = tauri::http::Response::builder()
-                                        .status(if offset.is_some() { 206 } else { 200 })
-                                        .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
-                                        .header("Access-Control-Allow-Origin", "*");
+            let app_handle = app.app_handle().clone();
 
-                                    if let Some(rh) = request.headers().get("Range").and_then(|v| v.to_str().ok()) {
-                                        builder = builder.header("Content-Range", rh);
-                                    }
+            // Use async runtime to support cat fallback
+            crate::utils::spawn(async move {
+                let byte_range = request
+                    .headers()
+                    .get("Range")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(parse_byte_range);
 
-                                    responder.respond(builder.body(bytes).unwrap());
-                                }
-                                Err(read_err) => {
-                                    error!("Transport read failed for {final_path_clone}: {read_err}");
-                                    responder.respond(tauri::http::Response::builder()
-                                        .status(500)
+                // Try to open the file directly using non-blocking tokio::fs
+                match tokio::fs::File::open(&final_path).await {
+                    Ok(mut file) => {
+                        let file_size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
+                        debug!("✅ Opened local asset: {final_path} (size: {file_size} bytes)");
+
+                        if let Some((start, end_opt)) = byte_range
+                            && file_size > 0
+                        {
+                            let mut end = end_opt.unwrap_or(file_size - 1);
+                            if end >= file_size {
+                                end = file_size - 1;
+                            }
+
+                            if start > end {
+                                responder.respond(
+                                    tauri::http::Response::builder()
+                                        .status(416)
                                         .header("Access-Control-Allow-Origin", "*")
-                                        .body(format!("Read error: {read_err}").into_bytes())
-                                        .unwrap());
+                                        .header("Content-Range", format!("bytes */{file_size}"))
+                                        .body(vec![])
+                                        .unwrap(),
+                                );
+                                return;
+                            }
+
+                            let chunk_size = (end - start + 1) as usize;
+                            let mut buffer = vec![0; chunk_size];
+                            if let Err(e) = file.seek(SeekFrom::Start(start)).await {
+                                error!("❌ Seek error in local asset '{final_path}': {e}");
+                                responder.respond(error_response(500, format!("Seek error: {e}")));
+                                return;
+                            }
+                            if let Err(e) = file.read_exact(&mut buffer).await {
+                                error!("❌ Read error in local asset '{final_path}': {e}");
+                                responder.respond(error_response(500, format!("Read error: {e}")));
+                                return;
+                            }
+
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(206)
+                                    .header(tauri::http::header::CONTENT_TYPE, &mime_type)
+                                    .header("Access-Control-Allow-Origin", "*")
+                                    .header("Accept-Ranges", "bytes")
+                                    .header(
+                                        "Content-Range",
+                                        format!("bytes {start}-{end}/{file_size}"),
+                                    )
+                                    .header("Content-Length", chunk_size.to_string())
+                                    .body(buffer)
+                                    .unwrap(),
+                            );
+                        } else {
+                            let mut buffer = Vec::with_capacity(file_size as usize);
+                            if file_size > 0
+                                && let Err(e) = file.read_to_end(&mut buffer).await
+                            {
+                                error!("❌ Read error in local asset '{final_path}': {e}");
+                                responder.respond(error_response(500, format!("Read error: {e}")));
+                                return;
+                            }
+
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(200)
+                                    .header(tauri::http::header::CONTENT_TYPE, &mime_type)
+                                    .header("Access-Control-Allow-Origin", "*")
+                                    .header("Accept-Ranges", "bytes")
+                                    .header("Content-Length", buffer.len().to_string())
+                                    .body(buffer)
+                                    .unwrap(),
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Standard open failed for local asset {final_path}, attempting transport fallback: {e}");
+
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let transport = rclone_state.transport.clone();
+
+                        match transport.read_file("", &final_path, byte_range).await {
+                            Ok(mut reader) => {
+                                let mut bytes = Vec::new();
+                                match reader.read_to_end(&mut bytes).await {
+                                    Ok(_) => {
+                                        let mut builder = tauri::http::Response::builder()
+                                            .status(if byte_range.is_some() { 206 } else { 200 })
+                                            .header(tauri::http::header::CONTENT_TYPE, &mime_type)
+                                            .header("Access-Control-Allow-Origin", "*");
+
+                                        if let Some(rh) = request
+                                            .headers()
+                                            .get("Range")
+                                            .and_then(|v| v.to_str().ok())
+                                        {
+                                            builder = builder.header("Content-Range", rh);
+                                        }
+
+                                        responder.respond(builder.body(bytes).unwrap());
+                                    }
+                                    Err(read_err) => {
+                                        error!("Transport read failed for {final_path}: {read_err}");
+                                        responder.respond(error_response(
+                                            500,
+                                            format!("Read error: {read_err}"),
+                                        ));
+                                    }
                                 }
                             }
-                        }
-                        Err(cat_err) => {
-                            error!("Local transport fallback failed for {final_path_clone}: {cat_err}");
-
-                            let status = if cat_err.to_string().contains("not found") || cat_err.to_string().contains("directory not found") {
-                                tauri::http::StatusCode::NOT_FOUND
-                            } else if cat_err.to_string().contains("being used by another process") {
-                                tauri::http::StatusCode::LOCKED
-                            } else if cat_err.to_string().contains("Access is denied") || cat_err.to_string().contains("permission denied") {
-                                tauri::http::StatusCode::FORBIDDEN
-                            } else {
-                                tauri::http::StatusCode::INTERNAL_SERVER_ERROR
-                            };
-
-                            responder.respond(tauri::http::Response::builder()
-                                .status(status)
-                                .header("Access-Control-Allow-Origin", "*")
-                                .body(cat_err.to_string().into_bytes())
-                                .unwrap());
+                            Err(cat_err) => {
+                                error!("Local transport fallback failed for {final_path}: {cat_err}");
+                                let err_str = cat_err.to_string();
+                                let status = classify_error_status(&err_str);
+                                responder.respond(error_response(status, err_str));
+                            }
                         }
                     }
                 }
-            }
+            });
         });
-    });
     builder
 }
 
@@ -429,38 +316,11 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
 
             let uri = request.uri().to_string();
             debug!("🔍 audio-cover protocol handler received URI: {uri}");
-
-            // Expected formats:
-            // audio-cover://localhost/local/<path>
-            // audio-cover://localhost/remote/<remote>/<path>
-
-            let path_part = if let Some(stripped) = uri.strip_prefix("audio-cover://localhost/") {
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("http://audio-cover.localhost/") {
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("https://audio-cover.localhost/") {
-                stripped
-            } else if let Some(stripped) = uri.strip_prefix("audio-cover://") {
-                stripped
-            } else {
-                &uri
-            };
+            let path_part = strip_protocol_prefix_trimmed(&uri, "audio-cover");
 
             if let Some(local_path) = path_part.strip_prefix("local/") {
                 // Local file extraction
-                let decoded_path = match urlencoding::decode(local_path) {
-                    Ok(decoded) => decoded.into_owned(),
-                    Err(_) => local_path.to_string(),
-                };
-
-                #[cfg(target_os = "windows")]
-                let decoded_path = {
-                    if decoded_path.starts_with('/') && decoded_path.chars().nth(2) == Some(':') {
-                        decoded_path[1..].to_string()
-                    } else {
-                        decoded_path
-                    }
-                };
+                let decoded_path = normalize_asset_path(url_decode(local_path));
 
                 if let Some(pic) = audio::extract_picture_from_path(&decoded_path) {
                     responder.respond(
@@ -473,13 +333,7 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                             .unwrap(),
                     );
                 } else {
-                    responder.respond(
-                        tauri::http::Response::builder()
-                            .status(404)
-                            .header("Access-Control-Allow-Origin", "*")
-                            .body(vec![])
-                            .unwrap(),
-                    );
+                    responder.respond(error_response(404, vec![]));
                 }
             } else if let Some(remote_part) = path_part.strip_prefix("remote/") {
                 // Remote file extraction
@@ -488,18 +342,8 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                     None => (remote_part, ""),
                 };
 
-                let mut remote = match urlencoding::decode(remote_enc) {
-                    Ok(d) => d.into_owned(),
-                    Err(_) => remote_enc.to_string(),
-                };
-                if !remote.ends_with(':') {
-                    remote.push(':');
-                }
-
-                let path = match urlencoding::decode(path_enc) {
-                    Ok(d) => d.into_owned(),
-                    Err(_) => path_enc.to_string(),
-                };
+                let remote = decode_remote_name(remote_enc);
+                let path = url_decode(path_enc);
 
                 let app_handle = app.app_handle().clone();
                 crate::utils::spawn(async move {
@@ -508,11 +352,10 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                     let transport = rclone_state.transport.clone();
 
                     match transport
-                        .read_file(&remote, &path, Some((0, Some(10_485_760))))
+                        .read_file(&remote, &path, Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES))))
                         .await
                     {
                         Ok(mut reader) => {
-                            use tokio::io::AsyncReadExt;
                             let mut bytes = Vec::new();
                             if reader.read_to_end(&mut bytes).await.is_ok() && !bytes.is_empty() {
                                 let extension =
@@ -535,57 +378,37 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                                     return;
                                 }
                             }
-                            responder.respond(
-                                tauri::http::Response::builder()
-                                    .status(404)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .body(vec![])
-                                    .unwrap(),
-                            );
+                            responder.respond(error_response(404, vec![]));
                         }
                         Err(e) => {
                             warn!("Failed to fetch remote cover for {remote}:{path}: {e}");
-                            responder.respond(
-                                tauri::http::Response::builder()
-                                    .status(500)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .body(vec![])
-                                    .unwrap(),
-                            );
+                            responder.respond(error_response(500, vec![]));
                         }
                     }
                 });
             } else {
-                responder.respond(
-                    tauri::http::Response::builder()
-                        .status(400)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .body(vec![])
-                        .unwrap(),
-                );
+                responder.respond(error_response(400, vec![]));
             }
         },
     );
     builder
 }
 
-/// Helper to parse a standard HTTP Range header into (offset, count).
-/// Format: "bytes=start-end"
-fn parse_range_header(range_str: &str) -> (Option<i64>, Option<i64>) {
-    if !range_str.starts_with("bytes=") {
-        return (None, None);
-    }
-    let parts: Vec<&str> = range_str[6..].split('-').collect();
-    let start = parts.first().and_then(|s| s.parse::<i64>().ok());
-    let end = if parts.len() > 1 && !parts[1].is_empty() {
-        parts[1].parse::<i64>().ok()
-    } else {
-        None
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    match (start, end) {
-        (Some(s), Some(e)) => (Some(s), Some(e - s + 1)),
-        (Some(s), None) => (Some(s), None),
-        _ => (None, None),
+    #[test]
+    fn test_error_response() {
+        let resp = error_response(tauri::http::StatusCode::NOT_FOUND, "not found text");
+        assert_eq!(resp.status(), 404);
+        assert_eq!(
+            resp.headers().get("Access-Control-Allow-Origin").unwrap(),
+            "*"
+        );
+        assert_eq!(resp.body(), b"not found text");
+
+        let resp_u16 = error_response(403, "forbidden");
+        assert_eq!(resp_u16.status(), 403);
     }
 }

@@ -44,6 +44,11 @@ pub async fn stream_upload_handler(
             "mtime" => raw_mtime = field.text().await.unwrap_or_default().parse().ok(),
             "file" => {
                 let filename = field.file_name().unwrap_or("unnamed").replace('\\', "/");
+                if filename.contains("..") {
+                    return Err(AppError::BadRequest(anyhow::anyhow!(
+                        "Path traversal denied in uploaded filename"
+                    )));
+                }
                 let batch = build_batch_meta(raw_batch_id, raw_file_index, raw_total_files);
 
                 let temp_dir = std::env::temp_dir();

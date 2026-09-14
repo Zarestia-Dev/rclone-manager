@@ -16,17 +16,18 @@ mod tests {
     use super::*;
     use crate::core::alerts::{
         cache::AlertRuleCache,
-        types::{ActionCommon, AlertAction, OsToastAction},
+        types::{ActionCommon, AlertAction, ScriptAction},
     };
     use tempfile::TempDir;
 
     fn test_action(id: &str, name: &str) -> AlertAction {
-        AlertAction::OsToast(OsToastAction {
+        AlertAction::Script(ScriptAction {
             common: ActionCommon {
                 id: id.to_string(),
                 name: name.to_string(),
                 enabled: true,
             },
+            ..Default::default()
         })
     }
 

@@ -24,6 +24,12 @@
 </p>
 
 <p align="center">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/architecture">
+    <img src="https://img.shields.io/badge/Architecture-Specification-blueviolet?style=for-the-badge" alt="Architecture Specification">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://hakanismail.info/zarestia/rclone-manager/docs">
     <img src="https://img.shields.io/badge/📚_Documentation_Wiki-blue?style=flat-square" alt="Documentation">
   </a>

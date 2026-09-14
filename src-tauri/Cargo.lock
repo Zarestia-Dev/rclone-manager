@@ -4839,6 +4839,7 @@ dependencies = [
  "futures",
  "futures-lite",
  "handlebars",
+ "http",
  "jni 0.22.4",
  "lettre",
  "lofty",
