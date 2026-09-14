@@ -49,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **New Traditional Chinese Translations**: Added support for Traditional Chinese language and translations. Thanks to [@DraftingDreamer](https://github.com/DraftingDreamer)!
 
 ### Changed
+- **Decoupled Async Runtime from UI Framework**: Migrated to an application-owned Tokio runtime, eliminating dependency on Tauri's async task management. All background task spawning (`spawn`, `spawn_blocking`, `block_on`) now runs on a dedicated, framework-independent runtime, improving stability and removing edge-case "no reactor running" panics.
 - **Contributor Credits in About Modal & Documentation**:
   - Added a dedicated Contributors section to the About modal under Credits, crediting all code, docs, and translation contributors with direct links to their GitHub profiles.
 - **Export Modal UI Overhaul**:

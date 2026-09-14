@@ -672,7 +672,7 @@ pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     emit_log(level, &title, &body);
 
     let app_handle = app.clone();
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         crate::core::alerts::engine::process(&app_handle, &event, title, body);
     });
 }

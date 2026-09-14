@@ -2,6 +2,7 @@ use crate::core::settings::AppSettingsManager;
 use log::{error, info};
 use tauri::{AppHandle, Manager};
 
+use crate::utils::spawn;
 use crate::utils::types::origin::Origin;
 use crate::{
     rclone::{
@@ -41,7 +42,7 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
 // Quick Runs
 
 pub fn handle_start_quick_run(app: AppHandle, quick_run_id: String) {
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match crate::core::flow::quick_run::commands::start_quick_run(
             app,
             quick_run_id.clone(),
@@ -60,7 +61,7 @@ pub fn handle_start_quick_run(app: AppHandle, quick_run_id: String) {
 }
 
 pub fn handle_stop_quick_run(app: AppHandle, quick_run_id: String) {
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match crate::core::flow::quick_run::commands::stop_quick_run(
             app,
             quick_run_id.clone(),
@@ -87,7 +88,7 @@ pub fn handle_start_job_profile(
     let profile = profile_name.to_string();
     let type_label = format!("{transfer_type:?}");
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match start_profile_batch(app, transfer_type, params).await {
             Ok(_) => info!("Started {type_label} for {remote} / {profile}"),
             Err(e) => error!("Failed to start {type_label} for {remote} / {profile}: {e}"),
@@ -104,7 +105,7 @@ pub fn handle_stop_job_profile(
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let backend_manager = app.state::<BackendManager>();
         let running_job = backend_manager
             .job_cache
@@ -160,7 +161,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match mount_remote_profile(app, params).await {
             Ok(()) => info!("Mounted {remote} / {profile}"),
             Err(e) => error!("Failed to mount {remote} / {profile}: {e}"),
@@ -172,7 +173,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let manager = app.state::<AppSettingsManager>();
         let mount_point = get_mount_dest(&manager, &remote, &profile).unwrap_or_default();
 
@@ -190,7 +191,7 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match start_serve_profile(app, params).await {
             Ok(response) => info!(
                 "Started serve for {remote} / {profile} at {}",
@@ -204,7 +205,7 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
 pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
     let serve_id = serve_id.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let backend_manager = app.state::<BackendManager>();
         let all_serves = backend_manager.remote_cache.get_serves().await;
 
@@ -230,7 +231,7 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
 // Global actions
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         match crate::core::lifecycle::shutdown::stop_all_active_jobs(app.clone()).await {
             Ok(()) => {
                 notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
@@ -247,7 +248,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str, profile_name: &s
     let profile = profile_name.to_string();
     let app_clone = app.clone();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let mount_point =
             get_mount_dest(&app_clone.state::<AppSettingsManager>(), &remote, &profile)
                 .unwrap_or_default();
@@ -289,7 +290,7 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
 
     let remote_name_owned = remote_name.map(std::string::ToString::to_string);
     let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         crate::utils::app::builder::new_window(
             app_clone,
             crate::utils::app::builder::WindowOptions {

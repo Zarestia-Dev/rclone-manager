@@ -29,7 +29,7 @@ pub async fn set_theme(
     {
         use tauri::Manager;
         let app = window.app_handle().clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let _ = crate::core::tray::core::update_tray_menu(app).await;
         });
     }
@@ -417,21 +417,21 @@ pub fn detect_macos_theme() -> Option<bool> {
 pub fn monitor_theme_changes() {
     #[cfg(all(feature = "desktop", target_os = "linux"))]
     {
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             run_linux_portal_watcher().await;
         });
     }
 
     #[cfg(all(feature = "desktop", windows))]
     {
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             run_windows_theme_watcher().await;
         });
     }
 
     #[cfg(all(feature = "desktop", target_os = "macos"))]
     {
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             run_macos_theme_watcher().await;
         });
     }
@@ -554,7 +554,7 @@ async fn run_windows_theme_watcher() {
 
                 if WaitForSingleObject(event, INFINITE) == WAIT_OBJECT_0 {
                     let is_dark = detect_windows_theme().unwrap_or(false);
-                    tauri::async_runtime::block_on(async move {
+                    crate::utils::block_on(async move {
                         apply_theme_change(is_dark).await;
                     });
                 }
@@ -602,7 +602,7 @@ async fn run_macos_theme_watcher() {
         _user_info: *const c_void,
     ) {
         let is_dark = detect_macos_theme().unwrap_or(false);
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             apply_theme_change(is_dark).await;
         });
     }

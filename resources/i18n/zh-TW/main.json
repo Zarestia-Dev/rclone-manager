@@ -2695,6 +2695,8 @@
       "savedProfilesTitle": "已儲存的設定 ({{count}})",
       "quickRunsTitle": "關聯的快捷執行 ({{count}})",
       "automationsTitle": "計劃的自動化 ({{count}})",
+      "workflowsTitle": "關聯的工作流程 ({{count}})",
+      "workflowsDesc": "這些工作流程引用了此遠端連線且不會被刪除，但在移除後可能需要更新其設定。",
       "types": {
         "mount": "掛載點",
         "serve": "服務"

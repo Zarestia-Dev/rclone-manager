@@ -108,7 +108,7 @@ pub fn run() {
                             let sources = cli_args.general.send_to_sources;
                             let app_handle_clone = app.clone();
                             let cwd_path = std::path::PathBuf::from(cwd);
-                            tauri::async_runtime::spawn(async move {
+                            crate::utils::spawn(async move {
                                 let params = build_send_to_params(remote, path, sources, Some(&cwd_path));
 
                                 log::info!(
@@ -133,7 +133,7 @@ pub fn run() {
                     #[cfg(not(feature = "web-server"))]
                     {
                         let app_clone = app.clone();
-                        tauri::async_runtime::spawn(async move {
+                        crate::utils::spawn(async move {
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
                             let app_for_main = app_clone.clone();
@@ -199,7 +199,7 @@ pub fn run() {
                     } else {
                         api.prevent_close();
                         let app_handle_clone = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
+                        crate::utils::spawn(async move {
                             let _ = crate::utils::app::platform::request_app_exit(app_handle_clone)
                                 .await;
                         });
@@ -433,7 +433,7 @@ fn setup_app(
     app.manage(alert_cache);
 
     let app_handle_clone = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         initialization(app_handle_clone).await;
     });
 
@@ -467,7 +467,7 @@ fn setup_app(
             args.headless.port
         );
 
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             if let Err(e) = start_web_server(
                 web_handle.clone(),
                 bridge,
@@ -505,7 +505,7 @@ fn setup_app(
 
     if cli_args.general.send_to_remote.is_some() {
         let app_handle_clone = app.handle().clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let mut engine_ready = false;
             for _ in 0..100 {
                 let status =
@@ -619,7 +619,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         }
         TrayAction::UnmountAll => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = rclone::commands::mount::unmount_all_remotes(
                     app_clone.clone(),
                     rclone::commands::common::OperationContext::Normal,
@@ -633,7 +633,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
         TrayAction::StopAllServes => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = rclone::commands::serve::stop_all_serves(
                     app_clone.clone(),
                     rclone::commands::common::OperationContext::Normal,
@@ -671,7 +671,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         }
         TrayAction::Quit => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 let _ = crate::utils::app::platform::request_app_exit(app_clone).await;
             });
         }

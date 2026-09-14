@@ -2695,6 +2695,8 @@
       "savedProfilesTitle": "Saved Profiles ({{count}})",
       "quickRunsTitle": "Associated Quick Runs ({{count}})",
       "automationsTitle": "Scheduled Automations ({{count}})",
+      "workflowsTitle": "Associated Workflows ({{count}})",
+      "workflowsDesc": "These workflows reference this remote and will not be deleted, but may need to be updated after removal.",
       "types": {
         "mount": "Mount Point",
         "serve": "Serve"

@@ -148,6 +148,29 @@
       </div>
     </div>
   }
+
+  <!-- Associated Workflows Section -->
+  @if (workflowsList().length > 0) {
+    <div class="details-section">
+      <div class="section-header">
+        <mat-icon svgIcon="workflow"></mat-icon>
+        <h4>
+          {{ 'home.deleteRemote.workflowsTitle' | translate: { count: workflowsList().length } }}
+        </h4>
+      </div>
+      <p class="section-description">
+        {{ 'home.deleteRemote.workflowsDesc' | translate }}
+      </p>
+      <div class="chips-grid">
+        @for (wf of workflowsList(); track wf.id) {
+          <div class="app-pill p-purple" [attr.title]="wf.description || wf.name">
+            <mat-icon svgIcon="workflow"></mat-icon>
+            <span>{{ wf.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </main>
 
 <footer>

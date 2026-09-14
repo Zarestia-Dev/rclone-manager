@@ -21,7 +21,7 @@ pub fn spawn_stats_cleanup_by_group(app: &AppHandle, group: &str) {
         .clone();
     let group = group.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = transport
             .rpc(
                 crate::utils::rclone::endpoints::core::STATS_DELETE,

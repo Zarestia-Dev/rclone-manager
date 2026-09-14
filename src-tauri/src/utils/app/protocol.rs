@@ -87,7 +87,7 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
 
             debug!("🔍 Parsed remote: '{remote}', path: '{path}'");
 
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 let rclone_state = app_handle.state::<crate::utils::types::state::RcloneState>();
                 let transport = rclone_state.transport.clone();
 
@@ -256,7 +256,7 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
         let mime_type_clone = mime_type.clone();
 
         // Use async runtime to support cat fallback
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             use std::io::{Read, Seek, SeekFrom};
             use crate::utils::types::state::RcloneState;
 
@@ -502,7 +502,7 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                 };
 
                 let app_handle = app.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
+                crate::utils::spawn(async move {
                     let rclone_state =
                         app_handle.state::<crate::utils::types::state::RcloneState>();
                     let transport = rclone_state.transport.clone();

@@ -7,6 +7,7 @@ use tauri::{AppHandle, Manager};
 #[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
 use tauri_plugin_autostart::ManagerExt;
 
+use crate::utils::spawn;
 use crate::{
     core::{
         automation::commands::reload_automations_from_configs, bridge::event::BridgeEvent,
@@ -39,7 +40,7 @@ use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPD
 
 #[cfg(feature = "tray")]
 fn trigger_tray_update(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {
             error!("Failed to update tray menu: {e}");
         }
@@ -48,7 +49,7 @@ fn trigger_tray_update(app: AppHandle) {
 
 fn handle_termination_signals(app: &AppHandle) {
     let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         #[cfg(unix)]
         {
             use tokio::signal::unix::{SignalKind, signal};
@@ -88,7 +89,7 @@ fn handle_termination_signals(app: &AppHandle) {
 
 fn handle_rclone_password_stored(app: &AppHandle) {
     let app = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let state = app.state::<EngineState>();
         let mut engine = state.lock().await;
         engine.clear_errors();
@@ -101,7 +102,7 @@ fn handle_remote_presence_changed(app: &AppHandle, payload: &Value) {
         return;
     }
     let app = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         let cache = &app.state::<BackendManager>().remote_cache;
 
         let (r1, r2) = tokio::join!(
@@ -170,7 +171,7 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
             ))]
             ("general", "prevent_sleep") => {
                 let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
+                spawn(async move {
                     crate::core::power::update_power_inhibition(&app_clone).await;
                 });
             }
@@ -217,7 +218,7 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
 fn handle_notifications_change(app: &AppHandle, enabled: bool) {
     debug!("Notifications changed to: {enabled}");
     let app = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         use crate::core::alerts::cache;
 
         let manager = app.state::<crate::core::settings::AppSettingsManager>();
@@ -266,7 +267,7 @@ fn handle_notifications_change(app: &AppHandle, enabled: bool) {
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
 fn handle_autostart_change(enabled: bool) {
     debug!("Autostart changed to: {enabled}");
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         if let Err(e) = crate::utils::app::platform::manage_flatpak_background_portal(enabled).await
         {
             error!("Failed to update flatpak autostart: {e}");
@@ -298,7 +299,7 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
         .map(String::from)
         .or_else(|| value.as_u64().map(|n| n.to_string()));
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         if let Err(e) = bandwidth_limit(app, limit).await {
             error!("Failed to set bandwidth limit: {e:?}");
         }
@@ -321,7 +322,7 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
     let app = app.clone();
     let payload = payload.clone();
 
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         if let Ok(ev) = serde_json::from_value::<JobChangeEvent>(payload)
             && let Ok(id) = ev.job_id.parse::<u64>()
             && let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
@@ -354,7 +355,7 @@ fn handle_max_tray_items_change(app: &AppHandle, max: u64) {
 #[cfg(feature = "tray")]
 fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
     let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         debug!("Tray visibility changed to: {enabled}");
         if let Some(tray) = app_clone.tray_by_id("main-tray") {
             let _ = tray.set_visible(enabled);
@@ -395,7 +396,7 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
     ))]
     if event.event == SERVE_STATE_CHANGED || event.event == MOUNT_STATE_CHANGED {
         let app_clone = app.clone();
-        tauri::async_runtime::spawn(async move {
+        spawn(async move {
             crate::core::power::update_power_inhibition(&app_clone).await;
         });
     }
@@ -410,7 +411,7 @@ pub fn setup_event_listener(app: &AppHandle) {
     };
 
     let app = app.clone();
-    tauri::async_runtime::spawn(async move {
+    spawn(async move {
         loop {
             match rx.recv().await {
                 Ok(event) => {

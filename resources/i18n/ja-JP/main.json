@@ -2654,6 +2654,8 @@
       "savedProfilesTitle": "保存されたプロファイル ({{count}})",
       "quickRunsTitle": "関連する Quick Run ({{count}})",
       "automationsTitle": "スケジュールされた自動化 ({{count}})",
+      "workflowsTitle": "関連するワークフロー ({{count}})",
+      "workflowsDesc": "これらのワークフローはこのリモートを参照しており削除されませんが、削除後に設定の更新が必要になる場合があります。",
       "types": {
         "mount": "マウントポイント",
         "serve": "配信"

@@ -76,7 +76,7 @@ fn push_auto_start_tasks(
         let app = app.clone();
         let remote = remote_name.to_string();
         let profile = pname.clone();
-        tasks.push(tokio::spawn(async move {
+        tasks.push(crate::utils::spawn(async move {
             match op {
                 Op::Mount => auto_start_mount(&app, &remote, &profile).await,
                 Op::Serve => auto_start_serve(&app, &remote, &profile).await,

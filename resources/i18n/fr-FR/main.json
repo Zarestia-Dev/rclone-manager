@@ -2654,6 +2654,8 @@
       "savedProfilesTitle": "Profils enregistrés ({{count}})",
       "quickRunsTitle": "Quick Runs associés ({{count}})",
       "automationsTitle": "Automatisations planifiées ({{count}})",
+      "workflowsTitle": "Flux de travail associés ({{count}})",
+      "workflowsDesc": "Ces flux de travail font référence à ce dépôt distant et ne seront pas supprimés, mais devront peut-être être mis à jour après la suppression.",
       "types": {
         "mount": "Point de montage",
         "serve": "Serveur"

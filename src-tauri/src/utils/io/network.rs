@@ -59,7 +59,7 @@ impl LinkChecker {
             let failed = failed.clone();
             let retries_used = retries_used.clone();
 
-            handles.push(tokio::spawn(async move {
+            handles.push(crate::utils::spawn(async move {
                 let mut last_error = None;
                 let mut retries = 0;
 

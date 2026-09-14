@@ -319,7 +319,7 @@ pub async fn submit_job_with_options(
             .map_err(|e| e.to_string())?;
     } else {
         let app = app.clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let _ = monitor_job(backend_name, metadata, jobid, app).await;
         });
     }
@@ -990,7 +990,7 @@ pub async fn submit_batch_job(
     }
 
     let backend_name_for_monitor = backend_name;
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = monitor_job(backend_name_for_monitor, metadata, jobid, app).await;
     });
 

@@ -32,21 +32,36 @@ use crate::{
     },
 };
 
+struct OAuthPollerGuard(tokio::task::JoinHandle<()>);
+
+impl Drop for OAuthPollerGuard {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 /// Spawn a background poller that watches `config/oauthstatus` and emits
 /// `RCLONE_OAUTH_URL` to the frontend when the OAuth server produces an
 /// auth URL.
-fn spawn_oauth_status_poller(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
+fn spawn_oauth_status_poller(app: AppHandle) -> OAuthPollerGuard {
+    let handle = crate::utils::spawn(async move {
         use std::time::Duration;
 
         const POLL_INTERVAL: Duration = Duration::from_millis(200);
+        const POLL_TIMEOUT: Duration = Duration::from_secs(300);
 
         let transport = app.state::<RcloneState>().transport.clone();
         let mut url_emitted = false;
+        let start = std::time::Instant::now();
 
-        log::debug!("Starting OAuth status poller");
+        log::debug!("Starting OAuth status poller (timeout: {POLL_TIMEOUT:?})");
 
         loop {
+            if start.elapsed() > POLL_TIMEOUT {
+                log::warn!("OAuth status poller timed out after {POLL_TIMEOUT:?}");
+                return;
+            }
+
             if app.state::<RcloneState>().is_shutting_down() {
                 log::debug!("OAuth status poller exiting — app shutting down");
                 return;
@@ -81,9 +96,9 @@ fn spawn_oauth_status_poller(app: AppHandle) {
                     crate::core::bridge::emit(RCLONE_OAUTH_URL, json!({ "url": url }));
                     url_emitted = true;
                 }
-            } else if url_emitted || !running {
+            } else if url_emitted {
                 log::debug!(
-                    "OAuth server stopped (running={running}, authUrl is None) — flow completed"
+                    "OAuth server stopped (running={running}, authUrl is None) after URL was emitted — flow completed"
                 );
                 return;
             }
@@ -91,6 +106,8 @@ fn spawn_oauth_status_poller(app: AppHandle) {
             tokio::time::sleep(POLL_INTERVAL).await;
         }
     });
+
+    OAuthPollerGuard(handle)
 }
 
 async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
@@ -130,7 +147,7 @@ pub async fn create_remote_interactive(
         Some(json!({ "type": rclone_type })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -185,7 +202,7 @@ pub async fn continue_create_remote_interactive(
         Some(json!({ "state": state_token })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -286,7 +303,7 @@ pub async fn create_remote(
         })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::CREATE, body).await.map_err(|e| {
         log_operation(
@@ -365,7 +382,7 @@ pub async fn update_remote(
         })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::UPDATE, body).await.map_err(|e| {
         log_operation(

@@ -113,7 +113,7 @@ impl PowerInhibitorState {
                         }
 
                         let app_handle = app.clone();
-                        tauri::async_runtime::spawn(async move {
+                        crate::utils::spawn(async move {
                             if let Ok(mut shutdown_stream) =
                                 proxy.receive_signal("PrepareForShutdown").await
                             {

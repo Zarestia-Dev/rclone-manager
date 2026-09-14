@@ -184,7 +184,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
             "Active backend '{active_name}' is remote — spawning connectivity probe in background so UI can load immediately"
         );
         let app_clone = app_handle.clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let backend_manager = app_clone.state::<BackendManager>();
             let transport = app_clone.state::<RcloneState>().transport.clone();
             if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
@@ -203,7 +203,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     }
 
     let app_handle_clone = app_handle.clone();
-    tokio::spawn(async move {
+    crate::utils::spawn(async move {
         let backend_manager = app_handle_clone.state::<BackendManager>();
         let transport = app_handle_clone.state::<RcloneState>().transport.clone();
         crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &*transport)

@@ -117,7 +117,7 @@ async fn fetch_update_inner(
         .on_before_exit(move || {
             let app = app_exit.clone();
             warn!("Shutting down for update installation...");
-            tauri::async_runtime::block_on(async move {
+            crate::utils::block_on(async move {
                 handle_shutdown(app).await;
             });
         })
@@ -269,7 +269,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     let app_clone = app.clone();
     let update_clone = update.clone();
 
-    let handle = tauri::async_runtime::spawn(async move {
+    let handle = crate::utils::spawn(async move {
         let progress_app = app_clone.clone();
         let mut last_emit = std::time::Instant::now();
 
@@ -409,7 +409,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
         }
 
         #[cfg(not(target_os = "windows"))]
-        tauri::async_runtime::block_on(async move {
+        crate::utils::block_on(async move {
             notify(
                 &app,
                 NotificationEvent::AppUpdate(UpdateStage::Installed { version }),

@@ -201,7 +201,7 @@ pub async fn graceful_shutdown(
     info!("Attempting graceful shutdown (PID {pid:?})");
 
     // Fire the quit request without waiting on the response — we watch the child instead.
-    tokio::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = quit_request.timeout(Duration::from_secs(2)).send().await;
     });
 

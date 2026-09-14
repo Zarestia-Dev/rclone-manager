@@ -80,7 +80,7 @@ pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
 
     let app_handle_clone = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         let log_cache = app_handle_clone.state::<LogCache>();
         while let Some(entry) = rx.recv().await {
             log_cache.add_entry_from_processor(entry).await;

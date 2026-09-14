@@ -450,7 +450,7 @@ pub fn restart_for_config_change(app: &AppHandle, change_type: &str) {
     let app = app.clone();
     let change_type = change_type.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         match restart_engine(&app, &change_type).await {
             Ok(()) => {
                 info!("Engine restarted for {change_type} change");

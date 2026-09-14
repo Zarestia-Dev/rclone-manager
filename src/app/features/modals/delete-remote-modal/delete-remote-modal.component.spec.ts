@@ -9,9 +9,11 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { Automation, JobInfo, MountedRemote, QuickRun, Remote, ServeListItem } from '@app/types';
+import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
 
 describe('DeleteRemoteModalComponent', () => {
   let fixture: ComponentFixture<DeleteRemoteModalComponent>;
@@ -32,8 +34,13 @@ describe('DeleteRemoteModalComponent', () => {
   let automationServiceSpy: {
     automations: ReturnType<typeof signal<Automation[]>>;
   };
+  let workflowStorageSpy: {
+    workflows: ReturnType<typeof signal<WorkflowDefinition[]>>;
+    loadAllWorkflows: ReturnType<typeof vi.fn>;
+  };
   let pathServiceSpy: {
     getRemoteNameFromFs: ReturnType<typeof vi.fn>;
+    normalizeRemoteName: ReturnType<typeof vi.fn>;
   };
   let iconServiceSpy: {
     getIconName: ReturnType<typeof vi.fn>;
@@ -70,8 +77,13 @@ describe('DeleteRemoteModalComponent', () => {
     automationServiceSpy = {
       automations: signal<Automation[]>([]),
     };
+    workflowStorageSpy = {
+      workflows: signal<WorkflowDefinition[]>([]),
+      loadAllWorkflows: vi.fn(),
+    };
     pathServiceSpy = {
-      getRemoteNameFromFs: vi.fn((fs: string) => fs.split(':')[0]),
+      getRemoteNameFromFs: vi.fn((fs: string) => (fs ? fs.split(':')[0] : '')),
+      normalizeRemoteName: vi.fn((name?: string) => (name ? name.replace(/:$/, '').trim() : '')),
     };
     iconServiceSpy = {
       getIconName: vi.fn((type: string) => `icon-${type}`),
@@ -87,6 +99,7 @@ describe('DeleteRemoteModalComponent', () => {
         { provide: JobManagementService, useValue: jobServiceSpy },
         { provide: QuickRunService, useValue: quickRunServiceSpy },
         { provide: AutomationService, useValue: automationServiceSpy },
+        { provide: WorkflowStorageService, useValue: workflowStorageSpy },
         { provide: PathService, useValue: pathServiceSpy },
         { provide: IconService, useValue: iconServiceSpy },
       ],
@@ -194,6 +207,103 @@ describe('DeleteRemoteModalComponent', () => {
     expect(component.quickRunsList()[0].name).toBe('QR 1');
     expect(component.automationsList().length).toBe(1);
     expect(component.automationsList()[0].id).toBe('auto-1');
+  });
+
+  it('should filter associated workflows referencing the remote through various node configs', () => {
+    quickRunServiceSpy.quickRuns.set([
+      {
+        id: 'qr-matched',
+        name: 'Matched QR',
+        remoteName: 'test-remote',
+      } as unknown as QuickRun,
+      {
+        id: 'qr-other',
+        name: 'Other QR',
+        remoteName: 'other',
+      } as unknown as QuickRun,
+    ]);
+
+    workflowStorageSpy.workflows.set([
+      {
+        id: 'wf-direct',
+        name: 'Direct Remote Workflow',
+        nodes: [
+          {
+            id: 'n1',
+            type: 'sync',
+            config: { remoteName: 'test-remote' },
+          },
+        ],
+      } as unknown as WorkflowDefinition,
+      {
+        id: 'wf-path',
+        name: 'Path Remote Workflow',
+        nodes: [
+          {
+            id: 'n2',
+            type: 'copy',
+            config: {
+              config: {
+                rclone: { srcFs: 'test-remote:photos', dstFs: '/local/backup' },
+              },
+            },
+          },
+        ],
+      } as unknown as WorkflowDefinition,
+      {
+        id: 'wf-quickrun',
+        name: 'QuickRun Remote Workflow',
+        nodes: [
+          {
+            id: 'n3',
+            type: 'quick_run',
+            config: { quickRunId: 'qr-matched' },
+          },
+        ],
+      } as unknown as WorkflowDefinition,
+      {
+        id: 'wf-other',
+        name: 'Unrelated Workflow',
+        nodes: [
+          {
+            id: 'n4',
+            type: 'sync',
+            config: { remoteName: 'other' },
+          },
+          {
+            id: 'n5',
+            type: 'quick_run',
+            config: { quickRunId: 'qr-other' },
+          },
+        ],
+      } as unknown as WorkflowDefinition,
+      {
+        id: 'wf-empty',
+        name: 'Empty Workflow',
+        nodes: [],
+      } as unknown as WorkflowDefinition,
+    ]);
+
+    const matching = component.workflowsList();
+    expect(matching.length).toBe(3);
+    const ids = matching.map(w => w.id);
+    expect(ids).toContain('wf-direct');
+    expect(ids).toContain('wf-path');
+    expect(ids).toContain('wf-quickrun');
+    expect(ids).not.toContain('wf-other');
+    expect(ids).not.toContain('wf-empty');
+  });
+
+  it('should return empty workflowsList when no workflows reference the remote', () => {
+    workflowStorageSpy.workflows.set([
+      {
+        id: 'wf-unrelated',
+        name: 'Unrelated',
+        nodes: [{ id: 'n1', type: 'manual', config: {} }],
+      } as unknown as WorkflowDefinition,
+    ]);
+
+    expect(component.workflowsList().length).toBe(0);
   });
 
   it('should close dialog with true on confirm', () => {

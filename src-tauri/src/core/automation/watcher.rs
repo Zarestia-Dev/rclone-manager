@@ -159,7 +159,7 @@ impl WatcherManager {
         let cache = app_handle.state::<AutomationsCache>().inner().clone();
         let paths_clone = paths.clone();
 
-        tokio::spawn(async move {
+        crate::utils::spawn(async move {
             // Net-change tracking within the current debounce window:
             //
             // `created_in_window` tracks paths that were *created* since the window opened.
@@ -266,7 +266,7 @@ impl WatcherManager {
                         log::info!("Triggering automation {automation_id} after debounce");
                         let app_handle_clone = app_handle.clone();
                         let id_clone = automation_id.clone();
-                        tokio::spawn(async move {
+                        crate::utils::spawn(async move {
                             if let Err(e) =
                                 execute_automation(&id_clone, &app_handle_clone, scoped_targets)
                                     .await

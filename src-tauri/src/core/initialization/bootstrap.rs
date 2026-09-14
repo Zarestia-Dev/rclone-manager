@@ -30,7 +30,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     // Monitor Network Changes (Background task)
     #[cfg(not(target_os = "ios"))]
     {
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             crate::utils::io::network::monitor_network_changes().await;
         });
     }

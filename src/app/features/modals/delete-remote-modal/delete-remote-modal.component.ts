@@ -16,10 +16,12 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
-import { OPERATION_REGISTRY, RemoteSettings } from '@app/types';
+import { OPERATION_REGISTRY, QuickRun, RemoteSettings } from '@app/types';
+import { WorkflowDefinition, WorkflowNode } from 'src/app/flow/workflow/types/workflow.types';
 
 export interface DeleteRemoteModalData {
   remoteName: string;
@@ -53,11 +55,16 @@ export class DeleteRemoteModalComponent {
   private readonly jobService = inject(JobManagementService);
   private readonly quickRunService = inject(QuickRunService);
   private readonly automationService = inject(AutomationService);
+  private readonly workflowStorage = inject(WorkflowStorageService);
   private readonly pathService = inject(PathService);
   readonly iconService = inject(IconService);
 
   private readonly data: DeleteRemoteModalData = inject(MAT_DIALOG_DATA);
   readonly remoteName = this.data.remoteName;
+
+  constructor() {
+    void this.workflowStorage.loadAllWorkflows();
+  }
 
   readonly isDeleting = signal(false);
 
@@ -121,6 +128,127 @@ export class DeleteRemoteModalComponent {
   readonly automationsList = computed(() =>
     this.automationService.automations().filter(a => a.remoteName === this.remoteName)
   );
+
+  readonly workflowsList = computed(() => {
+    const target = this.pathService.normalizeRemoteName(this.remoteName);
+    if (!target) return [];
+
+    const allWorkflows = this.workflowStorage.workflows();
+    const allQuickRuns = this.quickRunService.quickRuns();
+
+    return allWorkflows.filter(wf => this.isWorkflowUsingRemote(wf, target, allQuickRuns));
+  });
+
+  private isWorkflowUsingRemote(
+    wf: WorkflowDefinition,
+    targetClean: string,
+    quickRuns: QuickRun[]
+  ): boolean {
+    if (!wf.nodes || !Array.isArray(wf.nodes)) return false;
+    return wf.nodes.some(node => this.isNodeUsingRemote(node, targetClean, quickRuns));
+  }
+
+  private isNodeUsingRemote(
+    node: WorkflowNode,
+    targetClean: string,
+    quickRuns: QuickRun[]
+  ): boolean {
+    if (!node) return false;
+
+    // Quick run node reference
+    if (node.type === 'quick_run') {
+      const qrId = node.config?.['quickRunId'];
+      if (typeof qrId === 'string' && qrId.trim()) {
+        const qr = quickRuns.find(q => q.id === qrId.trim());
+        if (qr && this.pathService.normalizeRemoteName(qr.remoteName) === targetClean) {
+          return true;
+        }
+      }
+    }
+
+    return this.checkConfigForRemote(node.config, targetClean);
+  }
+
+  private checkConfigForRemote(
+    cfg: Record<string, unknown> | undefined | null,
+    targetClean: string
+  ): boolean {
+    if (!cfg || typeof cfg !== 'object') return false;
+
+    const directRemoteKeys = ['remoteName', 'remote', 'remote_name', 'targetRemote'];
+    for (const key of directRemoteKeys) {
+      const val = cfg[key];
+      if (typeof val === 'string' && val.trim()) {
+        if (this.pathService.normalizeRemoteName(val) === targetClean) {
+          return true;
+        }
+      }
+    }
+
+    const pathKeys = [
+      'srcFs',
+      'dstFs',
+      'fs',
+      'mountPoint',
+      'path',
+      'path1',
+      'path2',
+      'source',
+      'dest',
+      'url',
+      'watchPaths',
+    ];
+    for (const key of pathKeys) {
+      const val = cfg[key];
+      if (this.isPathMatchingRemote(val, targetClean)) {
+        return true;
+      }
+    }
+
+    if (cfg['config'] && typeof cfg['config'] === 'object') {
+      if (this.checkConfigForRemote(cfg['config'] as Record<string, unknown>, targetClean)) {
+        return true;
+      }
+    }
+
+    if (cfg['rclone'] && typeof cfg['rclone'] === 'object') {
+      if (this.checkConfigForRemote(cfg['rclone'] as Record<string, unknown>, targetClean)) {
+        return true;
+      }
+    }
+
+    if (cfg['params'] && typeof cfg['params'] === 'object') {
+      if (this.checkConfigForRemote(cfg['params'] as Record<string, unknown>, targetClean)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private isPathMatchingRemote(val: unknown, targetClean: string): boolean {
+    if (!val) return false;
+
+    if (Array.isArray(val)) {
+      return val.some(item => this.isPathMatchingRemote(item, targetClean));
+    }
+
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed) return false;
+
+      if (trimmed.startsWith(`${targetClean}:`)) {
+        return true;
+      }
+
+      const fromFs = this.pathService.getRemoteNameFromFs(trimmed);
+      if (fromFs && fromFs !== 'local' && fromFs === targetClean) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   getOpIcon(op: string): string {
     return OPERATION_REGISTRY.find(d => d.key === op)?.icon ?? 'quick-run';

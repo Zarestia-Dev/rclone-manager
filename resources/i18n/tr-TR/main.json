@@ -2695,6 +2695,8 @@
       "savedProfilesTitle": "Kayıtlı Profiller ({{count}})",
       "quickRunsTitle": "İlişkili Quick Run'lar ({{count}})",
       "automationsTitle": "Zamanlanmış Otomasyonlar ({{count}})",
+      "workflowsTitle": "İlişkili İş Akışları ({{count}})",
+      "workflowsDesc": "Bu iş akışları bu uzak sunucuyu kullanmaktadır ve silinmeyecektir, ancak kaldırma işleminden sonra güncellenmeleri gerekebilir.",
       "types": {
         "mount": "Bağlama Noktası",
         "serve": "Yayın"

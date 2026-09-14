@@ -183,7 +183,9 @@ pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         .into_iter()
         .map(|job| {
             let app = app.clone();
-            tokio::spawn(async move { stop_job(app.clone(), job.jobid, job.remote_name).await })
+            crate::utils::spawn(
+                async move { stop_job(app.clone(), job.jobid, job.remote_name).await },
+            )
         })
         .collect();
 

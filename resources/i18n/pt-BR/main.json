@@ -2654,6 +2654,8 @@
       "savedProfilesTitle": "Perfis Salvos ({{count}})",
       "quickRunsTitle": "Quick Runs Associados ({{count}})",
       "automationsTitle": "Automações Agendadas ({{count}})",
+      "workflowsTitle": "Fluxos de trabalho associados ({{count}})",
+      "workflowsDesc": "Estes fluxos de trabalho fazem referência a este remoto e não serão excluídos, mas podem precisar ser atualizados após a remoção.",
       "types": {
         "mount": "Ponto de Montagem",
         "serve": "Serviço"

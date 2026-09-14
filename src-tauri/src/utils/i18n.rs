@@ -265,7 +265,7 @@ pub fn apply_language_change(lang: &str) {
     #[cfg(feature = "tray")]
     {
         if let Some(app_handle) = crate::core::bridge::get_app_handle() {
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
                     log::error!("Failed to update tray menu: {e}");
                 }

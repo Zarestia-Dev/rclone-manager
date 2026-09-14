@@ -36,7 +36,7 @@ pub fn init(app: AppHandle) {
         return;
     }
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         debug!("Alert engine worker started");
         let ctx = app.state::<DispatchContext>().inner().clone();
         while let Some(req) = rx.recv().await {
@@ -208,7 +208,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
                 }
             };
 
-            action_futures.push(tokio::spawn({
+            action_futures.push(crate::utils::spawn({
                 let action_app = app.clone();
                 let action_ctx = ctx.clone();
                 let action_dispatch_ctx = dispatch_ctx.clone();

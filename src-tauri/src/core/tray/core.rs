@@ -160,7 +160,9 @@ mod tests {
         let mut tasks = vec![];
         for _ in 0..50 {
             let h = handle.clone();
-            tasks.push(tokio::spawn(async move { update_tray_menu(h).await }));
+            tasks.push(crate::utils::spawn(
+                async move { update_tray_menu(h).await },
+            ));
         }
 
         let results = futures::future::join_all(tasks).await;

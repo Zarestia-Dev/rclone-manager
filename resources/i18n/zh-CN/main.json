@@ -2654,6 +2654,8 @@
       "savedProfilesTitle": "已保存的配置 ({{count}})",
       "quickRunsTitle": "关联的快捷运行 ({{count}})",
       "automationsTitle": "计划的自动化 ({{count}})",
+      "workflowsTitle": "关联的工作流 ({{count}})",
+      "workflowsDesc": "这些工作流引用了此远程存储且不会被删除，但在移除后可能需要更新其配置。",
       "types": {
         "mount": "挂载点",
         "serve": "服务"

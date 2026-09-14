@@ -66,7 +66,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
         return;
     }
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         debug!("Starting unified system poller");
         let mut burst_ticks = BURST_TICK_COUNT;
         let mut prev_visible = true;

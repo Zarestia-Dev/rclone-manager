@@ -1849,7 +1849,7 @@ pub async fn execute_workflow(
                     let results_clone = node_results.clone();
                     let tx_clone = tx.clone();
 
-                    tokio::spawn(async move {
+                    crate::utils::spawn(async move {
                         let node_start = Instant::now();
                         let outcome = execute_single_node(
                             &app_clone,
@@ -2295,7 +2295,7 @@ pub async fn trigger_workflows_for_job_finish(
             );
             let app_clone = app.clone();
             let wf_id = wf.id.clone();
-            tokio::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = crate::core::flow::workflow::commands::execute_workflow(
                     app_clone,
                     wf_id.clone(),

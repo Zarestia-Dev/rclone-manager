@@ -122,6 +122,11 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
         - Interactive States: `var(--hover-bg-color)`, `var(--selected-bg-color)`
         - Semantic Colors: `var(--window-bg-color)`, `var(--window-fg-color)`, `var(--dim-color)` (for all muted/secondary text), `var(--accent-color)`, `var(--primary-color)`, `var(--warn-color)` (for all errors/danger), `var(--yellow)`, `var(--orange)`, `var(--purple)`, `var(--card-bg-color)`, `var(--border-color)`
 
+14. **Async Task Spawning Standard (CRITICAL)**
+    - **ALWAYS** use `crate::utils::spawn` (or `crate::utils::spawn_blocking`) and standard `tokio::task::JoinHandle` for asynchronous background task spawning across backend Rust code.
+    - **DO NOT** use raw `tokio::spawn` directly in production code: calling `tokio::spawn` outside of Tokio worker threads (e.g. inside `setup` hooks, GUI thread event listeners, or OS callbacks) panics with `"there is no reactor running"`. `crate::utils::spawn` dynamically registers the Tokio runtime context on the calling thread and returns a native `tokio::task::JoinHandle`.
+    - **DO NOT** use `tauri::async_runtime::spawn` or `tauri::async_runtime::JoinHandle`.
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))
