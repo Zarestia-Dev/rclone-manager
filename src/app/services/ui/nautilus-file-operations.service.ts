@@ -573,8 +573,9 @@ export class NautilusFileOperationsService {
       existingNames,
     });
 
+    let folderName: string | undefined;
     try {
-      const folderName = await firstValueFrom(ref.afterClosed());
+      folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return false;
 
       const newPath = this.pathService.joinPath(currentPath, folderName);
@@ -582,7 +583,13 @@ export class NautilusFileOperationsService {
       return true;
     } catch (err) {
       console.error('[NautilusFileOps] Failed to create folder:', err);
-      this.notifications.showError(this.translate.instant('nautilus.errors.createFolderFailed'));
+      const errMsg = (err as Error)?.message || String(err);
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.createFolderFailed', {
+          name: folderName || '',
+          error: errMsg,
+        })
+      );
       return false;
     }
   }

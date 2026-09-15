@@ -50,16 +50,32 @@ async fn run_fs_command_as_job(
     )
     .await?;
 
-    if let Some(job) = backend_manager.job_cache.get_job(jobid).await
-        && job.status == JobStatus::Stopped
-    {
-        return Err("Operation cancelled".to_string());
+    if let Some(job) = backend_manager.job_cache.get_job(jobid).await {
+        if job.status == JobStatus::Stopped {
+            return Err("Operation cancelled".to_string());
+        }
+        if job.status == JobStatus::Failed {
+            return Err(job.error.unwrap_or_else(|| "Operation failed".to_string()));
+        }
     }
 
     let value = transport
         .rpc(job_endpoints::STATUS, Some(&json!({ "jobid": jobid })))
         .await
         .map_err(|e| format!("Failed to fetch async job status: {e}"))?;
+
+    if value.get("success").and_then(|v| v.as_bool()) == Some(false)
+        || value
+            .get("error")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty())
+    {
+        let error_msg = value
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Operation failed");
+        return Err(error_msg.to_string());
+    }
 
     Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
 }

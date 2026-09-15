@@ -179,6 +179,10 @@ export class RemoteFacadeService {
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
   private refreshInFlight: Promise<void> | null = null;
+  private nextRefreshPromise: Promise<void> | null = null;
+
+  private loadRemotesInFlight: Promise<void> | null = null;
+  private nextLoadRemotesPromise: Promise<void> | null = null;
 
   constructor() {
     void this.refreshAll();
@@ -369,47 +373,66 @@ export class RemoteFacadeService {
   // --- Data Loading ---
 
   async loadRemotes(): Promise<void> {
-    try {
-      const [configs, settings] = await Promise.all([
-        this.remoteService.getAllRemoteConfigs(),
-        this.appSettingsService.getRemoteSettings(),
-      ]);
-
-      const incomingNames = Object.keys(configs);
-      this.remoteNames.set(incomingNames);
-      this.pathService.setRemoteNames(incomingNames);
-      const currentNames = Array.from(this.remoteStates.keys());
-
-      for (const name of currentNames) {
-        if (!configs[name]) {
-          this.remoteStates.delete(name);
-          this.remoteService.clearCache(name);
-        }
+    if (this.loadRemotesInFlight) {
+      if (!this.nextLoadRemotesPromise) {
+        this.nextLoadRemotesPromise = this.loadRemotesInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextLoadRemotesPromise = null;
+            return this.loadRemotes();
+          });
       }
+      return this.nextLoadRemotesPromise;
+    }
 
-      let newAdded = false;
+    const promise = (async (): Promise<void> => {
+      try {
+        const [configs, settings] = await Promise.all([
+          this.remoteService.getAllRemoteConfigs(),
+          this.appSettingsService.getRemoteSettings(),
+        ]);
 
-      for (const name of incomingNames) {
-        const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
-        const state = this.remoteStates.get(name);
+        const incomingNames = Object.keys(configs);
+        const currentNames = Array.from(this.remoteStates.keys());
 
-        if (state) {
-          const prevConfig = state.base().config;
-          if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
+        for (const name of currentNames) {
+          if (!configs[name]) {
+            this.remoteStates.delete(name);
             this.remoteService.clearCache(name);
           }
-          state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
-        } else {
-          newAdded = true;
-          this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
         }
-      }
 
-      this.remoteSettings.set(settings);
-      if (newAdded) this.loadDiskUsageInBackground();
-    } catch (error) {
-      console.error('[RemoteFacadeService] Error loading remotes:', error);
-    }
+        let newAdded = false;
+
+        for (const name of incomingNames) {
+          const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
+          const state = this.remoteStates.get(name);
+
+          if (state) {
+            const prevConfig = state.base().config;
+            if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
+              this.remoteService.clearCache(name);
+            }
+            state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
+          } else {
+            newAdded = true;
+            this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
+          }
+        }
+
+        this.remoteSettings.set(settings);
+        this.remoteNames.set(incomingNames);
+        this.pathService.setRemoteNames(incomingNames);
+        if (newAdded) this.loadDiskUsageInBackground();
+      } catch (error) {
+        console.error('[RemoteFacadeService] Error loading remotes:', error);
+      } finally {
+        this.loadRemotesInFlight = null;
+      }
+    })();
+
+    this.loadRemotesInFlight = promise;
+    return promise;
   }
 
   // --- Layout Operations ---
@@ -449,7 +472,17 @@ export class RemoteFacadeService {
   }
 
   async refreshAll(): Promise<void> {
-    if (this.refreshInFlight) return this.refreshInFlight;
+    if (this.refreshInFlight) {
+      if (!this.nextRefreshPromise) {
+        this.nextRefreshPromise = this.refreshInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextRefreshPromise = null;
+            return this.refreshAll();
+          });
+      }
+      return this.nextRefreshPromise;
+    }
 
     const promise = (async (): Promise<void> => {
       this.isLoading.set(true);
@@ -467,7 +500,9 @@ export class RemoteFacadeService {
         ]);
         this.loadDiskUsageInBackground();
       } finally {
-        this.isLoading.set(false);
+        if (!this.nextRefreshPromise) {
+          this.isLoading.set(false);
+        }
         this.refreshInFlight = null;
       }
     })();

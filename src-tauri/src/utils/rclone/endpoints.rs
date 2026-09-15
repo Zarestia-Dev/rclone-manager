@@ -383,13 +383,13 @@ pub mod config {
     // /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
     // pub const GET: &str = "config/get";
 
-    /// Lists the remotes in the config file and defined in environment variables.
-    ///
-    /// Returns
-    /// - remotes - array of remote names
-    ///
-    /// See the [listremotes](/commands/rclone_listremotes/) command for more information on the above.
-    pub const LISTREMOTES: &str = "config/listremotes";
+    // /// Lists the remotes in the config file and defined in environment variables.
+    // ///
+    // /// Returns
+    // /// - remotes - array of remote names
+    // ///
+    // /// See the [listremotes](/commands/rclone_listremotes/) command for more information on the above.
+    // pub const LISTREMOTES: &str = "config/listremotes";
 
     /// Get the status of the OAuth authentication server.
     ///

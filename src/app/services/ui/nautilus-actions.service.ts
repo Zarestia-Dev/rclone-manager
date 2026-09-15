@@ -316,13 +316,14 @@ export class NautilusActionsService {
       existingNames,
     });
 
+    let folderName: string | undefined;
     try {
-      const folderName = await firstValueFrom(ref.afterClosed());
+      folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
 
       const currentPath = this.tabSvc.activePath();
       const newPath = this.pathSvc.joinPath(currentPath, folderName);
-      const normalizedRemote = this.pathSvc.normalizeRemoteForRclone(remote.name);
+      const normalizedRemote = this.pathSvc.normalizeExplorerRoot(remote);
 
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       await this.fileOps.performFileOperations(items, remote, newPath, 'move');
@@ -333,8 +334,8 @@ export class NautilusActionsService {
       console.error('Failed to create folder with selected items', err);
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.createFolderFailed', {
-          name: 'selection',
-          error: (err as Error).message || String(err),
+          name: folderName || 'selection',
+          error: (err as Error)?.message || String(err),
         })
       );
     }

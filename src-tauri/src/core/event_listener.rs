@@ -98,19 +98,17 @@ fn handle_rclone_password_stored(app: &AppHandle) {
 }
 
 fn handle_remote_presence_changed(app: &AppHandle, payload: &Value) {
-    if payload.as_str() == Some("system_refresh") {
+    if payload.as_str() == Some("system_refresh")
+        || payload.as_str() == Some(crate::utils::constants::CACHE_UPDATED)
+    {
         return;
     }
     let app = app.clone();
     spawn(async move {
         let cache = &app.state::<BackendManager>().remote_cache;
 
-        let (r1, r2) = tokio::join!(
-            cache.refresh_remote_list(app.clone()),
-            cache.refresh_remote_configs(app.clone()),
-        );
-        if let (Err(e1), Err(e2)) = (r1, r2) {
-            error!("Failed to refresh cache: {e1}, {e2}");
+        if let Err(e) = cache.refresh_remotes_and_configs(app.clone()).await {
+            error!("Failed to refresh cache: {e}");
         }
 
         if let Err(e) = reload_automations_from_configs(&app).await {

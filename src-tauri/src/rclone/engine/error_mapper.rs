@@ -236,18 +236,18 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
     None
 }
 
-/// Maps a job execution error to a localized message, falling back to `backendErrors.job.executionFailed`.
+/// Maps a job execution error to a localized message, falling back to the raw error.
 #[must_use]
 pub fn map_or_wrap_job_error(raw_error: &str) -> String {
     let trimmed = raw_error.trim();
     if trimmed.is_empty() {
-        return crate::localized_error!("backendErrors.job.executionFailed", "error" => "");
+        return String::new();
     }
 
     if let Some(mapped) = map_rclone_error(trimmed) {
         mapped
     } else {
-        crate::localized_error!("backendErrors.job.executionFailed", "error" => trimmed)
+        trimmed.to_string()
     }
 }
 
@@ -400,9 +400,7 @@ mod tests {
         let err = "some totally obscure and unique error";
         assert_eq!(map_rclone_error(err), None);
 
-        let wrapped = map_or_wrap_job_error(err);
-        let parsed: serde_json::Value = serde_json::from_str(&wrapped).unwrap();
-        assert_eq!(parsed["key"], "backendErrors.job.executionFailed");
-        assert_eq!(parsed["params"]["error"], err);
+        let result = map_or_wrap_job_error(err);
+        assert_eq!(result, err);
     }
 }
