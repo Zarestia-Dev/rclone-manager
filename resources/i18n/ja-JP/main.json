@@ -3370,6 +3370,12 @@
         "exportWorkflow": "JSONをエクスポート",
         "inspectJob": "ジョブを検査"
       },
+      "canvas": {
+        "navigation": "キャンバスナビゲーション",
+        "toggleMinimap": "ミニマップ切り替え",
+        "enterFocusMode": "キャンバスに集中（ナビゲーションを非表示）",
+        "exitFocusMode": "集中を終了（ナビゲーションを表示）"
+      },
       "toolbar": {
         "selectWorkflow": "ワークフローを選択",
         "newWorkflow": "新規ワークフロー",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "ジョブの詳細",
         "inspectJobBtn": "ジョブの詳細を検査",
         "transfers": "転送",
-        "errors": "エラー"
+        "errors": "エラー",
+        "testRun": "テスト実行",
+        "testRunRcHint": "現在のパラメータでこのRCコマンドをテスト実行します",
+        "testSuccess": "テスト成功",
+        "testFailed": "テスト失敗",
+        "useAsSampleSchema": "出力スキーマとして保存",
+        "sampleOutputSchema": "サンプル出力スキーマ",
+        "sampleOutputSchemaDesc": "後続のカードで動的トークンフィールドを展開するためのJSONレスポンススキーマ",
+        "sampleOutputPlaceholder": "ここにサンプルのJSONレスポンスを貼り付け...",
+        "availableOutputKeys": "検出された変数キー",
+        "upstreamOutputs": "上流の出力と変数",
+        "nodeOutput": "ノード実行出力",
+        "checkReport": "差分レポート",
+        "rawOutputJson": "出力データ (JSON)",
+        "conditionPresets": "クイック条件プリセット",
+        "condPresetHasDiff": "差分あり",
+        "condPresetNoDiff": "差分なし",
+        "condPresetDiffCount": "差分検出 (>0)",
+        "condPresetHasErrors": "エラーあり",
+        "condPresetTransferred": "転送済み (>0)",
+        "condPresetScriptSuccess": "スクリプト成功",
+        "notificationPresets": "クイックメッセージプリセット",
+        "notifPresetCheckReport": "チェックレポート",
+        "notifPresetTransferSummary": "転送概要",
+        "notifPresetFailureAlert": "障害アラート",
+        "notifPresetHealthStatus": "エンジン稼働状況",
+        "opGreaterOrEqual": "以上 (>=)",
+        "opLessOrEqual": "以下 (<=)",
+        "opStartsWith": "で始まる",
+        "opEndsWith": "で終わる",
+        "opArrayNotEmpty": "配列に要素あり",
+        "opArrayIsEmpty": "配列が空",
+        "preview": "メッセージプレビュー"
       },
       "status": {
         "running": "実行中",
@@ -3633,12 +3671,44 @@
         "updated": "更新日"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "マウント中",
+        "serving": "公開中"
       },
       "recipes": {
-        "manualTrigger": "手動トリガー",
-        "manualTriggerDesc": "UIから手動でトリガーされました"
+        "driftCheckSync": {
+          "name": "スマート差分チェック＆条件付き同期",
+          "description": "checkで差分を検証し、変更が検出された場合のみ同期して転送量の詳細を通知します。"
+        },
+        "integrityAudit": {
+          "name": "データ整合性監査＆差分レポート",
+          "description": "定期的な整合性チェックを実行し、差分が存在する場合はMarkdownレポートでアラートを送信します。"
+        },
+        "safeSyncAlert": {
+          "name": "障害アラート付き安全同期",
+          "description": "同期を実行し、成功時は転送量を通知し、失敗時は詳細なエラー内容を転送します。"
+        },
+        "dailyBackup": {
+          "name": "日次バックアップ＆通知",
+          "description": "毎日02:00に定期同期を実行し、成功または失敗時に通知します。"
+        },
+        "watchUpload": {
+          "name": "フォルダー監視＆自動アップロード",
+          "description": "ローカルフォルダーの変更を監視し、新規・変更ファイルをクラウドにコピーします。"
+        },
+        "parallelMirror": {
+          "name": "マルチクラウド並列ミラー",
+          "description": "2つの異なるクラウドプロバイダーへ同時に同期し、完了を検証します。"
+        },
+        "mountOnDemand": {
+          "name": "オンデマンドマウント＆通知",
+          "description": "リモートストレージパスをマウントし、ドライブの準備完了時にデスクトップへ通知します。"
+        },
+        "manualTrigger": "手動",
+        "manualTriggerDesc": "オンデマンドで手動トリガー",
+        "vfsRefresh": {
+          "name": "VFSキャッシュ更新自動化",
+          "description": "マウントされたドライブのディレクトリキャッシュを再読み込みするためにvfs/refresh RCコマンドを送信し、デスクトップへ通知します。"
+        }
       },
       "editor": {
         "configureNode": "ノードを設定: {{type}}",

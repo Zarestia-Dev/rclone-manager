@@ -155,10 +155,12 @@
                   type="button"
                   class="app-pill interactive {{ getTemplatePillClass(tpl.category) }}"
                   (click)="loadTemplate(tpl)"
-                  [attr.title]="tpl.description"
+                  [attr.title]="
+                    tpl.descriptionKey ? (tpl.descriptionKey | translate) : tpl.description
+                  "
                 >
                   <mat-icon [svgIcon]="tpl.icon"></mat-icon>
-                  <span>{{ tpl.name }}</span>
+                  <span>{{ tpl.nameKey ? (tpl.nameKey | translate) : tpl.name }}</span>
                 </button>
               }
             </div>

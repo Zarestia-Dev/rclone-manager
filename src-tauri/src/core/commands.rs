@@ -266,6 +266,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (stop_workflow, $crate::core::flow::workflow::commands::stop_workflow, [workflow_id: String]);
             (export_workflow, $crate::core::flow::workflow::commands::export_workflow, [workflow_id: String]);
             (import_workflow, $crate::core::flow::workflow::commands::import_workflow, [json_str: String]);
+            (test_rc_command, $crate::core::flow::workflow::commands::test_rc_command, [command: String, params: Option<serde_json::Value>]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);

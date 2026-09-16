@@ -188,7 +188,6 @@ export class WorkflowPaletteComponent {
     const title = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
 
     this.stateService.addNode(item.type, item.category, title, canvasX, canvasY, {
-      icon: item.icon,
       inputs: item.defaultInputs,
       outputs: item.defaultOutputs,
       config: item.defaultConfig,

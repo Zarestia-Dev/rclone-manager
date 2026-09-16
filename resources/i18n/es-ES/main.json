@@ -3370,6 +3370,12 @@
         "exportWorkflow": "Exportar JSON",
         "inspectJob": "Inspeccionar Tarea"
       },
+      "canvas": {
+        "navigation": "Navegación del lienzo",
+        "toggleMinimap": "Alternar minimapa",
+        "enterFocusMode": "Enfocar lienzo (Ocultar navegación)",
+        "exitFocusMode": "Salir del enfoque (Mostrar navegación)"
+      },
       "toolbar": {
         "selectWorkflow": "Seleccionar flujo",
         "newWorkflow": "Nuevo flujo",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "Detalles de la Tarea",
         "inspectJobBtn": "Inspeccionar Detalles de la Tarea",
         "transfers": "Transferencias",
-        "errors": "Errores"
+        "errors": "Errores",
+        "testRun": "Ejecutar prueba",
+        "testRunRcHint": "Probar este comando RC con los parámetros actuales",
+        "testSuccess": "Prueba exitosa",
+        "testFailed": "Prueba fallida",
+        "useAsSampleSchema": "Guardar como esquema de salida",
+        "sampleOutputSchema": "Esquema de salida de muestra",
+        "sampleOutputSchemaDesc": "Esquema de respuesta JSON para exponer campos de variables dinámicas en tarjetas posteriores",
+        "sampleOutputPlaceholder": "Pegue la respuesta JSON de muestra aquí...",
+        "availableOutputKeys": "Variables detectadas",
+        "upstreamOutputs": "Salidas y variables ascendentes",
+        "nodeOutput": "Salida de ejecución del nodo",
+        "checkReport": "Informe de diferencias de comprobación",
+        "rawOutputJson": "Datos de salida (JSON)",
+        "conditionPresets": "Ajustes rápidos de condición",
+        "condPresetHasDiff": "Hay diferencias",
+        "condPresetNoDiff": "Sin diferencias",
+        "condPresetDiffCount": "Diferencias encontradas (>0)",
+        "condPresetHasErrors": "Tiene errores",
+        "condPresetTransferred": "Transferido (>0)",
+        "condPresetScriptSuccess": "Script exitoso",
+        "notificationPresets": "Ajustes rápidos de mensaje",
+        "notifPresetCheckReport": "Informe de verificación",
+        "notifPresetTransferSummary": "Resumen de transferencia",
+        "notifPresetFailureAlert": "Alerta de fallo",
+        "notifPresetHealthStatus": "Estado del motor",
+        "opGreaterOrEqual": "Mayor o Igual (>=)",
+        "opLessOrEqual": "Menor o Igual (<=)",
+        "opStartsWith": "Empieza Con",
+        "opEndsWith": "Termina Con",
+        "opArrayNotEmpty": "La Matriz Contiene Elementos",
+        "opArrayIsEmpty": "La Matriz Está Vacía",
+        "preview": "Vista Previa del Mensaje"
       },
       "status": {
         "running": "En ejecución",
@@ -3633,12 +3671,44 @@
         "updated": "Actualizado"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "Montado",
+        "serving": "Sirviendo"
       },
       "recipes": {
-        "manualTrigger": "Disparador manual",
-        "manualTriggerDesc": "Activado manualmente desde la interfaz"
+        "driftCheckSync": {
+          "name": "Comprobación Inteligente de Desviación y Sincronización Condicional",
+          "description": "Verifica diferencias con check; sincroniza solo si se detectan diferencias y notifica con detalles de volumen."
+        },
+        "integrityAudit": {
+          "name": "Auditoría de Integridad de Datos e Informe de Desviación",
+          "description": "Ejecuta una comprobación de integridad programada; envía una alerta con informe Markdown si existen diferencias."
+        },
+        "safeSyncAlert": {
+          "name": "Sincronización Segura con Alerta de Fallo",
+          "description": "Ejecuta una sincronización, notificando el volumen transferido en éxito o los detalles exactos del error en fallo."
+        },
+        "dailyBackup": {
+          "name": "Copia de Seguridad Diaria y Notificación",
+          "description": "Ejecuta una sincronización diaria programada a las 02:00, notificando el éxito o alertando en caso de fallo."
+        },
+        "watchUpload": {
+          "name": "Vigilante de Carpeta y Carga Automática",
+          "description": "Supervisa una carpeta local en busca de cambios y copia archivos nuevos/modificados a la nube."
+        },
+        "parallelMirror": {
+          "name": "Espejo Paralelo Multi-Nube",
+          "description": "Sincroniza datos simultáneamente en dos proveedores en la nube y luego verifica la finalización."
+        },
+        "mountOnDemand": {
+          "name": "Montaje a Demanda y Notificación",
+          "description": "Monta una ruta de almacenamiento remoto y notifica al escritorio cuando la unidad esté lista."
+        },
+        "manualTrigger": "Manual",
+        "manualTriggerDesc": "Activado manualmente a demanda",
+        "vfsRefresh": {
+          "name": "Automatización de Actualización de Caché VFS",
+          "description": "Envía un comando RC vfs/refresh para recargar la caché de directorios en unidades montadas y notifica al escritorio."
+        }
       },
       "editor": {
         "configureNode": "Configurar nodo: {{type}}",

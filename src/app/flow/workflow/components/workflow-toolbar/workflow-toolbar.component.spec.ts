@@ -82,13 +82,9 @@ describe('WorkflowToolbarComponent', () => {
     expect(el.querySelector('.mobile-more-btn')).toBeTruthy();
   });
 
-  it('handles undo, redo, zoom, fitToView, and grid snap helper methods', () => {
+  it('handles undo, redo, and grid snap helper methods', () => {
     const undoSpy = vi.spyOn(stateService, 'undo');
     const redoSpy = vi.spyOn(stateService, 'redo');
-    const zoomInSpy = vi.spyOn(stateService, 'zoomIn');
-    const zoomOutSpy = vi.spyOn(stateService, 'zoomOut');
-    const resetZoomSpy = vi.spyOn(stateService, 'resetZoom');
-    const fitToViewSpy = vi.spyOn(stateService, 'fitToView');
 
     const component = fixture.componentInstance;
     component.undo();
@@ -96,18 +92,6 @@ describe('WorkflowToolbarComponent', () => {
 
     component.redo();
     expect(redoSpy).toHaveBeenCalled();
-
-    component.zoomIn();
-    expect(zoomInSpy).toHaveBeenCalled();
-
-    component.zoomOut();
-    expect(zoomOutSpy).toHaveBeenCalled();
-
-    component.resetZoom();
-    expect(resetZoomSpy).toHaveBeenCalled();
-
-    component.fitToView();
-    expect(fitToViewSpy).toHaveBeenCalled();
 
     const initialSnap = stateService.snapToGrid();
     component.toggleSnapToGrid();

@@ -121,7 +121,7 @@ export class WorkflowInspectorComponent {
         return getNotificationIcon(kind);
       }
     }
-    return node.icon || this.styleMeta()?.icon || 'workflow';
+    return this.styleMeta()?.icon || 'workflow';
   });
 
   readonly nodePillClass = computed(() => this.styleMeta()?.pillClass || 'p-dim');
@@ -158,6 +158,47 @@ export class WorkflowInspectorComponent {
   readonly actionNodesCount = computed(
     () => this.activeWorkflow()?.nodes.filter(n => n.category === 'action').length ?? 0
   );
+
+  readonly formattedNodeOutputSummary = computed(() => {
+    const output = this.selectedNode()?.lastOutput;
+    if (!output || typeof output !== 'object') return null;
+    const obj = output as Record<string, unknown>;
+    return (obj['summary'] as string) || null;
+  });
+
+  readonly nodeCheckReport = computed(() => {
+    const output = this.selectedNode()?.lastOutput;
+    if (!output || typeof output !== 'object') return null;
+    const obj = output as Record<string, unknown>;
+    return (obj['report'] as string) || null;
+  });
+
+  readonly formattedNodeOutputJson = computed(() => {
+    const output = this.selectedNode()?.lastOutput;
+    if (output === undefined || output === null) return '';
+    try {
+      return JSON.stringify(output, null, 2);
+    } catch {
+      return String(output);
+    }
+  });
+
+  async copyCheckReport(report: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(report);
+    } catch {
+      // ignore
+    }
+  }
+
+  async copyRawOutput(output: unknown): Promise<void> {
+    try {
+      const text = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore
+    }
+  }
 
   constructor() {
     effect(() => {
@@ -388,15 +429,6 @@ export class WorkflowInspectorComponent {
     const current = { ...this.nodeConfig(), [key]: value };
     this.nodeConfig.set(current);
     this.stateService.updateNodeConfig(node.id, { [key]: value });
-
-    if (node.type === 'notification') {
-      if (key === 'actionKind') {
-        const icon = getNotificationIcon(value as string);
-        this.stateService.updateNodeMetadata(node.id, { icon });
-      } else if (key === 'icon') {
-        this.stateService.updateNodeMetadata(node.id, { icon: value as string });
-      }
-    }
   }
 
   removeConfigItem(path: string): void {

@@ -327,7 +327,7 @@ export const PALETTE_ITEMS: NodePaletteItem[] = [
     'Pause execution for specified duration',
     STANDARD_TASK_INPUTS,
     SINGLE_AFTER_DELAY_OUTPUT,
-    { seconds: 5 }
+    { delaySeconds: 5 }
   ),
   createPaletteItem(
     'parallel_fork',

@@ -44,6 +44,7 @@ export interface WorkflowNodeStatePayload {
   state: WorkflowNodeExecutionState;
   errorMessage?: string;
   durationMs?: number;
+  output?: unknown;
 }
 
 export interface WorkflowExecutionStatePayload {

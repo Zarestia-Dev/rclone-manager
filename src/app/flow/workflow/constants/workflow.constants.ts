@@ -6,5 +6,8 @@ export const PORT_ROW_HEIGHT = 28;
 export const DEFAULT_NODE_HEIGHT = 120;
 
 export const GRID_SIZE = 16;
-export const MIN_ZOOM = 0.2;
-export const MAX_ZOOM = 2.5;
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 5.0;
+
+export const DEFAULT_CANVAS_WIDTH = 1000;
+export const DEFAULT_CANVAS_HEIGHT = 700;

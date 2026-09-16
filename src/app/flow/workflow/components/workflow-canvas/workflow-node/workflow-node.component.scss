@@ -29,9 +29,9 @@ $badge-states: (
   box-shadow: var(--box-shadow);
   cursor: grab;
   box-sizing: border-box;
-  transition:
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: box-shadow 0.2s ease;
 
   *,
   *::before,
@@ -136,54 +136,17 @@ $badge-states: (
       align-items: center;
       gap: 2px;
 
-      .action-btn {
-        background: transparent;
-        border: none;
-        outline: none;
-        cursor: pointer;
-        width: 22px;
-        height: 22px;
-        padding: 0;
-        border-radius: var(--radius-xxs);
-        color: var(--dim-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: var(--transition-fast);
-
-        mat-icon {
-          width: 14px;
-          height: 14px;
-          font-size: 14px;
-        }
+      .job-btn {
+        color: var(--accent-color);
 
         &:hover {
-          background: var(--hover-bg-color);
-          color: var(--window-fg-color);
-        }
-
-        &:focus-visible {
-          outline: 2px solid var(--accent-color);
-          outline-offset: 1px;
-        }
-
-        &.danger:hover {
-          background: rgba(var(--destructive-color-rgb), 0.15);
-          color: var(--destructive-bg-color);
-        }
-
-        &.job-btn {
+          background: rgba(var(--accent-color-rgb), 0.15);
           color: var(--accent-color);
+        }
 
-          &:hover {
-            background: rgba(var(--accent-color-rgb), 0.15);
-            color: var(--accent-color);
-          }
-
-          &.is-running {
-            color: var(--primary-color);
-            animation: pulseBlue 2s infinite ease-in-out;
-          }
+        &.is-running {
+          color: var(--primary-color);
+          animation: pulseBlue 2s infinite ease-in-out;
         }
       }
     }
@@ -236,9 +199,6 @@ $badge-states: (
         font-weight: 600;
         color: var(--window-fg-color);
         line-height: 1.25;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
       .node-subtitle {
@@ -246,9 +206,6 @@ $badge-states: (
         color: var(--dim-color);
         line-height: 1.2;
         margin-top: 1px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
     }
 
@@ -326,17 +283,10 @@ $badge-states: (
         }
       }
 
-      .port-slot-empty {
-        flex: 1;
-      }
-
       .port-label {
         font-size: 11px;
         font-weight: 500;
         color: var(--dim-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         pointer-events: none;
       }
 
@@ -421,9 +371,7 @@ $badge-states: (
     }
 
     .error-text {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      min-width: 0;
     }
   }
 }

@@ -82,6 +82,21 @@ export class FlowContainerComponent {
     () => !!this.quickRunService.selected() || !!this.uiStateService.selectedRemote()
   );
 
+  readonly isMobileTabsHidden = computed(() => {
+    if (this.isSidebarOver() && this.isSidebarOpen()) {
+      return true;
+    }
+    if (this.activeSubMode() === 'builder') {
+      if (this.workflowState.isWorkspaceDrawerOpen()) {
+        return true;
+      }
+      if (this.workflowState.isMobileFocusMode()) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   goHome(): void {
     this.quickRunService.deselect();
     this.uiStateService.resetSelectedRemote();
@@ -108,6 +123,7 @@ export class FlowContainerComponent {
 
     this.destroyRef.onDestroy(() => {
       this.uiStateService.unregisterMobileSidebar('flow');
+      this.workflowState.resetMobileUiState();
     });
   }
 
@@ -125,6 +141,9 @@ export class FlowContainerComponent {
   setSubMode(mode: FlowSubMode | string): void {
     const resolved = mode === 'builder' ? 'builder' : 'quick_run';
     this.uiStateService.endLayoutEdit();
+    if (this.activeSubMode() === 'builder' && resolved !== 'builder') {
+      this.workflowState.resetMobileUiState();
+    }
     this.activeSubMode.set(resolved);
     this.localStorage.set('ui.flowActiveSubMode', resolved);
   }

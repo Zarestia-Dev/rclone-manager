@@ -3370,6 +3370,12 @@
         "exportWorkflow": "Экспорт JSON",
         "inspectJob": "Инспектировать задачу"
       },
+      "canvas": {
+        "navigation": "Навигация по холсту",
+        "toggleMinimap": "Переключить миникарту",
+        "enterFocusMode": "Фокус на холсте (Скрыть навигацию)",
+        "exitFocusMode": "Выйти из фокуса (Показать навигацию)"
+      },
       "toolbar": {
         "selectWorkflow": "Выбрать процесс",
         "newWorkflow": "Новый процесс",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "Детали задачи",
         "inspectJobBtn": "Инспектировать детали задачи",
         "transfers": "Передачи",
-        "errors": "Ошибки"
+        "errors": "Ошибки",
+        "testRun": "Тестовый запуск",
+        "testRunRcHint": "Протестировать эту RC-команду с текущими параметрами",
+        "testSuccess": "Тест успешно выполнен",
+        "testFailed": "Тест завершился с ошибкой",
+        "useAsSampleSchema": "Сохранить как схему вывода",
+        "sampleOutputSchema": "Пример схемы вывода",
+        "sampleOutputSchemaDesc": "Схема JSON-ответа для предоставления полей динамических переменных в последующих карточках",
+        "sampleOutputPlaceholder": "Вставьте пример JSON-ответа сюда...",
+        "availableOutputKeys": "Обнаруженные ключи переменных",
+        "upstreamOutputs": "Выходные данные и переменные предыдущих шагов",
+        "nodeOutput": "Вывод выполнения узла",
+        "checkReport": "Отчёт о различиях (Check)",
+        "rawOutputJson": "Выходные данные (JSON)",
+        "conditionPresets": "Быстрые шаблоны условий",
+        "condPresetHasDiff": "Есть различия",
+        "condPresetNoDiff": "Нет различий",
+        "condPresetDiffCount": "Найдено различий (>0)",
+        "condPresetHasErrors": "Есть ошибки",
+        "condPresetTransferred": "Передано (>0)",
+        "condPresetScriptSuccess": "Скрипт успешен",
+        "notificationPresets": "Быстрые шаблоны сообщений",
+        "notifPresetCheckReport": "Отчет о проверке",
+        "notifPresetTransferSummary": "Сводка передачи",
+        "notifPresetFailureAlert": "Оповещение об ошибке",
+        "notifPresetHealthStatus": "Состояние движка",
+        "opGreaterOrEqual": "Больше или равно (>=)",
+        "opLessOrEqual": "Меньше или равно (<=)",
+        "opStartsWith": "Начинается с",
+        "opEndsWith": "Заканчивается на",
+        "opArrayNotEmpty": "Массив не пуст",
+        "opArrayIsEmpty": "Массив пуст",
+        "preview": "Предпросмотр сообщения"
       },
       "status": {
         "running": "Выполняется",
@@ -3633,12 +3671,44 @@
         "updated": "Обновлено"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "Смонтировано",
+        "serving": "Сервер запущен"
       },
       "recipes": {
-        "manualTrigger": "Ручной запуск",
-        "manualTriggerDesc": "Запущено вручную из интерфейса"
+        "driftCheckSync": {
+          "name": "Умная проверка расхождений и условная синхронизация",
+          "description": "Проверяет различия через check; синхронизирует только при обнаружении расхождений и уведомляет с объемом."
+        },
+        "integrityAudit": {
+          "name": "Аудит целостности данных и отчет о расхождениях",
+          "description": "Выполняет регулярную проверку целостности; отправляет отчет Markdown при наличии различий."
+        },
+        "safeSyncAlert": {
+          "name": "Безопасная синхронизация с оповещением об ошибке",
+          "description": "Выполняет синхронизацию, уведомляя об объеме при успехе или передавая детали ошибки при сбое."
+        },
+        "dailyBackup": {
+          "name": "Ежедневное резервное копирование и уведомление",
+          "description": "Запускает синхронизацию ежедневно в 02:00, уведомляя об успехе или сбое."
+        },
+        "watchUpload": {
+          "name": "Отслеживание папки и автозагрузка",
+          "description": "Отслеживает локальную папку и копирует новые/измененные файлы в облако."
+        },
+        "parallelMirror": {
+          "name": "Параллельное мультиоблачное зеркалирование",
+          "description": "Синхронизирует данные одновременно в два разных облака и проверяет завершение."
+        },
+        "mountOnDemand": {
+          "name": "Монтирование по требованию и уведомление",
+          "description": "Монтирует удаленное хранилище и уведомляет рабочий стол о готовности диска."
+        },
+        "manualTrigger": "Вручную",
+        "manualTriggerDesc": "Запускается вручную по требованию",
+        "vfsRefresh": {
+          "name": "Автоматизация обновления кэша VFS",
+          "description": "Отправляет RC-команду vfs/refresh для перезагрузки кэша каталогов на смонтированных дисках и уведомляет рабочий стол."
+        }
       },
       "editor": {
         "configureNode": "Настройка узла: {{type}}",

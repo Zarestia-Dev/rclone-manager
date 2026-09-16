@@ -22,9 +22,14 @@ describe('FlowContainerComponent', () => {
   };
 
   let requestedSubModeSignal = signal<FlowSubMode | null>(null);
+  let isWorkspaceDrawerOpenSignal = signal<boolean>(false);
+  let isMobileFocusModeSignal = signal<boolean>(false);
   let mockWorkflowState: {
     requestedSubMode: typeof requestedSubModeSignal;
+    isWorkspaceDrawerOpen: typeof isWorkspaceDrawerOpenSignal;
+    isMobileFocusMode: typeof isMobileFocusModeSignal;
     createNewWorkflow: ReturnType<typeof vi.fn>;
+    resetMobileUiState: ReturnType<typeof vi.fn>;
   };
 
   let mockQuickRunService: {
@@ -84,9 +89,14 @@ describe('FlowContainerComponent', () => {
     };
 
     requestedSubModeSignal = signal<FlowSubMode | null>(null);
+    isWorkspaceDrawerOpenSignal = signal<boolean>(false);
+    isMobileFocusModeSignal = signal<boolean>(false);
     mockWorkflowState = {
       requestedSubMode: requestedSubModeSignal,
+      isWorkspaceDrawerOpen: isWorkspaceDrawerOpenSignal,
+      isMobileFocusMode: isMobileFocusModeSignal,
       createNewWorkflow: vi.fn(),
+      resetMobileUiState: vi.fn(),
     };
 
     mockQuickRunService = {
@@ -209,5 +219,40 @@ describe('FlowContainerComponent', () => {
 
     component.onQuickRunSelected();
     expect(component.activeSubMode()).toBe('quick_run');
+  });
+
+  it('should compute isMobileTabsHidden correctly based on sidebar, drawer, and focus mode', async () => {
+    await createComponent();
+
+    // Default: side mode, builder mode, drawers closed
+    component.sidebarMode.set('side');
+    component.setSubMode('builder');
+    isWorkspaceDrawerOpenSignal.set(false);
+    isMobileFocusModeSignal.set(false);
+    expect(component.isMobileTabsHidden()).toBe(false);
+
+    // 1. Flow sidebar in over mode and open
+    component.sidebarMode.set('over');
+    component.setSidebarOpen(true);
+    expect(component.isMobileTabsHidden()).toBe(true);
+
+    // Close flow sidebar
+    component.setSidebarOpen(false);
+    expect(component.isMobileTabsHidden()).toBe(false);
+
+    // 2. Workflow workspace drawer open in builder mode
+    isWorkspaceDrawerOpenSignal.set(true);
+    expect(component.isMobileTabsHidden()).toBe(true);
+
+    // Switch to quick_run: builder drawer does not hide quick_run tabs
+    component.setSubMode('quick_run');
+    expect(component.isMobileTabsHidden()).toBe(false);
+    expect(mockWorkflowState.resetMobileUiState).toHaveBeenCalled();
+
+    // 3. Focus mode in builder
+    component.setSubMode('builder');
+    isWorkspaceDrawerOpenSignal.set(false);
+    isMobileFocusModeSignal.set(true);
+    expect(component.isMobileTabsHidden()).toBe(true);
   });
 });

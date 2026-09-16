@@ -28,7 +28,7 @@
       @if (nodeJob(); as job) {
         <button
           type="button"
-          class="action-btn job-btn"
+          class="action-button job-btn"
           [class.is-running]="job.status === 'Running'"
           (click)="onInspectJob($event)"
           [attr.title]="'flow.workflow.actions.inspectJob' | translate"
@@ -38,7 +38,7 @@
       }
       <button
         type="button"
-        class="action-btn"
+        class="action-button"
         (click)="onDuplicate($event)"
         [attr.title]="'flow.workflow.actions.duplicate' | translate"
       >
@@ -46,7 +46,7 @@
       </button>
       <button
         type="button"
-        class="action-btn danger"
+        class="action-button danger"
         (click)="onDelete($event)"
         [attr.title]="'flow.workflow.actions.delete' | translate"
       >
@@ -61,9 +61,11 @@
       <mat-icon [svgIcon]="nodeIcon()"></mat-icon>
     </div>
     <div class="node-text-content">
-      <div class="node-title" [attr.title]="node().title">{{ node().title }}</div>
+      <div class="node-title truncate" [attr.title]="node().title">{{ node().title }}</div>
       @if (displaySubtitle()) {
-        <div class="node-subtitle" [attr.title]="displaySubtitle()">{{ displaySubtitle() }}</div>
+        <div class="node-subtitle truncate" [attr.title]="displaySubtitle()">
+          {{ displaySubtitle() }}
+        </div>
       }
     </div>
 
@@ -115,14 +117,13 @@
                 class="port-handle input-handle"
                 [attr.data-port-id]="inPort.id"
                 [attr.data-port-type]="inPort.type"
-                (mouseup)="onPortMouseUp(inPort, $event)"
+                (mousedown)="onPortMouseDown(inPort, false, $event)"
+                (mouseup)="onPortMouseUp(inPort, false, $event)"
               ></div>
-              <span class="port-label">{{
+              <span class="port-label truncate">{{
                 inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
               }}</span>
             </div>
-          } @else {
-            <div class="port-slot-empty"></div>
           }
 
           <!-- Right Output Port Slot (if present) -->
@@ -133,18 +134,17 @@
                 outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
               "
             >
-              <span class="port-label">{{
+              <span class="port-label truncate">{{
                 outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
               }}</span>
               <div
                 class="port-handle output-handle"
                 [attr.data-port-id]="outPort.id"
                 [attr.data-port-type]="outPort.type"
-                (mousedown)="onPortMouseDown(outPort, $event)"
+                (mousedown)="onPortMouseDown(outPort, true, $event)"
+                (mouseup)="onPortMouseUp(outPort, true, $event)"
               ></div>
             </div>
-          } @else {
-            <div class="port-slot-empty"></div>
           }
         </div>
       }
@@ -155,7 +155,7 @@
   @if (node().errorMessage) {
     <div class="node-error-message" [attr.title]="node().errorMessage">
       <mat-icon svgIcon="warning" class="error-icon"></mat-icon>
-      <span class="error-text">{{ node().errorMessage }}</span>
+      <span class="error-text truncate">{{ node().errorMessage }}</span>
     </div>
   }
 </div>

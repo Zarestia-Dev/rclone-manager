@@ -20,7 +20,6 @@ export interface WorkflowNode {
   category: WorkflowNodeCategory;
   title: string;
   subtitle?: string;
-  icon?: string;
   x: number;
   y: number;
   inputs: WorkflowPort[];
@@ -29,6 +28,7 @@ export interface WorkflowNode {
   state?: WorkflowNodeExecutionState;
   errorMessage?: string;
   lastDurationMs?: number;
+  lastOutput?: Record<string, unknown> | unknown;
   startedAt?: string;
   finishedAt?: string;
 }
@@ -55,8 +55,6 @@ export interface WorkflowDefinition {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   viewport: CanvasViewport;
-  autoStart?: boolean;
-  cronExpression?: string;
   createdAt?: string;
   updatedAt?: string;
   lastExecutedAt?: string;
@@ -65,7 +63,9 @@ export interface WorkflowDefinition {
 export interface WorkflowTemplate {
   id: string;
   name: string;
+  nameKey?: string;
   description: string;
+  descriptionKey?: string;
   category: 'backup' | 'automation' | 'sync' | 'utility';
   icon: string;
   definition: Omit<WorkflowDefinition, 'id' | 'createdAt' | 'updatedAt'>;

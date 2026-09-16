@@ -107,7 +107,20 @@
     <div class="params-header-actions">
       <button
         type="button"
-        class="action-mini-btn"
+        class="app-pill interactive p-accent sm"
+        [disabled]="isTesting() || !command().trim()"
+        (click)="testRun()"
+        [attr.title]="'flow.workflow.inspector.testRunRcHint' | translate"
+      >
+        <mat-icon
+          [svgIcon]="isTesting() ? 'spinner' : 'play'"
+          [class.spin]="isTesting()"
+        ></mat-icon>
+        <span>{{ 'flow.workflow.inspector.testRun' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive sm"
         (click)="formatJson()"
         [attr.title]="'flow.workflow.inspector.formatJson' | translate"
       >
@@ -116,7 +129,7 @@
       @if (rawParamsJson().trim()) {
         <button
           type="button"
-          class="action-mini-btn"
+          class="app-pill interactive sm"
           (click)="clearParams()"
           [attr.title]="'flow.workflow.inspector.clearJson' | translate"
         >
@@ -131,13 +144,116 @@
     <textarea
       #paramsTextarea
       matInput
-      rows="7"
+      rows="6"
       class="code-font"
       [ngModel]="rawParamsJson()"
       (ngModelChange)="rawParamsJson.set($event)"
       placeholder='{\n  "fs": "remote:"\n}'
     ></textarea>
   </mat-form-field>
+
+  <!-- Live Test Execution Card -->
+  @if (testResult()) {
+    <div
+      class="test-result-card"
+      [class.success]="testResult()!.success"
+      [class.failed]="!testResult()!.success"
+    >
+      <div class="test-result-header">
+        <div class="result-status-wrap">
+          <mat-icon [svgIcon]="testResult()!.success ? 'circle-check' : 'circle-xmark'"></mat-icon>
+          <span class="status-text">
+            {{
+              (testResult()!.success
+                ? 'flow.workflow.inspector.testSuccess'
+                : 'flow.workflow.inspector.testFailed'
+              ) | translate
+            }}
+          </span>
+          @if (testResult()!.timeMs !== undefined) {
+            <span class="app-pill p-dim sm">{{ testResult()!.timeMs }}ms</span>
+          }
+        </div>
+        @if (testResult()!.success && testResult()!.jsonString) {
+          <button
+            type="button"
+            class="app-pill interactive p-primary sm"
+            (click)="saveTestAsSample()"
+            [attr.title]="'flow.workflow.inspector.useAsSampleSchema' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'flow.workflow.inspector.useAsSampleSchema' | translate }}</span>
+          </button>
+        }
+      </div>
+      @if (testResult()!.error) {
+        <div class="test-error-msg">{{ testResult()!.error }}</div>
+      }
+      @if (testResult()!.jsonString) {
+        <pre class="test-result-pre hide-scrollbar">{{ testResult()!.jsonString }}</pre>
+      }
+    </div>
+  }
+
+  <!-- Sample Output Schema Section -->
+  <div class="sample-schema-section">
+    <div class="sample-schema-header">
+      <div class="header-title-group">
+        <span class="section-label">{{
+          'flow.workflow.inspector.sampleOutputSchema' | translate
+        }}</span>
+        <span class="schema-hint">{{
+          'flow.workflow.inspector.sampleOutputSchemaDesc' | translate
+        }}</span>
+      </div>
+      @if (sampleOutputJson().trim()) {
+        <div class="schema-header-actions">
+          <button
+            type="button"
+            class="app-pill interactive sm"
+            (click)="formatSampleOutputJson()"
+            [attr.title]="'flow.workflow.inspector.formatJson' | translate"
+          >
+            <span>&#123;&#125; {{ 'flow.workflow.inspector.formatJson' | translate }}</span>
+          </button>
+          <button
+            type="button"
+            class="app-pill interactive sm"
+            (click)="sampleOutputJson.set('')"
+            [attr.title]="'common.clear' | translate"
+          >
+            <span>{{ 'common.clear' | translate }}</span>
+          </button>
+        </div>
+      }
+    </div>
+
+    <mat-form-field class="form-field-full sample-field">
+      <textarea
+        matInput
+        rows="4"
+        class="code-font"
+        [ngModel]="sampleOutputJson()"
+        (ngModelChange)="sampleOutputJson.set($event)"
+        [placeholder]="'flow.workflow.inspector.sampleOutputPlaceholder' | translate"
+      ></textarea>
+    </mat-form-field>
+
+    @if (sampleOutputKeys().length > 0) {
+      <div class="schema-keys-preview">
+        <span class="keys-title"
+          >{{ 'flow.workflow.inspector.availableOutputKeys' | translate }}:</span
+        >
+        <div class="keys-list">
+          @for (field of sampleOutputKeys(); track field.key) {
+            <span class="app-pill p-primary sm" [attr.title]="field.label">
+              <code>{{ field.key }}</code>
+            </span>
+          }
+        </div>
+      </div>
+    }
+  </div>
 
   <!-- Variable Helper Section -->
   <div class="var-helper-panel">

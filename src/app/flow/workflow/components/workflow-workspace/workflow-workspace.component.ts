@@ -65,6 +65,10 @@ export class WorkflowWorkspaceComponent {
   readonly hasSelectedNode = computed(() => !!this.stateService.selectedNode());
   readonly presetTemplates = computed(() => this.storageService.getPresetTemplates());
 
+  readonly isAnyDrawerOpenOnMobile = computed(() => {
+    return this.isSidebarOver() && (this.isPaletteOpen() || this.isInspectorOpen());
+  });
+
   constructor() {
     afterNextRender(() => {
       syncResponsiveSidebar(960, this.sidebarMode, undefined, this.destroyRef);
@@ -88,6 +92,15 @@ export class WorkflowWorkspaceComponent {
         this.isInspectorOpen.set(true);
         this.isPaletteOpen.set(false);
       }
+    });
+
+    // Synchronize mobile drawer state to stateService so FlowContainer can auto-hide bottom tabs
+    effect(() => {
+      this.stateService.isWorkspaceDrawerOpen.set(this.isAnyDrawerOpenOnMobile());
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.stateService.resetMobileUiState();
     });
   }
 

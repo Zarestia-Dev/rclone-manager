@@ -45,7 +45,8 @@ export class WorkflowEventService extends TauriBaseService {
         payload.nodeId,
         payload.state,
         payload.errorMessage,
-        payload.durationMs
+        payload.durationMs,
+        payload.output
       );
     }
 

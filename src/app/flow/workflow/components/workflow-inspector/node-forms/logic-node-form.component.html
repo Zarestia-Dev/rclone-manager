@@ -17,13 +17,13 @@
 
     <div class="branches-grid">
       @for (port of node().outputs; track port.id; let idx = $index) {
-        <div class="branch-chip" [class.removable]="idx >= 2">
+        <div class="app-pill" [class.removable]="idx >= 2">
           <span class="chip-status-dot"></span>
           <span class="chip-text">{{ port.label || port.name }}</span>
           @if (idx >= 2) {
             <button
               type="button"
-              class="chip-delete-btn"
+              class="action-button"
               (click)="removeOutputBranch(port.id)"
               [attr.title]="'flow.workflow.inspector.parallelRemoveBranch' | translate"
             >
@@ -96,13 +96,13 @@
 
     <div class="branches-grid">
       @for (port of node().inputs; track port.id; let idx = $index) {
-        <div class="branch-chip" [class.removable]="idx >= 2">
+        <div class="app-pill" [class.removable]="idx >= 2">
           <span class="chip-status-dot"></span>
           <span class="chip-text">{{ port.label || port.name }}</span>
           @if (idx >= 2) {
             <button
               type="button"
-              class="chip-delete-btn"
+              class="action-button"
               (click)="removeInputBranch(port.id)"
               [attr.title]="'flow.workflow.inspector.joinRemoveBranch' | translate"
             >
@@ -163,7 +163,7 @@
       min="1"
       max="86400"
       [ngModel]="delaySecondsValue()"
-      (ngModelChange)="onFieldChange('seconds', $event)"
+      (ngModelChange)="onFieldChange('delaySeconds', $event)"
     />
   </mat-form-field>
 
@@ -188,6 +188,48 @@
 
 <!-- Logic: Condition -->
 @if (node().type === 'condition') {
+  <div class="output-vars-section">
+    <span class="section-sub-title">{{
+      'flow.workflow.inspector.conditionPresets' | translate
+    }}</span>
+    <div class="presets-row">
+      <button type="button" class="app-pill interactive" (click)="applyConditionPreset('has_diff')">
+        {{ 'flow.workflow.inspector.condPresetHasDiff' | translate }}
+      </button>
+      <button type="button" class="app-pill interactive" (click)="applyConditionPreset('no_diff')">
+        {{ 'flow.workflow.inspector.condPresetNoDiff' | translate }}
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyConditionPreset('diff_count')"
+      >
+        {{ 'flow.workflow.inspector.condPresetDiffCount' | translate }}
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyConditionPreset('has_errors')"
+      >
+        {{ 'flow.workflow.inspector.condPresetHasErrors' | translate }}
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyConditionPreset('transferred')"
+      >
+        {{ 'flow.workflow.inspector.condPresetTransferred' | translate }}
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyConditionPreset('script_success')"
+      >
+        {{ 'flow.workflow.inspector.condPresetScriptSuccess' | translate }}
+      </button>
+    </div>
+  </div>
+
   <mat-form-field class="form-field-full">
     <mat-label>{{ 'flow.workflow.inspector.conditionOperator' | translate }}</mat-label>
     <mat-select
@@ -204,11 +246,29 @@
       <mat-option value="not_contains">{{
         'flow.workflow.inspector.opNotContains' | translate
       }}</mat-option>
+      <mat-option value="starts_with">{{
+        'flow.workflow.inspector.opStartsWith' | translate
+      }}</mat-option>
+      <mat-option value="ends_with">{{
+        'flow.workflow.inspector.opEndsWith' | translate
+      }}</mat-option>
       <mat-option value="greater_than">{{
         'flow.workflow.inspector.opGreaterThan' | translate
       }}</mat-option>
+      <mat-option value="greater_or_equal">{{
+        'flow.workflow.inspector.opGreaterOrEqual' | translate
+      }}</mat-option>
       <mat-option value="less_than">{{
         'flow.workflow.inspector.opLessThan' | translate
+      }}</mat-option>
+      <mat-option value="less_or_equal">{{
+        'flow.workflow.inspector.opLessOrEqual' | translate
+      }}</mat-option>
+      <mat-option value="array_not_empty">{{
+        'flow.workflow.inspector.opArrayNotEmpty' | translate
+      }}</mat-option>
+      <mat-option value="array_is_empty">{{
+        'flow.workflow.inspector.opArrayIsEmpty' | translate
       }}</mat-option>
       <mat-option value="truthy">{{ 'flow.workflow.inspector.opTruthy' | translate }}</mat-option>
       <mat-option value="is_empty">{{

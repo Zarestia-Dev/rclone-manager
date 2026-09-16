@@ -84,7 +84,8 @@ describe('WorkflowStorageService', () => {
   it('loads templates and provides preset templates', () => {
     const templates = service.getPresetTemplates();
     expect(templates.length).toBeGreaterThan(0);
-    expect(templates[0].name).toContain('Daily Backup');
+    expect(templates.some(t => t.id === 'tpl-daily-backup-notify')).toBe(true);
+    expect(templates.some(t => t.id === 'tpl-drift-check-sync')).toBe(true);
   });
 
   it('saves and updates a workflow via backend', async () => {

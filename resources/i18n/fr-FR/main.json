@@ -3370,6 +3370,12 @@
         "exportWorkflow": "Exporter en JSON",
         "inspectJob": "Inspecter la Tâche"
       },
+      "canvas": {
+        "navigation": "Navigation du canevas",
+        "toggleMinimap": "Basculer la minicarte",
+        "enterFocusMode": "Concentrer le canevas (Masquer la navigation)",
+        "exitFocusMode": "Quitter la concentration (Afficher la navigation)"
+      },
       "toolbar": {
         "selectWorkflow": "Sélectionner un flux",
         "newWorkflow": "Nouveau flux",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "Détails de la Tâche",
         "inspectJobBtn": "Inspecter les Détails de la Tâche",
         "transfers": "Transferts",
-        "errors": "Erreurs"
+        "errors": "Erreurs",
+        "testRun": "Exécuter le test",
+        "testRunRcHint": "Tester cette commande RC avec les paramètres actuels",
+        "testSuccess": "Test réussi",
+        "testFailed": "Échec du test",
+        "useAsSampleSchema": "Enregistrer comme schéma de sortie",
+        "sampleOutputSchema": "Schéma de sortie d'exemple",
+        "sampleOutputSchemaDesc": "Schéma de réponse JSON pour exposer les champs de variables dynamiques dans les cartes suivantes",
+        "sampleOutputPlaceholder": "Coller la réponse JSON d'exemple ici...",
+        "availableOutputKeys": "Clés de variables détectées",
+        "upstreamOutputs": "Sorties et variables en amont",
+        "nodeOutput": "Sortie d'exécution du nœud",
+        "checkReport": "Rapport de différences",
+        "rawOutputJson": "Données de sortie (JSON)",
+        "conditionPresets": "Préréglages de condition rapide",
+        "condPresetHasDiff": "Présente des différences",
+        "condPresetNoDiff": "Aucune différence",
+        "condPresetDiffCount": "Différences trouvées (>0)",
+        "condPresetHasErrors": "Contient des erreurs",
+        "condPresetTransferred": "Transféré (>0)",
+        "condPresetScriptSuccess": "Succès du script",
+        "notificationPresets": "Préréglages de message rapide",
+        "notifPresetCheckReport": "Rapport de vérification",
+        "notifPresetTransferSummary": "Résumé du transfert",
+        "notifPresetFailureAlert": "Alerte d'échec",
+        "notifPresetHealthStatus": "État du moteur",
+        "opGreaterOrEqual": "Supérieur ou Égal (>=)",
+        "opLessOrEqual": "Inférieur ou Égal (<=)",
+        "opStartsWith": "Commence Par",
+        "opEndsWith": "Se Termine Par",
+        "opArrayNotEmpty": "Le Tableau Contient des Éléments",
+        "opArrayIsEmpty": "Le Tableau Est Vide",
+        "preview": "Aperçu du Message"
       },
       "status": {
         "running": "En cours",
@@ -3633,12 +3671,44 @@
         "updated": "Mis à jour"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "Monté",
+        "serving": "Partage actif"
       },
       "recipes": {
-        "manualTrigger": "Déclencheur manuel",
-        "manualTriggerDesc": "Déclenché manuellement depuis l'interface"
+        "driftCheckSync": {
+          "name": "Vérification Intelligente des Écarts et Synchronisation Conditionnelle",
+          "description": "Vérifie les différences avec check; synchronise uniquement si un écart est détecté et notifie avec les détails du volume."
+        },
+        "integrityAudit": {
+          "name": "Audit d'Intégrité des Données et Rapport d'Écarts",
+          "description": "Exécute une vérification d'intégrité planifiée; envoie une alerte avec rapport Markdown en cas de différences."
+        },
+        "safeSyncAlert": {
+          "name": "Synchronisation Sécurisée avec Alerte d'Échec",
+          "description": "Exécute une synchronisation, notifiant le volume transféré en cas de succès ou l'erreur exacte en cas d'échec."
+        },
+        "dailyBackup": {
+          "name": "Sauvegarde Quotidienne et Notification",
+          "description": "Exécute une synchronisation quotidienne planifiée à 02:00, notifiant le succès ou alertant en cas d'échec."
+        },
+        "watchUpload": {
+          "name": "Surveillance de Dossier et Téléversement Automatique",
+          "description": "Surveille un dossier local et copie les fichiers nouveaux/modifiés vers le stockage cloud."
+        },
+        "parallelMirror": {
+          "name": "Miroir Parallèle Multi-Cloud",
+          "description": "Synchronise les données simultanément vers deux fournisseurs cloud, puis vérifie l'achèvement."
+        },
+        "mountOnDemand": {
+          "name": "Montage à la Demande et Notification",
+          "description": "Monte un stockage distant et notifie le bureau lorsque le disque est prêt."
+        },
+        "manualTrigger": "Manuel",
+        "manualTriggerDesc": "Déclenché manuellement à la demande",
+        "vfsRefresh": {
+          "name": "Automatisation du Rafraîchissement du Cache VFS",
+          "description": "Envoie une commande RC vfs/refresh pour recharger le cache des répertoires sur les disques montés et notifie le bureau."
+        }
       },
       "editor": {
         "configureNode": "Configurer le nœud : {{type}}",

@@ -23,6 +23,11 @@ export interface NodePortRow {
   templateUrl: './workflow-node.component.html',
   styleUrl: './workflow-node.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    // Note: Host .selected elevates the node's z-index stacking layer on the canvas (.workflow-node-positioned.selected { z-index: 10 }).
+    // The inner template .workflow-node-card.selected handles card-level border, shadow, and accent highlights.
+    '[class.selected]': 'isSelected()',
+  },
 })
 export class WorkflowNodeComponent {
   private readonly mountService = inject(MountManagementService);
@@ -34,7 +39,6 @@ export class WorkflowNodeComponent {
 
   readonly node = input.required<WorkflowNode>();
   readonly isSelected = input<boolean>(false);
-  readonly zoom = input<number>(1);
 
   readonly nodeJob = computed<JobInfo | null>(() => {
     const n = this.node();
@@ -60,8 +64,8 @@ export class WorkflowNodeComponent {
   readonly deleteNode = output<string>();
   readonly duplicateNode = output<string>();
   readonly inspectNode = output<string>();
-  readonly startConnecting = output<{ portId: string; event: MouseEvent }>();
-  readonly portMouseUp = output<{ portId: string; event: MouseEvent }>();
+  readonly startConnecting = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
+  readonly portMouseUp = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
 
   readonly styleMeta = computed(() => getNodeStyleMeta(this.node().type));
   readonly nodeIcon = computed(() => {
@@ -72,7 +76,7 @@ export class WorkflowNodeComponent {
         return getNotificationIcon(kind);
       }
     }
-    return n.icon || this.styleMeta().icon;
+    return this.styleMeta().icon;
   });
   readonly nodePillClass = computed(() => this.styleMeta().pillClass);
   readonly nodeCssClass = computed(() => this.styleMeta().cssClass);
@@ -159,13 +163,13 @@ export class WorkflowNodeComponent {
     }
   }
 
-  onPortMouseDown(port: WorkflowPort, event: MouseEvent): void {
+  onPortMouseDown(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
     event.stopPropagation();
-    this.startConnecting.emit({ portId: port.id, event });
+    this.startConnecting.emit({ portId: port.id, isOutput, event });
   }
 
-  onPortMouseUp(port: WorkflowPort, event: MouseEvent): void {
+  onPortMouseUp(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
     event.stopPropagation();
-    this.portMouseUp.emit({ portId: port.id, event });
+    this.portMouseUp.emit({ portId: port.id, isOutput, event });
   }
 }

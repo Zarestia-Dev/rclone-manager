@@ -158,8 +158,12 @@
           <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="loadTemplate(tpl)">
             <mat-icon [svgIcon]="tpl.icon"></mat-icon>
             <div class="option-content">
-              <span class="option-label">{{ tpl.name }}</span>
-              <small class="option-description">{{ tpl.description }}</small>
+              <span class="option-label">{{
+                tpl.nameKey ? (tpl.nameKey | translate) : tpl.name
+              }}</span>
+              <small class="option-description">{{
+                tpl.descriptionKey ? (tpl.descriptionKey | translate) : tpl.description
+              }}</small>
             </div>
           </button>
         }
@@ -188,42 +192,6 @@
         [attr.title]="'flow.workflow.toolbar.redo' | translate"
       >
         <mat-icon svgIcon="rotate-right"></mat-icon>
-      </button>
-    </div>
-
-    <!-- Zoom Controls (Desktop & Tablet) -->
-    <div class="zoom-controls-group desktop-only">
-      <button
-        matIconButton
-        type="button"
-        (click)="zoomOut()"
-        [attr.title]="'flow.workflow.toolbar.zoomOut' | translate"
-      >
-        <mat-icon svgIcon="remove"></mat-icon>
-      </button>
-      <button
-        type="button"
-        class="zoom-label"
-        (click)="resetZoom()"
-        [attr.title]="'flow.workflow.toolbar.resetZoom' | translate"
-      >
-        {{ zoomPercentage() }}%
-      </button>
-      <button
-        matIconButton
-        type="button"
-        (click)="zoomIn()"
-        [attr.title]="'flow.workflow.toolbar.zoomIn' | translate"
-      >
-        <mat-icon svgIcon="plus"></mat-icon>
-      </button>
-      <button
-        matIconButton
-        type="button"
-        (click)="fitToView()"
-        [attr.title]="'flow.workflow.toolbar.fitToView' | translate"
-      >
-        <mat-icon svgIcon="expand"></mat-icon>
       </button>
     </div>
 
@@ -302,29 +270,6 @@
           <mat-icon svgIcon="experiment"></mat-icon>
           <span>{{ 'flow.workflow.toolbar.presets' | translate }}</span>
           <mat-icon svgIcon="chevron-right" class="menu-arrow"></mat-icon>
-        </button>
-
-        <mat-divider></mat-divider>
-
-        <!-- Zoom Controls -->
-        <div class="menu-group-label">
-          {{ 'flow.workflow.toolbar.fitToView' | translate }} ({{ zoomPercentage() }}%)
-        </div>
-        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="fitToView()">
-          <mat-icon svgIcon="expand"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.fitToView' | translate }}</span>
-        </button>
-        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="resetZoom()">
-          <mat-icon svgIcon="refresh"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.resetZoom' | translate }} (100%)</span>
-        </button>
-        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="zoomIn()">
-          <mat-icon svgIcon="plus"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.zoomIn' | translate }}</span>
-        </button>
-        <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="zoomOut()">
-          <mat-icon svgIcon="remove"></mat-icon>
-          <span>{{ 'flow.workflow.toolbar.zoomOut' | translate }}</span>
         </button>
 
         <mat-divider></mat-divider>

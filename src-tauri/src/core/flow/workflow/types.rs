@@ -4,13 +4,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Node category in the visual DAG.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum WorkflowNodeCategory {
     Trigger,
+    #[default]
     Task,
     Logic,
     Action,
+}
+
+/// Resolves the canonical category for a given node type name.
+#[must_use]
+pub fn category_for_node_type(node_type: &str) -> WorkflowNodeCategory {
+    match node_type {
+        "manual" | "app_start" | "cron" | "watcher" | "job_event" => WorkflowNodeCategory::Trigger,
+        "branch" | "filter" | "delay" | "merge" | "retry" | "join" | "fork" | "loop" => {
+            WorkflowNodeCategory::Logic
+        }
+        "notification" | "command" | "webhook" => WorkflowNodeCategory::Action,
+        _ => WorkflowNodeCategory::Task,
+    }
 }
 
 /// Port type on a workflow node.
@@ -85,12 +99,11 @@ pub struct WorkflowNode {
     pub id: String,
     #[serde(rename = "type")]
     pub node_type: String,
+    #[serde(default)]
     pub category: WorkflowNodeCategory,
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subtitle: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
     pub x: f64,
     pub y: f64,
     #[serde(default)]
@@ -109,6 +122,13 @@ pub struct WorkflowNode {
     pub started_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<String>,
+}
+
+impl WorkflowNode {
+    #[must_use]
+    pub fn resolved_category(&self) -> WorkflowNodeCategory {
+        category_for_node_type(&self.node_type)
+    }
 }
 
 /// A directed edge connecting two ports.
@@ -157,10 +177,6 @@ pub struct WorkflowDefinition {
     pub edges: Vec<WorkflowEdge>,
     #[serde(default)]
     pub viewport: CanvasViewport,
-    #[serde(default)]
-    pub auto_start: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cron_expression: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -188,7 +204,7 @@ pub fn parse_delay_seconds(config: &Value) -> u64 {
 impl WorkflowDefinition {
     #[must_use]
     pub fn is_autostart(&self) -> bool {
-        self.auto_start || self.nodes.iter().any(|n| n.node_type == "app_start")
+        self.nodes.iter().any(|n| n.node_type == "app_start")
     }
 
     #[must_use]
@@ -202,28 +218,11 @@ impl WorkflowDefinition {
 
     #[must_use]
     pub fn is_cron_enabled(&self) -> bool {
-        self.cron_expression
-            .as_ref()
-            .map(|s| !s.trim().is_empty())
-            .unwrap_or(false)
-            || self.nodes.iter().any(|n| {
-                n.node_type == "cron"
-                    && n.config
-                        .get("cronExpression")
-                        .and_then(Value::as_str)
-                        .map(|s| !s.trim().is_empty())
-                        .unwrap_or(false)
-            })
+        self.effective_cron_expression().is_some()
     }
 
     #[must_use]
     pub fn effective_cron_expression(&self) -> Option<String> {
-        if let Some(ref cron) = self.cron_expression
-            && !cron.trim().is_empty()
-        {
-            return Some(cron.trim().to_string());
-        }
-
         self.nodes.iter().find_map(|n| {
             if n.node_type == "cron" {
                 n.config
@@ -331,10 +330,6 @@ pub struct WorkflowInput {
     pub edges: Vec<WorkflowEdge>,
     #[serde(default)]
     pub viewport: CanvasViewport,
-    #[serde(default)]
-    pub auto_start: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cron_expression: Option<String>,
 }
 
 /// Execution result returned by `execute_workflow`.
@@ -374,6 +369,8 @@ pub struct WorkflowNodeStateEvent {
     pub error_message: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<Value>,
 }
 
 /// Progress details for live workflow execution.
@@ -403,30 +400,23 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_workflow_definition_serde_roundtrip() {
+    fn test_workflow_definition_serde() {
         let wf = WorkflowDefinition {
-            id: "wf-123".to_string(),
+            id: "wf-test-1".to_string(),
             name: "Test Workflow".to_string(),
             description: Some("Description".to_string()),
             nodes: vec![WorkflowNode {
-                id: "n1".to_string(),
+                id: "node-1".to_string(),
                 node_type: "manual".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "Manual Trigger".to_string(),
-                subtitle: Some("Click to run".to_string()),
-                icon: Some("play".to_string()),
+                subtitle: None,
                 x: 100.0,
-                y: 150.0,
+                y: 100.0,
                 inputs: vec![],
-                outputs: vec![WorkflowPort {
-                    id: "out".to_string(),
-                    name: "Out".to_string(),
-                    port_type: WorkflowPortType::Out,
-                    label: Some("Start".to_string()),
-                    description: None,
-                }],
-                config: json!({"key": "val"}),
-                state: Some(WorkflowNodeExecutionState::Idle),
+                outputs: vec![],
+                config: json!({}),
+                state: None,
                 error_message: None,
                 last_duration_ms: None,
                 started_at: None,
@@ -438,16 +428,15 @@ mod tests {
                 y: 0.0,
                 zoom: 1.0,
             },
-            auto_start: true,
-            cron_expression: Some("0 2 * * *".to_string()),
             created_at: Some("2026-08-28T10:00:00Z".to_string()),
             updated_at: Some("2026-08-28T10:00:00Z".to_string()),
             last_executed_at: None,
         };
 
         let json_str = serde_json::to_string(&wf).unwrap();
-        assert!(json_str.contains("\"autoStart\":true"));
-        assert!(json_str.contains("\"cronExpression\":\"0 2 * * *\""));
+        assert!(!json_str.contains("\"autoStart\""));
+        assert!(!json_str.contains("\"cronExpression\""));
+        assert!(!json_str.contains("\"icon\""));
         assert!(
             json_str.contains("\"nodeType\":\"manual\"")
                 || json_str.contains("\"type\":\"manual\"")
@@ -455,12 +444,9 @@ mod tests {
 
         let deserialized: WorkflowDefinition = serde_json::from_str(&json_str).unwrap();
         assert_eq!(deserialized, wf);
-        assert!(deserialized.is_autostart());
-        assert!(deserialized.is_cron_enabled());
-        assert_eq!(
-            deserialized.effective_cron_expression(),
-            Some("0 2 * * *".to_string())
-        );
+        assert!(!deserialized.is_autostart());
+        assert!(!deserialized.is_cron_enabled());
+        assert_eq!(deserialized.effective_cron_expression(), None);
     }
 
     #[test]
@@ -469,14 +455,12 @@ mod tests {
             "name": "New Workflow",
             "nodes": [],
             "edges": [],
-            "viewport": { "x": 0.0, "y": 0.0, "zoom": 1.0 },
-            "autoStart": false
+            "viewport": { "x": 0.0, "y": 0.0, "zoom": 1.0 }
         });
 
         let input: WorkflowInput = serde_json::from_value(input_json).unwrap();
         assert_eq!(input.name, "New Workflow");
         assert!(input.id.is_none());
-        assert!(!input.auto_start);
     }
 
     #[test]
@@ -491,7 +475,6 @@ mod tests {
                 category: WorkflowNodeCategory::Trigger,
                 title: "Folder Watcher".to_string(),
                 subtitle: None,
-                icon: None,
                 x: 0.0,
                 y: 0.0,
                 inputs: vec![],
@@ -509,8 +492,6 @@ mod tests {
             }],
             edges: vec![],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,
@@ -537,7 +518,6 @@ mod tests {
                 category: WorkflowNodeCategory::Trigger,
                 title: "Cron Schedule".to_string(),
                 subtitle: None,
-                icon: None,
                 x: 0.0,
                 y: 0.0,
                 inputs: vec![],
@@ -553,8 +533,6 @@ mod tests {
             }],
             edges: vec![],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,
@@ -573,7 +551,6 @@ mod tests {
                 category: WorkflowNodeCategory::Trigger,
                 title: "Cron Schedule".to_string(),
                 subtitle: None,
-                icon: None,
                 x: 0.0,
                 y: 0.0,
                 inputs: vec![],
@@ -614,7 +591,6 @@ mod tests {
                 category: WorkflowNodeCategory::Trigger,
                 title: "On App Launch".to_string(),
                 subtitle: None,
-                icon: None,
                 x: 0.0,
                 y: 0.0,
                 inputs: vec![],
@@ -630,8 +606,6 @@ mod tests {
             }],
             edges: vec![],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,
@@ -639,5 +613,26 @@ mod tests {
 
         assert!(wf_with_app_start.is_autostart());
         assert_eq!(wf_with_app_start.app_start_delay_seconds(), 10);
+    }
+
+    #[test]
+    fn test_category_for_node_type_helper() {
+        assert_eq!(
+            category_for_node_type("manual"),
+            WorkflowNodeCategory::Trigger
+        );
+        assert_eq!(
+            category_for_node_type("cron"),
+            WorkflowNodeCategory::Trigger
+        );
+        assert_eq!(category_for_node_type("sync"), WorkflowNodeCategory::Task);
+        assert_eq!(
+            category_for_node_type("branch"),
+            WorkflowNodeCategory::Logic
+        );
+        assert_eq!(
+            category_for_node_type("notification"),
+            WorkflowNodeCategory::Action
+        );
     }
 }

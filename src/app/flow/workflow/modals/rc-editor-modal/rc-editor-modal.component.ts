@@ -18,18 +18,15 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../types/workflow.types';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
+import { WorkflowEngineService } from '../../../../services/flow/workflow-engine.service';
 import { RemoteFacadeService } from '../../../../services/facade/remote-facade.service';
-import { getNodeFieldsForType, NodeVariableField } from '../../utils/node-fields.util';
-
-export type RcPresetCategory = 'all' | 'vfs' | 'ops' | 'core';
-
-export interface RcPresetItem {
-  category: 'vfs' | 'ops' | 'core';
-  label: string;
-  command: string;
-  defaultParams?: Record<string, unknown>;
-  title: string;
-}
+import {
+  extractFieldsFromObject,
+  getAvailableUpstreamNodes,
+  getNodeFields,
+  NodeVariableField,
+} from '../../utils/node-fields.util';
+import { RcPresetCategory, RcPresetItem, RC_PRESETS } from '../../constants/rc-presets.constant';
 
 export interface RcEditorModalData {
   node: WorkflowNode;
@@ -58,6 +55,7 @@ export class RcEditorModalComponent {
   readonly dialogRef = inject(MatDialogRef<RcEditorModalComponent>);
   readonly data: RcEditorModalData = inject(MAT_DIALOG_DATA);
   private readonly workflowState = inject(WorkflowStateService, { optional: true });
+  private readonly workflowEngine = inject(WorkflowEngineService);
   private readonly remoteFacade = inject(RemoteFacadeService, { optional: true });
 
   @ViewChild('paramsTextarea') paramsTextarea?: ElementRef<HTMLTextAreaElement>;
@@ -66,77 +64,23 @@ export class RcEditorModalComponent {
     (this.data?.node?.config?.['command'] as string) || 'core/version'
   );
   readonly rawParamsJson = signal<string>('');
+  readonly sampleOutputJson = signal<string>('');
   readonly activePresetCategory = signal<RcPresetCategory>('all');
   readonly selectedVariableNodeId = signal<string>('');
   readonly selectedVariableField = signal<string>('');
 
-  readonly remotes = computed(() => this.remoteFacade?.orderedVisibleRemotes() ?? []);
+  // Live test runner state
+  readonly isTesting = signal<boolean>(false);
+  readonly testResult = signal<{
+    success: boolean;
+    data?: unknown;
+    error?: string;
+    timeMs?: number;
+    jsonString?: string;
+  } | null>(null);
 
-  readonly rcPresets: RcPresetItem[] = [
-    {
-      category: 'vfs',
-      label: 'vfs/refresh',
-      command: 'vfs/refresh',
-      defaultParams: { recursive: true },
-      title: 'Notify the VFS cache to refresh directories or whole filesystem',
-    },
-    {
-      category: 'vfs',
-      label: 'vfs/forget',
-      command: 'vfs/forget',
-      defaultParams: {},
-      title: 'Forget all directory cache entries or specific directory cache in VFS',
-    },
-    {
-      category: 'vfs',
-      label: 'vfs/poll-interval',
-      command: 'vfs/poll-interval',
-      defaultParams: { interval: '1m' },
-      title: 'Adjust polling interval for remote file changes in VFS',
-    },
-    {
-      category: 'ops',
-      label: 'cleanup',
-      command: 'operations/cleanup',
-      defaultParams: { fs: 'remote:' },
-      title: 'Empty trash / remove deleted files on a remote',
-    },
-    {
-      category: 'ops',
-      label: 'fsinfo',
-      command: 'operations/fsinfo',
-      defaultParams: { fs: 'remote:' },
-      title: 'Inspect remote file system features and capabilities',
-    },
-    {
-      category: 'ops',
-      label: 'about',
-      command: 'operations/about',
-      defaultParams: { fs: 'remote:' },
-      title: 'Get quota and usage information about the remote',
-    },
-    {
-      category: 'core',
-      label: 'bwlimit',
-      command: 'core/bwlimit',
-      defaultParams: { rate: '10M' },
-      title: 'Adjust bandwidth speed limit (e.g. 10M, off)',
-    },
-    {
-      category: 'core',
-      label: 'core/stats',
-      command: 'core/stats',
-      defaultParams: {},
-      title: 'Retrieve transfer and runtime stats',
-    },
-    {
-      category: 'core',
-      label: 'core/version',
-      command: 'core/version',
-      defaultParams: {},
-      title: 'Retrieve rclone engine version and system details',
-    },
-  ];
+  readonly remotes = computed(() => this.remoteFacade?.orderedVisibleRemotes() ?? []);
+  readonly rcPresets: RcPresetItem[] = RC_PRESETS;
 
   readonly filteredPresets = computed(() => {
     const cat = this.activePresetCategory();
@@ -145,17 +89,33 @@ export class RcEditorModalComponent {
   });
 
   readonly availableUpstreamNodes = computed<WorkflowNode[]>(() => {
-    const wf = this.workflowState?.currentWorkflow();
-    if (!wf?.nodes) return [];
-    return wf.nodes.filter(n => n.id !== this.data?.node?.id);
+    return getAvailableUpstreamNodes(
+      this.workflowState?.currentWorkflow()?.nodes,
+      this.data?.node?.id
+    );
   });
 
   readonly availableFieldsForSelectedNode = computed<NodeVariableField[]>(() => {
     const targetId = this.activeVariableNodeId();
     if (!targetId) return [];
+    if (targetId === 'prev') {
+      return [
+        { key: 'summary', label: 'Summary (summary)' },
+        { key: 'status', label: 'Status (status)' },
+        { key: 'success', label: 'Success (success)' },
+        { key: 'result', label: 'Result (result)' },
+        { key: 'report', label: 'Report (report)' },
+        { key: 'differ', label: 'Differing Files (differ)' },
+        { key: 'differCount', label: 'Differ Count (differCount)' },
+        { key: 'bytesFormatted', label: 'Formatted Bytes (bytesFormatted)' },
+        { key: 'transfers', label: 'Transfers (transfers)' },
+        { key: 'output', label: 'Output (output)' },
+        { key: 'error', label: 'Error Message (error)' },
+      ];
+    }
     const target = this.availableUpstreamNodes().find(n => n.id === targetId);
     if (!target) return [];
-    return getNodeFieldsForType(target.type);
+    return getNodeFields(target);
   });
 
   readonly activeVariableNodeId = computed(() => {
@@ -176,6 +136,9 @@ export class RcEditorModalComponent {
     const nId = this.activeVariableNodeId();
     const fKey = this.activeVariableField();
     if (!nId || !fKey) return '';
+    if (nId === 'prev') {
+      return `{{prev.${fKey}}}`;
+    }
     return `{{nodes.${nId}.${fKey}}}`;
   });
 
@@ -201,6 +164,17 @@ export class RcEditorModalComponent {
     }
   });
 
+  readonly sampleOutputKeys = computed<NodeVariableField[]>(() => {
+    const raw = this.sampleOutputJson().trim();
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return extractFieldsFromObject(parsed);
+    } catch {
+      return [];
+    }
+  });
+
   constructor() {
     const currentParams = this.data?.node?.config?.['params'];
     if (currentParams !== undefined && currentParams !== null) {
@@ -212,6 +186,15 @@ export class RcEditorModalComponent {
         );
       } else {
         this.rawParamsJson.set(String(currentParams));
+      }
+    }
+
+    const currentSample = this.data?.node?.config?.['sampleOutput'];
+    if (currentSample) {
+      if (typeof currentSample === 'string') {
+        this.sampleOutputJson.set(currentSample);
+      } else {
+        this.sampleOutputJson.set(JSON.stringify(currentSample, null, 2));
       }
     }
   }
@@ -250,6 +233,64 @@ export class RcEditorModalComponent {
 
   clearParams(): void {
     this.rawParamsJson.set('');
+  }
+
+  async testRun(): Promise<void> {
+    const cmd = this.command().trim();
+    if (!cmd) return;
+
+    this.isTesting.set(true);
+    this.testResult.set(null);
+    const startTime = performance.now();
+
+    const raw = this.rawParamsJson().trim();
+    let parsedParams: unknown = undefined;
+    if (raw) {
+      try {
+        parsedParams = JSON.parse(raw);
+      } catch {
+        parsedParams = raw;
+      }
+    }
+
+    try {
+      const res = await this.workflowEngine.testRcCommand(cmd, parsedParams);
+      const elapsed = Math.round(performance.now() - startTime);
+      this.testResult.set({
+        success: true,
+        data: res,
+        timeMs: elapsed,
+        jsonString: JSON.stringify(res, null, 2),
+      });
+    } catch (err: unknown) {
+      const elapsed = Math.round(performance.now() - startTime);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.testResult.set({
+        success: false,
+        error: msg,
+        timeMs: elapsed,
+      });
+    } finally {
+      this.isTesting.set(false);
+    }
+  }
+
+  saveTestAsSample(): void {
+    const tr = this.testResult();
+    if (tr?.jsonString) {
+      this.sampleOutputJson.set(tr.jsonString);
+    }
+  }
+
+  formatSampleOutputJson(): void {
+    const raw = this.sampleOutputJson().trim();
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      this.sampleOutputJson.set(JSON.stringify(parsed, null, 2));
+    } catch {
+      // ignore syntax errors
+    }
   }
 
   onVariableNodeSelect(nodeId: string): void {
@@ -295,7 +336,7 @@ export class RcEditorModalComponent {
   }
 
   save(): void {
-    const cmd = this.command();
+    const cmd = this.command().trim();
     const raw = this.rawParamsJson().trim();
     let finalParams: unknown = {};
 
@@ -307,13 +348,17 @@ export class RcEditorModalComponent {
       }
     }
 
+    const sampleRaw = this.sampleOutputJson().trim();
+    const sampleOutput = sampleRaw || undefined;
+
     if (this.data?.node?.id && this.workflowState) {
       this.workflowState.updateNodeConfig(this.data.node.id, {
         command: cmd,
         params: finalParams,
+        sampleOutput,
       });
     }
 
-    this.dialogRef.close({ command: cmd, params: finalParams });
+    this.dialogRef.close({ command: cmd, params: finalParams, sampleOutput });
   }
 }

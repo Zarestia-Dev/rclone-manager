@@ -41,7 +41,6 @@ export class WorkflowToolbarComponent {
   readonly toggleLog = output<void>();
 
   readonly activeWorkflow = this.stateService.currentWorkflow;
-  readonly zoomPercentage = computed(() => Math.round(this.stateService.viewport().zoom * 100));
 
   readonly presetTemplates = computed(() => this.storageService.getPresetTemplates());
   readonly allWorkflows = this.storageService.workflows;
@@ -141,22 +140,6 @@ export class WorkflowToolbarComponent {
 
   redo(): void {
     this.stateService.redo();
-  }
-
-  zoomIn(): void {
-    this.stateService.zoomIn();
-  }
-
-  zoomOut(): void {
-    this.stateService.zoomOut();
-  }
-
-  resetZoom(): void {
-    this.stateService.resetZoom();
-  }
-
-  fitToView(): void {
-    this.stateService.fitToView();
   }
 
   toggleSnapToGrid(): void {

@@ -21,7 +21,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../../types/workflow.types';
 import { QuickRun } from '@app/types';
-import { getNodeFieldsForType } from '../../../utils/node-fields.util';
+import {
+  getAvailableUpstreamNodes,
+  getNodeFields,
+  getNodeFieldsForType,
+  NodeVariableField,
+} from '../../../utils/node-fields.util';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
 import { SUPPORTED_ARCHIVE_FORMATS } from '../../../../../services/remote/flag-definitions';
@@ -32,15 +37,7 @@ interface RemoteItem {
   type?: string;
 }
 
-export type RcPresetCategory = 'all' | 'vfs' | 'ops' | 'core';
-
-export interface RcPresetItem {
-  category: 'vfs' | 'ops' | 'core';
-  label: string;
-  command: string;
-  defaultParams?: Record<string, unknown>;
-  title: string;
-}
+import { RcPresetCategory, RcPresetItem, RC_PRESETS } from '../../../constants/rc-presets.constant';
 
 @Component({
   selector: 'app-task-node-form',
@@ -58,203 +55,6 @@ export interface RcPresetItem {
   ],
   templateUrl: './task-node-form.component.html',
   styleUrl: '../workflow-inspector.component.scss',
-  styles: [
-    `
-      .rc-section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 4px;
-        margin-bottom: 2px;
-
-        .section-label {
-          font-size: var(--font-size-xs);
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--dim-color);
-        }
-
-        .preset-filter-tabs {
-          display: flex;
-          gap: 2px;
-          background: var(--bg-elevated);
-          padding: 2px;
-          border-radius: var(--radius-xs);
-
-          .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--dim-color);
-            font-size: 10px;
-            font-weight: 500;
-            padding: 2px 6px;
-            border-radius: 3px;
-            cursor: pointer;
-            transition: var(--transition-fast);
-
-            &:hover {
-              color: var(--window-fg-color);
-            }
-
-            &.active {
-              background: var(--bg-elevated-2);
-              color: var(--accent-color);
-              font-weight: 600;
-            }
-          }
-        }
-      }
-
-      .preset-pill {
-        transition: var(--transition-fast);
-
-        &.active {
-          background: rgba(var(--accent-color-rgb), 0.2);
-          border-color: var(--accent-color);
-          color: var(--accent-color);
-          font-weight: 600;
-        }
-      }
-
-      .params-header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 8px;
-        margin-bottom: 2px;
-
-        .params-header-left {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-
-          .section-label {
-            font-size: var(--font-size-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--dim-color);
-          }
-
-          .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 10px;
-            padding: 1px 6px;
-            border-radius: var(--radius-xs);
-            font-weight: 500;
-
-            mat-icon {
-              width: 12px;
-              height: 12px;
-              font-size: 12px;
-            }
-
-            &.template {
-              background: rgba(var(--primary-color-rgb), 0.12);
-              color: var(--primary-color);
-            }
-
-            &.invalid {
-              background: rgba(var(--warn-color-rgb), 0.12);
-              color: var(--warn-color);
-            }
-          }
-        }
-      }
-
-      .params-field {
-        margin-bottom: -6px;
-      }
-
-      .var-helper-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 10px;
-        border-radius: var(--radius-sm);
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-color);
-
-        .var-helper-header {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-
-          .helper-icon {
-            width: 14px;
-            height: 14px;
-            font-size: 14px;
-            color: var(--accent-color);
-          }
-
-          .helper-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--window-fg-color);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-          }
-        }
-
-        .var-picker-controls {
-          display: flex;
-          gap: 8px;
-
-          .form-field-compact {
-            flex: 1;
-            font-size: 12px;
-          }
-        }
-
-        .insert-token-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          width: 100%;
-          padding: 6px 10px;
-          background: rgba(var(--accent-color-rgb), 0.1);
-          border: 1px dashed rgba(var(--accent-color-rgb), 0.35);
-          border-radius: var(--radius-xs);
-          color: var(--accent-color);
-          font-size: 11px;
-          cursor: pointer;
-          transition: var(--transition-fast);
-
-          mat-icon {
-            width: 14px;
-            height: 14px;
-            font-size: 14px;
-          }
-
-          code {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            background: rgba(var(--accent-color-rgb), 0.15);
-            padding: 1px 5px;
-            border-radius: 4px;
-          }
-
-          &:hover {
-            background: rgba(var(--accent-color-rgb), 0.2);
-            border-color: var(--accent-color);
-          }
-        }
-
-        .no-nodes-hint {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          color: var(--dim-color);
-          line-height: 1.4;
-        }
-      }
-    `,
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskNodeFormComponent {
@@ -348,9 +148,7 @@ export class TaskNodeFormComponent {
   }
 
   readonly availableUpstreamNodes = computed<WorkflowNode[]>(() => {
-    const wf = this.stateService?.currentWorkflow();
-    if (!wf?.nodes) return [];
-    return wf.nodes.filter(n => n.id !== this.node().id);
+    return getAvailableUpstreamNodes(this.stateService?.currentWorkflow()?.nodes, this.node().id);
   });
 
   readonly selectedVariableNodeId = signal<string>('');
@@ -360,11 +158,24 @@ export class TaskNodeFormComponent {
     return this.selectedVariableNodeId() || this.availableUpstreamNodes()[0]?.id || '';
   });
 
-  readonly availableFieldsForSelectedNode = computed<{ key: string; label: string }[]>(() => {
+  readonly availableFieldsForSelectedNode = computed<NodeVariableField[]>(() => {
     const targetId = this.activeVariableNodeId();
     if (!targetId) return [];
+    if (targetId === 'prev') {
+      return [
+        { key: 'summary', label: 'Summary (summary)' },
+        { key: 'report', label: 'Check Report (report)' },
+        { key: 'differ', label: 'Differing Files (differ)' },
+        { key: 'hasDifferences', label: 'Has Differences (hasDifferences)' },
+        { key: 'bytesFormatted', label: 'Formatted Bytes (bytesFormatted)' },
+        { key: 'transfers', label: 'Transfers (transfers)' },
+        { key: 'status', label: 'Status (status)' },
+        { key: 'output', label: 'Output (output)' },
+        { key: 'error', label: 'Error Message (error)' },
+      ];
+    }
     const targetNode = this.availableUpstreamNodes().find(n => n.id === targetId);
-    return this.getNodeFieldsForType(targetNode?.type);
+    return targetNode ? getNodeFields(targetNode) : [];
   });
 
   readonly activeVariableField = computed<string>(() => {
@@ -380,6 +191,9 @@ export class TaskNodeFormComponent {
     const targetId = this.activeVariableNodeId();
     const field = this.activeVariableField();
     if (!targetId || !field) return '';
+    if (targetId === 'prev') {
+      return `{{prev.${field}}}`;
+    }
     return `{{nodes.${targetId}.${field}}}`;
   });
 
@@ -395,67 +209,7 @@ export class TaskNodeFormComponent {
     this.activePresetCategory.set(category);
   }
 
-  readonly rcPresets: RcPresetItem[] = [
-    // VFS
-    {
-      category: 'vfs',
-      label: 'vfs/refresh',
-      command: 'vfs/refresh',
-      defaultParams: { recursive: true },
-      title: 'Refresh active VFS cache',
-    },
-    {
-      category: 'vfs',
-      label: 'vfs/forget',
-      command: 'vfs/forget',
-      defaultParams: {},
-      title: 'Forget directory or file in VFS cache',
-    },
-    // Storage Operations
-    {
-      category: 'ops',
-      label: 'cleanup',
-      command: 'operations/cleanup',
-      defaultParams: { fs: 'remote:' },
-      title: 'Empty trash or cleanup remote',
-    },
-    {
-      category: 'ops',
-      label: 'about',
-      command: 'operations/about',
-      defaultParams: { fs: 'remote:' },
-      title: 'Get remote storage quota and free space',
-    },
-    {
-      category: 'ops',
-      label: 'fsinfo',
-      command: 'operations/fsinfo',
-      defaultParams: { fs: 'remote:' },
-      title: 'Inspect remote filesystem features and hashes',
-    },
-    // Core Engine
-    {
-      category: 'core',
-      label: 'bwlimit',
-      command: 'core/bwlimit',
-      defaultParams: { rate: '10M' },
-      title: 'Adjust bandwidth speed limit (e.g. 10M, off)',
-    },
-    {
-      category: 'core',
-      label: 'core/stats',
-      command: 'core/stats',
-      defaultParams: {},
-      title: 'Retrieve transfer and runtime stats',
-    },
-    {
-      category: 'core',
-      label: 'core/version',
-      command: 'core/version',
-      defaultParams: {},
-      title: 'Retrieve rclone engine version and system details',
-    },
-  ];
+  readonly rcPresets: RcPresetItem[] = RC_PRESETS;
 
   readonly jsonStatus = computed<{ valid: boolean; isTemplate: boolean; error?: string }>(() => {
     const raw = this.getRcParamsJson().trim();
@@ -586,9 +340,13 @@ export class TaskNodeFormComponent {
 
   onVariableNodeSelect(nodeId: string): void {
     this.selectedVariableNodeId.set(nodeId);
-    const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
-    const fields = this.getNodeFieldsForType(targetNode?.type);
-    this.selectedVariableField.set(fields[0]?.key || 'status');
+    if (nodeId === 'prev') {
+      this.selectedVariableField.set('summary');
+    } else {
+      const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
+      const fields = targetNode ? getNodeFields(targetNode) : [];
+      this.selectedVariableField.set(fields[0]?.key || 'status');
+    }
   }
 
   onVariableFieldSelect(field: string): void {

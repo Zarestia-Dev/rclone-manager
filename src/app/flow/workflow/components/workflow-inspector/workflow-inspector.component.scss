@@ -182,6 +182,67 @@
     }
   }
 
+  &.execution-output-section {
+    .output-details-card {
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated-1);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .output-summary-banner {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--window-fg-color);
+        padding: 4px 8px;
+        border-radius: var(--radius-xs);
+        background: rgba(var(--accent-color-rgb), 0.08);
+
+        mat-icon {
+          width: 14px;
+          height: 14px;
+          font-size: 14px;
+          color: var(--accent-color);
+          flex-shrink: 0;
+        }
+      }
+
+      .output-box {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .output-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: var(--dim-color);
+        }
+
+        .output-pre {
+          max-height: 140px;
+          overflow-y: auto;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          background: rgba(0, 0, 0, 0.25);
+          padding: 6px 8px;
+          border-radius: var(--radius-xs);
+          margin: 0;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+      }
+    }
+  }
+
   &.job-detail-section {
     .section-title {
       mat-icon {
@@ -630,17 +691,11 @@
       font-size: var(--font-size-xs);
       font-weight: 600;
       color: var(--window-fg-color);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .stat-breakdown {
       font-size: 10px;
       color: var(--dim-color);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
   }
 }

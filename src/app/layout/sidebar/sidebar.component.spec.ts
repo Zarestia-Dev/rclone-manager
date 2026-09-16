@@ -23,7 +23,6 @@ describe('SidebarComponent', () => {
       id: 'wf-1',
       name: 'Backup Workflow',
       description: 'Daily backup job',
-      cronExpression: '0 0 * * *',
       nodes: [
         {
           id: 'node-1',
@@ -34,7 +33,7 @@ describe('SidebarComponent', () => {
           y: 0,
           inputs: [],
           outputs: [],
-          config: {},
+          config: { cronExpression: '0 0 * * *' },
         },
         {
           id: 'node-2',
@@ -278,16 +277,9 @@ describe('SidebarComponent', () => {
     const wfDefault = mockWorkflows()[0];
     expect(component.hasAutoStartNode(wfDefault)).toBe(false);
 
-    const wfAutoStartProp: WorkflowDefinition = {
-      ...wfDefault,
-      autoStart: true,
-    };
-    expect(component.hasAutoStartNode(wfAutoStartProp)).toBe(true);
-
     const wfWithAppStartNode: WorkflowDefinition = {
       id: 'wf-app-start',
       name: 'App Start Flow',
-      autoStart: false,
       nodes: [
         {
           id: 'node-start',

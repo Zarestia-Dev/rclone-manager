@@ -94,7 +94,7 @@ describe('WorkflowNodeComponent', () => {
     const spy = vi.fn();
     component.deleteNode.subscribe(spy);
 
-    const deleteBtn = fixture.nativeElement.querySelector('.action-btn.danger');
+    const deleteBtn = fixture.nativeElement.querySelector('.action-button.danger');
     deleteBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(spy).toHaveBeenCalledWith('node-sync-1');
@@ -276,7 +276,7 @@ describe('WorkflowNodeComponent', () => {
 
     expect(component.nodeJob()).toEqual(mockJob);
 
-    const jobBtn = fixture.nativeElement.querySelector('.action-btn.job-btn');
+    const jobBtn = fixture.nativeElement.querySelector('.action-button.job-btn');
     expect(jobBtn).toBeTruthy();
     expect(jobBtn.classList.contains('is-running')).toBe(true);
 
@@ -338,5 +338,27 @@ describe('WorkflowNodeComponent', () => {
 
     badge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(mockModalService.openJobDetail).toHaveBeenCalledWith(mockJob);
+  });
+
+  it('supports bidirectional port interactions on both input and output handles', () => {
+    const startSpy = vi.fn();
+    const dropSpy = vi.fn();
+    component.startConnecting.subscribe(startSpy);
+    component.portMouseUp.subscribe(dropSpy);
+
+    const inputHandle = fixture.nativeElement.querySelector('.input-handle');
+    const outputHandle = fixture.nativeElement.querySelector('.output-handle');
+
+    // 1. Reverse connection: mousedown on input handle
+    inputHandle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ portId: 'in', isOutput: false })
+    );
+
+    // 2. Reverse connection drop: mouseup on output handle
+    outputHandle.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(dropSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ portId: 'success', isOutput: true })
+    );
   });
 });

@@ -16,6 +16,7 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 
 import { OPERATION_REGISTRY, QuickRun, Remote, FlowSubMode } from '@app/types';
 import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
+import { getNodeStyleMeta } from 'src/app/flow/workflow/utils/node-style.util';
 
 import { IconService } from 'src/app/services/ui/icon.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
@@ -206,7 +207,7 @@ export class SidebarComponent {
   }
 
   hasAutoStartNode(wf: WorkflowDefinition): boolean {
-    return !!wf.autoStart || wf.nodes.some(n => n.type === 'app_start');
+    return wf.nodes.some(n => n.type === 'app_start');
   }
 
   hasWatcherNode(wf: WorkflowDefinition): boolean {
@@ -214,8 +215,6 @@ export class SidebarComponent {
   }
 
   getWorkflowCron(wf: WorkflowDefinition): string | null {
-    const expr = wf.cronExpression?.trim();
-    if (expr) return expr;
     const cronNode = wf.nodes.find(n => n.type === 'cron');
     const nodeExpr = cronNode?.config?.['cronExpression'];
     return typeof nodeExpr === 'string' && nodeExpr.trim() ? nodeExpr.trim() : null;
@@ -237,9 +236,7 @@ export class SidebarComponent {
     }
     const triggerNode = wf.nodes.find(n => n.category === 'trigger');
     if (triggerNode) {
-      if (triggerNode.type === 'manual') return 'play';
-      if (triggerNode.type === 'job_event') return 'done-all';
-      if (triggerNode.icon) return triggerNode.icon;
+      return getNodeStyleMeta(triggerNode.type)?.icon || 'play';
     }
     return 'play';
   }

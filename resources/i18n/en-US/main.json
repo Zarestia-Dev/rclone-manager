@@ -3411,6 +3411,12 @@
         "deleteWorkflow": "Delete Workflow",
         "exportWorkflow": "Export JSON"
       },
+      "canvas": {
+        "navigation": "Canvas Navigation",
+        "toggleMinimap": "Toggle Minimap",
+        "enterFocusMode": "Focus Canvas (Hide Navigation)",
+        "exitFocusMode": "Exit Focus (Show Navigation)"
+      },
       "toolbar": {
         "selectWorkflow": "Select Workflow",
         "newWorkflow": "New Workflow",
@@ -3578,7 +3584,39 @@
         "jobDetailsTitle": "Job Details",
         "inspectJobBtn": "Inspect Job Details",
         "transfers": "Transfers",
-        "errors": "Errors"
+        "errors": "Errors",
+        "testRun": "Test Run",
+        "testRunRcHint": "Test this RC command with current parameters",
+        "testSuccess": "Test Succeeded",
+        "testFailed": "Test Failed",
+        "useAsSampleSchema": "Save as Output Schema",
+        "sampleOutputSchema": "Sample Output Schema",
+        "sampleOutputSchemaDesc": "JSON response schema to expose dynamic token fields in downstream cards",
+        "sampleOutputPlaceholder": "Paste sample JSON response here...",
+        "availableOutputKeys": "Discovered Variable Keys",
+        "upstreamOutputs": "Upstream Outputs & Variables",
+        "nodeOutput": "Node Execution Output",
+        "checkReport": "Check Difference Report",
+        "rawOutputJson": "Output Data (JSON)",
+        "conditionPresets": "Quick Condition Presets",
+        "condPresetHasDiff": "Has Differences",
+        "condPresetNoDiff": "No Differences",
+        "condPresetDiffCount": "Differences Found (>0)",
+        "condPresetHasErrors": "Has Errors",
+        "condPresetTransferred": "Transferred (>0)",
+        "condPresetScriptSuccess": "Script Success",
+        "notificationPresets": "Quick Message Presets",
+        "notifPresetCheckReport": "Check Report",
+        "notifPresetTransferSummary": "Transfer Summary",
+        "notifPresetFailureAlert": "Failure Alert",
+        "notifPresetHealthStatus": "Engine Health",
+        "opGreaterOrEqual": "Greater or Equal (>=)",
+        "opLessOrEqual": "Less or Equal (<=)",
+        "opStartsWith": "Starts With",
+        "opEndsWith": "Ends With",
+        "opArrayNotEmpty": "Array Has Items",
+        "opArrayIsEmpty": "Array Is Empty",
+        "preview": "Message Preview"
       },
       "liveStatus": {
         "mounted": "Mounted",
@@ -3678,8 +3716,40 @@
         "updated": "Updated"
       },
       "recipes": {
-        "manualTrigger": "Manual Trigger",
-        "manualTriggerDesc": "Triggered manually from UI"
+        "driftCheckSync": {
+          "name": "Smart Drift Check & Conditional Sync",
+          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details."
+        },
+        "integrityAudit": {
+          "name": "Data Integrity Audit & Drift Report",
+          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist."
+        },
+        "safeSyncAlert": {
+          "name": "Safe Sync with Failure Alert",
+          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure."
+        },
+        "dailyBackup": {
+          "name": "Daily Backup & Notification",
+          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure."
+        },
+        "watchUpload": {
+          "name": "Folder Watcher & Auto Upload",
+          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage."
+        },
+        "parallelMirror": {
+          "name": "Multi-Cloud Parallel Mirror",
+          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion."
+        },
+        "mountOnDemand": {
+          "name": "Mount on Demand & Notify",
+          "description": "Mounts a remote storage path and notifies desktop when drive is ready."
+        },
+        "manualTrigger": "Manual",
+        "manualTriggerDesc": "Triggered manually on demand",
+        "vfsRefresh": {
+          "name": "VFS Cache Refresh Automation",
+          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop."
+        }
       },
       "editor": {
         "configureNode": "Configure Node: {{type}}",

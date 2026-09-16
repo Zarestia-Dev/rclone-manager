@@ -8,6 +8,8 @@ import {
   computed,
   HostListener,
   afterNextRender,
+  OnDestroy,
+  DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
@@ -16,38 +18,92 @@ import { WorkflowNodeComponent } from './workflow-node/workflow-node.component';
 import { WorkflowWireComponent } from './workflow-wire/workflow-wire.component';
 import { WorkflowMinimapComponent } from './workflow-minimap/workflow-minimap.component';
 import { generateCubicBezierPath } from '../../utils/bezier.util';
-import { WorkflowNode } from '../../types/workflow.types';
+import { WorkflowNode, WorkflowEdge } from '../../types/workflow.types';
 import { ModalService } from '../../../../services/ui/modal.service';
 import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag-drop.service';
-import { NODE_WIDTH, PORT_ROW_START_Y, PORT_ROW_HEIGHT } from '../../constants/workflow.constants';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
+import {
+  NODE_WIDTH,
+  PORT_ROW_START_Y,
+  PORT_ROW_HEIGHT,
+  DEFAULT_CANVAS_WIDTH,
+  DEFAULT_CANVAS_HEIGHT,
+  MIN_ZOOM,
+  MAX_ZOOM,
+} from '../../constants/workflow.constants';
 import { hasDetailedConfig } from '../../utils/node-style.util';
 import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
 
+export interface RenderedWire {
+  edge: WorkflowEdge;
+  sourcePos: { x: number; y: number };
+  targetPos: { x: number; y: number };
+}
+
 @Component({
   selector: 'app-workflow-canvas',
-  imports: [CommonModule, WorkflowNodeComponent, WorkflowWireComponent, WorkflowMinimapComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    TranslatePipe,
+    WorkflowNodeComponent,
+    WorkflowWireComponent,
+    WorkflowMinimapComponent,
+  ],
   templateUrl: './workflow-canvas.component.html',
   styleUrl: './workflow-canvas.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WorkflowCanvasComponent {
+export class WorkflowCanvasComponent implements OnDestroy {
   readonly stateService = inject(WorkflowStateService);
   readonly dragDropService = inject(WorkflowDragDropService);
   readonly engineService = inject(WorkflowEngineService);
   private readonly modalService = inject(ModalService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly minZoom = MIN_ZOOM;
+  readonly maxZoom = MAX_ZOOM;
+  readonly showMinimap = signal<boolean>(true);
+  readonly isMobile = signal<boolean>(false);
+  readonly zoomPercentage = computed(() => Math.round(this.viewport().zoom * 100));
+
+  readonly navigationActionIcon = computed(() => {
+    if (this.isMobile()) {
+      return this.stateService.isMobileFocusMode() ? 'caret-up' : 'caret-down';
+    }
+    return 'detailed';
+  });
+
+  readonly navigationActionTitle = computed(() => {
+    if (this.isMobile()) {
+      return this.stateService.isMobileFocusMode()
+        ? 'flow.workflow.canvas.exitFocusMode'
+        : 'flow.workflow.canvas.enterFocusMode';
+    }
+    return 'flow.workflow.canvas.toggleMinimap';
+  });
+
+  readonly isNavigationActionActive = computed(() => {
+    if (this.isMobile()) {
+      return this.stateService.isMobileFocusMode();
+    }
+    return this.showMinimap();
+  });
 
   readonly canvasContainer = viewChild<ElementRef<HTMLElement>>('canvasContainer');
-
-  readonly containerWidth = signal<number>(1000);
-  readonly containerHeight = signal<number>(700);
 
   readonly isPanning = signal<boolean>(false);
   private panStart = { x: 0, y: 0 };
   private initialViewport = { x: 0, y: 0 };
 
-  // Node Dragging State
+  // Node Dragging State (supports multi-node group movements with RAF throttling)
   readonly draggingNodeId = signal<string | null>(null);
-  private dragOffset = { x: 0, y: 0 };
+  private initialNodePositions = new Map<string, { x: number; y: number }>();
+  private dragStartCanvasPos = { x: 0, y: 0 };
+  private hasDraggedNode = false;
+  private dragRafId: number | null = null;
+  private pendingDragCoords: { clientX: number; clientY: number } | null = null;
 
   // Wire Connection State
   readonly isConnecting = this.stateService.isConnecting;
@@ -60,9 +116,46 @@ export class WorkflowCanvasComponent {
     return `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})`;
   });
 
+  /** Map of node IDs to node objects for O(1) wire coordinate lookups */
+  readonly nodeMap = computed(() => {
+    const wf = this.activeWorkflow();
+    const map = new Map<string, WorkflowNode>();
+    if (wf) {
+      for (const node of wf.nodes) {
+        map.set(node.id, node);
+      }
+    }
+    return map;
+  });
+
+  /** Precomputed wire coordinates to avoid O(E * N) template evaluations and object allocations */
+  readonly renderedWires = computed<RenderedWire[]>(() => {
+    const wf = this.activeWorkflow();
+    if (!wf || !wf.edges.length) return [];
+    const map = this.nodeMap();
+
+    return wf.edges.map(edge => {
+      const sourceNode = map.get(edge.sourceNodeId);
+      const targetNode = map.get(edge.targetNodeId);
+
+      return {
+        edge,
+        sourcePos: this.calculatePortCoordinate(sourceNode, edge.sourcePortId, true),
+        targetPos: this.calculatePortCoordinate(targetNode, edge.targetPortId, false),
+      };
+    });
+  });
+
   constructor() {
     afterNextRender(() => {
       this.updateContainerDimensions();
+      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        const mql = window.matchMedia('(max-width: 599.98px)');
+        this.isMobile.set(mql.matches);
+        const handler = (e: MediaQueryListEvent): void => this.isMobile.set(e.matches);
+        mql.addEventListener('change', handler);
+        this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
+      }
     });
   }
 
@@ -71,11 +164,17 @@ export class WorkflowCanvasComponent {
     this.updateContainerDimensions();
   }
 
+  ngOnDestroy(): void {
+    this.flushPendingDrag();
+    this.stateService.isMobileFocusMode.set(false);
+  }
+
   private updateContainerDimensions(): void {
     const el = this.canvasContainer()?.nativeElement;
     if (el) {
-      this.containerWidth.set(el.clientWidth || 1000);
-      this.containerHeight.set(el.clientHeight || 700);
+      const width = el.clientWidth || DEFAULT_CANVAS_WIDTH;
+      const height = el.clientHeight || DEFAULT_CANVAS_HEIGHT;
+      this.stateService.canvasDimensions.set({ width, height });
     }
   }
 
@@ -83,23 +182,28 @@ export class WorkflowCanvasComponent {
     const conn = this.isConnecting();
     if (!conn) return '';
 
-    const { x: sourceX, y: sourceY } = this.getPortCoordinate(
+    const { x: portX, y: portY } = this.getPortCoordinate(
       conn.sourceNodeId,
       conn.sourcePortId,
-      true
+      conn.isSourceOutput
     );
 
     const vp = this.viewport();
-    const targetX = (conn.currentX - vp.x) / vp.zoom;
-    const targetY = (conn.currentY - vp.y) / vp.zoom;
+    const mouseX = (conn.currentX - vp.x) / vp.zoom;
+    const mouseY = (conn.currentY - vp.y) / vp.zoom;
 
-    return generateCubicBezierPath(sourceX, sourceY, targetX, targetY);
+    if (conn.isSourceOutput) {
+      return generateCubicBezierPath(portX, portY, mouseX, mouseY);
+    } else {
+      return generateCubicBezierPath(mouseX, mouseY, portX, portY);
+    }
   });
 
-  // Calculate socket coordinates for rendering edges
-  getPortCoordinate(nodeId: string, portId: string, isOutput: boolean): { x: number; y: number } {
-    const wf = this.activeWorkflow();
-    const node = wf?.nodes.find(n => n.id === nodeId);
+  private calculatePortCoordinate(
+    node: WorkflowNode | undefined,
+    portId: string,
+    isOutput: boolean
+  ): { x: number; y: number } {
     if (!node) return { x: 0, y: 0 };
 
     const ports = isOutput ? node.outputs : node.inputs;
@@ -112,6 +216,11 @@ export class WorkflowCanvasComponent {
     const y = node.y + PORT_ROW_START_Y + portIndex * PORT_ROW_HEIGHT;
 
     return { x, y };
+  }
+
+  // Calculate socket coordinates for rendering edges
+  getPortCoordinate(nodeId: string, portId: string, isOutput: boolean): { x: number; y: number } {
+    return this.calculatePortCoordinate(this.nodeMap().get(nodeId), portId, isOutput);
   }
 
   // ── Canvas Pan (Mouse Drag) ──────────────────────────────────────────────
@@ -131,6 +240,76 @@ export class WorkflowCanvasComponent {
     }
   }
 
+  // ── Node Drag Delta & RAF Throttling ─────────────────────────────────────
+
+  private applyDragDelta(clientX: number, clientY: number): void {
+    const dragId = this.draggingNodeId();
+    if (!dragId) return;
+
+    const container = this.canvasContainer()?.nativeElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const vp = this.viewport();
+
+    const canvasX = (clientX - rect.left - vp.x) / vp.zoom;
+    const canvasY = (clientY - rect.top - vp.y) / vp.zoom;
+
+    const deltaX = canvasX - this.dragStartCanvasPos.x;
+    const deltaY = canvasY - this.dragStartCanvasPos.y;
+
+    if (!this.hasDraggedNode && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+      this.hasDraggedNode = true;
+      this.stateService.snapshot();
+      this.stateService.isDraggingNode.set(true);
+    }
+
+    if (this.hasDraggedNode) {
+      if (this.initialNodePositions.size > 1) {
+        const updates = new Map<string, { x: number; y: number }>();
+        for (const [id, initialPos] of this.initialNodePositions) {
+          updates.set(id, {
+            x: initialPos.x + deltaX,
+            y: initialPos.y + deltaY,
+          });
+        }
+        this.stateService.updateNodesPositions(updates);
+      } else {
+        const initialPos = this.initialNodePositions.get(dragId) ?? { x: 0, y: 0 };
+        this.stateService.updateNodePosition(dragId, initialPos.x + deltaX, initialPos.y + deltaY);
+      }
+    }
+  }
+
+  private scheduleDragDelta(clientX: number, clientY: number): void {
+    if (!this.hasDraggedNode) {
+      // First movement crossing threshold: execute synchronously for zero initial latency
+      this.applyDragDelta(clientX, clientY);
+      return;
+    }
+
+    this.pendingDragCoords = { clientX, clientY };
+    if (this.dragRafId !== null) return;
+
+    this.dragRafId = requestAnimationFrame(() => {
+      this.dragRafId = null;
+      if (this.pendingDragCoords) {
+        this.applyDragDelta(this.pendingDragCoords.clientX, this.pendingDragCoords.clientY);
+        this.pendingDragCoords = null;
+      }
+    });
+  }
+
+  private flushPendingDrag(): void {
+    if (this.dragRafId !== null) {
+      cancelAnimationFrame(this.dragRafId);
+      this.dragRafId = null;
+    }
+    if (this.pendingDragCoords) {
+      this.applyDragDelta(this.pendingDragCoords.clientX, this.pendingDragCoords.clientY);
+      this.pendingDragCoords = null;
+    }
+  }
+
   @HostListener('window:mousemove', ['$event'])
   onWindowMouseMove(event: MouseEvent): void {
     if (this.isPanning()) {
@@ -142,19 +321,7 @@ export class WorkflowCanvasComponent {
 
     const dragId = this.draggingNodeId();
     if (dragId) {
-      const container = this.canvasContainer()?.nativeElement;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const vp = this.viewport();
-
-      const canvasX = (event.clientX - rect.left - vp.x) / vp.zoom;
-      const canvasY = (event.clientY - rect.top - vp.y) / vp.zoom;
-
-      this.stateService.updateNodePosition(
-        dragId,
-        canvasX - this.dragOffset.x,
-        canvasY - this.dragOffset.y
-      );
+      this.scheduleDragDelta(event.clientX, event.clientY);
       return;
     }
 
@@ -172,7 +339,11 @@ export class WorkflowCanvasComponent {
       this.isPanning.set(false);
     }
     if (this.draggingNodeId()) {
+      this.flushPendingDrag();
+      this.stateService.isDraggingNode.set(false);
       this.draggingNodeId.set(null);
+      this.hasDraggedNode = false;
+      this.initialNodePositions.clear();
     }
     if (this.isConnecting()) {
       this.stateService.cancelConnecting();
@@ -182,6 +353,26 @@ export class WorkflowCanvasComponent {
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     if (isInputFocused(event)) return;
+
+    if (event.key === 'Escape') {
+      if (this.isConnecting()) {
+        event.preventDefault();
+        this.stateService.cancelConnecting();
+        return;
+      }
+      if (this.isPanning()) {
+        event.preventDefault();
+        this.isPanning.set(false);
+        return;
+      }
+      const selectedNodes = this.stateService.selectedNodeIds();
+      const selectedEdges = this.stateService.selectedEdgeIds();
+      if (selectedNodes.size > 0 || selectedEdges.size > 0) {
+        event.preventDefault();
+        this.stateService.clearSelection();
+        return;
+      }
+    }
 
     if (matchesShortcut('Delete / Backspace', event)) {
       const selectedNodes = this.stateService.selectedNodeIds();
@@ -214,8 +405,17 @@ export class WorkflowCanvasComponent {
     if (event.button !== 0) return;
     event.stopPropagation();
 
+    const isMultiModifier = event.shiftKey || event.ctrlKey;
+    const isAlreadySelected = this.stateService.selectedNodeIds().has(node.id);
+
+    if (isMultiModifier) {
+      this.stateService.selectNode(node.id, true);
+    } else if (!isAlreadySelected) {
+      this.stateService.selectNode(node.id, false);
+    }
+
     this.draggingNodeId.set(node.id);
-    this.stateService.selectNode(node.id, event.shiftKey || event.ctrlKey);
+    this.hasDraggedNode = false;
 
     const container = this.canvasContainer()?.nativeElement;
     if (!container) return;
@@ -224,11 +424,21 @@ export class WorkflowCanvasComponent {
 
     const canvasX = (event.clientX - rect.left - vp.x) / vp.zoom;
     const canvasY = (event.clientY - rect.top - vp.y) / vp.zoom;
+    this.dragStartCanvasPos = { x: canvasX, y: canvasY };
 
-    this.dragOffset = {
-      x: canvasX - node.x,
-      y: canvasY - node.y,
-    };
+    this.initialNodePositions.clear();
+    const currentSelected = this.stateService.selectedNodeIds();
+    const nodeMap = this.nodeMap();
+    if (currentSelected.has(node.id)) {
+      for (const id of currentSelected) {
+        const n = nodeMap.get(id);
+        if (n) {
+          this.initialNodePositions.set(id, { x: n.x, y: n.y });
+        }
+      }
+    } else {
+      this.initialNodePositions.set(node.id, { x: node.x, y: node.y });
+    }
   }
 
   onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
@@ -236,6 +446,7 @@ export class WorkflowCanvasComponent {
     event.stopPropagation();
 
     this.draggingNodeId.set(node.id);
+    this.hasDraggedNode = false;
     this.stateService.selectNode(node.id, false);
 
     const container = this.canvasContainer()?.nativeElement;
@@ -246,11 +457,21 @@ export class WorkflowCanvasComponent {
     const touch = event.touches[0];
     const canvasX = (touch.clientX - rect.left - vp.x) / vp.zoom;
     const canvasY = (touch.clientY - rect.top - vp.y) / vp.zoom;
+    this.dragStartCanvasPos = { x: canvasX, y: canvasY };
 
-    this.dragOffset = {
-      x: canvasX - node.x,
-      y: canvasY - node.y,
-    };
+    this.initialNodePositions.clear();
+    const currentSelected = this.stateService.selectedNodeIds();
+    const nodeMap = this.nodeMap();
+    if (currentSelected.has(node.id)) {
+      for (const id of currentSelected) {
+        const n = nodeMap.get(id);
+        if (n) {
+          this.initialNodePositions.set(id, { x: n.x, y: n.y });
+        }
+      }
+    } else {
+      this.initialNodePositions.set(node.id, { x: node.x, y: node.y });
+    }
   }
 
   // ── Touch Gestures (Canvas Pan & Pinch-to-Zoom) ───────────────────────────
@@ -319,19 +540,7 @@ export class WorkflowCanvasComponent {
     const dragId = this.draggingNodeId();
     if (dragId && touches.length === 1) {
       event.preventDefault();
-      const container = this.canvasContainer()?.nativeElement;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const vp = this.viewport();
-
-      const canvasX = (touches[0].clientX - rect.left - vp.x) / vp.zoom;
-      const canvasY = (touches[0].clientY - rect.top - vp.y) / vp.zoom;
-
-      this.stateService.updateNodePosition(
-        dragId,
-        canvasX - this.dragOffset.x,
-        canvasY - this.dragOffset.y
-      );
+      this.scheduleDragDelta(touches[0].clientX, touches[0].clientY);
       return;
     }
   }
@@ -340,7 +549,13 @@ export class WorkflowCanvasComponent {
     if (event.touches.length === 0) {
       this.isPanning.set(false);
       this.isPinching = false;
-      this.draggingNodeId.set(null);
+      if (this.draggingNodeId()) {
+        this.flushPendingDrag();
+        this.stateService.isDraggingNode.set(false);
+        this.draggingNodeId.set(null);
+        this.hasDraggedNode = false;
+        this.initialNodePositions.clear();
+      }
     } else if (event.touches.length === 1 && this.isPinching) {
       this.isPinching = false;
       this.isPanning.set(true);
@@ -349,7 +564,12 @@ export class WorkflowCanvasComponent {
     }
   }
 
-  onStartConnecting(sourceNodeId: string, portId: string, event: MouseEvent): void {
+  onStartConnecting(
+    sourceNodeId: string,
+    portId: string,
+    isOutput: boolean,
+    event: MouseEvent
+  ): void {
     const container = this.canvasContainer()?.nativeElement;
     if (!container) return;
     const rect = container.getBoundingClientRect();
@@ -357,12 +577,19 @@ export class WorkflowCanvasComponent {
       sourceNodeId,
       portId,
       event.clientX - rect.left,
-      event.clientY - rect.top
+      event.clientY - rect.top,
+      isOutput
     );
   }
 
-  onPortMouseUp(targetNodeId: string, portId: string): void {
-    this.stateService.finishConnecting(targetNodeId, portId);
+  onPortMouseUp(targetNodeId: string, portId: string, isOutput: boolean): void {
+    this.stateService.finishConnecting(targetNodeId, portId, isOutput);
+  }
+
+  onNodeSelected(nodeId: string): void {
+    if (!this.stateService.selectedNodeIds().has(nodeId)) {
+      this.stateService.selectNode(nodeId);
+    }
   }
 
   onMinimapPanTo(pos: { x: number; y: number }): void {
@@ -378,5 +605,33 @@ export class WorkflowCanvasComponent {
     } else {
       this.stateService.selectNode(nodeId);
     }
+  }
+
+  toggleMinimap(): void {
+    this.showMinimap.update(v => !v);
+  }
+
+  toggleNavigationAction(): void {
+    if (this.isMobile()) {
+      this.stateService.isMobileFocusMode.update(v => !v);
+    } else {
+      this.toggleMinimap();
+    }
+  }
+
+  zoomIn(): void {
+    this.stateService.zoomIn();
+  }
+
+  zoomOut(): void {
+    this.stateService.zoomOut();
+  }
+
+  resetZoom(): void {
+    this.stateService.resetZoom();
+  }
+
+  fitToView(): void {
+    this.stateService.fitToView();
   }
 }

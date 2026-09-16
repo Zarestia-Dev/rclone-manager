@@ -53,8 +53,6 @@ pub async fn create_workflow(
         nodes: workflow.nodes,
         edges: workflow.edges,
         viewport: workflow.viewport,
-        auto_start: workflow.auto_start,
-        cron_expression: workflow.cron_expression,
         created_at: Some(now.clone()),
         updated_at: Some(now),
         last_executed_at: None,
@@ -87,8 +85,6 @@ pub async fn update_workflow(
     existing.nodes = workflow.nodes;
     existing.edges = workflow.edges;
     existing.viewport = workflow.viewport;
-    existing.auto_start = workflow.auto_start;
-    existing.cron_expression = workflow.cron_expression;
     existing.updated_at = Some(Utc::now().to_rfc3339());
 
     save_workflow_record(&manager, &existing)?;
@@ -132,8 +128,6 @@ pub async fn duplicate_workflow(
         nodes: existing.nodes,
         edges: existing.edges,
         viewport: existing.viewport,
-        auto_start: existing.auto_start,
-        cron_expression: existing.cron_expression,
         created_at: Some(now.clone()),
         updated_at: Some(now),
         last_executed_at: None,
@@ -207,6 +201,25 @@ pub async fn import_workflow(
     save_workflow_record(&manager, &parsed)?;
     sync_workflow_automations_bg(&app).await;
     Ok(parsed)
+}
+
+/// Executes an arbitrary Rclone Remote Control (RC) command for testing and schema discovery.
+#[bridge]
+pub async fn test_rc_command(
+    app: AppHandle,
+    command: String,
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    use crate::core::flow::workflow::engine::parse_rc_params;
+    use crate::utils::types::state::RcloneState;
+
+    let state = app.state::<RcloneState>();
+    let parsed_params = parse_rc_params(params.as_ref())?;
+    state
+        .transport
+        .rpc(&command, Some(&parsed_params))
+        .await
+        .map_err(|e| format!("RC command '{command}' failed: {e}"))
 }
 
 // ── Persistence Helpers ──────────────────────────────────────────────────
@@ -328,8 +341,6 @@ mod tests {
             nodes: vec![],
             edges: vec![],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: Some("0 3 * * *".to_string()),
             created_at: None,
             updated_at: None,
             last_executed_at: None,

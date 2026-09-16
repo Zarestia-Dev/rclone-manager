@@ -3,30 +3,32 @@
   class="workflow-canvas-container"
   [class.is-panning]="isPanning()"
   [class.is-drag-target]="dragDropService.isDragging()"
+  [style.--pan-x.px]="viewport().x"
+  [style.--pan-y.px]="viewport().y"
+  [style.--zoom]="viewport().zoom"
   (mousedown)="onCanvasMouseDown($event)"
   (wheel)="onCanvasWheel($event)"
   (touchstart)="onCanvasTouchStart($event)"
   (touchmove)="onCanvasTouchMove($event)"
   (touchend)="onCanvasTouchEnd($event)"
   (touchcancel)="onCanvasTouchEnd($event)"
+  (contextmenu)="$event.preventDefault()"
 >
   <!-- Dot Grid & Scalable Plane -->
   <div class="workflow-canvas-plane" [style.transform]="canvasTransform()">
     <!-- SVG Wires Layer -->
     <svg class="workflow-canvas-svg">
-      @if (activeWorkflow(); as wf) {
-        @for (edge of wf.edges; track edge.id) {
-          <g
-            app-workflow-wire
-            [edge]="edge"
-            [sourcePos]="getPortCoordinate(edge.sourceNodeId, edge.sourcePortId, true)"
-            [targetPos]="getPortCoordinate(edge.targetNodeId, edge.targetPortId, false)"
-            [isSelected]="stateService.selectedEdgeIds().has(edge.id)"
-            [isActive]="engineService.activeEdgeIds().has(edge.id)"
-            (selectWire)="stateService.selectEdge($event)"
-            (removeWire)="stateService.removeEdge($event)"
-          ></g>
-        }
+      @for (wire of renderedWires(); track wire.edge.id) {
+        <g
+          app-workflow-wire
+          [edge]="wire.edge"
+          [sourcePos]="wire.sourcePos"
+          [targetPos]="wire.targetPos"
+          [isSelected]="stateService.selectedEdgeIds().has(wire.edge.id)"
+          [isActive]="engineService.activeEdgeIds().has(wire.edge.id)"
+          (selectWire)="stateService.selectEdge($event)"
+          (removeWire)="stateService.removeEdge($event)"
+        ></g>
       }
 
       <!-- Live connecting wire preview when dragging from port -->
@@ -42,36 +44,97 @@
           <app-workflow-node
             [node]="node"
             [isSelected]="stateService.selectedNodeIds().has(node.id)"
-            [zoom]="viewport().zoom"
             [style.left.px]="node.x"
             [style.top.px]="node.y"
             class="workflow-node-positioned"
-            [class.selected]="stateService.selectedNodeIds().has(node.id)"
             [class.is-dragging]="draggingNodeId() === node.id"
             (mousedown)="onNodeMouseDown(node, $event)"
             (touchstart)="onNodeTouchStart(node, $event)"
-            (selectNode)="stateService.selectNode($event)"
+            (selectNode)="onNodeSelected($event)"
             (deleteNode)="stateService.removeNode($event)"
             (duplicateNode)="stateService.duplicateNode($event)"
             (inspectNode)="onInspectNode($event)"
-            (startConnecting)="onStartConnecting(node.id, $event.portId, $event.event)"
-            (portMouseUp)="onPortMouseUp(node.id, $event.portId)"
+            (startConnecting)="
+              onStartConnecting(node.id, $event.portId, $event.isOutput, $event.event)
+            "
+            (portMouseUp)="onPortMouseUp(node.id, $event.portId, $event.isOutput)"
           ></app-workflow-node>
         }
       }
     </div>
   </div>
 
-  <!-- Floating Minimap Navigation -->
-  <div class="minimap-floating-container">
-    <app-workflow-minimap
-      [nodes]="activeWorkflow()?.nodes || []"
-      [edges]="activeWorkflow()?.edges || []"
-      [selectedNodeIds]="stateService.selectedNodeIds()"
-      [viewport]="viewport()"
-      [containerWidth]="containerWidth()"
-      [containerHeight]="containerHeight()"
-      (panTo)="onMinimapPanTo($event)"
-    ></app-workflow-minimap>
+  <!-- Floating Canvas Navigation Hub (Minimap + Floating Zoom Pill) -->
+  <div class="canvas-navigation-hub" [class.is-focus-mode]="stateService.isMobileFocusMode()">
+    @if (showMinimap()) {
+      <div class="minimap-container">
+        <app-workflow-minimap
+          [nodes]="activeWorkflow()?.nodes || []"
+          [edges]="activeWorkflow()?.edges || []"
+          [selectedNodeIds]="stateService.selectedNodeIds()"
+          [viewport]="viewport()"
+          [containerWidth]="stateService.canvasDimensions().width"
+          [containerHeight]="stateService.canvasDimensions().height"
+          (panTo)="onMinimapPanTo($event)"
+        ></app-workflow-minimap>
+      </div>
+    }
+
+    <!-- Floating Zoom Toolbar Pill -->
+    <div
+      class="floating-zoom-toolbar"
+      (mousedown)="$event.stopPropagation()"
+      (wheel)="$event.stopPropagation()"
+      role="toolbar"
+      [attr.aria-label]="'flow.workflow.canvas.navigation' | translate"
+    >
+      <button
+        type="button"
+        class="action-button"
+        (click)="zoomOut()"
+        [disabled]="viewport().zoom <= minZoom"
+        [attr.title]="'flow.workflow.toolbar.zoomOut' | translate"
+      >
+        <mat-icon svgIcon="remove"></mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="action-button zoom-percentage"
+        (click)="resetZoom()"
+        [attr.title]="'flow.workflow.toolbar.resetZoom' | translate"
+      >
+        {{ zoomPercentage() }}%
+      </button>
+
+      <button
+        type="button"
+        class="action-button"
+        (click)="zoomIn()"
+        [disabled]="viewport().zoom >= maxZoom"
+        [attr.title]="'flow.workflow.toolbar.zoomIn' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="action-button"
+        (click)="fitToView()"
+        [attr.title]="'flow.workflow.toolbar.fitToView' | translate"
+      >
+        <mat-icon svgIcon="expand"></mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="action-button nav-action-btn"
+        [class.active-btn]="isNavigationActionActive()"
+        (click)="toggleNavigationAction()"
+        [attr.title]="navigationActionTitle() | translate"
+      >
+        <mat-icon [svgIcon]="navigationActionIcon()"></mat-icon>
+      </button>
+    </div>
   </div>
 </div>

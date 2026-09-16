@@ -2,25 +2,47 @@
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: default;
+
+  // Font smoothing consistency to prevent subpixel jitter during animations
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  // Enterprise Performance & Layout Containment
+  contain: layout size paint;
+  isolation: isolate;
+
+  // Design Tokens for Infinite Synchronized Grid
+  --pan-x: 0px;
+  --pan-y: 0px;
+  --zoom: 1;
+
+  // Razor-Sharp Infinite Dot Grid
   background-color: var(--view-bg-color);
   background-image: radial-gradient(
     color-mix(in srgb, var(--border-color) 40%, transparent) 1px,
     transparent 1px
   );
-  background-size: 20px 20px;
-  overflow: hidden;
-  touch-action: none;
-  cursor: default;
+  background-size: 24px 24px;
+  background-position: var(--pan-x) var(--pan-y);
+
+  // Smooth interaction states
+  transition: background-color var(--transition-fast);
 
   &.is-panning {
-    cursor: grab;
+    cursor: grabbing;
+    user-select: none;
   }
 
   &.is-drag-target {
-    outline: 2px dashed color-mix(in srgb, var(--accent-color) 45%, transparent);
-    outline-offset: -2px;
+    outline: 2px dashed color-mix(in srgb, var(--accent-color) 50%, transparent);
+    outline-offset: -3px;
+    background-color: color-mix(in srgb, var(--accent-color) 2%, var(--view-bg-color));
   }
 
+  // ── Scalable World Plane ──────────────────────────────────────────────────
   .workflow-canvas-plane {
     position: absolute;
     top: 0;
@@ -30,14 +52,16 @@
     transform-origin: 0 0;
     pointer-events: none;
 
+    // ── Optimized Vector Wire Layer ─────────────────────────────────────────
     .workflow-canvas-svg {
       position: absolute;
       top: 0;
       left: 0;
-      width: 8000px;
-      height: 8000px;
+      width: 100%;
+      height: 100%;
       overflow: visible;
       pointer-events: none;
+      shape-rendering: geometricPrecision;
 
       .connecting-wire-preview {
         fill: none;
@@ -46,9 +70,11 @@
         stroke-dasharray: 6 6;
         stroke-linecap: round;
         pointer-events: none;
+        animation: connectingWireDash 0.8s linear infinite;
       }
     }
 
+    // ── Interactive HTML Node Layer ─────────────────────────────────────────
     .workflow-nodes-layer {
       position: absolute;
       top: 0;
@@ -59,6 +85,8 @@
         position: absolute;
         pointer-events: auto;
         z-index: 1;
+        transform-origin: 0 0;
+        touch-action: none;
 
         &.selected {
           z-index: 10;
@@ -66,19 +94,87 @@
 
         &.is-dragging {
           z-index: 20;
+          cursor: grabbing;
         }
       }
     }
   }
 
-  .minimap-floating-container {
+  // ── Floating Canvas Navigation Hub (Minimap + Floating Zoom Pill) ────────
+  .canvas-navigation-hub {
     position: absolute;
-    bottom: 16px;
-    right: 16px;
+    bottom: var(--space-md);
+    right: var(--space-md);
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-xs);
+    pointer-events: none;
 
-    @media (max-width: 600px) {
-      display: none;
+    .minimap-container {
+      pointer-events: auto;
+      border-radius: var(--radius-md);
+      box-shadow: var(--box-shadow);
+
+      @media (max-width: 600px) {
+        display: none;
+      }
     }
+
+    .floating-zoom-toolbar {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 6px;
+      background: var(--card-bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.22),
+        0 2px 6px rgba(0, 0, 0, 0.12);
+      transition: var(--transition-fast);
+
+      &:hover {
+        transform: scale(1.02);
+      }
+
+      .zoom-percentage {
+        width: auto;
+        min-width: 44px;
+        padding: 0 var(--space-xs);
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        font-family: var(--font-mono);
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .nav-action-btn {
+        &.active-btn {
+          color: var(--accent-color);
+        }
+      }
+    }
+
+    // Mobile View (<600px): strictly mobile layout
+    @media (max-width: 599.98px) {
+      // Default: safely above the floating bottom navigation bar
+      bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+      right: var(--space-sm);
+      transition: bottom var(--transition-standard);
+
+      // In focus mode or when bottom bar is hidden, drop down smoothly
+      &.is-focus-mode {
+        bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+      }
+    }
+  }
+}
+
+@keyframes connectingWireDash {
+  to {
+    stroke-dashoffset: -12;
   }
 }

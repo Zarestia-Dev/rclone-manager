@@ -3370,6 +3370,12 @@
         "exportWorkflow": "Експорт JSON",
         "inspectJob": "Інспектувати завдання"
       },
+      "canvas": {
+        "navigation": "Навігація по полотну",
+        "toggleMinimap": "Перемкнути мінікарту",
+        "enterFocusMode": "Фокус на полотні (Сховати навігацію)",
+        "exitFocusMode": "Вийти з фокусу (Показати навігацію)"
+      },
       "toolbar": {
         "selectWorkflow": "Вибрати процес",
         "newWorkflow": "Новий процес",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "Деталі завдання",
         "inspectJobBtn": "Інспектувати деталі завдання",
         "transfers": "Передачі",
-        "errors": "Помилки"
+        "errors": "Помилки",
+        "testRun": "Тестовий запуск",
+        "testRunRcHint": "Протестувати цю RC-команду з поточними параметрами",
+        "testSuccess": "Тест успішно пройдено",
+        "testFailed": "Тест завершився помилкою",
+        "useAsSampleSchema": "Зберегти як схему виводу",
+        "sampleOutputSchema": "Зразок схеми виводу",
+        "sampleOutputSchemaDesc": "Схема JSON-відповіді для надання динамічних полів змінних у наступних картках",
+        "sampleOutputPlaceholder": "Вставте зразок JSON-відповіді сюди...",
+        "availableOutputKeys": "Виявлені ключі змінних",
+        "upstreamOutputs": "Вихідні дані та змінні попередніх кроків",
+        "nodeOutput": "Вивід виконання вузла",
+        "checkReport": "Звіт про розбіжності (Check)",
+        "rawOutputJson": "Вихідні дані (JSON)",
+        "conditionPresets": "Швидкі шаблони умов",
+        "condPresetHasDiff": "Є відмінності",
+        "condPresetNoDiff": "Немає відмінностей",
+        "condPresetDiffCount": "Знайдено відмінностей (>0)",
+        "condPresetHasErrors": "Є помилки",
+        "condPresetTransferred": "Передано (>0)",
+        "condPresetScriptSuccess": "Скрипт успішний",
+        "notificationPresets": "Швидкі шаблони повідомлень",
+        "notifPresetCheckReport": "Звіт про перевірку",
+        "notifPresetTransferSummary": "Підсумок передачі",
+        "notifPresetFailureAlert": "Сповіщення про збій",
+        "notifPresetHealthStatus": "Стан рушія",
+        "opGreaterOrEqual": "Більше або дорівнює (>=)",
+        "opLessOrEqual": "Менше або дорівнює (<=)",
+        "opStartsWith": "Починається з",
+        "opEndsWith": "Закінчується на",
+        "opArrayNotEmpty": "Масив не порожній",
+        "opArrayIsEmpty": "Масив порожній",
+        "preview": "Попередній перегляд повідомлення"
       },
       "status": {
         "running": "Виконується",
@@ -3633,12 +3671,44 @@
         "updated": "Оновлено"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "Змонтовано",
+        "serving": "Надання доступу"
       },
       "recipes": {
-        "manualTrigger": "Ручний запуск",
-        "manualTriggerDesc": "Запущено вручну з інтерфейсу"
+        "driftCheckSync": {
+          "name": "Розумна перевірка розбіжностей та умовна синхронізація",
+          "description": "Перевіряє відмінності через check; синхронізує лише при виявленні розбіжностей і сповіщає про обсяг."
+        },
+        "integrityAudit": {
+          "name": "Аудит цілісності даних та звіт про розбіжності",
+          "description": "Виконує регулярну перевірку цілісності; надсилає звіт Markdown у разі наявності розбіжностей."
+        },
+        "safeSyncAlert": {
+          "name": "Безпечна синхронізація зі сповіщенням про помилку",
+          "description": "Виконує синхронізацію, сповіщаючи про переданий обсяг при успіху або передаючи деталі помилки при збої."
+        },
+        "dailyBackup": {
+          "name": "Щоденне резервне копіювання та сповіщення",
+          "description": "Запускає синхронізацію щодня о 02:00, сповіщаючи про успіх або збій."
+        },
+        "watchUpload": {
+          "name": "Відстеження папки та автозавантаження",
+          "description": "Відстежує локальну папку та копіює нові/змінені файли до хмари."
+        },
+        "parallelMirror": {
+          "name": "Паралельне мультихмарне дзеркалювання",
+          "description": "Синхронізує дані одночасно до двох різних хмар і перевіряє завершення."
+        },
+        "mountOnDemand": {
+          "name": "Монтування на вимогу та сповіщення",
+          "description": "Монтує віддалене сховище та сповіщає стільницю про готовність диска."
+        },
+        "manualTrigger": "Вручну",
+        "manualTriggerDesc": "Запускається вручну на вимогу",
+        "vfsRefresh": {
+          "name": "Автоматизація оновлення кешу VFS",
+          "description": "Надсилає RC-команду vfs/refresh для перезавантаження кешу каталогів на змонтованих дисках та сповіщає стільницю."
+        }
       },
       "editor": {
         "configureNode": "Налаштування вузла: {{type}}",

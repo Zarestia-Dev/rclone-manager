@@ -103,7 +103,7 @@ describe('WorkflowDragDropService', () => {
       200,
       150,
       expect.objectContaining({
-        icon: 'sync',
+        config: { sourceRemote: 'drive:' },
       })
     );
 

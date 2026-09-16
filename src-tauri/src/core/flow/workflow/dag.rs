@@ -93,10 +93,10 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
     }
 
     // Check trigger node existence
-    let has_trigger = workflow
-        .nodes
-        .iter()
-        .any(|n| n.category == WorkflowNodeCategory::Trigger);
+    let has_trigger = workflow.nodes.iter().any(|n| {
+        n.category == WorkflowNodeCategory::Trigger
+            || n.resolved_category() == WorkflowNodeCategory::Trigger
+    });
     if !has_trigger {
         warnings.push("Workflow has no trigger node (can only be run manually)".to_string());
     }
@@ -172,7 +172,6 @@ mod tests {
             category,
             title: title.to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![],
@@ -284,8 +283,6 @@ mod tests {
             ],
             edges: vec![create_test_edge("n1", "n2")],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,
@@ -308,8 +305,6 @@ mod tests {
             ],
             edges: vec![create_test_edge("n1", "n2"), create_test_edge("n2", "n1")],
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,

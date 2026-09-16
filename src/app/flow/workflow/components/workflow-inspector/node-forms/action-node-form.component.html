@@ -24,11 +24,11 @@
       <div class="action-summary-card">
         <div class="summary-header">
           <mat-icon [svgIcon]="getActionIcon(action.kind)"></mat-icon>
-          <span class="action-name">{{ action.name }}</span>
+          <span class="action-name truncate">{{ action.name }}</span>
           <span class="action-kind-pill">{{ action.kind }}</span>
         </div>
         @if (getActionDetail(action); as detail) {
-          <div class="summary-detail" [attr.title]="detail">{{ detail }}</div>
+          <div class="summary-detail truncate" [attr.title]="detail">{{ detail }}</div>
         }
       </div>
     }
@@ -48,6 +48,46 @@
     </div>
   }
 
+  <div class="output-vars-section">
+    <span class="section-sub-title">{{
+      'flow.workflow.inspector.notificationPresets' | translate
+    }}</span>
+    <div class="presets-row">
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyNotificationPreset('check_report')"
+      >
+        <mat-icon svgIcon="shield"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.notifPresetCheckReport' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyNotificationPreset('transfer_summary')"
+      >
+        <mat-icon svgIcon="sync"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.notifPresetTransferSummary' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyNotificationPreset('failure_alert')"
+      >
+        <mat-icon svgIcon="warning"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.notifPresetFailureAlert' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        (click)="applyNotificationPreset('health_status')"
+      >
+        <mat-icon svgIcon="circle-info"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.notifPresetHealthStatus' | translate }}</span>
+      </button>
+    </div>
+  </div>
+
   <mat-form-field class="form-field-full">
     <mat-label>{{ 'flow.workflow.inspector.alertTitle' | translate }}</mat-label>
     <input
@@ -61,12 +101,78 @@
     <mat-label>{{ 'flow.workflow.inspector.alertMessage' | translate }}</mat-label>
     <textarea
       matInput
-      rows="2"
+      rows="3"
       class="code-font"
       [ngModel]="nodeConfig()['message'] || ''"
       (ngModelChange)="onFieldChange('message', $event)"
     ></textarea>
   </mat-form-field>
+
+  @if (nodeConfig()['message']) {
+    <div class="preview-box">
+      <div class="preview-header">
+        <span class="preview-title">{{ 'flow.workflow.inspector.preview' | translate }}</span>
+        <span class="preview-badge">{{
+          $any(nodeConfig()['severity']) || 'info' | uppercase
+        }}</span>
+      </div>
+      <div class="preview-content">{{ previewMessage() }}</div>
+    </div>
+  }
+
+  <div class="output-vars-section">
+    <span class="section-sub-title">{{
+      'flow.workflow.inspector.upstreamOutputs' | translate
+    }}</span>
+    <div class="tags-row">
+      @for (tok of quickOutputTokens(); track tok) {
+        <button
+          type="button"
+          class="app-pill interactive"
+          (click)="insertVariableToken(tok)"
+          [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
+        >
+          <code>{{ '{{' }}{{ tok }}{{ '}}' }}</code>
+        </button>
+      }
+    </div>
+
+    @if (upstreamNodes().length > 0) {
+      <mat-form-field class="form-field-full">
+        <mat-label>{{ 'flow.workflow.inspector.targetNode' | translate }}</mat-label>
+        <mat-select
+          [ngModel]="selectedVariableNodeId()"
+          (ngModelChange)="selectedVariableNodeId.set($event)"
+        >
+          @for (n of upstreamNodes(); track n.id) {
+            <mat-option [value]="n.id">{{ n.title }} ({{ n.id }})</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field class="form-field-full">
+        <mat-label>{{ 'flow.workflow.inspector.targetNodeField' | translate }}</mat-label>
+        <mat-select
+          [ngModel]="selectedVariableField()"
+          (ngModelChange)="selectedVariableField.set($event)"
+        >
+          @for (f of availableFieldsForSelectedNode(); track f.key) {
+            <mat-option [value]="f.key">{{ f.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        type="button"
+        matButton="tonal"
+        (click)="insertUpstreamToken()"
+        [attr.title]="'flow.workflow.inspector.insertTokenBtn' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+        <span>{{ 'flow.workflow.inspector.insertTokenBtn' | translate }}</span>
+      </button>
+    }
+  </div>
 
   <app-alert-banner
     severity="info"
@@ -76,7 +182,7 @@
       @for (key of templateKeys(); track key) {
         <button
           type="button"
-          class="tag-btn"
+          class="app-pill interactive"
           (click)="insertTemplateVariable(key)"
           [attr.title]="'flow.workflow.inspector.insertVariableHint' | translate"
         >

@@ -144,30 +144,33 @@ struct NodeFinishedEvent {
     duration_ms: u64,
 }
 
-/// Resolves token values like `{{nodes.<id>.<path>}}` or `{{steps.<id>.<path>}}`
-fn resolve_token_value(token: &str, results: &HashMap<String, Value>) -> Option<String> {
-    let path = token
-        .strip_prefix("nodes.")
-        .or_else(|| token.strip_prefix("steps."))?;
-    let mut parts = path.splitn(2, '.');
-    let node_id = parts.next()?;
-    let field_path = parts.next().unwrap_or("");
+pub use crate::utils::format::format_file_size;
 
-    let node_val = results.get(node_id)?;
+/// Resolves a nested JSON path on a Value, supporting array indexing and length.
+fn resolve_nested_json_path(root: &Value, field_path: &str) -> Option<String> {
     if field_path.is_empty() {
-        return Some(match node_val {
+        return Some(match root {
             Value::String(s) => s.clone(),
+            Value::Object(_) | Value::Array(_) => {
+                serde_json::to_string_pretty(root).unwrap_or_else(|_| root.to_string())
+            }
             other => other.to_string(),
         });
     }
 
-    let mut current = node_val;
-    for segment in field_path.split('.') {
+    // Normalize brackets: `items[0].name` -> `items.0.name`
+    let normalized = field_path.replace('[', ".").replace(']', "");
+    let mut current = root;
+
+    for segment in normalized.split('.').filter(|s| !s.is_empty()) {
         match current {
             Value::Object(map) => {
                 current = map.get(segment)?;
             }
             Value::Array(arr) => {
+                if segment == "length" || segment == "count" {
+                    return Some(arr.len().to_string());
+                }
                 let idx: usize = segment.parse().ok()?;
                 current = arr.get(idx)?;
             }
@@ -177,11 +180,109 @@ fn resolve_token_value(token: &str, results: &HashMap<String, Value>) -> Option<
 
     Some(match current {
         Value::String(s) => s.clone(),
+        Value::Array(arr) => {
+            if arr.iter().all(Value::is_string) {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            } else {
+                serde_json::to_string_pretty(current).unwrap_or_else(|_| current.to_string())
+            }
+        }
+        Value::Object(_) => {
+            serde_json::to_string_pretty(current).unwrap_or_else(|_| current.to_string())
+        }
         other => other.to_string(),
     })
 }
 
-fn replace_workflow_tokens(input: &str, results: &HashMap<String, Value>) -> String {
+/// Resolves token values like `{{prev.<path>}}`, `{{nodes.<id>.<path>}}`,
+/// `{{nodes["Title"].<path>}}`, or `{{steps.<id>.<path>}}`.
+fn resolve_token_value(
+    token: &str,
+    results: &HashMap<String, Value>,
+    workflow: Option<&WorkflowDefinition>,
+    current_node_id: Option<&str>,
+) -> Option<String> {
+    let trimmed = token.trim();
+
+    // 1. Handle `prev.<path>` or `previous.<path>`
+    if trimmed == "prev"
+        || trimmed == "previous"
+        || trimmed.starts_with("prev.")
+        || trimmed.starts_with("previous.")
+    {
+        let field_path = trimmed
+            .strip_prefix("prev.")
+            .or_else(|| trimmed.strip_prefix("previous."))
+            .unwrap_or("");
+
+        if let (Some(wf), Some(curr_id)) = (workflow, current_node_id) {
+            let prev_val = wf
+                .edges
+                .iter()
+                .filter(|e| e.target_node_id == curr_id)
+                .find_map(|e| results.get(&e.source_node_id));
+
+            if let Some(val) = prev_val {
+                return resolve_nested_json_path(val, field_path);
+            }
+        }
+        return None;
+    }
+
+    // 2. Handle `nodes.<id/title>.<path>` or `steps.<id/title>.<path>`
+    let raw_path = trimmed
+        .strip_prefix("nodes.")
+        .or_else(|| trimmed.strip_prefix("steps."))
+        .or_else(|| trimmed.strip_prefix("nodes["))
+        .or_else(|| trimmed.strip_prefix("steps["))?;
+
+    let (node_identifier, field_path) =
+        if trimmed.starts_with("nodes[") || trimmed.starts_with("steps[") {
+            let close_bracket = raw_path.find(']')?;
+            let name = raw_path[..close_bracket].trim().trim_matches(['\'', '"']);
+            let remaining = raw_path[close_bracket + 1..].trim_start_matches('.');
+            (name, remaining)
+        } else {
+            let mut parts = raw_path.splitn(2, '.');
+            let name = parts.next()?;
+            let field = parts.next().unwrap_or("");
+            (name, field)
+        };
+
+    // Try direct ID lookup first
+    if let Some(node_val) = results.get(node_identifier) {
+        return resolve_nested_json_path(node_val, field_path);
+    }
+
+    // Fall back to title lookup if workflow definition is present
+    if let Some(wf) = workflow {
+        let matched_node = wf.nodes.iter().find(|n| {
+            n.id == node_identifier
+                || n.title.eq_ignore_ascii_case(node_identifier)
+                || n.title
+                    .replace(' ', "")
+                    .eq_ignore_ascii_case(&node_identifier.replace(' ', ""))
+        });
+
+        if let Some(node) = matched_node
+            && let Some(node_val) = results.get(&node.id)
+        {
+            return resolve_nested_json_path(node_val, field_path);
+        }
+    }
+
+    None
+}
+
+fn replace_workflow_tokens(
+    input: &str,
+    results: &HashMap<String, Value>,
+    workflow: Option<&WorkflowDefinition>,
+    current_node_id: Option<&str>,
+) -> String {
     let mut out = String::with_capacity(input.len());
     let mut rest = input;
 
@@ -190,7 +291,7 @@ fn replace_workflow_tokens(input: &str, results: &HashMap<String, Value>) -> Str
         let after_start = &rest[start + 2..];
         if let Some(end) = after_start.find("}}") {
             let token = after_start[..end].trim();
-            if let Some(val_str) = resolve_token_value(token, results) {
+            if let Some(val_str) = resolve_token_value(token, results, workflow, current_node_id) {
                 out.push_str(&val_str);
             } else {
                 out.push_str("{{");
@@ -207,25 +308,35 @@ fn replace_workflow_tokens(input: &str, results: &HashMap<String, Value>) -> Str
     out
 }
 
-pub(crate) fn interpolate_node_config(config: &Value, results: &HashMap<String, Value>) -> Value {
+pub(crate) fn interpolate_node_config_with_context(
+    config: &Value,
+    results: &HashMap<String, Value>,
+    workflow: Option<&WorkflowDefinition>,
+    current_node_id: Option<&str>,
+) -> Value {
     match config {
         Value::String(s) => {
             let mut resolved = s.clone();
             if resolved.contains("{{") && resolved.contains("}}") {
-                resolved = replace_workflow_tokens(&resolved, results);
+                resolved = replace_workflow_tokens(&resolved, results, workflow, current_node_id);
             }
             crate::utils::json_helpers::interpolate_value(&Value::String(resolved))
         }
         Value::Object(map) => {
             let mut new_map = serde_json::Map::with_capacity(map.len());
             for (k, v) in map {
-                new_map.insert(k.clone(), interpolate_node_config(v, results));
+                new_map.insert(
+                    k.clone(),
+                    interpolate_node_config_with_context(v, results, workflow, current_node_id),
+                );
             }
             Value::Object(new_map)
         }
         Value::Array(arr) => Value::Array(
             arr.iter()
-                .map(|v| interpolate_node_config(v, results))
+                .map(|v| {
+                    interpolate_node_config_with_context(v, results, workflow, current_node_id)
+                })
                 .collect(),
         ),
         _ => config.clone(),
@@ -299,6 +410,11 @@ fn activate_outgoing_edges(
                         )
                     } else if branch == "false" {
                         matches!(port_type, Some(WorkflowPortType::False))
+                    } else if branch == "failure" {
+                        matches!(port_type, Some(WorkflowPortType::Failure))
+                            || port
+                                .map(|p| p.id == "failure" || p.name == "failure")
+                                .unwrap_or(false)
                     } else {
                         port.map(|p| p.id == *branch || p.name == *branch)
                             .unwrap_or(false)
@@ -330,6 +446,205 @@ impl Drop for ActiveJobGuard {
     fn drop(&mut self) {
         self.active_jobs.write().remove(&self.job_id);
     }
+}
+
+fn extract_string_list(val: Option<&Value>) -> Vec<String> {
+    match val {
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Normalizes Rclone JobInfo stats into a rich, structured execution output.
+fn build_job_execution_output(
+    job: &crate::utils::types::jobs::JobInfo,
+    is_success: bool,
+    error_msg: Option<&str>,
+) -> Value {
+    let stats = job.stats.as_ref();
+    let bytes = stats
+        .and_then(|s| s.get("bytes"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let total_bytes = stats
+        .and_then(|s| s.get("totalBytes"))
+        .and_then(Value::as_u64)
+        .unwrap_or(bytes);
+    let transfers = stats
+        .and_then(|s| s.get("transfers"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let total_transfers = stats
+        .and_then(|s| s.get("totalTransfers"))
+        .and_then(Value::as_u64)
+        .unwrap_or(transfers);
+    let errors = stats
+        .and_then(|s| s.get("errors"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let checks = stats
+        .and_then(|s| s.get("checks"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let speed = stats
+        .and_then(|s| s.get("speed"))
+        .and_then(Value::as_f64)
+        .map(|f| f.max(0.0) as u64)
+        .unwrap_or(0);
+
+    let is_check = matches!(job.job_type, JobType::Check | JobType::CryptCheck);
+
+    let check_obj = stats.and_then(|s| s.get("checkOutput")).or(stats);
+
+    let differ = check_obj
+        .and_then(|c| c.get("differ"))
+        .map(|v| extract_string_list(Some(v)))
+        .unwrap_or_default();
+    let missing_on_dst = check_obj
+        .and_then(|c| c.get("missingOnDst"))
+        .map(|v| extract_string_list(Some(v)))
+        .unwrap_or_default();
+    let missing_on_src = check_obj
+        .and_then(|c| c.get("missingOnSrc"))
+        .map(|v| extract_string_list(Some(v)))
+        .unwrap_or_default();
+    let matched = check_obj
+        .and_then(|c| c.get("match"))
+        .map(|v| extract_string_list(Some(v)))
+        .unwrap_or_default();
+    let check_errors = check_obj
+        .and_then(|c| c.get("error"))
+        .map(|v| extract_string_list(Some(v)))
+        .unwrap_or_default();
+
+    let differ_count = differ.len();
+    let missing_dst_count = missing_on_dst.len();
+    let missing_src_count = missing_on_src.len();
+    let match_count = if !matched.is_empty() {
+        matched.len()
+    } else {
+        checks as usize
+    };
+    let error_count = check_errors.len().max(errors as usize);
+    let has_differences = differ_count > 0 || missing_dst_count > 0 || missing_src_count > 0;
+
+    let summary = if is_check {
+        if has_differences {
+            let total_diff = differ_count + missing_dst_count + missing_src_count;
+            format!(
+                "Check found {total_diff} difference(s): {differ_count} differ, {missing_dst_count} missing on destination, {missing_src_count} missing on source."
+            )
+        } else if error_count > 0 {
+            format!("Check completed with {error_count} error(s).")
+        } else {
+            format!("Check passed: all {match_count} file(s) matched with 0 differences.")
+        }
+    } else if is_success {
+        if transfers > 0 || bytes > 0 {
+            format!(
+                "{transfers} file(s) ({}) transferred successfully, {errors} error(s).",
+                format_file_size(bytes)
+            )
+        } else {
+            format!("Transfer completed successfully (0 files transferred, {errors} errors).")
+        }
+    } else {
+        format!("Job failed: {}", error_msg.unwrap_or("Unknown error"))
+    };
+
+    let mut out = json!({
+        "jobId": job.jobid,
+        "jobType": job.job_type.to_string(),
+        "success": is_success,
+        "status": if is_success { "success" } else { "failed" },
+        "bytes": bytes,
+        "bytesFormatted": format_file_size(bytes),
+        "totalBytes": total_bytes,
+        "totalBytesFormatted": format_file_size(total_bytes),
+        "transfers": transfers,
+        "totalTransfers": total_transfers,
+        "errors": errors,
+        "checks": checks,
+        "speed": speed,
+        "speedFormatted": format!("{}/s", format_file_size(speed)),
+        "summary": summary,
+        "stats": job.stats.clone().unwrap_or(json!({})),
+    });
+
+    if is_check {
+        let mut report_lines = Vec::new();
+        report_lines.push("### Check Report".to_string());
+        if has_differences {
+            let total_diff = differ_count + missing_dst_count + missing_src_count;
+            report_lines.push(format!(
+                "- **Status**: Differences detected ({total_diff} file(s))"
+            ));
+            if match_count > 0 {
+                report_lines.push(format!("- **Matched Files**: {match_count}"));
+            }
+            if !differ.is_empty() {
+                report_lines.push(format!("- **Differing Files ({differ_count})**:"));
+                for f in differ.iter().take(20) {
+                    report_lines.push(format!("  • {f}"));
+                }
+                if differ.len() > 20 {
+                    report_lines.push(format!("  • ... and {} more", differ.len() - 20));
+                }
+            }
+            if !missing_on_dst.is_empty() {
+                report_lines.push(format!(
+                    "- **Missing on Destination ({missing_dst_count})**:"
+                ));
+                for f in missing_on_dst.iter().take(20) {
+                    report_lines.push(format!("  • {f}"));
+                }
+                if missing_on_dst.len() > 20 {
+                    report_lines.push(format!("  • ... and {} more", missing_on_dst.len() - 20));
+                }
+            }
+            if !missing_on_src.is_empty() {
+                report_lines.push(format!("- **Missing on Source ({missing_src_count})**:"));
+                for f in missing_on_src.iter().take(20) {
+                    report_lines.push(format!("  • {f}"));
+                }
+                if missing_on_src.len() > 20 {
+                    report_lines.push(format!("  • ... and {} more", missing_on_src.len() - 20));
+                }
+            }
+        } else if error_count > 0 {
+            report_lines.push(format!(
+                "- **Status**: Completed with {error_count} error(s)"
+            ));
+        } else {
+            report_lines.push(format!(
+                "- **Status**: All {match_count} file(s) matched identically (0 differences)."
+            ));
+        }
+        let report = report_lines.join("\n");
+
+        if let Some(obj) = out.as_object_mut() {
+            obj.insert("hasDifferences".to_string(), json!(has_differences));
+            obj.insert("differCount".to_string(), json!(differ_count));
+            obj.insert("missingOnDstCount".to_string(), json!(missing_dst_count));
+            obj.insert("missingOnSrcCount".to_string(), json!(missing_src_count));
+            obj.insert("matchCount".to_string(), json!(match_count));
+            obj.insert("errorCount".to_string(), json!(error_count));
+            obj.insert("differ".to_string(), json!(differ));
+            obj.insert("missingOnDst".to_string(), json!(missing_on_dst));
+            obj.insert("missingOnSrc".to_string(), json!(missing_on_src));
+            obj.insert("report".to_string(), json!(report));
+        }
+    }
+
+    if let (Some(err), Some(obj)) = (error_msg, out.as_object_mut()) {
+        obj.insert("error".to_string(), json!(err));
+        obj.insert("errorMessage".to_string(), json!(err));
+    }
+
+    out
 }
 
 /// Awaits an active Rclone job until it reaches a terminal state,
@@ -366,15 +681,19 @@ async fn await_rclone_job(
         if let Some(job) = job_cache.get_job(job_id).await {
             match job.status {
                 JobStatus::Completed => {
-                    return Ok(NodeExecutionOutput::new(json!({
-                        "jobId": job_id,
-                        "success": true,
-                        "stats": job.stats,
-                    })));
+                    let out = build_job_execution_output(&job, true, None);
+                    return Ok(NodeExecutionOutput::new(out));
                 }
                 JobStatus::Failed => {
-                    let err = job.error.unwrap_or_else(|| format!("Job {job_id} failed"));
-                    return Err(err);
+                    let err = job
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| format!("Job {job_id} failed"));
+                    let out = build_job_execution_output(&job, false, Some(&err));
+                    return Ok(NodeExecutionOutput {
+                        value: out,
+                        branch: Some("failure".to_string()),
+                    });
                 }
                 JobStatus::Stopped => {
                     return Err(format!("Job {job_id} was stopped"));
@@ -398,7 +717,9 @@ async fn await_rclone_job(
         } else {
             return Ok(NodeExecutionOutput::new(json!({
                 "jobId": job_id,
-                "status": "completed"
+                "status": "completed",
+                "success": true,
+                "summary": format!("Job {job_id} completed"),
             })));
         }
     }
@@ -515,6 +836,8 @@ pub(crate) fn evaluate_condition(operator: &str, left: &str, right: &str) -> boo
         "not_equals" => left != right,
         "contains" => left.contains(right),
         "not_contains" => !left.contains(right),
+        "starts_with" => left.starts_with(right),
+        "ends_with" => left.ends_with(right),
         "truthy" => !left.trim().is_empty() && left != "0" && left != "false",
         "is_empty" => left.trim().is_empty(),
         "file_exists" => std::path::Path::new(left).exists(),
@@ -523,10 +846,40 @@ pub(crate) fn evaluate_condition(operator: &str, left: &str, right: &str) -> boo
             let r: f64 = right.trim().parse().unwrap_or(0.0);
             l > r
         }
+        "greater_or_equal" | "gte" => {
+            let l: f64 = left.trim().parse().unwrap_or(0.0);
+            let r: f64 = right.trim().parse().unwrap_or(0.0);
+            l >= r
+        }
         "less_than" => {
             let l: f64 = left.trim().parse().unwrap_or(0.0);
             let r: f64 = right.trim().parse().unwrap_or(0.0);
             l < r
+        }
+        "less_or_equal" | "lte" => {
+            let l: f64 = left.trim().parse().unwrap_or(0.0);
+            let r: f64 = right.trim().parse().unwrap_or(0.0);
+            l <= r
+        }
+        "array_not_empty" => {
+            let trimmed = left.trim();
+            if trimmed.starts_with('[') && trimmed.ends_with(']') {
+                serde_json::from_str::<Value>(trimmed)
+                    .map(|v| v.as_array().map(|a| !a.is_empty()).unwrap_or(false))
+                    .unwrap_or(!trimmed.is_empty())
+            } else {
+                !trimmed.is_empty() && trimmed != "0" && trimmed != "false"
+            }
+        }
+        "array_is_empty" => {
+            let trimmed = left.trim();
+            if trimmed.starts_with('[') && trimmed.ends_with(']') {
+                serde_json::from_str::<Value>(trimmed)
+                    .map(|v| v.as_array().map(|a| a.is_empty()).unwrap_or(true))
+                    .unwrap_or(trimmed.len() <= 2)
+            } else {
+                trimmed.is_empty() || trimmed == "[]"
+            }
         }
         _ => left == right,
     }
@@ -584,7 +937,7 @@ pub(crate) fn parse_rc_params(params_val: Option<&Value>) -> Result<Value, Strin
 }
 
 /// Resolves the delay duration in seconds from the node configuration,
-/// using the `seconds` key in integer, float, or string representations.
+/// using the `delaySeconds` key in integer, float, or string representations.
 pub(crate) fn resolve_delay_seconds(config: &Value) -> u64 {
     let parse_u64 = |val: Option<&Value>| -> Option<u64> {
         val.and_then(Value::as_u64)
@@ -595,7 +948,7 @@ pub(crate) fn resolve_delay_seconds(config: &Value) -> u64 {
             })
     };
 
-    parse_u64(config.get("seconds")).unwrap_or(5)
+    parse_u64(config.get("delaySeconds")).unwrap_or(5)
 }
 
 /// Executes a 'delay' node by pausing execution for the resolved duration,
@@ -727,17 +1080,37 @@ pub(crate) async fn handle_exec_script_node(
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let exit_code = output.status.code().unwrap_or(-1);
+    let is_success = output.status.success();
 
-    if !output.status.success() && fail_on_error {
-        return Err(format!("Command exited with code {exit_code}: {stderr}"));
-    }
+    let trimmed_stdout = stdout.trim().to_string();
+    let trimmed_stderr = stderr.trim().to_string();
+    let primary_output = if !trimmed_stdout.is_empty() {
+        trimmed_stdout
+    } else {
+        trimmed_stderr
+    };
 
-    Ok(NodeExecutionOutput::new(json!({
+    let summary = if is_success {
+        format!("Script completed with exit code {exit_code}")
+    } else {
+        format!("Script failed with exit code {exit_code}: {stderr}")
+    };
+
+    let result_json = json!({
         "exitCode": exit_code,
         "stdout": stdout,
         "stderr": stderr,
-        "success": output.status.success()
-    })))
+        "output": primary_output,
+        "summary": summary,
+        "success": is_success,
+        "status": if is_success { "success" } else { "failed" },
+    });
+
+    if !is_success && fail_on_error {
+        return Err(format!("Command exited with code {exit_code}: {stderr}"));
+    }
+
+    Ok(NodeExecutionOutput::new(result_json))
 }
 
 /// Dispatches an individual node's execution based on type and interpolated config.
@@ -758,7 +1131,7 @@ async fn execute_single_node(
 
     let interpolated_config = {
         let results = node_results.read();
-        interpolate_node_config(&node.config, &results)
+        interpolate_node_config_with_context(&node.config, &results, Some(workflow), Some(&node.id))
     };
     let config = &interpolated_config;
 
@@ -847,14 +1220,21 @@ async fn execute_single_node(
                 .get("operator")
                 .and_then(Value::as_str)
                 .unwrap_or("equals");
-            let left = config
+            let mut left = config
                 .get("leftValue")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            let right = config
+            let mut right = config
                 .get("rightValue")
                 .and_then(Value::as_str)
                 .unwrap_or("");
+
+            if left.starts_with("{{") && left.ends_with("}}") {
+                left = "";
+            }
+            if right.starts_with("{{") && right.ends_with("}}") {
+                right = "";
+            }
 
             let is_true = evaluate_condition(operator, left, right);
 
@@ -1281,7 +1661,24 @@ async fn execute_single_node(
                 _ = cancel_rx.changed() => return Err(format!("Workflow cancelled during RC command '{command}'")),
             };
 
-            Ok(NodeExecutionOutput::new(out))
+            let formatted_json =
+                serde_json::to_string_pretty(&out).unwrap_or_else(|_| out.to_string());
+            let mut envelope = json!({
+                "command": command,
+                "success": true,
+                "status": "success",
+                "result": out,
+                "json": formatted_json,
+            });
+            if let (Some(obj), Some(env_obj)) = (out.as_object(), envelope.as_object_mut()) {
+                for (k, v) in obj {
+                    if !env_obj.contains_key(k) {
+                        env_obj.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+
+            Ok(NodeExecutionOutput::new(envelope))
         }
 
         // Archive create transfer
@@ -1814,7 +2211,10 @@ pub async fn execute_workflow(
             .get(&node.id)
             .map(|e| !e.is_empty())
             .unwrap_or(false);
-        if node.category == WorkflowNodeCategory::Trigger || !has_incoming {
+        if node.category == WorkflowNodeCategory::Trigger
+            || node.resolved_category() == WorkflowNodeCategory::Trigger
+            || !has_incoming
+        {
             ready_queue.push_back(node.id.clone());
         }
     }
@@ -1835,6 +2235,7 @@ pub async fn execute_workflow(
                             state: WorkflowNodeExecutionState::Running,
                             error_message: None,
                             duration_ms: None,
+                            output: None,
                         },
                     );
 
@@ -1923,8 +2324,28 @@ pub async fn execute_workflow(
 
         match finished.outcome {
             Ok(ref output) => {
-                completed_nodes += 1;
-                node_statuses.insert(node_id.clone(), NodeStatus::Completed(output.clone()));
+                let is_failure_branch = output.branch.as_deref() == Some("failure");
+                let is_node_success = output
+                    .value
+                    .get("success")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(!is_failure_branch);
+
+                if is_node_success {
+                    completed_nodes += 1;
+                    node_statuses.insert(node_id.clone(), NodeStatus::Completed(output.clone()));
+                } else {
+                    failed_nodes += 1;
+                    let err_msg = output
+                        .value
+                        .get("error")
+                        .or_else(|| output.value.get("errorMessage"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("Step failed")
+                        .to_string();
+                    node_statuses.insert(node_id.clone(), NodeStatus::Failed(err_msg));
+                }
+
                 node_results
                     .write()
                     .insert(node_id.clone(), output.value.clone());
@@ -1941,15 +2362,36 @@ pub async fn execute_workflow(
                     WorkflowNodeStateEvent {
                         workflow_id: workflow_id.clone(),
                         node_id: node_id.clone(),
-                        state: WorkflowNodeExecutionState::Success,
-                        error_message: None,
+                        state: if is_node_success {
+                            WorkflowNodeExecutionState::Success
+                        } else {
+                            WorkflowNodeExecutionState::Failed
+                        },
+                        error_message: output
+                            .value
+                            .get("error")
+                            .or_else(|| output.value.get("errorMessage"))
+                            .and_then(Value::as_str)
+                            .map(String::from),
                         duration_ms: Some(finished.duration_ms),
+                        output: Some(output.value.clone()),
                     },
                 );
             }
             Err(ref err) => {
                 failed_nodes += 1;
                 node_statuses.insert(node_id.clone(), NodeStatus::Failed(err.clone()));
+
+                let err_payload = json!({
+                    "success": false,
+                    "status": "failed",
+                    "error": err,
+                    "errorMessage": err,
+                    "summary": format!("Step failed: {err}"),
+                });
+                node_results
+                    .write()
+                    .insert(node_id.clone(), err_payload.clone());
 
                 crate::core::bridge::emit(
                     WORKFLOW_NODE_STATE_CHANGED,
@@ -1959,6 +2401,7 @@ pub async fn execute_workflow(
                         state: WorkflowNodeExecutionState::Failed,
                         error_message: Some(err.clone()),
                         duration_ms: Some(finished.duration_ms),
+                        output: Some(err_payload),
                     },
                 );
             }
@@ -2028,6 +2471,7 @@ pub async fn execute_workflow(
                                 state: WorkflowNodeExecutionState::Skipped,
                                 error_message: None,
                                 duration_ms: Some(0),
+                                output: None,
                             },
                         );
 
@@ -2057,6 +2501,7 @@ pub async fn execute_workflow(
                     state: WorkflowNodeExecutionState::Skipped,
                     error_message: None,
                     duration_ms: Some(0),
+                    output: None,
                 },
             );
         }
@@ -2323,7 +2768,6 @@ mod tests {
             category: WorkflowNodeCategory::Logic,
             title: "Check Condition".to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![],
@@ -2393,7 +2837,6 @@ mod tests {
             category: WorkflowNodeCategory::Task,
             title: "Sync".to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![],
@@ -2446,6 +2889,24 @@ mod tests {
 
         assert_eq!(states_task_err.get("te-ok"), Some(&EdgeState::Disabled));
         assert_eq!(states_task_err.get("te-fail"), Some(&EdgeState::Activated));
+
+        // Also verify that Ok with branch: failure activates failure port by port_type
+        let mut states_branch_fail = HashMap::new();
+        let branch_fail_outcome = Ok(NodeExecutionOutput {
+            value: json!({"success": false}),
+            branch: Some("failure".to_string()),
+        });
+        activate_outgoing_edges(
+            &task_node,
+            &branch_fail_outcome,
+            &task_edges,
+            &mut states_branch_fail,
+        );
+        assert_eq!(states_branch_fail.get("te-ok"), Some(&EdgeState::Disabled));
+        assert_eq!(
+            states_branch_fail.get("te-fail"),
+            Some(&EdgeState::Activated)
+        );
     }
 
     #[test]
@@ -2500,7 +2961,7 @@ mod tests {
         );
 
         let input_str = "File {{nodes.step1.stdout}} finished with code {{nodes.step1.exitCode}}, transfers: {{nodes.step1.stats.transfers}}";
-        let replaced = replace_workflow_tokens(input_str, &results);
+        let replaced = replace_workflow_tokens(input_str, &results, None, None);
 
         assert_eq!(
             replaced,
@@ -2508,7 +2969,8 @@ mod tests {
         );
 
         // Test unmapped token remains intact
-        let unmapped = replace_workflow_tokens("Unknown: {{nodes.nonexistent.val}}", &results);
+        let unmapped =
+            replace_workflow_tokens("Unknown: {{nodes.nonexistent.val}}", &results, None, None);
         assert_eq!(unmapped, "Unknown: {{nodes.nonexistent.val}}");
 
         // Test recursive JSON structure interpolation
@@ -2519,7 +2981,7 @@ mod tests {
             }
         });
 
-        let interpolated = interpolate_node_config(&config_obj, &results);
+        let interpolated = interpolate_node_config_with_context(&config_obj, &results, None, None);
         assert_eq!(
             interpolated.get("message").and_then(Value::as_str),
             Some("Archive backup_2026.tar.gz ready")
@@ -2992,7 +3454,6 @@ mod tests {
             category: WorkflowNodeCategory::Logic,
             title: "Join Branches".to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![],
@@ -3017,8 +3478,6 @@ mod tests {
             nodes: vec![node],
             edges,
             viewport: CanvasViewport::default(),
-            auto_start: false,
-            cron_expression: None,
             created_at: None,
             updated_at: None,
             last_executed_at: None,
@@ -3153,7 +3612,6 @@ mod tests {
             category: WorkflowNodeCategory::Logic,
             title: "Parallel Split".to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![WorkflowPort {
@@ -3240,24 +3698,24 @@ mod tests {
 
     #[test]
     fn test_resolve_delay_seconds() {
-        // Defaults to 5 seconds if config is empty or missing 'seconds' key
+        // Defaults to 5 seconds if config is empty or missing 'delaySeconds' key
         assert_eq!(resolve_delay_seconds(&json!({})), 5);
 
-        // Numeric seconds
-        assert_eq!(resolve_delay_seconds(&json!({ "seconds": 10 })), 10);
-        assert_eq!(resolve_delay_seconds(&json!({ "seconds": 0 })), 0);
+        // Numeric delaySeconds
+        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 10 })), 10);
+        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 0 })), 0);
 
-        // String seconds
-        assert_eq!(resolve_delay_seconds(&json!({ "seconds": "15" })), 15);
+        // String delaySeconds
+        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": "15" })), 15);
 
-        // Float seconds
-        assert_eq!(resolve_delay_seconds(&json!({ "seconds": 20.0 })), 20);
+        // Float delaySeconds
+        assert_eq!(resolve_delay_seconds(&json!({ "delaySeconds": 20.0 })), 20);
     }
 
     #[tokio::test]
     async fn test_execute_delay_node_zero_seconds() {
         let cancel_flag = AtomicBool::new(false);
-        let config = json!({ "seconds": 0 });
+        let config = json!({ "delaySeconds": 0 });
         let result = execute_delay_node(&config, &cancel_flag).await;
         let output = result.expect("Zero delay should succeed immediately");
         assert_eq!(
@@ -3526,7 +3984,6 @@ mod tests {
             category: WorkflowNodeCategory::Trigger,
             title: "Local Watcher".to_string(),
             subtitle: None,
-            icon: None,
             x: 0.0,
             y: 0.0,
             inputs: vec![],
@@ -3637,5 +4094,206 @@ mod tests {
             build_archive_final_dest("/home/user/data", "gdrive:", "zip"),
             "gdrive:data.zip"
         );
+    }
+
+    #[test]
+    fn test_resolve_token_value_with_prev_and_title() {
+        let wf = WorkflowDefinition {
+            id: "wf-1".to_string(),
+            name: "Test Flow".to_string(),
+            description: None,
+            nodes: vec![
+                WorkflowNode {
+                    id: "node-check-1".to_string(),
+                    node_type: "check".to_string(),
+                    category: WorkflowNodeCategory::Task,
+                    title: "Check Remote".to_string(),
+                    subtitle: None,
+                    x: 0.0,
+                    y: 0.0,
+                    inputs: vec![],
+                    outputs: vec![],
+                    config: json!({}),
+                    state: None,
+                    error_message: None,
+                    last_duration_ms: None,
+                    started_at: None,
+                    finished_at: None,
+                },
+                WorkflowNode {
+                    id: "node-notify-1".to_string(),
+                    node_type: "notification".to_string(),
+                    category: WorkflowNodeCategory::Action,
+                    title: "Send Notification".to_string(),
+                    subtitle: None,
+                    x: 100.0,
+                    y: 0.0,
+                    inputs: vec![],
+                    outputs: vec![],
+                    config: json!({}),
+                    state: None,
+                    error_message: None,
+                    last_duration_ms: None,
+                    started_at: None,
+                    finished_at: None,
+                },
+            ],
+            edges: vec![WorkflowEdge {
+                id: "edge-1".to_string(),
+                source_node_id: "node-check-1".to_string(),
+                source_port_id: "success".to_string(),
+                target_node_id: "node-notify-1".to_string(),
+                target_port_id: "in".to_string(),
+                is_active: Some(true),
+            }],
+            viewport: CanvasViewport::default(),
+            created_at: None,
+            updated_at: None,
+            last_executed_at: None,
+        };
+
+        let mut results = HashMap::new();
+        results.insert(
+            "node-check-1".to_string(),
+            json!({
+                "hasDifferences": true,
+                "differCount": 2,
+                "summary": "Check found 2 differences",
+                "differ": ["fileA.txt", "fileB.txt"],
+                "report": "### Check Report\n- fileA.txt\n- fileB.txt",
+                "stats": {
+                    "bytes": 2048,
+                    "errors": 0
+                }
+            }),
+        );
+
+        // 1. Resolve via prev
+        let prev_summary =
+            resolve_token_value("prev.summary", &results, Some(&wf), Some("node-notify-1"));
+        assert_eq!(prev_summary, Some("Check found 2 differences".to_string()));
+
+        let prev_differ_count = resolve_token_value(
+            "prev.differCount",
+            &results,
+            Some(&wf),
+            Some("node-notify-1"),
+        );
+        assert_eq!(prev_differ_count, Some("2".to_string()));
+
+        let prev_differ_len = resolve_token_value(
+            "prev.differ.length",
+            &results,
+            Some(&wf),
+            Some("node-notify-1"),
+        );
+        assert_eq!(prev_differ_len, Some("2".to_string()));
+
+        let prev_first_file =
+            resolve_token_value("prev.differ[0]", &results, Some(&wf), Some("node-notify-1"));
+        assert_eq!(prev_first_file, Some("fileA.txt".to_string()));
+
+        // 2. Resolve via node title
+        let title_summary = resolve_token_value(
+            "nodes[\"Check Remote\"].summary",
+            &results,
+            Some(&wf),
+            Some("node-notify-1"),
+        );
+        assert_eq!(title_summary, Some("Check found 2 differences".to_string()));
+
+        // 3. String replacement with multiple tokens
+        let template = "Alert: {{prev.summary}} | First: {{prev.differ[0]}}";
+        let replaced =
+            replace_workflow_tokens(template, &results, Some(&wf), Some("node-notify-1"));
+        assert_eq!(
+            replaced,
+            "Alert: Check found 2 differences | First: fileA.txt"
+        );
+    }
+
+    #[test]
+    fn test_build_job_execution_output_normalization() {
+        let job = crate::utils::types::jobs::JobInfo {
+            jobid: 99,
+            job_type: JobType::Check,
+            remote_name: "drive:".to_string(),
+            source: vec!["/local".to_string()],
+            destination: "drive:backup".to_string(),
+            start_time: Utc::now(),
+            end_time: Some(Utc::now()),
+            status: JobStatus::Completed,
+            error: None,
+            stats: Some(json!({
+                "bytes": 1048576,
+                "totalBytes": 1048576,
+                "transfers": 0,
+                "checks": 10,
+                "errors": 0,
+                "speed": 0.0,
+                "checkOutput": {
+                    "differ": ["diff1.txt"],
+                    "missingOnDst": ["new.txt"],
+                    "match": ["matched.txt"]
+                }
+            })),
+            group: "job-99".to_string(),
+            profile: None,
+            execute_id: None,
+            quick_run_id: None,
+            origin: None,
+            backend_name: "local".to_string(),
+            dry_run: false,
+            parent_job_id: None,
+            workflow_id: None,
+            node_id: None,
+        };
+
+        let output = build_job_execution_output(&job, true, None);
+        assert_eq!(output["jobId"], 99);
+        assert_eq!(output["hasDifferences"], true);
+        assert_eq!(output["differCount"], 1);
+        assert_eq!(output["missingOnDstCount"], 1);
+        assert_eq!(output["matchCount"], 1);
+        assert_eq!(output["bytesFormatted"], "1.00 MiB");
+        assert!(output["report"].as_str().unwrap().contains("diff1.txt"));
+        assert!(
+            output["summary"]
+                .as_str()
+                .unwrap()
+                .contains("2 difference(s)")
+        );
+    }
+
+    #[test]
+    fn test_evaluate_condition_extended_operators() {
+        // GTE / LTE
+        assert!(evaluate_condition("greater_or_equal", "10", "10"));
+        assert!(evaluate_condition("greater_or_equal", "15", "10"));
+        assert!(!evaluate_condition("greater_or_equal", "5", "10"));
+
+        assert!(evaluate_condition("less_or_equal", "10", "10"));
+        assert!(evaluate_condition("less_or_equal", "5", "10"));
+        assert!(!evaluate_condition("less_or_equal", "15", "10"));
+
+        // Starts with / Ends with
+        assert!(evaluate_condition(
+            "starts_with",
+            "remote:backup/data",
+            "remote:"
+        ));
+        assert!(!evaluate_condition("starts_with", "local/data", "remote:"));
+        assert!(evaluate_condition("ends_with", "file.log", ".log"));
+        assert!(!evaluate_condition("ends_with", "file.txt", ".log"));
+
+        // Array operators
+        assert!(evaluate_condition(
+            "array_not_empty",
+            "[\"file1.txt\", \"file2.txt\"]",
+            ""
+        ));
+        assert!(!evaluate_condition("array_not_empty", "[]", ""));
+        assert!(evaluate_condition("array_is_empty", "[]", ""));
+        assert!(!evaluate_condition("array_is_empty", "[\"file1.txt\"]", ""));
     }
 }

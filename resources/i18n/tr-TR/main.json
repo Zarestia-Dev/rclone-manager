@@ -3411,6 +3411,12 @@
         "deleteWorkflow": "İş Akışını Sil",
         "exportWorkflow": "JSON Dışa Aktar"
       },
+      "canvas": {
+        "navigation": "Tuval Gezintisi",
+        "toggleMinimap": "Mini Haritayı Aç/Kapat",
+        "enterFocusMode": "Tuvala Odaklan (Gezintiyi Gizle)",
+        "exitFocusMode": "Odaktan Çık (Gezintiyi Göster)"
+      },
       "toolbar": {
         "selectWorkflow": "İş Akışı Seç",
         "newWorkflow": "Yeni İş Akışı",
@@ -3578,7 +3584,39 @@
         "jobDetailsTitle": "Görev Detayları",
         "inspectJobBtn": "Görev Detaylarını İncele",
         "transfers": "Aktarımlar",
-        "errors": "Hata"
+        "errors": "Hata",
+        "testRun": "Test Çalıştır",
+        "testRunRcHint": "Bu RC komutunu girilen parametrelerle canlı test et",
+        "testSuccess": "Test Başarılı",
+        "testFailed": "Test Başarısız",
+        "useAsSampleSchema": "Çıktı Şeması Olarak Kaydet",
+        "sampleOutputSchema": "Örnek Çıktı Şeması",
+        "sampleOutputSchemaDesc": "Aşağıdaki kartlarda dinamik değişkenlerin görünmesi için örnek JSON yanıtı",
+        "sampleOutputPlaceholder": "Örnek JSON çıktısını buraya yapıştırın...",
+        "availableOutputKeys": "Algılanan Çıktı Değişkenleri",
+        "upstreamOutputs": "Önceki Kart Çıktıları ve Değişkenleri",
+        "nodeOutput": "Düğüm Çalışma Çıktısı",
+        "checkReport": "Fark Raporu",
+        "rawOutputJson": "Çıktı Verisi (JSON)",
+        "conditionPresets": "Hızlı Koşul Şablonları",
+        "condPresetHasDiff": "Fark Varsa",
+        "condPresetNoDiff": "Fark Yoksa",
+        "condPresetDiffCount": "Fark Sayısı (>0)",
+        "condPresetHasErrors": "Hata Varsa",
+        "condPresetTransferred": "Veri Aktarıldıysa (>0)",
+        "condPresetScriptSuccess": "Script Başarılıysa",
+        "notificationPresets": "Hızlı Mesaj Şablonları",
+        "notifPresetCheckReport": "Check Raporu",
+        "notifPresetTransferSummary": "Transfer Özeti",
+        "notifPresetFailureAlert": "Hata Uyarısı",
+        "notifPresetHealthStatus": "Motor Sağlık Durumu",
+        "opGreaterOrEqual": "Büyük veya Eşit (>=)",
+        "opLessOrEqual": "Küçük veya Eşit (<=)",
+        "opStartsWith": "İle Başlar",
+        "opEndsWith": "İle Biter",
+        "opArrayNotEmpty": "Liste / Dizi Dolu",
+        "opArrayIsEmpty": "Liste / Dizi Boş",
+        "preview": "Mesaj Önizlemesi"
       },
       "liveStatus": {
         "mounted": "Bağlı",
@@ -3678,8 +3716,40 @@
         "updated": "Güncellenme"
       },
       "recipes": {
-        "manualTrigger": "Manuel Tetikleyici",
-        "manualTriggerDesc": "Arayüzden manuel olarak tetiklendi"
+        "driftCheckSync": {
+          "name": "Akıllı Fark Kontrolü ve Şartlı Senkronizasyon",
+          "description": "Check ile farkları doğrular; yalnızca fark tespit edildiğinde eşitler ve hacim detaylarıyla bildirir."
+        },
+        "integrityAudit": {
+          "name": "Veri Bütünlüğü Denetimi ve Fark Raporu",
+          "description": "Zamanlanmış bütünlük kontrolü çalıştırır; fark varsa biçimlendirilmiş Markdown fark raporuyla uyarı gönderir."
+        },
+        "safeSyncAlert": {
+          "name": "Hata Bildirimli Güvenli Senkronizasyon",
+          "description": "Eşitleme işlemini çalıştırır, başarıda aktarılan veri miktarını, hatada ise kesin hata detayını iletir."
+        },
+        "dailyBackup": {
+          "name": "Günlük Yedekleme ve Bildirim",
+          "description": "Her gün saat 02:00'de zamanlanmış eşitleme çalıştırır, başarı ve hatalarda sizi bilgilendirir."
+        },
+        "watchUpload": {
+          "name": "Klasör İzleyici ve Otomatik Yükleme",
+          "description": "Yerel klasörü değişiklikler için izler ve yeni/düzenlenen dosyaları buluta kopyalar."
+        },
+        "parallelMirror": {
+          "name": "Çoklu Bulut Paralel Aynalama",
+          "description": "Verileri aynı anda iki farklı bulut sağlayıcısına eşitler ve tamamlanmayı doğrular."
+        },
+        "mountOnDemand": {
+          "name": "İsteğe Bağlı Bağlama ve Bildirim",
+          "description": "Uzak depolama yolunu bağlar ve sürücü hazır olduğunda masaüstüne bildirir."
+        },
+        "manualTrigger": "Manuel",
+        "manualTriggerDesc": "İsteğe bağlı manuel olarak tetiklenir",
+        "vfsRefresh": {
+          "name": "VFS Önbellek Yenileme Otomasyonu",
+          "description": "Bağlı sürücülerde dizin önbelleğini yeniden yüklemek için vfs/refresh RC komutu gönderir ve masaüstünü bilgilendirir."
+        }
       },
       "editor": {
         "configureNode": "Düğümü Yapılandır: {{type}}",

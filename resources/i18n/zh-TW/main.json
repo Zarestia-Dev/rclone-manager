@@ -3411,6 +3411,12 @@
         "deleteWorkflow": "刪除工作流",
         "exportWorkflow": "導出 JSON"
       },
+      "canvas": {
+        "navigation": "畫布導航",
+        "toggleMinimap": "切換小地圖",
+        "enterFocusMode": "專注畫布（隱藏導航）",
+        "exitFocusMode": "退出專注（顯示導航）"
+      },
       "toolbar": {
         "selectWorkflow": "選擇工作流",
         "newWorkflow": "新建工作流",
@@ -3578,11 +3584,43 @@
         "jobDetailsTitle": "任務詳情",
         "inspectJobBtn": "檢查任務詳情",
         "transfers": "傳輸",
-        "errors": "錯誤"
+        "errors": "錯誤",
+        "testRun": "測試執行",
+        "testRunRcHint": "使用當前參數測試此 RC 命令",
+        "testSuccess": "測試成功",
+        "testFailed": "測試失敗",
+        "useAsSampleSchema": "儲存為輸出結構 (Schema)",
+        "sampleOutputSchema": "範例輸出結構 (Schema)",
+        "sampleOutputSchemaDesc": "用於在下游卡片中公開動態變數欄位的 JSON 回應結構",
+        "sampleOutputPlaceholder": "在此貼上範例 JSON 回應...",
+        "availableOutputKeys": "偵測到的變數鍵",
+        "upstreamOutputs": "上游輸出與變數",
+        "nodeOutput": "節點執行輸出",
+        "checkReport": "檢查差異報告",
+        "rawOutputJson": "輸出資料 (JSON)",
+        "conditionPresets": "快速條件預設",
+        "condPresetHasDiff": "存在差異",
+        "condPresetNoDiff": "無差異",
+        "condPresetDiffCount": "發現差異 (>0)",
+        "condPresetHasErrors": "有錯誤",
+        "condPresetTransferred": "已傳輸 (>0)",
+        "condPresetScriptSuccess": "指令碼執行成功",
+        "notificationPresets": "快速訊息預設",
+        "notifPresetCheckReport": "檢查報告",
+        "notifPresetTransferSummary": "傳輸摘要",
+        "notifPresetFailureAlert": "失敗警報",
+        "notifPresetHealthStatus": "引擎運行狀態",
+        "opGreaterOrEqual": "大於或等於 (>=)",
+        "opLessOrEqual": "小於或等於 (<=)",
+        "opStartsWith": "開頭為",
+        "opEndsWith": "結尾為",
+        "opArrayNotEmpty": "陣列非空",
+        "opArrayIsEmpty": "陣列為空",
+        "preview": "訊息預覽"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "已掛載",
+        "serving": "服務執行中"
       },
       "status": {
         "running": "執行中",
@@ -3678,8 +3716,40 @@
         "updated": "更新時間"
       },
       "recipes": {
-        "manualTrigger": "手動觸發",
-        "manualTriggerDesc": "從介面手動觸發"
+        "driftCheckSync": {
+          "name": "智慧差異檢查與條件同步",
+          "description": "使用 check 驗證差異；僅在檢測到偏差時才執行同步，並通知傳輸量詳情。"
+        },
+        "integrityAudit": {
+          "name": "資料完整性審計與差異報告",
+          "description": "執行定期完整性檢查；如果存在差異，則發送帶有 Markdown 格式差異報告的告警。"
+        },
+        "safeSyncAlert": {
+          "name": "帶失敗告警的安全同步",
+          "description": "執行同步操作，成功時通知傳輸量，失敗時轉發詳細錯誤資訊。"
+        },
+        "dailyBackup": {
+          "name": "每日備份與通知",
+          "description": "在每天 02:00 執行排程的每日同步，成功或失敗時均會通知。"
+        },
+        "watchUpload": {
+          "name": "資料夾監視與自動上傳",
+          "description": "監視本機資料夾的變更，並將新檔案/修改後的檔案複製到雲端儲存。"
+        },
+        "parallelMirror": {
+          "name": "多雲平行鏡像",
+          "description": "同時同步資料到兩個不同的雲端服務商，並驗證完成情況。"
+        },
+        "mountOnDemand": {
+          "name": "按需掛載與通知",
+          "description": "掛載遠端儲存路徑，並在磁碟機就緒時向桌面發送通知。"
+        },
+        "manualTrigger": "手動",
+        "manualTriggerDesc": "按需手動觸發",
+        "vfsRefresh": {
+          "name": "VFS 快取重新整理自動化",
+          "description": "傳送 vfs/refresh 遠端控制 (RC) 命令以重新載入已掛載磁碟機上的目錄快取，並向桌面發送通知。"
+        }
       },
       "editor": {
         "configureNode": "設定節點：{{type}}",

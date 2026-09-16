@@ -299,7 +299,7 @@ describe('TaskNodeFormComponent', () => {
       expect(mountFields.map(f => f.key)).toContain('remote');
 
       const syncFields = component.getNodeFieldsForType('sync');
-      expect(syncFields.map(f => f.key)).toContain('bytesTransferred');
+      expect(syncFields.map(f => f.key)).toContain('totalBytes');
 
       const cmdFields = component.getNodeFieldsForType('command');
       expect(cmdFields.map(f => f.key)).toContain('stdout');

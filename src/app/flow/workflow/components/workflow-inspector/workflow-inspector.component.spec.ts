@@ -291,7 +291,7 @@ describe('WorkflowInspectorComponent', () => {
     expect(stateService.currentWorkflow()?.description).toBe('New Flow Description');
   });
 
-  it('updates notification node icon when actionKind or icon changes', () => {
+  it('updates notification node icon when actionKind changes', () => {
     const notifNode = stateService.addNode('notification', 'action', 'Notify', 0, 0, {
       config: { title: 'Test' },
     });
@@ -300,11 +300,11 @@ describe('WorkflowInspectorComponent', () => {
 
     component.onConfigFieldChange('actionKind', 'whatsapp');
     expect(component.nodeIcon()).toBe('whatsapp');
-    expect(stateService.selectedNode()?.icon).toBe('whatsapp');
+    expect(stateService.selectedNode()?.config['actionKind']).toBe('whatsapp');
 
     component.onConfigFieldChange('actionKind', 'telegram');
     expect(component.nodeIcon()).toBe('telegram');
-    expect(stateService.selectedNode()?.icon).toBe('telegram');
+    expect(stateService.selectedNode()?.config['actionKind']).toBe('telegram');
   });
 
   it('detects selectedNodeJob, computes progress, and opens job detail modal', () => {

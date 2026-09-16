@@ -3370,6 +3370,12 @@
         "exportWorkflow": "导出 JSON",
         "inspectJob": "检查任务"
       },
+      "canvas": {
+        "navigation": "画布导航",
+        "toggleMinimap": "切换小地图",
+        "enterFocusMode": "专注画布（隐藏导航）",
+        "exitFocusMode": "退出专注（显示导航）"
+      },
       "toolbar": {
         "selectWorkflow": "选择工作流",
         "newWorkflow": "新建工作流",
@@ -3537,7 +3543,39 @@
         "jobDetailsTitle": "任务详情",
         "inspectJobBtn": "检查任务详情",
         "transfers": "传输",
-        "errors": "错误"
+        "errors": "错误",
+        "testRun": "测试运行",
+        "testRunRcHint": "使用当前参数测试此 RC 命令",
+        "testSuccess": "测试成功",
+        "testFailed": "测试失败",
+        "useAsSampleSchema": "保存为输出架构 (Schema)",
+        "sampleOutputSchema": "示例输出架构 (Schema)",
+        "sampleOutputSchemaDesc": "用于在下游卡片中公开动态变量字段的 JSON 响应架构",
+        "sampleOutputPlaceholder": "在此粘贴示例 JSON 响应...",
+        "availableOutputKeys": "检测到的变量键",
+        "upstreamOutputs": "上游输出与变量",
+        "nodeOutput": "节点运行输出",
+        "checkReport": "检查差异报告",
+        "rawOutputJson": "输出数据 (JSON)",
+        "conditionPresets": "快速条件预设",
+        "condPresetHasDiff": "存在差异",
+        "condPresetNoDiff": "无差异",
+        "condPresetDiffCount": "发现差异 (>0)",
+        "condPresetHasErrors": "有错误",
+        "condPresetTransferred": "已传输 (>0)",
+        "condPresetScriptSuccess": "脚本执行成功",
+        "notificationPresets": "快速消息预设",
+        "notifPresetCheckReport": "检查报告",
+        "notifPresetTransferSummary": "传输摘要",
+        "notifPresetFailureAlert": "失败告警",
+        "notifPresetHealthStatus": "引擎运行状态",
+        "opGreaterOrEqual": "大于或等于 (>=)",
+        "opLessOrEqual": "小于或等于 (<=)",
+        "opStartsWith": "开头为",
+        "opEndsWith": "结尾为",
+        "opArrayNotEmpty": "数组非空",
+        "opArrayIsEmpty": "数组为空",
+        "preview": "消息预览"
       },
       "status": {
         "running": "运行中",
@@ -3633,12 +3671,44 @@
         "updated": "更新时间"
       },
       "liveStatus": {
-        "mounted": "Mounted",
-        "serving": "Serving"
+        "mounted": "已挂载",
+        "serving": "服务运行中"
       },
       "recipes": {
-        "manualTrigger": "手动触发",
-        "manualTriggerDesc": "从界面手动触发"
+        "driftCheckSync": {
+          "name": "智能差异检查与条件同步",
+          "description": "使用 check 验证差异；仅在检测到偏差时才执行同步，并通知传输量详情。"
+        },
+        "integrityAudit": {
+          "name": "数据完整性审计与差异报告",
+          "description": "执行定期完整性检查；如果存在差异，则发送带有 Markdown 格式差异报告的告警。"
+        },
+        "safeSyncAlert": {
+          "name": "带失败告警的安全同步",
+          "description": "执行同步操作，成功时通知传输量，失败时转发详细错误信息。"
+        },
+        "dailyBackup": {
+          "name": "每日备份与通知",
+          "description": "在每天 02:00 运行预定的每日同步，成功或失败时均会通知。"
+        },
+        "watchUpload": {
+          "name": "文件夹监视与自动上传",
+          "description": "监视本地文件夹的更改，并将新文件/修改后的文件复制到云端存储。"
+        },
+        "parallelMirror": {
+          "name": "多云并行镜像",
+          "description": "同时同步数据到两个不同的云服务商，并验证完成情况。"
+        },
+        "mountOnDemand": {
+          "name": "按需挂载与通知",
+          "description": "挂载远程存储路径，并在驱动器就绪时向桌面发送通知。"
+        },
+        "manualTrigger": "手动",
+        "manualTriggerDesc": "按需手动触发",
+        "vfsRefresh": {
+          "name": "VFS 缓存刷新自动化",
+          "description": "发送 vfs/refresh 远程控制 (RC) 命令以重新加载已挂载驱动器上的目录缓存，并向桌面发送通知。"
+        }
       },
       "editor": {
         "configureNode": "配置节点：{{type}}",

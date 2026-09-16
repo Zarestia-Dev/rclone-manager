@@ -200,33 +200,13 @@
 
   // ── Right: Zoom & History ────────────────────────────────────────────────
 
-  .button-group,
-  .zoom-controls-group {
+  .button-group {
     display: flex;
     align-items: center;
     background: var(--bg-elevated-1);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 2px;
-  }
-
-  .zoom-controls-group {
-    .zoom-label {
-      padding: 0 6px;
-      font-size: var(--font-size-xs);
-      font-weight: 600;
-      color: var(--dim-color);
-      cursor: pointer;
-      min-width: 40px;
-      text-align: center;
-      background: none;
-      border: none;
-      font-family: inherit;
-
-      &:hover {
-        color: var(--accent-color);
-      }
-    }
   }
 
   .mobile-more-btn {

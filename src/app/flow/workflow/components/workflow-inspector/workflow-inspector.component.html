@@ -68,6 +68,57 @@
         </div>
       }
 
+      <!-- Execution Output Section -->
+      @if (node.lastOutput) {
+        <div class="inspector-section execution-output-section">
+          <div class="section-title">
+            <mat-icon svgIcon="terminal"></mat-icon>
+            <span>{{ 'flow.workflow.inspector.nodeOutput' | translate }}</span>
+          </div>
+
+          <div class="output-details-card">
+            @if (formattedNodeOutputSummary(); as summary) {
+              <div class="output-summary-banner">
+                <mat-icon svgIcon="circle-info"></mat-icon>
+                <span>{{ summary }}</span>
+              </div>
+            }
+
+            @if (nodeCheckReport(); as report) {
+              <div class="output-box">
+                <div class="output-header">
+                  <span>{{ 'flow.workflow.inspector.checkReport' | translate }}</span>
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="copyCheckReport(report)"
+                    [attr.title]="'common.copy' | translate"
+                  >
+                    <mat-icon svgIcon="copy"></mat-icon>
+                  </button>
+                </div>
+                <pre class="output-pre hide-scrollbar">{{ report }}</pre>
+              </div>
+            }
+
+            <div class="output-box">
+              <div class="output-header">
+                <span>{{ 'flow.workflow.inspector.rawOutputJson' | translate }}</span>
+                <button
+                  type="button"
+                  class="action-button"
+                  (click)="copyRawOutput(node.lastOutput)"
+                  [attr.title]="'common.copy' | translate"
+                >
+                  <mat-icon svgIcon="copy"></mat-icon>
+                </button>
+              </div>
+              <pre class="output-pre hide-scrollbar">{{ formattedNodeOutputJson() }}</pre>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Associated Rclone Job Section -->
       @if (selectedNodeJob(); as job) {
         <div class="inspector-section job-detail-section">

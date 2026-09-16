@@ -246,4 +246,30 @@ describe('ActionNodeFormComponent', () => {
     expect(emittedList).toContainEqual({ key: 'targetMode', value: 'custom' });
     expect(emittedList).toContainEqual({ key: 'targetNodeId', value: '' });
   });
+
+  it('applies notification presets properly', () => {
+    const emittedList: { key: string; value: unknown }[] = [];
+    component.configChange.subscribe(val => {
+      emittedList.push(val);
+    });
+
+    component.applyNotificationPreset('check_report');
+    expect(emittedList.some(e => e.key === 'title' && String(e.value).includes('Difference'))).toBe(
+      true
+    );
+    expect(
+      emittedList.some(e => e.key === 'message' && String(e.value).includes('{{prev.report}}'))
+    ).toBe(true);
+    expect(emittedList.some(e => e.key === 'severity' && e.value === 'warning')).toBe(true);
+
+    emittedList.length = 0;
+    component.applyNotificationPreset('failure_alert');
+    expect(emittedList.some(e => e.key === 'title' && String(e.value).includes('Failed'))).toBe(
+      true
+    );
+    expect(
+      emittedList.some(e => e.key === 'message' && String(e.value).includes('{{prev.error}}'))
+    ).toBe(true);
+    expect(emittedList.some(e => e.key === 'severity' && e.value === 'error')).toBe(true);
+  });
 });

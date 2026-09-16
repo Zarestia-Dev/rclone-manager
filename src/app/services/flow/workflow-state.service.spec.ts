@@ -229,4 +229,72 @@ describe('WorkflowStateService', () => {
       expect(service.hasUnsavedChanges()).toBe(false);
     });
   });
+
+  describe('multi-node positioning and bidirectional connections', () => {
+    it('updates multiple node positions atomically with updateNodesPositions', () => {
+      service.createNewWorkflow();
+      const n1 = service.addNode('sync', 'task', 'Node 1', 100, 100);
+      const n2 = service.addNode('copy', 'task', 'Node 2', 200, 200);
+
+      const updates = new Map([
+        [n1.id, { x: 150, y: 160 }],
+        [n2.id, { x: 250, y: 260 }],
+      ]);
+      service.updateNodesPositions(updates);
+
+      const wf = service.currentWorkflow();
+      const updated1 = wf?.nodes.find(n => n.id === n1.id);
+      const updated2 = wf?.nodes.find(n => n.id === n2.id);
+
+      expect(updated1?.x).toBe(144);
+      expect(updated1?.y).toBe(160);
+      expect(updated2?.x).toBe(256);
+      expect(updated2?.y).toBe(256);
+    });
+
+    it('completes reverse connection from input to output properly', () => {
+      service.createNewWorkflow();
+      const sourceTask = service.addNode('sync', 'task', 'Source', 0, 0);
+      const destTask = service.addNode('notification', 'action', 'Dest', 300, 0);
+
+      // Start drag from destTask input port: isSourceOutput = false
+      service.startConnecting(destTask.id, 'in', 300, 0, false);
+      expect(service.isConnecting()).toEqual(
+        expect.objectContaining({ sourceNodeId: destTask.id, isSourceOutput: false })
+      );
+
+      // Drop onto sourceTask output port: isTargetOutput = true
+      const success = service.finishConnecting(sourceTask.id, 'out', true);
+      expect(success).toBe(true);
+
+      const wf = service.currentWorkflow();
+      expect(wf?.edges.length).toBe(1);
+      expect(wf?.edges[0].sourceNodeId).toBe(sourceTask.id);
+      expect(wf?.edges[0].targetNodeId).toBe(destTask.id);
+    });
+
+    it('uses dynamic canvasDimensions in fitToView', () => {
+      service.createNewWorkflow();
+      service.canvasDimensions.set({ width: 1200, height: 800 });
+      service.addNode('sync', 'task', 'Node 1', 200, 200);
+
+      service.fitToView();
+      expect(service.viewport().zoom).toBeGreaterThan(0);
+      expect(service.viewport().x).toBeDefined();
+    });
+
+    it('manages and resets mobile UI state signals', () => {
+      expect(service.isWorkspaceDrawerOpen()).toBe(false);
+      expect(service.isMobileFocusMode()).toBe(false);
+
+      service.isWorkspaceDrawerOpen.set(true);
+      service.isMobileFocusMode.set(true);
+      expect(service.isWorkspaceDrawerOpen()).toBe(true);
+      expect(service.isMobileFocusMode()).toBe(true);
+
+      service.resetMobileUiState();
+      expect(service.isWorkspaceDrawerOpen()).toBe(false);
+      expect(service.isMobileFocusMode()).toBe(false);
+    });
+  });
 });

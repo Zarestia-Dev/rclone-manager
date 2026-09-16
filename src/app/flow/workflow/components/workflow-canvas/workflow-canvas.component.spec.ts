@@ -179,4 +179,157 @@ describe('WorkflowCanvasComponent', () => {
 
     expect(container?.classList.contains('is-drag-target')).toBe(false);
   });
+
+  it('precomputes renderedWires with accurate port coordinates', () => {
+    const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+    const nodeB = stateService.addNode('notification', 'action', 'Node B', 400, 100, {});
+    stateService.connectPorts(nodeA.id, 'out', nodeB.id, 'in');
+
+    const wires = component.renderedWires();
+    expect(wires.length).toBe(1);
+    expect(wires[0].edge.sourceNodeId).toBe(nodeA.id);
+    expect(wires[0].edge.targetNodeId).toBe(nodeB.id);
+    expect(wires[0].sourcePos.x).toBeGreaterThan(nodeA.x);
+    expect(wires[0].targetPos.x).toBe(nodeB.x);
+  });
+
+  it('computes bidirectional connecting bezier path correctly', () => {
+    const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+
+    // 1. Forward connection (output to mouse)
+    stateService.startConnecting(nodeA.id, 'out', 300, 200, true);
+    fixture.detectChanges();
+    const forwardPath = component.connectingPath();
+    expect(forwardPath).toContain('M ');
+    expect(forwardPath).toContain('C ');
+
+    // 2. Reverse connection (input to mouse)
+    stateService.startConnecting(nodeA.id, 'in', 50, 50, false);
+    fixture.detectChanges();
+    const reversePath = component.connectingPath();
+    expect(reversePath).toContain('M ');
+    expect(reversePath).toContain('C ');
+  });
+
+  it('cancels active connecting and panning with Escape key', () => {
+    const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+    stateService.startConnecting(nodeA.id, 'out', 300, 200, true);
+    expect(stateService.isConnecting()).not.toBeNull();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(stateService.isConnecting()).toBeNull();
+  });
+
+  it('drags multiple selected nodes together maintaining relative offsets and creates undo snapshot', () => {
+    const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+    const nodeB = stateService.addNode('notification', 'action', 'Node B', 300, 100, {});
+    stateService.selectNode(nodeA.id, false);
+    stateService.selectNode(nodeB.id, true);
+
+    expect(stateService.selectedNodeIds().size).toBe(2);
+
+    const containerEl = fixture.nativeElement.querySelector('.workflow-canvas-container');
+    vi.spyOn(containerEl, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 700,
+      right: 1000,
+      bottom: 700,
+    } as DOMRect);
+
+    component.onNodeMouseDown(nodeA, {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      stopPropagation: vi.fn(),
+    } as unknown as MouseEvent);
+
+    expect(component.draggingNodeId()).toBe(nodeA.id);
+
+    // MouseMove by dx=48, dy=32
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 148, clientY: 132 }));
+
+    const updatedA = stateService.currentWorkflow()?.nodes.find(n => n.id === nodeA.id);
+    const updatedB = stateService.currentWorkflow()?.nodes.find(n => n.id === nodeB.id);
+
+    expect(updatedA?.x).toBeGreaterThan(100);
+    expect(updatedB?.x).toBeGreaterThan(300);
+
+    // MouseUp finishes drag
+    window.dispatchEvent(new MouseEvent('mouseup'));
+    expect(component.draggingNodeId()).toBeNull();
+    expect(stateService.canUndo()).toBe(true);
+
+    // Undo properly restores pre-drag positions (verifying fix #7)
+    stateService.undo();
+    const revertedA = stateService.currentWorkflow()?.nodes.find(n => n.id === nodeA.id);
+    const revertedB = stateService.currentWorkflow()?.nodes.find(n => n.id === nodeB.id);
+    expect(revertedA?.x).toBe(nodeA.x);
+    expect(revertedB?.x).toBe(nodeB.x);
+  });
+
+  it('renders floating canvas navigation hub with zoom controls and minimap', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const hub = el.querySelector('.canvas-navigation-hub');
+    expect(hub).toBeTruthy();
+    expect(hub?.querySelector('.floating-zoom-toolbar')).toBeTruthy();
+    expect(hub?.querySelector('.minimap-container')).toBeTruthy();
+    expect(hub?.querySelector('.zoom-percentage')?.textContent).toContain('100%');
+  });
+
+  it('toggles minimap visibility when toggleMinimap is called', () => {
+    expect(component.showMinimap()).toBe(true);
+    component.toggleMinimap();
+    expect(component.showMinimap()).toBe(false);
+
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.minimap-container')).toBeNull();
+
+    component.toggleMinimap();
+    expect(component.showMinimap()).toBe(true);
+  });
+
+  it('delegates zoomIn, zoomOut, resetZoom, and fitToView to stateService', () => {
+    const zoomInSpy = vi.spyOn(stateService, 'zoomIn');
+    const zoomOutSpy = vi.spyOn(stateService, 'zoomOut');
+    const resetZoomSpy = vi.spyOn(stateService, 'resetZoom');
+    const fitToViewSpy = vi.spyOn(stateService, 'fitToView');
+
+    component.zoomIn();
+    expect(zoomInSpy).toHaveBeenCalled();
+
+    component.zoomOut();
+    expect(zoomOutSpy).toHaveBeenCalled();
+
+    component.resetZoom();
+    expect(resetZoomSpy).toHaveBeenCalled();
+
+    component.fitToView();
+    expect(fitToViewSpy).toHaveBeenCalled();
+  });
+
+  it('handles navigation action for desktop and mobile modes', () => {
+    // Desktop mode (isMobile = false)
+    component.isMobile.set(false);
+    expect(component.navigationActionIcon()).toBe('detailed');
+    expect(component.showMinimap()).toBe(true);
+
+    component.toggleNavigationAction();
+    expect(component.showMinimap()).toBe(false);
+
+    // Mobile mode (isMobile = true)
+    component.isMobile.set(true);
+    expect(stateService.isMobileFocusMode()).toBe(false);
+    expect(component.navigationActionIcon()).toBe('expand');
+
+    component.toggleNavigationAction();
+    expect(stateService.isMobileFocusMode()).toBe(true);
+    expect(component.navigationActionIcon()).toBe('compress');
+
+    // ngOnDestroy cleans up focus mode
+    component.ngOnDestroy();
+    expect(stateService.isMobileFocusMode()).toBe(false);
+  });
 });

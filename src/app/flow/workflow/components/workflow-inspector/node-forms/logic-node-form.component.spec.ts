@@ -41,20 +41,20 @@ describe('LogicNodeFormComponent', () => {
     });
 
     component.applyDelayPreset(60);
-    expect(emitted).toEqual({ key: 'seconds', value: 60 });
+    expect(emitted).toEqual({ key: 'delaySeconds', value: 60 });
 
     component.applyDelayPreset(300);
-    expect(emitted).toEqual({ key: 'seconds', value: 300 });
+    expect(emitted).toEqual({ key: 'delaySeconds', value: 300 });
   });
 
-  it('computes delaySecondsValue correctly with seconds key', () => {
+  it('computes delaySecondsValue correctly with delaySeconds key', () => {
     expect(component.delaySecondsValue()).toBe(5);
 
-    fixture.componentRef.setInput('nodeConfig', { seconds: 20 });
+    fixture.componentRef.setInput('nodeConfig', { delaySeconds: 20 });
     fixture.detectChanges();
     expect(component.delaySecondsValue()).toBe(20);
 
-    fixture.componentRef.setInput('nodeConfig', { seconds: '45' });
+    fixture.componentRef.setInput('nodeConfig', { delaySeconds: '45' });
     fixture.detectChanges();
     expect(component.delaySecondsValue()).toBe(45);
   });
@@ -219,13 +219,14 @@ describe('LogicNodeFormComponent', () => {
       expect(component.isUnaryConditionOperator()).toBe(false);
       expect(component.isFileExistsConditionOperator()).toBe(false);
       expect(component.conditionLeftValueMode()).toBe('node');
-      expect(component.availableUpstreamNodes().length).toBe(2);
+      expect(component.availableUpstreamNodes().length).toBe(3);
+      expect(component.availableUpstreamNodes().some(n => n.id === 'prev')).toBe(true);
       expect(component.conditionTargetNodeId()).toBe('node-sync-1');
       expect(component.conditionTargetField()).toBe('status');
 
       // Check fields for sync node
       const syncFields = component.availableNodeFields();
-      expect(syncFields.some(f => f.key === 'bytesTransferred')).toBe(true);
+      expect(syncFields.some(f => f.key === 'bytesFormatted')).toBe(true);
 
       const emitted: { key: string; value: unknown }[] = [];
       component.configChange.subscribe(val => emitted.push(val));
@@ -234,7 +235,7 @@ describe('LogicNodeFormComponent', () => {
       expect(emitted).toContainEqual({ key: 'leftNodeId', value: 'node-cmd-1' });
       expect(emitted).toContainEqual({
         key: 'leftValue',
-        value: '{{nodes.node-cmd-1.exitCode}}',
+        value: '{{nodes.node-cmd-1.summary}}',
       });
 
       fixture.componentRef.setInput('nodeConfig', {
@@ -271,7 +272,7 @@ describe('LogicNodeFormComponent', () => {
 
       component.setConditionLeftValueMode('node');
       expect(emitted).toContainEqual({ key: 'leftMode', value: 'node' });
-      expect(emitted).toContainEqual({ key: 'leftNodeId', value: 'node-sync-1' });
+      expect(emitted).toContainEqual({ key: 'leftNodeId', value: 'prev' });
     });
 
     it('hides right value input for unary operators and adjusts operator state', () => {
@@ -309,6 +310,37 @@ describe('LogicNodeFormComponent', () => {
         { key: 'leftValue', value: '{{nodes.task1.status}}' },
         { key: 'rightValue', value: 'success' },
       ]);
+    });
+
+    it('applies condition presets correctly', () => {
+      fixture.componentRef.setInput('node', conditionNode);
+      fixture.componentRef.setInput('nodeConfig', { operator: 'equals' });
+      fixture.detectChanges();
+
+      const emitted: { key: string; value: unknown }[] = [];
+      component.configChange.subscribe(val => emitted.push(val));
+
+      // 1. Has differences preset
+      component.applyConditionPreset('has_diff');
+      expect(emitted.some(e => e.key === 'leftNodeId' && e.value === 'prev')).toBe(true);
+      expect(emitted.some(e => e.key === 'leftField' && e.value === 'hasDifferences')).toBe(true);
+      expect(
+        emitted.some(e => e.key === 'leftValue' && e.value === '{{prev.hasDifferences}}')
+      ).toBe(true);
+      expect(emitted.some(e => e.key === 'operator' && e.value === 'equals')).toBe(true);
+      expect(emitted.some(e => e.key === 'rightValue' && e.value === 'true')).toBe(true);
+
+      // 2. Differ count preset
+      emitted.length = 0;
+      component.applyConditionPreset('diff_count');
+      expect(emitted.some(e => e.key === 'leftField' && e.value === 'differCount')).toBe(true);
+      expect(emitted.some(e => e.key === 'operator' && e.value === 'greater_than')).toBe(true);
+      expect(emitted.some(e => e.key === 'rightValue' && e.value === '0')).toBe(true);
+
+      // 3. Array unary operator check
+      fixture.componentRef.setInput('nodeConfig', { operator: 'array_not_empty' });
+      fixture.detectChanges();
+      expect(component.isUnaryConditionOperator()).toBe(true);
     });
   });
 });

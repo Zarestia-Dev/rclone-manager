@@ -10,7 +10,12 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../../types/workflow.types';
-import { getNodeFieldsForType } from '../../../utils/node-fields.util';
+import {
+  getAvailableUpstreamNodes,
+  getNodeFields,
+  getNodeFieldsForType,
+  NodeVariableField,
+} from '../../../utils/node-fields.util';
 import { AlertBannerComponent } from '../../../../../shared/components/alert-banner/alert-banner.component';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
@@ -267,7 +272,7 @@ export class LogicNodeFormComponent {
   readonly nodeConfig = input.required<Record<string, unknown>>();
 
   readonly delaySecondsValue = computed(() => {
-    const val = this.nodeConfig()['seconds'];
+    const val = this.nodeConfig()['delaySeconds'];
     if (typeof val === 'number') return val;
     if (typeof val === 'string') {
       const parsed = Number(val);
@@ -278,7 +283,13 @@ export class LogicNodeFormComponent {
 
   readonly isUnaryConditionOperator = computed(() => {
     const op = (this.nodeConfig()['operator'] as string) || 'equals';
-    return op === 'truthy' || op === 'is_empty' || op === 'file_exists';
+    return (
+      op === 'truthy' ||
+      op === 'is_empty' ||
+      op === 'file_exists' ||
+      op === 'array_not_empty' ||
+      op === 'array_is_empty'
+    );
   });
 
   readonly isFileExistsConditionOperator = computed(() => {
@@ -286,9 +297,7 @@ export class LogicNodeFormComponent {
   });
 
   readonly availableUpstreamNodes = computed<WorkflowNode[]>(() => {
-    const wf = this.stateService.currentWorkflow();
-    if (!wf?.nodes) return [];
-    return wf.nodes.filter(n => n.id !== this.node().id);
+    return getAvailableUpstreamNodes(this.stateService.currentWorkflow()?.nodes, this.node().id);
   });
 
   readonly conditionLeftValueMode = computed<'node' | 'custom'>(() => {
@@ -297,7 +306,7 @@ export class LogicNodeFormComponent {
       return cfg['leftMode'];
     }
     const left = typeof cfg['leftValue'] === 'string' ? cfg['leftValue'].trim() : '';
-    if (left.startsWith('{{nodes.') && left.endsWith('}}')) {
+    if ((left.startsWith('{{nodes.') || left.startsWith('{{prev.')) && left.endsWith('}}')) {
       return 'node';
     }
     if (left && !left.startsWith('{{')) {
@@ -316,13 +325,28 @@ export class LogicNodeFormComponent {
     if (match) {
       return match[1];
     }
+    const prevMatch = left.match(/^\{\{prev\.([^}]+)\}\}$/);
+    if (prevMatch) {
+      return 'prev';
+    }
     return this.availableUpstreamNodes()[0]?.id || '';
   });
 
-  readonly availableNodeFields = computed<{ key: string; label: string }[]>(() => {
+  readonly availableNodeFields = computed<NodeVariableField[]>(() => {
     const targetId = this.conditionTargetNodeId();
+    const wf = this.stateService.currentWorkflow();
+    if (targetId === 'prev') {
+      const incomingEdge = wf?.edges?.find(e => e.targetNodeId === this.node().id);
+      const upstreamNode = incomingEdge
+        ? wf?.nodes?.find(n => n.id === incomingEdge.sourceNodeId)
+        : undefined;
+      if (upstreamNode) {
+        return getNodeFields(upstreamNode);
+      }
+      return getNodeFieldsForType('check');
+    }
     const targetNode = this.availableUpstreamNodes().find(n => n.id === targetId);
-    return this.getNodeFieldsForType(targetNode?.type);
+    return targetNode ? getNodeFields(targetNode) : [];
   });
 
   readonly conditionTargetField = computed<string>(() => {
@@ -334,6 +358,10 @@ export class LogicNodeFormComponent {
     const match = left.match(/^\{\{nodes\.([^.]+)\.([^}]+)\}\}$/);
     if (match) {
       return match[2];
+    }
+    const prevMatch = left.match(/^\{\{prev\.([^}]+)\}\}$/);
+    if (prevMatch) {
+      return prevMatch[1];
     }
     return this.availableNodeFields()[0]?.key || 'status';
   });
@@ -350,29 +378,37 @@ export class LogicNodeFormComponent {
       const nodes = this.availableUpstreamNodes();
       if (nodes.length > 0) {
         const nodeId = this.conditionTargetNodeId() || nodes[0].id;
-        const fields = this.getNodeFieldsForType(nodes.find(n => n.id === nodeId)?.type);
+        const fields = this.availableNodeFields();
         const field = this.conditionTargetField() || fields[0]?.key || 'status';
+        const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
         this.configChange.emit({ key: 'leftNodeId', value: nodeId });
         this.configChange.emit({ key: 'leftField', value: field });
-        this.configChange.emit({ key: 'leftValue', value: `{{nodes.${nodeId}.${field}}}` });
+        this.configChange.emit({ key: 'leftValue', value: leftValue });
       }
     }
   }
 
   onConditionTargetNodeChange(nodeId: string): void {
     this.configChange.emit({ key: 'leftNodeId', value: nodeId });
-    const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
-    const fields = this.getNodeFieldsForType(targetNode?.type);
-    const field = fields[0]?.key || 'status';
+    let field: string;
+    if (nodeId === 'prev') {
+      field = 'hasDifferences';
+    } else {
+      const targetNode = this.availableUpstreamNodes().find(n => n.id === nodeId);
+      const fields = targetNode ? getNodeFields(targetNode) : [];
+      field = fields[0]?.key || 'status';
+    }
+    const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
     this.configChange.emit({ key: 'leftField', value: field });
-    this.configChange.emit({ key: 'leftValue', value: `{{nodes.${nodeId}.${field}}}` });
+    this.configChange.emit({ key: 'leftValue', value: leftValue });
   }
 
   onConditionTargetFieldChange(field: string, targetNodeId?: string): void {
     this.configChange.emit({ key: 'leftField', value: field });
     const nodeId = targetNodeId || this.conditionTargetNodeId();
     if (nodeId) {
-      this.configChange.emit({ key: 'leftValue', value: `{{nodes.${nodeId}.${field}}}` });
+      const leftValue = nodeId === 'prev' ? `{{prev.${field}}}` : `{{nodes.${nodeId}.${field}}}`;
+      this.configChange.emit({ key: 'leftValue', value: leftValue });
     }
   }
 
@@ -393,7 +429,55 @@ export class LogicNodeFormComponent {
   }
 
   applyDelayPreset(seconds: number): void {
-    this.onFieldChange('seconds', seconds);
+    this.onFieldChange('delaySeconds', seconds);
+  }
+
+  applyConditionPreset(
+    preset: 'has_diff' | 'no_diff' | 'diff_count' | 'has_errors' | 'transferred' | 'script_success'
+  ): void {
+    let field = 'hasDifferences';
+    let operator = 'equals';
+    let rightValue = 'true';
+
+    switch (preset) {
+      case 'has_diff':
+        field = 'hasDifferences';
+        operator = 'equals';
+        rightValue = 'true';
+        break;
+      case 'no_diff':
+        field = 'hasDifferences';
+        operator = 'equals';
+        rightValue = 'false';
+        break;
+      case 'diff_count':
+        field = 'differCount';
+        operator = 'greater_than';
+        rightValue = '0';
+        break;
+      case 'has_errors':
+        field = 'errors';
+        operator = 'greater_than';
+        rightValue = '0';
+        break;
+      case 'transferred':
+        field = 'bytes';
+        operator = 'greater_than';
+        rightValue = '0';
+        break;
+      case 'script_success':
+        field = 'exitCode';
+        operator = 'equals';
+        rightValue = '0';
+        break;
+    }
+
+    this.configChange.emit({ key: 'leftMode', value: 'node' });
+    this.configChange.emit({ key: 'leftNodeId', value: 'prev' });
+    this.configChange.emit({ key: 'leftField', value: field });
+    this.configChange.emit({ key: 'leftValue', value: `{{prev.${field}}}` });
+    this.configChange.emit({ key: 'operator', value: operator });
+    this.configChange.emit({ key: 'rightValue', value: rightValue });
   }
 
   addInputBranch(): void {
