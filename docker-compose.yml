@@ -59,6 +59,18 @@ services:
     # When enabled, remove the 'ports' section above — it's not needed.
     # network_mode: host
 
+    # --- Optional: FUSE Mounting on Host ---
+    # Uncomment if you want to mount cloud remotes directly to your host filesystem from inside Docker.
+    # Note: To propagate mounts to the host, bind-mount a host folder with 'rshared' propagation.
+    # devices:
+    #   - /dev/fuse:/dev/fuse
+    # cap_add:
+    #   - SYS_ADMIN
+    # security_opt:
+    #   - apparmor:unconfined
+    # volumes:
+    #   - /mnt/remotes:/mnt/remotes:rshared
+
     healthcheck:
       test: ['CMD', 'curl', '-sf', 'http://localhost:8080/health']
       interval: 30s

@@ -18,6 +18,14 @@ if [ "$(id -u)" -eq 0 ]; then
 
     # Ensure critical volumes and data directories have the correct ownership
     chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2>/dev/null || true
+
+    # Enable user_allow_other in /etc/fuse.conf so non-root users (PUID/PGID) can mount with '--allow-other' (#303)
+    if [ -f /etc/fuse.conf ]; then
+        sed -i 's/#\s*user_allow_other/user_allow_other/' /etc/fuse.conf 2>/dev/null || true
+        if ! grep -q "^user_allow_other" /etc/fuse.conf 2>/dev/null; then
+            echo "user_allow_other" >> /etc/fuse.conf 2>/dev/null || true
+        fi
+    fi
 fi
 
 # =============================================================================

@@ -86,7 +86,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip \
         util-linux \
         xvfb \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && (sed -i 's/#\s*user_allow_other/user_allow_other/' /etc/fuse.conf 2>/dev/null || true)
 
 # Create the internal app user
 # The default UID/GID is 1000, but is dynamically overridden by PUID/PGID in entrypoint.sh

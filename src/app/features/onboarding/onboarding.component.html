@@ -4,16 +4,7 @@
   animate.enter="onboarding-entrance-enter"
   animate.leave="onboarding-entrance-leave"
 >
-  @if (isLoading()) {
-    <app-loading-overlay
-      animate.enter="fade-in-out-enter"
-      animate.leave="fade-in-out-leave"
-      [title]="'onboarding.loadingTitle' | translate"
-      [message]="'onboarding.loadingMessage' | translate"
-    ></app-loading-overlay>
-  }
-
-  <div class="card-container" [class.onboarding-state-enter]="!isLoading()">
+  <div class="card-container">
     <div class="onboarding-header" data-tauri-drag-region>
       <div class="page-indicators" role="tablist">
         @for (card of cards(); track card.key; let i = $index) {
@@ -42,7 +33,10 @@
           <div #slide class="slide-page" [class.active]="i === currentCardIndex()">
             <div class="card-content">
               <div class="icon-container">
-                <img [src]="card.image || defaultImage" alt="{{ card.title | translate }} icon" />
+                <img
+                  [src]="card.image || defaultImage"
+                  [alt]="(card.title | translate) + ' icon'"
+                />
               </div>
               <div class="text-content">
                 <h2 class="card-title">{{ card.title | translate }}</h2>
@@ -53,7 +47,7 @@
                 @case ('selectConfig') {
                   <app-installation-options
                     class="form-section"
-                    [mode]="'config'"
+                    mode="config"
                     [disabled]="installing()"
                     [tabOptions]="configTabOptions"
                     (dataChange)="configData.set($event)"
@@ -76,7 +70,7 @@
                 @case ('installRclone') {
                   <app-installation-options
                     class="form-section"
-                    [mode]="'install'"
+                    mode="install"
                     [disabled]="installing()"
                     [tabOptions]="installTabOptions"
                     (dataChange)="installationData.set($event)"
@@ -109,21 +103,8 @@
                         role="radio"
                         [attr.aria-checked]="selectedMainUi() === option.value"
                       >
-                        <div class="option-header">
-                          <div
-                            class="option-icon-wrapper"
-                            [class.accent]="option.colorClass === 'accent'"
-                            [class.purple]="option.colorClass === 'purple'"
-                          >
-                            <mat-icon [svgIcon]="option.icon"></mat-icon>
-                          </div>
-                          <span
-                            class="option-badge"
-                            [class.accent]="option.colorClass === 'accent'"
-                            [class.purple]="option.colorClass === 'purple'"
-                          >
-                            {{ option.badgeKey | translate }}
-                          </span>
+                        <div class="option-icon-wrapper" [class]="option.colorClass">
+                          <mat-icon [svgIcon]="option.icon"></mat-icon>
                         </div>
                         <div class="option-body">
                           <h3 class="option-title">{{ option.titleKey | translate }}</h3>
@@ -156,13 +137,8 @@
         </button>
       }
 
-      @if (installing() && currentAction() === 'install-rclone') {
-        <button matButton="outlined" (click)="cancelInstallRclone()">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-          {{ 'common.cancel' | translate }}
-        </button>
-      } @else if (downloadingPlugin() && currentAction() === 'install-plugin') {
-        <button matButton="outlined" (click)="cancelInstallMountPlugin()">
+      @if (isCancellable()) {
+        <button matButton="outlined" (click)="cancelActiveTask()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
           {{ 'common.cancel' | translate }}
         </button>

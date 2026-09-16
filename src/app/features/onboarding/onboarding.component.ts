@@ -13,12 +13,11 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
 import { ProvisionProgressComponent } from '../../shared/components/provision-progress/provision-progress.component';
-import { TranslatePipe } from '@ngx-translate/core';
 
 import { InstallationService } from 'src/app/services/settings/installation.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
@@ -41,7 +40,10 @@ import {
   ONBOARDING_CONFIG_TAB_OPTIONS,
 } from '@app/types';
 
-/** Translation keys for the install button when "use existing binary" mode is active. */
+const MOBILE_BREAKPOINT = 600;
+const VIEWPORT_VERTICAL_OFFSET = 152;
+const MIN_VIEWPORT_HEIGHT = 200;
+
 const EXISTING_BINARY_BUTTON_LABELS: Readonly<Record<BinaryStatus, string>> = Object.freeze({
   untested: 'onboarding.installButton.testBinary',
   testing: 'onboarding.installButton.testingBinary',
@@ -52,20 +54,15 @@ const EXISTING_BINARY_BUTTON_LABELS: Readonly<Record<BinaryStatus, string>> = Ob
 interface UiOption {
   value: MainView;
   icon: string;
-  colorClass: '' | 'accent' | 'purple';
-  badgeKey: string;
+  colorClass: 'primary' | 'accent' | 'purple';
   titleKey: string;
   descKey: string;
 }
 
-/** View model for the footer's primary action button. */
 interface PrimaryButton {
-  /** Translation key for the label, or null to render icon-only. */
   labelKey: string | null;
-  /** Icon name, or null to render label-only. */
   icon: string | null;
   disabled: boolean;
-  /** Translation key for the tooltip, or null for no tooltip. */
   titleKey: string | null;
   action: () => void;
 }
@@ -75,7 +72,6 @@ interface PrimaryButton {
   imports: [
     MatButtonModule,
     MatIconModule,
-    LoadingOverlayComponent,
     InstallationOptionsComponent,
     PasswordManagerComponent,
     ProvisionProgressComponent,
@@ -86,7 +82,7 @@ interface PrimaryButton {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnboardingComponent {
-  completed = output<void>();
+  readonly completed = output<void>();
 
   // ─── Services ───────────────────────────────────────────────────────────────
   private readonly installationService = inject(InstallationService);
@@ -103,11 +99,10 @@ export class OnboardingComponent {
 
   // ─── State ──────────────────────────────────────────────────────────────────
   readonly currentCardIndex = signal(0);
-
   readonly viewportHeight = signal<number | null>(null);
 
   private readonly isMobileViewport = signal(
-    typeof window !== 'undefined' && window.innerWidth <= 600
+    typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT
   );
 
   private readonly slideEls = viewChildren<ElementRef<HTMLElement>>('slide');
@@ -155,8 +150,7 @@ export class OnboardingComponent {
     {
       value: 'main_menu',
       icon: 'desktop',
-      colorClass: '',
-      badgeKey: 'onboarding.uiOptions.main_menu.badge',
+      colorClass: 'primary',
       titleKey: 'onboarding.uiOptions.main_menu.title',
       descKey: 'onboarding.uiOptions.main_menu.description',
     },
@@ -164,7 +158,6 @@ export class OnboardingComponent {
       value: 'nautilus',
       icon: 'folder-open',
       colorClass: 'accent',
-      badgeKey: 'onboarding.uiOptions.nautilus.badge',
       titleKey: 'onboarding.uiOptions.nautilus.title',
       descKey: 'onboarding.uiOptions.nautilus.description',
     },
@@ -172,24 +165,20 @@ export class OnboardingComponent {
       value: 'flow',
       icon: 'bolt',
       colorClass: 'purple',
-      badgeKey: 'onboarding.uiOptions.flow.badge',
       titleKey: 'onboarding.uiOptions.flow.title',
       descKey: 'onboarding.uiOptions.flow.description',
     },
   ];
 
   // ─── Computed ───────────────────────────────────────────────────────────────
-
-  readonly isLoading = computed(() => !this.systemHealth.isInitialized());
-
   readonly cards = computed<OnboardingCard[]>(() => {
     const sys = this.systemHealth;
     return OnboardingComponent.ALL_CARD_KEYS.filter(key => {
       switch (key) {
         case 'installRclone':
-          return sys.rcloneInstalled() === false;
+          return !sys.rcloneInstalled();
         case 'installPlugin':
-          return sys.mountPluginInstalled() === false;
+          return !sys.mountPluginInstalled();
         case 'passwordRequired':
           return sys.passwordRequired();
         default:
@@ -213,6 +202,12 @@ export class OnboardingComponent {
     return (key && OnboardingComponent.CARD_ACTIONS[key]) ?? 'next';
   });
 
+  readonly isCancellable = computed(
+    () =>
+      (this.installing() && this.currentAction() === 'install-rclone') ||
+      (this.downloadingPlugin() && this.currentAction() === 'install-plugin')
+  );
+
   private readonly canInstall = computed(() => !this.installing() && this.installationValid());
 
   private readonly installButtonText = computed(() => {
@@ -223,16 +218,13 @@ export class OnboardingComponent {
     }
 
     const data = this.installationData();
-
     if (data.installLocation === 'custom' && !data.customPath.trim()) {
       return 'onboarding.installButton.selectPath';
     }
-
     if (data.installLocation === 'existing') {
       if (!data.existingBinaryPath.trim()) return 'onboarding.installButton.selectBinary';
       return EXISTING_BINARY_BUTTON_LABELS[data.binaryTestResult];
     }
-
     return 'onboarding.installButton.install';
   });
 
@@ -246,7 +238,7 @@ export class OnboardingComponent {
           disabled: !canInstall,
           titleKey: !canInstall ? 'onboarding.validation.completeInstallation' : null,
           action: (): void => {
-            if (canInstall) void this.installRclone();
+            void this.installRclone();
           },
         };
       }
@@ -260,7 +252,7 @@ export class OnboardingComponent {
           disabled: downloading,
           titleKey: null,
           action: (): void => {
-            if (!downloading) void this.installMountPlugin();
+            void this.installMountPlugin();
           },
         };
       }
@@ -272,20 +264,19 @@ export class OnboardingComponent {
           disabled: !valid,
           titleKey: !valid ? 'onboarding.validation.selectConfig' : null,
           action: (): void => {
-            if (valid) void this.onConfigNext();
+            void this.onConfigNext();
           },
         };
       }
       case 'unlock': {
         const submitting = this.isSubmittingPassword();
-        const canUnlock = !!this.configPassword() && !submitting;
         return {
           labelKey: submitting ? null : 'onboarding.actions.unlock',
           icon: submitting ? 'spinner' : null,
-          disabled: !canUnlock,
+          disabled: !this.configPassword() || submitting,
           titleKey: null,
           action: (): void => {
-            if (canUnlock) void this.submitConfigPassword();
+            void this.submitConfigPassword();
           },
         };
       }
@@ -299,7 +290,6 @@ export class OnboardingComponent {
             void this.completeOnboarding();
           },
         };
-      case 'next':
       default:
         return {
           labelKey: 'common.next',
@@ -313,8 +303,7 @@ export class OnboardingComponent {
     }
   });
 
-  // ─── Constructor ────────────────────────────────────────────────────────────
-
+  // ─── Lifecycle & Viewport Sizing ──────────────────────────────────────────
   constructor() {
     this.eventListenersService
       .listenToRcloneEngineReady()
@@ -322,29 +311,50 @@ export class OnboardingComponent {
       .subscribe(() => this.passwordValidationError.set(null));
 
     afterRenderEffect(onCleanup => {
-      const slides = this.slideEls();
-      const activeSlide = slides[this.currentCardIndex()];
-
+      const activeSlide = this.slideEls()[this.currentCardIndex()];
       if (this.isMobileViewport() || !activeSlide || typeof ResizeObserver === 'undefined') {
         this.viewportHeight.set(null);
         return;
       }
 
       const el = activeSlide.nativeElement;
-      const measure = (): void => {
-        const height = el.scrollHeight;
-        if (height > 0) this.viewportHeight.set(height);
-      };
+      const contentEl = el.querySelector<HTMLElement>('.card-content');
+      this.updateViewportHeight(el);
 
-      measure();
-      const observer = new ResizeObserver(measure);
-      observer.observe(el);
-      onCleanup((): void => {
-        observer.disconnect();
-      });
+      if (contentEl) {
+        const observer = new ResizeObserver(() => this.updateViewportHeight(el));
+        observer.observe(contentEl);
+        onCleanup(() => observer.disconnect());
+      }
     });
 
     void this.initialize();
+  }
+
+  private updateViewportHeight(el?: HTMLElement | null): void {
+    if (this.isMobileViewport() || !el) {
+      this.viewportHeight.set(null);
+      return;
+    }
+
+    const contentEl = el.querySelector<HTMLElement>('.card-content');
+    if (!contentEl) {
+      this.viewportHeight.set(null);
+      return;
+    }
+
+    const style = typeof window !== 'undefined' ? window.getComputedStyle(el) : null;
+    const padTop = style ? parseFloat(style.paddingTop) || 0 : 0;
+    const padBottom = style ? parseFloat(style.paddingBottom) || 0 : 0;
+    const naturalHeight = contentEl.scrollHeight + padTop + padBottom;
+
+    if (naturalHeight > 0) {
+      const maxAvailable =
+        typeof window !== 'undefined'
+          ? window.innerHeight - VIEWPORT_VERTICAL_OFFSET
+          : naturalHeight;
+      this.viewportHeight.set(Math.min(naturalHeight, Math.max(maxAvailable, MIN_VIEWPORT_HEIGHT)));
+    }
   }
 
   private async initialize(): Promise<void> {
@@ -360,8 +370,7 @@ export class OnboardingComponent {
     }
   }
 
-  // ─── Keyboard navigation ────────────────────────────────────────────────────
-
+  // ─── Keyboard navigation & Window resize ──────────────────────────────────
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
@@ -370,9 +379,7 @@ export class OnboardingComponent {
       return;
     }
     if (event.key === 'ArrowRight' && this.currentAction() === 'next') {
-      if (!this.primaryButton().disabled) {
-        this.nextCard();
-      }
+      if (!this.primaryButton().disabled) this.nextCard();
     } else if (event.key === 'ArrowLeft' && this.currentCardIndex() > 0) {
       this.previousCard();
     }
@@ -380,36 +387,20 @@ export class OnboardingComponent {
 
   @HostListener('window:resize')
   onWindowResize(): void {
-    this.isMobileViewport.set(window.innerWidth <= 600);
+    this.isMobileViewport.set(window.innerWidth <= MOBILE_BREAKPOINT);
+    const activeSlide = this.slideEls()[this.currentCardIndex()];
+    this.updateViewportHeight(activeSlide?.nativeElement);
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
-
   canNavigateToCard(targetIndex: number): boolean {
     const currentIndex = this.currentCardIndex();
-    if (targetIndex <= currentIndex) {
-      return true;
-    }
+    if (targetIndex <= currentIndex) return true;
+    if (targetIndex >= this.cards().length || this.primaryButton().disabled) return false;
 
-    const cards = this.cards();
-    if (targetIndex >= cards.length) {
-      return false;
-    }
-
-    if (this.primaryButton().disabled) {
-      return false;
-    }
-
-    for (let idx = currentIndex; idx < targetIndex; idx++) {
-      const card = cards[idx];
-      if (!card) return false;
-
-      if (idx > currentIndex && this.isCardKeyBlocked(card.key)) {
-        return false;
-      }
-    }
-
-    return true;
+    return this.cards()
+      .slice(currentIndex + 1, targetIndex)
+      .every(card => !this.isCardKeyBlocked(card.key));
   }
 
   private isCardKeyBlocked(key: OnboardingCardKey): boolean {
@@ -428,10 +419,9 @@ export class OnboardingComponent {
   }
 
   nextCard(): void {
-    if (this.primaryButton().disabled) {
-      return;
+    if (!this.primaryButton().disabled) {
+      this.currentCardIndex.update(i => Math.min(i + 1, this.cards().length - 1));
     }
-    this.currentCardIndex.update(i => Math.min(i + 1, this.cards().length - 1));
   }
 
   previousCard(): void {
@@ -439,11 +429,9 @@ export class OnboardingComponent {
   }
 
   goToCard(targetIndex: number): void {
-    if (!this.canNavigateToCard(targetIndex)) {
-      return;
+    if (this.canNavigateToCard(targetIndex)) {
+      this.currentCardIndex.set(Math.max(0, Math.min(targetIndex, this.cards().length - 1)));
     }
-    const clamped = Math.max(0, Math.min(targetIndex, this.cards().length - 1));
-    this.currentCardIndex.set(clamped);
   }
 
   selectMainUiOption(view: MainView): void {
@@ -460,8 +448,7 @@ export class OnboardingComponent {
     this.completed.emit();
   }
 
-  // ─── Installation / config / password actions ─────────────────────────────
-
+  // ─── Actions & Tasks ────────────────────────────────────────────────────────
   async installRclone(): Promise<void> {
     this.installing.set(true);
     try {
@@ -480,11 +467,6 @@ export class OnboardingComponent {
     }
   }
 
-  async cancelInstallRclone(): Promise<void> {
-    await this.installationService.cancelRcloneInstall();
-    this.installing.set(false);
-  }
-
   async installMountPlugin(): Promise<void> {
     this.downloadingPlugin.set(true);
     try {
@@ -497,9 +479,14 @@ export class OnboardingComponent {
     }
   }
 
-  async cancelInstallMountPlugin(): Promise<void> {
-    await this.installationService.cancelMountPluginInstall();
-    this.downloadingPlugin.set(false);
+  async cancelActiveTask(): Promise<void> {
+    if (this.installing()) {
+      await this.installationService.cancelRcloneInstall();
+      this.installing.set(false);
+    } else if (this.downloadingPlugin()) {
+      await this.installationService.cancelMountPluginInstall();
+      this.downloadingPlugin.set(false);
+    }
   }
 
   async onConfigNext(): Promise<void> {
