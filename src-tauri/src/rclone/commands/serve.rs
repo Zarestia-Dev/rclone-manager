@@ -280,7 +280,7 @@ pub async fn stop_serve(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = transport
+    let result = transport
         .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
@@ -296,7 +296,7 @@ pub async fn stop_serve(
             );
             notify(
                 &app,
-                NotificationEvent::Serve(ServeStage::Failed {
+                NotificationEvent::Serve(ServeStage::StopFailed {
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: profile.clone(),
@@ -305,7 +305,12 @@ pub async fn stop_serve(
                 }),
             );
             error
-        })?;
+        });
+
+    if let Err(err) = result {
+        refresh_serves_quietly(&app).await;
+        return Err(err);
+    }
 
     log_operation(
         LogLevel::Info,

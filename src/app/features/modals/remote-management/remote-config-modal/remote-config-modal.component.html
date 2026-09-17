@@ -152,15 +152,8 @@
                   [isLoading]="state.isRemoteConfigLoading()"
                   [existingRemotes]="state.existingRemotes()"
                   [remoteTypes]="state.remoteTypes()"
-                  [isTypeLocked]="
-                    (state.editTarget() === 'remote' && state.isEditingExisting()) ||
-                    state.cloneTarget()
-                  "
-                  [isNameLocked]="
-                    state.editTarget() === 'remote' &&
-                    state.isEditingExisting() &&
-                    !state.cloneTarget()
-                  "
+                  [isTypeLocked]="state.isEditingExisting() || !!state.cloneTarget()"
+                  [isNameLocked]="state.isEditingExisting()"
                   [searchQuery]="state.searchQuery()"
                   [showAdvancedOptions]="state.showAdvancedOptions()"
                   [initialCommandOptions]="state.commandOptions()"

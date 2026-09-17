@@ -34,12 +34,15 @@ import {
 } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
 import { RcloneValueMapperService } from '../../../../services/remote/rclone-value-mapper.service';
+import { retargetProfilesRemote } from '../../../../services/remote/utils/remote-config.utils';
 import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
   LINKED_PROFILE_TYPES,
   PROFILE_ICONS,
   EditTarget,
+  TemplateCategory,
+  FlagType,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
@@ -201,7 +204,6 @@ export class RemoteConfigModalComponent {
   );
 
   private async handleCreateMode(): Promise<{ success: boolean }> {
-    this.state.PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
@@ -230,10 +232,10 @@ export class RemoteConfigModalComponent {
     const remoteName = this.state.currentRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    if (this.state.editTarget() === 'remote') {
+    if (this.state.editTarget() === 'remote' || this.state.editTarget() === null) {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
       if (this.requiresInteractiveFlow()) {
-        const finalConfig = this.buildFinalConfig(true);
+        const finalConfig = this.buildFinalConfig();
         this.orchestrator.setPendingConfig(remoteData, finalConfig);
         const completed = await this.orchestrator.startInteractiveCreation(
           remoteData,
@@ -243,24 +245,37 @@ export class RemoteConfigModalComponent {
         return { success: completed };
       }
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-      return { success: true };
+      let profileSuccess = true;
+      if (this.state.editTarget() === null) {
+        profileSuccess = await this.state.saveRemoteProfiles(remoteName);
+      }
+      return { success: profileSuccess };
     }
 
     const target = this.state.editTarget();
-    if (target === 'remote' || target === null) {
+    if (!target || target === 'remote') {
       return { success: false };
     }
     const success = await this.state.saveRemoteProfiles(remoteName, target);
     return { success };
   }
 
-  private buildFinalConfig(empty = false): RemoteConfigSections {
+  private buildFinalConfig(): RemoteConfigSections {
     this.saveCurrentStepProfile();
-    const p = this.state.profiles();
+    let p = this.state.profiles();
+
+    if (this.state.cloneTarget()) {
+      const cloneFrom = this.dialogData?.cloneFrom;
+      const targetName = this.state.remoteForm.get('name')?.value || this.state.currentRemoteName();
+      if (cloneFrom && targetName && cloneFrom !== targetName) {
+        p = retargetProfilesRemote(p, cloneFrom, targetName);
+      }
+    }
+
     const sections = Object.fromEntries(
       Object.entries(REMOTE_CONFIG_KEYS).map(([type, key]) => [
         key,
-        empty ? {} : p[type as keyof typeof p],
+        p[type as keyof typeof p] ?? {},
       ])
     ) as unknown as RemoteConfigSections;
     return { ...sections, showOnTray: true };
@@ -375,30 +390,33 @@ export class RemoteConfigModalComponent {
 
   readonly currentValues = computed(() => {
     const rcf = this.state.remoteConfigForm;
-    const flagFields = this.state.dynamicFlagFields();
-
-    const getCleanOptions = (
-      configKey: string,
-      flagType: 'vfs' | 'mount' | 'backend' | 'filter'
-    ): Record<string, unknown> => {
+    const getCleanOptions = (configKey: string, flagType: FlagType): Record<string, unknown> => {
       const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
-      return this.valueMapper.cleanData(opts, flagFields[flagType] ?? []);
+      const fields = this.state.getDynamicFlagFields(flagType);
+      return this.valueMapper.cleanData(opts, fields);
     };
 
     const remoteRaw = this.state.remoteForm.getRawValue();
-    const {
-      name: _n,
-      type: _t,
-      ...cleanRemoteData
-    } = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
+    const remoteClean = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
+    const cleanRemoteData: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(remoteClean)) {
+      if (k !== 'name' && k !== 'type') cleanRemoteData[k] = v;
+    }
 
-    return {
+    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
       vfs: getCleanOptions('vfsConfig', 'vfs'),
       mount: getCleanOptions('mountConfig', 'mount'),
       backend: getCleanOptions('backendConfig', 'backend'),
       filter: getCleanOptions('filterConfig', 'filter'),
       remote: cleanRemoteData,
     };
+
+    const activeFlag = this.state.activeFlagType();
+    if (activeFlag && !result[activeFlag]) {
+      result[activeFlag] = getCleanOptions(`${activeFlag}Config`, activeFlag);
+    }
+
+    return result;
   });
 
   onApplyTemplate(event: ApplyTemplateEvent): void {

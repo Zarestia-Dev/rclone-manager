@@ -119,6 +119,12 @@ impl ServeStage {
                 remote,
                 profile,
                 ..
+            }
+            | Self::StopFailed {
+                backend,
+                remote,
+                profile,
+                ..
             } => Some((backend, remote, profile.as_deref())),
             Self::AllStopped => None,
         }
@@ -128,7 +134,8 @@ impl ServeStage {
         match self {
             Self::Started { protocol, .. }
             | Self::Failed { protocol, .. }
-            | Self::Stopped { protocol, .. } => Some(protocol),
+            | Self::Stopped { protocol, .. }
+            | Self::StopFailed { protocol, .. } => Some(protocol),
             Self::AllStopped => None,
         }
     }
@@ -150,6 +157,12 @@ impl MountStage {
                 ..
             }
             | Self::UnmountSucceeded {
+                backend,
+                remote,
+                profile,
+                ..
+            }
+            | Self::UnmountFailed {
                 backend,
                 remote,
                 profile,
@@ -299,12 +312,12 @@ impl NotificationEvent {
                 _ => AlertSeverity::Info,
             },
             Self::Serve(stage) => match stage {
-                ServeStage::Failed { .. } => AlertSeverity::High,
+                ServeStage::Failed { .. } | ServeStage::StopFailed { .. } => AlertSeverity::High,
                 ServeStage::Stopped { .. } | ServeStage::AllStopped => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
             Self::Mount(stage) => match stage {
-                MountStage::Failed { .. } => AlertSeverity::High,
+                MountStage::Failed { .. } | MountStage::UnmountFailed { .. } => AlertSeverity::High,
                 _ => AlertSeverity::Info,
             },
             Self::Engine(stage) => match stage {

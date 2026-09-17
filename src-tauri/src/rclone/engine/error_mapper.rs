@@ -93,6 +93,11 @@ pub fn map_rclone_error(raw_error: &str) -> Option<String> {
         ));
     }
 
+    // FUSE busy errors (fusermount/fusermount3: "Device or resource busy", "target is busy")
+    if raw_lower.contains("device or resource busy") || raw_lower.contains("target is busy") {
+        return Some(crate::localized_error!("backendErrors.mount.deviceBusy"));
+    }
+
     // -------------------------------------------------------------------------
     // 2. Serve / Network Bind errors (Source: rclone/cmd/serve/, rclone/lib/http/)
     // -------------------------------------------------------------------------
@@ -335,6 +340,13 @@ mod tests {
             mapped,
             Some("backendErrors.mount.driveLetterInUse".to_string())
         );
+    }
+
+    #[test]
+    fn test_mount_device_busy() {
+        let err = "rclone RPC failed: mount/unmount -> HTTP 500: exit status 1: fusermount3: failed to unmount /mnt/data: Device or resource busy";
+        let mapped = map_rclone_error(err);
+        assert_eq!(mapped, Some("backendErrors.mount.deviceBusy".to_string()));
     }
 
     #[test]

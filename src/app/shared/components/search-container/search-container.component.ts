@@ -27,6 +27,7 @@ import { TranslatePipe } from '@ngx-translate/core';
           matInput
           [ngModel]="searchText()"
           (ngModelChange)="searchTextChange.emit($event)"
+          [ngModelOptions]="{ standalone: true }"
           [placeholder]="placeholder() | translate"
           [attr.aria-label]="ariaLabel() | translate"
         />

@@ -486,6 +486,14 @@ export const RCLONE_PATH_KEYS = [
   'path',
 ] as const;
 
+export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
+
+export const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
+
+export function isRclonePathKey(key: string): boolean {
+  return RCLONE_PATH_KEYS_SET.has(key);
+}
+
 export interface JobProfile {
   autoStart?: boolean;
   srcFs?: string | string[];

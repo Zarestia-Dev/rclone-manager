@@ -2789,7 +2789,8 @@
       "fuseMissing": "FUSE (fuse3) n'est pas installé. Veuillez installer fuse3 pour activer le montage.",
       "macfuseMissing": "macFUSE / FUSE-T n'est pas installé. Veuillez installer macFUSE pour activer le montage sur macOS.",
       "driveLetterInUse": "La lettre de lecteur sélectionnée est déjà utilisée par le système.",
-      "permissionDenied": "Permission refusée lors de la tentative de montage."
+      "permissionDenied": "Permission refusée lors de la tentative de montage.",
+      "deviceBusy": "Le point de montage ou le périphérique cible est occupé. Fermez les fichiers ouverts, gestionnaires de fichiers ou terminaux accédant au répertoire et réessayez."
     },
     "operations": {
       "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
@@ -3090,19 +3091,21 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "Échec du Démontage",
+      "serveStopFailed": "Échec de l'Arrêt du Serveur"
     },
     "body": {
-      "mountSucceeded": "Le profil {{remote}} '{{profile}}' a été monté avec succès depuis {{backend}} à {{mountPoint}}.",
-      "mountFailed": "Impossible de monter le profil {{remote}} '{{profile}}' depuis {{backend}} : {{error}}",
-      "unmountSucceeded": "Profil {{remote}} '{{profile}}' déconnecté de {{backend}}.",
-      "jobStarted": "Démarrage de {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
-      "jobCompleted": "{{type}} a été complété avec succès pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
-      "jobFailed": "Échec {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}} : {{error}}",
-      "jobStopped": "Arrêt de {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
-      "serveStarted": "Service de partage démarré pour {{remote}}, profil « {{profile}} », sur {{backend}}.",
-      "serveFailed": "Impossible de démarrer le service de partage pour le profil {{remote}} '{{profile}}' sur {{backend}} : {{error}}",
-      "serveStopped": "Service de partage arrêté pour {{remote}}, profil « {{profile}} », sur {{backend}}.",
+      "mountSucceeded": "{{remote}} a été monté avec succès depuis {{backend}} à {{mountPoint}}.",
+      "mountFailed": "Impossible de monter {{remote}} depuis {{backend}} : {{error}}",
+      "unmountSucceeded": "{{remote}} déconnecté de {{backend}}.",
+      "jobStarted": "Démarrage de {{type}} pour {{remote}} sur {{backend}}.",
+      "jobCompleted": "{{type}} a été complété avec succès pour {{remote}} sur {{backend}}.",
+      "jobFailed": "Échec {{type}} pour {{remote}} sur {{backend}} : {{error}}",
+      "jobStopped": "Arrêt de {{type}} pour {{remote}} sur {{backend}}.",
+      "serveStarted": "Service de partage démarré pour {{remote}} sur {{backend}}.",
+      "serveFailed": "Impossible de démarrer le service de partage pour {{remote}} sur {{backend}} : {{error}}",
+      "serveStopped": "Arrêt du serveur pour {{remote}} sur {{backend}}.",
       "allJobsStopped": "Tous les jobs actifs ont été supprimés avec succès.",
       "allServesStopped": "Tous les serveurs actifs ont été fermés avec succès.",
       "allUnmounted": "Touts les montages des dépôts distants ont bien été déconnectés.",
@@ -3132,7 +3135,9 @@
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
-      "workflowStopped": "Workflow '{{name}}' was stopped."
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "unmountFailed": "Échec du démontage de {{remote}} depuis {{backend}} : {{error}}",
+      "serveStopFailed": "Échec de l'arrêt du serveur {{protocol}} pour {{remote}} sur {{backend}} : {{error}}"
     }
   },
   "repairSheet": {
@@ -3340,7 +3345,8 @@
         "noProfiles": "Aucun profil disponible"
       },
       "errors": {
-        "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone"
+        "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone",
+        "failedStop": "Échec de l'arrêt du Lancement Rapide \"{{name}}\" : {{error}}"
       }
     },
     "tabs": {

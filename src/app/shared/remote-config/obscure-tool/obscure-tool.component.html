@@ -18,6 +18,7 @@
             [type]="hidePassword() ? 'password' : 'text'"
             [ngModel]="clearText()"
             (ngModelChange)="clearText.set($event)"
+            [ngModelOptions]="{ standalone: true }"
             [placeholder]="'wizards.obscure.clearPlaceholderText' | translate"
             (keyup.enter)="clearText().trim() && performObscure()"
           />

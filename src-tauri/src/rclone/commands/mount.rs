@@ -290,7 +290,7 @@ pub async fn unmount_remote(
         );
         notify(
             &app,
-            NotificationEvent::Mount(MountStage::Failed {
+            NotificationEvent::Mount(MountStage::UnmountFailed {
                 backend: backend_manager.get_active_name().await,
                 remote: remote_name.clone(),
                 profile: None,
@@ -309,7 +309,7 @@ pub async fn unmount_remote(
         let profile = mounted_entry
             .as_ref()
             .and_then(|m| m.profile.clone())
-            .unwrap_or_default();
+            .filter(|p| !p.trim().is_empty());
         let fs_name = mounted_entry
             .as_ref()
             .map(|m| m.fs.clone())
@@ -342,7 +342,7 @@ pub async fn unmount_remote(
             NotificationEvent::Mount(MountStage::UnmountSucceeded {
                 backend: backend_name,
                 remote: remote_name.clone(),
-                profile: Some(profile),
+                profile,
             }),
         );
 
@@ -373,36 +373,42 @@ pub async fn unmount_remote(
         .get_mount_by_point(&mount_point)
         .await
         .and_then(|m| m.profile)
-        .unwrap_or_default();
+        .filter(|p| !p.trim().is_empty());
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = transport
+    if let Err(e) = transport
         .rpc(
             crate::utils::rclone::endpoints::mount::UNMOUNT,
             Some(&payload),
         )
         .await
-        .map_err(|e| {
-            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => e);
-            log_operation(
-                LogLevel::Error,
-                Some(remote_name.clone()),
-                Some("Unmount remote".to_string()),
-                format!("Failed to unmount {mount_point}: {error_msg}"),
-                None,
+    {
+        let raw_err = e.to_string();
+        let error_msg = crate::rclone::engine::error_mapper::map_rclone_error(&raw_err)
+            .unwrap_or_else(
+                || crate::localized_error!("backendErrors.request.failed", "error" => &raw_err),
             );
-            notify(
-                &app,
-                NotificationEvent::Mount(MountStage::Failed {
-                    backend: backend_name_for_err.clone(),
-                    remote: remote_name.clone(),
-                    profile: Some(profile.clone()),
-                    error: error_msg.clone(),
-                }),
-            );
-            error_msg
-        })?;
+
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.clone()),
+            Some("Unmount remote".to_string()),
+            format!("Failed to unmount {mount_point}: {error_msg}"),
+            None,
+        );
+        notify(
+            &app,
+            NotificationEvent::Mount(MountStage::UnmountFailed {
+                backend: backend_name_for_err,
+                remote: remote_name.clone(),
+                profile: profile.clone(),
+                error: error_msg.clone(),
+            }),
+        );
+        refresh_mounts_quietly(&app).await;
+        return Err(error_msg);
+    }
 
     log_operation(
         LogLevel::Info,
@@ -418,7 +424,7 @@ pub async fn unmount_remote(
         NotificationEvent::Mount(MountStage::UnmountSucceeded {
             backend: backend_name,
             remote: remote_name.clone(),
-            profile: Some(profile.clone()),
+            profile,
         }),
     );
 

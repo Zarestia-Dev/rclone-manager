@@ -6,7 +6,7 @@ import { ExportModalComponent } from './export-modal.component';
 import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { ExportType } from '@app/types';
+import { ExportType, ExportModalData } from '@app/types';
 
 describe('ExportModalComponent', () => {
   let fixture: ComponentFixture<ExportModalComponent>;
@@ -180,5 +180,45 @@ describe('ExportModalComponent', () => {
   it('closes dialog when cancel is triggered', () => {
     component.close();
     expect(dialogRefSpy.close).toHaveBeenCalledWith(false);
+  });
+
+  it('pre-selects specific remote and remote name when dialog data includes remoteName', () => {
+    const target = component as unknown as {
+      data: ExportModalData;
+      initializeFromData: () => void;
+    };
+    target.data = { remoteName: 'remote1' };
+    target.initializeFromData();
+
+    expect(component.selectedOption()).toBe('specific_remote');
+    expect(component.selectedRemoteName()).toBe('remote1');
+    expect(component.showSpecificRemoteSection()).toBe(true);
+  });
+
+  it('pre-selects specific remote when both remoteName and defaultExportType are provided', () => {
+    const target = component as unknown as {
+      data: ExportModalData;
+      initializeFromData: () => void;
+    };
+    target.data = {
+      remoteName: 'remote2',
+      defaultExportType: ExportType.SpecificRemote,
+    };
+    target.initializeFromData();
+
+    expect(component.selectedOption()).toBe('specific_remote');
+    expect(component.selectedRemoteName()).toBe('remote2');
+  });
+
+  it('pre-selects custom category when defaultExportType is category and no remoteName', () => {
+    const target = component as unknown as {
+      data: ExportModalData;
+      initializeFromData: () => void;
+    };
+    target.data = { defaultExportType: ExportType.Category('workflows') };
+    target.initializeFromData();
+
+    expect(component.selectedOption()).toBe('workflows');
+    expect(component.selectedRemoteName()).toBe('');
   });
 });

@@ -32,6 +32,7 @@ import { ModalService } from '../ui/modal.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
+import { retargetProfilesRemote } from '../remote/utils/remote-config.utils';
 import {
   Remote,
   JobInfo,
@@ -808,35 +809,24 @@ export class RemoteFacadeService {
     return findUniqueName(baseName, Array.from(this.remoteStates.keys()));
   }
 
+  generateUniqueCloneName(baseName: string): string {
+    const cleanBase = baseName.replace(/-(?:clone|\d+)+$/, '');
+    return findUniqueName(`${cleanBase}-clone`, Array.from(this.remoteStates.keys()));
+  }
+
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
     const base = this.remoteStates.get(remoteName)?.base() as
       Omit<Remote, 'status' | 'features'> | undefined;
     if (!base) return null;
 
-    const newName = this.generateUniqueRemoteName(base.name.replace(/-\d+$/, ''));
+    const newName = this.generateUniqueCloneName(base.name);
     const settings = structuredClone(this.getRemoteSettings(remoteName)) as RemoteSettings;
-
-    for (const configKey of Object.values(REMOTE_CONFIG_KEYS)) {
-      const profiles = settings[configKey as keyof RemoteSettings] as ProfileConfigMap | undefined;
-      if (profiles) {
-        for (const profile of Object.values(profiles)) {
-          if (
-            typeof profile['source'] === 'string' &&
-            this.pathService.getRemoteNameFromFs(profile['source']) === remoteName
-          ) {
-            profile['source'] = (profile['source'] as string).replace(
-              `${remoteName}:`,
-              `${newName}:`
-            );
-          }
-        }
-      }
-    }
+    const retargetedSettings = retargetProfilesRemote(settings, remoteName, newName);
 
     return {
       config: { ...(base.config as ConfigRecord), name: newName },
       name: newName,
-      ...settings,
+      ...retargetedSettings,
     } as RemoteSettings;
   }
 

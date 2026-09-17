@@ -14,6 +14,7 @@ import {
   Remote,
   StartJobEvent,
   StopJobEvent,
+  ExportType,
 } from '@app/types';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -193,16 +194,16 @@ export class QuickRunWorkspaceComponent {
 
   async cloneRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
-    try {
-      await this.remoteFacade.cloneRemote(remoteName);
-    } catch (error) {
-      console.error('Clone remote failed:', error);
-      this.notificationService.showError(error);
-    }
+    const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
+    if (!remote) return;
+    this.modalService.openRemoteConfig({
+      cloneFrom: remoteName,
+      remoteType: remote.type,
+    });
   }
 
   openExportModal(remoteName: string): void {
-    this.modalService.openExport({ remoteName });
+    this.modalService.openExport({ remoteName, defaultExportType: ExportType.SpecificRemote });
   }
 
   async resetRemoteSettings(remoteName: string): Promise<void> {

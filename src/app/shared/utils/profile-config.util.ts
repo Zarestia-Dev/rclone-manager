@@ -52,3 +52,21 @@ export function formatValueDisplay(val: unknown): string {
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
 }
+
+/**
+ * Safely extracts the primary source path from an rclone config object.
+ * Checks `srcFs`, `path1`, `fs`, `source`, and `url`.
+ */
+export function extractProfileSource(rclone: Record<string, unknown> | null | undefined): unknown {
+  if (!rclone || typeof rclone !== 'object') return undefined;
+  return rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs'] ?? rclone['source'] ?? rclone['url'];
+}
+
+/**
+ * Safely extracts the primary destination/target path from an rclone config object.
+ * Checks `mountPoint`, `dstFs`, `path2`, and `dest`.
+ */
+export function extractProfileDest(rclone: Record<string, unknown> | null | undefined): unknown {
+  if (!rclone || typeof rclone !== 'object') return undefined;
+  return rclone['mountPoint'] ?? rclone['dstFs'] ?? rclone['path2'] ?? rclone['dest'];
+}

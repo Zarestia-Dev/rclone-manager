@@ -7,6 +7,8 @@ import {
   ConfigToFormContext,
   FormToConfigContext,
   resolveOptionExamples,
+  retargetProfileRemote,
+  retargetProfilesRemote,
 } from './remote-config.utils';
 
 describe('remote-config.utils', () => {
@@ -345,6 +347,112 @@ describe('remote-config.utils', () => {
           DefaultStr: '',
         })
       ).toEqual([]);
+    });
+  });
+
+  describe('retargetProfileRemote & retargetProfilesRemote', () => {
+    it('should retarget mount profiles with rclone sub-object', () => {
+      const profile = {
+        app: { autoStart: true },
+        rclone: {
+          fs: 'gdrive:myfolder',
+          mountPoint: '/mnt/data',
+        },
+      };
+
+      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+
+      expect((result['rclone'] as Record<string, unknown>)['fs']).toBe('gdrive-clone:myfolder');
+      expect((result['rclone'] as Record<string, unknown>)['mountPoint']).toBe('/mnt/data');
+    });
+
+    it('should retarget multi-path array sources in sync/copy profiles', () => {
+      const profile = {
+        app: { autoStart: false },
+        rclone: {
+          srcFs: ['gdrive:photos', 'otherremote:backup', 'local:/data'],
+          dstFs: 'gdrive:destination',
+        },
+      };
+
+      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const rclone = result['rclone'] as Record<string, unknown>;
+
+      expect(rclone['srcFs']).toEqual(['gdrive-clone:photos', 'otherremote:backup', 'local:/data']);
+      expect(rclone['dstFs']).toBe('gdrive-clone:destination');
+    });
+
+    it('should retarget bisync profiles path1 and path2', () => {
+      const profile = {
+        rclone: {
+          path1: 'gdrive:folder1',
+          path2: 'gdrive:folder2',
+        },
+      };
+
+      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const rclone = result['rclone'] as Record<string, unknown>;
+
+      expect(rclone['path1']).toBe('gdrive-clone:folder1');
+      expect(rclone['path2']).toBe('gdrive-clone:folder2');
+    });
+
+    it('should retarget scoped runtimeRemote profiles', () => {
+      const profile = {
+        gdrive: { chunk_size: '64M', upload_cutoff: '256M' },
+      };
+
+      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+
+      expect(result['gdrive']).toBeUndefined();
+      expect(result['gdrive-clone']).toEqual({ chunk_size: '64M', upload_cutoff: '256M' });
+    });
+
+    it('should retarget flat path keys', () => {
+      const profile = {
+        fs: 'gdrive:root',
+      };
+
+      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+
+      expect(result['fs']).toBe('gdrive-clone:root');
+    });
+
+    it('should return unmodified profile if oldRemote is not found or matches newRemote', () => {
+      const profile = { rclone: { fs: 'other:path' } };
+      expect(retargetProfileRemote(profile, 'gdrive', 'gdrive-clone')).toEqual(profile);
+      expect(retargetProfileRemote(profile, 'gdrive', 'gdrive')).toEqual(profile);
+    });
+
+    it('should retarget all sections in RemoteSettings via retargetProfilesRemote', () => {
+      type ProfileSection = Record<
+        string,
+        { app?: Record<string, unknown>; rclone?: Record<string, unknown> }
+      >;
+      const settings = {
+        mountConfigs: {
+          Default: {
+            app: { autoStart: true },
+            rclone: { fs: 'gdrive:media', mountPoint: '/media' },
+          },
+        } as ProfileSection,
+        syncConfigs: {
+          Backup: {
+            app: { autoStart: false },
+            rclone: { srcFs: ['gdrive:docs'], dstFs: '/local/backup' },
+          },
+        } as ProfileSection,
+        runtimeRemoteConfigs: {
+          gdrive: { chunk_size: '32M' },
+        } as Record<string, Record<string, unknown>>,
+      };
+
+      const result = retargetProfilesRemote(settings, 'gdrive', 'gdrive-clone');
+
+      expect(result.mountConfigs['Default']?.rclone?.['fs']).toBe('gdrive-clone:media');
+      expect(result.syncConfigs['Backup']?.rclone?.['srcFs']).toEqual(['gdrive-clone:docs']);
+      expect(result.runtimeRemoteConfigs['gdrive']).toBeUndefined();
+      expect(result.runtimeRemoteConfigs['gdrive-clone']).toEqual({ chunk_size: '32M' });
     });
   });
 });

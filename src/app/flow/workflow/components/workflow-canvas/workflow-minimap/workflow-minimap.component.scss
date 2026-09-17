@@ -1,7 +1,6 @@
 .workflow-minimap-card {
   position: relative;
   background: var(--card-bg-color);
-  border: 1px solid var(--border-color);
   border-radius: var(--radius-md, 8px);
   box-shadow: var(--shadow-popover);
   overflow: hidden;
@@ -75,10 +74,9 @@
 
   .mini-viewport {
     position: absolute;
-    border: 1.5px solid var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
     background: rgba(var(--accent-color-rgb), 0.15);
-    border-radius: 2px;
-    pointer-events: none;
+    border-radius: var(--radius-md);
   }
 }
 

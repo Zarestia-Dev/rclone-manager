@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
-import { OPERATION_REGISTRY, QuickRun, Remote, FlowSubMode } from '@app/types';
+import { OPERATION_REGISTRY, QuickRun, Remote, FlowSubMode, RCLONE_PATH_KEYS } from '@app/types';
 import { WorkflowDefinition } from 'src/app/flow/workflow/types/workflow.types';
 import { getNodeStyleMeta } from 'src/app/flow/workflow/utils/node-style.util';
 
@@ -298,18 +298,8 @@ export class SidebarComponent {
     const rclone = (qr.config?.rclone ?? {}) as Record<string, unknown>;
     const opType = qr.operationType;
     const opData = (rclone[opType] as Record<string, unknown> | undefined) ?? rclone;
-    const haystack = [
-      qr.name,
-      qr.description,
-      qr.remoteName,
-      qr.operationType,
-      opData['srcFs'] ?? rclone['srcFs'],
-      opData['dstFs'] ?? rclone['dstFs'],
-      opData['path1'] ?? rclone['path1'],
-      opData['path2'] ?? rclone['path2'],
-      opData['mountPoint'] ?? rclone['mountPoint'],
-      opData['fs'] ?? rclone['fs'],
-    ]
+    const pathValues = RCLONE_PATH_KEYS.map(k => opData[k] ?? rclone[k]);
+    const haystack = [qr.name, qr.description, qr.remoteName, qr.operationType, ...pathValues]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();

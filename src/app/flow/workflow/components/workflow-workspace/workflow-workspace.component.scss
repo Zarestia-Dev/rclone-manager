@@ -335,8 +335,8 @@ mat-sidenav {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(var(--accent-color-rgb), 0.08);
-    border: 2px solid rgba(var(--accent-color-rgb), 0.15);
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    box-shadow: 0 0 0 2px var(--accent-color);
     margin-bottom: var(--space-xs);
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 
@@ -345,7 +345,6 @@ mat-sidenav {
       height: 36px;
       font-size: 36px;
       color: var(--accent-color);
-      opacity: 0.85;
     }
   }
 
@@ -355,7 +354,6 @@ mat-sidenav {
     color: var(--window-fg-color);
     margin: 0;
     text-align: center;
-    letter-spacing: -0.01em;
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
   }
 

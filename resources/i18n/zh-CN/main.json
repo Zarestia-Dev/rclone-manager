@@ -2789,7 +2789,8 @@
       "fuseMissing": "系统未安装 FUSE (fuse3)。请安装 fuse3 以启用挂载功能。",
       "macfuseMissing": "系统未安装 macFUSE / FUSE-T。在 macOS 上挂载需要安装 macFUSE。",
       "driveLetterInUse": "所选盘符已被系统占用。",
-      "permissionDenied": "尝试挂载时权限不足。"
+      "permissionDenied": "尝试挂载时权限不足。",
+      "deviceBusy": "目标挂载点或设备正忙。请关闭访问该目录的已打开文件、文件管理器或终端后重试。"
     },
     "operations": {
       "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
@@ -3090,19 +3091,21 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "卸载失败",
+      "serveStopFailed": "停止服务失败"
     },
     "body": {
-      "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
-      "mountFailed": "无法挂载 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}'：{{error}}",
-      "unmountSucceeded": "已断开 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 的连接。",
-      "jobStarted": "已在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动了 {{type}}。",
-      "jobCompleted": "已成功完成 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}}。",
-      "jobFailed": "{{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}} 失败：{{error}}",
-      "jobStopped": "已停止 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}}。",
-      "serveStarted": "已在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动了服务。",
-      "serveFailed": "无法在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动服务：{{error}}",
-      "serveStopped": "已停止 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的服务。",
+      "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 挂载到 {{mountPoint}}。",
+      "mountFailed": "无法挂载 {{backend}} 的远程存储 {{remote}}：{{error}}",
+      "unmountSucceeded": "已从 {{backend}} 断开 {{remote}}。",
+      "jobStarted": "已在 {{backend}} 上为远程存储 {{remote}} 启动了 {{type}}。",
+      "jobCompleted": "已成功完成 {{backend}} 上远程存储 {{remote}} 的 {{type}}。",
+      "jobFailed": "{{backend}} 上远程存储 {{remote}} 的 {{type}} 失败：{{error}}",
+      "jobStopped": "已停止 {{backend}} 上远程存储 {{remote}} 的 {{type}}。",
+      "serveStarted": "已在 {{backend}} 上为远程存储 {{remote}} 启动了服务。",
+      "serveFailed": "无法在 {{backend}} 上为远程存储 {{remote}} 启动服务：{{error}}",
+      "serveStopped": "已停止 {{backend}} 上 {{remote}} 的服务。",
       "allJobsStopped": "已成功终止所有活动任务。",
       "allServesStopped": "已成功关闭所有活动服务器。",
       "allUnmounted": "已成功断开所有远程挂载。",
@@ -3132,7 +3135,9 @@
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
-      "workflowStopped": "Workflow '{{name}}' was stopped."
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "unmountFailed": "从 {{backend}} 卸载 {{remote}} 失败：{{error}}",
+      "serveStopFailed": "停止 {{backend}} 上 {{remote}} 的 {{protocol}} 服务失败：{{error}}"
     }
   },
   "repairSheet": {
@@ -3340,7 +3345,8 @@
         "noProfiles": "没有可用的配置文件"
       },
       "errors": {
-        "remoteNotFound": "远程存储 '{{remote}}' 在 Rclone 配置中不存在"
+        "remoteNotFound": "远程存储 '{{remote}}' 在 Rclone 配置中不存在",
+        "failedStop": "停止快捷运行“{{name}}”失败：{{error}}"
       }
     },
     "tabs": {

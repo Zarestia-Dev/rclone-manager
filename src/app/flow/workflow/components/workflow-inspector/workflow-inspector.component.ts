@@ -42,7 +42,11 @@ import {
   ActiveConfigItem,
   PRIMARY_EXCLUDED_KEYS,
 } from '../../utils/config-entries.util';
-import { getRcloneCfg } from '../../../../shared/utils/profile-config.util';
+import {
+  getRcloneCfg,
+  extractProfileSource,
+  extractProfileDest,
+} from '../../../../shared/utils/profile-config.util';
 import { TriggerNodeFormComponent } from './node-forms/trigger-node-form.component';
 import { TaskNodeFormComponent } from './node-forms/task-node-form.component';
 import { LogicNodeFormComponent } from './node-forms/logic-node-form.component';
@@ -235,15 +239,12 @@ export class WorkflowInspectorComponent {
   });
 
   readonly inspectorSource = computed(() => {
-    const rclone = this.resolvedRcloneConfig();
-    const rawSrc =
-      rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs'] ?? rclone['source'] ?? rclone['url'];
+    const rawSrc = extractProfileSource(this.resolvedRcloneConfig());
     return Array.isArray(rawSrc) ? (rawSrc[0] ?? '') : rawSrc != null ? String(rawSrc) : '';
   });
 
   readonly inspectorDest = computed(() => {
-    const rclone = this.resolvedRcloneConfig();
-    const rawDst = rclone['mountPoint'] ?? rclone['dstFs'] ?? rclone['path2'] ?? rclone['dest'];
+    const rawDst = extractProfileDest(this.resolvedRcloneConfig());
     return Array.isArray(rawDst) ? (rawDst[0] ?? '') : rawDst != null ? String(rawDst) : '';
   });
 

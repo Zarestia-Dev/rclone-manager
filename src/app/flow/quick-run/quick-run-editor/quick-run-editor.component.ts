@@ -48,6 +48,7 @@ import {
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
   WorkflowNode,
+  isRclonePathKey,
 } from '@app/types';
 import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
@@ -74,7 +75,11 @@ import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/plat
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
-import { syncResponsiveSidebar } from 'src/app/shared/utils';
+import {
+  syncResponsiveSidebar,
+  extractProfileSource,
+  extractProfileDest,
+} from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const ALL_FLAG_TYPES = [
@@ -452,14 +457,14 @@ export class QuickRunEditorComponent implements OnInit {
     const optionsGroup = this.fb.group({});
     if (rclone && typeof rclone === 'object') {
       for (const [k, v] of Object.entries(rclone)) {
-        if (['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint'].includes(k)) continue;
+        if (isRclonePathKey(k)) continue;
         if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
         optionsGroup.addControl(k, new FormControl(v));
       }
       const opSubObj = rclone[opType] as Record<string, unknown> | undefined;
       if (opSubObj && typeof opSubObj === 'object') {
         for (const [k, v] of Object.entries(opSubObj)) {
-          if (['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint'].includes(k)) continue;
+          if (isRclonePathKey(k)) continue;
           if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
           if (!optionsGroup.contains(k)) {
             optionsGroup.addControl(k, new FormControl(v));
@@ -748,6 +753,15 @@ export class QuickRunEditorComponent implements OnInit {
       return;
     }
     const input = this.buildInput();
+
+    try {
+      await this.pathInspectionService.createRequiredDirectoriesForOperation(
+        input.operationType,
+        input.config.rclone as Record<string, unknown>
+      );
+    } catch (err) {
+      console.error('Failed to create required directories for Quick Run:', err);
+    }
 
     const node = this.targetNode();
     if (this.isWorkflowMode() && node) {
@@ -1141,7 +1155,7 @@ export class QuickRunEditorComponent implements OnInit {
   private patchGroupOptions(
     configKey: string,
     opts?: Record<string, unknown>,
-    ignoredKeys?: string[]
+    ignoredKeys?: readonly string[]
   ): void {
     if (!opts) return;
     const groupKey = configKey.endsWith('Config') ? configKey : `${configKey}Config`;
@@ -1151,7 +1165,7 @@ export class QuickRunEditorComponent implements OnInit {
     const optsGroup = configGroup.get('options') as FormGroup | null;
     if (optsGroup) {
       for (const [k, v] of Object.entries(opts)) {
-        if (ignoredKeys && ignoredKeys.includes(k)) continue;
+        if (ignoredKeys ? ignoredKeys.includes(k) : isRclonePathKey(k)) continue;
         if (!optsGroup.contains(k)) {
           optsGroup.addControl(k, new FormControl(v));
         } else {
@@ -1163,24 +1177,22 @@ export class QuickRunEditorComponent implements OnInit {
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
     const { values } = event;
-    const PATH_KEYS = ['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint', 'source', 'dest'];
 
-    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs, PATH_KEYS);
-    if (values.mount) this.patchGroupOptions('mountConfig', values.mount, PATH_KEYS);
-    if (values.backend) this.patchGroupOptions('backendConfig', values.backend, PATH_KEYS);
-    if (values.filter) this.patchGroupOptions('filterConfig', values.filter, PATH_KEYS);
-    if (values.sync) this.patchGroupOptions('syncConfig', values.sync, PATH_KEYS);
-    if (values.copy) this.patchGroupOptions('copyConfig', values.copy, PATH_KEYS);
+    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs);
+    if (values.mount) this.patchGroupOptions('mountConfig', values.mount);
+    if (values.backend) this.patchGroupOptions('backendConfig', values.backend);
+    if (values.filter) this.patchGroupOptions('filterConfig', values.filter);
+    if (values.sync) this.patchGroupOptions('syncConfig', values.sync);
+    if (values.copy) this.patchGroupOptions('copyConfig', values.copy);
 
     const currentOp = this.currentOpType();
     if (currentOp) {
       const opGroup = this.getOpFormGroup(currentOp);
       const opOpts = (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
       if (opOpts && typeof opOpts === 'object') {
-        this.patchGroupOptions(`${currentOp}Config`, opOpts, PATH_KEYS);
+        this.patchGroupOptions(`${currentOp}Config`, opOpts);
 
-        const srcPath = (opOpts['srcFs'] ?? opOpts['path1'] ?? opOpts['fs'] ?? opOpts['source']) as
-          string | undefined;
+        const srcPath = extractProfileSource(opOpts) as string | undefined;
         if (srcPath && typeof srcPath === 'string') {
           const sourceCtrl = opGroup.get('source');
           if (sourceCtrl instanceof FormArray && sourceCtrl.length > 0) {
@@ -1189,10 +1201,7 @@ export class QuickRunEditorComponent implements OnInit {
             sourceCtrl.get('path')?.setValue(srcPath);
           }
         }
-        const dstPath = (opOpts['mountPoint'] ??
-          opOpts['dstFs'] ??
-          opOpts['path2'] ??
-          opOpts['dest']) as string | undefined;
+        const dstPath = extractProfileDest(opOpts) as string | undefined;
         if (dstPath && typeof dstPath === 'string') {
           const destCtrl = opGroup.get('dest') as FormGroup | null;
           destCtrl?.get('path')?.setValue(dstPath);

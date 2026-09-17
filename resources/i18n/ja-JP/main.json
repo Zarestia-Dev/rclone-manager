@@ -2789,7 +2789,8 @@
       "fuseMissing": "システムに FUSE (fuse3) がインストールされていません。マウントを有効にするには fuse3 をインストールしてください。",
       "macfuseMissing": "macFUSE / FUSE-T がインストールされていません。macOS でマウントするには macFUSE をインストールしてください。",
       "driveLetterInUse": "選択したドライブ文字は既にシステムで使用されています。",
-      "permissionDenied": "マウント処理の権限が拒否されました。"
+      "permissionDenied": "マウント処理の権限が拒否されました。",
+      "deviceBusy": "ターゲットのマウントポイントまたはデバイスが使用中です。ディレクトリにアクセスしているファイル、ファイルマネージャー、またはターミナルを閉じて再試行してください。"
     },
     "operations": {
       "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
@@ -3090,19 +3091,21 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "アンマウントエラー",
+      "serveStopFailed": "サーバー停止エラー"
     },
     "body": {
-      "mountSucceeded": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）を {{mountPoint}} に正常にマウントしました。",
-      "mountFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）のマウントに失敗しました: {{error}}",
-      "unmountSucceeded": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）を切断しました。",
-      "jobStarted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）で {{type}} を開始しました。",
-      "jobCompleted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）で {{type}} が正常に完了しました。",
-      "jobFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での {{type}} に失敗しました: {{error}}",
-      "jobStopped": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での {{type}} を停止しました。",
-      "serveStarted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーを開始しました。",
-      "serveFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーの開始に失敗しました: {{error}}",
-      "serveStopped": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーを停止しました。",
+      "mountSucceeded": "{{backend}} 上の {{remote}} を {{mountPoint}} に正常にマウントしました。",
+      "mountFailed": "{{backend}} 上の {{remote}} のマウントに失敗しました: {{error}}",
+      "unmountSucceeded": "{{backend}} から {{remote}} を切断しました。",
+      "jobStarted": "{{backend}} 上の {{remote}} で {{type}} を開始しました。",
+      "jobCompleted": "{{backend}} 上の {{remote}} で {{type}} が正常に完了しました。",
+      "jobFailed": "{{backend}} 上の {{remote}} での {{type}} に失敗しました: {{error}}",
+      "jobStopped": "{{backend}} 上の {{remote}} での {{type}} を停止しました。",
+      "serveStarted": "{{backend}} 上の {{remote}} での公開サーバーを開始しました。",
+      "serveFailed": "{{backend}} 上の {{remote}} での公開サーバーの開始に失敗しました: {{error}}",
+      "serveStopped": "{{backend}} 上の {{remote}} のサーバーを停止しました。",
       "allJobsStopped": "全ての実行中のジョブを正常に終了しました。",
       "allServesStopped": "全ての実行中のサーバーを正常に停止しました。",
       "allUnmounted": "全てのリモートマウントを正常に切断しました。",
@@ -3132,7 +3135,9 @@
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
-      "workflowStopped": "Workflow '{{name}}' was stopped."
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "unmountFailed": "{{backend}} から {{remote}} のアンマウントに失敗しました: {{error}}",
+      "serveStopFailed": "{{backend}} 上の {{remote}} の {{protocol}} サーバー停止に失敗しました: {{error}}"
     }
   },
   "repairSheet": {
@@ -3340,7 +3345,8 @@
         "noProfiles": "利用可能なプロファイルがありません"
       },
       "errors": {
-        "remoteNotFound": "リモート「{{remote}}」はRclone設定に存在しません"
+        "remoteNotFound": "リモート「{{remote}}」はRclone設定に存在しません",
+        "failedStop": "クイック実行「{{name}}」の停止に失敗しました: {{error}}"
       }
     },
     "tabs": {

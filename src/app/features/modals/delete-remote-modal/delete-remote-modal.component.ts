@@ -20,7 +20,7 @@ import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.s
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
-import { OPERATION_REGISTRY, QuickRun, RemoteSettings } from '@app/types';
+import { OPERATION_REGISTRY, QuickRun, RemoteSettings, RCLONE_PATH_KEYS } from '@app/types';
 import { WorkflowDefinition, WorkflowNode } from 'src/app/flow/workflow/types/workflow.types';
 
 export interface DeleteRemoteModalData {
@@ -185,19 +185,7 @@ export class DeleteRemoteModalComponent {
       }
     }
 
-    const pathKeys = [
-      'srcFs',
-      'dstFs',
-      'fs',
-      'mountPoint',
-      'path',
-      'path1',
-      'path2',
-      'source',
-      'dest',
-      'url',
-      'watchPaths',
-    ];
+    const pathKeys = [...RCLONE_PATH_KEYS, 'url', 'watchPaths'] as const;
     for (const key of pathKeys) {
       const val = cfg[key];
       if (this.isPathMatchingRemote(val, targetClean)) {

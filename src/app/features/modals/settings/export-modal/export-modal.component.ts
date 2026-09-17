@@ -56,6 +56,7 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
 // Maps ExportType string values to option IDs used in the UI
 const EXPORT_TYPE_TO_ID: Record<string, string> = {
   All: 'full',
+  FullBackup: 'full',
   Settings: 'settings',
   SpecificRemote: 'specific_remote',
 };
@@ -229,11 +230,6 @@ export class ExportModalComponent implements OnInit {
   }
 
   private initializeFromData(): void {
-    if (this.data?.remoteName) {
-      this.selectedOption.set('specific_remote');
-      this.selectedRemoteName.set(this.data.remoteName);
-    }
-
     if (this.data?.defaultExportType) {
       const type = this.data.defaultExportType;
       let id: string;
@@ -246,6 +242,11 @@ export class ExportModalComponent implements OnInit {
       }
 
       this.selectedOption.set(id);
+    }
+
+    if (this.data?.remoteName) {
+      this.selectedOption.set('specific_remote');
+      this.selectedRemoteName.set(this.data.remoteName);
     }
   }
 

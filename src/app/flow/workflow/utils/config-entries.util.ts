@@ -1,4 +1,5 @@
 import { getRcloneCfg } from '../../../shared/utils/profile-config.util';
+import { RCLONE_PATH_KEYS } from '@app/types';
 
 export interface ActiveConfigItem {
   category: 'operation' | 'filter' | 'backend' | 'vfs' | 'general';
@@ -8,19 +9,12 @@ export interface ActiveConfigItem {
 }
 
 export const PRIMARY_EXCLUDED_KEYS = new Set([
+  ...RCLONE_PATH_KEYS,
   'title',
   'subtitle',
   'targetMode',
   'remote',
   'remoteName',
-  'srcFs',
-  'dstFs',
-  'mountPoint',
-  'fs',
-  'path1',
-  'path2',
-  'source',
-  'dest',
   'cronExpression',
   'watchPaths',
   'debounceSeconds',
@@ -44,7 +38,6 @@ export const PRIMARY_EXCLUDED_KEYS = new Set([
   'rightValue',
   'severity',
   'message',
-  'path',
   'options',
   'filter_options',
   'backend_options',

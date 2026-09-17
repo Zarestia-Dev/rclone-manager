@@ -11,6 +11,7 @@ import {
   linkedSignal,
   untracked,
 } from '@angular/core';
+
 import { NgTemplateOutlet } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 
@@ -67,6 +68,7 @@ interface PathItem {
   remoteName: string;
   pathControl: FormControl;
   typeControl: FormControl;
+  inspectionStatus: WritableSignal<PathInspectionStatus | null>;
 }
 
 @Component({
@@ -195,6 +197,13 @@ export class OperationConfigComponent {
   );
 
   pathStates = new Map<string, WritableSignal<PathSelectionState>>();
+  private readonly pathInspectionStatuses = new Map<
+    string,
+    WritableSignal<PathInspectionStatus | null>
+  >();
+  private readonly inspectionDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly inspectionTokens = new Map<string, number>();
+  private readonly lastInspectedPaths = new Map<string, string>();
   private pathResolveToken = 0;
   private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
 
@@ -434,8 +443,33 @@ export class OperationConfigComponent {
       }
     });
 
+    effect(() => {
+      const opType = this.operationType();
+      const needsInspection = opType === 'mount' || opType === 'bisync';
+      const dest = this.destItem();
+      const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
+
+      untracked(() => {
+        for (const item of items) {
+          const itemKey = `${item.group}-${item.index}`;
+          if (needsInspection && item.type === 'local') {
+            this.triggerPathInspection(
+              itemKey,
+              item.pathControl.value,
+              item.remoteName,
+              item.inspectionStatus
+            );
+          } else {
+            this.cancelAndClearInspection(itemKey, item.inspectionStatus);
+          }
+        }
+      });
+    });
+
     this.destroyRef.onDestroy(() => {
       this.clearAutocomplete();
+      this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
+      this.inspectionDebounceTimers.clear();
     });
   }
 
@@ -450,17 +484,111 @@ export class OperationConfigComponent {
     return (controls as FormGroup[]).filter(Boolean).map((control, index) => {
       const typeValue =
         control.get('type')?.value || (group === 'source' ? 'currentRemote' : 'local');
+      const pathType = this.pathService.parsePathType(typeValue);
+      const remoteName =
+        this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
+      const pathControl = control.get('path') as FormControl;
+
+      const itemKey = `${group}-${index}`;
+      let inspectionStatus = this.pathInspectionStatuses.get(itemKey);
+
+      if (!inspectionStatus) {
+        inspectionStatus = signal<PathInspectionStatus | null>(null);
+        this.pathInspectionStatuses.set(itemKey, inspectionStatus);
+      }
+
       return {
         control,
         index,
         group,
-        type: this.pathService.parsePathType(typeValue),
-        remoteName:
-          this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '',
-        pathControl: control.get('path') as FormControl,
+        type: pathType,
+        remoteName,
+        pathControl,
         typeControl: control.get('type') as FormControl,
+        inspectionStatus,
       };
     });
+  }
+
+  private cancelAndClearInspection(
+    itemKey: string,
+    statusSignal: WritableSignal<PathInspectionStatus | null>
+  ): void {
+    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.inspectionDebounceTimers.delete(itemKey);
+    }
+    this.lastInspectedPaths.delete(itemKey);
+    if (statusSignal() !== null) {
+      statusSignal.set(null);
+    }
+  }
+
+  private triggerPathInspection(
+    itemKey: string,
+    path: string | null | undefined,
+    remoteName: string,
+    statusSignal: WritableSignal<PathInspectionStatus | null>
+  ): void {
+    const trimmedPath = path?.trim() || '';
+    if (!trimmedPath) {
+      const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.inspectionDebounceTimers.delete(itemKey);
+      }
+      this.lastInspectedPaths.delete(itemKey);
+      statusSignal.set(null);
+      return;
+    }
+
+    const inspectionKey = `${remoteName}::${trimmedPath}`;
+    if (this.lastInspectedPaths.get(itemKey) === inspectionKey) {
+      return;
+    }
+
+    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.inspectionDebounceTimers.delete(itemKey);
+    }
+
+    const token = (this.inspectionTokens.get(itemKey) || 0) + 1;
+    this.inspectionTokens.set(itemKey, token);
+
+    const timer = setTimeout(() => {
+      this.inspectionDebounceTimers.delete(itemKey);
+      if (this.inspectionTokens.get(itemKey) !== token) return;
+
+      this.lastInspectedPaths.set(itemKey, inspectionKey);
+      statusSignal.set({
+        state: 'checking',
+        icon: 'spinner',
+        badgeClass: 'checking',
+        labelKey: 'remoteConfig.pathStatus.checking',
+      });
+
+      this.pathInspectionService
+        .inspect(trimmedPath, remoteName)
+        .then(status => {
+          if (this.inspectionTokens.get(itemKey) === token) {
+            statusSignal.set(status);
+          }
+        })
+        .catch(() => {
+          if (this.inspectionTokens.get(itemKey) === token) {
+            statusSignal.set({
+              state: 'willCreate',
+              icon: 'folder-plus',
+              badgeClass: 'will-create',
+              labelKey: 'remoteConfig.pathStatus.willCreate',
+            });
+          }
+        });
+    }, 300);
+
+    this.inspectionDebounceTimers.set(itemKey, timer);
   }
 
   setType(item: PathItem, typeValue: string): void {
@@ -663,15 +791,5 @@ export class OperationConfigComponent {
   onMenuOpened(item: PathItem): void {
     const id = `${item.group}-${item.index}`;
     this.pathSelectionService.triggerLoad(id, item.remoteName, item.pathControl.value);
-  }
-
-  getPathStatus(item: PathItem): PathInspectionStatus | null {
-    const type = this.operationType();
-    if (type !== 'mount' && type !== 'bisync') return null;
-    return this.pathInspectionService.getPathStatus(
-      item.pathControl.value,
-      type,
-      this.currentRemoteName()
-    );
   }
 }

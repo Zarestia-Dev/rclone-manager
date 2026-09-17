@@ -2830,7 +2830,8 @@
       "fuseMissing": "FUSE (fuse3) is not installed on your system. Please install fuse3 to enable mounting.",
       "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
       "driveLetterInUse": "Selected drive letter is already in use by the system.",
-      "permissionDenied": "Permission denied while attempting to mount."
+      "permissionDenied": "Permission denied while attempting to mount.",
+      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again."
     },
     "operations": {
       "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
@@ -3131,23 +3132,25 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "Unmount Failed",
+      "serveStopFailed": "Stop Serve Failed"
     },
     "body": {
-      "mountSucceeded": "Successfully mounted {{remote}} profile '{{profile}}' from {{backend}} at {{mountPoint}}.",
-      "mountFailed": "Failed to mount {{remote}} profile '{{profile}}' from {{backend}}: {{error}}",
-      "unmountSucceeded": "Disconnected {{remote}} profile '{{profile}}' from {{backend}}.",
-      "jobStarted": "Started {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "jobCompleted": "Successfully completed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "jobFailed": "Failed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
-      "jobStopped": "Stopped {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "mountSucceeded": "Successfully mounted {{remote}} from {{backend}} at {{mountPoint}}.",
+      "mountFailed": "Failed to mount {{remote}} from {{backend}}: {{error}}",
+      "unmountSucceeded": "Disconnected {{remote}} from {{backend}}.",
+      "jobStarted": "Started {{type}} for {{remote}} on {{backend}}.",
+      "jobCompleted": "Successfully completed {{type}} for {{remote}} on {{backend}}.",
+      "jobFailed": "Failed {{type}} for {{remote}} on {{backend}}: {{error}}",
+      "jobStopped": "Stopped {{type}} for {{remote}} on {{backend}}.",
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
       "workflowStopped": "Workflow '{{name}}' was stopped.",
-      "serveStarted": "Started serve for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "serveFailed": "Failed to start serve for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
-      "serveStopped": "Stopped serve for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "serveStarted": "Started serve for {{remote}} on {{backend}}.",
+      "serveFailed": "Failed to start serve for {{remote}} on {{backend}}: {{error}}",
+      "serveStopped": "Stopped serve for {{remote}} on {{backend}}.",
       "allJobsStopped": "Successfully terminated all active jobs.",
       "allServesStopped": "Successfully closed all active servers.",
       "allUnmounted": "Successfully disconnected all remote mounts.",
@@ -3173,7 +3176,9 @@
       "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
       "enginePasswordRequired": "Password is required to access the configuration file.",
       "engineAuthFailed": "Failed to authenticate with rclone engine: {{error}}",
-      "powerInhibited": "Active operations are preventing system sleep."
+      "powerInhibited": "Active operations are preventing system sleep.",
+      "unmountFailed": "Failed to unmount {{remote}} from {{backend}}: {{error}}",
+      "serveStopFailed": "Failed to stop serve {{protocol}} for {{remote}} on {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3381,7 +3386,8 @@
         "noProfiles": "No profiles available"
       },
       "errors": {
-        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration"
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration",
+        "failedStop": "Failed to stop Quick Run \"{{name}}\": {{error}}"
       }
     },
     "tabs": {

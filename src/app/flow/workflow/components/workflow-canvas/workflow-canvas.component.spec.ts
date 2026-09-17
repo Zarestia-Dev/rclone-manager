@@ -322,11 +322,11 @@ describe('WorkflowCanvasComponent', () => {
     // Mobile mode (isMobile = true)
     component.isMobile.set(true);
     expect(stateService.isMobileFocusMode()).toBe(false);
-    expect(component.navigationActionIcon()).toBe('expand');
+    expect(component.navigationActionIcon()).toBe('caret-down');
 
     component.toggleNavigationAction();
     expect(stateService.isMobileFocusMode()).toBe(true);
-    expect(component.navigationActionIcon()).toBe('compress');
+    expect(component.navigationActionIcon()).toBe('caret-up');
 
     // ngOnDestroy cleans up focus mode
     component.ngOnDestroy();

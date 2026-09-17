@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LocalDrive } from '@app/types';
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
@@ -29,60 +29,11 @@ export class PathInspectionService {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
 
-  private readonly statuses = signal<Record<string, PathInspectionStatus>>({});
-  private readonly checkingKeys = new Set<string>();
-
   /**
-   * Get the inspection status of a local path.
-   * If not cached, triggers background validation and returns a 'checking' status immediately.
+   * Freshly inspects the given local path and returns its status.
+   * No caching — callers are responsible for managing reactive state.
    */
-  getPathStatus(
-    path: string | undefined | null,
-    opType: string,
-    remoteName: string
-  ): PathInspectionStatus | null {
-    if (!path || !path.trim()) {
-      return null;
-    }
-    const trimmedPath = path.trim();
-    const cacheKey = `${remoteName}:${opType}:${trimmedPath}`;
-
-    const cached = this.statuses()[cacheKey];
-    if (cached) {
-      return cached;
-    }
-
-    this.triggerInspection(cacheKey, trimmedPath, remoteName);
-
-    return {
-      state: 'checking',
-      icon: 'spinner',
-      badgeClass: 'checking',
-      labelKey: 'remoteConfig.pathStatus.checking',
-    };
-  }
-
-  private async triggerInspection(key: string, path: string, remoteName: string): Promise<void> {
-    if (this.checkingKeys.has(key)) return;
-    this.checkingKeys.add(key);
-
-    try {
-      const status = await this.runInspection(path, remoteName);
-      this.statuses.update(m => ({ ...m, [key]: status }));
-    } catch {
-      const fallback: PathInspectionStatus = {
-        state: 'willCreate',
-        icon: 'folder-plus',
-        badgeClass: 'will-create',
-        labelKey: 'remoteConfig.pathStatus.willCreate',
-      };
-      this.statuses.update(m => ({ ...m, [key]: fallback }));
-    } finally {
-      this.checkingKeys.delete(key);
-    }
-  }
-
-  private async runInspection(path: string, remoteName: string): Promise<PathInspectionStatus> {
+  async inspect(path: string, remoteName: string): Promise<PathInspectionStatus> {
     // 1. Collision check (highest priority, synchronous)
     const collisions = this.remoteFacade.checkMountPathCollision(path, remoteName);
     if (collisions.length > 0) {
@@ -253,6 +204,38 @@ export class PathInspectionService {
     }[]) {
       const path1 = config?.rclone?.path1 || config?.path1;
       const path2 = config?.rclone?.path2 || config?.path2;
+
+      if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
+        await this.createLocalDirectory(path1, false);
+      }
+      if (path2 && typeof path2 === 'string' && this.isTrulyLocalPath(path2, pathStyle)) {
+        await this.createLocalDirectory(path2, false);
+      }
+    }
+  }
+
+  /**
+   * Create required local directories for a single operation configuration (e.g. Quick Run).
+   */
+  async createRequiredDirectoriesForOperation(
+    opType: string,
+    rclone: Record<string, unknown>
+  ): Promise<void> {
+    if (!rclone) return;
+    const pathStyle = this.pathService.enginePathStyle();
+
+    if (opType === 'mount') {
+      const mountPoint = (rclone['mountPoint'] ?? rclone['dest']) as string | undefined;
+      if (
+        mountPoint &&
+        typeof mountPoint === 'string' &&
+        this.isTrulyLocalPath(mountPoint, pathStyle)
+      ) {
+        await this.createLocalDirectory(mountPoint, pathStyle === 'windows');
+      }
+    } else if (opType === 'bisync') {
+      const path1 = (rclone['path1'] ?? rclone['source'] ?? rclone['srcFs']) as string | undefined;
+      const path2 = (rclone['path2'] ?? rclone['dest'] ?? rclone['dstFs']) as string | undefined;
 
       if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
         await this.createLocalDirectory(path1, false);

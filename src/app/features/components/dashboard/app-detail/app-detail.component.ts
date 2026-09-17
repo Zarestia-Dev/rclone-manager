@@ -17,6 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { extractProfileSource, extractProfileDest } from 'src/app/shared/utils';
 import {
   CompletedTransfer,
   GlobalStats,
@@ -1028,12 +1029,8 @@ export class AppDetailComponent {
 
     const rawRclone = (config.rclone || {}) as Record<string, unknown>;
     const opData = (rawRclone[type] as Record<string, unknown> | undefined) ?? rawRclone;
-    const resolvedSource = (opData['srcFs'] ??
-      opData['path1'] ??
-      opData['fs'] ??
-      rawRclone['srcFs'] ??
-      rawRclone['path1'] ??
-      rawRclone['fs']) as string | undefined;
+    const resolvedSource = (extractProfileSource(opData) ?? extractProfileSource(rawRclone)) as
+      string | undefined;
     const isSafMount =
       isMount &&
       (opData['mountType'] === 'saf' ||
@@ -1041,12 +1038,7 @@ export class AppDetailComponent {
         String(opData['mountPoint'] ?? rawRclone['mountPoint'] ?? '').startsWith('saf://'));
     const rawDest = isSafMount
       ? `saf://${this.selectedRemote().name}`
-      : ((opData['dstFs'] ??
-          opData['path2'] ??
-          opData['mountPoint'] ??
-          rawRclone['dstFs'] ??
-          rawRclone['path2'] ??
-          rawRclone['mountPoint']) as string | undefined);
+      : ((extractProfileDest(opData) ?? extractProfileDest(rawRclone)) as string | undefined);
     const resolvedDest = rawDest;
 
     const pathConfig: PathDisplayConfig =

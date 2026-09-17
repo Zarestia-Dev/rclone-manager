@@ -2830,7 +2830,8 @@
       "fuseMissing": "Sisteminizde FUSE (fuse3) kurulu değil. Bağlama yapabilmek için lütfen fuse3 paketini kurun.",
       "macfuseMissing": "Sisteminizde macFUSE / FUSE-T kurulu değil. macOS üzerinde bağlama yapabilmek için lütfen macFUSE kurun.",
       "driveLetterInUse": "Seçilen sürücü harfi sistem tarafından zaten kullanılıyor.",
-      "permissionDenied": "Bağlama sırasında erişim engellendi / yetki yetersiz."
+      "permissionDenied": "Bağlama sırasında erişim engellendi / yetki yetersiz.",
+      "deviceBusy": "Hedef bağlama noktası veya aygıt meşgul. Dizine erişen açık dosyaları, dosya yöneticilerini veya uçbirimleri kapatıp tekrar deneyin."
     },
     "operations": {
       "configIncomplete": "'{{profile}}' profili için yapılandırma eksik"
@@ -3131,23 +3132,25 @@
       "workflowStarted": "İş Akışı '{{name}}' Başlatıldı",
       "workflowCompleted": "İş Akışı '{{name}}' Tamamlandı",
       "workflowFailed": "İş Akışı '{{name}}' Başarısız Oldu",
-      "workflowStopped": "İş Akışı '{{name}}' Durduruldu"
+      "workflowStopped": "İş Akışı '{{name}}' Durduruldu",
+      "unmountFailed": "Bağlantı Kesilemedi",
+      "serveStopFailed": "Sunucu Durdurulamadı"
     },
     "body": {
-      "mountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}', {{mountPoint}} adresine bağlandı.",
-      "mountFailed": "{{backend}} sistemindeki {{remote}} profili '{{profile}}' bağlanamadı: {{error}}",
-      "unmountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}' ayrıldı.",
-      "jobStarted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başlatıldı.",
-      "jobCompleted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarıyla tamamlandı.",
-      "jobFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarısız oldu: {{error}}",
-      "jobStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} durduruldu.",
+      "mountSucceeded": "{{backend}} sistemindeki {{remote}}, {{mountPoint}} adresine bağlandı.",
+      "mountFailed": "{{backend}} sistemindeki {{remote}} bağlanamadı: {{error}}",
+      "unmountSucceeded": "{{backend}} sistemindeki {{remote}} bağlantısı kesildi.",
+      "jobStarted": "{{backend}} üzerindeki {{remote}} için {{type}} başlatıldı.",
+      "jobCompleted": "{{backend}} üzerindeki {{remote}} için {{type}} başarıyla tamamlandı.",
+      "jobFailed": "{{backend}} üzerindeki {{remote}} için {{type}} başarısız oldu: {{error}}",
+      "jobStopped": "{{backend}} üzerindeki {{remote}} için {{type}} durduruldu.",
       "workflowStarted": "İş akışı '{{name}}' yürütülmeye başlandı.",
       "workflowCompleted": "İş akışı '{{name}}' {{duration}} içinde başarıyla tamamlandı.",
       "workflowFailed": "İş akışı '{{name}}' başarısız oldu: {{error}}",
       "workflowStopped": "İş akışı '{{name}}' durduruldu.",
-      "serveStarted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatıldı.",
-      "serveFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatılamadı: {{error}}",
-      "serveStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu durduruldu.",
+      "serveStarted": "{{backend}} üzerindeki {{remote}} için sunucu başlatıldı.",
+      "serveFailed": "{{backend}} üzerindeki {{remote}} için sunucu başlatılamadı: {{error}}",
+      "serveStopped": "{{backend}} üzerindeki {{remote}} için sunucu durduruldu.",
       "allJobsStopped": "Tüm aktif işler başarıyla sonlandırıldı.",
       "allServesStopped": "Tüm aktif sunucular başarıyla kapatıldı.",
       "allUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı.",
@@ -3173,7 +3176,9 @@
       "engineBinaryNotFound": "Rclone ikili dosyası bulunamadı, lütfen ayarları kontrol edin.",
       "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir.",
       "engineAuthFailed": "Rclone motoru ile kimlik doğrulaması başarısız oldu: {{error}}",
-      "powerInhibited": "Aktif işlemler sistemin uyku moduna geçmesini engelliyor."
+      "powerInhibited": "Aktif işlemler sistemin uyku moduna geçmesini engelliyor.",
+      "unmountFailed": "{{backend}} sistemindeki {{remote}} bağlantısı kesilemedi: {{error}}",
+      "serveStopFailed": "{{backend}} üzerindeki {{remote}} için {{protocol}} sunucusu durdurulamadı: {{error}}"
     }
   },
   "repairSheet": {
@@ -3381,7 +3386,8 @@
         "noProfiles": "Kullanılabilir profil yok"
       },
       "errors": {
-        "remoteNotFound": "'{{remote}}' remote'u Rclone konfigürasyonunda mevcut değil"
+        "remoteNotFound": "'{{remote}}' remote'u Rclone konfigürasyonunda mevcut değil",
+        "failedStop": "\"{{name}}\" Hızlı Çalıştırması durdurulamadı: {{error}}"
       }
     },
     "tabs": {

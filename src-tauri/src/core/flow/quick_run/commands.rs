@@ -281,21 +281,21 @@ pub async fn stop_quick_run(
             .iter()
             .find(|m| m.quick_run_id.as_deref() == Some(&quick_run_id))
         {
-            let _ = crate::rclone::commands::mount::unmount_remote(
+            crate::rclone::commands::mount::unmount_remote(
                 app.clone(),
                 m.mount_point.clone(),
                 qr.remote_name.clone(),
             )
-            .await;
+            .await?;
         } else if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
             let mount_point = common.dest;
             if !mount_point.is_empty() {
-                let _ = crate::rclone::commands::mount::unmount_remote(
+                crate::rclone::commands::mount::unmount_remote(
                     app.clone(),
                     mount_point,
                     qr.remote_name.clone(),
                 )
-                .await;
+                .await?;
             }
         }
     } else if qr.operation_type == OperationType::Serve {
@@ -303,12 +303,12 @@ pub async fn stop_quick_run(
         let running_serves = backend_manager.remote_cache.get_serves().await;
         for s in running_serves {
             if s.quick_run_id.as_deref() == Some(&quick_run_id) {
-                let _ = crate::rclone::commands::serve::stop_serve(
+                crate::rclone::commands::serve::stop_serve(
                     app.clone(),
                     s.id,
                     qr.remote_name.clone(),
                 )
-                .await;
+                .await?;
             }
         }
     } else {
@@ -339,12 +339,8 @@ pub async fn stop_quick_run(
 
         for jid in job_ids_to_stop {
             info!("Stopping quick run job {jid} for {quick_run_id}");
-            let res =
-                crate::rclone::commands::job::stop_job(app.clone(), jid, qr.remote_name.clone())
-                    .await;
-            if let Err(e) = res {
-                warn!("Failed to stop job {jid} for quick run {quick_run_id}: {e}");
-            }
+            crate::rclone::commands::job::stop_job(app.clone(), jid, qr.remote_name.clone())
+                .await?;
         }
     }
 

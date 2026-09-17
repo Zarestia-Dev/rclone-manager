@@ -443,4 +443,21 @@ mod tests {
         // Empty string
         assert_eq!(resolve_error(""), "");
     }
+
+    #[test]
+    fn test_resolve_unmount_failed() {
+        super::init_test_translations();
+        let rendered = t_with_params(
+            "notification.body.unmountFailed",
+            &[
+                ("backend", "Local"),
+                ("remote", "Google Drive"),
+                ("error", "Device or resource busy"),
+            ],
+        );
+        assert_eq!(
+            rendered,
+            "Failed to unmount Google Drive from Local: Device or resource busy"
+        );
+    }
 }

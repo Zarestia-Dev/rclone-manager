@@ -370,14 +370,23 @@ export class QuickRunService extends TauriBaseService {
 
   /** Stop a running quick run. */
   async stop(id: string): Promise<void> {
+    const qr = this._quickRuns().find(q => q.id === id);
     await this.executeAction(id, 'stop', async () => {
       try {
-        await this.invokeWithNotification('stop_quick_run', { quickRunId: id });
+        await this.invokeWithNotification(
+          'stop_quick_run',
+          { quickRunId: id },
+          {
+            errorKey: 'flow.quickRun.errors.failedStop',
+            errorParams: { name: qr?.name ?? id },
+          }
+        );
+        this.markStopped(id, { status: 'stopped' });
       } catch (err) {
-        console.warn('[QuickRunService] stop_quick_run failed:', err);
+        console.error('[QuickRunService] stop_quick_run failed:', err);
+      } finally {
+        this.refreshOperationStates();
       }
-      this.markStopped(id, { status: 'stopped' });
-      this.refreshOperationStates();
     });
   }
 

@@ -10,7 +10,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { QuickRun, Remote } from '@app/types';
+import { QuickRun, Remote, ExportType } from '@app/types';
 
 describe('QuickRunWorkspaceComponent', () => {
   let fixture: ComponentFixture<QuickRunWorkspaceComponent>;
@@ -30,9 +30,12 @@ describe('QuickRunWorkspaceComponent', () => {
     save: vi.fn().mockResolvedValue(undefined),
   };
 
+  const activeRemotesSignal = signal<Remote[]>([{ name: 'gdrive', type: 'drive' } as Remote]);
+
   const mockRemoteFacade = {
     selectedRemote: selectedRemoteSignal,
     orderedRemotes: orderedRemotesSignal,
+    activeRemotes: activeRemotesSignal,
     openRemoteAbout: vi.fn(),
     canEmptyTrash: vi.fn(),
     emptyTrash: vi.fn().mockResolvedValue(true),
@@ -51,6 +54,7 @@ describe('QuickRunWorkspaceComponent', () => {
     openExport: vi.fn(),
     openLogs: vi.fn(),
     openRemoteAbout: vi.fn(),
+    openRemoteConfig: vi.fn(),
     openDeleteRemote: vi.fn().mockReturnValue({
       afterClosed: () => of(true),
     }),
@@ -133,14 +137,20 @@ describe('QuickRunWorkspaceComponent', () => {
   });
 
   describe('Other remote actions', () => {
-    it('should clone remote via RemoteFacadeService', async () => {
+    it('should open remote config modal for cloning via ModalService', async () => {
       await component.cloneRemote('gdrive');
-      expect(mockRemoteFacade.cloneRemote).toHaveBeenCalledWith('gdrive');
+      expect(mockModalService.openRemoteConfig).toHaveBeenCalledWith({
+        cloneFrom: 'gdrive',
+        remoteType: 'drive',
+      });
     });
 
     it('should open export modal via ModalService', () => {
       component.openExportModal('gdrive');
-      expect(mockModalService.openExport).toHaveBeenCalledWith({ remoteName: 'gdrive' });
+      expect(mockModalService.openExport).toHaveBeenCalledWith({
+        remoteName: 'gdrive',
+        defaultExportType: ExportType.SpecificRemote,
+      });
     });
 
     it('should reset remote settings after user confirmation', async () => {

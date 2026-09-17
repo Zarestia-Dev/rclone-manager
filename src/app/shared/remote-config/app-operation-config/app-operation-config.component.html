@@ -392,7 +392,7 @@
       </div>
     </div>
     @if (item.type === 'local' && item.pathControl.value) {
-      @if (getPathStatus(item); as status) {
+      @if (item.inspectionStatus(); as status) {
         <div class="path-status-badge" [class]="status.badgeClass">
           <mat-icon [svgIcon]="status.icon" class="badge-icon"></mat-icon>
           <span class="badge-text">{{

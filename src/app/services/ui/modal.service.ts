@@ -22,6 +22,8 @@ import {
   WorkflowNode,
   FileBrowserItem,
   ExplorerRoot,
+  ExportType,
+  ExportModalData,
 } from '@app/types';
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import { isMobile } from '../infrastructure/platform/api-client.service';
@@ -40,7 +42,7 @@ export interface RemoteConfigModalOptions {
 
 export interface ExportModalOptions {
   remoteName?: string;
-  defaultExportType?: 'FullBackup' | 'AllConfigs' | 'SpecificRemote';
+  defaultExportType?: ExportType;
 }
 
 export interface PropertiesModalOptions {
@@ -535,9 +537,11 @@ export class ModalService extends TauriBaseService {
   }
 
   openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
-    const data = {
+    const data: ExportModalData = {
       remoteName: options.remoteName,
-      defaultExportType: options.defaultExportType ?? 'FullBackup',
+      defaultExportType:
+        options.defaultExportType ??
+        (options.remoteName ? ExportType.SpecificRemote : ExportType.All),
     };
     return this.openModal(
       'export',

@@ -2789,7 +2789,8 @@
       "fuseMissing": "Пакет FUSE (fuse3) не встановлено в системі. Встановіть fuse3 для монтування.",
       "macfuseMissing": "macFUSE / FUSE-T не встановлено. Встановіть macFUSE для монтування в macOS.",
       "driveLetterInUse": "Вибрана літера диска вже використовується системою.",
-      "permissionDenied": "Відмовлено в доступі під час спроби монтування."
+      "permissionDenied": "Відмовлено в доступі під час спроби монтування.",
+      "deviceBusy": "Цільова точка монтування або пристрій зайнятий. Закрийте відкриті файли, файлові менеджери або термінали, що використовують каталог, і повторіть спробу."
     },
     "operations": {
       "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»"
@@ -3090,19 +3091,21 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "Помилка розмонтування",
+      "serveStopFailed": "Помилка зупинки сервера"
     },
     "body": {
-      "mountSucceeded": "Успішно змонтовано {{remote}}, профіль «{{profile}}» з {{backend}} у {{mountPoint}}.",
-      "mountFailed": "Не вдалося змонтувати {{remote}}, профіль «{{profile}}» з {{backend}}: {{error}}",
-      "unmountSucceeded": "Відключено {{remote}}, профіль «{{profile}}» з {{backend}}.",
-      "jobStarted": "Розпочато {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "jobCompleted": "Успішно завершено {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "jobFailed": "Не вдалося виконати {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}: {{error}}",
-      "jobStopped": "Зупинено {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "serveStarted": "Розпочато надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "serveFailed": "Не вдалося розпочати надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}: {{error}}",
-      "serveStopped": "Зупинено надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}.",
+      "mountSucceeded": "Успішно змонтовано {{remote}} з {{backend}} у {{mountPoint}}.",
+      "mountFailed": "Не вдалося змонтувати {{remote}} з {{backend}}: {{error}}",
+      "unmountSucceeded": "{{remote}} відключено від {{backend}}.",
+      "jobStarted": "Розпочато {{type}} для {{remote}} на {{backend}}.",
+      "jobCompleted": "Успішно завершено {{type}} для {{remote}} на {{backend}}.",
+      "jobFailed": "Не вдалося виконати {{type}} для {{remote}} на {{backend}}: {{error}}",
+      "jobStopped": "Зупинено {{type}} для {{remote}} на {{backend}}.",
+      "serveStarted": "Розпочато надання доступу для {{remote}} на {{backend}}.",
+      "serveFailed": "Не вдалося розпочати надання доступу для {{remote}} на {{backend}}: {{error}}",
+      "serveStopped": "Сервер для {{remote}} зупинено на {{backend}}.",
       "allJobsStopped": "Успішно завершено всі активні завдання.",
       "allServesStopped": "Успішно закрито всі активні сервери.",
       "allUnmounted": "Успішно відключено всі монтування сховищ.",
@@ -3132,7 +3135,9 @@
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
-      "workflowStopped": "Workflow '{{name}}' was stopped."
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "unmountFailed": "Не вдалося розмонтувати {{remote}} на {{backend}}: {{error}}",
+      "serveStopFailed": "Не вдалося зупинити сервер {{protocol}} для {{remote}} на {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3340,7 +3345,8 @@
         "noProfiles": "Немає доступних профілів"
       },
       "errors": {
-        "remoteNotFound": "Підключення '{{remote}}' не існує в конфігурації Rclone"
+        "remoteNotFound": "Підключення '{{remote}}' не існує в конфігурації Rclone",
+        "failedStop": "Не вдалося зупинити швидкий запуск \"{{name}}\": {{error}}"
       }
     },
     "tabs": {

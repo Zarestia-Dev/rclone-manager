@@ -319,6 +319,23 @@ describe('QuickRunService', () => {
       expect(service.runningIds().has('qr-1')).toBe(false);
     });
 
+    it('stop should notify error and not mark as stopped when backend command fails', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+      service.markRunning('qr-1');
+      expect(service.runningIds().has('qr-1')).toBe(true);
+
+      invokeSpy.mockRejectedValue(new Error('fusermount3: Device or resource busy'));
+
+      await service.stop('qr-1');
+
+      expect(notificationSpy.showError).toHaveBeenCalled();
+      // Should NOT have removed qr-1 from running IDs since stop failed
+      expect(service.runningIds().has('qr-1')).toBe(true);
+      expect(service.quickRuns().find(q => q.id === 'qr-1')?.status).toBe('running');
+      expect(service.actionInProgress()['qr-1']).toBeUndefined();
+    });
+
     it('should isolate mount status by quick_run_id and not falsely mark other quick runs as mounted', async () => {
       const mountQr1: QuickRun = {
         ...mockQuickRun,

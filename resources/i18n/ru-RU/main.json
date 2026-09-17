@@ -2789,7 +2789,8 @@
       "fuseMissing": "Пакет FUSE (fuse3) не установлен в системе. Установите fuse3 для монтирования.",
       "macfuseMissing": "macFUSE / FUSE-T не установлен. Установите macFUSE для монтирования в macOS.",
       "driveLetterInUse": "Выбранная буква диска уже используется системой.",
-      "permissionDenied": "Отказано в доступе при попытке монтирования."
+      "permissionDenied": "Отказано в доступе при попытке монтирования.",
+      "deviceBusy": "Целевая точка монтирования или устройство занято. Закройте открытые файлы, файловые менеджеры или терминалы, использующие каталог, и повторите попытку."
     },
     "operations": {
       "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью"
@@ -3090,19 +3091,21 @@
       "workflowStarted": "Workflow '{{name}}' Started",
       "workflowCompleted": "Workflow '{{name}}' Completed",
       "workflowFailed": "Workflow '{{name}}' Failed",
-      "workflowStopped": "Workflow '{{name}}' Stopped"
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "Ошибка размонтирования",
+      "serveStopFailed": "Ошибка остановки сервера"
     },
     "body": {
-      "mountSucceeded": "Подключение {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, успешно смонтировано в {{mountPoint}}.",
-      "mountFailed": "Не удалось смонтировать {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "unmountSucceeded": "Подключение {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, отключено.",
-      "jobStarted": "Запущено {{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}.",
-      "jobCompleted": "{{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, успешно завершено.",
-      "jobFailed": "Ошибка {{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "jobStopped": "{{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, остановлено.",
-      "serveStarted": "Сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, запущен.",
-      "serveFailed": "Не удалось запустить сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "serveStopped": "Сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, остановлен.",
+      "mountSucceeded": "Подключение {{remote}}, бэкенд {{backend}}, успешно смонтировано в {{mountPoint}}.",
+      "mountFailed": "Не удалось смонтировать {{remote}}, бэкенд {{backend}}: {{error}}",
+      "unmountSucceeded": "{{remote}} отключен от {{backend}}.",
+      "jobStarted": "Запущено {{type}} для {{remote}}, бэкенд {{backend}}.",
+      "jobCompleted": "{{type}} для {{remote}}, бэкенд {{backend}}, успешно завершено.",
+      "jobFailed": "Ошибка {{type}} для {{remote}}, бэкенд {{backend}}: {{error}}",
+      "jobStopped": "{{type}} для {{remote}}, бэкенд {{backend}}, остановлено.",
+      "serveStarted": "Сервер для {{remote}}, бэкенд {{backend}}, запущен.",
+      "serveFailed": "Не удалось запустить сервер для {{remote}}, бэкенд {{backend}}: {{error}}",
+      "serveStopped": "Сервер для {{remote}} остановлен на {{backend}}.",
       "allJobsStopped": "Все активные задания успешно остановлены.",
       "allServesStopped": "Все активные серверы успешно остановлены.",
       "allUnmounted": "Все удалённые диски успешно отключены.",
@@ -3132,7 +3135,9 @@
       "workflowStarted": "Workflow '{{name}}' started execution.",
       "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
       "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
-      "workflowStopped": "Workflow '{{name}}' was stopped."
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "unmountFailed": "Не удалось размонтировать {{remote}} на {{backend}}: {{error}}",
+      "serveStopFailed": "Не удалось остановить сервер {{protocol}} для {{remote}} на {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3340,7 +3345,8 @@
         "noProfiles": "Нет доступных профилей"
       },
       "errors": {
-        "remoteNotFound": "Подключение '{{remote}}' не существует в конфигурации Rclone"
+        "remoteNotFound": "Подключение '{{remote}}' не существует в конфигурации Rclone",
+        "failedStop": "Не удалось остановить быстрый запуск \"{{name}}\": {{error}}"
       }
     },
     "tabs": {

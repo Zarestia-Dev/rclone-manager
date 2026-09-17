@@ -2830,7 +2830,8 @@
       "fuseMissing": "系統未安裝 FUSE (fuse3)。請安裝 fuse3 以啟用掛載功能。",
       "macfuseMissing": "系統未安裝 macFUSE / FUSE-T。在 macOS 上掛載需要安裝 macFUSE。",
       "driveLetterInUse": "所選磁碟機代號已被系統佔用。",
-      "permissionDenied": "嘗試掛載時許可權不足。"
+      "permissionDenied": "嘗試掛載時許可權不足。",
+      "deviceBusy": "目標掛載點或裝置正忙。請關閉存取該目錄的已開啟檔案、檔案管理員或終端機後重試。"
     },
     "operations": {
       "configIncomplete": "設定檔案 '{{profile}}' 設定不完整"
@@ -3131,23 +3132,25 @@
       "workflowStarted": "工作流 '{{name}}' 已啟動",
       "workflowCompleted": "工作流 '{{name}}' 已完成",
       "workflowFailed": "工作流 '{{name}}' 失敗",
-      "workflowStopped": "工作流 '{{name}}' 已停止"
+      "workflowStopped": "工作流 '{{name}}' 已停止",
+      "unmountFailed": "卸除失敗",
+      "serveStopFailed": "停止服務失敗"
     },
     "body": {
-      "mountSucceeded": "已成功將 {{backend}} 的遠端連線 {{remote}} 設定 '{{profile}}' 掛載到 {{mountPoint}}。",
-      "mountFailed": "無法掛載 {{backend}} 的遠端連線 {{remote}} 設定 '{{profile}}'：{{error}}",
-      "unmountSucceeded": "已斷開 {{backend}} 的遠端連線 {{remote}} 設定 '{{profile}}' 的連線。",
-      "jobStarted": "已在 {{backend}} 上為遠端連線 {{remote}} 的設定 '{{profile}}' 啟動了 {{type}}。",
-      "jobCompleted": "已成功完成 {{backend}} 上遠端連線 {{remote}} 設定 '{{profile}}' 的 {{type}}。",
-      "jobFailed": "{{backend}} 上遠端連線 {{remote}} 設定 '{{profile}}' 的 {{type}} 失敗：{{error}}",
-      "jobStopped": "已停止 {{backend}} 上遠端連線 {{remote}} 設定 '{{profile}}' 的 {{type}}。",
+      "mountSucceeded": "已成功將 {{backend}} 的遠端連線 {{remote}} 掛載到 {{mountPoint}}。",
+      "mountFailed": "無法掛載 {{backend}} 的遠端連線 {{remote}}：{{error}}",
+      "unmountSucceeded": "已從 {{backend}} 中斷連線 {{remote}}。",
+      "jobStarted": "已在 {{backend}} 上為遠端連線 {{remote}} 啟動了 {{type}}。",
+      "jobCompleted": "已成功完成 {{backend}} 上遠端連線 {{remote}} 的 {{type}}。",
+      "jobFailed": "{{backend}} 上遠端連線 {{remote}} 的 {{type}} 失敗：{{error}}",
+      "jobStopped": "已停止 {{backend}} 上遠端連線 {{remote}} 的 {{type}}。",
       "workflowStarted": "工作流 '{{name}}' 開始執行。",
       "workflowCompleted": "工作流 '{{name}}' 已於 {{duration}} 內順利完成。",
       "workflowFailed": "工作流 '{{name}}' 失敗: {{error}}",
       "workflowStopped": "工作流 '{{name}}' 已被停止。",
-      "serveStarted": "已在 {{backend}} 上為遠端連線 {{remote}} 的設定 '{{profile}}' 啟動了服務。",
-      "serveFailed": "無法在 {{backend}} 上為遠端連線 {{remote}} 的設定 '{{profile}}' 啟動服務：{{error}}",
-      "serveStopped": "已停止 {{backend}} 上遠端連線 {{remote}} 設定 '{{profile}}' 的服務。",
+      "serveStarted": "已在 {{backend}} 上為遠端連線 {{remote}} 啟動了服務。",
+      "serveFailed": "無法在 {{backend}} 上為遠端連線 {{remote}} 啟動服務：{{error}}",
+      "serveStopped": "已停止 {{backend}} 上 {{remote}} 的服務。",
       "allJobsStopped": "已成功終止所有活動任務。",
       "allServesStopped": "已成功關閉所有活動伺服器。",
       "allUnmounted": "已成功斷開所有遠端掛載。",
@@ -3173,7 +3176,9 @@
       "engineBinaryNotFound": "未找到 rclone 可執行檔案，請檢查您的設定。",
       "enginePasswordRequired": "訪問設定檔案需要密碼。",
       "engineAuthFailed": "無法透過 rclone 引擎身分驗證：{{error}}",
-      "powerInhibited": "正在執行的操作正在阻止系統休眠。"
+      "powerInhibited": "正在執行的操作正在阻止系統休眠。",
+      "unmountFailed": "從 {{backend}} 卸除 {{remote}} 失敗：{{error}}",
+      "serveStopFailed": "停止 {{backend}} 上 {{remote}} 的 {{protocol}} 服務失敗：{{error}}"
     }
   },
   "repairSheet": {
@@ -3381,7 +3386,8 @@
         "noProfiles": "沒有可用的設定檔案"
       },
       "errors": {
-        "remoteNotFound": "遠程存儲 '{{remote}}' 在 Rclone 設定中不存在"
+        "remoteNotFound": "遠程存儲 '{{remote}}' 在 Rclone 設定中不存在",
+        "failedStop": "停止快速執行「{{name}}」失敗：{{error}}"
       }
     },
     "tabs": {

@@ -16,7 +16,7 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
   let component: OperationConfigComponent;
   let pathInspectionServiceMock: {
     resolveDefaultPath: ReturnType<typeof vi.fn>;
-    getPathStatus: ReturnType<typeof vi.fn>;
+    inspect: ReturnType<typeof vi.fn>;
   };
   let backendServiceMock: {
     isLocalBackend: ReturnType<typeof vi.fn>;
@@ -55,7 +55,12 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
         .mockImplementation((remote: string, type: string) =>
           Promise.resolve(`/home/user/rclone-${type}/${remote}`)
         ),
-      getPathStatus: vi.fn().mockResolvedValue({ exists: true, isDirectory: true }),
+      inspect: vi.fn().mockResolvedValue({
+        state: 'clean',
+        icon: 'check-circle',
+        badgeClass: 'clean',
+        labelKey: 'remoteConfig.pathStatus.clean',
+      }),
     };
 
     backendServiceMock = {
@@ -200,5 +205,18 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
       'mount'
     );
     expect(form.get('dest.path')?.value).toBe('/home/user/rclone-mount/updated-name');
+  });
+
+  it('should trigger inspect after debounce for local path in mount operation', async () => {
+    vi.useFakeTimers();
+    try {
+      setupComponent('mount', 'my-drive', true, '/home/user/test-mount');
+      expect(pathInspectionServiceMock.inspect).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(300);
+      expect(pathInspectionServiceMock.inspect).toHaveBeenCalledWith('/home/user/test-mount', '');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
