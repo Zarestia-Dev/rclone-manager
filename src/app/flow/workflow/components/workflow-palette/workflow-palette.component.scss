@@ -162,42 +162,13 @@
         font-size: var(--font-size-sm);
         font-weight: 600;
         color: var(--window-fg-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
       .item-description {
         font-size: var(--font-size-xs);
         color: var(--dim-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         margin-top: 2px;
       }
-    }
-  }
-
-  .empty-palette {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-xl) var(--space-md);
-    color: var(--dim-color);
-    text-align: center;
-    gap: var(--space-xs);
-
-    .empty-icon {
-      width: 32px;
-      height: 32px;
-      font-size: 32px;
-      opacity: 0.4;
-    }
-
-    p {
-      margin: 0;
-      font-size: var(--font-size-sm);
     }
   }
 }

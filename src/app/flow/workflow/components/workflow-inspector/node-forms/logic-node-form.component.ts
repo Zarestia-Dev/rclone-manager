@@ -368,10 +368,6 @@ export class LogicNodeFormComponent {
 
   readonly configChange = output<{ key: string; value: unknown }>();
 
-  getNodeFieldsForType(type?: string): { key: string; label: string }[] {
-    return getNodeFieldsForType(type);
-  }
-
   setConditionLeftValueMode(mode: 'node' | 'custom'): void {
     this.configChange.emit({ key: 'leftMode', value: mode });
     if (mode === 'node') {

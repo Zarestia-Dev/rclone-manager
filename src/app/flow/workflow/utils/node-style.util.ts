@@ -25,7 +25,7 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
   },
   app_start: {
     icon: 'bolt',
-    cssClass: 'cyan',
+    cssClass: 'yellow',
     titleKey: 'flow.workflow.nodes.appStart',
     descriptionKey: 'flow.workflow.nodes.appStartDesc',
   },

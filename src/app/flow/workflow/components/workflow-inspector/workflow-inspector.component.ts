@@ -15,7 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { RemoteFacadeService } from '../../../../services/facade/remote-facade.service';
@@ -88,6 +88,7 @@ export class WorkflowInspectorComponent {
   private readonly quickRunService = inject(QuickRunService, { optional: true });
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
+  private readonly translate = inject(TranslateService);
 
   readonly closeInspector = output<void>();
 
@@ -208,7 +209,8 @@ export class WorkflowInspectorComponent {
     effect(() => {
       const node = this.selectedNode();
       if (node) {
-        this.nodeTitle.set(node.title);
+        const title = node.titleKey ? this.translate.instant(node.titleKey) : node.title;
+        this.nodeTitle.set(title);
         this.nodeSubtitle.set(node.subtitle ?? '');
         this.nodeConfig.set(structuredClone(node.config || {}));
       }
@@ -414,7 +416,7 @@ export class WorkflowInspectorComponent {
     const node = this.selectedNode();
     if (!node) return;
     this.nodeTitle.set(newTitle);
-    this.stateService.updateNodeMetadata(node.id, { title: newTitle });
+    this.stateService.updateNodeMetadata(node.id, { title: newTitle, titleKey: undefined });
   }
 
   onSubtitleChange(newSubtitle: string): void {

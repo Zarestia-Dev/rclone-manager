@@ -9,6 +9,14 @@ import {
   WorkflowPort,
 } from '../../flow/workflow/types/workflow.types';
 import {
+  STANDARD_IN_PORT,
+  STANDARD_TASK_OUTPUTS,
+  JOIN_BRANCH_INPUTS,
+  FORK_BRANCH_OUTPUTS,
+  BOOLEAN_BRANCH_OUTPUTS,
+} from '../../flow/workflow/constants/palette.registry';
+import { generatePrefixedId } from '../../shared/utils';
+import {
   GRID_SIZE,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -38,6 +46,7 @@ export function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
     type: n.type,
     category: n.category,
     title: n.title,
+    titleKey: n.titleKey ?? '',
     subtitle: n.subtitle ?? '',
     x: n.x,
     y: n.y,
@@ -183,7 +192,7 @@ export class WorkflowStateService {
    */
   createNewWorkflow(name = 'New Workflow'): WorkflowDefinition {
     const newWf: WorkflowDefinition = {
-      id: `wf-${Date.now()}`,
+      id: generatePrefixedId('wf'),
       name,
       description: '',
       nodes: [],
@@ -283,105 +292,49 @@ export class WorkflowStateService {
       inputs?: WorkflowPort[];
       outputs?: WorkflowPort[];
       config?: Record<string, unknown>;
+      titleKey?: string;
     }
   ): WorkflowNode {
     this.snapshot();
     const posX = this.snapToGrid() ? Math.round(x / GRID_SIZE) * GRID_SIZE : x;
     const posY = this.snapToGrid() ? Math.round(y / GRID_SIZE) * GRID_SIZE : y;
 
-    const defaultInputs: WorkflowPort[] =
-      category === 'trigger'
-        ? []
-        : category === 'logic' && type === 'join'
-          ? [
-              {
-                id: 'in1',
-                name: 'In 1',
-                type: 'in',
-                label: 'In 1',
-                labelKey: 'flow.workflow.ports.in1',
-              },
-              {
-                id: 'in2',
-                name: 'In 2',
-                type: 'in',
-                label: 'In 2',
-                labelKey: 'flow.workflow.ports.in2',
-              },
-            ]
-          : [{ id: 'in', name: 'In', type: 'in', label: 'In', labelKey: 'flow.workflow.ports.in' }];
+    let defaultInputs: WorkflowPort[];
+    if (options?.inputs) {
+      defaultInputs = options.inputs;
+    } else if (category === 'trigger') {
+      defaultInputs = [];
+    } else if (type === 'join') {
+      defaultInputs = JOIN_BRANCH_INPUTS;
+    } else {
+      defaultInputs = [STANDARD_IN_PORT];
+    }
 
-    const defaultOutputs: WorkflowPort[] =
-      category === 'task'
-        ? [
-            {
-              id: 'success',
-              name: 'Success',
-              type: 'success',
-              label: 'Success',
-              labelKey: 'flow.workflow.ports.success',
-            },
-            {
-              id: 'failure',
-              name: 'Failure',
-              type: 'failure',
-              label: 'Failure',
-              labelKey: 'flow.workflow.ports.failure',
-            },
-          ]
-        : category === 'logic' && type === 'condition'
-          ? [
-              {
-                id: 'true',
-                name: 'True',
-                type: 'true',
-                label: 'True',
-                labelKey: 'flow.workflow.ports.true',
-              },
-              {
-                id: 'false',
-                name: 'False',
-                type: 'false',
-                label: 'False',
-                labelKey: 'flow.workflow.ports.false',
-              },
-            ]
-          : category === 'logic' && type === 'parallel_fork'
-            ? [
-                {
-                  id: 'branch1',
-                  name: 'Branch 1',
-                  type: 'out',
-                  label: 'Branch 1',
-                  labelKey: 'flow.workflow.ports.branch1',
-                },
-                {
-                  id: 'branch2',
-                  name: 'Branch 2',
-                  type: 'out',
-                  label: 'Branch 2',
-                  labelKey: 'flow.workflow.ports.branch2',
-                },
-              ]
-            : [
-                {
-                  id: 'out',
-                  name: 'Out',
-                  type: 'out',
-                  label: 'Out',
-                  labelKey: 'flow.workflow.ports.out',
-                },
-              ];
+    let defaultOutputs: WorkflowPort[];
+    if (options?.outputs) {
+      defaultOutputs = options.outputs;
+    } else if (type === 'parallel_fork') {
+      defaultOutputs = FORK_BRANCH_OUTPUTS;
+    } else if (type === 'condition') {
+      defaultOutputs = BOOLEAN_BRANCH_OUTPUTS;
+    } else if (category === 'task') {
+      defaultOutputs = STANDARD_TASK_OUTPUTS;
+    } else {
+      defaultOutputs = [
+        { id: 'out', name: 'Out', type: 'out', labelKey: 'flow.workflow.ports.out' },
+      ];
+    }
 
     const newNode: WorkflowNode = {
-      id: `node-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: generatePrefixedId('node'),
       type,
       category,
       title,
+      titleKey: options?.titleKey,
       x: posX,
       y: posY,
-      inputs: options?.inputs ?? defaultInputs,
-      outputs: options?.outputs ?? defaultOutputs,
+      inputs: defaultInputs,
+      outputs: defaultOutputs,
       config: options?.config ?? {},
       state: 'idle',
     };
@@ -545,8 +498,9 @@ export class WorkflowStateService {
     this.snapshot();
     const duplicated: WorkflowNode = {
       ...structuredClone(source),
-      id: `node-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: generatePrefixedId('node'),
       title: `${source.title} (Copy)`,
+      titleKey: undefined,
       x: source.x + 32,
       y: source.y + 32,
       state: 'idle',
@@ -711,7 +665,7 @@ export class WorkflowStateService {
 
     this.snapshot();
     const newEdge: WorkflowEdge = {
-      id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: generatePrefixedId('edge'),
       sourceNodeId,
       sourcePortId,
       targetNodeId,

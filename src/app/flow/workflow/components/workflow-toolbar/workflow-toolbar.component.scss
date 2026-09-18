@@ -154,9 +154,6 @@
 
       .status-text {
         max-width: 160px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
       .status-counter {
@@ -318,12 +315,6 @@
 
     .option-content {
       min-width: 0;
-
-      .option-label {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
     }
 
     .row-actions {

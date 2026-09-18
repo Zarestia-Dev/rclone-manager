@@ -1522,6 +1522,7 @@
       "title": "屬性",
       "loading": "正在載入基本資訊...",
       "location": "位置",
+      "targetId": "目標 ID",
       "modified": "修改時間",
       "size": "大小",
       "contentStats": "內容統計",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "已生成總和檢查碼 (Checksum)",
       "calculateAnother": "計算其他",
       "bulkHashInstruction": "選擇雜湊 (Hash)型別，為當前目錄所有檔案計算總和檢查碼 (Checksum)",
-      "noHashesFound": "未返回任何雜湊值 (Hash)"
+      "noHashesFound": "未返回任何雜湊值 (Hash)",
+      "metadata": "中繼資料"
     },
     "operations": {
       "title": "操作",
@@ -2431,6 +2433,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "捷徑（共用項目）",
+      "sharedItemTooltip": "共用項目",
+      "onedriveRemoteTooltip": "外部共用項目",
+      "linkTooltip": "連結 / 捷徑",
+      "shortcutBadge": "捷徑",
+      "sharedBadge": "已共用"
+    },
     "sidebar": {
       "configureTitle": "設定側邊欄專案",
       "configureDescription": "拖動專案以重新排序，或使用眼睛圖示隱藏或顯示側邊欄中的磁碟和遠端連線。",
@@ -3706,6 +3716,9 @@
         "filterErrors": "錯誤",
         "filterWarnings": "警告",
         "filterSuccess": "成功"
+      },
+      "tokens": {
+        "prevNode": "上一個節點"
       },
       "details": "工作流詳情",
       "name": "工作流名稱",

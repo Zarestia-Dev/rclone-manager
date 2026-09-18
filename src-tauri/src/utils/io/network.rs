@@ -1,7 +1,9 @@
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::collections::HashMap;
 
 use crate::core::bridge;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::utils::types::rclone::CheckResult;
 
 #[cfg(not(target_os = "ios"))]
@@ -9,6 +11,7 @@ use crate::utils::types::events::NETWORK_STATUS_CHANGED;
 #[cfg(not(target_os = "ios"))]
 use crate::utils::types::monitoring::NetworkStatusPayload;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[bridge]
 pub async fn check_links(
     links: Vec<String>,
@@ -19,12 +22,14 @@ pub async fn check_links(
     checker.check_links(&links).await.map_err(|e| e.to_string())
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub struct LinkChecker {
     pub client: reqwest::Client,
     pub max_retries: usize,
     pub retry_delay: std::time::Duration,
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 impl LinkChecker {
     fn new(max_retries: usize, retry_delay_secs: u64) -> Self {
         let client = reqwest::Client::builder()

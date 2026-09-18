@@ -61,7 +61,7 @@
       <mat-icon [svgIcon]="nodeIcon()"></mat-icon>
     </div>
     <div class="node-text-content">
-      <div class="node-title truncate" [attr.title]="node().title">{{ node().title }}</div>
+      <div class="node-title truncate" [attr.title]="displayTitle()">{{ displayTitle() }}</div>
       @if (displaySubtitle()) {
         <div class="node-subtitle truncate" [attr.title]="displaySubtitle()">
           {{ displaySubtitle() }}

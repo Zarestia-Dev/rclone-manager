@@ -1522,6 +1522,7 @@
       "title": "Властивості",
       "loading": "Завантаження основних відомостей...",
       "location": "Розташування",
+      "targetId": "Цільовий ID",
       "modified": "Змінено",
       "size": "Розмір",
       "contentStats": "Статистика вмісту",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Згенеровані контрольні суми",
       "calculateAnother": "Обчислити іншу",
       "bulkHashInstruction": "Виберіть тип хешу, щоб обчислити контрольні суми для всіх файлів у цьому каталозі.",
-      "noHashesFound": "Хешів не повернуто"
+      "noHashesFound": "Хешів не повернуто",
+      "metadata": "Метадані"
     },
     "operations": {
       "title": "Операції",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Ярлик (спільний елемент)",
+      "sharedItemTooltip": "Спільний елемент",
+      "onedriveRemoteTooltip": "Зовнішній спільний елемент",
+      "linkTooltip": "Посилання / Ярлик",
+      "shortcutBadge": "Ярлик",
+      "sharedBadge": "Спільний"
+    },
     "sidebar": {
       "configureTitle": "Налаштувати елементи бічної панелі",
       "configureDescription": "Перетягуйте елементи для зміни їх порядку або використовуйте значок пильного ока, щоб приховати або показати диски та хмарні підключення.",
@@ -3661,6 +3671,9 @@
         "filterErrors": "Помилки",
         "filterWarnings": "Попередження",
         "filterSuccess": "Успішно"
+      },
+      "tokens": {
+        "prevNode": "Попередній вузол"
       },
       "details": "Властивості процесу",
       "name": "Назва процесу",

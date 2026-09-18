@@ -15,17 +15,18 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { IconService } from 'src/app/services/ui/icon.service';
-import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
+import { NautilusService } from '../../../services/ui/nautilus.service';
+import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { IconService } from '../../../services/ui/icon.service';
+import { RemoteManagementService } from '../../../services/remote/remote-management.service';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption, ExplorerRoot } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { getShareInfo, ItemShareInfo } from '../../../shared/utils';
 
 @Component({
   selector: 'app-properties-modal',
@@ -103,8 +104,24 @@ export class PropertiesModalComponent implements OnInit {
   readonly loadingHashes = signal(false);
 
   readonly item = signal<Entry | null>(this.data.item ?? null);
+  readonly shareInfo = computed<ItemShareInfo>(() =>
+    getShareInfo(this.item(), this.data.remoteType, this.data.remoteName)
+  );
   readonly size = signal<{ count: number; bytes: number } | null>(null);
   readonly diskUsage = signal<{ total?: number; used?: number; free?: number } | null>(null);
+
+  // Metadata overlay state
+  readonly showMetadataOverlay = signal(false);
+  readonly loadingMetadata = signal(true);
+  readonly metadataEntries = computed<{ key: string; value: string }[]>(() => {
+    const md = this.item()?.Metadata;
+    if (!md) return [];
+
+    return Object.entries(md)
+      .filter(([_, val]) => val !== undefined && val !== null && val !== '')
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  });
 
   // Hash related state
   readonly supportedHashes = signal<string[]>([]);
@@ -159,6 +176,9 @@ export class PropertiesModalComponent implements OnInit {
   ngOnInit(): void {
     const { remoteName, path, isLocal } = this.data;
 
+    // Load full stat with metadata
+    void this.loadStat();
+
     const currentItem = this.item();
     const targetIsDir = currentItem ? !!currentItem.IsDir : true;
 
@@ -184,6 +204,47 @@ export class PropertiesModalComponent implements OnInit {
 
     // 3. Load remote features (hashes, public links, etc.)
     this.loadRemoteFeatures();
+  }
+
+  private async loadStat(): Promise<void> {
+    const hasInitialItem = Boolean(this.item());
+    if (!hasInitialItem) {
+      this.loadingStat.set(true);
+    }
+    this.loadingMetadata.set(true);
+    try {
+      let statRemote = this.fsRemote;
+      let statPath = this.data.path;
+
+      if (this.data.isLocal) {
+        const localPath = this.pathService.joinPath(
+          this.data.remoteName,
+          this.data.path || this.data.item?.Path || this.data.item?.Name || ''
+        );
+        const split = this.pathService.splitLocalForStat(localPath);
+        statRemote = split.root;
+        statPath = split.relative;
+      }
+
+      const res = await this.remoteOps.getStat(
+        statRemote,
+        statPath,
+        { metadata: true },
+        'filemanager',
+        this.readJobGroup
+      );
+      if (res?.item) {
+        this.item.set(res.item);
+        if (!res.item.IsDir && this.size() === null) {
+          this.size.set({ count: 1, bytes: res.item.Size });
+        }
+      }
+    } catch (err) {
+      console.debug('Failed to getStat with metadata:', err);
+    } finally {
+      this.loadingStat.set(false);
+      this.loadingMetadata.set(false);
+    }
   }
 
   private async loadDiskUsage(remoteName: string, path: string, isLocal: boolean): Promise<void> {
@@ -397,6 +458,14 @@ export class PropertiesModalComponent implements OnInit {
 
   @HostListener('keydown.escape')
   close(): void {
+    if (this.showMetadataOverlay()) {
+      this.showMetadataOverlay.set(false);
+      return;
+    }
+    this.dialogRef.close();
+  }
+
+  closeModal(): void {
     this.dialogRef.close();
   }
 

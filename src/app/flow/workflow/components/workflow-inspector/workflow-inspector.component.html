@@ -7,7 +7,7 @@
           <mat-icon [svgIcon]="nodeIcon()" class="header-icon"></mat-icon>
         </div>
         <div class="header-text">
-          <h3>{{ node.title }}</h3>
+          <h3>{{ node.titleKey ? (node.titleKey | translate) : node.title }}</h3>
           <span class="node-type-label">
             <span class="app-pill" [ngClass]="nodePillClass()">
               {{ 'flow.workflow.category.' + node.category | translate }}
@@ -46,7 +46,16 @@
           } @else {
             <div class="execution-status-card" [ngClass]="'status-' + node.state">
               <div class="status-card-header">
-                <div class="status-badge-pill" [ngClass]="'badge-' + node.state">
+                <div
+                  class="app-pill"
+                  [ngClass]="
+                    node.state === 'running'
+                      ? 'p-accent'
+                      : node.state === 'success'
+                        ? 'p-primary'
+                        : 'p-dim'
+                  "
+                >
                   @if (node.state === 'running') {
                     <mat-icon svgIcon="spinner"></mat-icon>
                     <span>{{ 'flow.workflow.status.running' | translate }}</span>
@@ -60,7 +69,7 @@
                 </div>
 
                 @if (node.lastDurationMs) {
-                  <span class="execution-duration-pill">{{ node.lastDurationMs }}ms</span>
+                  <span class="count-badge">{{ node.lastDurationMs }}ms</span>
                 }
               </div>
             </div>
@@ -200,13 +209,13 @@
                 <span class="live-service-label">{{
                   'flow.workflow.inspector.currentlyMounted' | translate
                 }}</span>
-                <span class="live-service-value" [attr.title]="mount.mount_point">{{
+                <span class="live-service-value truncate" [attr.title]="mount.mount_point">{{
                   mount.mount_point
                 }}</span>
               </div>
               <button
                 type="button"
-                class="app-pill interactive danger-pill"
+                class="app-pill interactive p-warn"
                 (click)="unmountActive()"
                 [attr.title]="'flow.workflow.inspector.unmountNow' | translate"
               >
@@ -236,11 +245,13 @@
                 <span class="live-service-label">{{
                   'flow.workflow.inspector.currentlyServing' | translate
                 }}</span>
-                <span class="live-service-value" [attr.title]="serve.addr">{{ serve.addr }}</span>
+                <span class="live-service-value truncate" [attr.title]="serve.addr">{{
+                  serve.addr
+                }}</span>
               </div>
               <button
                 type="button"
-                class="app-pill interactive danger-pill"
+                class="app-pill interactive p-warn"
                 (click)="stopActiveServe()"
                 [attr.title]="'flow.workflow.inspector.stopServeNow' | translate"
               >
@@ -351,7 +362,7 @@
               {{ 'flow.workflow.inspector.activeConfig' | translate }}
             </div>
             @if (activeConfigEntries().length > 0) {
-              <span class="config-count-badge">{{ activeConfigEntries().length }}</span>
+              <span class="count-badge">{{ activeConfigEntries().length }}</span>
             }
           </div>
 

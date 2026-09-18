@@ -49,7 +49,7 @@
               >
                 <mat-icon svgIcon="workflow"></mat-icon>
                 <div class="option-content">
-                  <span class="option-label">{{ wf.name }}</span>
+                  <span class="option-label truncate">{{ wf.name }}</span>
                   <small class="option-description"
                     >{{ wf.nodes.length }}
                     {{ 'flow.workflow.stats.nodes' | translate | lowercase }}</small
@@ -126,7 +126,7 @@
 
         <div class="toolbar-execution-status" [class.is-simulation]="engineService.isDryRun()">
           <mat-icon svgIcon="spinner"></mat-icon>
-          <span class="status-text">
+          <span class="status-text truncate">
             @if (engineService.isDryRun()) {
               <span class="simulation-tag">[{{ 'flow.workflow.toolbar.dryRun' | translate }}]</span>
             }
@@ -158,7 +158,7 @@
           <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="loadTemplate(tpl)">
             <mat-icon [svgIcon]="tpl.icon"></mat-icon>
             <div class="option-content">
-              <span class="option-label">{{
+              <span class="option-label truncate">{{
                 tpl.nameKey ? (tpl.nameKey | translate) : tpl.name
               }}</span>
               <small class="option-description">{{

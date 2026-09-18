@@ -448,6 +448,7 @@ export interface Entry {
   Path: string;
   Size: number;
   Starred?: boolean;
+  Metadata?: Record<string, string>;
 }
 
 export interface LocalDrive {

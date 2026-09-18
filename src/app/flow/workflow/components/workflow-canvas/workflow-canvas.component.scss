@@ -151,10 +151,8 @@
         text-align: center;
       }
 
-      .nav-action-btn {
-        &.active-btn {
-          color: var(--accent-color);
-        }
+      .active-btn {
+        color: var(--accent-color);
       }
     }
 

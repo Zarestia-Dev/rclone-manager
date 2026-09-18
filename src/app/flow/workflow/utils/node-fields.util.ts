@@ -10,7 +10,8 @@ export interface NodeVariableField {
  */
 export const PREVIOUS_NODE_PSEUDO: WorkflowNode = {
   id: 'prev',
-  title: 'Previous Node (prev)',
+  title: 'Previous Node',
+  titleKey: 'flow.workflow.tokens.prevNode',
   type: 'prev',
   category: 'action',
   x: 0,

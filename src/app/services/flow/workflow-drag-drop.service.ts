@@ -114,12 +114,13 @@ export class WorkflowDragDropService {
     const vp = this.stateService.viewport();
     const canvasX = (point.x - rect.left - vp.x) / vp.zoom;
     const canvasY = (point.y - rect.top - vp.y) / vp.zoom;
-    const title = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
+    const title = this.translate.instant(item.titleKey);
 
     const node = this.stateService.addNode(item.type, item.category, title, canvasX, canvasY, {
       inputs: item.defaultInputs,
       outputs: item.defaultOutputs,
       config: item.defaultConfig,
+      titleKey: item.titleKey,
     });
 
     this.cancelDrag();
@@ -181,7 +182,7 @@ export class WorkflowDragDropService {
       font-size: 13px; font-weight: 600; color: var(--window-fg-color);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     `;
-    titleEl.textContent = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
+    titleEl.textContent = this.translate.instant(item.titleKey);
     textCol.appendChild(titleEl);
 
     const catEl = document.createElement('span');

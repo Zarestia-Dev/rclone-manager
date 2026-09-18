@@ -190,6 +190,7 @@ pub struct CoreSettings {
         label = "settings.core.connection_check_urls.label",
         description = "settings.core.connection_check_urls.description"
     )]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub connection_check_urls: Vec<String>,
 
     #[setting(
@@ -217,6 +218,7 @@ impl Default for CoreSettings {
             rclone_additional_flags: vec![],
             #[cfg(not(feature = "librclone"))]
             rclone_env_vars: vec![],
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
                 "https://www.dropbox.com".to_string(),

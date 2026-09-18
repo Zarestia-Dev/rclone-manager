@@ -171,17 +171,7 @@ mod tests {
             },
             category,
             title: title.to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
-            inputs: vec![],
-            outputs: vec![],
-            config: json!({}),
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         }
     }
 

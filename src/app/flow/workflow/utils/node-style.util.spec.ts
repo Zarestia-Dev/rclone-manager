@@ -55,8 +55,8 @@ describe('getNodeStyleMeta', () => {
   it('returns correct metadata for app_start trigger', () => {
     const meta = getNodeStyleMeta('app_start');
     expect(meta.icon).toBe('bolt');
-    expect(meta.cssClass).toBe('cyan');
-    expect(meta.pillClass).toBe('p-cyan');
+    expect(meta.cssClass).toBe('yellow');
+    expect(meta.pillClass).toBe('p-yellow');
   });
 
   it('returns correct metadata for cleanup task', () => {

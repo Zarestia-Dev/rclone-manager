@@ -3,6 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { CheckResult, ConnectionStatus } from '@app/types';
+import { isMobile } from '../platform/api-client.service';
 
 @Injectable({
   providedIn: 'root',
@@ -16,6 +17,7 @@ export class ConnectionService extends TauriBaseService {
   readonly result = signal<CheckResult | undefined>(undefined);
 
   async runInternetCheck(): Promise<void> {
+    if (isMobile()) return;
     if (this.status() === 'checking') return;
 
     this.status.set('checking');

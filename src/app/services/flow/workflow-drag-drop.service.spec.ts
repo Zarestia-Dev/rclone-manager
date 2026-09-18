@@ -8,8 +8,8 @@ import { NodePaletteItem } from '../../flow/workflow/types/workflow.types';
 const MOCK_PALETTE_ITEM: NodePaletteItem = {
   type: 'sync',
   category: 'task',
-  title: 'Sync',
-  description: 'Sync directory',
+  titleKey: 'flow.workflow.operations.sync',
+  descriptionKey: 'flow.workflow.operations.syncDesc',
   icon: 'sync',
   defaultInputs: [{ id: 'in', name: 'in', type: 'in', label: 'In' }],
   defaultOutputs: [{ id: 'out', name: 'out', type: 'out', label: 'Out' }],
@@ -99,11 +99,12 @@ describe('WorkflowDragDropService', () => {
     expect(addNodeSpy).toHaveBeenCalledWith(
       'sync',
       'task',
-      'Sync',
+      'flow.workflow.operations.sync',
       200,
       150,
       expect.objectContaining({
         config: { sourceRemote: 'drive:' },
+        titleKey: 'flow.workflow.operations.sync',
       })
     );
 

@@ -520,12 +520,16 @@ pub async fn get_stat(
     app: AppHandle,
     remote: String,
     path: String,
+    opt: Option<serde_json::Value>,
     origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let params = create_fs_params(&remote, Some(&path));
+    let mut params = create_fs_params(&remote, Some(&path));
+    if let Some(opt_val) = opt {
+        params.insert("opt".to_string(), opt_val);
+    }
     let source = build_full_path(&remote, &path);
 
     run_fs_command_as_job(

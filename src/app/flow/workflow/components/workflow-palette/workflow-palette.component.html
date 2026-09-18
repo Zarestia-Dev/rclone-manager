@@ -74,11 +74,11 @@
         <mat-icon [svgIcon]="item.icon"></mat-icon>
       </div>
       <div class="item-info">
-        <div class="item-title">
-          {{ item.titleKey ? (item.titleKey | translate) : item.title }}
+        <div class="item-title truncate">
+          {{ item.titleKey | translate }}
         </div>
-        <div class="item-description">
-          {{ item.descriptionKey ? (item.descriptionKey | translate) : item.description }}
+        <div class="item-description truncate">
+          {{ item.descriptionKey | translate }}
         </div>
       </div>
       <div class="action-button" aria-hidden="true">
@@ -86,8 +86,8 @@
       </div>
     </div>
   } @empty {
-    <div class="empty-palette">
-      <mat-icon svgIcon="search" class="empty-icon"></mat-icon>
+    <div class="empty-state">
+      <mat-icon svgIcon="search"></mat-icon>
       <p>{{ 'flow.workflow.palette.noResults' | translate }}</p>
     </div>
   }

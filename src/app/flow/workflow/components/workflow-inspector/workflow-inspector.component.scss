@@ -139,45 +139,6 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-
-        .status-badge-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 12px;
-          font-weight: 600;
-
-          mat-icon {
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-            font-size: var(--icon-size-sm);
-          }
-
-          &.badge-running {
-            color: var(--accent-color);
-          }
-
-          &.badge-success {
-            color: var(--success-bg-color);
-          }
-
-          &.badge-failed {
-            color: var(--destructive-bg-color);
-          }
-
-          &.badge-skipped {
-            color: var(--dim-color);
-          }
-        }
-
-        .execution-duration-pill {
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 6px;
-          border-radius: 999px;
-          background: var(--hover-bg-color);
-          color: var(--dim-color);
-        }
       }
     }
   }
@@ -305,29 +266,6 @@
             font-size: 12px;
             font-weight: 600;
             color: var(--window-fg-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-        }
-
-        .danger-pill {
-          background: rgba(var(--destructive-color-rgb), 0.15);
-          color: var(--destructive-bg-color);
-          border: 1px solid rgba(var(--destructive-color-rgb), 0.35);
-          cursor: pointer;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
-
-          &:hover {
-            background: var(--destructive-bg-color);
-            color: #fff;
-          }
-
-          mat-icon {
-            width: 14px;
-            height: 14px;
-            font-size: 14px;
           }
         }
       }
@@ -373,15 +311,6 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 4px;
-
-    .config-count-badge {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 10px;
-      background: rgba(var(--accent-color-rgb), 0.15);
-      color: var(--accent-color);
-    }
   }
 
   .section-title {

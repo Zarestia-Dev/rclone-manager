@@ -7,6 +7,7 @@ import {
   WorkflowNode,
   WorkflowValidationResult,
 } from '../../flow/workflow/types/workflow.types';
+import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
 
 export interface WorkflowExecutionResultDto {
@@ -53,7 +54,7 @@ export class WorkflowEngineService extends TauriBaseService {
     details?: unknown
   ): void {
     const entry: WorkflowLogEntry = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generatePrefixedId('log'),
       workflowId,
       nodeId: node?.id,
       nodeTitle: node?.title,

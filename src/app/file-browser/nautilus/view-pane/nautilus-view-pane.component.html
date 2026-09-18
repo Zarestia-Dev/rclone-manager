@@ -146,7 +146,19 @@
                 [ngTemplateOutlet]="fileEntryIcon"
                 [ngTemplateOutletContext]="{ item, isCut, sizeBinding: false }"
               ></ng-container>
-              <span>{{ item.entry.Name }}</span>
+              <span class="truncate">{{ item.entry.Name }}</span>
+              @let share = getShareInfo(item);
+              @if (share.isShared || share.isShortcut) {
+                <span class="app-pill p-dim pill-sm" [attr.title]="share.tooltipKey | translate">
+                  <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
+                  <span>{{
+                    (share.isShortcut
+                      ? 'nautilus.shared.shortcutBadge'
+                      : 'nautilus.shared.sharedBadge'
+                    ) | translate
+                  }}</span>
+                </span>
+              }
             </div>
           </td>
         </ng-container>
@@ -302,12 +314,24 @@
       svgIcon="scissors"
     ></mat-icon>
   } @else {
-    <mat-icon
-      [class.accent]="item.entry.IsDir"
-      [class.list-view]="!sizeBinding"
-      [style.width.px]="sizeBinding ? iconSize() : null"
-      [style.height.px]="sizeBinding ? iconSize() : null"
-      [svgIcon]="iconService.getIconForEntry(item.entry)"
-    ></mat-icon>
+    <div class="entry-icon-wrapper" [class.list-view]="!sizeBinding">
+      <mat-icon
+        [class.accent]="item.entry.IsDir"
+        [class.list-view]="!sizeBinding"
+        [style.width.px]="sizeBinding ? iconSize() : null"
+        [style.height.px]="sizeBinding ? iconSize() : null"
+        [svgIcon]="iconService.getIconForEntry(item.entry)"
+      ></mat-icon>
+      @let share = getShareInfo(item);
+      @if (share.isShared || share.isShortcut) {
+        <span
+          class="shared-emblem"
+          [class.list-view]="!sizeBinding"
+          [attr.title]="share.tooltipKey | translate"
+        >
+          <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
+        </span>
+      }
+    </div>
   }
 </ng-template>

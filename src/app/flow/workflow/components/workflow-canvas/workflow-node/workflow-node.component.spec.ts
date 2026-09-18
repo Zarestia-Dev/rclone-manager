@@ -361,4 +361,15 @@ describe('WorkflowNodeComponent', () => {
       expect.objectContaining({ portId: 'success', isOutput: true })
     );
   });
+
+  it('renders dynamic title when titleKey is set', () => {
+    const nodeWithKey: WorkflowNode = {
+      ...mockNode,
+      titleKey: 'flow.workflow.nodes.manualTrigger',
+      title: 'Manual Trigger',
+    };
+    fixture.componentRef.setInput('node', nodeWithKey);
+    fixture.detectChanges();
+    expect(component.displayTitle()).toBe('flow.workflow.nodes.manualTrigger');
+  });
 });

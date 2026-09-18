@@ -354,15 +354,6 @@ fn setup_app(
                             ndk_context::initialize_android_context(vm_ptr, context_ptr);
                         }
                     }
-                    unsafe {
-                        let raw_env = env.get_raw() as *mut jni::sys::JNIEnv;
-                        let raw_ctx = context.as_raw() as jni::sys::jobject;
-                        let mut unowned_env = jni::EnvUnowned::from_raw(raw_env);
-                        let _ = unowned_env.with_env(|rustls_env| {
-                            let rustls_ctx = jni::objects::JObject::from_raw(rustls_env, raw_ctx);
-                            rustls_platform_verifier::android::init_with_env(rustls_env, rustls_ctx)
-                        });
-                    }
                     let _ = tx.send(());
                 });
             });

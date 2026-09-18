@@ -293,22 +293,6 @@ describe('TaskNodeFormComponent', () => {
       });
     });
 
-    it('returns appropriate fields for node types in getNodeFieldsForType', () => {
-      const mountFields = component.getNodeFieldsForType('mount');
-      expect(mountFields.map(f => f.key)).toContain('mountPoint');
-      expect(mountFields.map(f => f.key)).toContain('remote');
-
-      const syncFields = component.getNodeFieldsForType('sync');
-      expect(syncFields.map(f => f.key)).toContain('totalBytes');
-
-      const cmdFields = component.getNodeFieldsForType('command');
-      expect(cmdFields.map(f => f.key)).toContain('stdout');
-
-      const scriptFields = component.getNodeFieldsForType('exec_script');
-      expect(scriptFields.map(f => f.key)).toContain('stdout');
-      expect(scriptFields.map(f => f.key)).toContain('exitCode');
-    });
-
     it('populates defaultParams when applying preset to empty params and resolves first remote', () => {
       const emittedList: { key: string; value: unknown }[] = [];
       component.configChange.subscribe(val => {

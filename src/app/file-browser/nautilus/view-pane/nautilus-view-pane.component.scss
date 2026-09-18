@@ -267,14 +267,10 @@ tr.folder-drag-over {
       align-items: center;
       gap: var(--space-sm);
       width: 100%;
-      overflow: hidden;
 
-      span {
+      > .truncate {
         flex: 1;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
     }
   }
@@ -304,6 +300,50 @@ tr.folder-drag-over {
   &.list-view {
     outline-width: 2px;
     outline-offset: -2px;
+  }
+}
+
+.entry-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  .shared-emblem {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 20px;
+    height: 20px;
+    background: var(--card-bg-color);
+    border: 1.5px solid var(--window-bg-color);
+    border-radius: var(--radius-circle);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    box-shadow: var(--shadow-popover);
+
+    mat-icon {
+      pointer-events: none;
+      width: 12px;
+      height: 12px;
+      font-size: 12px;
+      color: var(--accent-color);
+    }
+
+    &.list-view {
+      bottom: -3px;
+      right: -3px;
+      width: 14px;
+      height: 14px;
+
+      mat-icon {
+        width: 9px;
+        height: 9px;
+        font-size: 9px;
+      }
+    }
   }
 }
 

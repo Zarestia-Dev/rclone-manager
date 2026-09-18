@@ -1522,7 +1522,8 @@
       "title": "プロパティ",
       "loading": "基本情報を読み込み中...",
       "location": "場所",
-      "modified": "更新日時",
+      "targetId": "ターゲットID",
+      "modified": "変更日時",
       "size": "サイズ",
       "contentStats": "コンテンツ統計",
       "calculating": "フォルダサイズを計算中...",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "生成されたチェックサム",
       "calculateAnother": "別のハッシュを計算",
       "bulkHashInstruction": "ハッシュタイプを選択して、このディレクトリ内の全ファイルのチェックサムを計算します。",
-      "noHashesFound": "ハッシュが返されませんでした"
+      "noHashesFound": "ハッシュが返されませんでした",
+      "metadata": "メタデータ"
     },
     "operations": {
       "title": "操作履歴",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "ショートカット（共有アイテム）",
+      "sharedItemTooltip": "共有アイテム",
+      "onedriveRemoteTooltip": "外部共有アイテム",
+      "linkTooltip": "リンク / ショートカット",
+      "shortcutBadge": "ショートカット",
+      "sharedBadge": "共有"
+    },
     "sidebar": {
       "configureTitle": "サイドバー項目の設定",
       "configureDescription": "ドラッグして並べ替えたり、目のアイコンでサイドバーのドライブやクラウドリモートの表示/非表示を切り替えたりできます。",
@@ -3661,6 +3671,9 @@
         "filterErrors": "エラー",
         "filterWarnings": "警告",
         "filterSuccess": "成功"
+      },
+      "tokens": {
+        "prevNode": "前のノード"
       },
       "details": "ワークフロー詳細",
       "name": "ワークフロー名",

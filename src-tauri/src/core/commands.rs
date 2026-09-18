@@ -77,7 +77,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_fs_info, $crate::rclone::queries::get_fs_info, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_disk_usage, $crate::rclone::queries::get_disk_usage, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_size, $crate::rclone::queries::get_size, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, opt: Option<serde_json::Value>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum, $crate::rclone::queries::get_hashsum, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum_file, $crate::rclone::queries::get_hashsum_file, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_public_link, $crate::rclone::queries::get_public_link, [remote: String, path: String, options: Option<$crate::rclone::queries::filesystem::PublicLinkParams>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
@@ -184,6 +184,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_export_categories, $crate::core::settings::backup::export_categories::get_export_categories, []);
 
             // NETWORK
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (check_links, $crate::utils::io::network::check_links, [links: Vec<String>, max_retries: usize, retry_delay_secs: u64], [no_app]);
             (is_network_metered, $crate::utils::io::network::is_network_metered, [], [no_app]);
 

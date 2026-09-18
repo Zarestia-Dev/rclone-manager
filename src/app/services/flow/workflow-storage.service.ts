@@ -3,6 +3,7 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
 import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/workflow.types';
 import { BUILTIN_WORKFLOW_TEMPLATES } from './recipes/workflow-recipes';
 import { findUniqueName } from '../remote/utils/unique-name.util';
+import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
 @Injectable({ providedIn: 'root' })
 export class WorkflowStorageService extends TauriBaseService {
@@ -186,7 +187,7 @@ export class WorkflowStorageService extends TauriBaseService {
 
     const instantiated: WorkflowDefinition = {
       ...structuredClone(tpl.definition),
-      id: `wf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: generatePrefixedId('wf'),
       name: uniqueName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

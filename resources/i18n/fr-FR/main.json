@@ -1522,6 +1522,7 @@
       "title": "Propriétés",
       "loading": "Chargement des infos de base...",
       "location": "Localisation",
+      "targetId": "ID cible",
       "modified": "Modifié",
       "size": "Taille",
       "contentStats": "Statistiques du contenu",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Sommes de contrôle générées",
       "calculateAnother": "Calculer un autre",
       "bulkHashInstruction": "Sélectionnez un type de hachage pour calculer les sommes de contrôle pour tous les fichiers de ce répertoire.",
-      "noHashesFound": "Aucun hachage retourné"
+      "noHashesFound": "Aucun hachage retourné",
+      "metadata": "Métadonnées"
     },
     "operations": {
       "title": "Opérations",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Raccourci (Élément partagé)",
+      "sharedItemTooltip": "Élément partagé",
+      "onedriveRemoteTooltip": "Élément partagé externe",
+      "linkTooltip": "Lien / Raccourci",
+      "shortcutBadge": "Raccourci",
+      "sharedBadge": "Partagé"
+    },
     "sidebar": {
       "configureTitle": "Configurer les éléments de la barre latérale",
       "configureDescription": "Faites glisser les éléments pour les réordonner, ou utilisez l'icône de l'œil pour masquer ou afficher les disques et distants.",
@@ -3661,6 +3671,9 @@
         "filterErrors": "Erreurs",
         "filterWarnings": "Avertissements",
         "filterSuccess": "Succès"
+      },
+      "tokens": {
+        "prevNode": "Nœud précédent"
       },
       "details": "Détails du flux",
       "name": "Nom du flux",

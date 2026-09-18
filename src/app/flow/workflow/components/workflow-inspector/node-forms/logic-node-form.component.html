@@ -305,7 +305,9 @@
         [placeholder]="'flow.workflow.inspector.targetNodePlaceholder' | translate"
       >
         @for (upNode of availableUpstreamNodes(); track upNode.id) {
-          <mat-option [value]="upNode.id"> {{ upNode.title }} ({{ upNode.id }}) </mat-option>
+          <mat-option [value]="upNode.id">
+            {{ upNode.titleKey ? (upNode.titleKey | translate) : upNode.title }} ({{ upNode.id }})
+          </mat-option>
         }
       </mat-select>
     </mat-form-field>

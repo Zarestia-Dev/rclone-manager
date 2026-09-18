@@ -19,6 +19,7 @@ export interface WorkflowNode {
   type: string;
   category: WorkflowNodeCategory;
   title: string;
+  titleKey?: string;
   subtitle?: string;
   x: number;
   y: number;
@@ -87,15 +88,14 @@ export interface WorkflowLogEntry {
 export interface NodePaletteItem {
   type: string;
   category: WorkflowNodeCategory;
-  title: string;
-  titleKey?: string;
-  description: string;
-  descriptionKey?: string;
+  titleKey: string;
+  descriptionKey: string;
   icon: string;
   cssClass?: string;
   defaultInputs: WorkflowPort[];
   defaultOutputs: WorkflowPort[];
   defaultConfig: Record<string, unknown>;
+  hideOnMobile?: boolean;
 }
 
 export interface WorkflowValidationResult {

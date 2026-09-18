@@ -41,7 +41,7 @@ describe('WorkflowExecutionLogComponent', () => {
 
   it('renders log entries and badge count', () => {
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('.log-count-badge')?.textContent).toBe('1');
+    expect(el.querySelector('.count-badge')?.textContent).toBe('1');
     expect(el.querySelector('.log-message')?.textContent).toContain('Step 1 ran');
   });
 

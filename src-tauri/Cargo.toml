@@ -93,7 +93,6 @@ objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"], 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = "0.1"
 jni = "0.22"
-rustls-platform-verifier = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]

@@ -1522,6 +1522,7 @@
       "title": "Propriedades",
       "loading": "Carregando informações básicas...",
       "location": "Localização",
+      "targetId": "ID de destino",
       "modified": "Modificado",
       "size": "Tamanho",
       "contentStats": "Estatísticas de Conteúdo",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Checksums Gerados",
       "calculateAnother": "Calcule outro",
       "bulkHashInstruction": "Selecione um tipo de hash para calcular os sumários em checksums para todos os arquivos nessa pasta.",
-      "noHashesFound": "Nenhum hash retornado"
+      "noHashesFound": "Nenhum hash retornado",
+      "metadata": "Metadados"
     },
     "operations": {
       "title": "Operações",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Atalho (Item compartilhado)",
+      "sharedItemTooltip": "Item compartilhado",
+      "onedriveRemoteTooltip": "Item compartilhado externo",
+      "linkTooltip": "Link / Atalho",
+      "shortcutBadge": "Atalho",
+      "sharedBadge": "Compartilhado"
+    },
     "sidebar": {
       "configureTitle": "Configurar Itens da Barra de Navegação",
       "configureDescription": "Arraste os itens para reorganizá-los ou clique no ícone de olho para esconder ou mostrar unidades e remotos de nuvem na barra lateral.",
@@ -3661,6 +3671,9 @@
         "filterErrors": "Erros",
         "filterWarnings": "Avisos",
         "filterSuccess": "Sucesso"
+      },
+      "tokens": {
+        "prevNode": "Nó Anterior"
       },
       "details": "Detalhes do Fluxo de Trabalho",
       "name": "Nome do Fluxo",

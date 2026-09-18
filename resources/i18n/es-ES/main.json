@@ -1522,6 +1522,7 @@
       "title": "Propiedades",
       "loading": "Cargando información básica...",
       "location": "Ubicación",
+      "targetId": "ID de destino",
       "modified": "Modificado",
       "size": "Tamaño",
       "contentStats": "Estadísticas de contenido",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Sumas de comprobación generadas",
       "calculateAnother": "Calcular otra",
       "bulkHashInstruction": "Selecciona un tipo de hash para calcular las sumas de comprobación de todos los archivos de este directorio.",
-      "noHashesFound": "No se devolvieron hashes"
+      "noHashesFound": "No se devolvieron hashes",
+      "metadata": "Metadatos"
     },
     "operations": {
       "title": "Operaciones",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Acceso directo (Elemento compartido)",
+      "sharedItemTooltip": "Elemento compartido",
+      "onedriveRemoteTooltip": "Elemento compartido externo",
+      "linkTooltip": "Enlace / Acceso directo",
+      "shortcutBadge": "Acceso directo",
+      "sharedBadge": "Compartido"
+    },
     "sidebar": {
       "configureTitle": "Configurar elementos de la barra lateral",
       "configureDescription": "Arrastre elementos para reordenarlos o use el icono de ojo para ocultar o mostrar discos y remotos en la barra lateral.",
@@ -3661,6 +3671,9 @@
         "filterErrors": "Errores",
         "filterWarnings": "Advertencias",
         "filterSuccess": "Éxito"
+      },
+      "tokens": {
+        "prevNode": "Nodo Anterior"
       },
       "details": "Detalles del flujo de trabajo",
       "name": "Nombre del flujo",

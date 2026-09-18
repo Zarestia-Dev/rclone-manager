@@ -15,7 +15,7 @@
       ></mat-icon>
       <span class="title-text">{{ 'flow.workflow.logs.title' | translate }}</span>
       @if (engineService.logs().length > 0) {
-        <span class="log-count-badge">{{ engineService.logs().length }}</span>
+        <span class="count-badge">{{ engineService.logs().length }}</span>
       }
     </div>
 
@@ -85,7 +85,7 @@
     <div class="log-actions">
       <button
         type="button"
-        class="icon-action-btn"
+        class="action-button"
         (click)="copyLogs()"
         [attr.title]="'flow.workflow.logs.copy' | translate"
       >
@@ -93,7 +93,7 @@
       </button>
       <button
         type="button"
-        class="icon-action-btn"
+        class="action-button"
         (click)="clearLogs()"
         [attr.title]="'flow.workflow.logs.clear' | translate"
       >
@@ -101,7 +101,7 @@
       </button>
       <button
         type="button"
-        class="icon-action-btn"
+        class="action-button"
         (click)="closeConsole.emit()"
         [attr.title]="'common.close' | translate"
       >
@@ -146,7 +146,7 @@
           <span class="log-message">{{ entry.message }}</span>
         </div>
       } @empty {
-        <div class="empty-logs">
+        <div class="empty-state">
           <p>{{ 'flow.workflow.logs.empty' | translate }}</p>
         </div>
       }

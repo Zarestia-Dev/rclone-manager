@@ -1522,6 +1522,7 @@
       "title": "Properties",
       "loading": "Loading basic info...",
       "location": "Location",
+      "targetId": "Target ID",
       "modified": "Modified",
       "size": "Size",
       "contentStats": "Content Stats",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Generated Checksums",
       "calculateAnother": "Calculate Another",
       "bulkHashInstruction": "Select a hash type to calculate checksums for all files in this directory.",
-      "noHashesFound": "No hashes returned"
+      "noHashesFound": "No hashes returned",
+      "metadata": "Metadata"
     },
     "operations": {
       "title": "Operations",
@@ -2431,6 +2433,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Shortcut (Shared Item)",
+      "sharedItemTooltip": "Shared Item",
+      "onedriveRemoteTooltip": "External Shared Item",
+      "linkTooltip": "Link / Shortcut",
+      "shortcutBadge": "Shortcut",
+      "sharedBadge": "Shared"
+    },
     "sidebar": {
       "configureTitle": "Configure Sidebar Items",
       "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar.",
@@ -3706,6 +3716,9 @@
         "filterErrors": "Errors",
         "filterWarnings": "Warnings",
         "filterSuccess": "Success"
+      },
+      "tokens": {
+        "prevNode": "Previous Node"
       },
       "details": "Workflow Details",
       "name": "Workflow Name",

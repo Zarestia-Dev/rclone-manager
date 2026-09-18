@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -36,9 +37,19 @@ export class WorkflowNodeComponent {
   private readonly modalService = inject(ModalService);
   private readonly stateService = inject(WorkflowStateService);
   private readonly translate = inject(TranslateService);
+  private readonly langChange = toSignal(this.translate.onLangChange);
 
   readonly node = input.required<WorkflowNode>();
   readonly isSelected = input<boolean>(false);
+
+  readonly displayTitle = computed(() => {
+    this.langChange();
+    const n = this.node();
+    if (n.titleKey) {
+      return this.translate.instant(n.titleKey);
+    }
+    return n.title;
+  });
 
   readonly nodeJob = computed<JobInfo | null>(() => {
     const n = this.node();
@@ -49,6 +60,7 @@ export class WorkflowNodeComponent {
   });
 
   readonly displaySubtitle = computed(() => {
+    this.langChange();
     const n = this.node();
     if (n.subtitle) return n.subtitle;
     if (n.type === 'cron') {

@@ -40,10 +40,10 @@ describe('WorkflowPaletteComponent', () => {
   });
 
   it('filters items by search query', () => {
-    component.searchQuery.set('Cron');
+    component.searchQuery.set('cron');
     fixture.detectChanges();
-    expect(component.filteredItems().some(i => i.title.includes('Cron'))).toBe(true);
-    expect(component.filteredItems().some(i => i.title === 'Move')).toBe(false);
+    expect(component.filteredItems().some(i => i.type === 'cron')).toBe(true);
+    expect(component.filteredItems().some(i => i.type === 'move')).toBe(false);
   });
 
   it('filters items by category', () => {
@@ -106,7 +106,30 @@ describe('WorkflowPaletteComponent', () => {
     expect(actionTypes).toContain('log_audit');
     const notifItem = component.filteredItems().find(i => i.type === 'notification');
     expect(notifItem).toBeDefined();
-    expect(notifItem?.title).toBe('Send Notification');
+    expect(notifItem?.titleKey).toBe('flow.workflow.nodes.notification');
+  });
+
+  it('hides system_power in action category when running on mobile', () => {
+    const originalUserAgent = navigator.userAgent;
+    try {
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36',
+        configurable: true,
+      });
+      component.selectedCategory.set('action');
+      fixture.detectChanges();
+      const actionTypes = component.filteredItems().map(i => i.type);
+      expect(actionTypes).not.toContain('system_power');
+      expect(actionTypes).toContain('notification');
+      expect(actionTypes).toContain('unmount');
+      expect(actionTypes).toContain('stop_serve');
+      expect(actionTypes).toContain('log_audit');
+    } finally {
+      Object.defineProperty(navigator, 'userAgent', {
+        value: originalUserAgent,
+        configurable: true,
+      });
+    }
   });
 
   it('emits closePalette when close button is clicked', () => {

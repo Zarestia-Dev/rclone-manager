@@ -23,6 +23,7 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
 import { Entry, FileBrowserItem, fileBrowserItemKey } from '@app/types';
+import { getShareInfo } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-nautilus-view-pane',
@@ -47,6 +48,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   private readonly nautilusService = inject(NautilusService);
   protected readonly dragDrop = inject(NautilusDragDropService);
   protected readonly iconService = inject(IconService);
+  protected readonly getShareInfo = getShareInfo;
 
   // --- Inputs ---
   public readonly files = input.required<FileBrowserItem[]>();

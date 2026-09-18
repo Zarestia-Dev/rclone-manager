@@ -161,8 +161,8 @@ describe('WorkflowCanvasComponent', () => {
       {
         type: 'sync',
         category: 'task',
-        title: 'Sync',
-        description: '',
+        titleKey: 'flow.workflow.operations.sync',
+        descriptionKey: 'flow.workflow.operations.syncDesc',
         icon: 'sync',
         defaultInputs: [],
         defaultOutputs: [],

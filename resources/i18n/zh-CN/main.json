@@ -1522,6 +1522,7 @@
       "title": "属性",
       "loading": "正在加载基本信息...",
       "location": "位置",
+      "targetId": "目标 ID",
       "modified": "修改时间",
       "size": "大小",
       "contentStats": "内容统计",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "已生成校验和",
       "calculateAnother": "计算其他",
       "bulkHashInstruction": "选择哈希类型，为当前目录所有文件计算校验和",
-      "noHashesFound": "未返回任何哈希值"
+      "noHashesFound": "未返回任何哈希值",
+      "metadata": "元数据"
     },
     "operations": {
       "title": "操作",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "快捷方式（共享项目）",
+      "sharedItemTooltip": "共享项目",
+      "onedriveRemoteTooltip": "外部共享项目",
+      "linkTooltip": "链接 / 快捷方式",
+      "shortcutBadge": "快捷方式",
+      "sharedBadge": "已共享"
+    },
     "sidebar": {
       "configureTitle": "配置侧边栏项目",
       "configureDescription": "拖动项目以重新排序，或使用眼睛图标隐藏或显示侧边栏中的磁盘和远程连接。",
@@ -3661,6 +3671,9 @@
         "filterErrors": "错误",
         "filterWarnings": "警告",
         "filterSuccess": "成功"
+      },
+      "tokens": {
+        "prevNode": "上一个节点"
       },
       "details": "工作流详情",
       "name": "工作流名称",

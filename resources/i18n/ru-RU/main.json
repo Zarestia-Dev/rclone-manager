@@ -1522,7 +1522,8 @@
       "title": "Свойства",
       "loading": "Загрузка основной информации...",
       "location": "Расположение",
-      "modified": "Изменён",
+      "targetId": "Целевой ID",
+      "modified": "Изменено",
       "size": "Размер",
       "contentStats": "Содержимое",
       "calculating": "Расчёт размера папки...",
@@ -1561,7 +1562,8 @@
       "generatedChecksums": "Рассчитанные контрольные суммы",
       "calculateAnother": "Рассчитать другую",
       "bulkHashInstruction": "Выберите тип хеша, чтобы рассчитать контрольные суммы всех файлов в этой папке.",
-      "noHashesFound": "Контрольные суммы не получены"
+      "noHashesFound": "Контрольные суммы не получены",
+      "metadata": "Метаданные"
     },
     "operations": {
       "title": "Операции",
@@ -2390,6 +2392,14 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Ярлык (общий элемент)",
+      "sharedItemTooltip": "Общий элемент",
+      "onedriveRemoteTooltip": "Внешний общий элемент",
+      "linkTooltip": "Ссылка / Ярлык",
+      "shortcutBadge": "Ярлык",
+      "sharedBadge": "Общий"
+    },
     "sidebar": {
       "configureTitle": "Настройка боковой панели",
       "configureDescription": "Перетаскивайте элементы, чтобы изменить их порядок, и используйте значок глаза, чтобы скрывать или показывать диски и облачные подключения в боковой панели.",
@@ -3661,6 +3671,9 @@
         "filterErrors": "Ошибки",
         "filterWarnings": "Предупреждения",
         "filterSuccess": "Успешно"
+      },
+      "tokens": {
+        "prevNode": "Предыдущий узел"
       },
       "details": "Свойства процесса",
       "name": "Название процесса",

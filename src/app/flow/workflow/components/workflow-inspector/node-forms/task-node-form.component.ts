@@ -24,7 +24,6 @@ import { QuickRun } from '@app/types';
 import {
   getAvailableUpstreamNodes,
   getNodeFields,
-  getNodeFieldsForType,
   NodeVariableField,
 } from '../../../utils/node-fields.util';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
@@ -387,9 +386,5 @@ export class TaskNodeFormComponent {
     } catch {
       // user cancelled
     }
-  }
-
-  getNodeFieldsForType(type?: string): { key: string; label: string }[] {
-    return getNodeFieldsForType(type);
   }
 }

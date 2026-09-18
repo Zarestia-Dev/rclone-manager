@@ -144,6 +144,10 @@ describe('node-fields.util', () => {
   });
 
   describe('getAvailableUpstreamNodes', () => {
+    it('defines titleKey on PREVIOUS_NODE_PSEUDO for dynamic localization', () => {
+      expect(PREVIOUS_NODE_PSEUDO.titleKey).toBe('flow.workflow.tokens.prevNode');
+    });
+
     it('always prepends PREVIOUS_NODE_PSEUDO even if node list is empty or undefined', () => {
       expect(getAvailableUpstreamNodes(undefined)).toEqual([PREVIOUS_NODE_PSEUDO]);
       expect(getAvailableUpstreamNodes([])).toEqual([PREVIOUS_NODE_PSEUDO]);

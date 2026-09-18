@@ -7,6 +7,7 @@ import {
   computed,
   output,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +16,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowDragDropService } from '../../../../services/flow/workflow-drag-drop.service';
 import { NodePaletteItem, WorkflowNodeCategory } from '../../types/workflow.types';
+import { isMobile } from '../../../../services/infrastructure/platform/api-client.service';
 import { PALETTE_ITEMS } from '../../constants/palette.registry';
 
 export { PALETTE_ITEMS };
@@ -41,12 +43,21 @@ export class WorkflowPaletteComponent {
   private readonly dragDropService = inject(WorkflowDragDropService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly langChange = toSignal(this.translate.onLangChange);
 
   readonly closePalette = output<void>();
   readonly nodeAdded = output<NodePaletteItem>();
   readonly searchQuery = signal<string>('');
   readonly selectedCategory = signal<WorkflowNodeCategory | 'all'>('all');
   readonly isSearchOpen = signal<boolean>(false);
+
+  readonly categories: { id: WorkflowNodeCategory | 'all'; label: string; icon: string }[] = [
+    { id: 'all', label: 'flow.workflow.categories.all', icon: 'grid' },
+    { id: 'trigger', label: 'flow.workflow.category.trigger', icon: 'play' },
+    { id: 'task', label: 'flow.workflow.category.task', icon: 'sync' },
+    { id: 'logic', label: 'flow.workflow.category.logic', icon: 'flow' },
+    { id: 'action', label: 'flow.workflow.category.action', icon: 'bell' },
+  ];
 
   private _pendingPointerDrag: {
     item: NodePaletteItem;
@@ -58,14 +69,6 @@ export class WorkflowPaletteComponent {
   } | null = null;
   private _ignoreNextItemClick = false;
 
-  readonly categories: { id: WorkflowNodeCategory | 'all'; label: string; icon: string }[] = [
-    { id: 'all', label: 'flow.workflow.categories.all', icon: 'grid' },
-    { id: 'trigger', label: 'flow.workflow.category.trigger', icon: 'play' },
-    { id: 'task', label: 'flow.workflow.category.task', icon: 'sync' },
-    { id: 'logic', label: 'flow.workflow.category.logic', icon: 'flow' },
-    { id: 'action', label: 'flow.workflow.category.action', icon: 'bell' },
-  ];
-
   constructor() {
     this.destroyRef.onDestroy(() => {
       this._removePointerListeners();
@@ -74,24 +77,23 @@ export class WorkflowPaletteComponent {
   }
 
   readonly filteredItems = computed(() => {
+    this.langChange();
     const query = this.searchQuery().trim().toLowerCase();
     const cat = this.selectedCategory();
+    const mobile = isMobile();
 
     return PALETTE_ITEMS.filter(item => {
+      if (mobile && item.hideOnMobile) return false;
       const matchCat = cat === 'all' || item.category === cat;
       if (!matchCat) return false;
       if (!query) return true;
 
-      const title = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
-      const desc = item.descriptionKey
-        ? this.translate.instant(item.descriptionKey)
-        : item.description;
+      const title = this.translate.instant(item.titleKey);
+      const desc = this.translate.instant(item.descriptionKey);
 
       return (
         title.toLowerCase().includes(query) ||
         desc.toLowerCase().includes(query) ||
-        item.title.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query) ||
         item.type.toLowerCase().includes(query)
       );
     });
@@ -185,12 +187,13 @@ export class WorkflowPaletteComponent {
     // Center node relative to current canvas camera
     const canvasX = (400 - vp.x) / vp.zoom;
     const canvasY = (300 - vp.y) / vp.zoom;
-    const title = item.titleKey ? this.translate.instant(item.titleKey) : item.title;
+    const title = this.translate.instant(item.titleKey);
 
     this.stateService.addNode(item.type, item.category, title, canvasX, canvasY, {
       inputs: item.defaultInputs,
       outputs: item.defaultOutputs,
       config: item.defaultConfig,
+      titleKey: item.titleKey,
     });
     this.nodeAdded.emit(item);
   }

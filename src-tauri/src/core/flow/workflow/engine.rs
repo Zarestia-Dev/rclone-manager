@@ -1356,6 +1356,7 @@ async fn execute_single_node(
         "stop" => handle_stop_node(config, cancel_flag),
 
         // System power management (sleep, shutdown, lock)
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         "system_power" => {
             let action = config
                 .get("action")
@@ -2767,10 +2768,6 @@ mod tests {
             node_type: "condition".to_string(),
             category: WorkflowNodeCategory::Logic,
             title: "Check Condition".to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
-            inputs: vec![],
             outputs: vec![
                 WorkflowPort {
                     id: "true".to_string(),
@@ -2787,12 +2784,7 @@ mod tests {
                     description: None,
                 },
             ],
-            config: json!({}),
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         };
 
         let edges = vec![
@@ -2836,10 +2828,6 @@ mod tests {
             node_type: "sync".to_string(),
             category: WorkflowNodeCategory::Task,
             title: "Sync".to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
-            inputs: vec![],
             outputs: vec![
                 WorkflowPort {
                     id: "success".to_string(),
@@ -2856,12 +2844,7 @@ mod tests {
                     description: None,
                 },
             ],
-            config: json!({}),
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         };
 
         let task_edges = vec![
@@ -3453,17 +3436,8 @@ mod tests {
             node_type: "join".to_string(),
             category: WorkflowNodeCategory::Logic,
             title: "Join Branches".to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
-            inputs: vec![],
-            outputs: vec![],
             config,
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         }
     }
 
@@ -3474,13 +3448,9 @@ mod tests {
         WorkflowDefinition {
             id: "wf-1".to_string(),
             name: "Test Flow".to_string(),
-            description: None,
             nodes: vec![node],
             edges,
-            viewport: CanvasViewport::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         }
     }
 
@@ -3611,9 +3581,6 @@ mod tests {
             node_type: "parallel_fork".to_string(),
             category: WorkflowNodeCategory::Logic,
             title: "Parallel Split".to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
             inputs: vec![WorkflowPort {
                 id: "in".to_string(),
                 name: "In".to_string(),
@@ -3644,12 +3611,7 @@ mod tests {
                     description: None,
                 },
             ],
-            config: json!({}),
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         };
 
         let edges = vec![
@@ -3983,21 +3945,12 @@ mod tests {
             node_type: "watcher".to_string(),
             category: WorkflowNodeCategory::Trigger,
             title: "Local Watcher".to_string(),
-            subtitle: None,
-            x: 0.0,
-            y: 0.0,
-            inputs: vec![],
-            outputs: vec![],
             config: json!({
                 "watchPaths": ["/home/test/folder"],
                 "globPattern": "*.log",
                 "debounceSeconds": 3
             }),
-            state: None,
-            error_message: None,
-            last_duration_ms: None,
-            started_at: None,
-            finished_at: None,
+            ..Default::default()
         };
 
         let res = match node.node_type.as_str() {
@@ -4101,41 +4054,21 @@ mod tests {
         let wf = WorkflowDefinition {
             id: "wf-1".to_string(),
             name: "Test Flow".to_string(),
-            description: None,
             nodes: vec![
                 WorkflowNode {
                     id: "node-check-1".to_string(),
                     node_type: "check".to_string(),
                     category: WorkflowNodeCategory::Task,
                     title: "Check Remote".to_string(),
-                    subtitle: None,
-                    x: 0.0,
-                    y: 0.0,
-                    inputs: vec![],
-                    outputs: vec![],
-                    config: json!({}),
-                    state: None,
-                    error_message: None,
-                    last_duration_ms: None,
-                    started_at: None,
-                    finished_at: None,
+                    ..Default::default()
                 },
                 WorkflowNode {
                     id: "node-notify-1".to_string(),
                     node_type: "notification".to_string(),
                     category: WorkflowNodeCategory::Action,
                     title: "Send Notification".to_string(),
-                    subtitle: None,
                     x: 100.0,
-                    y: 0.0,
-                    inputs: vec![],
-                    outputs: vec![],
-                    config: json!({}),
-                    state: None,
-                    error_message: None,
-                    last_duration_ms: None,
-                    started_at: None,
-                    finished_at: None,
+                    ..Default::default()
                 },
             ],
             edges: vec![WorkflowEdge {
@@ -4146,10 +4079,7 @@ mod tests {
                 target_port_id: "in".to_string(),
                 is_active: Some(true),
             }],
-            viewport: CanvasViewport::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         let mut results = HashMap::new();

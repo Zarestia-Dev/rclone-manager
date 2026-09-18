@@ -93,7 +93,7 @@ impl NodeExecutionOutput {
 }
 
 /// A node in the visual DAG.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowNode {
     pub id: String,
@@ -102,6 +102,8 @@ pub struct WorkflowNode {
     #[serde(default)]
     pub category: WorkflowNodeCategory,
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subtitle: Option<String>,
     pub x: f64,
@@ -164,7 +166,7 @@ impl Default for CanvasViewport {
 }
 
 /// A complete, persistent workflow definition.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowDefinition {
     pub id: String,
@@ -410,17 +412,9 @@ mod tests {
                 node_type: "manual".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "Manual Trigger".to_string(),
-                subtitle: None,
                 x: 100.0,
                 y: 100.0,
-                inputs: vec![],
-                outputs: vec![],
-                config: json!({}),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
             edges: vec![],
             viewport: CanvasViewport {
@@ -430,7 +424,7 @@ mod tests {
             },
             created_at: Some("2026-08-28T10:00:00Z".to_string()),
             updated_at: Some("2026-08-28T10:00:00Z".to_string()),
-            last_executed_at: None,
+            ..Default::default()
         };
 
         let json_str = serde_json::to_string(&wf).unwrap();
@@ -468,33 +462,19 @@ mod tests {
         let wf = WorkflowDefinition {
             id: "wf-watcher-1".to_string(),
             name: "Watcher Workflow".to_string(),
-            description: None,
             nodes: vec![WorkflowNode {
                 id: "node-watcher-1".to_string(),
                 node_type: "watcher".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "Folder Watcher".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: json!({
                     "watchPaths": ["/tmp/watch_dir", "/tmp/watch_dir2"],
                     "globPattern": "*.pdf, !*.tmp",
                     "debounceSeconds": 10
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: CanvasViewport::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         assert!(wf.is_watch_enabled());
@@ -511,31 +491,17 @@ mod tests {
         let wf = WorkflowDefinition {
             id: "wf-cron-1".to_string(),
             name: "Cron Workflow".to_string(),
-            description: None,
             nodes: vec![WorkflowNode {
                 id: "node-cron-1".to_string(),
                 node_type: "cron".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "Cron Schedule".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: json!({
                     "cronExpression": "0 4 * * *"
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: CanvasViewport::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         assert!(wf.is_cron_enabled());
@@ -550,19 +516,10 @@ mod tests {
                 node_type: "cron".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "Cron Schedule".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: json!({
                     "cronExpression": "   "
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
             ..wf
         };
@@ -584,31 +541,17 @@ mod tests {
         let wf_with_app_start = WorkflowDefinition {
             id: "wf-app-start-1".to_string(),
             name: "App Start Workflow".to_string(),
-            description: None,
             nodes: vec![WorkflowNode {
                 id: "node-start-1".to_string(),
                 node_type: "app_start".to_string(),
                 category: WorkflowNodeCategory::Trigger,
                 title: "On App Launch".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: json!({
                     "delaySeconds": 10
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: CanvasViewport::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         assert!(wf_with_app_start.is_autostart());

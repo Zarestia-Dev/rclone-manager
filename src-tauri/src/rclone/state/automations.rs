@@ -1543,74 +1543,40 @@ mod tests {
         let wf_with_cron = WorkflowDefinition {
             id: "wf-cron-1".to_string(),
             name: "Nightly Sync Flow".to_string(),
-            description: None,
             nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
                 id: "node-c".to_string(),
                 node_type: "cron".to_string(),
                 category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
                 title: "Cron".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: serde_json::json!({
                     "cronExpression": "0 3 * * *"
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: Default::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         let wf_without_cron = WorkflowDefinition {
             id: "wf-manual-1".to_string(),
             name: "Manual Flow".to_string(),
-            description: None,
-            nodes: vec![],
-            edges: vec![],
-            viewport: Default::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         let wf_with_watcher = WorkflowDefinition {
             id: "wf-watcher-1".to_string(),
             name: "Watcher Flow".to_string(),
-            description: None,
             nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
                 id: "node-w".to_string(),
                 node_type: "watcher".to_string(),
                 category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
                 title: "Watcher".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: serde_json::json!({
                     "watchPaths": ["/tmp/sync_dir"],
                     "debounceSeconds": 8
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: Default::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
 
         let auto1 = cache.create_automation_from_workflow("local", &wf_with_cron);
@@ -1655,31 +1621,17 @@ mod tests {
         let wf = WorkflowDefinition {
             id: "wf-preserve".to_string(),
             name: "Preserve Me".to_string(),
-            description: None,
             nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
                 id: "node-c-preserve".to_string(),
                 node_type: "cron".to_string(),
                 category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
                 title: "Cron".to_string(),
-                subtitle: None,
-                x: 0.0,
-                y: 0.0,
-                inputs: vec![],
-                outputs: vec![],
                 config: serde_json::json!({
                     "cronExpression": "0 1 * * *"
                 }),
-                state: None,
-                error_message: None,
-                last_duration_ms: None,
-                started_at: None,
-                finished_at: None,
+                ..Default::default()
             }],
-            edges: vec![],
-            viewport: Default::default(),
-            created_at: None,
-            updated_at: None,
-            last_executed_at: None,
+            ..Default::default()
         };
         cache
             .load_from_workflows(&[wf], "local")

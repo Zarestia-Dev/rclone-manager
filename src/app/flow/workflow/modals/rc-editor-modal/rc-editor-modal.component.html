@@ -91,14 +91,14 @@
       <span class="section-label">{{ 'flow.workflow.inspector.rcParameters' | translate }}</span>
       @if (jsonStatus().isTemplate) {
         <span
-          class="status-badge template"
+          class="app-pill p-primary sm"
           [attr.title]="'flow.workflow.inspector.templateJson' | translate"
         >
           <mat-icon svgIcon="workflow"></mat-icon>
           <span>{{ 'flow.workflow.inspector.templateJson' | translate }}</span>
         </span>
       } @else if (rawParamsJson().trim() && !jsonStatus().valid) {
-        <span class="status-badge invalid" [attr.title]="jsonStatus().error || ''">
+        <span class="app-pill p-warn sm" [attr.title]="jsonStatus().error || ''">
           <mat-icon svgIcon="circle-info"></mat-icon>
           <span>{{ 'flow.workflow.inspector.invalidJson' | translate }}</span>
         </span>
@@ -271,7 +271,9 @@
             (ngModelChange)="onVariableNodeSelect($event)"
           >
             @for (n of availableUpstreamNodes(); track n.id) {
-              <mat-option [value]="n.id">{{ n.title }} ({{ n.id }})</mat-option>
+              <mat-option [value]="n.id">
+                {{ n.titleKey ? (n.titleKey | translate) : n.title }} ({{ n.id }})
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>

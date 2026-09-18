@@ -46,10 +46,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async getStat(
     remote: string,
     path: string,
+    opt?: Record<string, unknown>,
     source?: Origin,
     group?: string
   ): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path, origin: source, group });
+    return this.invokeCommand('get_stat', { remote, path, opt, origin: source, group });
   }
 
   async getHashsum(
