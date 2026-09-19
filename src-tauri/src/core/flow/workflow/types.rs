@@ -178,6 +178,8 @@ pub struct WorkflowDefinition {
     pub edges: Vec<WorkflowEdge>,
     #[serde(default)]
     pub viewport: CanvasViewport,
+    #[serde(default)]
+    pub show_on_tray: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -331,6 +333,8 @@ pub struct WorkflowInput {
     pub edges: Vec<WorkflowEdge>,
     #[serde(default)]
     pub viewport: CanvasViewport,
+    #[serde(default)]
+    pub show_on_tray: bool,
 }
 
 /// Execution result returned by `execute_workflow`.

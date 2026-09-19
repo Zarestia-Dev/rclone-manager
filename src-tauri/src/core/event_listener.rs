@@ -36,7 +36,9 @@ use crate::{
 use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
 #[cfg(feature = "tray")]
-use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU};
+use crate::utils::types::events::{
+    BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU, WORKFLOW_EXECUTION_STATE_CHANGED,
+};
 
 #[cfg(feature = "tray")]
 fn trigger_tray_update(app: AppHandle) {
@@ -382,6 +384,7 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
         | MOUNT_STATE_CHANGED
         | BACKEND_SWITCHED
         | REMOTE_SETTINGS_CHANGED
+        | WORKFLOW_EXECUTION_STATE_CHANGED
         | UPDATE_TRAY_MENU => {
             trigger_tray_update(app.clone());
         }

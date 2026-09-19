@@ -3055,7 +3055,8 @@
     "tooltipMount": "1 montage",
     "tooltipMounts": "{{count}} Montages",
     "tooltipServe": "1 Partage",
-    "tooltipServes": "{{count}} Service de partage"
+    "tooltipServes": "{{count}} Service de partage",
+    "workflowsCount": "Flux de travail [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Opérations actives en cours : {{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "Bienvenue dans le constructeur de flux",
         "subtitle": "Créez un nouveau flux de travail ou choisissez un modèle pour automatiser vos opérations rclone."
-      }
+      },
+      "showInTray": "Afficher dans la zone de notification"
     },
     "shortcuts": {
       "title": "Raccourcis clavier de Flow"

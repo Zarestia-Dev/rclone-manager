@@ -75,6 +75,31 @@ pub fn handle_stop_quick_run(app: AppHandle, quick_run_id: String) {
     });
 }
 
+// Workflows
+
+pub fn handle_start_workflow(app: AppHandle, workflow_id: String) {
+    spawn(async move {
+        match crate::core::flow::workflow::engine::execute_workflow(app, workflow_id.clone(), false)
+            .await
+        {
+            Ok(res) => info!(
+                "Workflow {workflow_id} executed from tray: success={}",
+                res.success
+            ),
+            Err(e) => error!("Failed to execute workflow {workflow_id} from tray: {e}"),
+        }
+    });
+}
+
+pub fn handle_stop_workflow(app: AppHandle, workflow_id: String) {
+    spawn(async move {
+        match crate::core::flow::workflow::engine::stop_workflow(&app, &workflow_id).await {
+            Ok(()) => info!("Stopped workflow {workflow_id} from tray"),
+            Err(e) => error!("Failed to stop workflow {workflow_id} from tray: {e}"),
+        }
+    });
+}
+
 // Transfer jobs
 
 pub fn handle_start_job_profile(

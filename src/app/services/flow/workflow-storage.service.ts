@@ -189,6 +189,7 @@ export class WorkflowStorageService extends TauriBaseService {
       ...structuredClone(tpl.definition),
       id: generatePrefixedId('wf'),
       name: uniqueName,
+      showOnTray: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

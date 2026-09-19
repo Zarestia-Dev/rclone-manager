@@ -49,6 +49,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     },
     {
       id: 'wf-2',
@@ -68,6 +69,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     },
   ]);
 
@@ -242,6 +244,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     expect(component.getWorkflowTriggerTooltip(manualWf)).toBeTruthy();
   });
@@ -268,6 +271,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     expect(component.hasCronNode(wfWithCronNodeOnly)).toBe(true);
     expect(component.getWorkflowCron(wfWithCronNodeOnly)).toBe('0 3 * * *');
@@ -295,6 +299,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     expect(component.hasAutoStartNode(wfWithAppStartNode)).toBe(true);
   });
@@ -321,6 +326,7 @@ describe('SidebarComponent', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     expect(component.getWorkflowTriggerIcon(wfManual)).toBe('play');
   });

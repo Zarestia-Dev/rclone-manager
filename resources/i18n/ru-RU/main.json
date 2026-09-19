@@ -3055,7 +3055,8 @@
     "tooltipMount": "1 подключённый диск",
     "tooltipMounts": "Подключённых дисков: {{count}}",
     "tooltipServe": "1 сервер",
-    "tooltipServes": "Серверов: {{count}}"
+    "tooltipServes": "Серверов: {{count}}",
+    "workflowsCount": "Рабочие процессы [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Выполняются активные операции: {{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "Добро пожаловать в конструктор рабочих процессов",
         "subtitle": "Создайте новый рабочий процесс или выберите готовый шаблон для автоматизации операций rclone."
-      }
+      },
+      "showInTray": "Показывать в системном трее"
     },
     "shortcuts": {
       "title": "Горячие клавиши Flow"

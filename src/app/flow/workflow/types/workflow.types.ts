@@ -53,6 +53,7 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   description?: string;
+  showOnTray: boolean;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   viewport: CanvasViewport;
@@ -69,7 +70,7 @@ export interface WorkflowTemplate {
   descriptionKey?: string;
   category: 'backup' | 'automation' | 'sync' | 'utility';
   icon: string;
-  definition: Omit<WorkflowDefinition, 'id' | 'createdAt' | 'updatedAt'>;
+  definition: Omit<WorkflowDefinition, 'id' | 'createdAt' | 'updatedAt' | 'showOnTray'>;
 }
 
 export type WorkflowLogSeverity = 'info' | 'success' | 'warn' | 'error';

@@ -3055,7 +3055,8 @@
     "tooltipMount": "1 个挂载",
     "tooltipMounts": "{{count}} 个挂载",
     "tooltipServe": "1 个服务",
-    "tooltipServes": "{{count}} 个服务"
+    "tooltipServes": "{{count}} 个服务",
+    "workflowsCount": "工作流 [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "正在运行活动操作：{{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "欢迎使用工作流构建器",
         "subtitle": "创建新的工作流或选择预设模板，以自动化您的 rclone 操作。"
-      }
+      },
+      "showInTray": "在系统托盘显示"
     },
     "shortcuts": {
       "title": "Flow 键盘快捷键"

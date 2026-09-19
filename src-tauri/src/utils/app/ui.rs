@@ -30,7 +30,9 @@ pub async fn set_theme(
         use tauri::Manager;
         let app = window.app_handle().clone();
         crate::utils::spawn(async move {
-            let _ = crate::core::tray::core::update_tray_menu(app).await;
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {
+                log::error!("Failed to update tray menu on set_theme: {e}");
+            }
         });
     }
 
@@ -55,7 +57,11 @@ pub async fn apply_theme_change(is_dark: bool) {
         #[cfg(feature = "tray")]
         {
             if let Some(app) = crate::core::bridge::get_app_handle() {
-                let _ = crate::core::tray::core::update_tray_menu(app).await;
+                if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {
+                    log::error!("Failed to update tray menu on system theme change: {e}");
+                }
+            } else {
+                log::warn!("AppHandle not available in EventBridge during system theme change");
             }
         }
 
@@ -570,7 +576,7 @@ async fn run_windows_theme_watcher() {
 async fn run_macos_theme_watcher() {
     use std::ffi::c_void;
 
-    extern "C" {
+    unsafe extern "C" {
         fn CFNotificationCenterGetDistributedCenter() -> *const c_void;
         fn CFNotificationCenterAddObserver(
             center: *const c_void,

@@ -19,6 +19,7 @@ use crate::{
     utils::{
         constants::SUB_QUICK_RUNS,
         types::{
+            events::UPDATE_TRAY_MENU,
             jobs::{JobStatus, JobType},
             origin::Origin,
             remotes::OperationType,
@@ -56,6 +57,7 @@ pub async fn create_quick_run(
     };
 
     save_quick_run(&manager, &record)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(record)
 }
@@ -84,6 +86,7 @@ pub async fn update_quick_run(
     existing.config = quick_run.config;
 
     save_quick_run(&manager, &existing)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(existing)
 }
@@ -94,6 +97,7 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     info!("Deleting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_quick_run_by_id(&manager, &quick_run_id)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(())
 }

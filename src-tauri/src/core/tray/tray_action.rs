@@ -12,6 +12,10 @@ pub enum TrayAction {
     StartQuickRun(String),
     StopQuickRun(String),
 
+    // Workflow actions
+    StartWorkflow(String),
+    StopWorkflow(String),
+
     // Remote-level actions
     Browse(String, String),
     BrowseInApp(String),
@@ -43,6 +47,8 @@ impl TrayAction {
             }
             Self::StartQuickRun(id) => format!("start_quick_run__{id}"),
             Self::StopQuickRun(id) => format!("stop_quick_run__{id}"),
+            Self::StartWorkflow(id) => format!("start_workflow__{id}"),
+            Self::StopWorkflow(id) => format!("stop_workflow__{id}"),
             Self::Browse(remote, profile) => format!("browse_profile__{remote}__{profile}"),
             Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
@@ -73,12 +79,14 @@ impl TrayAction {
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {
-            // Action without 3-part profile (browse-in-app or quick run)
+            // Action without 3-part profile (browse-in-app, quick run, or workflow)
             let (prefix, payload) = (parts[0], parts[1]);
             match prefix {
                 "browse_in_app" => return Some(Self::BrowseInApp(payload.to_string())),
                 "start_quick_run" => return Some(Self::StartQuickRun(payload.to_string())),
                 "stop_quick_run" => return Some(Self::StopQuickRun(payload.to_string())),
+                "start_workflow" => return Some(Self::StartWorkflow(payload.to_string())),
+                "stop_workflow" => return Some(Self::StopWorkflow(payload.to_string())),
                 _ => return None,
             }
         }
@@ -138,6 +146,8 @@ mod tests {
             TrayAction::StopProfile(OperationType::Check, "remote".to_string(), "p".to_string()),
             TrayAction::StartQuickRun("qr-test-123".to_string()),
             TrayAction::StopQuickRun("qr-test-123".to_string()),
+            TrayAction::StartWorkflow("wf-test-123".to_string()),
+            TrayAction::StopWorkflow("wf-test-123".to_string()),
             TrayAction::Browse("remote".to_string(), "profile1".to_string()),
             TrayAction::BrowseInApp("remote".to_string()),
             TrayAction::UnmountAll,

@@ -19,9 +19,16 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
         (MenuPlan::build(&snapshot, max_tray_items), icon_theme)
     };
 
+    let icon_kind = crate::core::tray::icon::TrayIconKind::resolve(false, &icon_theme);
     let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
-    let icon = crate::core::tray::icon::get_icon(false, &icon_theme)
-        .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0));
+    let icon = icon_kind.to_image();
+
+    if let Some(state) = app.try_state::<crate::core::tray::TrayMenuState>() {
+        let mut cache = state.cache.lock().unwrap();
+        cache.plan = Some(plan.clone());
+        cache.tooltip = Some(crate::t!("tray.tooltipDefault"));
+        cache.icon = Some(icon_kind);
+    }
 
     app.run_on_main_thread(move || {
         #[allow(unused_mut)]

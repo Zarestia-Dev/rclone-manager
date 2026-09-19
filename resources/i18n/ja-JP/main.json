@@ -3055,7 +3055,8 @@
     "tooltipMount": "マウント 1件",
     "tooltipMounts": "マウント {{count}}件",
     "tooltipServe": "公開サーバー 1件",
-    "tooltipServes": "公開サーバー {{count}}件"
+    "tooltipServes": "公開サーバー {{count}}件",
+    "workflowsCount": "ワークフロー [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "アクティブな操作を実行中: {{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "ワークフロービルダーへようこそ",
         "subtitle": "rclone 操作を自動化する新しいワークフローを作成するか、テンプレートを選択して開始してください。"
-      }
+      },
+      "showInTray": "システムトレイに表示"
     },
     "shortcuts": {
       "title": "Flow キーボードショートカット"

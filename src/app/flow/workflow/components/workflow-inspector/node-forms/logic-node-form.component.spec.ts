@@ -201,6 +201,7 @@ describe('LogicNodeFormComponent', () => {
         ],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
+        showOnTray: false,
       });
     });
 

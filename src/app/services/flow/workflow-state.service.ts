@@ -194,6 +194,7 @@ export class WorkflowStateService {
       id: generatePrefixedId('wf'),
       name,
       description: '',
+      showOnTray: false,
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },

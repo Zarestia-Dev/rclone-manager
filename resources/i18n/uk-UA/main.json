@@ -3055,7 +3055,8 @@
     "tooltipMount": "1 монтування",
     "tooltipMounts": "Монтувань: {{count}}",
     "tooltipServe": "1 роздача",
-    "tooltipServes": "Роздач: {{count}}"
+    "tooltipServes": "Роздач: {{count}}",
+    "workflowsCount": "Робочі процеси [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Виконуються активні операції: {{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "Ласкаво просимо до конструктора робочих процесів",
         "subtitle": "Створіть новий робочий процес або виберіть готовий шаблон для автоматизації операцій rclone."
-      }
+      },
+      "showInTray": "Показувати в системному треї"
     },
     "shortcuts": {
       "title": "Гарячі клавіші Flow"

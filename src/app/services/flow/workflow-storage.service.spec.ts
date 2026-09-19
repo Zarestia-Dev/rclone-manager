@@ -95,6 +95,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
 
     await service.saveWorkflow(wf);
@@ -112,6 +113,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     await service.saveWorkflow(wf);
     expect(service.workflows().some(w => w.id === 'to-delete')).toBe(true);
@@ -127,6 +129,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     await service.saveWorkflow(wf);
     const duplicated = await service.duplicateWorkflow('orig-wf');
@@ -155,6 +158,7 @@ describe('WorkflowStorageService', () => {
       ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
 
     await service.saveWorkflow(wf);
@@ -175,6 +179,7 @@ describe('WorkflowStorageService', () => {
         nodes: [],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
+        showOnTray: false,
       },
       {
         id: 'dup-2',
@@ -182,8 +187,16 @@ describe('WorkflowStorageService', () => {
         nodes: [],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
+        showOnTray: false,
       },
-      { id: 'dup-3', name: 'Other Flow', nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }
+      {
+        id: 'dup-3',
+        name: 'Other Flow',
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        showOnTray: false,
+      }
     );
     await service.loadAllWorkflows();
     expect(service.workflows().length).toBe(3);
@@ -200,6 +213,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     await service.saveWorkflow(wf);
 
@@ -215,6 +229,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     await service.saveWorkflow(wf);
     expect(service.workflows().some(w => w.id === 'wf-del')).toBe(true);
@@ -234,6 +249,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     await service.saveWorkflow(wf);
 
@@ -264,6 +280,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     const wf2: WorkflowDefinition = {
       id: 'wf-auto-2',
@@ -271,6 +288,7 @@ describe('WorkflowStorageService', () => {
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
+      showOnTray: false,
     };
     backendWorkflows = [wf1, wf2];
 

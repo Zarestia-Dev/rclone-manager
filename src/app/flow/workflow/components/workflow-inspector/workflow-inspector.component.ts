@@ -15,7 +15,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { UiStateService } from '../../../../services/ui/state/ui-state.service';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { RemoteFacadeService } from '../../../../services/facade/remote-facade.service';
@@ -67,6 +69,7 @@ export { ActiveConfigItem, PRIMARY_EXCLUDED_KEYS };
     MatInputModule,
     MatSelectModule,
     MatOptionModule,
+    MatSlideToggleModule,
     TranslatePipe,
     FormatFileSizePipe,
     TriggerNodeFormComponent,
@@ -89,9 +92,11 @@ export class WorkflowInspectorComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
+  private readonly uiStateService = inject(UiStateService);
 
   readonly closeInspector = output<void>();
 
+  readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
   readonly selectedNode = this.stateService.selectedNode;
   readonly activeWorkflow = this.stateService.currentWorkflow;
   readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes());
@@ -150,6 +155,7 @@ export class WorkflowInspectorComponent {
   // Form local state signals for active workflow
   readonly workflowName = signal<string>('');
   readonly workflowDescription = signal<string>('');
+  readonly workflowShowOnTray = signal<boolean>(false);
 
   readonly triggerNodesCount = computed(
     () => this.activeWorkflow()?.nodes.filter(n => n.category === 'trigger').length ?? 0
@@ -221,6 +227,7 @@ export class WorkflowInspectorComponent {
       if (wf) {
         this.workflowName.set(wf.name);
         this.workflowDescription.set(wf.description ?? '');
+        this.workflowShowOnTray.set(wf.showOnTray);
       }
     });
   }
@@ -454,6 +461,12 @@ export class WorkflowInspectorComponent {
   onWorkflowDescriptionChange(newDesc: string): void {
     this.workflowDescription.set(newDesc);
     this.stateService.setWorkflowDescription(newDesc);
+  }
+
+  onWorkflowShowOnTrayChange(checked: boolean): void {
+    this.workflowShowOnTray.set(checked);
+    this.stateService.updateWorkflowMetadata({ showOnTray: checked });
+    this.saveActiveWorkflow();
   }
 
   saveActiveWorkflow(): void {

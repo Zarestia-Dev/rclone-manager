@@ -457,6 +457,17 @@
             [placeholder]="'flow.workflow.descriptionPlaceholder' | translate"
           ></textarea>
         </mat-form-field>
+
+        @if (isTrayAvailable()) {
+          <div class="toggle-row">
+            <mat-slide-toggle
+              [checked]="workflowShowOnTray()"
+              (change)="onWorkflowShowOnTrayChange($event.checked)"
+            >
+              {{ 'flow.workflow.showInTray' | translate }}
+            </mat-slide-toggle>
+          </div>
+        }
       </div>
 
       <!-- Stats / Overview Section -->

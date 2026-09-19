@@ -12,6 +12,7 @@ use super::types::{
 };
 use crate::core::{bridge, settings::AppSettingsManager};
 use crate::utils::constants::SUB_WORKFLOWS;
+use crate::utils::types::events::UPDATE_TRAY_MENU;
 
 /// Lists all saved workflows from storage.
 #[bridge]
@@ -53,12 +54,14 @@ pub async fn create_workflow(
         nodes: workflow.nodes,
         edges: workflow.edges,
         viewport: workflow.viewport,
+        show_on_tray: workflow.show_on_tray,
         created_at: Some(now.clone()),
         updated_at: Some(now),
         last_executed_at: None,
     };
 
     save_workflow_record(&manager, &record)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_workflow_automations_bg(&app).await;
     Ok(record)
 }
@@ -85,9 +88,11 @@ pub async fn update_workflow(
     existing.nodes = workflow.nodes;
     existing.edges = workflow.edges;
     existing.viewport = workflow.viewport;
+    existing.show_on_tray = workflow.show_on_tray;
     existing.updated_at = Some(Utc::now().to_rfc3339());
 
     save_workflow_record(&manager, &existing)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_workflow_automations_bg(&app).await;
     Ok(existing)
 }
@@ -98,6 +103,7 @@ pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), 
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_workflow_by_id_sync(&manager, &workflow_id)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_workflow_automations_bg(&app).await;
     Ok(())
 }
@@ -128,12 +134,14 @@ pub async fn duplicate_workflow(
         nodes: existing.nodes,
         edges: existing.edges,
         viewport: existing.viewport,
+        show_on_tray: existing.show_on_tray,
         created_at: Some(now.clone()),
         updated_at: Some(now),
         last_executed_at: None,
     };
 
     save_workflow_record(&manager, &duplicated)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_workflow_automations_bg(&app).await;
     Ok(duplicated)
 }
@@ -199,6 +207,7 @@ pub async fn import_workflow(
     parsed.updated_at = Some(now);
 
     save_workflow_record(&manager, &parsed)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_workflow_automations_bg(&app).await;
     Ok(parsed)
 }
@@ -341,6 +350,7 @@ mod tests {
             nodes: vec![],
             edges: vec![],
             viewport: CanvasViewport::default(),
+            show_on_tray: false,
             created_at: None,
             updated_at: None,
             last_executed_at: None,

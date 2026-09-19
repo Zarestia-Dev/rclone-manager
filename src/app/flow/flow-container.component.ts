@@ -75,7 +75,7 @@ export class FlowContainerComponent {
 
   // ── Sidenav state ─────────────────────────────────────────────────────────
 
-  readonly isSidebarOpen = signal(this.localStorage.get('ui.flowSidebarOpen', true));
+  readonly isSidebarOpen = signal(this.localStorage.get('ui.flowSidebarOpen', false));
   readonly sidebarMode = signal<MatDrawerMode>('side');
   readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
   readonly hasDetailOpen = computed(

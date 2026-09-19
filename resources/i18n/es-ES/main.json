@@ -3055,7 +3055,8 @@
     "tooltipMount": "1 Montaje",
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
-    "tooltipServes": "{{count}} Servicios"
+    "tooltipServes": "{{count}} Servicios",
+    "workflowsCount": "Flujos de trabajo [{{active}}/{{total}}]"
   },
   "powerInhibitor": {
     "reason": "Operaciones activas en curso: {{details}}",
@@ -3780,7 +3781,8 @@
       "emptyState": {
         "title": "Bienvenido al Constructor de Flujos",
         "subtitle": "Crea un nuevo flujo de trabajo o elige una plantilla para automatizar tus operaciones de rclone."
-      }
+      },
+      "showInTray": "Mostrar en la bandeja del sistema"
     },
     "shortcuts": {
       "title": "Atajos de teclado de Flow"

@@ -74,6 +74,7 @@ describe('WorkflowEngineService', () => {
     const wf: WorkflowDefinition = {
       id: 'wf-test',
       name: 'Linear Test',
+      showOnTray: false,
       viewport: { x: 0, y: 0, zoom: 1 },
       nodes: [
         {
@@ -125,6 +126,7 @@ describe('WorkflowEngineService', () => {
     const wf: WorkflowDefinition = {
       id: 'wf-dry-run',
       name: 'Dry Run Test',
+      showOnTray: false,
       viewport: { x: 0, y: 0, zoom: 1 },
       nodes: [
         {
@@ -157,6 +159,7 @@ describe('WorkflowEngineService', () => {
     const wf: WorkflowDefinition = {
       id: 'wf-cyclic',
       name: 'Cyclic Test',
+      showOnTray: false,
       viewport: { x: 0, y: 0, zoom: 1 },
       nodes: [
         {
@@ -185,6 +188,7 @@ describe('WorkflowEngineService', () => {
     const wf: WorkflowDefinition = {
       id: 'wf-stop',
       name: 'Stop Test',
+      showOnTray: false,
       viewport: { x: 0, y: 0, zoom: 1 },
       nodes: [],
       edges: [],

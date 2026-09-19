@@ -53,6 +53,13 @@ static ACTIVE_WORKFLOW_EXECUTIONS: once_cell::sync::Lazy<
     RwLock<HashMap<String, ActiveWorkflowState>>,
 > = once_cell::sync::Lazy::new(|| RwLock::new(HashMap::new()));
 
+/// Returns a set of all currently active (running) workflow IDs.
+#[cfg(feature = "tray")]
+#[must_use]
+pub fn get_active_workflow_ids() -> HashSet<String> {
+    ACTIVE_WORKFLOW_EXECUTIONS.read().keys().cloned().collect()
+}
+
 /// Halts an actively executing workflow and terminates any underlying Rclone transfer jobs.
 pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), String> {
     let state_opt = {
