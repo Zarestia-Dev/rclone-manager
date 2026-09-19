@@ -291,7 +291,7 @@ app-alert-banner {
   flex-direction: column;
   background-color: rgba(var(--window-fg-color-rgb), 0.02);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color);
   padding: 0 var(--space-md);
 }
 

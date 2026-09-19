@@ -186,6 +186,40 @@
   </div>
 }
 
+<!-- Logic: Schedule Wait -->
+@if (node().type === 'schedule_wait') {
+  <div class="operation-summary-card">
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'flow.workflow.inspector.cronExpression' | translate }}</span>
+      <div class="prop-badge remote-badge">
+        <mat-icon svgIcon="clock" class="prop-icon"></mat-icon>
+        <span class="prop-value font-semibold code-font">
+          {{ nodeConfig()['cronExpression'] || '0 2 * * *' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-prop-row">
+      <span class="prop-label">{{ 'wizards.appOperation.yourSchedule' | translate }}</span>
+      <span class="prop-value" [class.text-warn]="isCronInvalid()">
+        {{ cronHumanReadable() || ('flow.workflow.inspector.cronDaily' | translate) }}
+      </span>
+    </div>
+
+    <!-- Edit in Modal CTA Button -->
+    <button
+      matButton="filled"
+      type="button"
+      class="btn-edit-config"
+      (click)="openDetailed.emit()"
+      [attr.title]="'flow.workflow.inspector.openDetailedTooltip' | translate"
+    >
+      <mat-icon svgIcon="tune"></mat-icon>
+      <span>{{ 'flow.workflow.inspector.openDetailed' | translate }}</span>
+    </button>
+  </div>
+}
+
 <!-- Logic: Condition -->
 @if (node().type === 'condition') {
   <div class="output-vars-section">
@@ -321,7 +355,11 @@
       >
         @for (field of availableNodeFields(); track field.key) {
           <mat-option [value]="field.key">
-            {{ field.label }}
+            {{
+              field.labelKey
+                ? (field.labelKey | translate) + ' (' + field.key + ')'
+                : field.label || field.key
+            }}
           </mat-option>
         }
       </mat-select>

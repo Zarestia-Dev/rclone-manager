@@ -89,6 +89,13 @@ describe('getNodeStyleMeta', () => {
     expect(meta.cssClass).toBe('warn');
   });
 
+  it('returns correct metadata for schedule_wait logic node', () => {
+    const meta = getNodeStyleMeta('schedule_wait');
+    expect(meta.icon).toBe('clock');
+    expect(meta.cssClass).toBe('purple');
+    expect(meta.titleKey).toBe('flow.workflow.nodes.scheduleWait');
+  });
+
   it('returns correct metadata for unmount action', () => {
     const meta = getNodeStyleMeta('unmount');
     expect(meta.icon).toBe('eject');
@@ -141,6 +148,8 @@ describe('hasDetailedConfig', () => {
     expect(hasDetailedConfig('archivecreate')).toBe(true);
     expect(hasDetailedConfig('cryptcheck')).toBe(true);
     expect(hasDetailedConfig('mount')).toBe(true);
+    expect(hasDetailedConfig('cron')).toBe(true);
+    expect(hasDetailedConfig('schedule_wait')).toBe(true);
     expect(hasDetailedConfig('cleanup')).toBe(false);
     expect(hasDetailedConfig(undefined)).toBe(false);
   });

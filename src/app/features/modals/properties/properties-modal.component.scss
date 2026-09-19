@@ -194,8 +194,6 @@ header {
       font-size: var(--font-size-xs);
       word-break: break-all;
       color: var(--window-fg-color);
-      user-select: all;
-      line-height: 1.4;
     }
   }
 
@@ -291,7 +289,6 @@ header {
         font-size: var(--font-size-xs);
         color: var(--primary-color);
         word-break: break-all;
-        user-select: all;
         cursor: text;
       }
     }
@@ -385,7 +382,6 @@ header {
         text-overflow: ellipsis;
         white-space: nowrap;
         text-align: right;
-        user-select: all;
       }
     }
   }

@@ -191,7 +191,7 @@
       text-align: left;
       font-family: inherit;
       color: inherit;
-      border: 1px solid var(--border-color);
+      box-shadow: 0 0 0 1px var(--border-color);
       border-radius: var(--radius-md);
       background: var(--bg-elevated);
       cursor: pointer;

@@ -93,6 +93,12 @@ const CUSTOM_NODE_META: Record<string, RawNodeStyleMeta> = {
     titleKey: 'flow.workflow.nodes.delay',
     descriptionKey: 'flow.workflow.nodes.delayDesc',
   },
+  schedule_wait: {
+    icon: 'clock',
+    cssClass: 'purple',
+    titleKey: 'flow.workflow.nodes.scheduleWait',
+    descriptionKey: 'flow.workflow.nodes.scheduleWaitDesc',
+  },
   parallel_fork: {
     icon: 'flow',
     cssClass: 'yellow',
@@ -210,6 +216,7 @@ export const NODES_WITH_DETAILED_CONFIG = new Set<string>([
   'mount',
   'serve',
   'cron',
+  'schedule_wait',
   'rc_command',
 ]);
 

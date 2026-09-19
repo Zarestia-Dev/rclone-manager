@@ -159,7 +159,9 @@
           (ngModelChange)="selectedVariableField.set($event)"
         >
           @for (f of availableFieldsForSelectedNode(); track f.key) {
-            <mat-option [value]="f.key">{{ f.label }}</mat-option>
+            <mat-option [value]="f.key">
+              {{ f.labelKey ? (f.labelKey | translate) + ' (' + f.key + ')' : f.label || f.key }}
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>

@@ -91,6 +91,7 @@ describe('WorkflowPaletteComponent', () => {
     expect(logicTypes).toContain('stop');
     expect(logicTypes).toContain('condition');
     expect(logicTypes).toContain('delay');
+    expect(logicTypes).toContain('schedule_wait');
     expect(logicTypes).toContain('parallel_fork');
     expect(logicTypes).toContain('join');
   });

@@ -24,6 +24,7 @@ import {
   extractFieldsFromObject,
   getAvailableUpstreamNodes,
   getNodeFields,
+  getNodeFieldsForType,
   NodeVariableField,
 } from '../../utils/node-fields.util';
 import { RcPresetCategory, RcPresetItem, RC_PRESETS } from '../../constants/rc-presets.constant';
@@ -99,19 +100,7 @@ export class RcEditorModalComponent {
     const targetId = this.activeVariableNodeId();
     if (!targetId) return [];
     if (targetId === 'prev') {
-      return [
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'status', label: 'Status (status)' },
-        { key: 'success', label: 'Success (success)' },
-        { key: 'result', label: 'Result (result)' },
-        { key: 'report', label: 'Report (report)' },
-        { key: 'differ', label: 'Differing Files (differ)' },
-        { key: 'differCount', label: 'Differ Count (differCount)' },
-        { key: 'bytesFormatted', label: 'Formatted Bytes (bytesFormatted)' },
-        { key: 'transfers', label: 'Transfers (transfers)' },
-        { key: 'output', label: 'Output (output)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return getNodeFieldsForType('prev');
     }
     const target = this.availableUpstreamNodes().find(n => n.id === targetId);
     if (!target) return [];

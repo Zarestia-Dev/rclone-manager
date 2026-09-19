@@ -976,6 +976,63 @@ pub(crate) async fn execute_delay_node(
     ))
 }
 
+/// Executes a 'schedule_wait' logic node.
+/// Pauses workflow execution until the next occurrence of the configured cron schedule.
+/// Respects dry_run simulation, process cancellation, and emits execution metrics.
+pub(crate) async fn execute_schedule_wait_node(
+    config: &Value,
+    cancel_flag: &AtomicBool,
+    dry_run: bool,
+) -> Result<NodeExecutionOutput, String> {
+    let cron_expr = config
+        .get("cronExpression")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("0 2 * * *");
+
+    let next_run = crate::core::automation::engine::get_next_run(cron_expr)
+        .map_err(|e| format!("Invalid schedule in wait node ({cron_expr}): {e}"))?;
+
+    let now = Utc::now();
+    let wait_seconds = (next_run - now).num_seconds().max(0);
+
+    if dry_run {
+        info!(
+            "Workflow dry_run enabled; simulating schedule wait for cron '{cron_expr}' (target: {next_run}, would wait {wait_seconds}s)"
+        );
+        return Ok(NodeExecutionOutput::new(json!({
+            "simulated": true,
+            "dryRun": true,
+            "cronExpression": cron_expr,
+            "targetTime": next_run.to_rfc3339(),
+            "waitedSeconds": 0
+        })));
+    }
+
+    let start_time = Utc::now();
+    while Utc::now() < next_run {
+        if cancel_flag.load(Ordering::SeqCst) {
+            return Err("Execution cancelled during schedule wait".to_string());
+        }
+        let remaining_ms = (next_run - Utc::now()).num_milliseconds().max(0);
+        let step = remaining_ms.min(1000) as u64;
+        if step == 0 {
+            break;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(step)).await;
+    }
+
+    let actual_waited = (Utc::now() - start_time).num_seconds().max(0);
+
+    Ok(NodeExecutionOutput::new(json!({
+        "cronExpression": cron_expr,
+        "targetTime": next_run.to_rfc3339(),
+        "waitedSeconds": actual_waited,
+        "resumedAt": Utc::now().to_rfc3339()
+    })))
+}
+
 /// Executes an 'app_start' trigger node.
 /// Pauses execution if `delaySeconds` is configured and not in dry_run mode,
 /// periodically checking the cancellation flag to ensure prompt responsiveness.
@@ -1210,6 +1267,9 @@ async fn execute_single_node(
 
         // Delay timer
         "delay" => execute_delay_node(config, cancel_flag).await,
+
+        // Schedule Wait (pause flow until next scheduled cron occurrence)
+        "schedule_wait" => execute_schedule_wait_node(config, cancel_flag, dry_run).await,
 
         // Notification Node (Multi-Channel: Action Reference or Inline Configuration)
         "notification" => execute_notification_node(app, node, workflow, config).await,
@@ -3695,6 +3755,56 @@ mod tests {
         assert_eq!(
             result.unwrap_err(),
             "Execution cancelled during delay".to_string()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_schedule_wait_dry_run() {
+        let cancel_flag = AtomicBool::new(false);
+        let config = json!({ "cronExpression": "0 2 * * *" });
+        let result = execute_schedule_wait_node(&config, &cancel_flag, true).await;
+        let output = result.expect("Dry run should succeed immediately");
+        assert_eq!(
+            output.value.get("simulated").and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            output.value.get("dryRun").and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            output.value.get("waitedSeconds").and_then(Value::as_u64),
+            Some(0)
+        );
+        assert_eq!(
+            output.value.get("cronExpression").and_then(Value::as_str),
+            Some("0 2 * * *")
+        );
+        assert!(output.value.get("targetTime").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_execute_schedule_wait_invalid_cron() {
+        let cancel_flag = AtomicBool::new(false);
+        let config = json!({ "cronExpression": "invalid cron syntax" });
+        let result = execute_schedule_wait_node(&config, &cancel_flag, false).await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .contains("Invalid schedule in wait node")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_schedule_wait_cancelled() {
+        let cancel_flag = AtomicBool::new(true);
+        let config = json!({ "cronExpression": "0 2 * * *" });
+        let result = execute_schedule_wait_node(&config, &cancel_flag, false).await;
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Execution cancelled during schedule wait".to_string()
         );
     }
 

@@ -642,7 +642,7 @@
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--view-bg-color) 60%, transparent);
-    border: 1px solid var(--border-color);
+    box-shadow: 0 0 0 1px var(--border-color);
     cursor: pointer;
     transition:
       background 0.15s ease,

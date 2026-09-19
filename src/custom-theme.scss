@@ -1304,6 +1304,7 @@ mat-accordion:not(.dull) {
     box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex-shrink: 0;
 
     width: calc(100% - 4px);
     margin: 0 2px;

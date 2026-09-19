@@ -779,7 +779,7 @@ export class RemoteFacadeService {
       path = ((profiles ? Object.values(profiles)[0]?.['dest'] : undefined) as string) ?? '';
     }
 
-    if (this.pathService.isLocalPath(path)) {
+    if (this.pathService.isLocalPath(path) || path.startsWith('saf://')) {
       await this.executeAction(
         remoteName,
         'open',

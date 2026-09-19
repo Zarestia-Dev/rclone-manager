@@ -6,8 +6,10 @@ import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Base64
+import androidx.core.content.FileProvider
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -67,6 +69,19 @@ object RcloneSafBridge {
       updateAppShortcuts(ctx)
     } catch (e: Exception) {
       Logger.error("notifyRootsChanged failed: ${e.message}")
+    }
+  }
+
+  @JvmStatic
+  fun openContentUriFd(uriString: String, mode: String): Int {
+    val ctx = appContext ?: return -1
+    return try {
+      val uri = Uri.parse(uriString)
+      val pfd = ctx.contentResolver.openFileDescriptor(uri, mode) ?: return -1
+      pfd.detachFd()
+    } catch (e: Throwable) {
+      Logger.error("openContentUriFd failed for $uriString: ${e.message}")
+      -1
     }
   }
 
@@ -409,10 +424,15 @@ object RcloneSafBridge {
 
   @JvmStatic
   fun openSafRemote(remoteName: String): Boolean {
+    val cleanRemote = remoteName.trim()
+    if (cleanRemote.isEmpty()) {
+      Logger.warn("openSafRemote called with empty remoteName, ignoring")
+      return false
+    }
     val ctx = appContext ?: return false
     return try {
       val authority = "${ctx.packageName}.documents"
-      val rootUri = DocumentsContract.buildRootUri(authority, remoteName)
+      val rootUri = DocumentsContract.buildRootUri(authority, cleanRemote)
       val intent = Intent(Intent.ACTION_VIEW).apply {
         setDataAndType(rootUri, DocumentsContract.Root.MIME_TYPE_ITEM)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -423,5 +443,98 @@ object RcloneSafBridge {
       Logger.error("openSafRemote failed: ${e.message}")
       false
     }
+  }
+
+  @JvmStatic
+  fun openLocalPath(path: String): Boolean {
+    val ctx = appContext ?: return false
+    val cleanPath = path.trim()
+    if (cleanPath.isEmpty()) return false
+
+    val file = java.io.File(cleanPath)
+
+    // Strategy 1: ExternalStorageProvider via DocumentsContract
+    // Standard external storage paths on Android are "/storage/emulated/0/..." or "/sdcard/..."
+    try {
+      val relPath = when {
+        cleanPath.startsWith("/storage/emulated/0/") -> cleanPath.removePrefix("/storage/emulated/0/")
+        cleanPath.startsWith("/storage/emulated/0") -> cleanPath.removePrefix("/storage/emulated/0")
+        cleanPath.startsWith("/sdcard/") -> cleanPath.removePrefix("/sdcard/")
+        cleanPath.startsWith("/sdcard") -> cleanPath.removePrefix("/sdcard")
+        else -> null
+      }
+
+      if (relPath != null) {
+        val cleanRel = relPath.trim().trimStart('/')
+        val docId = if (cleanRel.isEmpty()) "primary:" else "primary:$cleanRel"
+        val docUri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId)
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(intent)
+          return true
+        }
+
+        val browseIntent = Intent("android.provider.action.BROWSE").apply {
+          data = docUri
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (browseIntent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(browseIntent)
+          return true
+        }
+      }
+    } catch (e: Exception) {
+      Logger.warn("openLocalPath via DocumentsContract failed: ${e.message}")
+    }
+
+    // Strategy 2: FileProvider content URI with MIME_TYPE_DIR or resource/folder
+    try {
+      if (file.exists()) {
+        val contentUri = FileProvider.getUriForFile(
+          ctx,
+          "${ctx.packageName}.fileprovider",
+          file
+        )
+        val mimeType = if (file.isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else "resource/folder"
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(contentUri, mimeType)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(intent)
+          return true
+        }
+
+        val wildcardIntent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(contentUri, "*/*")
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (wildcardIntent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(wildcardIntent)
+          return true
+        }
+      }
+    } catch (e: Exception) {
+      Logger.warn("openLocalPath via FileProvider failed: ${e.message}")
+    }
+
+    // Strategy 3: Fallback to primary root in DocumentsUI if on external storage
+    try {
+      val rootUri = DocumentsContract.buildRootUri("com.android.externalstorage.documents", "primary")
+      val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(rootUri, DocumentsContract.Root.MIME_TYPE_ITEM)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      ctx.startActivity(intent)
+      return true
+    } catch (e: Exception) {
+      Logger.error("openLocalPath all strategies failed: ${e.message}")
+    }
+
+    return false
   }
 }

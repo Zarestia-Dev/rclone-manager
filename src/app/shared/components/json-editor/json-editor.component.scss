@@ -113,7 +113,7 @@
   width: 18px;
   height: 18px;
   padding: 0;
-  border: 1px solid var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color);
   border-radius: var(--radius-xxs);
   color: var(--accent-color);
   background: var(--bg-elevated-2);

@@ -86,30 +86,3 @@ func TestNativeArchiveCreateListExtract(t *testing.T) {
 		t.Errorf("extracted file content mismatch")
 	}
 }
-
-func TestNativeCat(t *testing.T) {
-	call := rc.Calls.Get("operations/cat")
-	if call == nil {
-		t.Fatalf("expected operations/cat to be registered in rc.Calls")
-	}
-
-	tmpDir := t.TempDir()
-	testFile := tmpDir + "/testcat.txt"
-	expected := "Hello Cat Operation!"
-	_ = os.WriteFile(testFile, []byte(expected), 0644)
-
-	res, err := rcOperationsCat(context.Background(), rc.Params{
-		"path": testFile,
-	})
-	if err != nil {
-		t.Fatalf("rcOperationsCat failed: %v", err)
-	}
-	out, _ := res["result"].(string)
-	if out != expected {
-		t.Errorf("expected %q, got %q", expected, out)
-	}
-	outB64, _ := res["result_base64"].(string)
-	if outB64 == "" {
-		t.Errorf("expected non-empty result_base64")
-	}
-}

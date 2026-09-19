@@ -246,7 +246,14 @@
         >
         <div class="keys-list">
           @for (field of sampleOutputKeys(); track field.key) {
-            <span class="app-pill p-primary sm" [attr.title]="field.label">
+            <span
+              class="app-pill p-primary sm"
+              [attr.title]="
+                field.labelKey
+                  ? (field.labelKey | translate) + ' (' + field.key + ')'
+                  : field.label || field.key
+              "
+            >
               <code>{{ field.key }}</code>
             </span>
           }
@@ -285,7 +292,9 @@
             (ngModelChange)="onVariableFieldSelect($event)"
           >
             @for (f of availableFieldsForSelectedNode(); track f.key) {
-              <mat-option [value]="f.key">{{ f.label }}</mat-option>
+              <mat-option [value]="f.key">
+                {{ f.labelKey ? (f.labelKey | translate) + ' (' + f.key + ')' : f.label || f.key }}
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>

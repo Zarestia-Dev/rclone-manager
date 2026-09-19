@@ -158,7 +158,6 @@ pub fn validate_workflow(workflow: &WorkflowDefinition) -> WorkflowValidationRes
 mod tests {
     use super::*;
     use crate::core::flow::workflow::types::*;
-    use serde_json::json;
 
     fn create_test_node(id: &str, title: &str, category: WorkflowNodeCategory) -> WorkflowNode {
         WorkflowNode {

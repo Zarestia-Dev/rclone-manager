@@ -343,4 +343,45 @@ describe('LogicNodeFormComponent', () => {
       expect(component.isUnaryConditionOperator()).toBe(true);
     });
   });
+
+  describe('schedule_wait node', () => {
+    const scheduleWaitNode: WorkflowNode = {
+      id: 'node-wait-1',
+      type: 'schedule_wait',
+      category: 'logic',
+      title: 'Schedule Wait',
+      x: 0,
+      y: 0,
+      inputs: [{ id: 'in', name: 'In', type: 'in' }],
+      outputs: [{ id: 'out', name: 'Out', type: 'out' }],
+      config: { cronExpression: '0 2 * * *' },
+    };
+
+    it('computes cron validity and readable format for schedule_wait', () => {
+      fixture.componentRef.setInput('node', scheduleWaitNode);
+      fixture.componentRef.setInput('nodeConfig', { cronExpression: '0 2 * * *' });
+      fixture.detectChanges();
+
+      expect(component.isCronInvalid()).toBe(false);
+      expect(component.cronHumanReadable()).toBeTruthy();
+
+      // invalid cron test
+      fixture.componentRef.setInput('nodeConfig', { cronExpression: 'invalid-cron-format' });
+      fixture.detectChanges();
+      expect(component.isCronInvalid()).toBe(true);
+    });
+
+    it('emits openDetailed when openDetailed is triggered', () => {
+      fixture.componentRef.setInput('node', scheduleWaitNode);
+      fixture.detectChanges();
+
+      let emitted = false;
+      component.openDetailed.subscribe(() => {
+        emitted = true;
+      });
+
+      component.openDetailed.emit();
+      expect(emitted).toBe(true);
+    });
+  });
 });

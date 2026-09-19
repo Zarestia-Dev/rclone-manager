@@ -187,141 +187,30 @@ describe('TaskNodeFormComponent', () => {
     expect(emittedChanges).toContainEqual({ key: 'autoFilename', value: false });
   });
 
-  it('emits configChange when rc preset is applied', () => {
+  it('computes rcParamCount correctly for empty, object, and string configs', () => {
+    fixture.componentRef.setInput('nodeConfig', {});
+    expect(component.rcParamCount()).toBe(0);
+
+    fixture.componentRef.setInput('nodeConfig', { params: null });
+    expect(component.rcParamCount()).toBe(0);
+
+    fixture.componentRef.setInput('nodeConfig', { params: { fs: 'remote:', dryRun: true } });
+    expect(component.rcParamCount()).toBe(2);
+
+    fixture.componentRef.setInput('nodeConfig', { params: 'raw string param' });
+    expect(component.rcParamCount()).toBe(1);
+
+    fixture.componentRef.setInput('nodeConfig', { params: '' });
+    expect(component.rcParamCount()).toBe(0);
+  });
+
+  it('emits configChange via onFieldChange', () => {
     let emitted: { key: string; value: unknown } | null = null;
     component.configChange.subscribe(val => {
       emitted = val;
     });
 
-    component.applyRcPreset('vfs/forget');
-    expect(emitted).toEqual({ key: 'command', value: 'vfs/forget' });
-  });
-
-  describe('RC command params handling', () => {
-    it('returns empty string when params is null, undefined, or empty object', () => {
-      fixture.componentRef.setInput('nodeConfig', {});
-      expect(component.getRcParamsJson()).toBe('');
-
-      fixture.componentRef.setInput('nodeConfig', { params: null });
-      expect(component.getRcParamsJson()).toBe('');
-
-      fixture.componentRef.setInput('nodeConfig', { params: {} });
-      expect(component.getRcParamsJson()).toBe('');
-    });
-
-    it('formats object params as JSON string', () => {
-      fixture.componentRef.setInput('nodeConfig', { params: { fs: 'remote:' } });
-      expect(component.getRcParamsJson()).toBe(JSON.stringify({ fs: 'remote:' }, null, 2));
-    });
-
-    it('returns string params directly', () => {
-      fixture.componentRef.setInput('nodeConfig', { params: '{"fs":"test"}' });
-      expect(component.getRcParamsJson()).toBe('{"fs":"test"}');
-    });
-
-    it('emits empty object when params input is empty or whitespace', () => {
-      let emitted: { key: string; value: unknown } | null = null;
-      component.configChange.subscribe(val => {
-        emitted = val;
-      });
-
-      component.onRcParamsChange('   ');
-      expect(emitted).toEqual({ key: 'params', value: {} });
-    });
-
-    it('emits parsed object when valid JSON object string is entered', () => {
-      let emitted: { key: string; value: unknown } | null = null;
-      component.configChange.subscribe(val => {
-        emitted = val;
-      });
-
-      component.onRcParamsChange('{"fs": "myremote:"}');
-      expect(emitted).toEqual({ key: 'params', value: { fs: 'myremote:' } });
-    });
-
-    it('emits raw string when input contains template tokens or invalid JSON', () => {
-      let emitted: { key: string; value: unknown } | null = null;
-      component.configChange.subscribe(val => {
-        emitted = val;
-      });
-
-      component.onRcParamsChange('{{nodes.node1.data}}');
-      expect(emitted).toEqual({ key: 'params', value: '{{nodes.node1.data}}' });
-    });
-
-    it('validates jsonStatus for valid, invalid, and template JSON', () => {
-      fixture.componentRef.setInput('nodeConfig', { params: {} });
-      expect(component.jsonStatus().valid).toBe(true);
-
-      fixture.componentRef.setInput('nodeConfig', { params: '{"valid": true}' });
-      expect(component.jsonStatus().valid).toBe(true);
-      expect(component.jsonStatus().isTemplate).toBe(false);
-
-      fixture.componentRef.setInput('nodeConfig', { params: '{"fs": "{{nodes.n1.remote}}"}' });
-      expect(component.jsonStatus().valid).toBe(true);
-      expect(component.jsonStatus().isTemplate).toBe(true);
-
-      fixture.componentRef.setInput('nodeConfig', { params: '{broken json' });
-      expect(component.jsonStatus().valid).toBe(false);
-    });
-
-    it('formats and clears params', () => {
-      const emittedList: { key: string; value: unknown }[] = [];
-      component.configChange.subscribe(val => {
-        emittedList.push(val);
-      });
-
-      fixture.componentRef.setInput('nodeConfig', { params: '{"fs":"test"}' });
-      component.formatJson();
-      expect(emittedList).toContainEqual({ key: 'params', value: { fs: 'test' } });
-
-      component.clearParams();
-      expect(emittedList).toContainEqual({ key: 'params', value: {} });
-    });
-
-    it('inserts token when params is empty', () => {
-      let emitted: { key: string; value: unknown } | null = null;
-      component.configChange.subscribe(val => {
-        emitted = val;
-      });
-
-      fixture.componentRef.setInput('nodeConfig', { params: {} });
-      component.insertToken('{{nodes.mount-1.mountPoint}}');
-      expect(emitted).toEqual({
-        key: 'params',
-        value: { fs: '{{nodes.mount-1.mountPoint}}' },
-      });
-    });
-
-    it('populates defaultParams when applying preset to empty params and resolves first remote', () => {
-      const emittedList: { key: string; value: unknown }[] = [];
-      component.configChange.subscribe(val => {
-        emittedList.push(val);
-      });
-
-      fixture.componentRef.setInput('nodeConfig', { params: {} });
-      fixture.componentRef.setInput('remotes', [{ name: 'mygdrive', type: 'drive' }]);
-
-      component.applyRcPreset('operations/cleanup', { fs: 'remote:' });
-      expect(emittedList).toContainEqual({ key: 'command', value: 'operations/cleanup' });
-      expect(emittedList).toContainEqual({ key: 'params', value: { fs: 'mygdrive:' } });
-    });
-
-    it('filters presets by category correctly', () => {
-      component.setPresetCategory('all');
-      expect(component.filteredPresets().length).toBe(component.rcPresets.length);
-
-      component.setPresetCategory('vfs');
-      expect(component.filteredPresets().every(p => p.category === 'vfs')).toBe(true);
-      expect(component.filteredPresets().map(p => p.command)).toContain('vfs/refresh');
-
-      component.setPresetCategory('ops');
-      expect(component.filteredPresets().every(p => p.category === 'ops')).toBe(true);
-      expect(component.filteredPresets().map(p => p.command)).toContain('operations/cleanup');
-
-      component.setPresetCategory('core');
-      expect(component.filteredPresets().every(p => p.category === 'core')).toBe(true);
-      expect(component.filteredPresets().map(p => p.command)).toContain('core/bwlimit');
-    });
+    component.onFieldChange('command', 'vfs/refresh');
+    expect(emitted).toEqual({ key: 'command', value: 'vfs/refresh' });
   });
 });

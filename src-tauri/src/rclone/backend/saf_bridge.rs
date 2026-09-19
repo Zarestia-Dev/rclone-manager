@@ -82,6 +82,68 @@ pub fn open_saf_remote(remote_name: &str) -> bool {
     success
 }
 
+pub fn open_local_path(path: &str) -> bool {
+    let Some(vm) = JAVA_VM.get() else {
+        return false;
+    };
+    let Some(g_cls) = BRIDGE_CLASS.get() else {
+        return false;
+    };
+    let mut success = false;
+    let _ = vm.attach_current_thread(|env| {
+        use jni::{jni_sig, jni_str};
+        let cls: &jni::objects::JClass = g_cls.as_ref();
+        if let Ok(jstr) = env.new_string(path) {
+            if let Ok(res) = env.call_static_method(
+                cls,
+                jni_str!("openLocalPath"),
+                jni_sig!("(Ljava/lang/String;)Z"),
+                &[(&jstr).into()],
+            ) {
+                if let Ok(val) = res.z() {
+                    success = val;
+                }
+            }
+        }
+        Ok::<(), jni::errors::Error>(())
+    });
+    success
+}
+
+pub fn open_content_uri_fd(uri_str: &str, mode: &str) -> Result<std::os::fd::RawFd, String> {
+    let Some(vm) = JAVA_VM.get() else {
+        return Err("Java VM not initialized".to_string());
+    };
+    let Some(g_cls) = BRIDGE_CLASS.get() else {
+        return Err("RcloneSafBridge class not cached".to_string());
+    };
+    let mut raw_fd: i32 = -1;
+    let attach_res = vm.attach_current_thread(|env| {
+        use jni::{jni_sig, jni_str};
+        let cls: &jni::objects::JClass = g_cls.as_ref();
+        let j_uri = env.new_string(uri_str)?;
+        let j_mode = env.new_string(mode)?;
+        let res = env.call_static_method(
+            cls,
+            jni_str!("openContentUriFd"),
+            jni_sig!("(Ljava/lang/String;Ljava/lang/String;)I"),
+            &[(&j_uri).into(), (&j_mode).into()],
+        )?;
+        raw_fd = res.i()?;
+        Ok::<(), jni::errors::Error>(())
+    });
+
+    if let Err(e) = attach_res {
+        return Err(format!("JNI error opening content URI: {e}"));
+    }
+
+    if raw_fd < 0 {
+        return Err(format!("Failed to open content URI fd for {uri_str}"));
+    }
+
+    Ok(raw_fd)
+}
+
 mod jni_impl {
     use jni::EnvUnowned;
     use jni::objects::JClass;

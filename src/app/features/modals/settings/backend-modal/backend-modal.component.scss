@@ -288,7 +288,7 @@
   padding: var(--space-md);
   border-radius: var(--radius-sm);
   background: var(--card-bg-color);
-  border: 1px solid var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color);
   box-shadow: var(--box-shadow);
 
   &.encrypted {

@@ -2,15 +2,13 @@
 /**
  * update-endpoints.cjs
  *
- * Regenerates endpoints.rs from a rclone `rc/list` dump or live rclone rcd.
- * Mirrors the conventions and workflow of update-flags.cjs.
+ * Regenerates endpoints.rs from live rclone rcd or JSON dump.
+ * Accurately parses and preserves commented endpoints and modules,
+ * ensuring only actively used endpoints remain uncommented.
  *
  * Usage:
- *   node scripts/update-endpoints.cjs                    # defaults
- *   node scripts/update-endpoints.cjs --live             # fetch live from default url
- *   node scripts/update-endpoints.cjs --live --url http://127.0.0.1:5572
- *   node scripts/update-endpoints.cjs --input <rc.json> --output <endpoints.rs>
- *   node scripts/update-endpoints.cjs --prune            # remove endpoints missing from source
+ *   node scripts/update-endpoints.cjs
+ *   npm run sync:endpoints
  */
 
 'use strict';
@@ -50,52 +48,97 @@ const MODULE_ORDER = [
   'rc',
 ];
 
-// Endpoints to strip by default
-const INTERNAL_DENYLIST = new Set([]);
+// Module descriptions for headers
+const MODULE_DESCRIPTIONS = {
+  core: 'Core system endpoints',
+  config: 'Configuration endpoints',
+  job: 'Job management endpoints',
+  operations: 'File operation endpoints',
+  sync: 'Synchronization endpoints',
+  vfs: 'VFS (Virtual File System) endpoints',
+  mount: 'Mount endpoints',
+  fscache: 'File system cache endpoints',
+  options: 'Option management endpoints',
+  serve: 'Serve endpoints',
+  backend: 'Backend command endpoints',
+  debug: 'Debug endpoints',
+  pluginsctl: 'Plugin control endpoints',
+  rc: 'Remote control endpoints',
+};
+
+function moduleNameDescription(name) {
+  return MODULE_DESCRIPTIONS[name] || `${name[0].toUpperCase()}${name.slice(1)} endpoints`;
+}
 
 /**
- * Fetch endpoints from rclone rc/list.
+ * Fetch live endpoints from rclone HTTP or CLI.
  */
-function getEndpoints(url) {
-  console.log(`Fetching rc/list from ${url}...`);
+function getLiveEndpoints(url) {
   try {
-    // 1. Try direct HTTP POST to /rc/list first
     const endpointUrl = url.endsWith('/') ? `${url}rc/list` : `${url}/rc/list`;
-    const curlRes = spawnSync('curl', ['-s', '-f', '-X', 'POST', endpointUrl], {
+    const curlRes = spawnSync('curl', ['-s', '-f', '-m', '2', '-X', 'POST', endpointUrl], {
       encoding: 'utf8',
     });
     if (curlRes.status === 0 && curlRes.stdout) {
       const data = JSON.parse(curlRes.stdout);
-      return data.commands || [];
+      if (Array.isArray(data.commands)) {
+        return data.commands;
+      }
     }
 
-    // 2. Fallback to rclone CLI
     const result = spawnSync('rclone', ['rc', 'rc/list', '--rc-no-auth', '--url', url], {
       encoding: 'utf8',
+      timeout: 3000,
     });
     if (result.status === 0 && result.stdout) {
       const data = JSON.parse(result.stdout);
-      return data.commands || [];
+      if (Array.isArray(data.commands)) {
+        return data.commands;
+      }
     }
+  } catch {
+    // Ignore errors and proceed to fallbacks
+  }
+  return null;
+}
 
-    console.warn(`Could not connect to live rclone at ${url}.`);
-    return null;
+/**
+ * Load endpoints from a JSON dump.
+ */
+function loadFromJson(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(raw);
+    return data.commands || [];
   } catch (e) {
-    if (e.code === 'ENOENT') {
-      console.warn('rclone CLI not in PATH and HTTP connection failed.');
-    } else {
-      console.warn(`Unexpected error fetching live endpoints: ${e.message}`);
-    }
+    console.warn(`Error reading JSON from ${filePath}: ${e.message}`);
     return null;
   }
 }
 
-function loadFromJson(filePath) {
-  if (!fs.existsSync(filePath)) return null;
-  console.log(`Reading ${filePath}...`);
-  const raw = fs.readFileSync(filePath, 'utf8');
-  const data = JSON.parse(raw);
-  return data.commands || [];
+/**
+ * Fetch endpoints from live source, CLI, or fallback file.
+ */
+function getSourceEndpoints(url, inputPath) {
+  if (inputPath && fs.existsSync(inputPath)) {
+    console.log(`Reading endpoints from JSON: ${inputPath}...`);
+    return loadFromJson(inputPath);
+  }
+
+  console.log(`Checking live rclone at ${url}...`);
+  const live = getLiveEndpoints(url);
+  if (live && live.length > 0) {
+    console.log(`Successfully fetched ${live.length} endpoints from live rclone (${url}).`);
+    return live;
+  }
+
+  if (fs.existsSync(DEFAULT_INPUT)) {
+    console.log(`Reading endpoints from default JSON: ${DEFAULT_INPUT}...`);
+    return loadFromJson(DEFAULT_INPUT);
+  }
+
+  return null;
 }
 
 /**
@@ -116,6 +159,210 @@ function scream(s) {
     .join('_');
 }
 
+/**
+ * Parse existing endpoints.rs file, preserving:
+ * - active vs commented-out const definitions
+ * - active vs commented-out modules
+ * - existing const names
+ * - doc comments
+ */
+function parseExistingEndpoints(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { endpoints: new Map(), modules: new Map() };
+  }
+
+  const src = fs.readFileSync(filePath, 'utf8');
+  const lines = src.split('\n');
+  const endpoints = new Map();
+  const modules = new Map();
+
+  let currentMod = null;
+  let currentModCommented = false;
+  let currentDocs = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check module start: "pub mod name {" or "// pub mod name {"
+    const modMatch = /^\s*(?:\/\/\s*)?pub mod\s+(\w+)\s*\{/.exec(line);
+    if (modMatch) {
+      currentMod = modMatch[1];
+      currentModCommented = /^\s*\/\//.test(line);
+      modules.set(currentMod, {
+        name: currentMod,
+        commented: currentModCommented,
+        commands: [],
+      });
+      currentDocs = [];
+      continue;
+    }
+
+    // Check module end: "}" or "// }"
+    const modEndMatch = /^\s*(?:\/\/\s*)?\}/.exec(line);
+    if (modEndMatch && currentMod) {
+      currentMod = null;
+      currentDocs = [];
+      continue;
+    }
+
+    // Check doc comment line: "/// ...", "    // /// ...", "//     /// ...", "// /// ..."
+    const docMatch = /^\s*(?:\/\/\s*)?\/\/\/(.*)$/.exec(line);
+    if (docMatch) {
+      const text = docMatch[1].replace(/^\s?/, '');
+      currentDocs.push(text);
+      continue;
+    }
+
+    // Check pub const line: "    pub const NAME: &str = "path";" or "    // pub const ..." or "//     pub const ..."
+    const constMatch = /^\s*(?:\/\/\s*)?pub const\s+(\w+)\s*:\s*&str\s*=\s*"([^"]+)"/.exec(line);
+    if (constMatch) {
+      const constName = constMatch[1];
+      const pathStr = constMatch[2];
+      const isCommented = /^\s*\/\//.test(line) || currentModCommented;
+      const title = currentDocs[0] || '';
+      let help = '';
+      if (currentDocs.length > 2 && currentDocs[1] === '') {
+        help = currentDocs.slice(2).join('\n');
+      } else if (currentDocs.length > 1) {
+        help = currentDocs.slice(1).join('\n');
+      }
+
+      const ep = {
+        Path: pathStr,
+        constName: constName,
+        Title: title,
+        Help: help,
+        isCommented: isCommented,
+        module: currentMod,
+      };
+
+      endpoints.set(pathStr, ep);
+      if (currentMod && modules.has(currentMod)) {
+        modules.get(currentMod).commands.push(ep);
+      }
+      currentDocs = [];
+      continue;
+    }
+
+    // Reset doc buffer on non-comment, non-empty lines
+    if (!/^\s*\/\//.test(line) && !/^\s*$/.test(line)) {
+      currentDocs = [];
+    }
+  }
+
+  return { endpoints, modules };
+}
+
+/**
+ * Format markdown/help text into rust doc comment lines.
+ */
+function docLines(text) {
+  if (!text) return [];
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\t/g, '    ');
+  const rawLines = normalized.split('\n');
+  const stripped = rawLines.map(l => l.replace(/\s+$/, ''));
+  const LIST_RE = /^\s*[-*]\s+/;
+  const out = [];
+  let inList = false;
+  let listIndent = 0;
+
+  for (const line of stripped) {
+    if (line.length === 0) {
+      inList = false;
+      out.push('');
+      continue;
+    }
+    if (LIST_RE.test(line)) {
+      inList = true;
+      listIndent = line.match(/^\s*/)[0].length;
+      out.push(line);
+      continue;
+    }
+    if (inList) {
+      const S = line.match(/^\s*/)[0].length;
+      const target = Math.max(S, listIndent + 2);
+      const trimmed = line.trimStart();
+      const paddedLine = ' '.repeat(target) + trimmed;
+      out.push(paddedLine);
+    } else {
+      out.push(line);
+    }
+  }
+  return out;
+}
+
+function formatDocLine(line, isCommented, isModuleCommented) {
+  if (isModuleCommented) {
+    return line ? `//     /// ${line}` : `//     ///`;
+  }
+  if (isCommented) {
+    return line ? `    // /// ${line}` : `    // ///`;
+  }
+  return line ? `    /// ${line}` : `    ///`;
+}
+
+function formatConstLine(constName, pathStr, isCommented, isModuleCommented) {
+  if (isModuleCommented) {
+    return `//     pub const ${constName}: &str = "${pathStr}";`;
+  }
+  if (isCommented) {
+    return `    // pub const ${constName}: &str = "${pathStr}";`;
+  }
+  return `    pub const ${constName}: &str = "${pathStr}";`;
+}
+
+/**
+ * Render a single const definition with its doc comments.
+ */
+function renderConst(cmd, isModuleCommented) {
+  const lines = [];
+  const title = (cmd.Title || '').trim();
+  const hasHelp = Boolean(cmd.Help && cmd.Help.trim().length > 0);
+
+  if (title) {
+    lines.push(formatDocLine(title, cmd.isCommented, isModuleCommented));
+    if (hasHelp) {
+      lines.push(formatDocLine('', cmd.isCommented, isModuleCommented));
+    }
+  }
+
+  if (hasHelp) {
+    const helpLines = docLines(cmd.Help);
+    for (const l of helpLines) {
+      lines.push(formatDocLine(l, cmd.isCommented, isModuleCommented));
+    }
+  }
+
+  lines.push(formatConstLine(cmd.constName, cmd.Path, cmd.isCommented, isModuleCommented));
+  return lines.join('\n');
+}
+
+/**
+ * Render a module with all its commands.
+ * If all commands in a module are commented, the entire module is commented out.
+ */
+function renderModule(name, commands) {
+  const isModuleCommented = commands.every(c => c.isCommented);
+  const desc = moduleNameDescription(name);
+  const lines = [];
+
+  if (isModuleCommented) {
+    lines.push(`// /// ${desc}`);
+    lines.push(`// pub mod ${name} {`);
+  } else {
+    lines.push(`/// ${desc}`);
+    lines.push(`pub mod ${name} {`);
+  }
+
+  for (const cmd of commands) {
+    lines.push('');
+    lines.push(renderConst(cmd, isModuleCommented));
+  }
+
+  lines.push(isModuleCommented ? `// }` : `}`);
+  return lines.join('\n');
+}
+
 function groupCommands(commands) {
   const groups = {};
   for (const cmd of commands) {
@@ -130,136 +377,11 @@ function groupCommands(commands) {
   return groups;
 }
 
-function docLines(text, indent) {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\t/g, '    ');
-  const rawLines = normalized.split('\n');
-  const stripped = rawLines.map(l => l.replace(/\s+$/, ''));
-  const LIST_RE = /^\s*[-*]\s+/;
-  const out = [];
-  let inList = false;
-  let listIndent = 0;
-  for (const line of stripped) {
-    if (line.length === 0) {
-      inList = false;
-      out.push(`${indent}///`);
-      continue;
-    }
-    if (LIST_RE.test(line)) {
-      inList = true;
-      listIndent = line.match(/^\s*/)[0].length;
-      out.push(`${indent}/// ${line}`);
-      continue;
-    }
-    if (inList) {
-      const S = line.match(/^\s*/)[0].length;
-      const target = Math.max(S, listIndent + 2);
-      const trimmed = line.trimStart();
-      const paddedLine = ' '.repeat(target) + trimmed;
-      out.push(`${indent}/// ${paddedLine}`);
-    } else {
-      out.push(`${indent}/// ${line}`);
-    }
-  }
-  return out;
-}
-
-function renderConst(cmd, indent, isNew) {
-  const ind = indent;
-  const lines = [];
-  const title = (cmd.Title || '').trim();
-  if (title) {
-    lines.push(`${ind}/// ${title}`);
-    lines.push(`${ind}///`);
-  }
-  if (cmd.Help) {
-    const helpLines = docLines(cmd.Help, ind);
-    for (const l of helpLines) lines.push(l);
-  }
-
-  const constLine = `${ind}pub const ${cmd.constName}: &str = "${cmd.Path}";`;
-  if (isNew) {
-    lines.push(`${ind}/////////////////////////////////////// New Key start`);
-    lines.push(constLine);
-    lines.push(`${ind}////////////////////////////////////// New key end`);
-  } else {
-    lines.push(constLine);
-  }
-  return lines.join('\n');
-}
-
-function renderModule(name, commands, isNewSet) {
-  const lines = [];
-  lines.push(`/// ${moduleNameDescription(name)}`);
-  lines.push(`pub mod ${name} {`);
-  for (const cmd of commands) {
-    lines.push('');
-    const isNew = isNewSet.has(cmd.Path);
-    lines.push(renderConst(cmd, '    ', isNew));
-  }
-  lines.push('}');
-  return lines.join('\n');
-}
-
-function moduleNameDescription(name) {
-  const map = {
-    core: 'Core system endpoints',
-    config: 'Configuration endpoints',
-    job: 'Job management endpoints',
-    operations: 'File operation endpoints',
-    sync: 'Synchronization endpoints',
-    vfs: 'VFS (Virtual File System) endpoints',
-    mount: 'Mount endpoints',
-    fscache: 'File system cache endpoints',
-    options: 'Option management endpoints',
-    serve: 'Serve endpoints',
-    backend: 'Backend command endpoints',
-    debug: 'Debug endpoints',
-    pluginsctl: 'Plugin control endpoints',
-    rc: 'Remote control endpoints',
-  };
-  return map[name] || `${name[0].toUpperCase()}${name.slice(1)} endpoints`;
-}
-
-function parseExistingEndpoints(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return new Map();
-  const src = fs.readFileSync(filePath, 'utf8');
-  const existingMap = new Map();
-  const lines = src.split('\n');
-  let currentDocs = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^\s*\/\/\//.test(line)) {
-      currentDocs.push(line.replace(/^\s*\/\/\/\s?/, ''));
-    } else {
-      const m = /^\s*pub const\s+(\w+)\s*:\s*&str\s*=\s*"([^"]+)"/.exec(line);
-      if (m) {
-        const constName = m[1];
-        const pathStr = m[2];
-        const helpText = currentDocs.join('\n');
-        existingMap.set(pathStr, {
-          Path: pathStr,
-          constName: constName,
-          Title: currentDocs[0] || '',
-          Help: helpText,
-        });
-      }
-      if (!/^\s*\/\//.test(line)) {
-        currentDocs = [];
-      }
-    }
-  }
-
-  return existingMap;
-}
-
 function parseArgs(argv) {
   const opts = {
     input: DEFAULT_INPUT,
     output: DEFAULT_OUTPUT,
-    live: false,
     url: DEFAULT_RCLONE_URL,
-    includeInternal: false,
     prune: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -271,21 +393,17 @@ function parseArgs(argv) {
       case '--output':
         opts.output = argv[++i];
         break;
-      case '--live':
-        opts.live = true;
-        break;
       case '--url':
         opts.url = argv[++i];
-        break;
-      case '--include-internal':
-        opts.includeInternal = true;
         break;
       case '--prune':
         opts.prune = true;
         break;
       case '--help':
       case '-h':
-        printHelp();
+        console.log(
+          `update-endpoints.cjs — regenerate endpoints.rs from rclone rc/list\n\nUsage:\n  node scripts/update-endpoints.cjs [--url http://127.0.0.1:5572] [--input rc.json] [--output endpoints.rs] [--prune]`
+        );
         process.exit(0);
         break;
     }
@@ -293,83 +411,81 @@ function parseArgs(argv) {
   return opts;
 }
 
-function printHelp() {
-  console.log(`update-endpoints.cjs — regenerate endpoints.rs from rclone rc/list
-
-Usage:
-  node scripts/update-endpoints.cjs [--input rc.json] [--output endpoints.rs]
-                                   [--live [--url http://127.0.0.1:5572]]
-                                   [--prune] [--include-internal]`);
-}
-
 function main() {
   const opts = parseArgs(process.argv.slice(2));
 
-  // 1. Load commands from source (live or JSON)
-  let sourceCommands = null;
-  if (opts.live) {
-    sourceCommands = getEndpoints(opts.url);
-  } else if (fs.existsSync(opts.input)) {
-    sourceCommands = loadFromJson(opts.input);
-  }
+  // 1. Parse existing endpoints.rs
+  const { endpoints: existingEndpointsMap, modules: existingModulesMap } = parseExistingEndpoints(
+    opts.output
+  );
 
-  if (!sourceCommands && !opts.live) {
-    sourceCommands = getEndpoints(opts.url);
-  }
-
-  const existingEndpointsMap = parseExistingEndpoints(opts.output);
+  // 2. Load commands from source (live rclone, CLI, or JSON)
+  const sourceCommands = getSourceEndpoints(
+    opts.url,
+    fs.existsSync(opts.input) ? opts.input : null
+  );
 
   if (!sourceCommands || sourceCommands.length === 0) {
     if (existingEndpointsMap.size > 0) {
-      console.warn('Could not fetch source endpoints. Preserving existing definitions.');
-      sourceCommands = [];
+      console.warn(
+        'Could not connect to live rclone or find input JSON. Preserving existing definitions in endpoints.rs.'
+      );
+      return;
+    }
+    console.error('No endpoints found to process.');
+    process.exit(1);
+  }
+
+  // 3. Merge source commands with existing definitions
+  const mergedMap = new Map();
+  let newlyCommentedCount = 0;
+  let updatedDocsCount = 0;
+
+  for (const srcCmd of sourceCommands) {
+    const existing = existingEndpointsMap.get(srcCmd.Path);
+    if (existing) {
+      // Retain existing constName and comment status; update docs
+      mergedMap.set(srcCmd.Path, {
+        Path: srcCmd.Path,
+        constName: existing.constName,
+        Title: srcCmd.Title || existing.Title || '',
+        Help: srcCmd.Help || existing.Help || '',
+        isCommented: existing.isCommented,
+      });
+      updatedDocsCount++;
     } else {
-      console.error('No endpoints found to process.');
-      process.exit(1);
+      // New endpoint from rclone: keep commented out since it is not in the in-use list
+      mergedMap.set(srcCmd.Path, {
+        Path: srcCmd.Path,
+        constName: pathToConstName(srcCmd.Path),
+        Title: srcCmd.Title || '',
+        Help: srcCmd.Help || '',
+        isCommented: true,
+      });
+      newlyCommentedCount++;
     }
   }
 
-  // 2. Filter internal endpoints unless requested
-  const filtered = sourceCommands.filter(c => {
-    const denied = INTERNAL_DENYLIST.has(c.Path);
-    return opts.includeInternal || !denied;
-  });
-
-  // Assign const names for source commands
-  for (const c of filtered) {
-    c.constName = pathToConstName(c.Path);
-  }
-
-  // 3. Merge with existing endpoints if prune is false
-  const sourcePathSet = new Set(filtered.map(c => c.Path));
-  const finalCommands = [...filtered];
+  // Preserve any endpoints present in existing file but missing from source (unless --prune)
   let retainedCount = 0;
-
   if (!opts.prune) {
-    for (const [pathStr, existingCmd] of existingEndpointsMap.entries()) {
-      if (!sourcePathSet.has(pathStr)) {
-        finalCommands.push(existingCmd);
+    for (const [pathStr, existing] of existingEndpointsMap.entries()) {
+      if (!mergedMap.has(pathStr)) {
+        mergedMap.set(pathStr, existing);
         retainedCount++;
       }
     }
-  } else {
-    const removedCount = existingEndpointsMap.size - sourcePathSet.size;
-    if (removedCount > 0) {
-      console.log(`  [PRUNE] Removed ${removedCount} unused endpoints`);
-    }
   }
 
-  // 4. Identify new endpoints (present in source but not previously in endpoints.rs)
-  const isNewSet = new Set();
-  for (const c of filtered) {
-    if (!existingEndpointsMap.has(c.Path)) {
-      isNewSet.add(c.Path);
-    }
-  }
+  const finalCommands = Array.from(mergedMap.values());
+  const activeCount = finalCommands.filter(c => !c.isCommented).length;
+  const commentedCount = finalCommands.filter(c => c.isCommented).length;
 
-  console.log(`Total endpoints: ${finalCommands.length} (${filtered.length} from source, ${retainedCount} retained from file, ${isNewSet.size} new)`);
+  console.log(
+    `Processed ${finalCommands.length} endpoints: ${activeCount} active (in use), ${commentedCount} commented out (${updatedDocsCount} updated docs, ${newlyCommentedCount} new added as commented, ${retainedCount} retained from file).`
+  );
 
-  // 5. Group and order
+  // 4. Group by module and order
   const groups = groupCommands(finalCommands);
   const ordered = Object.keys(groups).sort((a, b) => {
     const ia = MODULE_ORDER.indexOf(a);
@@ -380,36 +496,41 @@ function main() {
     return a.localeCompare(b);
   });
 
-  // 6. Render
+  // 5. Render output
   const header = [
     '// Rclone Remote Control (RC) API endpoints',
     '//',
     '// This module provides organized access to all rclone RC API endpoints.',
     '// The endpoints are categorized for easier management and discovery.',
     '//',
-    `// Generated by update-endpoints.cjs from ${opts.live ? 'live rclone rc/list' : path.basename(opts.input)}.`,
-    `// Total: ${finalCommands.length} endpoints across ${ordered.length} modules.`,
+    `// Generated by update-endpoints.cjs.`,
+    `// Total: ${finalCommands.length} endpoints across ${ordered.length} modules (${activeCount} active, ${commentedCount} commented).`,
     '//',
     '// To regenerate:',
     '//   npm run sync:endpoints',
-    '//   npm run sync:endpoints -- --live',
-    '//   npm run sync:endpoints -- --live --url http://127.0.0.1:5572',
     '',
   ].join('\n');
 
-  const body = ordered.map(name => renderModule(name, groups[name], isNewSet)).join('\n\n');
+  const body = ordered.map(name => renderModule(name, groups[name])).join('\n\n');
   const out = header + body + '\n';
 
-  // 7. Write output
+  // 6. Write output
   const outDir = path.dirname(opts.output);
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
   fs.writeFileSync(opts.output, out, 'utf8');
-  console.log(`Wrote ${opts.output} (${finalCommands.length} endpoints in ${ordered.length} modules).`);
+  console.log(
+    `Wrote ${opts.output} (${finalCommands.length} endpoints in ${ordered.length} modules).`
+  );
 
   for (const name of ordered) {
-    console.log(`  - ${name}: ${groups[name].length}`);
+    const modCmds = groups[name];
+    const modActive = modCmds.filter(c => !c.isCommented).length;
+    const modCommented = modCmds.filter(c => c.isCommented).length;
+    console.log(
+      `  - ${name}: ${modCmds.length} endpoints (${modActive} active, ${modCommented} commented)`
+    );
   }
 }
 

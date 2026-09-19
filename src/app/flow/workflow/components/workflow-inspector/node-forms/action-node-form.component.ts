@@ -80,7 +80,7 @@ import {
         padding: 8px 12px;
         background: var(--bg-elevated);
         border-radius: var(--radius-xs);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
 
         .summary-header {
           display: flex;
@@ -130,7 +130,7 @@ import {
         gap: 8px;
         padding: 10px 12px;
         background: var(--bg-elevated-1);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
         border-radius: var(--radius-sm);
 
         .section-sub-title {
@@ -153,7 +153,7 @@ import {
         gap: 6px;
         padding: 10px 12px;
         background: var(--bg-elevated);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
         border-radius: var(--radius-xs);
 
         .preview-header {
@@ -198,7 +198,7 @@ import {
         padding: 12px;
         border-radius: var(--radius-sm);
         background: var(--bg-elevated);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
 
         mat-icon {
           opacity: 0.5;
@@ -262,7 +262,7 @@ export class ActionNodeFormComponent implements OnInit {
       if (upstreamNode) {
         return getNodeFields(upstreamNode);
       }
-      return getNodeFieldsForType('check');
+      return getNodeFieldsForType('prev');
     }
     const target = this.upstreamNodes().find(n => n.id === targetId);
     return target ? getNodeFields(target) : [];

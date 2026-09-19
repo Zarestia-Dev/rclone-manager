@@ -444,7 +444,12 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openWorkflowCronEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
+  openWorkflowCronEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    const titleKey =
+      node.titleKey ??
+      (node.type === 'schedule_wait'
+        ? 'flow.workflow.nodes.scheduleWait'
+        : 'flow.workflow.nodes.cronSchedule');
     return this.openModal(
       'workflow-cron-editor',
       {
@@ -455,7 +460,7 @@ export class ModalService extends TauriBaseService {
         data: { node },
       },
       {
-        title: this.translate.instant('flow.workflow.nodes.cronSchedule'),
+        title: this.translate.instant(titleKey),
         width: 640,
         height: 600,
         suffix: node.id,
@@ -463,7 +468,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openWorkflowRcEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
+  openWorkflowRcEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
     return this.openModal(
       'workflow-rc-editor',
       {
@@ -482,8 +487,8 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openWorkflowNodeEditor<TResult = any>(node: WorkflowNode): DialogRefLike<TResult> {
-    if (node.type === 'cron') {
+  openWorkflowNodeEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    if (node.type === 'cron' || node.type === 'schedule_wait') {
       return this.openWorkflowCronEditor(node);
     }
     if (node.type === 'rc_command') {

@@ -108,7 +108,7 @@
     justify-content: space-between;
     gap: var(--space-sm);
     background-color: var(--card-bg-color);
-    border: 1px solid var(--border-color);
+    box-shadow: 0 0 0 1px var(--border-color);
     border-radius: var(--border-radius);
     padding: var(--space-xs) var(--space-sm);
 
@@ -117,7 +117,6 @@
       font-size: var(--font-size-md);
       color: var(--accent-color);
       word-break: break-all;
-      user-select: all;
     }
   }
 
@@ -126,8 +125,4 @@
     font-size: var(--font-size-xs);
     color: var(--dim-color);
   }
-}
-
-.full-width {
-  width: 100%;
 }

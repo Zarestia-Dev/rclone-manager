@@ -2,7 +2,15 @@ import { WorkflowNode } from '../types/workflow.types';
 
 export interface NodeVariableField {
   key: string;
-  label: string;
+  labelKey?: string;
+  label?: string;
+}
+
+function createTokenFields(keys: string[]): NodeVariableField[] {
+  return keys.map(key => ({
+    key,
+    labelKey: `flow.workflow.tokens.fields.${key}`,
+  }));
 }
 
 /**
@@ -44,33 +52,33 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
   switch (type) {
     case 'command':
     case 'exec_script':
-      return [
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'output', label: 'Primary Output (output)' },
-        { key: 'stdout', label: 'Standard Output (stdout)' },
-        { key: 'stderr', label: 'Standard Error (stderr)' },
-        { key: 'exitCode', label: 'Exit Code (exitCode)' },
-        { key: 'success', label: 'Success (success)' },
-        { key: 'status', label: 'Status (status)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields([
+        'summary',
+        'output',
+        'stdout',
+        'stderr',
+        'exitCode',
+        'success',
+        'status',
+        'error',
+      ]);
     case 'check':
     case 'cryptcheck':
-      return [
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'report', label: 'Markdown Report (report)' },
-        { key: 'hasDifferences', label: 'Has Differences (hasDifferences)' },
-        { key: 'differCount', label: 'Differ Count (differCount)' },
-        { key: 'differ', label: 'Differing Files List (differ)' },
-        { key: 'missingOnDstCount', label: 'Missing on Dst Count (missingOnDstCount)' },
-        { key: 'missingOnDst', label: 'Missing on Dst List (missingOnDst)' },
-        { key: 'missingOnSrcCount', label: 'Missing on Src Count (missingOnSrcCount)' },
-        { key: 'missingOnSrc', label: 'Missing on Src List (missingOnSrc)' },
-        { key: 'matchCount', label: 'Matched Files Count (matchCount)' },
-        { key: 'status', label: 'Status (status)' },
-        { key: 'jobId', label: 'Job ID (jobId)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields([
+        'summary',
+        'report',
+        'hasDifferences',
+        'differCount',
+        'differ',
+        'missingOnDstCount',
+        'missingOnDst',
+        'missingOnSrcCount',
+        'missingOnSrc',
+        'matchCount',
+        'status',
+        'jobId',
+        'error',
+      ]);
     case 'sync':
     case 'copy':
     case 'move':
@@ -78,57 +86,64 @@ export function getNodeFieldsForType(type?: string): NodeVariableField[] {
     case 'delete':
     case 'copyurl':
     case 'archivecreate':
-      return [
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'bytes', label: 'Bytes Transferred (bytes)' },
-        { key: 'bytesFormatted', label: 'Formatted Bytes (bytesFormatted)' },
-        { key: 'totalBytes', label: 'Total Bytes (totalBytes)' },
-        { key: 'transfers', label: 'Transfers Count (transfers)' },
-        { key: 'totalTransfers', label: 'Total Transfers (totalTransfers)' },
-        { key: 'errors', label: 'Errors Count (errors)' },
-        { key: 'speedFormatted', label: 'Speed (speedFormatted)' },
-        { key: 'status', label: 'Status (status)' },
-        { key: 'jobId', label: 'Job ID (jobId)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields([
+        'summary',
+        'bytes',
+        'bytesFormatted',
+        'totalBytes',
+        'transfers',
+        'totalTransfers',
+        'errors',
+        'speedFormatted',
+        'status',
+        'jobId',
+        'error',
+      ]);
     case 'mount':
-      return [
-        { key: 'mountPoint', label: 'Mount Point Path (mountPoint)' },
-        { key: 'remote', label: 'Remote Name (remote)' },
-        { key: 'status', label: 'Mount Status (status)' },
-        { key: 'jobId', label: 'Job ID (jobId)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields(['mountPoint', 'remote', 'status', 'jobId', 'error']);
     case 'serve':
-      return [
-        { key: 'addr', label: 'Server Address (addr)' },
-        { key: 'remote', label: 'Remote Name (remote)' },
-        { key: 'status', label: 'Server Status (status)' },
-        { key: 'jobId', label: 'Job ID (jobId)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields(['addr', 'remote', 'status', 'jobId', 'error']);
     case 'condition':
-      return [
-        { key: 'conditionMet', label: 'Condition Met (conditionMet)' },
-        { key: 'branch', label: 'Selected Branch (branch)' },
-      ];
+      return createTokenFields(['conditionMet', 'branch']);
+    case 'schedule_wait':
+      return createTokenFields([
+        'cronExpression',
+        'targetTime',
+        'waitedSeconds',
+        'resumedAt',
+        'status',
+      ]);
     case 'rc_command':
-      return [
-        { key: 'command', label: 'Command (command)' },
-        { key: 'status', label: 'Status (status)' },
-        { key: 'success', label: 'Success (success)' },
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'result', label: 'Command Result (result)' },
-        { key: 'json', label: 'Formatted JSON (json)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields([
+        'command',
+        'status',
+        'success',
+        'summary',
+        'result',
+        'json',
+        'error',
+      ]);
+    case 'prev':
+      return createTokenFields([
+        'summary',
+        'status',
+        'success',
+        'result',
+        'report',
+        'hasDifferences',
+        'differ',
+        'differCount',
+        'bytesFormatted',
+        'transfers',
+        'output',
+        'exitCode',
+        'stdout',
+        'stderr',
+        'jobId',
+        'error',
+      ]);
     default:
-      return [
-        { key: 'status', label: 'Status (status)' },
-        { key: 'summary', label: 'Summary (summary)' },
-        { key: 'jobId', label: 'Job ID (jobId)' },
-        { key: 'error', label: 'Error Message (error)' },
-      ];
+      return createTokenFields(['status', 'summary', 'jobId', 'error']);
   }
 }
 

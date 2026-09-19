@@ -8,7 +8,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { toString as cronstrue } from 'cronstrue';
+import { getCronstrueLocale } from '../../../../../services/i18n/cron-locale.mapper';
 import { WorkflowNode } from '../../../types/workflow.types';
 import {
   getAvailableUpstreamNodes,
@@ -88,7 +90,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
         padding: 12px;
         border-radius: var(--radius-sm);
         background: var(--bg-elevated-1);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
 
         .card-header {
           display: flex;
@@ -127,7 +129,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
           padding: 5px 10px;
           border-radius: var(--radius-xs);
           background: var(--bg-elevated-2);
-          border: 1px solid var(--border-color);
+          box-shadow: 0 0 0 1px var(--border-color);
           font-size: 12px;
           font-weight: 500;
           color: var(--window-fg-color);
@@ -267,9 +269,33 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
 export class LogicNodeFormComponent {
   private readonly stateService = inject(WorkflowStateService);
   private readonly fileSystemService = inject(FileSystemService, { optional: true });
+  private readonly translate = inject(TranslateService);
 
   readonly node = input.required<WorkflowNode>();
   readonly nodeConfig = input.required<Record<string, unknown>>();
+  readonly openDetailed = output<void>();
+
+  readonly cronScheduleInfo = computed(() => {
+    const expr = String(this.nodeConfig()['cronExpression'] || '').trim();
+    if (!expr) {
+      return { text: '', isInvalid: false };
+    }
+    try {
+      const text = cronstrue(expr, {
+        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
+        throwExceptionOnParseError: true,
+      });
+      return { text, isInvalid: false };
+    } catch {
+      return {
+        text: this.translate.instant('flow.workflow.inspector.invalidCron'),
+        isInvalid: true,
+      };
+    }
+  });
+
+  readonly isCronInvalid = computed(() => this.cronScheduleInfo().isInvalid);
+  readonly cronHumanReadable = computed(() => this.cronScheduleInfo().text);
 
   readonly delaySecondsValue = computed(() => {
     const val = this.nodeConfig()['delaySeconds'];
@@ -343,7 +369,7 @@ export class LogicNodeFormComponent {
       if (upstreamNode) {
         return getNodeFields(upstreamNode);
       }
-      return getNodeFieldsForType('check');
+      return getNodeFieldsForType('prev');
     }
     const targetNode = this.availableUpstreamNodes().find(n => n.id === targetId);
     return targetNode ? getNodeFields(targetNode) : [];

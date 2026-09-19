@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rclone::{backend::runtime::RuntimeInfo, engine::core::DEFAULT_API_PORT},
-    utils::rclone::endpoints::{config, core},
+    utils::rclone::endpoints::{config, core, operations},
 };
 
 /// Single flat backend configuration
@@ -390,33 +390,99 @@ impl Backend {
             crate::utils::json_helpers::build_full_path(&fs_name, &remote_path)
         };
 
-        let (endpoint, payload) = if self.is_librclone_local() {
-            let mut p = serde_json::json!({
-                "path": full_path,
-            });
-            if let Some(o) = offset {
-                p["offset"] = serde_json::json!(o);
+        // TODO(rclone-v1.70): Once rclone with `operations/getfile` is released to stable,
+        // remove this `if self.is_librclone_local()` check and run the GETFILE loop unconditionally for all backends.
+        if self.is_librclone_local() {
+            const CHUNK_SIZE: i64 = 2 * 1024 * 1024; // 2 MiB upstream rclone limit
+            let mut current_offset = offset.unwrap_or(0);
+            let mut remaining = count;
+            let mut buffer = Vec::new();
+
+            loop {
+                let chunk_to_read = match remaining {
+                    Some(rem) => {
+                        if rem <= 0 {
+                            break;
+                        }
+                        rem.min(CHUNK_SIZE)
+                    }
+                    None => CHUNK_SIZE,
+                };
+
+                let payload = serde_json::json!({
+                    "fs": full_path,
+                    "offset": current_offset,
+                    "count": chunk_to_read,
+                    "base64": true,
+                });
+
+                let response = transport
+                    .rpc(operations::GETFILE, Some(&payload))
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                if response
+                    .get("error")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false)
+                {
+                    let err_msg = response
+                        .get("result")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown rclone error");
+                    return Err(err_msg.to_string());
+                }
+
+                let b64_str = response
+                    .get("result")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "No result in getfile response".to_string())?;
+
+                use base64::{Engine as _, engine::general_purpose::STANDARD};
+                let chunk_bytes = STANDARD
+                    .decode(b64_str)
+                    .map_err(|e| format!("Failed to decode base64 getfile response: {e}"))?;
+
+                let bytes_read = chunk_bytes.len() as i64;
+                if bytes_read == 0 {
+                    break;
+                }
+
+                buffer.extend_from_slice(&chunk_bytes);
+                current_offset += bytes_read;
+
+                if let Some(rem) = remaining.as_mut() {
+                    *rem -= bytes_read;
+                    if *rem <= 0 {
+                        break;
+                    }
+                }
+
+                // If fewer bytes than requested were returned, we hit EOF
+                if bytes_read < chunk_to_read {
+                    break;
+                }
             }
-            if let Some(c) = count {
-                p["count"] = serde_json::json!(c);
-            }
-            (crate::utils::rclone::endpoints::operations::CAT, p)
-        } else {
-            let mut args = vec![full_path];
-            if let Some(o) = offset {
-                args.push(format!("--offset={o}"));
-            }
-            if let Some(c) = count {
-                args.push(format!("--count={c}"));
-            }
-            (
-                core::COMMAND,
-                self.build_core_command_payload("cat", args, false, _os),
-            )
-        };
+
+            return Ok(buffer);
+        }
+
+        // =========================================================================
+        // TODO(rclone-v1.70): DELETE START FOR CORE/COMMAND CAT FALLBACK
+        // When upstream rclone with `operations/getfile` is widely available on stable,
+        // delete everything from here down to the end of this function.
+        // =========================================================================
+        let mut args = vec![full_path];
+        if let Some(o) = offset {
+            args.push(format!("--offset={o}"));
+        }
+        if let Some(c) = count {
+            args.push(format!("--count={c}"));
+        }
+        let payload = self.build_core_command_payload("cat", args, false, _os);
 
         let response = transport
-            .rpc(endpoint, Some(&payload))
+            .rpc(core::COMMAND, Some(&payload))
             .await
             .map_err(|e| e.to_string())?;
 
@@ -445,6 +511,9 @@ impl Backend {
             .ok_or_else(|| "No result in cat response".to_string())?;
 
         Ok(result.as_bytes().to_vec())
+        // =========================================================================
+        // TODO(rclone-v1.70): DELETE END FOR CORE/COMMAND CAT FALLBACK
+        // =========================================================================
     }
 
     /// Helper for POST requests expecting a JSON response.
@@ -723,5 +792,75 @@ mod tests {
     fn test_is_auth_generated_default() {
         let backend = Backend::new_local("Local");
         assert!(!backend.is_auth_generated);
+    }
+
+    struct MockTransport {
+        expected_endpoint: &'static str,
+        response: serde_json::Value,
+    }
+
+    #[async_trait::async_trait]
+    impl crate::rclone::backend::RcloneTransport for MockTransport {
+        async fn kind(&self) -> crate::rclone::backend::TransportKind {
+            crate::rclone::backend::TransportKind::Librclone
+        }
+        async fn rpc(
+            &self,
+            endpoint: &str,
+            _payload: Option<&serde_json::Value>,
+        ) -> Result<serde_json::Value, crate::rclone::backend::BackendError> {
+            assert_eq!(endpoint, self.expected_endpoint);
+            Ok(self.response.clone())
+        }
+        async fn read_file(
+            &self,
+            _remote: &str,
+            _path: &str,
+            _range: Option<(u64, Option<u64>)>,
+        ) -> Result<
+            Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+            crate::rclone::backend::BackendError,
+        > {
+            unimplemented!()
+        }
+    }
+
+    // TODO(rclone-v1.70): These two tests verify the core/command cat fallback for external daemons.
+    // They can be removed (or migrated to GETFILE) once the core/command cat fallback is deleted.
+    #[tokio::test]
+    async fn test_fetch_file_via_cat_fallback() {
+        let backend = Backend::new_remote("NAS", "192.168.1.100", 51900);
+        let transport = MockTransport {
+            expected_endpoint: core::COMMAND,
+            response: serde_json::json!({
+                "result": "fallback cat file content"
+            }),
+        };
+
+        let res = backend
+            .fetch_file_via_cat(&transport, "remote:", "test.txt", None, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(res, b"fallback cat file content");
+    }
+
+    #[tokio::test]
+    async fn test_fetch_file_via_cat_fallback_base64() {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let backend = Backend::new_remote("NAS", "192.168.1.100", 51900);
+        let transport = MockTransport {
+            expected_endpoint: core::COMMAND,
+            response: serde_json::json!({
+                "result_base64": STANDARD.encode("base64 cat content")
+            }),
+        };
+
+        let res = backend
+            .fetch_file_via_cat(&transport, "remote:", "test.txt", None, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(res, b"base64 cat content");
     }
 }

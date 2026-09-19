@@ -70,7 +70,9 @@
       @if (share.targetId) {
         <div class="prop-row">
           <span class="label">{{ 'fileBrowser.properties.targetId' | translate }}</span>
-          <code class="value" style="user-select: all">{{ share.targetId }}</code>
+          <code class="value truncate" [appCopyToClipboard]="share.targetId">{{
+            share.targetId
+          }}</code>
         </div>
       }
       @if (currentItem?.ModTime) {
@@ -88,7 +90,7 @@
     </div>
 
     <!-- Metadata Navigation Row (Nautilus Subpage Trigger) -->
-    @if (loadingMetadata() && metadataEntries().length > 0) {
+    @if (loadingMetadata()) {
       <mat-divider></mat-divider>
       <div class="properties-group">
         <div class="metadata-trigger-row is-loading">
@@ -367,9 +369,11 @@
             [attr.title]="'fileBrowser.properties.copyToClipboard' | translate"
           >
             <span class="meta-key" [title]="entry.key">{{ entry.key }}</span>
-            <pre class="meta-val" [title]="entry.value" style="user-select: all">{{
-              entry.value
-            }}</pre>
+            <pre
+              class="meta-val truncate"
+              [title]="entry.value"
+              [appCopyToClipboard]="entry.value"
+              >{{ entry.value }}</pre>
           </div>
         }
       </div>

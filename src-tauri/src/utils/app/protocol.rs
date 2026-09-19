@@ -1,6 +1,19 @@
+//! Custom URI scheme protocol handlers for Tauri (`rclone://`, `local-asset://`, `audio-cover://`).
+//!
+//! ### Known Platform Limitations:
+//! - **Linux Desktop (WebKitGTK + GStreamer)**:
+//!   WebKitGTK delegates HTML5 `<audio>` and `<video>` playback directly to GStreamer.
+//!   Because GStreamer operates out-of-process and lacks a URI handler plugin for custom
+//!   application schemes (`rclone://` and `local-asset://`), media playback of audio and video files
+//!   fails with `MediaError { code: 4 }` (`MEDIA_ERR_SRC_NOT_SUPPORTED`).
+//!   Static assets, text, and images (such as `audio-cover://`) load normally through WebKit's network stack (`libsoup`).
+//!   On mobile (Android Chromium) and headless web-server modes, media playback functions properly.
+//!   See tracking issue: <https://github.com/tauri-apps/tauri/issues/3725>.
+
 use std::io::SeekFrom;
 use std::path::Path;
 
+use http::{Method, Response, StatusCode, header};
 use log::{debug, error, warn};
 use tauri::{Builder, Manager, Runtime};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
@@ -19,8 +32,8 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder
 }
 
-fn cors_preflight_response() -> tauri::http::Response<Vec<u8>> {
-    tauri::http::Response::builder()
+fn cors_preflight_response() -> Response<Vec<u8>> {
+    Response::builder()
         .status(204)
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -31,13 +44,13 @@ fn cors_preflight_response() -> tauri::http::Response<Vec<u8>> {
 
 /// Helper to construct a standard CORS-enabled error/status HTTP response.
 pub fn error_response(
-    status: impl TryInto<tauri::http::StatusCode>,
+    status: impl TryInto<StatusCode>,
     body: impl Into<Vec<u8>>,
-) -> tauri::http::Response<Vec<u8>> {
+) -> Response<Vec<u8>> {
     let status_code = status
         .try_into()
-        .unwrap_or(tauri::http::StatusCode::INTERNAL_SERVER_ERROR);
-    tauri::http::Response::builder()
+        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    Response::builder()
         .status(status_code)
         .header("Access-Control-Allow-Origin", "*")
         .body(body.into())
@@ -47,7 +60,7 @@ pub fn error_response(
 fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
-            if request.method() == tauri::http::Method::OPTIONS {
+            if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;
             }
@@ -89,14 +102,22 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                         let mut bytes = Vec::new();
                         match reader.read_to_end(&mut bytes).await {
                             Ok(_) => {
-                                let mut builder = tauri::http::Response::builder()
+                                let bytes_len = bytes.len() as u64;
+                                let mut builder = Response::builder()
                                     .status(if byte_range.is_some() { 206 } else { 200 })
-                                    .header(tauri::http::header::CONTENT_TYPE, mime_type)
+                                    .header(header::CONTENT_TYPE, mime_type)
                                     .header("Access-Control-Allow-Origin", "*")
-                                    .header("Accept-Ranges", "bytes");
+                                    .header("Accept-Ranges", "bytes")
+                                    .header(header::CONTENT_LENGTH, bytes_len.to_string());
 
-                                if let Some(rh) = range_header.as_deref() {
-                                    builder = builder.header("Content-Range", rh);
+                                if let Some((start, _)) = byte_range {
+                                    let end = if bytes_len > 0 {
+                                        start + bytes_len - 1
+                                    } else {
+                                        start
+                                    };
+                                    builder = builder
+                                        .header("Content-Range", format!("bytes {start}-{end}/*"));
                                 }
 
                                 responder.respond(builder.body(bytes).unwrap());
@@ -125,7 +146,7 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
 fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
-            if request.method() == tauri::http::Method::OPTIONS {
+            if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;
             }
@@ -197,7 +218,7 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
 
                             if start > end {
                                 responder.respond(
-                                    tauri::http::Response::builder()
+                                    Response::builder()
                                         .status(416)
                                         .header("Access-Control-Allow-Origin", "*")
                                         .header("Content-Range", format!("bytes */{file_size}"))
@@ -221,9 +242,9 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                             }
 
                             responder.respond(
-                                tauri::http::Response::builder()
+                                Response::builder()
                                     .status(206)
-                                    .header(tauri::http::header::CONTENT_TYPE, &mime_type)
+                                    .header(header::CONTENT_TYPE, &mime_type)
                                     .header("Access-Control-Allow-Origin", "*")
                                     .header("Accept-Ranges", "bytes")
                                     .header(
@@ -245,9 +266,9 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                             }
 
                             responder.respond(
-                                tauri::http::Response::builder()
+                                Response::builder()
                                     .status(200)
-                                    .header(tauri::http::header::CONTENT_TYPE, &mime_type)
+                                    .header(header::CONTENT_TYPE, &mime_type)
                                     .header("Access-Control-Allow-Origin", "*")
                                     .header("Accept-Ranges", "bytes")
                                     .header("Content-Length", buffer.len().to_string())
@@ -267,17 +288,17 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                                 let mut bytes = Vec::new();
                                 match reader.read_to_end(&mut bytes).await {
                                     Ok(_) => {
-                                        let mut builder = tauri::http::Response::builder()
+                                        let bytes_len = bytes.len() as u64;
+                                        let mut builder = Response::builder()
                                             .status(if byte_range.is_some() { 206 } else { 200 })
-                                            .header(tauri::http::header::CONTENT_TYPE, &mime_type)
-                                            .header("Access-Control-Allow-Origin", "*");
+                                            .header(header::CONTENT_TYPE, &mime_type)
+                                            .header("Access-Control-Allow-Origin", "*")
+                                            .header("Accept-Ranges", "bytes")
+                                            .header(header::CONTENT_LENGTH, bytes_len.to_string());
 
-                                        if let Some(rh) = request
-                                            .headers()
-                                            .get("Range")
-                                            .and_then(|v| v.to_str().ok())
-                                        {
-                                            builder = builder.header("Content-Range", rh);
+                                        if let Some((start, _)) = byte_range {
+                                            let end = if bytes_len > 0 { start + bytes_len - 1 } else { start };
+                                            builder = builder.header("Content-Range", format!("bytes {start}-{end}/*"));
                                         }
 
                                         responder.respond(builder.body(bytes).unwrap());
@@ -309,7 +330,7 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
     builder = builder.register_asynchronous_uri_scheme_protocol(
         "audio-cover",
         |app, request, responder| {
-            if request.method() == tauri::http::Method::OPTIONS {
+            if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;
             }
@@ -324,9 +345,9 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
 
                 if let Some(pic) = audio::extract_picture_from_path(&decoded_path) {
                     responder.respond(
-                        tauri::http::Response::builder()
+                        Response::builder()
                             .status(200)
-                            .header(tauri::http::header::CONTENT_TYPE, pic.mime_type)
+                            .header(header::CONTENT_TYPE, pic.mime_type)
                             .header("Access-Control-Allow-Origin", "*")
                             .header("Cache-Control", "max-age=3600")
                             .body(pic.data)
@@ -364,12 +385,9 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                                     audio::extract_picture_from_bytes(&bytes, extension)
                                 {
                                     responder.respond(
-                                        tauri::http::Response::builder()
+                                        Response::builder()
                                             .status(200)
-                                            .header(
-                                                tauri::http::header::CONTENT_TYPE,
-                                                pic.mime_type,
-                                            )
+                                            .header(header::CONTENT_TYPE, pic.mime_type)
                                             .header("Access-Control-Allow-Origin", "*")
                                             .header("Cache-Control", "max-age=3600")
                                             .body(pic.data)
@@ -400,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_error_response() {
-        let resp = error_response(tauri::http::StatusCode::NOT_FOUND, "not found text");
+        let resp = error_response(StatusCode::NOT_FOUND, "not found text");
         assert_eq!(resp.status(), 404);
         assert_eq!(
             resp.headers().get("Access-Control-Allow-Origin").unwrap(),

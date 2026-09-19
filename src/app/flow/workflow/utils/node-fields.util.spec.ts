@@ -84,6 +84,34 @@ describe('node-fields.util', () => {
     expect(fieldsUndefined.map(f => f.key)).toEqual(['status', 'summary', 'jobId', 'error']);
   });
 
+  it('assigns structured labelKey for all static fields matching flow.workflow.tokens.fields.<key>', () => {
+    const fields = getNodeFieldsForType('command');
+    for (const f of fields) {
+      expect(f.labelKey).toBe(`flow.workflow.tokens.fields.${f.key}`);
+    }
+  });
+
+  it('returns comprehensive predecessor fields for prev type', () => {
+    const prevFields = getNodeFieldsForType('prev');
+    const keys = prevFields.map(f => f.key);
+    expect(keys).toContain('summary');
+    expect(keys).toContain('status');
+    expect(keys).toContain('success');
+    expect(keys).toContain('stdout');
+    expect(keys).toContain('stderr');
+    expect(keys).toContain('exitCode');
+    expect(keys).toContain('bytesFormatted');
+    expect(keys).toContain('transfers');
+    expect(keys).toContain('report');
+    expect(keys).toContain('hasDifferences');
+    expect(keys).toContain('differ');
+    expect(keys).toContain('differCount');
+    expect(keys).toContain('error');
+    for (const f of prevFields) {
+      expect(f.labelKey).toBe(`flow.workflow.tokens.fields.${f.key}`);
+    }
+  });
+
   describe('extractFieldsFromObject', () => {
     it('extracts top-level and nested fields from objects and arrays', () => {
       const sample = {

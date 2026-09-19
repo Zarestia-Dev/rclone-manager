@@ -213,7 +213,7 @@
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--view-bg-color);
-  border: 1px solid var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color);
   transition: var(--transition-fast);
 
   .feature-icon {

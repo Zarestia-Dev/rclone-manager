@@ -41,6 +41,7 @@ export const SINGLE_CHANGE_OUTPUT = singleOutput('flow.workflow.ports.onChange',
 export const SINGLE_FINISH_OUTPUT = singleOutput('flow.workflow.ports.onFinish', 'Trigger');
 export const SINGLE_DONE_OUTPUT = singleOutput('flow.workflow.ports.done');
 export const SINGLE_AFTER_DELAY_OUTPUT = singleOutput('flow.workflow.ports.afterDelay');
+export const SINGLE_AFTER_SCHEDULE_OUTPUT = singleOutput('flow.workflow.ports.onSchedule');
 
 export const BOOLEAN_BRANCH_OUTPUTS: WorkflowPort[] = [
   {
@@ -213,6 +214,9 @@ export const PALETTE_ITEMS: NodePaletteItem[] = [
   }),
   createPaletteItem('delay', 'logic', STANDARD_TASK_INPUTS, SINGLE_AFTER_DELAY_OUTPUT, {
     delaySeconds: 5,
+  }),
+  createPaletteItem('schedule_wait', 'logic', STANDARD_TASK_INPUTS, SINGLE_AFTER_SCHEDULE_OUTPUT, {
+    cronExpression: '0 2 * * *',
   }),
   createPaletteItem('parallel_fork', 'logic', STANDARD_TASK_INPUTS, FORK_BRANCH_OUTPUTS, {}),
   createPaletteItem('join', 'logic', JOIN_BRANCH_INPUTS, SINGLE_DONE_OUTPUT, {

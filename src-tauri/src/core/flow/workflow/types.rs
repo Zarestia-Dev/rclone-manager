@@ -19,9 +19,8 @@ pub enum WorkflowNodeCategory {
 pub fn category_for_node_type(node_type: &str) -> WorkflowNodeCategory {
     match node_type {
         "manual" | "app_start" | "cron" | "watcher" | "job_event" => WorkflowNodeCategory::Trigger,
-        "branch" | "filter" | "delay" | "merge" | "retry" | "join" | "fork" | "loop" => {
-            WorkflowNodeCategory::Logic
-        }
+        "branch" | "filter" | "delay" | "schedule_wait" | "merge" | "retry" | "join" | "fork"
+        | "loop" => WorkflowNodeCategory::Logic,
         "notification" | "command" | "webhook" => WorkflowNodeCategory::Action,
         _ => WorkflowNodeCategory::Task,
     }
@@ -571,6 +570,10 @@ mod tests {
         assert_eq!(category_for_node_type("sync"), WorkflowNodeCategory::Task);
         assert_eq!(
             category_for_node_type("branch"),
+            WorkflowNodeCategory::Logic
+        );
+        assert_eq!(
+            category_for_node_type("schedule_wait"),
             WorkflowNodeCategory::Logic
         );
         assert_eq!(

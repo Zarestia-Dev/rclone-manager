@@ -339,6 +339,7 @@
             <app-logic-node-form
               [node]="node"
               [nodeConfig]="nodeConfig()"
+              (openDetailed)="openDetailedSettings()"
               (configChange)="onConfigFieldChange($event.key, $event.value)"
             ></app-logic-node-form>
           }
