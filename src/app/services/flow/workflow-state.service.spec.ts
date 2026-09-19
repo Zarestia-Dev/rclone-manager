@@ -228,6 +228,19 @@ describe('WorkflowStateService', () => {
       // Still clean because persistent structure hasn't changed!
       expect(service.hasUnsavedChanges()).toBe(false);
     });
+
+    it('does not mark hasUnsavedChanges as true when isDraggingNode is active without workflow modifications', () => {
+      service.createNewWorkflow('Touch Hold Flow');
+      service.markSaved();
+      expect(service.hasUnsavedChanges()).toBe(false);
+
+      // Simulating touch start / hold without position change
+      service.isDraggingNode.set(true);
+      expect(service.hasUnsavedChanges()).toBe(false);
+
+      service.isDraggingNode.set(false);
+      expect(service.hasUnsavedChanges()).toBe(false);
+    });
   });
 
   describe('multi-node positioning and bidirectional connections', () => {

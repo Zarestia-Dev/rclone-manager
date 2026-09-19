@@ -148,7 +148,7 @@
 
     .workflow-unsaved-banner {
       position: absolute;
-      bottom: 24px;
+      top: var(--space-xxs);
       left: 50%;
       transform: translateX(-50%);
       z-index: 20;
@@ -167,22 +167,6 @@
       max-width: calc(100% - 32px);
       box-sizing: border-box;
 
-      @media (max-width: 480px) {
-        bottom: 12px;
-        gap: 8px;
-        padding: 4px 6px 4px 12px;
-
-        .unsaved-status-group .unsaved-label {
-          font-size: var(--font-size-xs);
-        }
-
-        .unsaved-actions-group .unsaved-save-btn {
-          height: 28px;
-          padding: 0 10px;
-          font-size: var(--font-size-xs);
-        }
-      }
-
       .unsaved-status-group {
         display: inline-flex;
         align-items: center;
@@ -193,8 +177,7 @@
           height: 8px;
           border-radius: 50%;
           background-color: var(--warn-color);
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-          animation: unsavedDotPulse 2s infinite ease-in-out;
+          animation: pulseRed 2s infinite ease-in-out;
           flex-shrink: 0;
         }
 
@@ -203,7 +186,6 @@
           font-weight: 500;
           color: var(--window-fg-color);
           white-space: nowrap;
-          letter-spacing: 0.01em;
         }
       }
 
@@ -293,10 +275,6 @@ mat-sidenav {
   width: 320px;
   max-width: 85vw;
   box-sizing: border-box;
-
-  @media (max-width: 480px) {
-    width: 90vw;
-  }
 
   app-workflow-inspector {
     display: block;
@@ -409,17 +387,5 @@ mat-sidenav {
   to {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
-  }
-}
-
-@keyframes unsavedDotPulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.8);
   }
 }

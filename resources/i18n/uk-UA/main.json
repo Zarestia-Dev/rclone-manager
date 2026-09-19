@@ -1645,7 +1645,8 @@
       "zoomIn": "Наблизити",
       "zoomOut": "Віддалити",
       "resetZoom": "Скинути масштаб",
-      "hexPreview": "Шістнадцятковий перегляд"
+      "hexPreview": "Шістнадцятковий перегляд",
+      "playVideo": "Відтворити у відеоплеєрі"
     }
   },
   "dashboard": {
@@ -2419,7 +2420,8 @@
       "cloud": "Хмара",
       "fileSystem": "Файлова система",
       "bookmarks": "Закладки",
-      "localDisk": "Локальний диск"
+      "localDisk": "Локальний диск",
+      "internalStorage": "Внутрішня пам'ять"
     },
     "bookmarks": {
       "emptyHint": "Немає закладок"

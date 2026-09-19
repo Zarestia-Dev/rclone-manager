@@ -114,7 +114,6 @@ export class WorkflowStateService {
 
   /** Indicates whether the current workflow has unsaved changes compared to last saved state */
   readonly hasUnsavedChanges = computed<boolean>(() => {
-    if (this.isDraggingNode()) return true;
     const current = this.currentWorkflow();
     if (!current) return false;
     const baseline = this.lastSavedHash();

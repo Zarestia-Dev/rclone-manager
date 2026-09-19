@@ -1645,7 +1645,8 @@
       "zoomIn": "放大",
       "zoomOut": "缩小",
       "resetZoom": "重置缩放",
-      "hexPreview": "十六进制预览"
+      "hexPreview": "十六进制预览",
+      "playVideo": "在视频播放器中播放"
     }
   },
   "dashboard": {
@@ -2419,7 +2420,8 @@
       "cloud": "云端",
       "fileSystem": "文件系统",
       "bookmarks": "书签",
-      "localDisk": "本地磁盘"
+      "localDisk": "本地磁盘",
+      "internalStorage": "内部存储"
     },
     "bookmarks": {
       "emptyHint": "暂无书签"

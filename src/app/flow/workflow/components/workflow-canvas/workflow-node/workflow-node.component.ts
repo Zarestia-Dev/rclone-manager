@@ -175,12 +175,37 @@ export class WorkflowNodeComponent {
     }
   }
 
-  onPortMouseDown(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
+  onPortTouchStart(port: WorkflowPort, isOutput: boolean, event: TouchEvent): void {
     event.stopPropagation();
+    event.preventDefault();
+    if (event.touches.length !== 1) return;
+    if (this.stateService.isConnecting()) {
+      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
+      return;
+    }
+    const touch = event.touches[0];
+    const mouseLikeEvent = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0,
+      stopPropagation: () => event.stopPropagation(),
+      preventDefault: () => event.preventDefault(),
+    } as unknown as MouseEvent;
+    this.startConnecting.emit({ portId: port.id, isOutput, event: mouseLikeEvent });
+  }
+
+  onPortMouseDown(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    if (this.stateService.isConnecting()) {
+      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
+      return;
+    }
     this.startConnecting.emit({ portId: port.id, isOutput, event });
   }
 
   onPortMouseUp(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
+    if (event.button !== 0) return;
     event.stopPropagation();
     this.portMouseUp.emit({ portId: port.id, isOutput, event });
   }

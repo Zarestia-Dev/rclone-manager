@@ -520,7 +520,8 @@
       }
     }
 
-    &.mobile-pdf-card {
+    &.mobile-pdf-card,
+    &.mobile-video-card {
       padding: var(--space-2xl) var(--space-xl);
       max-width: 400px;
       margin: auto;
@@ -532,7 +533,15 @@
         color: var(--warn-color);
       }
 
-      .pdf-card-title {
+      .media-card-icon {
+        font-size: var(--icon-size-3xl);
+        width: var(--icon-size-3xl);
+        height: var(--icon-size-3xl);
+        color: var(--primary-color);
+      }
+
+      .pdf-card-title,
+      .media-card-title {
         margin: 0;
         font-size: var(--font-size-lg);
         font-weight: 600;

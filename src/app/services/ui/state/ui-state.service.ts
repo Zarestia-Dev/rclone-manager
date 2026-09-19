@@ -61,6 +61,9 @@ export class UiStateService {
     return val || 'compact';
   });
 
+  // Tray feature availability centrally synchronized with platform and settings
+  public readonly isTrayAvailable = this.appSettingsService.isTrayAvailable;
+
   // Selected remote state
   private readonly _selectedRemote = signal<Remote | null>(null);
   public readonly selectedRemote = this._selectedRemote.asReadonly();

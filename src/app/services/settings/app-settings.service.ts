@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
@@ -20,6 +20,11 @@ export class AppSettingsService extends TauriBaseService {
   private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
   public readonly options = this._options.asReadonly();
   public readonly options$ = toObservable(this._options);
+
+  public readonly isTrayAvailable = computed(() => {
+    const setting = this._options()?.['general.tray_enabled'];
+    return setting?.value === true;
+  });
 
   constructor() {
     super();

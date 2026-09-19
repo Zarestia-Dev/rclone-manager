@@ -1645,7 +1645,8 @@
       "zoomIn": "拡大",
       "zoomOut": "縮小",
       "resetZoom": "ズームをリセット",
-      "hexPreview": "16進プレビュー"
+      "hexPreview": "16進プレビュー",
+      "playVideo": "動画プレーヤーで再生"
     }
   },
   "dashboard": {
@@ -2419,7 +2420,8 @@
       "cloud": "クラウド",
       "fileSystem": "ファイルシステム",
       "bookmarks": "ブックマーク",
-      "localDisk": "ローカルディスク"
+      "localDisk": "ローカルディスク",
+      "internalStorage": "内部ストレージ"
     },
     "bookmarks": {
       "emptyHint": "ブックマークはありません"

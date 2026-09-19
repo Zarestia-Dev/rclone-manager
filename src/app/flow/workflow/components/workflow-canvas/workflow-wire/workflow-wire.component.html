@@ -5,6 +5,7 @@
     class="wire-hitbox"
     (click)="onSelect($event)"
     (mousedown)="$event.stopPropagation()"
+    (touchstart)="$event.stopPropagation()"
   />
 
   <!-- Background glow for selection / active flow -->
@@ -27,6 +28,7 @@
       [attr.transform]="'translate(' + midpoint().x + ',' + midpoint().y + ')'"
       (click)="onRemove($event)"
       (mousedown)="$event.stopPropagation()"
+      (touchstart)="$event.stopPropagation()"
     >
       <svg:circle r="18" class="handle-hitbox" />
       <svg:circle r="12" class="handle-bg" />

@@ -55,10 +55,10 @@
     // ── Optimized Vector Wire Layer ─────────────────────────────────────────
     .workflow-canvas-svg {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: -10000px;
+      left: -10000px;
+      width: 20000px;
+      height: 20000px;
       overflow: visible;
       pointer-events: none;
       shape-rendering: geometricPrecision;

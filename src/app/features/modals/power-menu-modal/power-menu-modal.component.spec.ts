@@ -72,20 +72,20 @@ describe('PowerMenuModalComponent', () => {
     expect(component.powerActions().length).toBe(6);
   });
 
-  it('should allow shutdown-app on native Android while filtering system power', () => {
+  it('should allow shutdown-app on native Android while filtering system power and restart', () => {
     component.isNativeMobile.set(true);
     component.isIOS.set(false);
     const actions = component.powerActions();
-    expect(actions.length).toBe(3);
-    expect(actions.map(a => a.id)).toEqual(['shutdown-app', 'restart-app', 'emergency-stop']);
+    expect(actions.length).toBe(2);
+    expect(actions.map(a => a.id)).toEqual(['shutdown-app', 'emergency-stop']);
   });
 
-  it('should filter out shutdown-app on native iOS for App Store compliance', () => {
+  it('should filter out shutdown-app and restart-app on native iOS', () => {
     component.isNativeMobile.set(true);
     component.isIOS.set(true);
     const actions = component.powerActions();
-    expect(actions.length).toBe(2);
-    expect(actions.map(a => a.id)).toEqual(['restart-app', 'emergency-stop']);
+    expect(actions.length).toBe(1);
+    expect(actions.map(a => a.id)).toEqual(['emergency-stop']);
   });
 
   it('should compute active operations as false when empty', () => {

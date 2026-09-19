@@ -1645,7 +1645,8 @@
       "zoomIn": "Aumentar zoom",
       "zoomOut": "Diminuir zoom",
       "resetZoom": "Redefinir zoom",
-      "hexPreview": "Pré-visualização hexadecimal"
+      "hexPreview": "Pré-visualização hexadecimal",
+      "playVideo": "Reproduzir no reprodutor de vídeo"
     }
   },
   "dashboard": {
@@ -2419,7 +2420,8 @@
       "cloud": "Nuvem",
       "fileSystem": "Sistema de Arquivos",
       "bookmarks": "Marcadores de página",
-      "localDisk": "Disco Local"
+      "localDisk": "Disco Local",
+      "internalStorage": "Armazenamento interno"
     },
     "bookmarks": {
       "emptyHint": "Sem marcas de página"

@@ -72,6 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Blank Page in Nautilus & UI Over Non-Secure HTTP Contexts**: Resolved `TypeError: crypto.randomUUID is not a function` when accessing the application over non-secure HTTP / remote IP addresses. Replaced direct `crypto.randomUUID()` calls across Nautilus, File System, Quick Run, and User Template services with a robust, zero-dependency `generatePrefixedId` utility featuring base36 monotonic timestamping, sequence counting, and context prefixes. Fixes #292
 - **Canonical Rclone Preset Flag Mapping for macOS Mounts & S3 Backend**: Corrected preset flag definitions in `RemotePresetsService` to use upstream canonical Rclone flag names (`noappledouble`, `noapplexattr` instead of snake_case `no_apple_*` for macOS mounts, and `use_server_modtime` instead of `use_server_mod_time` for S3). Fixes #290
 - **Docker FUSE Mount Failures with `--allow-other` and Non-Root `PUID`/`PGID`**: Fixed an issue where mounting cloud remotes using the `--allow-other` flag inside Docker failed with `failed to mount FUSE fs: fusermount: exit status 1` when running as a non-root user via `PUID`/`PGID`. The container entrypoint and runtime image now automatically enable `user_allow_other` in `/etc/fuse.conf` upon startup, enabling non-root FUSE mounts with multi-user access out of the box. Fixes #303
+- Various bug fixes and stability improvements.
 
 
 ## [v0.3.2] - 2026-08-24

@@ -372,4 +372,62 @@ describe('WorkflowNodeComponent', () => {
     fixture.detectChanges();
     expect(component.displayTitle()).toBe('flow.workflow.nodes.manualTrigger');
   });
+
+  it('emits inspectNode when inspect button is clicked', () => {
+    const inspectSpy = vi.fn();
+    component.inspectNode.subscribe(inspectSpy);
+
+    const actionButtons = fixture.nativeElement.querySelectorAll('.node-actions .action-button');
+    // Inspect button has svgIcon="tune"
+    let inspectBtn: HTMLElement | null = null;
+    for (const btn of Array.from(actionButtons) as HTMLElement[]) {
+      if (btn.querySelector('mat-icon[svgIcon="tune"]')) {
+        inspectBtn = btn;
+        break;
+      }
+    }
+    expect(inspectBtn).toBeTruthy();
+    inspectBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(inspectSpy).toHaveBeenCalledWith(mockNode.id);
+  });
+
+  it('supports touch and pointer interactions on ports without bubbling to node card', () => {
+    const startSpy = vi.fn();
+    component.startConnecting.subscribe(startSpy);
+
+    const inputHandle = fixture.nativeElement.querySelector('.input-handle');
+    const touchEvent = new CustomEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(touchEvent, 'touches', {
+      value: [{ clientX: 50, clientY: 75 }],
+    });
+    inputHandle.dispatchEvent(touchEvent);
+
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ portId: 'in', isOutput: false })
+    );
+  });
+
+  it('completes connection on tap-to-connect when isConnecting is already active', () => {
+    const stateService = TestBed.inject(WorkflowStateService);
+    const finishSpy = vi.spyOn(stateService, 'finishConnecting').mockReturnValue(true);
+    stateService.startConnecting('other-node', 'out', 10, 10, true);
+
+    const inputHandle = fixture.nativeElement.querySelector('.input-handle');
+    inputHandle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(finishSpy).toHaveBeenCalledWith(mockNode.id, 'in', false);
+  });
+
+  it('ignores right-click on port mousedown', () => {
+    const startSpy = vi.fn();
+    component.startConnecting.subscribe(startSpy);
+
+    const inputHandle = fixture.nativeElement.querySelector('.input-handle');
+    inputHandle.dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true }));
+
+    expect(startSpy).not.toHaveBeenCalled();
+  });
 });

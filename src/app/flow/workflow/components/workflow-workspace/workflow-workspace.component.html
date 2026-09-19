@@ -77,7 +77,10 @@
           }
 
           <!-- Center: Visual Canvas -->
-          <app-workflow-canvas class="canvas-host"></app-workflow-canvas>
+          <app-workflow-canvas
+            class="canvas-host"
+            (inspectNode)="openInspector()"
+          ></app-workflow-canvas>
 
           <!-- Floating Unsaved Changes / Save Bar at Bottom Center -->
           @if (stateService.hasUnsavedChanges()) {

@@ -1645,7 +1645,8 @@
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
       "resetZoom": "Yakınlaştırmayı Sıfırla",
-      "hexPreview": "Hex Önizleme"
+      "hexPreview": "Hex Önizleme",
+      "playVideo": "Videoyu Oynat"
     }
   },
   "dashboard": {
@@ -2460,7 +2461,8 @@
       "cloud": "Bulut",
       "fileSystem": "Dosya Sistemi",
       "bookmarks": "Yer İmleri",
-      "localDisk": "Yerel Disk"
+      "localDisk": "Yerel Disk",
+      "internalStorage": "Dahili Depolama"
     },
     "bookmarks": {
       "emptyHint": "Yer imi yok"

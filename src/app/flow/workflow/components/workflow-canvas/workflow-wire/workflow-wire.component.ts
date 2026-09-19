@@ -32,12 +32,12 @@ export class WorkflowWireComponent {
     return getCubicBezierMidpoint(s.x, s.y, t.x, t.y);
   });
 
-  onSelect(event: MouseEvent): void {
+  onSelect(event: Event): void {
     event.stopPropagation();
     this.selectWire.emit(this.edge().id);
   }
 
-  onRemove(event: MouseEvent): void {
+  onRemove(event: Event): void {
     event.stopPropagation();
     this.removeWire.emit(this.edge().id);
   }

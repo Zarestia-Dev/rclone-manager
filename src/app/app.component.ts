@@ -61,6 +61,7 @@ export class AppComponent implements OnInit {
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly androidShareService = inject(AndroidShareService);
 
   readonly selectedMainView = this.uiStateService.selectedMainView;
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
@@ -75,7 +76,7 @@ export class AppComponent implements OnInit {
     this.connectSseIfHeadless();
 
     // Start listening for Android share intents (no-op on desktop/web).
-    inject(AndroidShareService).initialize();
+    this.androidShareService.initialize();
 
     // Wire overlay signals into UiStateService for mobile-sidebar computation.
     this.uiStateService.setOverlaySignals({
@@ -134,7 +135,11 @@ export class AppComponent implements OnInit {
           return;
         }
 
-        if (this.nautilusService.targetPath() || this.nautilusService.selectedNautilusRemote()) {
+        if (
+          this.nautilusService.targetPath() ||
+          this.nautilusService.selectedNautilusRemote() ||
+          this.androidShareService.pendingSharedPaths().length > 0
+        ) {
           return;
         }
 
@@ -149,7 +154,11 @@ export class AppComponent implements OnInit {
   }
 
   private async applyDefaultView(): Promise<void> {
-    if (this.nautilusService.targetPath() || this.nautilusService.selectedNautilusRemote()) {
+    if (
+      this.nautilusService.targetPath() ||
+      this.nautilusService.selectedNautilusRemote() ||
+      this.androidShareService.pendingSharedPaths().length > 0
+    ) {
       return;
     }
 

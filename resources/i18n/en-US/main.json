@@ -1645,7 +1645,8 @@
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
       "resetZoom": "Reset Zoom",
-      "hexPreview": "Hex Preview"
+      "hexPreview": "Hex Preview",
+      "playVideo": "Play in Video Player"
     }
   },
   "dashboard": {
@@ -2460,7 +2461,8 @@
       "cloud": "Cloud",
       "fileSystem": "File System",
       "bookmarks": "Bookmarks",
-      "localDisk": "Local Disk"
+      "localDisk": "Local Disk",
+      "internalStorage": "Internal Storage"
     },
     "bookmarks": {
       "emptyHint": "No bookmarks"

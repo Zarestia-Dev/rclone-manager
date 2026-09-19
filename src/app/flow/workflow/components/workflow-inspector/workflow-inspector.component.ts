@@ -469,20 +469,6 @@ export class WorkflowInspectorComponent {
     await this.storageService.duplicateWorkflowWithFeedback(wf.id);
   }
 
-  async exportActiveWorkflowJson(): Promise<void> {
-    const wf = this.stateService.currentWorkflow();
-    if (!wf) return;
-    const jsonStr = await this.storageService.exportWorkflowJson(wf);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const safeName = (wf.name || 'workflow').replace(/[^a-z0-9_-]/gi, '_');
-    a.download = `${safeName}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async deleteActiveWorkflow(): Promise<void> {
     const wf = this.stateService.currentWorkflow();
     if (!wf) return;
@@ -490,10 +476,7 @@ export class WorkflowInspectorComponent {
   }
 
   closeInspectorPanel(): void {
-    if (this.selectedNode()) {
-      this.stateService.clearSelection();
-    } else {
-      this.closeInspector.emit();
-    }
+    this.stateService.clearSelection();
+    this.closeInspector.emit();
   }
 }

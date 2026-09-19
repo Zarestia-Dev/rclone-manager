@@ -71,12 +71,14 @@ describe('FileViewerModalComponent', () => {
   beforeEach(async () => {
     fileViewerServiceMock = {
       setActiveFileName: vi.fn(),
+      generateUrl: vi.fn().mockResolvedValue('http://localhost/resolved-url'),
       resolveRelativePath: vi.fn().mockResolvedValue('http://localhost/resolved-path'),
       getAudioCover: vi.fn().mockResolvedValue(null),
     };
 
     downloadServiceMock = {
       download: vi.fn(),
+      openFileNatively: vi.fn().mockResolvedValue(undefined),
     };
 
     openerServiceMock = {
@@ -90,6 +92,7 @@ describe('FileViewerModalComponent', () => {
     iconServiceMock = {
       getFileTypeCategory: vi.fn().mockImplementation((item: Entry) => {
         if (item.Name.endsWith('.jpg') || item.Name.endsWith('.svg')) return 'image';
+        if (item.Name.endsWith('.mp4')) return 'video';
         if (item.Name.endsWith('.md')) return 'text';
         return 'text';
       }),
@@ -403,6 +406,45 @@ describe('FileViewerModalComponent', () => {
       expect(component.isLoading()).toBe(true);
 
       component.onLoadComplete();
+      expect(component.isLoading()).toBe(false);
+    });
+  });
+
+  describe('Native Opening and Video Handling', () => {
+    it('should invoke downloadService.openFileNatively when openNativeFile is called', async () => {
+      await component.openNativeFile();
+
+      expect(downloadServiceMock.openFileNatively).toHaveBeenCalledWith(
+        'local',
+        'docs/document.txt',
+        'document.txt',
+        true
+      );
+    });
+
+    it('should set isLoading to false when viewing video on mobile', async () => {
+      vi.spyOn(component, 'isMobile').mockReturnValue(true);
+      const videoItem: Entry = {
+        ID: 'vid1',
+        Name: 'recording.mp4',
+        Path: 'media/recording.mp4',
+        IsDir: false,
+        Size: 10485760,
+        ModTime: '2026-09-01T12:00:00Z',
+        MimeType: 'video/mp4',
+      };
+      component.data = {
+        items: [videoItem],
+        currentIndex: 0,
+        url: 'http://local-asset.localhost/media/recording.mp4',
+        isLocal: true,
+        remoteName: 'local',
+        isDirectUrl: false,
+      };
+
+      await component.updateData();
+
+      expect(component.currentFileType()).toBe('video');
       expect(component.isLoading()).toBe(false);
     });
   });

@@ -17,7 +17,7 @@
   <!-- Dot Grid & Scalable Plane -->
   <div class="workflow-canvas-plane" [style.transform]="canvasTransform()">
     <!-- SVG Wires Layer -->
-    <svg class="workflow-canvas-svg">
+    <svg class="workflow-canvas-svg" viewBox="-10000 -10000 20000 20000">
       @for (wire of renderedWires(); track wire.edge.id) {
         <g
           app-workflow-wire
@@ -65,9 +65,13 @@
   </div>
 
   <!-- Floating Canvas Navigation Hub (Minimap + Floating Zoom Pill) -->
-  <div class="canvas-navigation-hub" [class.is-focus-mode]="stateService.isMobileFocusMode()">
+  <div
+    class="canvas-navigation-hub"
+    [class.is-focus-mode]="stateService.isMobileFocusMode()"
+    (touchstart)="$event.stopPropagation()"
+  >
     @if (showMinimap()) {
-      <div class="minimap-container">
+      <div class="minimap-container" (touchstart)="$event.stopPropagation()">
         <app-workflow-minimap
           [nodes]="activeWorkflow()?.nodes || []"
           [edges]="activeWorkflow()?.edges || []"
@@ -84,6 +88,7 @@
     <div
       class="floating-zoom-toolbar"
       (mousedown)="$event.stopPropagation()"
+      (touchstart)="$event.stopPropagation()"
       (wheel)="$event.stopPropagation()"
       role="toolbar"
       [attr.aria-label]="'flow.workflow.canvas.navigation' | translate"

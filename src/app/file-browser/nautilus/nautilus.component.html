@@ -188,18 +188,30 @@
 
     @if (pendingSharedPaths().length > 0) {
       <div class="android-share-banner">
-        <mat-icon svgIcon="upload" class="share-icon"></mat-icon>
+        <mat-icon svgIcon="file-arrow-up" class="accent"></mat-icon>
         <span class="share-label">
           {{
             'nautilus.androidShare.uploadHere' | translate: { count: pendingSharedPaths().length }
           }}
         </span>
         <div class="share-actions">
-          <button matButton (click)="cancelSharedFiles()" class="share-cancel-btn">
-            {{ 'shared.actions.cancel' | translate }}
+          <button
+            matIconButton
+            (click)="cancelSharedFiles()"
+            class="share-cancel-btn"
+            [attr.title]="'shared.actions.cancel' | translate"
+            [attr.aria-label]="'shared.actions.cancel' | translate"
+          >
+            <mat-icon svgIcon="close" class="warn"></mat-icon>
           </button>
-          <button matButton="filled" class="accent share-confirm-btn" (click)="uploadSharedFiles()">
-            {{ 'nautilus.androidShare.confirm' | translate }}
+          <button
+            matIconButton
+            class="accent"
+            (click)="uploadSharedFiles()"
+            [attr.title]="'nautilus.androidShare.confirm' | translate"
+            [attr.aria-label]="'nautilus.androidShare.confirm' | translate"
+          >
+            <mat-icon svgIcon="check-circle"></mat-icon>
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@
   (keydown.enter)="onCardClick($event)"
   (keydown.space)="onCardClick($event)"
   (dblclick)="onInspect($event)"
+  (contextmenu)="$event.preventDefault()"
 >
   <!-- Node Header -->
   <div class="node-header">
@@ -31,6 +32,7 @@
           class="action-button job-btn"
           [class.is-running]="job.status === 'Running'"
           (click)="onInspectJob($event)"
+          (touchstart)="$event.stopPropagation()"
           [attr.title]="'flow.workflow.actions.inspectJob' | translate"
         >
           <mat-icon svgIcon="jobs"></mat-icon>
@@ -39,7 +41,17 @@
       <button
         type="button"
         class="action-button"
+        (click)="onInspect($event)"
+        (touchstart)="$event.stopPropagation()"
+        [attr.title]="'flow.workflow.toolbar.toggleInspector' | translate"
+      >
+        <mat-icon svgIcon="tune"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="action-button"
         (click)="onDuplicate($event)"
+        (touchstart)="$event.stopPropagation()"
         [attr.title]="'flow.workflow.actions.duplicate' | translate"
       >
         <mat-icon svgIcon="copy"></mat-icon>
@@ -48,6 +60,7 @@
         type="button"
         class="action-button danger"
         (click)="onDelete($event)"
+        (touchstart)="$event.stopPropagation()"
         [attr.title]="'flow.workflow.actions.delete' | translate"
       >
         <mat-icon svgIcon="trash"></mat-icon>
@@ -115,10 +128,13 @@
             >
               <div
                 class="port-handle input-handle"
+                [attr.data-node-id]="node().id"
                 [attr.data-port-id]="inPort.id"
                 [attr.data-port-type]="inPort.type"
+                [attr.data-is-output]="false"
                 (mousedown)="onPortMouseDown(inPort, false, $event)"
                 (mouseup)="onPortMouseUp(inPort, false, $event)"
+                (touchstart)="onPortTouchStart(inPort, false, $event)"
               ></div>
               <span class="port-label truncate">{{
                 inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
@@ -139,10 +155,13 @@
               }}</span>
               <div
                 class="port-handle output-handle"
+                [attr.data-node-id]="node().id"
                 [attr.data-port-id]="outPort.id"
                 [attr.data-port-type]="outPort.type"
+                [attr.data-is-output]="true"
                 (mousedown)="onPortMouseDown(outPort, true, $event)"
                 (mouseup)="onPortMouseUp(outPort, true, $event)"
+                (touchstart)="onPortTouchStart(outPort, true, $event)"
               ></div>
             </div>
           }

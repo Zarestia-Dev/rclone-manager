@@ -1645,7 +1645,8 @@
       "zoomIn": "Zoom avant",
       "zoomOut": "Zoom arrière",
       "resetZoom": "Réinitialiser le zoom",
-      "hexPreview": "Aperçu hexadécimal"
+      "hexPreview": "Aperçu hexadécimal",
+      "playVideo": "Lire dans le lecteur vidéo"
     }
   },
   "dashboard": {
@@ -2419,7 +2420,8 @@
       "cloud": "Cloud",
       "fileSystem": "Fichier Système",
       "bookmarks": "Signets",
-      "localDisk": "Disque local"
+      "localDisk": "Disque local",
+      "internalStorage": "Stockage interne"
     },
     "bookmarks": {
       "emptyHint": "Aucun signet"

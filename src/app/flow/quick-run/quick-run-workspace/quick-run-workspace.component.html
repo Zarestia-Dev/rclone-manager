@@ -20,16 +20,18 @@
   </button>
   <ng-template #quickRunMenu>
     <div class="material-context-menu" cdkMenu>
-      <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
-        <mat-checkbox
-          labelPosition="before"
-          [checked]="isShowOnTray(qr)"
-          (change)="toggleShowOnTray(qr, $event.checked)"
-        >
-          <span>{{ 'home.options.showInTray' | translate }}</span>
-        </mat-checkbox>
-      </button>
-      <mat-divider></mat-divider>
+      @if (isTrayAvailable()) {
+        <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
+          <mat-checkbox
+            labelPosition="before"
+            [checked]="isShowOnTray(qr)"
+            (change)="toggleShowOnTray(qr, $event.checked)"
+          >
+            <span>{{ 'home.options.showInTray' | translate }}</span>
+          </mat-checkbox>
+        </button>
+        <mat-divider></mat-divider>
+      }
       <button class="menu-item" (click)="openLogsModal(qr.remoteName)" cdkMenuItem>
         <mat-icon svgIcon="terminal" class="menu-item-icon"></mat-icon>
         <span class="menu-item-label">{{ 'home.options.viewLogs' | translate }}</span>

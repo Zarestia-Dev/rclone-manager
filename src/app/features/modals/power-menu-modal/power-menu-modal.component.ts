@@ -118,8 +118,14 @@ export class PowerMenuModalComponent {
 
     if (isMobileNative) {
       // Native Android/iOS cannot execute OS-level power actions (device shutdown/sleep/lock)
+      // or restart the application process.
       return allActions.filter(a => {
-        if (a.id === 'system-shutdown' || a.id === 'system-sleep' || a.id === 'system-lock') {
+        if (
+          a.id === 'system-shutdown' ||
+          a.id === 'system-sleep' ||
+          a.id === 'system-lock' ||
+          a.id === 'restart-app'
+        ) {
           return false;
         }
         // Apple App Store rejects apps with an exit/quit button, but Android allows it

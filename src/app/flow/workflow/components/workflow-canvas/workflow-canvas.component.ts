@@ -10,6 +10,7 @@ import {
   afterNextRender,
   OnDestroy,
   DestroyRef,
+  output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
@@ -92,6 +93,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
   });
 
   readonly canvasContainer = viewChild<ElementRef<HTMLElement>>('canvasContainer');
+  readonly inspectNode = output<string>();
 
   readonly isPanning = signal<boolean>(false);
   private panStart = { x: 0, y: 0 };
@@ -104,9 +106,12 @@ export class WorkflowCanvasComponent implements OnDestroy {
   private hasDraggedNode = false;
   private dragRafId: number | null = null;
   private pendingDragCoords: { clientX: number; clientY: number } | null = null;
+  private ignoreNextClick = false;
 
   // Wire Connection State
   readonly isConnecting = this.stateService.isConnecting;
+  private highlightedPortEl: HTMLElement | null = null;
+  private connectStartScreen = { x: 0, y: 0 };
 
   readonly activeWorkflow = this.stateService.currentWorkflow;
   readonly viewport = this.stateService.viewport;
@@ -166,6 +171,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.flushPendingDrag();
+    this.clearPortCandidateHighlight();
     this.stateService.isMobileFocusMode.set(false);
   }
 
@@ -257,7 +263,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const deltaX = canvasX - this.dragStartCanvasPos.x;
     const deltaY = canvasY - this.dragStartCanvasPos.y;
 
-    if (!this.hasDraggedNode && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+    if (!this.hasDraggedNode && Math.hypot(deltaX, deltaY) > 6) {
       this.hasDraggedNode = true;
       this.stateService.snapshot();
       this.stateService.isDraggingNode.set(true);
@@ -330,6 +336,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
       if (!container) return;
       const rect = container.getBoundingClientRect();
       this.stateService.updateConnecting(event.clientX - rect.left, event.clientY - rect.top);
+      this.updatePortCandidateHighlight(event.clientX, event.clientY);
     }
   }
 
@@ -342,10 +349,35 @@ export class WorkflowCanvasComponent implements OnDestroy {
       this.flushPendingDrag();
       this.stateService.isDraggingNode.set(false);
       this.draggingNodeId.set(null);
+      if (this.hasDraggedNode) {
+        this.ignoreNextClick = true;
+        setTimeout(() => {
+          this.ignoreNextClick = false;
+        }, 100);
+      }
       this.hasDraggedNode = false;
       this.initialNodePositions.clear();
     }
     if (this.isConnecting()) {
+      this.clearPortCandidateHighlight();
+      this.stateService.cancelConnecting();
+    }
+  }
+
+  @HostListener('window:touchcancel')
+  onWindowTouchCancel(): void {
+    if (this.isPanning()) {
+      this.isPanning.set(false);
+    }
+    if (this.draggingNodeId()) {
+      this.flushPendingDrag();
+      this.stateService.isDraggingNode.set(false);
+      this.draggingNodeId.set(null);
+      this.hasDraggedNode = false;
+      this.initialNodePositions.clear();
+    }
+    if (this.isConnecting()) {
+      this.clearPortCandidateHighlight();
       this.stateService.cancelConnecting();
     }
   }
@@ -401,8 +433,47 @@ export class WorkflowCanvasComponent implements OnDestroy {
 
   // ── Node Interactions ────────────────────────────────────────────────────
 
+  private isNearConnectStart(clientX: number, clientY: number): boolean {
+    const dx = Math.abs(clientX - this.connectStartScreen.x);
+    const dy = Math.abs(clientY - this.connectStartScreen.y);
+    return dx < 12 && dy < 12;
+  }
+
+  private findPortHandleAt(clientX: number, clientY: number): HTMLElement | null {
+    if (typeof document.elementFromPoint !== 'function') return null;
+    const hitEl = document.elementFromPoint(clientX, clientY);
+    if (!hitEl) return null;
+    return (
+      (hitEl.closest('.port-handle') as HTMLElement | null) ||
+      (hitEl.closest('.port-slot')?.querySelector('.port-handle') as HTMLElement | null) ||
+      (hitEl.closest('.port-row')?.querySelector('.port-handle') as HTMLElement | null)
+    );
+  }
+
+  private updatePortCandidateHighlight(clientX: number, clientY: number): void {
+    const portHandle = this.findPortHandleAt(clientX, clientY);
+    if (portHandle !== this.highlightedPortEl) {
+      this.clearPortCandidateHighlight();
+      if (portHandle) {
+        portHandle.classList.add('connect-candidate');
+        this.highlightedPortEl = portHandle;
+      }
+    }
+  }
+
+  private clearPortCandidateHighlight(): void {
+    if (this.highlightedPortEl) {
+      this.highlightedPortEl.classList.remove('connect-candidate');
+      this.highlightedPortEl = null;
+    }
+  }
+
   onNodeMouseDown(node: WorkflowNode, event: MouseEvent): void {
     if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
+      return;
+    }
     event.stopPropagation();
 
     const isMultiModifier = event.shiftKey || event.ctrlKey;
@@ -443,6 +514,10 @@ export class WorkflowCanvasComponent implements OnDestroy {
 
   onNodeTouchStart(node: WorkflowNode, event: TouchEvent): void {
     if (event.touches.length !== 1) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.port-handle') || target?.closest('.action-button')) {
+      return;
+    }
     event.stopPropagation();
 
     this.draggingNodeId.set(node.id);
@@ -485,8 +560,19 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const touches = event.touches;
     if (touches.length === 1) {
       const target = event.target as HTMLElement | null;
-      const isNode = target?.closest('.workflow-node-positioned');
-      if (!isNode) {
+      const isInteractive =
+        target?.closest('.workflow-node-positioned') ||
+        target?.closest('.workflow-wire-group') ||
+        target?.closest('.canvas-navigation-hub') ||
+        target?.closest('.workflow-unsaved-banner') ||
+        target?.closest('.palette-open-trigger') ||
+        target?.closest('.inspector-open-trigger');
+
+      if (!isInteractive) {
+        if (this.stateService.isConnecting()) {
+          this.clearPortCandidateHighlight();
+          this.stateService.cancelConnecting();
+        }
         this.isPanning.set(true);
         this.isPinching = false;
         this.panStart = { x: touches[0].clientX, y: touches[0].clientY };
@@ -513,6 +599,18 @@ export class WorkflowCanvasComponent implements OnDestroy {
 
   onCanvasTouchMove(event: TouchEvent): void {
     const touches = event.touches;
+
+    if (this.isConnecting() && touches.length === 1) {
+      event.preventDefault();
+      const container = this.canvasContainer()?.nativeElement;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const touch = touches[0];
+      this.stateService.updateConnecting(touch.clientX - rect.left, touch.clientY - rect.top);
+      this.updatePortCandidateHighlight(touch.clientX, touch.clientY);
+      return;
+    }
+
     if (this.isPinching && touches.length === 2) {
       event.preventDefault();
       const t1 = touches[0];
@@ -546,6 +644,34 @@ export class WorkflowCanvasComponent implements OnDestroy {
   }
 
   onCanvasTouchEnd(event: TouchEvent): void {
+    if (this.isConnecting()) {
+      const candidateEl = this.highlightedPortEl;
+      this.clearPortCandidateHighlight();
+      const touch = event.changedTouches?.[0];
+      if (touch) {
+        const portHandle = this.findPortHandleAt(touch.clientX, touch.clientY) || candidateEl;
+        if (portHandle) {
+          const targetNodeId = portHandle.getAttribute('data-node-id');
+          const targetPortId = portHandle.getAttribute('data-port-id');
+          const isOutput = portHandle.getAttribute('data-is-output') === 'true';
+          if (targetNodeId && targetPortId) {
+            const finished = this.stateService.finishConnecting(
+              targetNodeId,
+              targetPortId,
+              isOutput
+            );
+            if (finished) return;
+          }
+        }
+        if (this.isNearConnectStart(touch.clientX, touch.clientY)) {
+          // Tap-to-connect gesture on start port: keep connection preview active
+          return;
+        }
+      }
+      this.stateService.cancelConnecting();
+      return;
+    }
+
     if (event.touches.length === 0) {
       this.isPanning.set(false);
       this.isPinching = false;
@@ -553,6 +679,12 @@ export class WorkflowCanvasComponent implements OnDestroy {
         this.flushPendingDrag();
         this.stateService.isDraggingNode.set(false);
         this.draggingNodeId.set(null);
+        if (this.hasDraggedNode) {
+          this.ignoreNextClick = true;
+          setTimeout(() => {
+            this.ignoreNextClick = false;
+          }, 100);
+        }
         this.hasDraggedNode = false;
         this.initialNodePositions.clear();
       }
@@ -568,11 +700,12 @@ export class WorkflowCanvasComponent implements OnDestroy {
     sourceNodeId: string,
     portId: string,
     isOutput: boolean,
-    event: MouseEvent
+    event: MouseEvent | PointerEvent
   ): void {
     const container = this.canvasContainer()?.nativeElement;
     if (!container) return;
     const rect = container.getBoundingClientRect();
+    this.connectStartScreen = { x: event.clientX, y: event.clientY };
     this.stateService.startConnecting(
       sourceNodeId,
       portId,
@@ -583,10 +716,12 @@ export class WorkflowCanvasComponent implements OnDestroy {
   }
 
   onPortMouseUp(targetNodeId: string, portId: string, isOutput: boolean): void {
+    this.clearPortCandidateHighlight();
     this.stateService.finishConnecting(targetNodeId, portId, isOutput);
   }
 
   onNodeSelected(nodeId: string): void {
+    if (this.ignoreNextClick) return;
     if (!this.stateService.selectedNodeIds().has(nodeId)) {
       this.stateService.selectNode(nodeId);
     }
@@ -600,10 +735,11 @@ export class WorkflowCanvasComponent implements OnDestroy {
     const node = this.activeWorkflow()?.nodes.find(n => n.id === nodeId);
     if (!node) return;
 
+    this.stateService.selectNode(nodeId);
     if (hasDetailedConfig(node.type)) {
       this.modalService.openWorkflowNodeEditor(node);
     } else {
-      this.stateService.selectNode(nodeId);
+      this.inspectNode.emit(nodeId);
     }
   }
 

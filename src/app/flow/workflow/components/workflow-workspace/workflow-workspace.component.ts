@@ -85,15 +85,6 @@ export class WorkflowWorkspaceComponent {
       }
     });
 
-    // In mobile ('over') mode, auto-open inspector when a node is selected
-    effect(() => {
-      const node = this.stateService.selectedNode();
-      if (node && this.isSidebarOver()) {
-        this.isInspectorOpen.set(true);
-        this.isPaletteOpen.set(false);
-      }
-    });
-
     // Synchronize mobile drawer state to stateService so FlowContainer can auto-hide bottom tabs
     effect(() => {
       this.stateService.isWorkspaceDrawerOpen.set(this.isAnyDrawerOpenOnMobile());
@@ -194,6 +185,24 @@ export class WorkflowWorkspaceComponent {
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     if (isInputFocused(event)) return;
+    if (!this.hasWorkflow()) return;
+
+    if (matchesShortcut('Ctrl + Shift + Z / Ctrl + Y', event)) {
+      event.preventDefault();
+      if (this.stateService.canRedo()) {
+        this.stateService.redo();
+      }
+      return;
+    }
+
+    if (matchesShortcut('Ctrl + Z', event)) {
+      event.preventDefault();
+      if (this.stateService.canUndo()) {
+        this.stateService.undo();
+      }
+      return;
+    }
+
     if (matchesShortcut('Ctrl + S', event)) {
       event.preventDefault();
       if (this.stateService.hasUnsavedChanges()) {

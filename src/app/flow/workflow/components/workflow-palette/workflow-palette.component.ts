@@ -184,9 +184,12 @@ export class WorkflowPaletteComponent {
     if (this._ignoreNextItemClick) return;
 
     const vp = this.stateService.viewport();
-    // Center node relative to current canvas camera
-    const canvasX = (400 - vp.x) / vp.zoom;
-    const canvasY = (300 - vp.y) / vp.zoom;
+    const dims = this.stateService.canvasDimensions();
+    const midX = (dims.width || 800) / 2;
+    const midY = (dims.height || 600) / 2;
+    // Center node relative to current canvas camera (offset by half node width)
+    const canvasX = (midX - vp.x) / vp.zoom - 120;
+    const canvasY = (midY - vp.y) / vp.zoom - 40;
     const title = this.translate.instant(item.titleKey);
 
     this.stateService.addNode(item.type, item.category, title, canvasX, canvasY, {

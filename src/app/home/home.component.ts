@@ -80,6 +80,7 @@ export class HomeComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeBackend = this.backendService.activeBackend;
+  readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
   readonly currentTab = this.uiStateService.currentTab;
   readonly remotes = this.remoteFacadeService.orderedRemotes;
   readonly jobs = this.remoteFacadeService.jobs;

@@ -180,7 +180,7 @@
         type="button"
         (click)="undo()"
         [disabled]="!stateService.canUndo()"
-        [attr.title]="'flow.workflow.toolbar.undo' | translate"
+        [attr.title]="('flow.workflow.toolbar.undo' | translate) + ' (Ctrl+Z)'"
       >
         <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
       </button>
@@ -189,7 +189,7 @@
         type="button"
         (click)="redo()"
         [disabled]="!stateService.canRedo()"
-        [attr.title]="'flow.workflow.toolbar.redo' | translate"
+        [attr.title]="('flow.workflow.toolbar.redo' | translate) + ' (Ctrl+Y)'"
       >
         <mat-icon svgIcon="rotate-right"></mat-icon>
       </button>

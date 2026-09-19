@@ -31,7 +31,6 @@ describe('WorkflowInspectorComponent', () => {
   let storageServiceSpy: {
     saveWorkflow: ReturnType<typeof vi.fn>;
     duplicateWorkflow: ReturnType<typeof vi.fn>;
-    exportWorkflowJson: ReturnType<typeof vi.fn>;
     deleteWorkflow: ReturnType<typeof vi.fn>;
     workflows: ReturnType<typeof vi.fn>;
   };
@@ -57,7 +56,6 @@ describe('WorkflowInspectorComponent', () => {
       duplicateWorkflow: vi
         .fn()
         .mockResolvedValue({ id: 'wf-2', name: 'Inspector Test (Copy)', nodes: [], edges: [] }),
-      exportWorkflowJson: vi.fn().mockResolvedValue('{"id":"wf-1"}'),
       deleteWorkflow: vi.fn().mockResolvedValue(undefined),
       workflows: vi.fn().mockReturnValue([]),
     };
@@ -369,5 +367,32 @@ describe('WorkflowInspectorComponent', () => {
     inspectBtn.click();
 
     expect(modalServiceSpy.openJobDetail).toHaveBeenCalledWith(mockJob);
+  });
+
+  it('closes inspector panel and clears selection when node is selected', () => {
+    const node = stateService.addNode('sync', 'task', 'Sync Node', 10, 10);
+    stateService.selectNode(node.id);
+    expect(stateService.selectedNode()?.id).toBe(node.id);
+
+    const closeSpy = vi.fn();
+    component.closeInspector.subscribe(closeSpy);
+
+    component.closeInspectorPanel();
+
+    expect(stateService.selectedNode()).toBeNull();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes inspector panel when no node is selected (workflow details)', () => {
+    stateService.clearSelection();
+    expect(stateService.selectedNode()).toBeNull();
+
+    const closeSpy = vi.fn();
+    component.closeInspector.subscribe(closeSpy);
+
+    component.closeInspectorPanel();
+
+    expect(stateService.selectedNode()).toBeNull();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

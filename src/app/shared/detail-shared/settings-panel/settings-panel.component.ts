@@ -138,7 +138,10 @@ export class SettingsPanelComponent {
       const groups: GroupedSettings[] = [];
 
       if (hasApp) {
-        const appEntries = this.flattenSettings('app', rawSettings['app'], restrictedLabel);
+        let appEntries = this.flattenSettings('app', rawSettings['app'], restrictedLabel);
+        if (!this.appSettingsService.isTrayAvailable()) {
+          appEntries = appEntries.filter(e => e.key !== 'showOnTray');
+        }
         if (appEntries.length > 0) {
           groups.push({
             category: 'detailShared.settings.categories.app',
@@ -165,9 +168,13 @@ export class SettingsPanelComponent {
     }
 
     // Flat settings (like filter, backend, vfs etc.)
-    const flatEntries = Object.entries(rawSettings)
+    let flatEntries = Object.entries(rawSettings)
       .filter(([, value]) => value !== null && value !== undefined)
       .flatMap(([key, value]) => this.flattenSettings(key, value, restrictedLabel));
+
+    if (!this.appSettingsService.isTrayAvailable()) {
+      flatEntries = flatEntries.filter(e => e.key !== 'showOnTray' && e.key !== 'app.showOnTray');
+    }
 
     return flatEntries.length > 0 ? [{ category: '', entries: flatEntries }] : [];
   });

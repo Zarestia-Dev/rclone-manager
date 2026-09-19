@@ -1645,7 +1645,8 @@
       "zoomIn": "放大",
       "zoomOut": "縮小",
       "resetZoom": "重設縮放",
-      "hexPreview": "十六進位預覽"
+      "hexPreview": "十六進位預覽",
+      "playVideo": "在影片播放器中播放"
     }
   },
   "dashboard": {
@@ -2460,7 +2461,8 @@
       "cloud": "雲端",
       "fileSystem": "檔案系統",
       "bookmarks": "書籤",
-      "localDisk": "本機磁碟"
+      "localDisk": "本機磁碟",
+      "internalStorage": "內部儲存空間"
     },
     "bookmarks": {
       "emptyHint": "暫無書籤"

@@ -58,6 +58,7 @@ export class QuickRunWorkspaceComponent {
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly selected = this.quickRunService.selected;
   readonly selectedRemote = this.uiStateService.selectedRemote;
+  readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
 
   isShowOnTray(qr: QuickRun): boolean {
     return qr.config?.app?.showOnTray ?? true;

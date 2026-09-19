@@ -332,4 +332,140 @@ describe('WorkflowCanvasComponent', () => {
     component.ngOnDestroy();
     expect(stateService.isMobileFocusMode()).toBe(false);
   });
+
+  describe('Touch and Mobile Canvas Interactions', () => {
+    let originalElementFromPoint: typeof document.elementFromPoint;
+
+    beforeEach(() => {
+      originalElementFromPoint = document.elementFromPoint;
+      document.elementFromPoint = vi.fn().mockReturnValue(null);
+    });
+
+    afterEach(() => {
+      document.elementFromPoint = originalElementFromPoint;
+    });
+
+    it('does not start node drag if touch target is a port handle or action button', () => {
+      const currentWf = stateService.currentWorkflow();
+      expect(currentWf).toBeTruthy();
+      if (!currentWf) return;
+      const node = currentWf.nodes[0];
+
+      const portMock = document.createElement('div');
+      portMock.classList.add('port-handle');
+
+      component.onNodeTouchStart(node, {
+        touches: [{ clientX: 120, clientY: 120 }],
+        target: portMock,
+        stopPropagation: vi.fn(),
+      } as unknown as TouchEvent);
+
+      expect(component.draggingNodeId()).toBeNull();
+      expect(stateService.isDraggingNode()).toBe(false);
+    });
+
+    it('updates connecting wire coordinates on touch move while connecting', () => {
+      const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+      stateService.startConnecting(nodeA.id, 'out', 100, 100, true);
+
+      const containerEl = fixture.nativeElement.querySelector('.workflow-canvas-container');
+      vi.spyOn(containerEl, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 700,
+        right: 1000,
+        bottom: 700,
+      } as DOMRect);
+
+      const updateSpy = vi.spyOn(stateService, 'updateConnecting');
+
+      component.onCanvasTouchMove({
+        touches: [{ clientX: 250, clientY: 180 }],
+        preventDefault: vi.fn(),
+      } as unknown as TouchEvent);
+
+      expect(updateSpy).toHaveBeenCalledWith(250, 180);
+    });
+
+    it('completes connection via document.elementFromPoint on touch end', () => {
+      const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+      const nodeB = stateService.addNode('notification', 'action', 'Node B', 400, 100, {});
+      stateService.startConnecting(nodeA.id, 'out', 100, 100, true);
+
+      const mockTargetPort = document.createElement('div');
+      mockTargetPort.className = 'port-handle';
+      mockTargetPort.setAttribute('data-node-id', nodeB.id);
+      mockTargetPort.setAttribute('data-port-id', 'in');
+      mockTargetPort.setAttribute('data-is-output', 'false');
+
+      document.elementFromPoint = vi.fn().mockReturnValue(mockTargetPort);
+
+      component.onCanvasTouchEnd({
+        touches: [],
+        changedTouches: [{ clientX: 400, clientY: 120 }],
+      } as unknown as TouchEvent);
+
+      expect(stateService.isConnecting()).toBeNull();
+      const edges = stateService.currentWorkflow()?.edges ?? [];
+      expect(edges.length).toBe(1);
+      expect(edges[0].sourceNodeId).toBe(nodeA.id);
+      expect(edges[0].targetNodeId).toBe(nodeB.id);
+    });
+
+    it('leaves connection active on touch end if tap is near start position (tap-to-connect)', () => {
+      const nodeA = stateService.addNode('sync', 'task', 'Node A', 100, 100, {});
+      component.onStartConnecting(nodeA.id, 'out', true, {
+        clientX: 100,
+        clientY: 100,
+      } as unknown as PointerEvent);
+
+      component.onCanvasTouchEnd({
+        touches: [],
+        changedTouches: [{ clientX: 102, clientY: 102 }],
+      } as unknown as TouchEvent);
+
+      expect(stateService.isConnecting()).not.toBeNull();
+    });
+
+    it('ignores canvas touch start on interactive controls to avoid initiating pan', () => {
+      const hubEl = fixture.nativeElement.querySelector('.canvas-navigation-hub');
+      expect(hubEl).toBeTruthy();
+
+      component.onCanvasTouchStart({
+        touches: [{ clientX: 100, clientY: 100 }],
+        target: hubEl,
+      } as unknown as TouchEvent);
+
+      expect(component.isPanning()).toBe(false);
+    });
+
+    it('cleans up drag and connect states on window touchcancel', () => {
+      const currentWf = stateService.currentWorkflow();
+      expect(currentWf).toBeTruthy();
+      if (!currentWf) return;
+      const node = currentWf.nodes[0];
+
+      component.onNodeTouchStart(node, {
+        touches: [{ clientX: 100, clientY: 100 }],
+        target: document.createElement('div'),
+        stopPropagation: vi.fn(),
+      } as unknown as TouchEvent);
+
+      expect(component.draggingNodeId()).toBe(node.id);
+      expect(stateService.isDraggingNode()).toBe(false);
+
+      component.onCanvasTouchMove({
+        touches: [{ clientX: 120, clientY: 120 }],
+        preventDefault: vi.fn(),
+      } as unknown as TouchEvent);
+
+      expect(stateService.isDraggingNode()).toBe(true);
+
+      window.dispatchEvent(new Event('touchcancel'));
+
+      expect(component.draggingNodeId()).toBeNull();
+      expect(stateService.isDraggingNode()).toBe(false);
+    });
+  });
 });

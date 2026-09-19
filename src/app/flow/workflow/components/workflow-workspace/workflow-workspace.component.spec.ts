@@ -198,6 +198,59 @@ describe('WorkflowWorkspaceComponent', () => {
     expect(saveSpy).toHaveBeenCalled();
   });
 
+  it('handles Ctrl+Z keyboard shortcut to trigger undo when canUndo is true', () => {
+    stateService.createNewWorkflow('Undo Flow');
+    stateService.addNode('sync', 'task', 'New Task', 100, 100);
+    fixture.detectChanges();
+
+    const undoSpy = vi.spyOn(stateService, 'undo');
+    const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(undoSpy).toHaveBeenCalled();
+  });
+
+  it('handles Ctrl+Y and Ctrl+Shift+Z keyboard shortcuts to trigger redo', () => {
+    stateService.createNewWorkflow('Redo Flow');
+    stateService.addNode('sync', 'task', 'New Task', 100, 100);
+    stateService.undo();
+    fixture.detectChanges();
+
+    const redoSpy = vi.spyOn(stateService, 'redo');
+    const ctrlYEvent = new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, cancelable: true });
+    window.dispatchEvent(ctrlYEvent);
+    expect(redoSpy).toHaveBeenCalledTimes(1);
+
+    stateService.undo();
+    fixture.detectChanges();
+
+    const ctrlShiftZEvent = new KeyboardEvent('keydown', {
+      key: 'Z',
+      ctrlKey: true,
+      shiftKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(ctrlShiftZEvent);
+    expect(redoSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not trigger shortcuts when target is an input', () => {
+    stateService.createNewWorkflow('Input Flow');
+    stateService.addNode('sync', 'task', 'New Task', 100, 100);
+    fixture.detectChanges();
+
+    const undoSpy = vi.spyOn(stateService, 'undo');
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, cancelable: true });
+    input.dispatchEvent(event);
+
+    expect(undoSpy).not.toHaveBeenCalled();
+    input.remove();
+  });
+
   it('shows error notification when saveWorkflow rejects', async () => {
     stateService.createNewWorkflow('Error Flow');
     stateService.addNode('sync', 'task', 'New Task', 100, 100);
@@ -303,7 +356,7 @@ describe('WorkflowWorkspaceComponent', () => {
       expect(component.isPaletteOpen()).toBe(true);
     });
 
-    it('auto-opens inspector in over mode when a node is selected', () => {
+    it('does not auto-open inspector in over mode when a node is selected or dragged', () => {
       stateService.createNewWorkflow('Mobile Select Test');
       const node = stateService.addNode('sync', 'task', 'Node 1', 10, 10);
       component.sidebarMode.set('over');
@@ -312,6 +365,16 @@ describe('WorkflowWorkspaceComponent', () => {
 
       stateService.selectNode(node.id);
       TestBed.tick();
+
+      expect(component.isInspectorOpen()).toBe(false);
+    });
+
+    it('opens inspector when openInspector is explicitly triggered from canvas inspectNode', () => {
+      component.sidebarMode.set('over');
+      component.isPaletteOpen.set(true);
+      component.isInspectorOpen.set(false);
+
+      component.openInspector();
 
       expect(component.isInspectorOpen()).toBe(true);
       expect(component.isPaletteOpen()).toBe(false);

@@ -43,11 +43,14 @@ describe('QuickRunWorkspaceComponent', () => {
     deleteRemote: vi.fn().mockResolvedValue(undefined),
   };
 
+  const isTrayAvailableSignal = signal<boolean>(true);
+
   const mockUiStateService = {
     selectedRemote: selectedRemoteSignal,
     resetSelectedRemote: vi.fn(),
     setSelectedRemote: vi.fn(),
     setMainView: vi.fn(),
+    isTrayAvailable: isTrayAvailableSignal,
   };
 
   const mockModalService = {
@@ -172,6 +175,36 @@ describe('QuickRunWorkspaceComponent', () => {
       expect(mockModalService.openDeleteRemote).toHaveBeenCalledWith('gdrive');
       expect(mockRemoteFacade.deleteRemote).toHaveBeenCalledWith('gdrive');
       expect(mockUiStateService.resetSelectedRemote).toHaveBeenCalled();
+    });
+
+    it('should reflect isTrayAvailable from UiStateService', () => {
+      isTrayAvailableSignal.set(true);
+      expect(component.isTrayAvailable()).toBe(true);
+
+      isTrayAvailableSignal.set(false);
+      expect(component.isTrayAvailable()).toBe(false);
+    });
+
+    it('should read isShowOnTray and toggleShowOnTray properly', async () => {
+      const qr = {
+        id: 'qr-1',
+        name: 'My Quick Run',
+        operationType: 'sync',
+        remoteName: 'gdrive',
+        config: { app: { showOnTray: true } },
+      } as QuickRun;
+
+      expect(component.isShowOnTray(qr)).toBe(true);
+
+      await component.toggleShowOnTray(qr, false);
+      expect(mockQuickRunService.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'qr-1',
+          config: expect.objectContaining({
+            app: expect.objectContaining({ showOnTray: false }),
+          }),
+        })
+      );
     });
   });
 });

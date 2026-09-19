@@ -1,7 +1,6 @@
 use log::debug;
 use tauri::{AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_opener::OpenerExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::core::bridge;
@@ -122,6 +121,7 @@ pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String
 
     #[cfg(not(target_os = "android"))]
     {
+        use tauri_plugin_opener::OpenerExt;
         let p = std::path::Path::new(clean_path);
         if !p.exists() {
             return Err(crate::localized_error!(
@@ -173,6 +173,7 @@ pub async fn open_file_natively(
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
+            use tauri_plugin_opener::OpenerExt;
             app.opener()
                 .open_path(&path_str, None::<String>)
                 .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
@@ -227,6 +228,7 @@ pub async fn open_file_natively(
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
+        use tauri_plugin_opener::OpenerExt;
         app.opener()
             .open_path(&dest_str, None::<String>)
             .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;

@@ -49,9 +49,17 @@ class MainActivity : TauriActivity() {
     handleRouteIntent(intent)
   }
 
+  // Queued data for cold start handover to Angular
+  private val pendingSharedPaths = mutableListOf<String>()
+  private var pendingRoute: String? = null
+  @Volatile private var isFrontendReady = false
+
   override fun onDestroy() {
     super.onDestroy()
-    cleanupTempDirs()
+    // Do NOT delete cacheDir/shared_files here because active background uploads
+    // via RcloneKeepAliveService might still be streaming from those files, or the user
+    // might have temporarily backgrounded the app. Stale temp directories are safely
+    // cleaned on onCreate() startup.
   }
 
   private fun cleanupTempDirs() {
@@ -73,7 +81,11 @@ class MainActivity : TauriActivity() {
   private fun handleRouteIntent(intent: Intent?) {
     if (intent == null) return
     val route = intent.getStringExtra("route") ?: return
+    intent.removeExtra("route")
     if (route.isNotEmpty()) {
+      synchronized(pendingSharedPaths) {
+        pendingRoute = route
+      }
       notifyNavigateRoute(route)
     }
   }
@@ -111,32 +123,68 @@ class MainActivity : TauriActivity() {
 
   /**
    * Handles incoming ACTION_SEND / ACTION_SEND_MULTIPLE intents from other apps.
-   * Copies the shared content to app cache and notifies Angular via a CustomEvent.
+   * Copies the shared content to app cache asynchronously and notifies Angular via a CustomEvent or queue.
    */
   private fun handleShareIntent(intent: Intent?) {
     val action = intent?.action ?: return
+    if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
 
     val uris = mutableListOf<Uri>()
-    when (action) {
-      Intent.ACTION_SEND -> {
-        val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-        if (uri != null) {
-          uris.add(uri)
-        } else {
-          val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-          if (text != null) { notifyShareText(text); return }
+
+    // 1. Check EXTRA_STREAM (compat across all Android versions)
+    if (action == Intent.ACTION_SEND) {
+      val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+      }
+      if (uri != null) {
+        uris.add(uri)
+      } else {
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+        if (text != null) {
+          intent.action = null
+          notifyShareText(text)
+          return
         }
       }
-      Intent.ACTION_SEND_MULTIPLE -> {
-        val list = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
-        if (list != null) uris.addAll(list)
+    } else if (action == Intent.ACTION_SEND_MULTIPLE) {
+      val list = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
       }
-      else -> return
+      if (list != null) uris.addAll(list)
     }
 
+    // 2. Also check ClipData (modern Android 10+ standard used by Google Photos, Samsung Gallery, etc.)
+    val clipData = intent.clipData
+    if (clipData != null) {
+      for (i in 0 until clipData.itemCount) {
+        val itemUri = clipData.getItemAt(i).uri
+        if (itemUri != null && !uris.contains(itemUri)) {
+          uris.add(itemUri)
+        }
+      }
+    }
+
+    // Clear intent action so activity re-creations (e.g. rotation) don't re-trigger
+    intent.action = null
+
     if (uris.isEmpty()) return
-    val paths = uris.mapNotNull { resolveContentUri(it) }
-    if (paths.isNotEmpty()) notifyShareFiles(paths)
+
+    // Run file copying in a background thread to prevent UI thread lock / ANR on large files
+    Thread {
+      val paths = uris.mapNotNull { resolveContentUri(it) }
+      if (paths.isNotEmpty()) {
+        synchronized(pendingSharedPaths) {
+          pendingSharedPaths.addAll(paths)
+        }
+        notifyShareFiles(paths)
+      }
+    }.start()
   }
 
   /**
@@ -145,9 +193,10 @@ class MainActivity : TauriActivity() {
   private fun resolveContentUri(uri: Uri): String? {
     return try {
       contentResolver.openInputStream(uri)?.use { input ->
-        val fileName = getFileNameFromUri(uri) ?: "shared_file"
+        val rawName = getFileNameFromUri(uri) ?: "shared_file"
+        val cleanName = File(rawName).name.ifBlank { "shared_file" }
         val destDir = File(cacheDir, "shared_files").also { it.mkdirs() }
-        val destFile = File(destDir, fileName)
+        val destFile = getUniqueDestinationFile(destDir, cleanName)
         FileOutputStream(destFile).use { output -> input.copyTo(output) }
         destFile.absolutePath
       }
@@ -155,6 +204,22 @@ class MainActivity : TauriActivity() {
       Logger.error("resolveContentUri failed: ${e.message}")
       null
     }
+  }
+
+  private fun getUniqueDestinationFile(destDir: File, fileName: String): File {
+    var file = File(destDir, fileName)
+    if (!file.exists()) return file
+
+    val dotIndex = fileName.lastIndexOf('.')
+    val name = if (dotIndex > 0) fileName.substring(0, dotIndex) else fileName
+    val ext = if (dotIndex > 0) fileName.substring(dotIndex) else ""
+
+    var count = 1
+    while (file.exists()) {
+      file = File(destDir, "${name}_$count$ext")
+      count++
+    }
+    return file
   }
 
   private fun getFileNameFromUri(uri: Uri): String? {
@@ -172,7 +237,7 @@ class MainActivity : TauriActivity() {
 
   /** Dispatches `android-share-files` CustomEvent to Angular with a list of local paths. */
   private fun notifyShareFiles(paths: List<String>) {
-    val escaped = paths.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
+    val escaped = paths.joinToString(",") { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" }
     val js = "window.dispatchEvent(new CustomEvent('android-share-files',{detail:{paths:[$escaped]}}))"
     appWebView?.post { appWebView?.evaluateJavascript(js, null) }
   }
@@ -187,6 +252,59 @@ class MainActivity : TauriActivity() {
   // ---------------------------------------------------------------------------
   // JS Bridge — called from Angular as window.__rclone__.<method>()
   // ---------------------------------------------------------------------------
+
+  /**
+   * Retrieves pending shared file paths queued during cold start,
+   * returning them as a JSON array string and clearing the queue.
+   */
+  @JavascriptInterface
+  fun getPendingSharedFiles(): String {
+    isFrontendReady = true
+    synchronized(pendingSharedPaths) {
+      if (pendingSharedPaths.isEmpty()) return "[]"
+      val escaped = pendingSharedPaths.joinToString(",") { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" }
+      pendingSharedPaths.clear()
+      return "[$escaped]"
+    }
+  }
+
+  /**
+   * Retrieves pending route queued during cold start (e.g. from App Shortcut),
+   * returning the route string and clearing the pending route.
+   */
+  @JavascriptInterface
+  fun getPendingRoute(): String {
+    isFrontendReady = true
+    synchronized(pendingSharedPaths) {
+      val route = pendingRoute ?: return ""
+      pendingRoute = null
+      return route
+    }
+  }
+
+  /**
+   * Cleans up the temporary shared_files cache directory.
+   * Called when Angular cancels the pending share.
+   */
+  @JavascriptInterface
+  fun clearSharedFiles() {
+    synchronized(pendingSharedPaths) {
+      pendingSharedPaths.clear()
+    }
+    try {
+      File(cacheDir, "shared_files").deleteRecursively()
+    } catch (e: Exception) {
+      Logger.error("clearSharedFiles failed: ${e.message}")
+    }
+  }
+
+  /**
+   * Signals that Angular has mounted and registered listeners.
+   */
+  @JavascriptInterface
+  fun notifyFrontendReady() {
+    isFrontendReady = true
+  }
 
   /**
    * Sets the status bar and navigation bar icon appearance (light vs dark icons).

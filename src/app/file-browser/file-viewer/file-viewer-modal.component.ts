@@ -786,6 +786,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
       if (!['image', 'video', 'audio'].includes(this.currentFileType())) {
         this.isLoading.set(false);
+      } else if (this.currentFileType() === 'video' && this.isMobile()) {
+        this.isLoading.set(false);
       }
     } catch (error) {
       console.error('Error updating content:', error);
@@ -951,7 +953,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   /**
    * Open the current file natively using Android / system default application intent
    */
-  async openNativePdf(): Promise<void> {
+  async openNativeFile(): Promise<void> {
     if (this.isOpeningNative()) return;
     this.isOpeningNative.set(true);
     try {
