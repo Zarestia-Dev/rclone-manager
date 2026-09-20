@@ -98,6 +98,20 @@ describe('FileSystemService', () => {
         });
       });
 
+      it('should route internal app paths on mobile to Nautilus window', async () => {
+        vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+          'Mozilla/5.0 (Linux; Android 14; Pixel 8)'
+        );
+
+        await service.openInFiles('/data/user/0/com.rclone.manager/cache/rclone/vfs/Google Drive');
+
+        expect(nautilusServiceMock.newNautilusWindow).toHaveBeenCalledWith(
+          '/',
+          'data/user/0/com.rclone.manager/cache/rclone/vfs/Google Drive'
+        );
+        expect(apiClientMock.invoke).not.toHaveBeenCalled();
+      });
+
       it('should invoke open_in_files for desktop paths', async () => {
         apiClientMock.invoke.mockResolvedValueOnce('Opened');
         await service.openInFiles('/home/user/Documents');

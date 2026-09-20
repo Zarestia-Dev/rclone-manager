@@ -259,51 +259,7 @@ pub async fn monitor_network_changes() {
 #[cfg(target_os = "android")]
 #[must_use]
 pub fn is_metered() -> bool {
-    use jni::{jni_sig, jni_str};
-
-    let ctx = ndk_context::android_context();
-    let vm_ptr = ctx.vm();
-    let context_ptr = ctx.context();
-    if vm_ptr.is_null() || context_ptr.is_null() {
-        log::warn!("is_metered: Android context or VM pointer is null");
-        return false;
-    }
-
-    let vm = unsafe { jni::JavaVM::from_raw(vm_ptr.cast()) };
-    let res: Result<bool, jni::errors::Error> = vm.attach_current_thread(|env| {
-        let context_obj = unsafe { jni::objects::JObject::from_raw(env, context_ptr.cast()) };
-
-        let service_name = env.new_string("connectivity")?;
-
-        let cm_val = env.call_method(
-            &context_obj,
-            jni_str!("getSystemService"),
-            jni_sig!("(Ljava/lang/String;)Ljava/lang/Object;"),
-            &[jni::objects::JValue::Object(&service_name)],
-        )?;
-        let cm = cm_val.l()?;
-
-        if cm.is_null() {
-            return Ok(false);
-        }
-
-        let metered_val = env.call_method(
-            &cm,
-            jni_str!("isActiveNetworkMetered"),
-            jni_sig!("()Z"),
-            &[],
-        )?;
-
-        Ok(metered_val.z().unwrap_or(false))
-    });
-
-    match res {
-        Ok(val) => val,
-        Err(e) => {
-            log::error!("is_metered: JNI error: {e}");
-            false
-        }
-    }
+    crate::rclone::backend::saf_bridge::is_network_metered()
 }
 
 #[cfg(target_os = "android")]

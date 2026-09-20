@@ -338,28 +338,8 @@ fn setup_app(
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         log::debug!("Creating main window on mobile");
-        let window =
-            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
-                .build()
-                .expect("Failed to build mobile main window");
-
-        #[cfg(target_os = "android")]
-        {
-            let (tx, rx) = std::sync::mpsc::channel();
-            let _ = window.with_webview(move |webview| {
-                webview.jni_handle().exec(move |env, context, _webview| {
-                    if let Ok(vm) = env.get_java_vm() {
-                        let vm_ptr = vm.get_java_vm_pointer() as *mut std::ffi::c_void;
-                        let context_ptr = context.as_raw() as *mut std::ffi::c_void;
-                        unsafe {
-                            ndk_context::initialize_android_context(vm_ptr, context_ptr);
-                        }
-                    }
-                    let _ = tx.send(());
-                });
-            });
-            let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
-        }
+        tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
+            .build()?;
     }
 
     let rcman_manager =

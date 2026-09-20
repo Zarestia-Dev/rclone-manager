@@ -37,7 +37,11 @@
             android:name=".RcloneKeepAliveService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains active rclone virtual file system streaming and background transfers for Storage Access Framework" />
+        </service>
 
         <receiver
             android:name=".SafBootReceiver"

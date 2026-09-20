@@ -190,3 +190,36 @@ pub fn rpc(input: &Value) -> Result<Value, BackendError> {
 
     Ok(parsed)
 }
+
+/// Execute a raw rc call via librclone FFI returning the JSON string directly without intermediate serde_json parsing.
+#[cfg(target_os = "android")]
+pub fn rpc_raw(method: &str, input_json: &str) -> Result<String, BackendError> {
+    sync_env("RCLONE_CONFIG_PASS");
+
+    let c_method = CString::new(method)
+        .map_err(|e| BackendError::Other(format!("CString conversion failed for method: {e}")))?;
+    let c_input = CString::new(input_json)
+        .map_err(|e| BackendError::Other(format!("CString conversion failed for input: {e}")))?;
+
+    let result = unsafe { RcloneRpc(c_method.as_ptr(), c_input.as_ptr()) };
+    let output_ptr = result.output;
+
+    if output_ptr.is_null() {
+        return Err(BackendError::Rpc {
+            endpoint: method.to_string(),
+            status: result.status as u16,
+            message: "null output from librclone (RcloneRpc returned null output pointer)".into(),
+        });
+    }
+
+    let output_cstr = unsafe { CStr::from_ptr(output_ptr) };
+    let output_str = output_cstr.to_str().map_err(|e| {
+        unsafe { RcloneFreeString(output_ptr) };
+        BackendError::Other(format!("librclone output not valid UTF-8: {e}"))
+    })?;
+
+    let res = output_str.to_string();
+    unsafe { RcloneFreeString(output_ptr) };
+
+    Ok(res)
+}

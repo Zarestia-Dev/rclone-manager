@@ -39,24 +39,41 @@ object RcloneSafBridge {
     }
   }
 
-  private external fun nativeInitSaf(filesDir: String)
-  private external fun nativeRpc(jsonPayload: String): String
+  private external fun nativeInitSaf(context: Context, filesDir: String, cacheDir: String)
+  private external fun nativeRpc(endpoint: String, jsonPayload: String): String
   private external fun nativeVfsRead(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
   private external fun nativeVfsWrite(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
 
   private val activeHandleCount = java.util.concurrent.atomic.AtomicInteger(0)
 
   @JvmStatic
+  fun getActiveHandleCount(): Int = activeHandleCount.get()
+
+  @JvmStatic
   fun ensureInitialized(context: Context) {
     try {
       loadNativeLibraries()
       if (!isLibraryLoaded) return
-      appContext = context.applicationContext
-      val configDirPath = context.filesDir.absolutePath
-      nativeInitSaf(configDirPath)
-      updateAppShortcuts(context)
+      val appCtx = context.applicationContext
+      appContext = appCtx
+      val configDirPath = appCtx.filesDir.absolutePath
+      val cacheDirPath = appCtx.cacheDir.absolutePath
+      nativeInitSaf(appCtx, configDirPath, cacheDirPath)
+      updateAppShortcuts(appCtx)
     } catch (e: Throwable) {
       Logger.error("ensureInitialized error: ${e.message}")
+    }
+  }
+
+  @JvmStatic
+  fun isNetworkMetered(): Boolean {
+    val ctx = appContext ?: return false
+    return try {
+      val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+      cm?.isActiveNetworkMetered ?: false
+    } catch (e: Throwable) {
+      Logger.error("isNetworkMetered error: ${e.message}")
+      false
     }
   }
 
@@ -89,8 +106,7 @@ object RcloneSafBridge {
     return try {
       loadNativeLibraries()
       if (!isLibraryLoaded) return JSONObject()
-      params.put("_path", endpoint)
-      val resStr = nativeRpc(params.toString())
+      val resStr = nativeRpc(endpoint, params.toString())
       JSONObject(resStr)
     } catch (e: Throwable) {
       Logger.error("rpc $endpoint error: ${e.message}")
@@ -104,6 +120,8 @@ object RcloneSafBridge {
   private val safRootsList = mutableListOf<SafRootItem>()
   @Volatile
   private var isMountedRemotesLoaded = false
+  @Volatile
+  private var cachedSafRoots: List<SafRootItem> = emptyList()
 
   fun getSafSource(remoteName: String): String {
     val cleanName = remoteName.trim().trimEnd(':')
@@ -164,6 +182,7 @@ object RcloneSafBridge {
       synchronized(safRootsList) {
         safRootsList.clear()
         safRootsList.addAll(newRoots)
+        cachedSafRoots = newRoots.toList()
       }
       isMountedRemotesLoaded = true
 
@@ -184,9 +203,7 @@ object RcloneSafBridge {
   fun getSafRoots(): List<SafRootItem> {
     return try {
       loadMountedRemotesIfNeeded()
-      synchronized(safRootsList) {
-        safRootsList.toList()
-      }
+      cachedSafRoots
     } catch (e: Throwable) {
       Logger.error("getSafRoots error: ${e.message}")
       emptyList()
@@ -222,18 +239,16 @@ object RcloneSafBridge {
 
   fun readVfsFile(handleId: Long, offset: Long, count: Int, destination: ByteArray): Int {
     if (isLibraryLoaded) {
-      val n = nativeVfsRead(handleId, offset, count, destination)
-      if (n >= 0) return n
+      return nativeVfsRead(handleId, offset, count, destination)
     }
-    return 0
+    return -1
   }
 
   fun writeVfsFile(handleId: Long, offset: Long, source: ByteArray, count: Int): Int {
     if (isLibraryLoaded) {
-      val n = nativeVfsWrite(handleId, offset, count, source)
-      if (n >= 0) return n
+      return nativeVfsWrite(handleId, offset, count, source)
     }
-    return 0
+    return -1
   }
 
   fun closeVfsFile(handleId: Long): Boolean {
@@ -334,7 +349,7 @@ object RcloneSafBridge {
 
   fun searchFiles(remote: String, query: String): JSONArray {
     val qClean = query.trim()
-    if (qClean.isEmpty() || qClean.length < 2) {
+    if (qClean.length < 2) {
       return JSONArray()
     }
 
@@ -350,12 +365,11 @@ object RcloneSafBridge {
     val res = rpc("operations/list", params)
     val allList = res.optJSONArray("list") ?: JSONArray()
     val filtered = JSONArray()
-    val qLower = qClean.lowercase()
 
     for (i in 0 until allList.length()) {
       val item = allList.optJSONObject(i) ?: continue
       val name = item.optString("Name", "")
-      if (name.lowercase().contains(qLower)) {
+      if (name.contains(qClean, ignoreCase = true)) {
         filtered.put(item)
         if (filtered.length() >= 100) break
       }
@@ -368,7 +382,8 @@ object RcloneSafBridge {
     appContext?.let { updateAppShortcutsInternal(it) }
   }
 
-  fun updateAppShortcuts(context: Context) {
+  fun updateAppShortcuts(context: Context? = null) {
+    if (context != null) appContext = context.applicationContext
     shortcutDebounceHandler.removeCallbacks(shortcutDebounceRunnable)
     shortcutDebounceHandler.postDelayed(shortcutDebounceRunnable, 400L)
   }

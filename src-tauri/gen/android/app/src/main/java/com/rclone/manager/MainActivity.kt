@@ -11,17 +11,24 @@ import android.provider.DocumentsContract
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : TauriActivity() {
 
   // Reference to the WebView so we can evaluateJavascript from non-UI callbacks
   private var appWebView: WebView? = null
+
+  private val shareExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+    Thread(runnable, "ShareIntentHandler").apply { isDaemon = true }
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -30,17 +37,27 @@ class MainActivity : TauriActivity() {
     windowInsetsController.isAppearanceLightStatusBars = !isNightMode
     windowInsetsController.isAppearanceLightNavigationBars = !isNightMode
 
+    onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+      override fun handleOnBackPressed() {
+        val webView = appWebView
+        if (webView != null && webView.canGoBack()) {
+          webView.goBack()
+        } else {
+          moveTaskToBack(true)
+        }
+      }
+    })
+
     RcloneSafBridge.ensureInitialized(applicationContext)
-    requestStoragePermission()
 
-    // Copy bundled assets to cache directory so Rust std::fs can access them
-    val destDir = File(cacheDir, "resources")
-    copyAssetsDir("i18n", destDir)
-    copyAssetFile("serve-template.html", File(destDir, "serve-template.html"))
-    copyAssetFile("oauth-template.html", File(destDir, "oauth-template.html"))
+    // Extract bundled assets to cache directory if first launch or app update
+    extractAssetsIfNeeded()
 
-    // Clean up temporary cache directories from previous sessions
-    cleanupTempDirs()
+    // Request permissions and clean up temporary cache directories only on clean cold start
+    if (savedInstanceState == null) {
+      requestAppPermissions()
+      cleanupTempDirs()
+    }
 
     super.onCreate(savedInstanceState)
 
@@ -55,11 +72,10 @@ class MainActivity : TauriActivity() {
   @Volatile private var isFrontendReady = false
 
   override fun onDestroy() {
+    appWebView?.removeJavascriptInterface("__rclone__")
+    appWebView = null
+    shareExecutor.shutdown()
     super.onDestroy()
-    // Do NOT delete cacheDir/shared_files here because active background uploads
-    // via RcloneKeepAliveService might still be streaming from those files, or the user
-    // might have temporarily backgrounded the app. Stale temp directories are safely
-    // cleaned on onCreate() startup.
   }
 
   private fun cleanupTempDirs() {
@@ -173,10 +189,8 @@ class MainActivity : TauriActivity() {
     // Clear intent action so activity re-creations (e.g. rotation) don't re-trigger
     intent.action = null
 
-    if (uris.isEmpty()) return
-
-    // Run file copying in a background thread to prevent UI thread lock / ANR on large files
-    Thread {
+    // Run file copying in background executor to prevent UI thread lock / ANR on large files
+    shareExecutor.execute {
       val paths = uris.mapNotNull { resolveContentUri(it) }
       if (paths.isNotEmpty()) {
         synchronized(pendingSharedPaths) {
@@ -184,42 +198,39 @@ class MainActivity : TauriActivity() {
         }
         notifyShareFiles(paths)
       }
-    }.start()
+    }
   }
 
   /**
    * Copies a content:// URI into the app-private cache and returns the absolute path.
    */
   private fun resolveContentUri(uri: Uri): String? {
+    var destFile: File? = null
     return try {
       contentResolver.openInputStream(uri)?.use { input ->
         val rawName = getFileNameFromUri(uri) ?: "shared_file"
         val cleanName = File(rawName).name.ifBlank { "shared_file" }
         val destDir = File(cacheDir, "shared_files").also { it.mkdirs() }
-        val destFile = getUniqueDestinationFile(destDir, cleanName)
-        FileOutputStream(destFile).use { output -> input.copyTo(output) }
-        destFile.absolutePath
+        val target = getUniqueDestinationFile(destDir, cleanName)
+        destFile = target
+        FileOutputStream(target).use { output -> input.copyTo(output) }
+        target.absolutePath
       }
     } catch (e: Exception) {
+      destFile?.delete()
       Logger.error("resolveContentUri failed: ${e.message}")
       null
     }
   }
 
   private fun getUniqueDestinationFile(destDir: File, fileName: String): File {
-    var file = File(destDir, fileName)
+    val file = File(destDir, fileName)
     if (!file.exists()) return file
 
     val dotIndex = fileName.lastIndexOf('.')
     val name = if (dotIndex > 0) fileName.substring(0, dotIndex) else fileName
     val ext = if (dotIndex > 0) fileName.substring(dotIndex) else ""
-
-    var count = 1
-    while (file.exists()) {
-      file = File(destDir, "${name}_$count$ext")
-      count++
-    }
-    return file
+    return File(destDir, "${name}_${System.nanoTime()}$ext")
   }
 
   private fun getFileNameFromUri(uri: Uri): String? {
@@ -380,10 +391,18 @@ class MainActivity : TauriActivity() {
         }
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
-          setDataAndType(rootUri, "vnd.android.document/root")
+          setDataAndType(rootUri, DocumentsContract.Root.MIME_TYPE_ITEM)
           addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        startActivity(intent)
+        if (intent.resolveActivity(packageManager) != null) {
+          startActivity(intent)
+        } else {
+          val browseIntent = Intent("android.provider.action.BROWSE").apply {
+            data = rootUri
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          startActivity(browseIntent)
+        }
         onComplete?.invoke()
       } catch (e: Exception) {
         Logger.error("openSystemFileBrowser error: ${e.message}")
@@ -414,47 +433,72 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  private fun getMimeType(path: String): String = when (path.substringAfterLast('.', "").lowercase()) {
-    "pdf"  -> "application/pdf"
-    "jpg", "jpeg" -> "image/jpeg"
-    "png"  -> "image/png"
-    "gif"  -> "image/gif"
-    "webp" -> "image/webp"
-    "mp4"  -> "video/mp4"
-    "mp3"  -> "audio/mpeg"
-    "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    "doc"  -> "application/msword"
-    "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    "zip"  -> "application/zip"
-    "txt"  -> "text/plain"
-    else   -> "*/*"
+  private fun getMimeType(path: String): String {
+    val ext = path.substringAfterLast('.', "").lowercase()
+    if (ext.isEmpty()) return "*/*"
+    return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
   }
 
   // ---------------------------------------------------------------------------
   // Storage permission & asset helpers (unchanged from original)
   // ---------------------------------------------------------------------------
 
-  private fun requestStoragePermission() {
+  private fun requestAppPermissions() {
+    val runtimePermissions = mutableListOf<String>()
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        runtimePermissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+      }
+    }
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+      if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        runtimePermissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+      }
+      if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        runtimePermissions.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+      }
+    }
+
+    if (runtimePermissions.isNotEmpty()) {
+      requestPermissions(runtimePermissions.toTypedArray(), 100)
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       if (!Environment.isExternalStorageManager()) {
         try {
-          val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-          intent.data = Uri.parse("package:$packageName")
+          val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+            data = Uri.parse("package:$packageName")
+          }
           startActivity(intent)
         } catch (e: Exception) {
           try {
             startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
           } catch (ex: Exception) {
-            ex.printStackTrace()
+            Logger.error("Failed to open storage settings: ${ex.message}")
           }
         }
       }
-    } else {
-      requestPermissions(arrayOf(
-        android.Manifest.permission.READ_EXTERNAL_STORAGE,
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-      ), 100)
+    }
+  }
+
+  private fun extractAssetsIfNeeded() {
+    val destDir = File(cacheDir, "resources")
+    val versionFile = File(destDir, ".version")
+    val currentVersion = BuildConfig.VERSION_CODE.toString()
+
+    if (versionFile.exists() && versionFile.readText().trim() == currentVersion && File(destDir, "i18n").exists()) {
+      return
+    }
+
+    try {
+      copyAssetsDir("i18n", destDir)
+      copyAssetFile("serve-template.html", File(destDir, "serve-template.html"))
+      copyAssetFile("oauth-template.html", File(destDir, "oauth-template.html"))
+      versionFile.writeText(currentVersion)
+    } catch (e: Exception) {
+      Logger.error("extractAssetsIfNeeded error: ${e.message}")
     }
   }
 
@@ -469,7 +513,9 @@ class MainActivity : TauriActivity() {
           copyAssetsDir(if (assetDirPath.isEmpty()) asset else "$assetDirPath/$asset", destDir)
         }
       }
-    } catch (e: Exception) { e.printStackTrace() }
+    } catch (e: Exception) {
+      Logger.error("copyAssetsDir error: ${e.message}")
+    }
   }
 
   private fun copyAssetFile(assetPath: String, destFile: File) {
@@ -478,6 +524,8 @@ class MainActivity : TauriActivity() {
         destFile.parentFile?.mkdirs()
         FileOutputStream(destFile).use { output -> input.copyTo(output) }
       }
-    } catch (e: Exception) { e.printStackTrace() }
+    } catch (e: Exception) {
+      Logger.error("copyAssetFile error for $assetPath: ${e.message}")
+    }
   }
 }

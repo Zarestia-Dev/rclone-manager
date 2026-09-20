@@ -16,7 +16,10 @@ import android.provider.DocumentsContract
 import android.provider.DocumentsProvider
 import android.webkit.MimeTypeMap
 import org.json.JSONObject
+import android.system.ErrnoException
+import android.system.OsConstants
 import java.io.FileNotFoundException
+import java.util.concurrent.atomic.AtomicBoolean
 
 class RcloneDocumentsProvider : DocumentsProvider() {
 
@@ -63,7 +66,7 @@ class RcloneDocumentsProvider : DocumentsProvider() {
       Handler(proxyIoThread.looper)
     }
     private val asyncCloseExecutor: java.util.concurrent.ExecutorService by lazy {
-      java.util.concurrent.Executors.newCachedThreadPool { r ->
+      java.util.concurrent.Executors.newFixedThreadPool(2) { r ->
         Thread(r, "RcloneAsyncCloseWorker").apply { isDaemon = true }
       }
     }
@@ -113,11 +116,7 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     if (modTimeStr.isNullOrEmpty()) return System.currentTimeMillis()
     return try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        try {
-          java.time.Instant.parse(modTimeStr).toEpochMilli()
-        } catch (_: Exception) {
-          java.time.OffsetDateTime.parse(modTimeStr).toInstant().toEpochMilli()
-        }
+        java.time.OffsetDateTime.parse(modTimeStr).toInstant().toEpochMilli()
       } else {
         System.currentTimeMillis()
       }
@@ -221,14 +220,15 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     sortOrder: String?
   ): Cursor = withParcelableException {
     ensureInit()
+    val (remote, path) = parseDocId(parentDocumentId)
+    val list = RcloneSafBridge.listDirectory(remote, path)
+
     val authority = getAuthority()
-    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION)
+    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION, list.length().coerceAtLeast(1))
     try {
       result.setNotificationUri(context?.contentResolver, DocumentsContract.buildChildDocumentsUri(authority, parentDocumentId))
     } catch (_: Exception) {}
-    val (remote, path) = parseDocId(parentDocumentId)
 
-    val list = RcloneSafBridge.listDirectory(remote, path)
     for (i in 0 until list.length()) {
       val item = list.optJSONObject(i) ?: continue
       val isDir = item.optBoolean("IsDir", false)
@@ -342,12 +342,12 @@ class RcloneDocumentsProvider : DocumentsProvider() {
     projection: Array<out String>?
   ): Cursor = withParcelableException {
     ensureInit()
+    val items = RcloneSafBridge.searchFiles(rootId, query)
     val authority = getAuthority()
-    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION)
+    val result = MatrixCursor(projection ?: DEFAULT_DOCUMENT_PROJECTION, items.length().coerceAtLeast(1))
     try {
       result.setNotificationUri(context?.contentResolver, DocumentsContract.buildSearchDocumentsUri(authority, rootId, query))
     } catch (_: Exception) {}
-    val items = RcloneSafBridge.searchFiles(rootId, query)
 
     for (i in 0 until items.length()) {
       val item = items.optJSONObject(i) ?: continue
@@ -490,20 +490,32 @@ class RcloneDocumentsProvider : DocumentsProvider() {
       val storageManager = context?.getSystemService(StorageManager::class.java)
       if (storageManager != null) {
         val pfdMode = ParcelFileDescriptor.parseMode(mode)
-        val callback = object : ProxyFileDescriptorCallback() {
-          override fun onGetSize(): Long {
-            signal?.throwIfCanceled()
-            return fileSize
+        val isClosed = AtomicBoolean(false)
+        val closeHandleOnce = {
+          if (isClosed.compareAndSet(false, true)) {
+            asyncCloseExecutor.execute {
+              RcloneSafBridge.closeVfsFile(handleId)
+            }
           }
+        }
+
+        val callback = object : ProxyFileDescriptorCallback() {
+          override fun onGetSize(): Long = fileSize
 
           override fun onRead(offset: Long, size: Int, data: ByteArray): Int {
-            signal?.throwIfCanceled()
-            return RcloneSafBridge.readVfsFile(handleId, offset, size, data)
+            val n = RcloneSafBridge.readVfsFile(handleId, offset, size, data)
+            if (n < 0) {
+              throw ErrnoException("onRead", OsConstants.EIO)
+            }
+            return n
           }
 
           override fun onWrite(offset: Long, size: Int, data: ByteArray): Int {
-            signal?.throwIfCanceled()
-            return RcloneSafBridge.writeVfsFile(handleId, offset, data, size)
+            val n = RcloneSafBridge.writeVfsFile(handleId, offset, data, size)
+            if (n < 0) {
+              throw ErrnoException("onWrite", OsConstants.EIO)
+            }
+            return n
           }
 
           override fun onFsync() {
@@ -511,22 +523,18 @@ class RcloneDocumentsProvider : DocumentsProvider() {
           }
 
           override fun onRelease() {
-            asyncCloseExecutor.execute {
-              RcloneSafBridge.closeVfsFile(handleId)
-            }
+            closeHandleOnce()
           }
         }
 
         signal?.setOnCancelListener {
-          asyncCloseExecutor.execute {
-            RcloneSafBridge.closeVfsFile(handleId)
-          }
+          closeHandleOnce()
         }
 
         try {
           return storageManager.openProxyFileDescriptor(pfdMode, callback, proxyHandler)
         } catch (e: Exception) {
-          RcloneSafBridge.closeVfsFile(handleId)
+          closeHandleOnce()
           throw FileNotFoundException("Failed to open proxy file descriptor for $documentId: ${e.message}")
         }
       }
@@ -577,10 +585,9 @@ class RcloneDocumentsProvider : DocumentsProvider() {
   }
 
   private fun parseDocId(documentId: String): Pair<String, String> {
-    val parts = documentId.split(":/", limit = 2)
-    val remote = parts.getOrNull(0) ?: ""
-    val path = parts.getOrNull(1) ?: ""
-    return Pair(remote, path)
+    val idx = documentId.indexOf(":/")
+    if (idx == -1) return Pair(documentId, "")
+    return Pair(documentId.substring(0, idx), documentId.substring(idx + 2))
   }
 
   private fun getMimeTypeFromPath(name: String): String {

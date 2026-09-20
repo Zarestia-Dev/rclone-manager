@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="RClone Manager Loading Logo" style="overflow:visible">
+  <title>RClone Manager Loading Logo</title>
+  <defs>
+    <style>
+      /* Self-centering elements (scale/snap around their own center) */
+      .bg-shadow, .bg-base, .shape-dark-blue, .shape-light-blue, .shape-lighter-blue {
+        transform-box: fill-box;
+        transform-origin: center;
+        opacity: 0;
+      }
+
+      /* Global canvas-centering orbit */
+      .loading-orbit-group {
+        transform-origin: 256px 256px;
+        animation: orbitRotate 3s linear infinite;
+      }
+      .loading-orbit-sweep {
+        transform-origin: 256px 256px;
+        stroke-dasharray: 1558;
+        stroke-dashoffset: 1000;
+        animation: orbitSweep 2.5s ease-in-out infinite alternate;
+      }
+
+      @keyframes orbitRotate { to { transform: rotate(360deg); } }
+      @keyframes orbitSweep { 0%, 100% { stroke-dashoffset: 1350; } 50% { stroke-dashoffset: 400; } }
+
+      /* Entrance keyframes */
+      @keyframes materialPop {
+        0% { transform: scale(0.5); opacity: 0; }
+        70% { transform: scale(1.03); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes chromeSnap {
+        0% { transform: scale(0.3) rotate(-135deg); opacity: 0; }
+        70% { transform: scale(1.05) rotate(5deg); opacity: 1; }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      }
+
+      /* Continuous subtle wave loops (compositor-only, zero repaint) */
+      @keyframes shapeWaveDark {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.96; }
+        50% { transform: scale(1.05) rotate(-3deg); opacity: 1; }
+      }
+      @keyframes shapeWaveLight {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.96; }
+        50% { transform: scale(1.05) rotate(3deg); opacity: 1; }
+      }
+      @keyframes shapeWaveLighter {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.96; }
+        50% { transform: scale(1.05) rotate(-2deg); opacity: 1; }
+      }
+
+      /* Animation Staging */
+      .bg-shadow { animation: materialPop .6s cubic-bezier(.22,1,.36,1) forwards; }
+      .bg-base { animation: materialPop .6s cubic-bezier(.22,1,.36,1) .05s forwards; }
+      .shape-dark-blue { animation: chromeSnap .7s cubic-bezier(.34,1.56,.64,1) .15s forwards, shapeWaveDark 2.4s ease-in-out .85s infinite; }
+      .shape-light-blue { animation: chromeSnap .7s cubic-bezier(.34,1.56,.64,1) .22s forwards, shapeWaveLight 2.4s ease-in-out 1.2s infinite; }
+      .shape-lighter-blue { animation: chromeSnap .7s cubic-bezier(.34,1.56,.64,1) .29s forwards, shapeWaveLighter 2.4s ease-in-out 1.55s infinite; }
+    </style>
+
+    <filter id="satelliteGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <linearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#70CAF2" />
+      <stop offset="50%" stop-color="#3F79AD" stop-opacity=".5" />
+      <stop offset="100%" stop-color="#3F79AD" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="bgShadowGrad" x1="16" y1="264" x2="496" y2="264" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3F79AD" />
+      <stop offset=".413" stop-color="#EBF5FF" />
+      <stop offset=".808" stop-color="#70CAF2" />
+      <stop offset="1" stop-color="#E4EFF8" />
+    </linearGradient>
+
+    <linearGradient id="bgBaseGrad" x1="256" y1="12" x2="256" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" />
+      <stop offset="1" stop-color="#DBDBDB" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Base Layers -->
+  <circle class="bg-shadow" cx="256" cy="264" r="240" fill="url(#bgShadowGrad)" />
+  <circle class="bg-base" cx="256" cy="248" r="240" fill="url(#bgBaseGrad)" />
+
+  <!-- Inner RClone Symbol Shapes (Directly animated without redundant <g> wrappers) -->
+  <path class="shape-light-blue" fill="#70CAF2" d="M384.08 252.61c-8.85-15.33-21.73-26.89-36.54-34.11-1.89 10.12-5.48 20.09-10.91 29.5l-8.57 14.86c5.71 3.17 10.67 7.84 14.18 13.91 10.29 17.82 4.18 40.62-13.65 50.92-17.83 10.29-40.63 4.18-50.92-13.65L260.39 284.14h-27.9l-13.95 24.16 17.3 29.89c23.64 40.94 75.98 54.96 116.92 31.33 40.93-23.64 54.96-75.98 31.32-116.91Z" />
+
+  <path class="shape-lighter-blue" fill="#B4E3F9" d="M298.36 127.06c-40.94-23.63-93.28-9.6-116.91 31.33-8.86 15.33-12.42 32.27-11.27 48.7 9.7-3.42 20.13-5.3 31-5.3l17.15-.02c-.1-6.52 1.46-13.16 4.96-19.22 10.3-17.83 33.1-23.94 50.92-13.65 17.83 10.3 23.94 33.1 13.65 50.93l-17.25 29.92 13.95 24.16h27.9l17.23-29.93c23.64-40.93 9.61-93.28-31.33-116.92Z" />
+
+  <path class="shape-dark-blue" fill="#3F79AD" d="m228.9 342.21-8.6-14.85c-5.6 3.36-12.12 5.33-19.13 5.33-20.59 0-37.28-16.69-37.28-37.28s16.69-37.28 37.28-37.28l34.53-.02 13.95-24.16-13.95-24.16-34.54.03c-47.27 0-85.59 38.32-85.59 85.59 0 47.27 38.32 85.59 85.59 85.59 17.7 0 34.14-5.38 47.79-14.58-7.81-6.7-14.64-14.8-20.06-24.21Z" />
+
+  <!-- Outer Orbit & Satellite -->
+  <g class="loading-orbit-group">
+    <circle class="loading-orbit-sweep" cx="256" cy="256" r="248" fill="none" stroke="url(#spinnerGradient)" stroke-width="8" stroke-linecap="round" />
+    <circle cx="256" cy="8" r="9" fill="#70CAF2" filter="url(#satelliteGlow)" />
+  </g>
+</svg>

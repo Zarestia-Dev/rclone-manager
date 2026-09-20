@@ -164,6 +164,17 @@ export class FileSystemService extends TauriBaseService {
       }
     }
 
+    if (isMobile()) {
+      const isInternalAppPath =
+        path.startsWith('/data/') ||
+        path.startsWith('/data/user/') ||
+        path.includes('com.rclone.manager');
+      if (isInternalAppPath) {
+        const { remote, remainder } = this.pathService.splitLocalPath(path);
+        return this.nautilusService.newNautilusWindow(remote, remainder);
+      }
+    }
+
     try {
       return await this.invokeCommand('open_in_files', { path });
     } catch (error) {

@@ -2,6 +2,7 @@ package com.rclone.manager
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -50,15 +51,21 @@ class RcloneKeepAliveService : Service() {
   override fun onCreate() {
     super.onCreate()
     Logger.info("RcloneKeepAliveService: onCreate called")
+    createNotificationChannel()
     promoteToForeground()
     acquireLocks()
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     Logger.info("RcloneKeepAliveService: onStartCommand called")
+    if (RcloneSafBridge.getActiveHandleCount() <= 0) {
+      Logger.info("RcloneKeepAliveService: No active handles, stopping immediately")
+      stopSelf()
+      return START_NOT_STICKY
+    }
     promoteToForeground()
     acquireLocks()
-    return START_STICKY
+    return START_NOT_STICKY
   }
 
   private fun acquireLocks() {
@@ -70,7 +77,7 @@ class RcloneKeepAliveService : Service() {
         }
       }
       if (wakeLock?.isHeld == false) {
-        wakeLock?.acquire(30 * 60 * 1000L /* 30 minutes max */)
+        wakeLock?.acquire(30 * 60 * 1000L /* 30 minutes safety timeout */)
       }
     } catch (e: Throwable) {
       Logger.error("Failed to acquire wakeLock: ${e.message}")
@@ -119,11 +126,21 @@ class RcloneKeepAliveService : Service() {
 
   private fun promoteToForeground() {
     try {
-      createNotificationChannel()
+      val launchIntent = Intent(this, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+      }
+      val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+      } else {
+        PendingIntent.FLAG_UPDATE_CURRENT
+      }
+      val contentPendingIntent = PendingIntent.getActivity(this, 0, launchIntent, pendingFlags)
+
       val notification = NotificationCompat.Builder(this, CHANNEL_ID)
         .setContentTitle(getString(R.string.saf_keepalive_title))
         .setContentText(getString(R.string.saf_keepalive_text))
         .setSmallIcon(R.drawable.ic_notification)
+        .setContentIntent(contentPendingIntent)
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setOngoing(true)
         .build()
@@ -144,6 +161,12 @@ class RcloneKeepAliveService : Service() {
 
   override fun onDestroy() {
     Logger.info("RcloneKeepAliveService: onDestroy called")
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      stopForeground(STOP_FOREGROUND_REMOVE)
+    } else {
+      @Suppress("DEPRECATION")
+      stopForeground(true)
+    }
     releaseLocks()
     super.onDestroy()
   }
