@@ -488,6 +488,10 @@
       "prevent_sleep": {
         "label": "Evitar suspensão / desligamento do sistema",
         "description": "Inibe a suspensão do sistema e o desligamento do SO enquanto houver transferências, montagens ou servidores ativos."
+      },
+      "keep_alive": {
+        "label": "Executar em segundo plano",
+        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "Desligamento",
       "message": "Por favor, aguarde enquanto a aplicação é fechada com segurança...",
       "confirmTitle": "Tarefas ativas em andamento",
-      "confirmMessage": "O Rclone Manager possui tarefas ativas em andamento ({{jobs}} transferências, {{mounts}} montagens, {{serves}} servidores). Tem certeza de que deseja parar tudo e sair?",
+      "confirmMessage": "O RClone Manager possui tarefas ativas em andamento ({{jobs}} transferências, {{mounts}} montagens, {{serves}} servidores). Tem certeza de que deseja parar tudo e sair?",
       "stopAndQuit": "Parar e Sair"
     }
   },
@@ -3648,7 +3652,7 @@
         "unmount": "Desmontar Remoto",
         "unmountDesc": "Desmontar com segurança o sistema de arquivos local ativo",
         "appStart": "Ao iniciar o aplicativo",
-        "appStartDesc": "Acionado automaticamente quando o Rclone Manager inicia",
+        "appStartDesc": "Acionado automaticamente quando o RClone Manager inicia",
         "cleanup": "Esvaziar lixeira",
         "cleanupDesc": "Esvazia a lixeira do armazenamento remoto",
         "cryptcheck": "Verificação de criptografia",
@@ -3912,7 +3916,7 @@
     "actions": {
       "shutdownApp": {
         "title": "Fechar aplicativo",
-        "desc": "Encerra o Rclone Manager e as tarefas em segundo plano com segurança"
+        "desc": "Encerra o RClone Manager e as tarefas em segundo plano com segurança"
       },
       "restartApp": {
         "title": "Reiniciar aplicativo",

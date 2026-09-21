@@ -488,6 +488,10 @@
       "prevent_sleep": {
         "label": "防止系統睡眠 / 關機",
         "description": "在活動傳輸、掛載或服務執行時禁止系統休眠和作業系統關機。"
+      },
+      "keep_alive": {
+        "label": "在後台執行",
+        "description": "最小化或關閉時，在後台保持 RClone Manager、作用中傳輸和掛載的遠端執行。"
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "正在關閉",
       "message": "請等待應用安全關閉...",
       "confirmTitle": "有正在執行的任務",
-      "confirmMessage": "Rclone Manager 有正在執行的任務（{{jobs}} 個傳輸任務，{{mounts}} 個掛載，{{serves}} 個服務）。您確定要停止所有任務並結束嗎？",
+      "confirmMessage": "RClone Manager 有正在執行的任務（{{jobs}} 個傳輸任務，{{mounts}} 個掛載，{{serves}} 個服務）。您確定要停止所有任務並結束嗎？",
       "stopAndQuit": "停止並結束"
     }
   },
@@ -1814,7 +1818,7 @@
     "actions": {
       "shutdownApp": {
         "title": "關閉應用程式",
-        "desc": "安全停止 Rclone Manager 與背景任務"
+        "desc": "安全停止 RClone Manager 與背景任務"
       },
       "restartApp": {
         "title": "重新啟動應用程式",
@@ -3695,7 +3699,7 @@
         "stopServe": "停止服務",
         "stopServeDesc": "停止遠端連線的使用中網路服務實例",
         "appStart": "應用程式啟動時",
-        "appStartDesc": "Rclone Manager 啟動時自動觸發",
+        "appStartDesc": "RClone Manager 啟動時自動觸發",
         "cleanup": "清理垃圾桶",
         "cleanupDesc": "清空遠端垃圾桶或資源回收筒",
         "cryptcheck": "加密完整性檢查",

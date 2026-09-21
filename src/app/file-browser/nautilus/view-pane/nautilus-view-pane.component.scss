@@ -71,7 +71,11 @@
 
     &.unselectable {
       opacity: 0.45;
-      pointer-events: none;
+      cursor: not-allowed;
+
+      .folder-card:hover {
+        background: transparent;
+      }
     }
 
     .folder-card {
@@ -205,7 +209,11 @@ tr.folder-drag-over {
 
     &.unselectable {
       opacity: 0.45;
-      pointer-events: none;
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: transparent;
+      }
     }
 
     &:hover {

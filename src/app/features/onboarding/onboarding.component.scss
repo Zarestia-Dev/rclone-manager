@@ -199,7 +199,6 @@
 
       &:hover {
         background: var(--hover-bg-color);
-        border-color: rgba(var(--primary-color-rgb), 0.25);
       }
 
       &:focus-visible {
@@ -209,8 +208,6 @@
 
       &.selected {
         background: rgba(var(--primary-color-rgb), 0.08);
-        border-color: var(--primary-color);
-        box-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.12);
 
         .option-icon-wrapper {
           transform: scale(1.06);

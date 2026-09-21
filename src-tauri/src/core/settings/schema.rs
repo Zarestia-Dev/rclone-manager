@@ -101,6 +101,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     pub prevent_sleep: bool,
+
+    #[setting(
+        label = "settings.general.keep_alive.label",
+        description = "settings.general.keep_alive.description"
+    )]
+    #[cfg(target_os = "android")]
+    pub keep_alive: bool,
 }
 
 impl Default for GeneralSettings {
@@ -126,6 +133,8 @@ impl Default for GeneralSettings {
             standalone_dialogs: false,
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
             prevent_sleep: true,
+            #[cfg(target_os = "android")]
+            keep_alive: true,
             language,
             default_view: "main_menu".to_string(),
             restrict: true,

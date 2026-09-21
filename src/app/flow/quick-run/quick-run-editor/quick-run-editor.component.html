@@ -235,7 +235,8 @@
                 [existingRemotes]="existingRemoteNames()"
                 [searchQuery]="searchQuery()"
                 [highlightedFields]="highlightedFields()"
-                [isLoadingServeFields]="false"
+                [isLoadingServeFields]="isLoadingServeFields()"
+                (serveTypeChange)="onServeTypeChange($event)"
               />
             }
           </div>

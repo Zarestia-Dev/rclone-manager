@@ -5,5 +5,8 @@
     <string name="saf_keepalive_title">Служба хранения Rclone SAF</string>
     <string name="saf_keepalive_text">Активен фоновый поток файлов</string>
     <string name="saf_keepalive_channel_name">Служба хранения Rclone</string>
-    <string name="saf_keepalive_channel_desc">Поддерживает процесс Rclone активным во время потоковой передачи файлов SAF</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">Работает в фоновом режиме</string>
+    <string name="keepalive_channel_name">Фоновая служба RClone</string>
+    <string name="keepalive_channel_desc">Поддерживает активные подключенные диски, передачи и фоновые задачи</string>
 </resources>

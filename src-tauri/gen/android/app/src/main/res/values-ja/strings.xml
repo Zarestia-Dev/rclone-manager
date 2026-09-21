@@ -5,5 +5,8 @@
     <string name="saf_keepalive_title">Rclone SAF ストレージサービス</string>
     <string name="saf_keepalive_text">バックグラウンドでファイルストリーミングが進行中</string>
     <string name="saf_keepalive_channel_name">Rclone ストレージサービス</string>
-    <string name="saf_keepalive_channel_desc">外部SAFファイルストリーミング中にRcloneプロセスをアクティブに維持します</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">バックグラウンドで実行中</string>
+    <string name="keepalive_channel_name">RClone バックグラウンドサービス</string>
+    <string name="keepalive_channel_desc">アクティブなマウント、転送、バックグラウンドタスクを維持します</string>
 </resources>

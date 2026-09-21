@@ -486,6 +486,10 @@
       "prevent_sleep": {
         "label": "Sistem Uyku / Kapanmasını Engelle",
         "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistem uykusunu ve kapanmasını engeller."
+      },
+      "keep_alive": {
+        "label": "Arka Planda Çalıştır",
+        "description": "Uygulama simge durumuna küçültüldüğünde veya kapatıldığında RClone Manager'ı, aktif aktarımları ve bağlı diskleri arka planda çalıştırmaya devam et."
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "Kapatılıyor",
       "message": "Uygulama güvenli bir şekilde kapatılırken lütfen bekleyin...",
       "confirmTitle": "Aktif İşlemler Devam Ediyor",
-      "confirmMessage": "Rclone Manager üzerinde aktif işlemler çalışıyor ({{jobs}} transfer, {{mounts}} bağlama, {{serves}} sunum). Tüm aktif işlemleri durdurup çıkmak istediğinize emin misiniz?",
+      "confirmMessage": "RClone Manager üzerinde aktif işlemler çalışıyor ({{jobs}} transfer, {{mounts}} bağlama, {{serves}} sunum). Tüm aktif işlemleri durdurup çıkmak istediğinize emin misiniz?",
       "stopAndQuit": "Durdur ve Çık"
     }
   },
@@ -1814,7 +1818,7 @@
     "actions": {
       "shutdownApp": {
         "title": "Uygulamayı Kapat",
-        "desc": "Rclone Manager sunucusunu ve işlemlerini sonlandırır"
+        "desc": "RClone Manager sunucusunu ve işlemlerini sonlandırır"
       },
       "restartApp": {
         "title": "Yeniden Başlat",
@@ -3695,7 +3699,7 @@
         "stopServe": "Sunucuyu Durdur",
         "stopServeDesc": "Remote için aktif ağ sunucu servislerini durdur",
         "appStart": "Uygulama Başlangıcı",
-        "appStartDesc": "Rclone Manager başladığında otomatik tetiklenir",
+        "appStartDesc": "RClone Manager başladığında otomatik tetiklenir",
         "cleanup": "Çöp Kutusunu Temizle",
         "cleanupDesc": "Uzak depolamadaki çöp kutusunu boşalt",
         "cryptcheck": "Şifreli Bütünlük Kontrolü",

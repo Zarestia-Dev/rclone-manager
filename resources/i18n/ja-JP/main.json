@@ -488,6 +488,10 @@
       "prevent_sleep": {
         "label": "システムのスリープ/シャットダウンを防止",
         "description": "アクティブな転送、マウント、またはサーバーの実行中にシステムの休止状態やシャットダウンを防止します。"
+      },
+      "keep_alive": {
+        "label": "バックグラウンドで実行",
+        "description": "最小化または終了時も、RClone Manager、アクティブな転送、マウントされたリモートをバックグラウンドで維持します。"
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "終了処理中",
       "message": "アプリが安全に終了するまでお待ちください...",
       "confirmTitle": "アクティブなタスクが実行中",
-      "confirmMessage": "Rclone Managerでアクティブなタスクが実行中です（転送: {{jobs}}、マウント: {{mounts}}、配信: {{serves}}）。すべてのタスクを停止して終了しますか？",
+      "confirmMessage": "RClone Managerでアクティブなタスクが実行中です（転送: {{jobs}}、マウント: {{mounts}}、配信: {{serves}}）。すべてのタスクを停止して終了しますか？",
       "stopAndQuit": "停止して終了"
     }
   },
@@ -3648,7 +3652,7 @@
         "unmount": "リモートのマウント解除",
         "unmountDesc": "アクティブなローカルファイルシステムを安全にマウント解除",
         "appStart": "アプリ起動時",
-        "appStartDesc": "Rclone Managerの起動時に自動でトリガー",
+        "appStartDesc": "RClone Managerの起動時に自動でトリガー",
         "cleanup": "ゴミ箱のクリーンアップ",
         "cleanupDesc": "リモートのゴミ箱を空にする",
         "cryptcheck": "暗号化整合性チェック",
@@ -3912,7 +3916,7 @@
     "actions": {
       "shutdownApp": {
         "title": "アプリを終了",
-        "desc": "Rclone Managerとバックグラウンドタスクを安全に停止します"
+        "desc": "RClone Managerとバックグラウンドタスクを安全に停止します"
       },
       "restartApp": {
         "title": "アプリを再起動",

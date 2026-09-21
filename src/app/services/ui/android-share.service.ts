@@ -15,7 +15,7 @@ const getBridge = (): AndroidNativeBridge | undefined =>
 /**
  * Handles the Android "Share" intent flow:
  *
- * When another app (Gallery, Files, etc.) shares files into Rclone Manager,
+ * When another app (Gallery, Files, etc.) shares files into RClone Manager,
  * the Kotlin side either queues the files (cold start) or dispatches an
  * `android-share-files` CustomEvent (warm start). This service:
  *   1. Stores the pending paths in a signal.

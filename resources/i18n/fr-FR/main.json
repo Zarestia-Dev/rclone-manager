@@ -486,6 +486,10 @@
       "prevent_sleep": {
         "label": "Empêcher la mise en veille / l'extinction du système",
         "description": "Empêche la mise en veille et l'arrêt du système pendant que des transferts, des montages ou des serveurs sont actifs."
+      },
+      "keep_alive": {
+        "label": "Exécuter en arrière-plan",
+        "description": "Garder RClone Manager, les transferts actifs et les disques montés en cours d'exécution en arrière-plan lors de la réduction ou fermeture."
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "Éteindre",
       "message": "Veuillez patienter pendant que l'application s'éteint en toute sécurité...",
       "confirmTitle": "Tâches actives en cours",
-      "confirmMessage": "Rclone Manager a des tâches actives en cours ({{jobs}} transferts, {{mounts}} montages, {{serves}} services). Voulez-vous vraiment tout arrêter et quitter ?",
+      "confirmMessage": "RClone Manager a des tâches actives en cours ({{jobs}} transferts, {{mounts}} montages, {{serves}} services). Voulez-vous vraiment tout arrêter et quitter ?",
       "stopAndQuit": "Arrêter et Quitter"
     }
   },
@@ -3648,7 +3652,7 @@
         "unmount": "Démonter le distant",
         "unmountDesc": "Démonter le système de fichiers local en toute sécurité",
         "appStart": "Au lancement de l'application",
-        "appStartDesc": "Déclenché automatiquement au démarrage de Rclone Manager",
+        "appStartDesc": "Déclenché automatiquement au démarrage de RClone Manager",
         "cleanup": "Vider la corbeille",
         "cleanupDesc": "Vide la corbeille du stockage distant",
         "cryptcheck": "Vérification du chiffrement",
@@ -3912,7 +3916,7 @@
     "actions": {
       "shutdownApp": {
         "title": "Quitter l'application",
-        "desc": "Arrête en toute sécurité Rclone Manager et les tâches en arrière-plan"
+        "desc": "Arrête en toute sécurité RClone Manager et les tâches en arrière-plan"
       },
       "restartApp": {
         "title": "Redémarrer l'application",

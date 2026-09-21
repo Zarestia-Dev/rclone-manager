@@ -31,6 +31,17 @@ export const isIOS = (): boolean => {
   }
 };
 
+export const isAndroid = (): boolean => {
+  if (isHeadlessMode()) {
+    return /Android/i.test(navigator.userAgent);
+  }
+  try {
+    return platform() === 'android';
+  } catch {
+    return /Android/i.test(navigator.userAgent);
+  }
+};
+
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {
   private readonly http = inject(HttpClient);

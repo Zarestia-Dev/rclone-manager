@@ -486,6 +486,10 @@
       "prevent_sleep": {
         "label": "防止系统睡眠 / 关机",
         "description": "在活动传输、挂载或服务运行时禁止系统休眠和操作系统关机。"
+      },
+      "keep_alive": {
+        "label": "在后台运行",
+        "description": "最小化或关闭时，在后台保持 RClone Manager、活动传输和挂载的远程运行。"
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "正在关闭",
       "message": "请等待应用安全关闭...",
       "confirmTitle": "有正在运行的任务",
-      "confirmMessage": "Rclone Manager 有正在运行的任务（{{jobs}} 个传输任务，{{mounts}} 个挂载，{{serves}} 个服务）。您确定要停止所有任务并退出吗？",
+      "confirmMessage": "RClone Manager 有正在运行的任务（{{jobs}} 个传输任务，{{mounts}} 个挂载，{{serves}} 个服务）。您确定要停止所有任务并退出吗？",
       "stopAndQuit": "停止并退出"
     }
   },
@@ -3648,7 +3652,7 @@
         "unmount": "卸载挂载",
         "unmountDesc": "安全卸载当前活跃的本地文件系统挂载",
         "appStart": "应用启动时",
-        "appStartDesc": "Rclone Manager 启动时自动触发",
+        "appStartDesc": "RClone Manager 启动时自动触发",
         "cleanup": "清理回收站",
         "cleanupDesc": "清空远端回收站或垃圾箱",
         "cryptcheck": "加密完整性检查",
@@ -3912,7 +3916,7 @@
     "actions": {
       "shutdownApp": {
         "title": "关闭应用",
-        "desc": "安全停止 Rclone Manager 与后台任务"
+        "desc": "安全停止 RClone Manager 与后台任务"
       },
       "restartApp": {
         "title": "重启应用",

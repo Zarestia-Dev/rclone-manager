@@ -5,5 +5,8 @@
     <string name="saf_keepalive_title">Service de Stockage Rclone SAF</string>
     <string name="saf_keepalive_text">Flux de fichiers en arrière-plan actif</string>
     <string name="saf_keepalive_channel_name">Service de Stockage Rclone</string>
-    <string name="saf_keepalive_channel_desc">Maintient le processus Rclone actif pendant la lecture/écriture de fichiers SAF</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">Exécution en arrière-plan</string>
+    <string name="keepalive_channel_name">Service d\'Arrière-Plan RClone</string>
+    <string name="keepalive_channel_desc">Maintient les montages actifs, les transferts et les tâches en arrière-plan</string>
 </resources>

@@ -9,6 +9,7 @@ import android.os.Environment
 import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.Settings
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
@@ -22,6 +23,13 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : TauriActivity() {
+
+  companion object {
+    @Volatile
+    var sAppWebView: WebView? = null
+    @Volatile
+    var lastActivityId: Int = 0
+  }
 
   // Reference to the WebView so we can evaluateJavascript from non-UI callbacks
   private var appWebView: WebView? = null
@@ -43,7 +51,11 @@ class MainActivity : TauriActivity() {
         if (webView != null && webView.canGoBack()) {
           webView.goBack()
         } else {
-          moveTaskToBack(true)
+          if (RcloneKeepAliveService.isRunning()) {
+            moveTaskToBack(true)
+          } else {
+            finish()
+          }
         }
       }
     })
@@ -60,6 +72,18 @@ class MainActivity : TauriActivity() {
     }
 
     super.onCreate(savedInstanceState)
+    lastActivityId = id
+
+    val cached = sAppWebView
+    if (cached != null) {
+      Logger.info("MainActivity: Re-attaching cached WebView to newly created Activity")
+      (cached.parent as? ViewGroup)?.removeView(cached)
+      setContentView(cached)
+      appWebView = cached
+      cached.addJavascriptInterface(this, "__rclone__")
+      cached.onResume()
+      cached.resumeTimers()
+    }
 
     handleShareIntent(intent)
     handleOpenSystemFilesIntent(intent)
@@ -71,9 +95,53 @@ class MainActivity : TauriActivity() {
   private var pendingRoute: String? = null
   @Volatile private var isFrontendReady = false
 
+  override fun isChangingConfigurations(): Boolean {
+    if (RcloneKeepAliveService.isRunning()) {
+      return true
+    }
+    return super.isChangingConfigurations()
+  }
+
+  override fun onPause() {
+    super.onPause()
+    appWebView?.pauseTimers()
+    appWebView?.onPause()
+  }
+
+  override fun onStop() {
+    super.onStop()
+    // Notify frontend that the app is now invisible for background polling throttle
+    appWebView?.post {
+      appWebView?.evaluateJavascript(
+        "document.dispatchEvent(new Event('visibilitychange'))",
+        null
+      )
+    }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    appWebView?.onResume()
+    appWebView?.resumeTimers()
+    appWebView?.post {
+      appWebView?.evaluateJavascript(
+        "document.dispatchEvent(new Event('visibilitychange'))",
+        null
+      )
+    }
+  }
+
   override fun onDestroy() {
     appWebView?.removeJavascriptInterface("__rclone__")
+    if (RcloneKeepAliveService.isRunning()) {
+      Logger.info("MainActivity: Keep-alive active, detaching WebView but preserving in memory")
+      (appWebView?.parent as? ViewGroup)?.removeView(appWebView)
+      appWebView = null
+      super.onDestroy()
+      return
+    }
     appWebView = null
+    sAppWebView = null
     shareExecutor.shutdown()
     super.onDestroy()
   }
@@ -129,6 +197,7 @@ class MainActivity : TauriActivity() {
    */
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
+    sAppWebView = webView
     appWebView = webView
     webView.addJavascriptInterface(this, "__rclone__")
   }
@@ -355,6 +424,26 @@ class MainActivity : TauriActivity() {
         Logger.error("requestIgnoreBatteryOptimizations failed: ${e.message}")
       }
     }
+  }
+
+  @JavascriptInterface
+  fun startKeepAliveService(force: Boolean = false) {
+    RcloneKeepAliveService.startService(this, force)
+  }
+
+  @JavascriptInterface
+  fun stopKeepAliveService(force: Boolean = true) {
+    RcloneKeepAliveService.stopService(this, force)
+  }
+
+  @JavascriptInterface
+  fun isKeepAliveServiceRunning(): Boolean {
+    return RcloneKeepAliveService.isRunning()
+  }
+
+  @JavascriptInterface
+  fun updateKeepAliveNotification(title: String, text: String) {
+    RcloneKeepAliveService.updateNotification(this, title, text)
   }
 
   /**

@@ -20,6 +20,7 @@ import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
+import { AndroidKeepAliveService } from './services/infrastructure/platform/android-keep-alive.service';
 import { FlowContainerComponent } from './flow/flow-container.component';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
@@ -62,6 +63,7 @@ export class AppComponent implements OnInit {
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly androidShareService = inject(AndroidShareService);
+  private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
 
   readonly selectedMainView = this.uiStateService.selectedMainView;
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
@@ -77,6 +79,7 @@ export class AppComponent implements OnInit {
 
     // Start listening for Android share intents (no-op on desktop/web).
     this.androidShareService.initialize();
+    this.androidKeepAliveService.initialize();
 
     // Wire overlay signals into UiStateService for mobile-sidebar computation.
     this.uiStateService.setOverlaySignals({

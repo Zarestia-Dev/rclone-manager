@@ -245,6 +245,7 @@
           [cdkContextMenuTriggerData]="{ $implicit: item }"
           (cdkContextMenuOpened)="setContextItem.emit(item)"
           [class.selected]="selection().has(getItemKey(item))"
+          [class.unselectable]="!isItemSelectable()(item.entry)"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
           [class.cut-item]="cutItemPaths().has(getItemKey(item))"
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"

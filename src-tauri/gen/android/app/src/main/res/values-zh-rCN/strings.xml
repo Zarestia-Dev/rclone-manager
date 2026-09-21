@@ -5,5 +5,8 @@
     <string name="saf_keepalive_title">Rclone SAF 存储服务</string>
     <string name="saf_keepalive_text">后台文件流传输进行中</string>
     <string name="saf_keepalive_channel_name">Rclone 存储服务</string>
-    <string name="saf_keepalive_channel_desc">在外部 SAF 文件传输期间保持 Rclone 进程活跃</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">正在后台运行</string>
+    <string name="keepalive_channel_name">RClone 后台服务</string>
+    <string name="keepalive_channel_desc">保持活动挂载、传输和后台任务运行</string>
 </resources>

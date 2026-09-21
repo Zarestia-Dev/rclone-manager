@@ -488,6 +488,10 @@
       "prevent_sleep": {
         "label": "Prevent System Sleep / Shutdown",
         "description": "Inhibit system sleep and OS shutdown while active transfers, mounts, or servers are running."
+      },
+      "keep_alive": {
+        "label": "Run in Background",
+        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."
       }
     },
     "core": {
@@ -1802,7 +1806,7 @@
       "title": "Shutting Down",
       "message": "Please wait while the application shuts down safely...",
       "confirmTitle": "Active Tasks in Progress",
-      "confirmMessage": "Rclone Manager has active tasks running ({{jobs}} transfers, {{mounts}} mounts, {{serves}} serves). Are you sure you want to stop all active tasks and quit?",
+      "confirmMessage": "RClone Manager has active tasks running ({{jobs}} transfers, {{mounts}} mounts, {{serves}} serves). Are you sure you want to stop all active tasks and quit?",
       "stopAndQuit": "Stop & Quit"
     }
   },
@@ -1814,7 +1818,7 @@
     "actions": {
       "shutdownApp": {
         "title": "Shut Down App",
-        "desc": "Safely stops Rclone Manager and background tasks"
+        "desc": "Safely stops RClone Manager and background tasks"
       },
       "restartApp": {
         "title": "Restart App",
@@ -3695,7 +3699,7 @@
         "stopServe": "Stop Serve",
         "stopServeDesc": "Stop active network serve instances for a remote",
         "appStart": "On App Launch",
-        "appStartDesc": "Trigger automatically when Rclone Manager starts",
+        "appStartDesc": "Trigger automatically when RClone Manager starts",
         "cleanup": "Cleanup Trash",
         "cleanupDesc": "Empty remote trash or recycle bin",
         "cryptcheck": "Cryptcheck",

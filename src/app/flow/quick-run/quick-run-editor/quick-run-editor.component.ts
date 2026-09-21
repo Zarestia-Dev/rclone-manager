@@ -74,6 +74,8 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import {
   syncResponsiveSidebar,
@@ -142,6 +144,8 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly pathInspectionService = inject(PathInspectionService);
   private readonly translate = inject(TranslateService);
   private readonly valueMapper = inject(RcloneValueMapperService);
+  private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly workflowStateService = inject(WorkflowStateService, { optional: true });
@@ -178,6 +182,12 @@ export class QuickRunEditorComponent implements OnInit {
       type: [''],
     })
   );
+  readonly mountTypes = signal<string[]>([]);
+  readonly availableServeTypes = signal<string[]>([]);
+  readonly selectedServeType = signal('http');
+  readonly dynamicServeFields = signal<RcConfigOption[]>([]);
+  readonly isLoadingServeFields = signal(false);
+  private readonly _serveLoadToken = { token: 0 };
   private seedRcloneConfig?: Record<string, unknown>;
   private destPathGeneration = 0;
 
@@ -272,7 +282,8 @@ export class QuickRunEditorComponent implements OnInit {
     effect(() => {
       const all = this.flagConfigService.allFlagFields();
       if (all) {
-        this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
+        const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
+        this.dynamicFlagFields.set(decorated);
         untracked(() => this.syncAllDynamicControls());
       }
     });
@@ -366,6 +377,9 @@ export class QuickRunEditorComponent implements OnInit {
         }
         this.syncAllDynamicControls();
         this.checkAndSetDefaultDestPath();
+        if (opType === 'serve') {
+          void this.loadServeFields();
+        }
         if (this.activeTab() === (prevOp as FlagType)) {
           this.activeTab.set(opType as FlagType);
         }
@@ -393,6 +407,15 @@ export class QuickRunEditorComponent implements OnInit {
       configControls[`${flag}Config`] = isShared
         ? this.createSharedConfigGroup()
         : this.createOpConfigGroup(flag as PrimaryActionType);
+    }
+
+    const mountOpts = configControls['mountConfig']?.get('options') as FormGroup | null;
+    if (mountOpts && !mountOpts.contains('mountType')) {
+      mountOpts.addControl('mountType', new FormControl('mount'));
+    }
+    const serveOpts = configControls['serveConfig']?.get('options') as FormGroup | null;
+    if (serveOpts && !serveOpts.contains('type')) {
+      serveOpts.addControl('type', new FormControl('http'));
     }
 
     return this.fb.group({
@@ -430,6 +453,11 @@ export class QuickRunEditorComponent implements OnInit {
 
     const newGroup = this.createOpConfigGroup(newOp, seed);
     this.form.setControl(`${newOp}Config`, newGroup);
+    if (newOp === 'serve') {
+      const sType = (newGroup.get('options.type')?.value as string) || 'http';
+      this.selectedServeType.set(sType);
+      void this.loadServeFields();
+    }
   }
 
   private createSharedConfigGroup(): FormGroup {
@@ -471,6 +499,12 @@ export class QuickRunEditorComponent implements OnInit {
           }
         }
       }
+    }
+
+    if (opType === 'mount' && !optionsGroup.contains('mountType')) {
+      optionsGroup.addControl('mountType', new FormControl('mount'));
+    } else if (opType === 'serve' && !optionsGroup.contains('type')) {
+      optionsGroup.addControl('type', new FormControl('http'));
     }
 
     const group: Record<string, unknown> = {
@@ -524,6 +558,15 @@ export class QuickRunEditorComponent implements OnInit {
 
     const opGroup = this.createOpConfigGroup(opType, seed);
     this.form.setControl(`${opType}Config`, opGroup);
+
+    if (opType === 'serve') {
+      const serveType =
+        (opGroup.get('options.type')?.value as string) ||
+        (rawRclone['type'] as string) ||
+        ((rawRclone['serve'] as Record<string, unknown> | undefined)?.['type'] as string) ||
+        'http';
+      this.selectedServeType.set(serveType);
+    }
 
     for (const shared of ['vfs', 'filter', 'backend'] as const) {
       const sharedObj = rawRclone[shared] as Record<string, unknown> | undefined;
@@ -642,18 +685,129 @@ export class QuickRunEditorComponent implements OnInit {
     return dst != null ? String(dst) : '';
   }
 
+  private decorateFlagFields(
+    fields: Record<string, RcConfigOption[]>
+  ): Record<string, RcConfigOption[]> {
+    const cloned = structuredClone(fields);
+    const mOpt = cloned['mount']?.find(f => f.Name === 'mountType');
+    if (mOpt && this.mountTypes().length) {
+      mOpt.Examples = this.mountTypes().map(t => ({
+        Value: t,
+        Help: this.translate.instant(`mount_type_${t}.title`) || t,
+      }));
+    }
+    const sOpt = cloned['serve']?.find(f => f.Name === 'type');
+    if (sOpt && this.availableServeTypes().length) {
+      sOpt.Examples = this.availableServeTypes().map(t => ({
+        Value: t,
+        Help: this.translate.instant(`serve_type_${t}.title`) || t,
+      }));
+    }
+    return cloned;
+  }
+
+  private refreshDecoratedFlagFields(): void {
+    const all = this.flagConfigService.allFlagFields();
+    if (all) {
+      const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
+      this.dynamicFlagFields.set(decorated);
+    }
+  }
+
+  private async loadMountTypes(): Promise<void> {
+    try {
+      const types = await this.mountManagementService.getMountTypes();
+      this.mountTypes.set(types);
+      this.refreshDecoratedFlagFields();
+    } catch (err) {
+      console.warn('[QuickRunEditor] loadMountTypes failed:', err);
+    }
+  }
+
+  private async loadServeTypes(): Promise<void> {
+    try {
+      const types = await this.serveManagementService.getServeTypes();
+      this.availableServeTypes.set(types);
+      if (types.length && !this.selectedServeType()) {
+        this.selectedServeType.set(types[0]);
+      }
+      this.refreshDecoratedFlagFields();
+      const currentServe = this.dynamicServeFields();
+      if (currentServe.length) {
+        const opt = currentServe.find(f => f.Name === 'type');
+        if (opt) {
+          opt.Examples = types.map(t => ({
+            Value: t,
+            Help: this.translate.instant(`serve_type_${t}.title`) || t,
+          }));
+          this.dynamicServeFields.set([...currentServe]);
+        }
+      }
+    } catch (err) {
+      console.warn('[QuickRunEditor] loadServeTypes failed:', err);
+    }
+  }
+
+  private async loadServeFields(): Promise<void> {
+    const t = this.selectedServeType() || 'http';
+    const token = ++this._serveLoadToken.token;
+    this.isLoadingServeFields.set(true);
+    try {
+      const fields = await this.flagConfigService.loadServeFlagFields(t);
+      if (token !== this._serveLoadToken.token) return;
+      const opt = fields.find(f => f.Name === 'type');
+      if (opt && this.availableServeTypes().length) {
+        opt.Examples = this.availableServeTypes().map(type => ({
+          Value: type,
+          Help: this.translate.instant(`serve_type_${type}.title`) || type,
+        }));
+      }
+      this.dynamicServeFields.set(fields);
+      this.rebuildServeOptionsGroup();
+    } catch (err) {
+      console.warn('[QuickRunEditor] loadServeFields failed:', err);
+    } finally {
+      if (token === this._serveLoadToken.token) {
+        this.isLoadingServeFields.set(false);
+      }
+    }
+  }
+
+  async onServeTypeChange(type: string): Promise<void> {
+    if (this.selectedServeType() === type) return;
+    this.selectedServeType.set(type || 'http');
+    const typeCtrl = this.form.get('serveConfig.options.type');
+    if (typeCtrl && typeCtrl.value !== type) {
+      typeCtrl.setValue(type, { emitEvent: false });
+    }
+    await this.loadServeFields();
+  }
+
+  rebuildServeOptionsGroup(): void {
+    const g = this.form.get('serveConfig.options') as FormGroup | null;
+    if (!g) return;
+    this.syncDynamicControls(g, this.dynamicServeFields(), {
+      preserveKeys: new Set(['type']),
+    });
+  }
+
   private async loadAllFlagFields(): Promise<void> {
     this.isLoadingFlags.set(true);
     try {
+      await Promise.all([this.loadMountTypes(), this.loadServeTypes()]);
+
       let all = this.flagConfigService.allFlagFields();
       if (!all) {
         await this.flagConfigService.loadAllFlagFields();
         all = this.flagConfigService.allFlagFields();
       }
       if (all) {
-        this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
+        const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
+        this.dynamicFlagFields.set(decorated);
         this.syncAllDynamicControls();
       }
+
+      await this.loadServeFields();
     } catch (err) {
       console.warn('[QuickRunEditor] loadAllFlagFields failed:', err);
     } finally {
@@ -676,7 +830,7 @@ export class QuickRunEditorComponent implements OnInit {
       if (!configGroup) continue;
       const optionsGroup = configGroup.get('options') as FormGroup | null;
       if (!optionsGroup) continue;
-      const typeFields = fields[type] ?? [];
+      const typeFields = type === 'serve' ? this.dynamicServeFields() : (fields[type] ?? []);
       this.syncDynamicControls(optionsGroup, typeFields);
     }
   }
@@ -685,7 +839,18 @@ export class QuickRunEditorComponent implements OnInit {
    * Add FormControl instances for each field that doesn't already exist on
    * the group. Existing controls are preserved.
    */
-  private syncDynamicControls(group: FormGroup, fields: RcConfigOption[]): void {
+  private syncDynamicControls(
+    group: FormGroup,
+    fields: RcConfigOption[],
+    opts?: { preserveKeys?: Set<string> }
+  ): void {
+    if (opts?.preserveKeys) {
+      for (const k of Object.keys(group.controls)) {
+        if (!opts.preserveKeys.has(k)) {
+          group.removeControl(k);
+        }
+      }
+    }
     for (const f of fields) {
       const key = f.Name || f.FieldName;
       if (!key || group.contains(key)) continue;
@@ -959,6 +1124,9 @@ export class QuickRunEditorComponent implements OnInit {
       const mountOpts = this.form.get('mountConfig.options') as FormGroup | null;
       mountOpts?.get('mountType')?.setValue(result.mountSubtype);
     }
+    if (result.serveSubtype && currentOp === 'serve') {
+      void this.onServeTypeChange(result.serveSubtype);
+    }
 
     this.highlightedFields.set(newHighlighted);
     this.showCliImport.set(false);
@@ -1032,11 +1200,25 @@ export class QuickRunEditorComponent implements OnInit {
 
     const opOptsGroup = inner.get('options') as FormGroup | null;
     if (opOptsGroup) {
+      const opFields =
+        opType === 'serve' ? this.dynamicServeFields() : (fields[opType as FlagType] ?? []);
       const cleanedOp = this.valueMapper.cleanData(
         opOptsGroup.getRawValue() as Record<string, unknown>,
-        fields[opType as FlagType] ?? []
+        opFields
       );
       Object.assign(opConfig, cleanedOp);
+
+      if (opType === 'mount') {
+        const mt = opOptsGroup.get('mountType')?.value;
+        if (mt && mt !== 'mount') {
+          opConfig['mountType'] = mt;
+        }
+      } else if (opType === 'serve') {
+        const st = opOptsGroup.get('type')?.value;
+        if (st) {
+          opConfig['type'] = st;
+        }
+      }
     }
 
     const rclone: Record<string, unknown> = {
@@ -1114,6 +1296,9 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   getFlagFields(type: FlagType | string): RcConfigOption[] {
+    if (type === 'serve') {
+      return this.dynamicServeFields();
+    }
     return this.dynamicFlagFields()[type] ?? [];
   }
 
@@ -1129,7 +1314,8 @@ export class QuickRunEditorComponent implements OnInit {
       const opts =
         (raw[`${flagType}Config`] as { options?: Record<string, unknown> } | undefined)?.options ??
         {};
-      const typeFields = fields[flagType as FlagType] ?? [];
+      const typeFields =
+        flagType === 'serve' ? this.dynamicServeFields() : (fields[flagType as FlagType] ?? []);
       return this.valueMapper.cleanData(opts, typeFields);
     };
 
@@ -1138,6 +1324,7 @@ export class QuickRunEditorComponent implements OnInit {
     const res: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
       vfs: isVfsApplicable ? getCleanOptions('vfs') : {},
       mount: getCleanOptions('mount'),
+      serve: getCleanOptions('serve'),
       backend: getCleanOptions('backend'),
       filter: getCleanOptions('filter'),
       sync: getCleanOptions('sync'),
@@ -1184,6 +1371,12 @@ export class QuickRunEditorComponent implements OnInit {
     if (values.filter) this.patchGroupOptions('filterConfig', values.filter);
     if (values.sync) this.patchGroupOptions('syncConfig', values.sync);
     if (values.copy) this.patchGroupOptions('copyConfig', values.copy);
+    const serveValues = (values as Record<string, Record<string, unknown> | undefined>)['serve'];
+    if (serveValues) {
+      this.patchGroupOptions('serveConfig', serveValues);
+      const sType = serveValues['type'] as string | undefined;
+      if (sType) void this.onServeTypeChange(sType);
+    }
 
     const currentOp = this.currentOpType();
     if (currentOp) {
