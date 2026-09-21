@@ -13,16 +13,26 @@ use crate::{
 
 pub const MIN_RCLONE_VERSION: &str = "1.75.0";
 
+fn resolve_path(path: &std::path::Path) -> PathBuf {
+    if path.is_file() {
+        return path.to_path_buf();
+    }
+
+    let executable = path.join(RCLONE_EXECUTABLE);
+    if path.is_dir() || executable.exists() {
+        return executable;
+    }
+
+    path.to_path_buf()
+}
+
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
     if let Some(path) = override_path
         .filter(|p| !p.to_string_lossy().is_empty() && *p != std::path::Path::new("system"))
     {
-        let path = PathBuf::from(path);
-        if !path.to_string_lossy().ends_with(RCLONE_EXECUTABLE) {
-            return path.join(RCLONE_EXECUTABLE);
-        }
-        return path;
+        return resolve_path(path);
     }
+
     read_rclone_binary(app)
 }
 
@@ -99,8 +109,13 @@ pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool
                 "error" => "Could not determine rclone version"
             )),
         }
-    } else {
+    } else if path.is_empty() {
         crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError);
+        Err(crate::localized_error!(
+            "backendErrors.rclone.notFound",
+            "path" => rclone_binary.display()
+        ))
+    } else {
         Err(crate::localized_error!(
             "backendErrors.rclone.notFound",
             "path" => rclone_binary.display()
@@ -144,14 +159,12 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
 
     debug!("Configured rclone binary: {}", configured.to_string_lossy());
 
-    let configured = if configured.to_string_lossy() != "system"
-        && !configured.to_string_lossy().is_empty()
-        && !configured.to_string_lossy().ends_with(RCLONE_EXECUTABLE)
-    {
-        configured.join(RCLONE_EXECUTABLE)
-    } else {
-        configured
-    };
+    let configured =
+        if configured.to_string_lossy() != "system" && !configured.to_string_lossy().is_empty() {
+            resolve_path(&configured)
+        } else {
+            configured
+        };
 
     if configured.to_string_lossy() != "system" && configured.is_file() {
         return configured;

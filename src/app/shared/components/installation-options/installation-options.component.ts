@@ -119,7 +119,7 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   async selectBinary(): Promise<void> {
-    const path = await this.fs.selectFolder(); // Needs to change to selectFile when we have a rclone binary with a GUI-friendly name
+    const path = await this.fs.selectFile();
     if (path) {
       this.existingBinaryControl.setValue(path);
       this.binaryTestResult.set('untested');
