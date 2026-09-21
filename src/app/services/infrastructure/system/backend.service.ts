@@ -40,6 +40,13 @@ export class BackendService extends TauriBaseService {
         }
         this.backendData.reload();
       });
+
+    this.eventListenersService
+      .listenToSettingsCategory('connections')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.backendData.reload();
+      });
   }
 
   readonly activeConfigPath = computed(() => {

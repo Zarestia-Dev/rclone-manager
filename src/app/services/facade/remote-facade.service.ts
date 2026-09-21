@@ -25,8 +25,6 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
-import { QuickRunService } from '../flow/quick-run.service';
-import { AutomationService } from '../operations/automation.service';
 import { NotificationService } from '../ui/notification.service';
 import { ModalService } from '../ui/modal.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
@@ -97,8 +95,6 @@ export class RemoteFacadeService {
   private readonly notificationService = inject(NotificationService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
-  private readonly quickRunService = inject(QuickRunService);
-  private readonly automationService = inject(AutomationService);
   private readonly modalService = inject(ModalService);
 
   readonly jobs = this.jobService.jobs;
@@ -213,6 +209,15 @@ export class RemoteFacadeService {
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => void this.loadRemotes());
+
+    this.eventListeners
+      .listenToSystemSettingsChanged()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        if (payload.category === '*') {
+          void this.refreshAll();
+        }
+      });
   }
 
   // --- Settings & Path Collisions ---
@@ -496,8 +501,6 @@ export class RemoteFacadeService {
           this.mountService.getMountedRemotes(),
           this.serveService.refreshServes(),
           this.jobService.refreshJobs(),
-          this.quickRunService.refresh(),
-          this.automationService.refreshAutomations(),
         ]);
         this.loadDiskUsageInBackground();
       } finally {

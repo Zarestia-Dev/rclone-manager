@@ -188,5 +188,27 @@ describe('AppSettingsService', () => {
 
       expect(service.isTrayAvailable()).toBe(true);
     });
+
+    it('re-applies saved language and reloads settings when wildcard settings change event is received', async () => {
+      apiClientMock.invoke.mockResolvedValue({
+        options: {
+          'general.language': {
+            value: 'fr-FR',
+            value_type: 'string',
+          } as unknown as SettingMetadata,
+        },
+      });
+
+      await service.loadSettings();
+      const applyLangSpy = vi.spyOn(service, 'applySavedLanguage');
+
+      settingsChanged$.next({
+        category: '*',
+        key: '*',
+        value: null,
+      });
+
+      expect(applyLangSpy).toHaveBeenCalled();
+    });
   });
 });

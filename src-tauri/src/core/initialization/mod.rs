@@ -108,6 +108,8 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         error!("Failed to reload automations: {e}");
     }
 
+    crate::core::flow::quick_run::commands::sync_quick_run_automations_bg(&app_handle).await;
+
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
     #[cfg(feature = "tray")]
@@ -115,10 +117,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
-    bridge::emit(
-        crate::utils::types::events::REMOTE_CACHE_CHANGED,
-        "system_refresh",
-    );
     bridge::emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ());
     bridge::emit(
         SYSTEM_SETTINGS_CHANGED,

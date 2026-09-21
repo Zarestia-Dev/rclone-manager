@@ -1,15 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
+import { of, Subject, Observable, filter } from 'rxjs';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { QuickRunService } from './quick-run.service';
-import { QuickRun, QuickRunInput } from '@app/types';
+import { QuickRun, QuickRunInput, SettingsChangeEvent } from '@app/types';
 import { NotificationService } from '../ui/notification.service';
 import { ModalService } from '../ui/modal.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
-import { AutomationService } from '../operations/automation.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
@@ -18,6 +18,7 @@ import { SseClientService } from '../infrastructure/platform/sse-client.service'
 describe('QuickRunService', () => {
   let service: QuickRunService;
   let invokeSpy: ReturnType<typeof vi.fn>;
+  let systemSettingsChanged$: Subject<SettingsChangeEvent>;
   let notificationSpy: {
     showSuccess: ReturnType<typeof vi.fn>;
     showError: ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ describe('QuickRunService', () => {
   };
 
   beforeEach(() => {
+    systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
     notificationSpy = {
       showSuccess: vi.fn(),
       showError: vi.fn(),
@@ -54,6 +56,15 @@ describe('QuickRunService', () => {
         { provide: NotificationService, useValue: notificationSpy },
         { provide: ModalService, useValue: modalSpy },
         {
+          provide: EventListenersService,
+          useValue: {
+            listenToSystemSettingsChanged: (): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.asObservable(),
+            listenToSettingsCategory: (cat: string): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.pipe(filter(e => e.category === '*' || e.category === cat)),
+          },
+        },
+        {
           provide: JobManagementService,
           useValue: { jobs: signal([]), refreshJobs: vi.fn() },
         },
@@ -64,13 +75,6 @@ describe('QuickRunService', () => {
         {
           provide: ServeManagementService,
           useValue: { runningServes: signal([]), refreshServes: vi.fn() },
-        },
-        {
-          provide: AutomationService,
-          useValue: {
-            automations: signal([]),
-            refreshAutomations: vi.fn().mockResolvedValue([]),
-          },
         },
         {
           provide: TranslateService,
@@ -106,6 +110,44 @@ describe('QuickRunService', () => {
     expect(service.quickRuns()).toEqual([]);
     expect(service.selectedId()).toBeNull();
     expect(service.isCreating()).toBe(false);
+  });
+
+  it('should refresh quick runs when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
+    const refreshSpy = vi.spyOn(service, 'refresh');
+    systemSettingsChanged$.next({ category: '*', key: '*', value: null });
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  it('should refresh quick runs when SYSTEM_SETTINGS_CHANGED emits quick_runs category', () => {
+    const refreshSpy = vi.spyOn(service, 'refresh');
+    systemSettingsChanged$.next({ category: 'quick_runs', key: 'qr-1', value: null });
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  it('should coalesce concurrent refresh calls and execute a trailing refresh', async () => {
+    let resolveFirst!: (v: QuickRun[]) => void;
+    let callCount = 0;
+
+    invokeSpy.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return new Promise<QuickRun[]>(res => {
+          resolveFirst = res;
+        });
+      }
+      return Promise.resolve([mockQuickRun]);
+    });
+
+    const p1 = service.refresh();
+    const p2 = service.refresh();
+    const p3 = service.refresh();
+
+    expect(callCount).toBe(1);
+
+    resolveFirst([mockQuickRun]);
+    await Promise.all([p1, p2, p3]);
+
+    expect(callCount).toBe(2);
   });
 
   describe('selection', () => {

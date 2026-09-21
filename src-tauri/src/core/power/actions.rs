@@ -105,7 +105,7 @@ async fn execute_linux_power(action: &str) -> Result<(), String> {
 fn execute_windows_power(action: &str) -> Result<(), String> {
     match action {
         "lock" => {
-            let ret = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::LockWorkStation() };
+            let ret = unsafe { windows_sys::Win32::System::Shutdown::LockWorkStation() };
             if ret == 0 {
                 let err = std::io::Error::last_os_error();
                 return Err(format!("Windows LockWorkStation failed: {err}"));
@@ -113,18 +113,20 @@ fn execute_windows_power(action: &str) -> Result<(), String> {
             Ok(())
         }
         "sleep" => {
-            // SetSuspendState(bHibernate: 0, bForce: 0, bWakeupEventsDisabled: 0)
-            let ret = unsafe { windows_sys::Win32::System::Power::SetSuspendState(0, 0, 0) };
-            if ret == 0 {
+            // SetSuspendState(bHibernate: false, bForce: false, bWakeupEventsDisabled: false)
+            let ret =
+                unsafe { windows_sys::Win32::System::Power::SetSuspendState(false, false, false) };
+            if !ret {
                 let err = std::io::Error::last_os_error();
                 return Err(format!("Windows SetSuspendState(sleep) failed: {err}"));
             }
             Ok(())
         }
         "hibernate" => {
-            // SetSuspendState(bHibernate: 1, bForce: 0, bWakeupEventsDisabled: 0)
-            let ret = unsafe { windows_sys::Win32::System::Power::SetSuspendState(1, 0, 0) };
-            if ret == 0 {
+            // SetSuspendState(bHibernate: true, bForce: false, bWakeupEventsDisabled: false)
+            let ret =
+                unsafe { windows_sys::Win32::System::Power::SetSuspendState(true, false, false) };
+            if !ret {
                 let err = std::io::Error::last_os_error();
                 return Err(format!("Windows SetSuspendState(hibernate) failed: {err}"));
             }
@@ -177,5 +179,18 @@ mod tests {
         for action in valid_actions {
             assert!(!action.is_empty());
         }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_windows_power_unknown_action() {
+        use super::execute_windows_power;
+
+        let res = execute_windows_power("invalid_action");
+        assert!(res.is_err());
+        assert_eq!(
+            res.unwrap_err(),
+            "Unknown Windows power action: invalid_action"
+        );
     }
 }

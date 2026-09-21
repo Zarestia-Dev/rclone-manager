@@ -15,10 +15,7 @@ use crate::{
     },
     utils::{
         rclone::endpoints::{config, core},
-        types::{
-            events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
-            state::RcloneState,
-        },
+        types::{events::BACKEND_SWITCHED, state::RcloneState},
     },
 };
 
@@ -519,7 +516,6 @@ async fn refresh_and_verify_cache(
     {
         Ok(Ok(())) => {
             info!("Cache refreshed for backend '{name}'");
-            crate::core::bridge::emit(REMOTE_CACHE_CHANGED, ());
             crate::core::bridge::emit(BACKEND_SWITCHED, name);
             Ok(())
         }

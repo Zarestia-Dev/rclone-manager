@@ -1,49 +1,84 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/workflow.types';
 import { BUILTIN_WORKFLOW_TEMPLATES } from './recipes/workflow-recipes';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+
 @Injectable({ providedIn: 'root' })
 export class WorkflowStorageService extends TauriBaseService {
   private readonly stateService = inject(WorkflowStateService);
+  private readonly eventListeners = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly workflows = signal<WorkflowDefinition[]>([]);
   readonly isLoading = signal<boolean>(false);
 
+  private loadInFlight: Promise<WorkflowDefinition[]> | null = null;
+  private nextLoadPromise: Promise<WorkflowDefinition[]> | null = null;
+
   constructor() {
     super();
     void this.loadAllWorkflows();
+
+    this.eventListeners
+      .listenToSettingsCategory('workflows')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.loadAllWorkflows();
+      });
   }
 
   /**
    * Loads all saved workflows from the Rust backend store.
    */
   async loadAllWorkflows(): Promise<WorkflowDefinition[]> {
-    this.isLoading.set(true);
-    try {
-      const list = await this.invokeCommand<WorkflowDefinition[]>('list_workflows');
-      const workflows = list || [];
-      this.workflows.set(workflows);
-
-      if (workflows.length > 0) {
-        const current = this.stateService.currentWorkflow();
-        const currentStillExists = current && workflows.some(w => w.id === current.id);
-        if (!currentStillExists) {
-          this.stateService.loadWorkflow(workflows[0]);
-        }
-      } else {
-        this.stateService.currentWorkflow.set(null);
+    if (this.loadInFlight) {
+      if (!this.nextLoadPromise) {
+        this.nextLoadPromise = this.loadInFlight
+          .catch(() => [])
+          .then(() => {
+            this.nextLoadPromise = null;
+            return this.loadAllWorkflows();
+          });
       }
-
-      return workflows;
-    } catch (err) {
-      console.error('[WorkflowStorageService] Failed to load workflows:', err);
-      return [];
-    } finally {
-      this.isLoading.set(false);
+      return this.nextLoadPromise;
     }
+
+    const promise = (async (): Promise<WorkflowDefinition[]> => {
+      this.isLoading.set(true);
+      try {
+        const list = await this.invokeCommand<WorkflowDefinition[]>('list_workflows');
+        const workflows = list || [];
+        this.workflows.set(workflows);
+
+        if (workflows.length > 0) {
+          const current = this.stateService.currentWorkflow();
+          const currentStillExists = current && workflows.some(w => w.id === current.id);
+          if (!currentStillExists) {
+            this.stateService.loadWorkflow(workflows[0]);
+          }
+        } else {
+          this.stateService.currentWorkflow.set(null);
+        }
+
+        return workflows;
+      } catch (err) {
+        console.error('[WorkflowStorageService] Failed to load workflows:', err);
+        return [];
+      } finally {
+        if (!this.nextLoadPromise) {
+          this.isLoading.set(false);
+        }
+        this.loadInFlight = null;
+      }
+    })();
+
+    this.loadInFlight = promise;
+    return promise;
   }
 
   /**

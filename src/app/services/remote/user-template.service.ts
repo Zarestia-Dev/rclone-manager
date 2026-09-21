@@ -1,12 +1,16 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { UserPresetTemplate } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { generatePrefixedId } from 'src/app/shared/utils';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 @Injectable({ providedIn: 'root' })
 export class UserTemplateService extends TauriBaseService {
   private readonly _templates = signal<UserPresetTemplate[]>([]);
   private readonly _loaded = signal<boolean>(false);
+  private readonly eventListeners = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly userTemplates = this._templates.asReadonly();
   readonly loaded = this._loaded.asReadonly();
@@ -14,6 +18,13 @@ export class UserTemplateService extends TauriBaseService {
   constructor() {
     super();
     void this.syncFromBackend();
+
+    this.eventListeners
+      .listenToSettingsCategory('templates')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.syncFromBackend();
+      });
   }
 
   async syncFromBackend(): Promise<void> {

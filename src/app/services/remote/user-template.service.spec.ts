@@ -1,16 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { of } from 'rxjs';
+import { of, Subject, Observable, filter } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { UserTemplateService } from './user-template.service';
-import { UserPresetTemplate } from '@app/types';
+import { UserPresetTemplate, SettingsChangeEvent } from '@app/types';
 import { NotificationService } from '../ui/notification.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { SseClientService } from '../infrastructure/platform/sse-client.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 describe('UserTemplateService', () => {
   let service: UserTemplateService;
+  let systemSettingsChanged$: Subject<SettingsChangeEvent>;
   let notificationSpy: {
     showSuccess: ReturnType<typeof vi.fn>;
     showError: ReturnType<typeof vi.fn>;
@@ -30,6 +32,7 @@ describe('UserTemplateService', () => {
   };
 
   beforeEach(() => {
+    systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
     notificationSpy = {
       showSuccess: vi.fn(),
       showError: vi.fn(),
@@ -40,6 +43,15 @@ describe('UserTemplateService', () => {
       providers: [
         UserTemplateService,
         { provide: NotificationService, useValue: notificationSpy },
+        {
+          provide: EventListenersService,
+          useValue: {
+            listenToSystemSettingsChanged: (): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.asObservable(),
+            listenToSettingsCategory: (cat: string): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.pipe(filter(e => e.category === '*' || e.category === cat)),
+          },
+        },
         {
           provide: TranslateService,
           useValue: { instant: vi.fn((k: string) => k), get: vi.fn(() => of('')) },
@@ -67,6 +79,18 @@ describe('UserTemplateService', () => {
       service as unknown as { invokeCommand: (...args: unknown[]) => Promise<unknown> },
       'invokeCommand'
     ) as unknown as ReturnType<typeof vi.fn>;
+  });
+
+  it('should sync templates when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
+    const syncSpy = vi.spyOn(service, 'syncFromBackend');
+    systemSettingsChanged$.next({ category: '*', key: '*', value: null });
+    expect(syncSpy).toHaveBeenCalled();
+  });
+
+  it('should sync templates when SYSTEM_SETTINGS_CHANGED emits templates category', () => {
+    const syncSpy = vi.spyOn(service, 'syncFromBackend');
+    systemSettingsChanged$.next({ category: 'templates', key: 'tpl-1', value: null });
+    expect(syncSpy).toHaveBeenCalled();
   });
 
   describe('syncFromBackend', () => {

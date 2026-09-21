@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+import { Subject, Observable, filter } from 'rxjs';
 import { WorkflowStorageService } from './workflow-storage.service';
 import { WorkflowStateService } from './workflow-state.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
+import { SettingsChangeEvent } from '@app/types';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { provideTranslateService } from '@ngx-translate/core';
 import { NotificationService } from '../ui/notification.service';
 
 describe('WorkflowStorageService', () => {
   let service: WorkflowStorageService;
+  let systemSettingsChanged$: Subject<SettingsChangeEvent>;
   let mockApiClient: {
     invoke: ReturnType<typeof vi.fn>;
   };
@@ -58,7 +62,7 @@ describe('WorkflowStorageService', () => {
         }
         if (command === 'import_workflow') {
           const jsonStr = args?.['jsonStr'] as string;
-          const parsed = JSON.parse(jsonStr);
+          const parsed = JSON.parse(jsonStr) as WorkflowDefinition;
           const imported = {
             ...parsed,
             id: `wf-imp-${Date.now()}`,
@@ -71,11 +75,22 @@ describe('WorkflowStorageService', () => {
       }),
     };
 
+    systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
+
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
         WorkflowStorageService,
         { provide: ApiClientService, useValue: mockApiClient },
+        {
+          provide: EventListenersService,
+          useValue: {
+            listenToSystemSettingsChanged: (): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.asObservable(),
+            listenToSettingsCategory: (cat: string): Observable<SettingsChangeEvent> =>
+              systemSettingsChanged$.pipe(filter(e => e.category === '*' || e.category === cat)),
+          },
+        },
       ],
     });
     service = TestBed.inject(WorkflowStorageService);
@@ -86,6 +101,44 @@ describe('WorkflowStorageService', () => {
     expect(templates.length).toBeGreaterThan(0);
     expect(templates.some(t => t.id === 'tpl-daily-backup-notify')).toBe(true);
     expect(templates.some(t => t.id === 'tpl-drift-check-sync')).toBe(true);
+  });
+
+  it('reloads workflows when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
+    const loadSpy = vi.spyOn(service, 'loadAllWorkflows');
+    systemSettingsChanged$.next({ category: '*', key: '*', value: null });
+    expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('reloads workflows when SYSTEM_SETTINGS_CHANGED emits workflows category', () => {
+    const loadSpy = vi.spyOn(service, 'loadAllWorkflows');
+    systemSettingsChanged$.next({ category: 'workflows', key: 'wf-1', value: null });
+    expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('should coalesce concurrent loadAllWorkflows calls and execute a trailing load', async () => {
+    let resolveFirst!: (v: WorkflowDefinition[]) => void;
+    let callCount = 0;
+
+    mockApiClient.invoke.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return new Promise<WorkflowDefinition[]>(res => {
+          resolveFirst = res;
+        });
+      }
+      return Promise.resolve([]);
+    });
+
+    const p1 = service.loadAllWorkflows();
+    const p2 = service.loadAllWorkflows();
+    const p3 = service.loadAllWorkflows();
+
+    expect(callCount).toBe(1);
+
+    resolveFirst([]);
+    await Promise.all([p1, p2, p3]);
+
+    expect(callCount).toBe(2);
   });
 
   it('saves and updates a workflow via backend', async () => {

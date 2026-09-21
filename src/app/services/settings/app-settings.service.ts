@@ -138,6 +138,7 @@ export class AppSettingsService extends TauriBaseService {
       // Matches the resetAll settings event payload shape
       this._options.set(null);
       this.loadSettings();
+      void this.applySavedLanguage();
       return;
     }
 

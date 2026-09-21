@@ -23,6 +23,7 @@ import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { AutomationService } from '../operations/automation.service';
 import { ModalService } from '../ui/modal.service';
+import { SettingsChangeEvent } from '@app/types';
 
 describe('RemoteFacadeService', () => {
   let service: RemoteFacadeService;
@@ -31,6 +32,7 @@ describe('RemoteFacadeService', () => {
   let remoteCacheUpdated$: Subject<string | undefined>;
   let remoteSettingsChanged$: Subject<void>;
   let backendSwitched$: Subject<void>;
+  let systemSettingsChanged$: Subject<SettingsChangeEvent>;
 
   let mockRemoteService: {
     getAllRemoteConfigs: ReturnType<typeof vi.fn>;
@@ -56,6 +58,7 @@ describe('RemoteFacadeService', () => {
     remoteCacheUpdated$ = new Subject<string | undefined>();
     remoteSettingsChanged$ = new Subject<void>();
     backendSwitched$ = new Subject<void>();
+    systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
 
     mockRemoteService = {
       getAllRemoteConfigs: vi.fn().mockResolvedValue({}),
@@ -119,6 +122,8 @@ describe('RemoteFacadeService', () => {
             listenToRemoteCacheUpdated: (): Subject<string | undefined> => remoteCacheUpdated$,
             listenToRemoteSettingsChanged: (): Subject<void> => remoteSettingsChanged$,
             listenToBackendSwitched: (): Subject<void> => backendSwitched$,
+            listenToSystemSettingsChanged: (): Subject<SettingsChangeEvent> =>
+              systemSettingsChanged$,
           },
         },
         { provide: FileSystemService, useValue: {} },
@@ -276,5 +281,13 @@ describe('RemoteFacadeService', () => {
     await service.loadRemotes();
 
     expect(service.activeRemotes().map(r => r.name)).toContain('freshRemote');
+  });
+
+  it('should reactively trigger refreshAll when SYSTEM_SETTINGS_CHANGED emits wildcard', async () => {
+    const refreshAllSpy = vi.spyOn(service, 'refreshAll').mockResolvedValue();
+
+    systemSettingsChanged$.next({ category: '*', key: '*', value: null });
+
+    expect(refreshAllSpy).toHaveBeenCalled();
   });
 });

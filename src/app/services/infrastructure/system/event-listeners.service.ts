@@ -226,6 +226,12 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<SettingsChangeEvent>(SYSTEM_SETTINGS_CHANGED);
   }
 
+  listenToSettingsCategory(category: string): Observable<SettingsChangeEvent> {
+    return this.listenToSystemSettingsChanged().pipe(
+      filter(event => event.category === '*' || event.category === category)
+    );
+  }
+
   listenToSystemThemeChanged(): Observable<boolean> {
     return this.listenToEvent<boolean>(SYSTEM_THEME_CHANGED);
   }

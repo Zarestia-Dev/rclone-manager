@@ -13,8 +13,8 @@ import {
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
-import { AutomationService } from '../operations/automation.service';
 import { ModalService } from '../ui/modal.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 
 /**
@@ -25,8 +25,8 @@ export class QuickRunService extends TauriBaseService {
   private readonly jobService = inject(JobManagementService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
-  private readonly automationService = inject(AutomationService);
   private readonly modalService = inject(ModalService);
+  private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly _quickRuns = signal<QuickRun[]>([]);
@@ -36,6 +36,9 @@ export class QuickRunService extends TauriBaseService {
   private readonly _isSaving = signal(false);
   private readonly _runningIds = signal<Set<string>>(new Set());
   private readonly _actionInProgress = signal<Record<string, 'start' | 'stop'>>({});
+
+  private refreshInFlight: Promise<void> | null = null;
+  private nextRefreshPromise: Promise<void> | null = null;
 
   readonly quickRuns = this._quickRuns.asReadonly();
 
@@ -77,6 +80,13 @@ export class QuickRunService extends TauriBaseService {
     super();
     void this.refresh();
     this.listenToStatusUpdates();
+
+    this.eventListeners
+      .listenToSettingsCategory('quick_runs')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.refresh();
+      });
   }
 
   private isUpdatingStatus = false;
@@ -249,19 +259,40 @@ export class QuickRunService extends TauriBaseService {
    * UI can still be exercised.
    */
   async refresh(): Promise<void> {
-    this._isLoading.set(true);
-    try {
-      const list = await this.invokeCommand<QuickRun[]>('list_quick_runs');
-      const mappedList = (list ?? []).map(qr => ({ ...qr, status: qr.status ?? 'idle' }));
-      this._quickRuns.set(mappedList);
-      this.refreshOperationStates();
-      void this.automationService.refreshAutomations();
-    } catch (err) {
-      console.warn('[QuickRunService] list_quick_runs not available, running in-memory only:', err);
-      // In-memory fallback — keep whatever we already have.
-    } finally {
-      this._isLoading.set(false);
+    if (this.refreshInFlight) {
+      if (!this.nextRefreshPromise) {
+        this.nextRefreshPromise = this.refreshInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextRefreshPromise = null;
+            return this.refresh();
+          });
+      }
+      return this.nextRefreshPromise;
     }
+
+    const promise = (async (): Promise<void> => {
+      this._isLoading.set(true);
+      try {
+        const list = await this.invokeCommand<QuickRun[]>('list_quick_runs');
+        const mappedList = (list ?? []).map(qr => ({ ...qr, status: qr.status ?? 'idle' }));
+        this._quickRuns.set(mappedList);
+        this.refreshOperationStates();
+      } catch (err) {
+        console.warn(
+          '[QuickRunService] list_quick_runs not available, running in-memory only:',
+          err
+        );
+      } finally {
+        if (!this.nextRefreshPromise) {
+          this._isLoading.set(false);
+        }
+        this.refreshInFlight = null;
+      }
+    })();
+
+    this.refreshInFlight = promise;
+    return promise;
   }
 
   /**
@@ -281,7 +312,6 @@ export class QuickRunService extends TauriBaseService {
 
       const itemToStore: QuickRun = { ...saved, status: saved.status ?? 'idle' };
       this.mergeIntoStore(itemToStore);
-      void this.automationService.refreshAutomations();
       return itemToStore;
     } catch (err) {
       console.error('[QuickRunService] save failed:', err);
@@ -297,7 +327,6 @@ export class QuickRunService extends TauriBaseService {
       await this.invokeWithNotification('delete_quick_run', { quickRunId: id });
       this._quickRuns.update(list => list.filter(qr => qr.id !== id));
       if (this._selectedId() === id) this._selectedId.set(null);
-      void this.automationService.refreshAutomations();
     } catch (err) {
       console.error('[QuickRunService] delete_quick_run failed:', err);
     }
