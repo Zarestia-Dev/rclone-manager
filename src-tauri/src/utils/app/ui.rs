@@ -617,7 +617,7 @@ async fn run_macos_theme_watcher() {
         let center = CFNotificationCenterGetDistributedCenter();
         let notification_name = CFStringCreateWithCString(
             std::ptr::null(),
-            b"AppleInterfaceThemeChangedNotification\0".as_ptr() as *const _,
+            c"AppleInterfaceThemeChangedNotification".as_ptr(),
             0x08000100, // kCFStringEncodingUTF8
         );
 
