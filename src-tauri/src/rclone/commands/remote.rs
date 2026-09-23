@@ -2,7 +2,7 @@ use futures::future::join_all;
 use log::{error, info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{
@@ -32,11 +32,19 @@ use crate::{
     },
 };
 
+struct OAuthPollerGuard(tokio::task::JoinHandle<()>);
+
+impl Drop for OAuthPollerGuard {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 /// Spawn a background poller that watches `config/oauthstatus` and emits
 /// `RCLONE_OAUTH_URL` to the frontend when the OAuth server produces an
 /// auth URL.
-fn spawn_oauth_status_poller(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
+fn spawn_oauth_status_poller(app: AppHandle) -> OAuthPollerGuard {
+    let handle = crate::utils::spawn(async move {
         use std::time::Duration;
 
         const POLL_INTERVAL: Duration = Duration::from_millis(200);
@@ -85,12 +93,12 @@ fn spawn_oauth_status_poller(app: AppHandle) {
             if let Some(url) = auth_url {
                 if !url_emitted {
                     info!("OAuth auth URL available, emitting to frontend");
-                    let _ = app.emit(RCLONE_OAUTH_URL, json!({ "url": url }));
+                    crate::core::bridge::emit(RCLONE_OAUTH_URL, json!({ "url": url }));
                     url_emitted = true;
                 }
             } else if url_emitted {
                 log::debug!(
-                    "OAuth server stopped (authUrl is None) after URL was emitted — flow completed"
+                    "OAuth server stopped (running={running}, authUrl is None) after URL was emitted — flow completed"
                 );
                 return;
             }
@@ -98,6 +106,8 @@ fn spawn_oauth_status_poller(app: AppHandle) {
             tokio::time::sleep(POLL_INTERVAL).await;
         }
     });
+
+    OAuthPollerGuard(handle)
 }
 
 async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
@@ -137,7 +147,7 @@ pub async fn create_remote_interactive(
         Some(json!({ "type": rclone_type })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -192,7 +202,7 @@ pub async fn continue_create_remote_interactive(
         Some(json!({ "state": state_token })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     let mut params_map = parameters.unwrap_or_default();
     if !params_map.contains_key("config_template_file")
@@ -227,8 +237,7 @@ pub async fn continue_create_remote_interactive(
         warn!("Failed to clear fscache after interactive remote update: {e}");
     }
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     log_operation(
         LogLevel::Info,
@@ -294,7 +303,7 @@ pub async fn create_remote(
         })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::CREATE, body).await.map_err(|e| {
         log_operation(
@@ -321,8 +330,7 @@ pub async fn create_remote(
         None,
     );
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     let _ = get_fscache_entries(app).await;
 
@@ -374,7 +382,7 @@ pub async fn update_remote(
         })),
     );
 
-    spawn_oauth_status_poller(app.clone());
+    let _poller = spawn_oauth_status_poller(app.clone());
 
     call_config(&app, config::UPDATE, body).await.map_err(|e| {
         log_operation(
@@ -395,8 +403,7 @@ pub async fn update_remote(
         None,
     );
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     if let Err(e) = clear_fscache(app.clone()).await {
         warn!("Failed to clear fscache after remote update: {e}");
@@ -415,15 +422,28 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
     let transport = app.state::<RcloneState>().transport.clone();
     let backend = app.state::<BackendManager>().get_active().await;
 
+    let scheduler = app.state::<crate::core::automation::engine::AutomationScheduler>();
     match cache
-        .remove_automations_for_remote(&backend.name, &name, Some(&app))
+        .remove_automations_for_remote(&backend.name, &name)
         .await
     {
-        Ok(ids) if !ids.is_empty() => {
+        Ok(removed) if !removed.is_empty() => {
             info!(
                 "Removed {} automation(s) for deleted remote '{name}'",
-                ids.len()
+                removed.len()
             );
+            for automation in &removed {
+                if let Some(job_id_str) = &automation.scheduler_job_id
+                    && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+                    && let Err(e) = scheduler.unschedule_automation(job_id).await
+                {
+                    warn!("Failed to unschedule job {job_id} for remote '{name}': {e}");
+                }
+            }
+            let watcher_manager = app.state::<crate::core::automation::watcher::WatcherManager>();
+            if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
+                warn!("Watcher sync incomplete for deleted remote '{name}': {e}");
+            }
         }
         Err(e) => warn!("Failed to clean up automations for remote '{name}': {e}"),
         _ => {}
@@ -516,8 +536,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
             msg
         })?;
 
-    app.emit(REMOTE_CACHE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(REMOTE_CACHE_CHANGED, &name);
 
     app.state::<LogCache>().clear_for_remote(&name).await;
 

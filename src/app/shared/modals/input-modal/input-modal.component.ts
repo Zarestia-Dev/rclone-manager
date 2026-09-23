@@ -5,6 +5,8 @@ import {
   OnInit,
   DestroyRef,
   ChangeDetectionStrategy,
+  signal,
+  computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -22,6 +24,8 @@ import {
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { UrlPreviewComponent } from '../../components/url-preview/url-preview.component';
+import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 export interface InputFieldConfig {
   key: string;
@@ -48,6 +52,8 @@ export interface InputModalData {
   createLabel?: string;
   forbiddenCharsMessage?: string;
   fields?: InputFieldConfig[];
+  destinationPath?: string;
+  showUrlPreview?: boolean;
 }
 
 @Component({
@@ -61,8 +67,10 @@ export interface InputModalData {
     FormsModule,
     ReactiveFormsModule,
     TranslatePipe,
+    UrlPreviewComponent,
   ],
   templateUrl: './input-modal.component.html',
+  hostDirectives: [EscapeCloseDirective],
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class InputModalComponent implements OnInit {
@@ -73,8 +81,14 @@ export class InputModalComponent implements OnInit {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly destroyRef = inject(DestroyRef);
 
-  public form = new FormGroup<any>({});
+  public form = new FormGroup<Record<string, FormControl>>({});
   public fields: InputFieldConfig[] = [];
+
+  readonly urlValue = signal('');
+  readonly filenameValue = signal('');
+  readonly hasUrlField = computed(
+    () => this.fields.some(f => f.type === 'url') || !!this.data.showUrlPreview
+  );
 
   ngOnInit(): void {
     if (this.data.fields && this.data.fields.length > 0) {
@@ -119,6 +133,18 @@ export class InputModalComponent implements OnInit {
       this.form.addControl(field.key, control);
     }
     this.form.updateValueAndValidity();
+
+    // Initial signal values
+    const urlKey = this.fields.find(f => f.type === 'url')?.key || 'url';
+    this.urlValue.set(this.form.get(urlKey)?.value || '');
+    this.filenameValue.set(this.form.get('filename')?.value || '');
+
+    // Track live changes
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
+      this.urlValue.set(val[urlKey] || '');
+      this.filenameValue.set(val['filename'] || '');
+    });
+
     this.setupUrlAutoFilename();
   }
 
@@ -158,11 +184,6 @@ export class InputModalComponent implements OnInit {
     }
   }
 
-  @HostListener('document:keydown.escape')
-  onEscapeKey(): void {
-    this.dialogRef.close(null);
-  }
-
   @HostListener('document:keydown.enter')
   onEnterKey(): void {
     if (this.form.valid) this.onConfirm();
@@ -173,7 +194,7 @@ export class InputModalComponent implements OnInit {
   }
 
   onConfirm(): void {
-    const val = this.form.getRawValue() as Record<string, any>;
+    const val = this.form.getRawValue() as Record<string, unknown>;
     // If it was a single field (legacy or just one defined), return the string value for convenience
     const keys = Object.keys(val);
     if (keys.length === 1 && (keys[0] === 'single' || !this.data.fields)) {

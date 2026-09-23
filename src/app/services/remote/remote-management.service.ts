@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed, Signal } from '@angular/core';
+import { Injectable, inject, signal, computed, untracked, Signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { RemoteFileOperationsService } from './remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -13,6 +13,7 @@ import {
   INTERACTIVE_REMOTES,
   FsInfo,
   RemoteFeatures,
+  createDefaultRemoteFeatures,
   Origin,
 } from '@app/types';
 
@@ -30,8 +31,6 @@ interface WriteRemoteOptions {
   errorKey: string;
 }
 
-const EMPTY_HASHES: readonly string[] = Object.freeze([]);
-
 @Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
   private readonly remoteOpsService = inject(RemoteFileOperationsService);
@@ -42,6 +41,7 @@ export class RemoteManagementService extends TauriBaseService {
   private readonly _isLibrclone = signal<boolean | null>(null);
 
   private readonly featuresSignals = new Map<string, Signal<RemoteFeatures>>();
+  private readonly inFlightFeatures = new Map<string, Promise<RemoteFeatures>>();
 
   private readonly providersLoader: MemoizedLoader<ProvidersResponse> = memoizedLoader(() =>
     this.invokeCommand<ProvidersResponse>('get_remote_types')
@@ -65,44 +65,41 @@ export class RemoteManagementService extends TauriBaseService {
   getFeaturesSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
     const nameKey = this.pathService.normalizeRemoteName(remoteName);
     const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
-    const cacheKey = typeKey || nameKey;
+    const cacheKey = nameKey || typeKey;
+    const isLocal = this.pathService.isLocalPath(nameKey);
+
+    if (nameKey && !isLocal) {
+      untracked(() => {
+        const cached = this._features()[cacheKey];
+        if (!cached && !this.inFlightFeatures.has(cacheKey)) {
+          void this.getFeatures(remoteName, remoteType).catch(err =>
+            console.error(`Failed to load features for ${remoteName}:`, err)
+          );
+        }
+      });
+    }
+
     const existing = this.featuresSignals.get(cacheKey);
     if (existing) return existing;
 
     const sig = computed(
-      () =>
-        this._features()[cacheKey] ||
-        this._features()[nameKey] || {
-          IsLocal: this.pathService.isLocalPath(nameKey),
-          About: true,
-          BucketBased: false,
-          CleanUp: false,
-          PublicLink: false,
-          ChangeNotify: false,
-          Hashes: EMPTY_HASHES as string[],
-          loading: true,
-        }
+      () => this._features()[cacheKey] || createDefaultRemoteFeatures(isLocal, !isLocal)
     );
     this.featuresSignals.set(cacheKey, sig);
     return sig;
   }
 
+  hasFeature(
+    remoteName: string,
+    feature: keyof RemoteFeatures | string,
+    remoteType?: string
+  ): boolean {
+    const feats = this.getFeaturesSignal(remoteName, remoteType)();
+    return !feats.loading && !!feats[feature];
+  }
+
   publicLinkSupported(remoteName: string): boolean {
-    const nameKey = this.pathService.normalizeRemoteName(remoteName);
-    if (!nameKey || this.pathService.isLocalPath(nameKey)) {
-      return false;
-    }
-
-    const cached = this._features()[nameKey];
-    if (cached) {
-      return !!cached.PublicLink;
-    }
-
-    // Async-load features so subsequent calls return accurate values
-    void this.getFeatures(remoteName).catch(err =>
-      console.error(`Failed to load features for ${remoteName}:`, err)
-    );
-    return false;
+    return this.hasFeature(remoteName, 'PublicLink');
   }
 
   async getFeatures(
@@ -113,63 +110,55 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<RemoteFeatures> {
     const nameKey = this.pathService.normalizeRemoteName(remoteName);
     const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
+    const cacheKey = nameKey || typeKey;
 
-    const cached = this._features()[typeKey] || this._features()[nameKey];
+    const cached = untracked(() => this._features()[cacheKey]);
     if (cached && !cached.loading) return cached;
 
-    this.setFeatures(nameKey, typeKey, true);
+    const existingPromise = this.inFlightFeatures.get(cacheKey);
+    if (existingPromise) return existingPromise;
 
-    try {
-      const info = await this.getFsInfo(remoteName, source, group);
-      const feats: RemoteFeatures = {
-        IsLocal: this.pathService.isLocalPath(nameKey),
-        About: info.Features?.['About'] === true,
-        BucketBased: info.Features?.['BucketBased'] ?? false,
-        CleanUp: !!info.Features?.['CleanUp'],
-        PublicLink: info.Features?.['PublicLink'] !== false && !!info.Features?.['PublicLink'],
-        ChangeNotify: !!info.Features?.['ChangeNotify'],
-        Hashes: info.Hashes ?? [],
-        loading: false,
-      };
-      this.setFeatures(nameKey, typeKey, feats);
-      return feats;
-    } catch {
-      const fallback: RemoteFeatures = {
-        IsLocal: this.pathService.isLocalPath(nameKey),
-        About: false,
-        BucketBased: false,
-        CleanUp: false,
-        PublicLink: false,
-        ChangeNotify: false,
-        Hashes: EMPTY_HASHES as string[],
-        loading: false,
-      };
-      this.setFeatures(nameKey, typeKey, fallback);
-      return fallback;
-    }
+    const promise = (async (): Promise<RemoteFeatures> => {
+      try {
+        const info = await this.getFsInfo(remoteName, source, group);
+        const isLocal = this.pathService.isLocalPath(nameKey) || !!info.Features?.['IsLocal'];
+        const feats: RemoteFeatures = {
+          ...createDefaultRemoteFeatures(isLocal, false),
+          ...(info.Features as Record<string, boolean | undefined>),
+          IsLocal: isLocal,
+          Hashes: info.Hashes ?? [],
+          loading: false,
+        };
+        this.setFeatures(nameKey, typeKey, feats);
+        return feats;
+      } catch {
+        const fallback = createDefaultRemoteFeatures(this.pathService.isLocalPath(nameKey), false);
+        this.setFeatures(nameKey, typeKey, fallback);
+        return fallback;
+      } finally {
+        this.inFlightFeatures.delete(cacheKey);
+      }
+    })();
+
+    this.inFlightFeatures.set(cacheKey, promise);
+    return promise;
   }
 
-  private setFeatures(nameKey: string, typeKey: string, value: RemoteFeatures | true): void {
-    const features: RemoteFeatures =
-      value === true
-        ? {
-            IsLocal: this.pathService.isLocalPath(nameKey),
-            About: false,
-            BucketBased: false,
-            CleanUp: false,
-            PublicLink: false,
-            ChangeNotify: false,
-            Hashes: EMPTY_HASHES as string[],
-            loading: true,
-          }
-        : value;
-    this._features.update(c => ({ ...c, [nameKey]: features, [typeKey]: features }));
+  private setFeatures(nameKey: string, typeKey: string, features: RemoteFeatures): void {
+    this._features.update(c => {
+      const next = { ...c };
+      if (nameKey) next[nameKey] = features;
+      if (typeKey && !nameKey) next[typeKey] = features;
+      return next;
+    });
   }
 
   clearCache(remoteName?: string): void {
     if (remoteName) {
       const key = this.pathService.normalizeRemoteName(remoteName);
       this.metadataCache.delete(key);
+      this.inFlightFeatures.delete(key);
+      this.featuresSignals.delete(key);
       this._features.update(c => {
         const n = { ...c };
         delete n[key];
@@ -177,6 +166,7 @@ export class RemoteManagementService extends TauriBaseService {
       });
     } else {
       this.metadataCache.clear();
+      this.inFlightFeatures.clear();
       this._features.set({});
       this.featuresSignals.clear();
     }

@@ -1,7 +1,6 @@
 use log::debug;
-use tauri::{AppHandle, Emitter, Window};
+use tauri::{AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_opener::OpenerExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::core::bridge;
@@ -86,44 +85,58 @@ pub async fn get_folder_location(
 }
 
 #[bridge]
-pub async fn open_in_files(
-    app: tauri::AppHandle,
-    path: std::path::PathBuf,
-) -> Result<String, String> {
-    if path.as_os_str().is_empty() {
+pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let clean_path = path.trim();
+    if clean_path.is_empty() {
         return Err(crate::localized_error!("backendErrors.file.invalidPath"));
     }
 
-    if !path.exists() {
-        return Err(crate::localized_error!(
-            "backendErrors.file.notFound",
-            "path" => path.display().to_string()
-        ));
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        if let Some(saf_target) = clean_path.strip_prefix("saf://") {
+            let remote = saf_target.split('/').next().unwrap_or("").trim_matches(':');
+            if remote.is_empty() {
+                return Err(crate::localized_error!("backendErrors.file.invalidPath"));
+            }
+            if crate::rclone::backend::saf_bridge::open_saf_remote(remote) {
+                return Ok(format!("Opened SAF remote {} in system files", remote));
+            } else {
+                return Err(crate::localized_error!(
+                    "backendErrors.file.failedToOpen",
+                    "error" => "SAF opener failed"
+                ));
+            }
+        }
+
+        if crate::rclone::backend::saf_bridge::open_local_path(clean_path) {
+            Ok(format!("Opened local path {} in file manager", clean_path))
+        } else {
+            Err(crate::localized_error!(
+                "backendErrors.file.failedToOpen",
+                "error" => "Failed to open local path in file manager"
+            ))
+        }
     }
 
-    let path_str = path
-        .to_str()
-        .ok_or_else(|| format!("Invalid path: {}", path.display()))?
-        .to_string();
-    match app.opener().open_path(path_str, None::<String>) {
-        Ok(()) => Ok(format!("Opened file manager at {}", path.display())),
-        Err(e) => Err(crate::localized_error!(
-            "backendErrors.file.failedToOpen",
-            "error" => e.to_string()
-        )),
-    }
-}
+    #[cfg(not(target_os = "android"))]
+    {
+        use tauri_plugin_opener::OpenerExt;
+        let p = std::path::Path::new(clean_path);
+        if !p.exists() {
+            return Err(crate::localized_error!(
+                "backendErrors.file.notFound",
+                "path" => clean_path.to_string()
+            ));
+        }
 
-#[bridge]
-#[cfg(target_os = "android")]
-pub async fn open_saf_remote(_app: tauri::AppHandle, remote: String) -> Result<String, String> {
-    if crate::rclone::backend::saf_bridge::open_saf_remote(&remote) {
-        Ok(format!("Opened SAF remote {} in system files", remote))
-    } else {
-        Err(crate::localized_error!(
-            "backendErrors.file.failedToOpen",
-            "error" => "SAF opener failed"
-        ))
+        match app.opener().open_path(clean_path, None::<String>) {
+            Ok(()) => Ok(format!("Opened file manager at {}", clean_path)),
+            Err(e) => Err(crate::localized_error!(
+                "backendErrors.file.failedToOpen",
+                "error" => e.to_string()
+            )),
+        }
     }
 }
 
@@ -160,6 +173,7 @@ pub async fn open_file_natively(
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
+            use tauri_plugin_opener::OpenerExt;
             app.opener()
                 .open_path(&path_str, None::<String>)
                 .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
@@ -214,6 +228,7 @@ pub async fn open_file_natively(
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
+        use tauri_plugin_opener::OpenerExt;
         app.opener()
             .open_path(&dest_str, None::<String>)
             .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
@@ -307,9 +322,37 @@ pub async fn download_file(
         .await
         .map_err(|e| format!("Failed to read file: {e}"))?;
 
-    let mut file = tokio::fs::File::create(&destination)
-        .await
-        .map_err(|e| format!("Failed to create destination file: {e}"))?;
+    #[cfg(target_os = "android")]
+    let mut file = if destination.starts_with("content://") {
+        use std::os::fd::FromRawFd;
+        let raw_fd = crate::rclone::backend::saf_bridge::open_content_uri_fd(&destination, "w")
+            .map_err(|e| format!("Failed to create destination file: {e}"))?;
+        let std_file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
+        tokio::fs::File::from_std(std_file)
+    } else {
+        if let Some(parent) = std::path::Path::new(&destination).parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        tokio::fs::File::create(&destination)
+            .await
+            .map_err(|e| format!("Failed to create destination file: {e}"))?
+    };
+
+    #[cfg(not(target_os = "android"))]
+    let mut file = {
+        if let Some(parent) = std::path::Path::new(&destination).parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        tokio::fs::File::create(&destination)
+            .await
+            .map_err(|e| format!("Failed to create destination file: {e}"))?
+    };
 
     let mut buffer = vec![0; 65536]; // 64KB chunk
     let mut downloaded_bytes: u64 = 0;
@@ -335,7 +378,7 @@ pub async fn download_file(
             .map_err(|e| format!("Error writing destination file: {e}"))?;
         downloaded_bytes += n as u64;
 
-        let _ = app.emit(
+        crate::core::bridge::emit(
             "download-file-progress",
             DownloadProgressPayload {
                 destination: destination.clone(),
@@ -350,7 +393,7 @@ pub async fn download_file(
         .await
         .map_err(|e| format!("Error flushing destination file: {e}"))?;
 
-    let _ = app.emit(
+    crate::core::bridge::emit(
         "download-file-progress",
         DownloadProgressPayload {
             destination: destination.clone(),

@@ -48,6 +48,9 @@ impl serde::Serialize for UpdaterError {
             Self::InvalidUrl(e) => {
                 crate::localized_error!("backendErrors.updater.invalidUrl", "error" => e)
             }
+            Self::GitHub(github_client::Error::RateLimitExceeded) => {
+                crate::localized_error!("backendErrors.updater.githubRateLimit")
+            }
             Self::GitHub(e) => {
                 crate::localized_error!("backendErrors.updater.github", "error" => e)
             }
@@ -113,7 +116,7 @@ pub struct AppUpdaterData {
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
-    pub download_handle: Option<tauri::async_runtime::JoinHandle<()>>,
+    pub download_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 #[cfg(feature = "updater")]

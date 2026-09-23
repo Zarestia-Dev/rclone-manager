@@ -25,12 +25,12 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
-import { QuickRunService } from '../flow/quick-run.service';
-import { AutomationService } from '../operations/automation.service';
 import { NotificationService } from '../ui/notification.service';
+import { ModalService } from '../ui/modal.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
+import { retargetProfilesRemote } from '../remote/utils/remote-config.utils';
 import {
   Remote,
   JobInfo,
@@ -64,6 +64,18 @@ interface RemoteState {
   enriched: Signal<Remote>;
 }
 
+interface ScopedExecutionItem {
+  origin?: Origin;
+  quick_run_id?: string;
+  workflow_id?: string;
+}
+
+function isProfileScoped(item: ScopedExecutionItem): boolean {
+  return (
+    item.origin !== 'quickrun' && item.origin !== 'flow' && !item.quick_run_id && !item.workflow_id
+  );
+}
+
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService {
   private readonly jobService = inject(JobManagementService);
@@ -83,8 +95,7 @@ export class RemoteFacadeService {
   private readonly notificationService = inject(NotificationService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
-  private readonly quickRunService = inject(QuickRunService);
-  private readonly automationService = inject(AutomationService);
+  private readonly modalService = inject(ModalService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -108,6 +119,12 @@ export class RemoteFacadeService {
       .map(name => this.remoteStates.get(name)?.enriched())
       .filter((r): r is Remote => !!r)
   );
+
+  isRemoteActive(name?: string | null): boolean {
+    if (!name) return false;
+    const clean = name.endsWith(':') ? name.slice(0, -1) : name;
+    return this.remoteNames().includes(clean);
+  }
 
   readonly selectedRemote = computed(() => {
     const name = this.uiStateService.selectedRemote()?.name;
@@ -159,6 +176,10 @@ export class RemoteFacadeService {
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
   private refreshInFlight: Promise<void> | null = null;
+  private nextRefreshPromise: Promise<void> | null = null;
+
+  private loadRemotesInFlight: Promise<void> | null = null;
+  private nextLoadRemotesPromise: Promise<void> | null = null;
 
   constructor() {
     void this.refreshAll();
@@ -177,6 +198,10 @@ export class RemoteFacadeService {
       }
     });
 
+    // Event-driven reactive store updates:
+    // REMOTE_CACHE_CHANGED (remotes created/edited/deleted),
+    // REMOTE_SETTINGS_CHANGED (profiles/settings modified/reset), and
+    // BACKEND_SWITCHED (active backend changed).
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
       this.eventListeners.listenToRemoteSettingsChanged(),
@@ -184,6 +209,15 @@ export class RemoteFacadeService {
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => void this.loadRemotes());
+
+    this.eventListeners
+      .listenToSystemSettingsChanged()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        if (payload.category === '*') {
+          void this.refreshAll();
+        }
+      });
   }
 
   // --- Settings & Path Collisions ---
@@ -345,47 +379,66 @@ export class RemoteFacadeService {
   // --- Data Loading ---
 
   async loadRemotes(): Promise<void> {
-    try {
-      const [configs, settings] = await Promise.all([
-        this.remoteService.getAllRemoteConfigs(),
-        this.appSettingsService.getRemoteSettings(),
-      ]);
-
-      const incomingNames = Object.keys(configs);
-      this.remoteNames.set(incomingNames);
-      this.pathService.setRemoteNames(incomingNames);
-      const currentNames = Array.from(this.remoteStates.keys());
-
-      for (const name of currentNames) {
-        if (!configs[name]) {
-          this.remoteStates.delete(name);
-          this.remoteService.clearCache(name);
-        }
+    if (this.loadRemotesInFlight) {
+      if (!this.nextLoadRemotesPromise) {
+        this.nextLoadRemotesPromise = this.loadRemotesInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextLoadRemotesPromise = null;
+            return this.loadRemotes();
+          });
       }
+      return this.nextLoadRemotesPromise;
+    }
 
-      let newAdded = false;
+    const promise = (async (): Promise<void> => {
+      try {
+        const [configs, settings] = await Promise.all([
+          this.remoteService.getAllRemoteConfigs(),
+          this.appSettingsService.getRemoteSettings(),
+        ]);
 
-      for (const name of incomingNames) {
-        const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
-        const state = this.remoteStates.get(name);
+        const incomingNames = Object.keys(configs);
+        const currentNames = Array.from(this.remoteStates.keys());
 
-        if (state) {
-          const prevConfig = state.base().config;
-          if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
+        for (const name of currentNames) {
+          if (!configs[name]) {
+            this.remoteStates.delete(name);
             this.remoteService.clearCache(name);
           }
-          state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
-        } else {
-          newAdded = true;
-          this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
         }
-      }
 
-      this.remoteSettings.set(settings);
-      if (newAdded) this.loadDiskUsageInBackground();
-    } catch (error) {
-      console.error('[RemoteFacadeService] Error loading remotes:', error);
-    }
+        let newAdded = false;
+
+        for (const name of incomingNames) {
+          const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
+          const state = this.remoteStates.get(name);
+
+          if (state) {
+            const prevConfig = state.base().config;
+            if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
+              this.remoteService.clearCache(name);
+            }
+            state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
+          } else {
+            newAdded = true;
+            this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
+          }
+        }
+
+        this.remoteSettings.set(settings);
+        this.remoteNames.set(incomingNames);
+        this.pathService.setRemoteNames(incomingNames);
+        if (newAdded) this.loadDiskUsageInBackground();
+      } catch (error) {
+        console.error('[RemoteFacadeService] Error loading remotes:', error);
+      } finally {
+        this.loadRemotesInFlight = null;
+      }
+    })();
+
+    this.loadRemotesInFlight = promise;
+    return promise;
   }
 
   // --- Layout Operations ---
@@ -425,7 +478,17 @@ export class RemoteFacadeService {
   }
 
   async refreshAll(): Promise<void> {
-    if (this.refreshInFlight) return this.refreshInFlight;
+    if (this.refreshInFlight) {
+      if (!this.nextRefreshPromise) {
+        this.nextRefreshPromise = this.refreshInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextRefreshPromise = null;
+            return this.refreshAll();
+          });
+      }
+      return this.nextRefreshPromise;
+    }
 
     const promise = (async (): Promise<void> => {
       this.isLoading.set(true);
@@ -438,12 +501,12 @@ export class RemoteFacadeService {
           this.mountService.getMountedRemotes(),
           this.serveService.refreshServes(),
           this.jobService.refreshJobs(),
-          this.quickRunService.refresh(),
-          this.automationService.refreshAutomations(),
         ]);
         this.loadDiskUsageInBackground();
       } finally {
-        this.isLoading.set(false);
+        if (!this.nextRefreshPromise) {
+          this.isLoading.set(false);
+        }
         this.refreshInFlight = null;
       }
     })();
@@ -458,8 +521,65 @@ export class RemoteFacadeService {
     return this.getOrCreateRemoteState(remoteName).disk;
   }
 
-  featuresSignal(remoteName: string): Signal<RemoteFeatures> {
-    return this.remoteService.getFeaturesSignal(remoteName, undefined);
+  featuresSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
+    return this.remoteService.getFeaturesSignal(remoteName, remoteType);
+  }
+
+  hasFeature(
+    remoteName: string,
+    feature: keyof RemoteFeatures | string,
+    remoteType?: string
+  ): boolean {
+    return this.remoteService.hasFeature(remoteName, feature, remoteType);
+  }
+
+  canEmptyTrash(remote: { name: string; type?: string }): boolean {
+    return this.hasFeature(remote.name, 'CleanUp', remote.type);
+  }
+
+  openRemoteAbout(remote: { name: string; type: string; isLocal?: boolean }): void {
+    const isLocal = remote.isLocal ?? false;
+    const normalized = isLocal
+      ? remote.name
+      : this.pathService.normalizeRemoteForRclone(remote.name);
+    this.modalService.openRemoteAbout({
+      displayName: remote.name,
+      normalizedName: normalized,
+      type: remote.type,
+    });
+  }
+
+  async emptyTrash(
+    remote: { name: string; type?: string; isLocal?: boolean },
+    origin: Origin = 'dashboard'
+  ): Promise<boolean> {
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('nautilus.modals.emptyTrash.title'),
+      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: remote.name }),
+      'common.delete',
+      'common.cancel',
+      { icon: 'trash', color: 'warn' }
+    );
+    if (!confirmed) return false;
+
+    try {
+      const isLocal = remote.isLocal ?? false;
+      const normalized = isLocal
+        ? remote.name
+        : this.pathService.normalizeRemoteForRclone(remote.name);
+      await this.remoteOpsService.cleanup(normalized, undefined, origin);
+      this.notificationService.showInfo(
+        this.translate.instant('nautilus.notifications.trashEmptied')
+      );
+      return true;
+    } catch (e) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.emptyTrashFailed', {
+          error: (e as Error).message,
+        })
+      );
+      return false;
+    }
   }
 
   async executeAction<T>(
@@ -592,10 +712,7 @@ export class RemoteFacadeService {
   ): Promise<void> {
     if (type === 'serve') {
       const serves = this.runningServes().filter(
-        s =>
-          this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName &&
-          s.origin !== 'quickrun' &&
-          !s.quick_run_id
+        s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName && isProfileScoped(s)
       );
       const idToStop =
         serveId ?? (profileName ? serves.find(s => s.profile === profileName)?.id : serves[0]?.id);
@@ -606,10 +723,7 @@ export class RemoteFacadeService {
 
     if (type === 'mount') {
       const mounts = this.mountedRemotes().filter(
-        m =>
-          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
-          m.origin !== 'quickrun' &&
-          !m.quick_run_id
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
       const mountPoint =
         (profileName
@@ -625,13 +739,18 @@ export class RemoteFacadeService {
     await this.jobService.stopJobsByGroup(groupName);
   }
 
+  async emergencyStopAll(): Promise<void> {
+    await Promise.all([
+      this.jobService.stopAllActiveJobs(),
+      this.mountService.unmountAllRemotes('normal'),
+      this.serveService.stopAllServes('normal'),
+    ]);
+  }
+
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
       const mount = this.mountedRemotes().find(
-        m =>
-          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
-          m.origin !== 'quickrun' &&
-          !m.quick_run_id
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
@@ -663,7 +782,7 @@ export class RemoteFacadeService {
       path = ((profiles ? Object.values(profiles)[0]?.['dest'] : undefined) as string) ?? '';
     }
 
-    if (this.pathService.isLocalPath(path)) {
+    if (this.pathService.isLocalPath(path) || path.startsWith('saf://')) {
       await this.executeAction(
         remoteName,
         'open',
@@ -693,35 +812,24 @@ export class RemoteFacadeService {
     return findUniqueName(baseName, Array.from(this.remoteStates.keys()));
   }
 
+  generateUniqueCloneName(baseName: string): string {
+    const cleanBase = baseName.replace(/-(?:clone|\d+)+$/, '');
+    return findUniqueName(`${cleanBase}-clone`, Array.from(this.remoteStates.keys()));
+  }
+
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
     const base = this.remoteStates.get(remoteName)?.base() as
       Omit<Remote, 'status' | 'features'> | undefined;
     if (!base) return null;
 
-    const newName = this.generateUniqueRemoteName(base.name.replace(/-\d+$/, ''));
+    const newName = this.generateUniqueCloneName(base.name);
     const settings = structuredClone(this.getRemoteSettings(remoteName)) as RemoteSettings;
-
-    for (const configKey of Object.values(REMOTE_CONFIG_KEYS)) {
-      const profiles = settings[configKey as keyof RemoteSettings] as ProfileConfigMap | undefined;
-      if (profiles) {
-        for (const profile of Object.values(profiles)) {
-          if (
-            typeof profile['source'] === 'string' &&
-            this.pathService.getRemoteNameFromFs(profile['source']) === remoteName
-          ) {
-            profile['source'] = (profile['source'] as string).replace(
-              `${remoteName}:`,
-              `${newName}:`
-            );
-          }
-        }
-      }
-    }
+    const retargetedSettings = retargetProfilesRemote(settings, remoteName, newName);
 
     return {
       config: { ...(base.config as ConfigRecord), name: newName },
       name: newName,
-      ...settings,
+      ...retargetedSettings,
     } as RemoteSettings;
   }
 
@@ -820,8 +928,8 @@ export class RemoteFacadeService {
     const mountConfigs = getProfiles('mount');
     const serveConfigs = getProfiles('serve');
 
-    const profileMounts = mounts.filter(m => m.origin !== 'quickrun' && !m.quick_run_id);
-    const profileServes = serves.filter(s => s.origin !== 'quickrun' && !s.quick_run_id);
+    const profileMounts = mounts.filter(isProfileScoped);
+    const profileServes = serves.filter(isProfileScoped);
 
     return {
       ...base,
@@ -868,9 +976,7 @@ export class RemoteFacadeService {
     jobs: JobInfo[],
     settings: RemoteSettings
   ): RemoteOperationState {
-    const typeJobs = jobs.filter(
-      j => j.job_type === type && j.origin !== 'quickrun' && !j.quick_run_id
-    );
+    const typeJobs = jobs.filter(j => j.job_type === type && isProfileScoped(j));
     const running = typeJobs.filter(j => j.status === 'Running');
     const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
     const profileNames = Object.keys(profiles);

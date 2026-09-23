@@ -12,6 +12,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { ExplorerRoot, FileBrowserItem, FilePickerConfig, NautilusTabItem } from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 export interface PaneState {
   remote: ExplorerRoot | null;
@@ -70,8 +71,8 @@ export class NautilusTabService {
   private readonly fileViewerSvc = inject(FileViewerService);
 
   public readonly listReadGroups: Record<0 | 1, string> = {
-    0: `ui/nautilus/list-left-${crypto.randomUUID().slice(0, 8)}`,
-    1: `ui/nautilus/list-right-${crypto.randomUUID().slice(0, 8)}`,
+    0: generatePrefixedId('ui/nautilus/list-left'),
+    1: generatePrefixedId('ui/nautilus/list-right'),
   };
 
   /** Callback when the last tab is closed. */

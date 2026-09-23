@@ -361,12 +361,6 @@ export class PreferencesModalComponent {
         if (meta.min !== undefined) validators.push(Validators.min(meta.min));
         if (meta.max !== undefined) validators.push(Validators.max(meta.max));
         break;
-      case 'file':
-      case 'folder': {
-        const v = this.validatorRegistry.getValidator('crossPlatformPath');
-        if (v) validators.push(v);
-        break;
-      }
       case 'string[]':
         if (fullKey === 'core.connection_check_urls') {
           const v = this.validatorRegistry.getValidator('urlList');

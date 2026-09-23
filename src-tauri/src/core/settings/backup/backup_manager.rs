@@ -51,8 +51,8 @@ pub async fn backup_settings(
 
     if let ExportType::Category(ref category) = export_type {
         if category == "alerts" {
-            options = options.include_sub_settings("alerts/rules");
-            options = options.include_sub_settings("alerts/actions");
+            options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_RULES);
+            options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS);
         } else {
             options = options.include_sub_settings(category);
         }
@@ -65,12 +65,15 @@ pub async fn backup_settings(
 
     if matches!(export_type, ExportType::All) {
         register_rclone_config_provider(&app_handle, &manager).await?;
-        options = options.include_sub_settings("remotes");
         options = options.include_external("rclone.conf");
-        options = options.include_sub_settings("backend");
-        options = options.include_sub_settings("connections");
-        options = options.include_sub_settings("alerts/rules");
-        options = options.include_sub_settings("alerts/actions");
+        options = options.include_sub_settings(crate::utils::constants::SUB_REMOTES);
+        options = options.include_sub_settings(crate::utils::constants::SUB_BACKEND);
+        options = options.include_sub_settings(crate::utils::constants::SUB_CONNECTIONS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_RULES);
+        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_QUICK_RUNS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_WORKFLOWS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_TEMPLATES);
     }
 
     if matches!(export_type, ExportType::SpecificRemote)

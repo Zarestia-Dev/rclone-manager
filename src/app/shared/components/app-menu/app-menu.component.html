@@ -146,12 +146,14 @@
 
     <mat-divider></mat-divider>
 
-    <!-- About -->
+    <!-- About (Hold to open Power Menu, Click to open About) -->
     <button
       cdkMenuItem
-      class="menu-item"
+      class="menu-item about-menu-item"
       [attr.title]="updateTooltip()"
-      (click)="openAboutModal()"
+      (click)="onAboutClicked()"
+      appLongPress
+      (longPress)="onAboutLongPress()"
       [attr.aria-label]="'titlebar.menu.about' | translate"
     >
       <span>{{ 'titlebar.menu.about' | translate }}</span>

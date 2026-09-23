@@ -36,7 +36,7 @@ pub fn init(app: AppHandle) {
         return;
     }
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         debug!("Alert engine worker started");
         let ctx = app.state::<DispatchContext>().inner().clone();
         while let Some(req) = rx.recv().await {
@@ -135,6 +135,15 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             }
         }
 
+        if !rule.workflow_filter.is_empty() {
+            let matches = profile
+                .as_deref()
+                .is_some_and(|wf| rule.workflow_filter.iter().any(|f| f == wf));
+            if !matches {
+                continue;
+            }
+        }
+
         if let Some(body_filter) = &rule.body_filter
             && !body.contains(body_filter.as_str())
         {
@@ -194,12 +203,12 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
                 Some(a) if a.is_enabled() => a.clone(),
                 Some(_) => continue,
                 None => {
-                    warn!("Action '{}' in rule '{}' not found", action_id, rule.name);
+                    debug!("Action '{}' in rule '{}' not found", action_id, rule.name);
                     continue;
                 }
             };
 
-            action_futures.push(tokio::spawn({
+            action_futures.push(crate::utils::spawn({
                 let action_app = app.clone();
                 let action_ctx = ctx.clone();
                 let action_dispatch_ctx = dispatch_ctx.clone();
@@ -268,11 +277,11 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         record.action_results = action_results;
 
         let history_cache = app.state::<AlertHistoryCache>();
-        history_cache.push(record, Some(&app)).await;
+        history_cache.push(record).await;
     }
 }
 
-async fn execute_action(
+pub async fn execute_action(
     _app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,

@@ -126,7 +126,7 @@ async fn run_install(
     app_handle: &tauri::AppHandle,
     info: MountPluginInfo,
 ) -> Result<String, String> {
-    use tauri::{Emitter, Manager};
+    use tauri::Manager;
     use tokio_util::sync::CancellationToken;
 
     let cancel_token = CancellationToken::new();
@@ -154,7 +154,6 @@ async fn run_install(
 
     // Stage: Installing
     provision_state.set_stage(
-        app_handle,
         ProvisionComponent::MountPlugin,
         ProvisionStage::Installing,
         file_len,
@@ -165,7 +164,6 @@ async fn run_install(
     let _ = std::fs::remove_file(&local_file);
     if let Err(e) = result {
         provision_state.set_stage(
-            app_handle,
             ProvisionComponent::MountPlugin,
             ProvisionStage::Error,
             file_len,
@@ -176,11 +174,8 @@ async fn run_install(
 
     for attempt in 1..=5 {
         if check_mount_plugin_installed() {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.emit(MOUNT_PLUGIN_INSTALLED, ());
-            }
+            bridge::emit(MOUNT_PLUGIN_INSTALLED, ());
             provision_state.set_stage(
-                app_handle,
                 ProvisionComponent::MountPlugin,
                 ProvisionStage::Completed,
                 file_len,
@@ -196,7 +191,6 @@ async fn run_install(
 
     let err = crate::localized_error!("backendErrors.rclone.mountPluginVerificationFailed");
     provision_state.set_stage(
-        app_handle,
         ProvisionComponent::MountPlugin,
         ProvisionStage::Error,
         file_len,

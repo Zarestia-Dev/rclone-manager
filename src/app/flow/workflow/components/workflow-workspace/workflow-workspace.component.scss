@@ -1,0 +1,391 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.workflow-workspace-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--view-bg-color);
+  color: var(--view-fg-color);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.workflow-sidenav-container {
+  flex: 1;
+  min-height: 0;
+  background: transparent;
+}
+
+.workflow-sidenav-content {
+  display: flex;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+
+  .canvas-area-wrapper {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+
+    .palette-open-trigger {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 12px 0 10px;
+      background: var(--card-bg-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--box-shadow);
+      color: var(--window-fg-color);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--hover-bg-color);
+        border-color: var(--accent-color);
+
+        .palette-trigger-arrow {
+          color: var(--accent-color);
+        }
+      }
+
+      .palette-trigger-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+        color: var(--accent-color);
+      }
+
+      .palette-trigger-label {
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .palette-trigger-arrow {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+        color: var(--dim-color);
+        transition: var(--transition-fast);
+      }
+    }
+
+    .inspector-open-trigger {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 10px 0 12px;
+      background: var(--card-bg-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--box-shadow);
+      color: var(--window-fg-color);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--hover-bg-color);
+        border-color: var(--accent-color);
+
+        .inspector-trigger-arrow {
+          color: var(--accent-color);
+        }
+      }
+
+      .inspector-trigger-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+        color: var(--accent-color);
+      }
+
+      .inspector-trigger-label {
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .inspector-trigger-arrow {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+        color: var(--dim-color);
+        transition: var(--transition-fast);
+      }
+    }
+
+    .canvas-host {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: block;
+      position: relative;
+    }
+
+    .workflow-unsaved-banner {
+      position: absolute;
+      top: var(--space-xxs);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 6px 8px 6px 16px;
+      background: var(--card-bg-color);
+      box-shadow: 0 0 0 1px var(--border-color);
+      border-radius: 9999px;
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.25),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: unsavedBannerSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+      max-width: calc(100% - 32px);
+      box-sizing: border-box;
+
+      .unsaved-status-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+
+        .unsaved-indicator-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: var(--warn-color);
+          animation: pulseRed 2s infinite ease-in-out;
+          flex-shrink: 0;
+        }
+
+        .unsaved-label {
+          font-size: var(--font-size-sm);
+          font-weight: 500;
+          color: var(--window-fg-color);
+          white-space: nowrap;
+        }
+      }
+
+      .unsaved-actions-group {
+        display: inline-flex;
+        align-items: center;
+
+        .unsaved-save-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 32px;
+          padding: 0 14px;
+          border-radius: 9999px;
+          border: none;
+          background: var(--primary-color);
+          color: #ffffff;
+          font-size: var(--font-size-sm);
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.35);
+          transition: var(--transition-fast);
+
+          mat-icon {
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
+            font-size: var(--icon-size-sm);
+          }
+
+          &:hover:not(:disabled) {
+            background: var(--gnome-green-5, color-mix(in srgb, var(--primary-color) 85%, #ffffff));
+            box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.45);
+          }
+
+          &:active:not(:disabled) {
+            box-shadow: 0 1px 3px rgba(var(--primary-color-rgb), 0.3);
+          }
+
+          &:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+          }
+
+          .save-spinner {
+            animation: spin 1s linear infinite;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .workflow-sidenav-content .canvas-area-wrapper {
+    .palette-open-trigger {
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      justify-content: center;
+
+      .palette-trigger-label,
+      .palette-trigger-arrow {
+        display: none;
+      }
+    }
+
+    .inspector-open-trigger {
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      justify-content: center;
+
+      .inspector-trigger-label,
+      .inspector-trigger-arrow {
+        display: none;
+      }
+    }
+  }
+}
+
+// Override mat-sidenav panel styles
+mat-sidenav {
+  background: var(--sidebar-bg-color);
+  width: 320px;
+  max-width: 85vw;
+  box-sizing: border-box;
+
+  app-workflow-inspector {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+}
+
+// ── Empty State ─────────────────────────────────────────────────────────────
+
+.workflow-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(var(--accent-color-rgb), 0.04) 0%, transparent 60%),
+    radial-gradient(circle at 70% 80%, rgba(var(--primary-color-rgb), 0.03) 0%, transparent 60%),
+    var(--view-bg-color);
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  .workflow-empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .workflow-empty-state-icon-ring {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    box-shadow: 0 0 0 2px var(--accent-color);
+    margin-bottom: var(--space-xs);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+
+    mat-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 36px;
+      color: var(--accent-color);
+    }
+  }
+
+  .workflow-empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--window-fg-color);
+    margin: 0;
+    text-align: center;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+
+  .workflow-empty-state-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+    margin: 0;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 380px;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  }
+
+  .workflow-empty-state-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
+
+  .workflow-empty-state-section {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+
+    .workflow-empty-state-section-label {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--dim-color);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-left: var(--space-xxs);
+    }
+  }
+
+  .workflow-empty-state-pill-group {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+@keyframes unsavedBannerSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}

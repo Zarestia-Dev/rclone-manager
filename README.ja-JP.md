@@ -8,18 +8,25 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
-  <a href="CONTRIBUTING.md#adding-translations">翻訳に参加する</a> •
+  <a href="CONTRIBUTING.md#adding-translations">翻訳を手伝う</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
 <p align="center">
   <b>スタイリッシュかつ簡単に Rclone リモートを管理できる強力なクロスプラットフォーム GUI</b><br>
   <i>Angular 22 + Tauri で構築 · Linux • Windows • macOS • Android (ベータ) • ARM 対応</i>
+</p>
+
+<p align="center">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/architecture">
+    <img src="https://img.shields.io/badge/Architecture-Specification-blueviolet?style=for-the-badge" alt="Architecture Specification">
+  </a>
 </p>
 
 <p align="center">
@@ -51,6 +58,8 @@
 
 - 📂 **Nautilus ファイルマネージャー:** リモートファイルの閲覧、編集、移動、コピー、名前変更、削除が可能です。
 - 👁️ **ファイルビューアー:** 動画、画像、PDF、音声、テキストファイルのインラインプレビューに対応しています。
+- ⚡ **ビジュアルワークフロー (Visual Workflows):** ノードベースのインタラクティブなキャンバス、Cron スケジューラ、フォルダ監視、即時アラート通知を使用して、マルチステップのクラウドパイプラインを設計・自動化します。
+- 🚀 **クイックラン (Quick Runs):** 状態をリアルタイム表示するカードグリッドから、ワンクリックでクラウド操作やカスタム CLI フラグプリセットを実行できます。
 - ⚙️ **マウント & 公開:** 簡単なマウント操作と公開（WebDAV、SFTP、HTTP、FTP）の管理が行えます。
 - 🔄 **ジョブウォッチャー:** 転送のリアルタイムモニタリングと帯域幅制御が可能です。
 - 🌐 **ヘッドレスモード:** VPS や NAS 上で Web サーバーとして実行したい場合は [RClone Manager Headless](headless/README.md) をご覧ください！
@@ -63,9 +72,25 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - ダッシュボード" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>ダッシュボード - クイック実行、マウント、リモートの概要を一目で確認</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - ワークフロービルダー" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>ワークフロービルダー - インタラクティブなノードキャンバスでマルチステップのクラウドパイプラインを設計・自動化</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Nautilus ファイルマネージャー" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - すべてのリモート上のファイルを閲覧、転送、管理</sub>
+</p>
+
+<p align="center">
   <i>📖 より詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
 </p>
 

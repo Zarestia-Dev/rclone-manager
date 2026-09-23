@@ -18,8 +18,9 @@ use crate::core::tray::actions::handle_browse_remote;
 use crate::core::tray::{
     actions::{
         handle_mount_profile, handle_serve_profile, handle_start_job_profile,
-        handle_start_quick_run, handle_stop_all_jobs, handle_stop_job_profile,
-        handle_stop_quick_run, handle_stop_serve_profile, handle_unmount_profile,
+        handle_start_quick_run, handle_start_workflow, handle_stop_all_jobs,
+        handle_stop_job_profile, handle_stop_quick_run, handle_stop_serve_profile,
+        handle_stop_workflow, handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
@@ -108,7 +109,7 @@ pub fn run() {
                             let sources = cli_args.general.send_to_sources;
                             let app_handle_clone = app.clone();
                             let cwd_path = std::path::PathBuf::from(cwd);
-                            tauri::async_runtime::spawn(async move {
+                            crate::utils::spawn(async move {
                                 let params = build_send_to_params(remote, path, sources, Some(&cwd_path));
 
                                 log::info!(
@@ -133,29 +134,13 @@ pub fn run() {
                     #[cfg(not(feature = "web-server"))]
                     {
                         let app_clone = app.clone();
-                        tauri::async_runtime::spawn(async move {
+                        crate::utils::spawn(async move {
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
                             let app_for_main = app_clone.clone();
                             let _ = app_clone.run_on_main_thread(move || {
-                                if let Some(window) = app_for_main.get_webview_window("main") {
-                                    log::info!(
-                                        "Second instance detected, showing existing window"
-                                    );
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                } else {
-                                    log::info!(
-                                        "Second instance detected, but window was destroyed. \
-                                         Recreating main window."
-                                    );
-                                    crate::utils::app::builder::create_app_window(
-                                        app_for_main.clone(),
-                                    );
-                                    if let Some(window) = app_for_main.get_webview_window("main") {
-                                        let _ = window.set_focus();
-                                    }
-                                }
+                                log::info!("Second instance detected, presenting main window");
+                                crate::utils::app::builder::present_main_window(&app_for_main);
                             });
                         });
                     }
@@ -215,7 +200,7 @@ pub fn run() {
                     } else {
                         api.prevent_close();
                         let app_handle_clone = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
+                        crate::utils::spawn(async move {
                             let _ = crate::utils::app::platform::request_app_exit(app_handle_clone)
                                 .await;
                         });
@@ -327,6 +312,12 @@ fn setup_app(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
 
+    let event_bridge = Arc::new(crate::core::bridge::EventBridge::new(1000));
+    crate::core::bridge::init_event_bridge(event_bridge.clone());
+    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
+    event_bridge.set_app_handle(app_handle.clone());
+    app.manage(event_bridge.clone());
+
     let app_paths = AppPaths::setup(app_handle)?;
 
     #[cfg(target_os = "android")]
@@ -347,37 +338,8 @@ fn setup_app(
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         log::debug!("Creating main window on mobile");
-        let window =
-            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
-                .build()
-                .expect("Failed to build mobile main window");
-
-        #[cfg(target_os = "android")]
-        {
-            let (tx, rx) = std::sync::mpsc::channel();
-            let _ = window.with_webview(move |webview| {
-                webview.jni_handle().exec(move |env, context, _webview| {
-                    if let Ok(vm) = env.get_java_vm() {
-                        let vm_ptr = vm.get_java_vm_pointer() as *mut std::ffi::c_void;
-                        let context_ptr = context.as_raw() as *mut std::ffi::c_void;
-                        unsafe {
-                            ndk_context::initialize_android_context(vm_ptr, context_ptr);
-                        }
-                    }
-                    unsafe {
-                        let raw_env = env.get_raw() as *mut jni::sys::JNIEnv;
-                        let raw_ctx = context.as_raw() as jni::sys::jobject;
-                        let mut unowned_env = jni::EnvUnowned::from_raw(raw_env);
-                        let _ = unowned_env.with_env(|rustls_env| {
-                            let rustls_ctx = jni::objects::JObject::from_raw(rustls_env, raw_ctx);
-                            rustls_platform_verifier::android::init_with_env(rustls_env, rustls_ctx)
-                        });
-                    }
-                    let _ = tx.send(());
-                });
-            });
-            let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
-        }
+        tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
+            .build()?;
     }
 
     let rcman_manager =
@@ -425,7 +387,10 @@ fn setup_app(
     app.manage(utils::types::updater::RcloneUpdaterState::default());
     app.manage(utils::types::provision::ProvisionState::default());
 
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     app.manage(crate::core::power::PowerInhibitorState::new());
 
     #[cfg(all(desktop, feature = "tray"))]
@@ -440,7 +405,7 @@ fn setup_app(
     app.manage(alert_cache);
 
     let app_handle_clone = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         initialization(app_handle_clone).await;
     });
 
@@ -466,6 +431,7 @@ fn setup_app(
 
         let web_handle = app.handle().clone();
         let args = cli_args.clone();
+        let bridge = event_bridge.clone();
 
         log::info!(
             "Initializing Web Server on {}:{}...",
@@ -473,9 +439,10 @@ fn setup_app(
             args.headless.port
         );
 
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             if let Err(e) = start_web_server(
                 web_handle.clone(),
+                bridge,
                 args.headless.host.clone(),
                 args.headless.port,
                 args.auth_credentials(),
@@ -510,7 +477,7 @@ fn setup_app(
 
     if cli_args.general.send_to_remote.is_some() {
         let app_handle_clone = app.handle().clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let mut engine_ready = false;
             for _ in 0..100 {
                 let status =
@@ -606,6 +573,12 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::StopQuickRun(id) => {
             handle_stop_quick_run(app.clone(), id);
         }
+        TrayAction::StartWorkflow(id) => {
+            handle_start_workflow(app.clone(), id);
+        }
+        TrayAction::StopWorkflow(id) => {
+            handle_stop_workflow(app.clone(), id);
+        }
         TrayAction::Browse(_remote, _profile) => {
             #[cfg(not(feature = "web-server"))]
             handle_browse_remote(app, &_remote, &_profile);
@@ -624,7 +597,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         }
         TrayAction::UnmountAll => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = rclone::commands::mount::unmount_all_remotes(
                     app_clone.clone(),
                     rclone::commands::common::OperationContext::Normal,
@@ -638,7 +611,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
         TrayAction::StopAllServes => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 if let Err(e) = rclone::commands::serve::stop_all_serves(
                     app_clone.clone(),
                     rclone::commands::common::OperationContext::Normal,
@@ -676,7 +649,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         }
         TrayAction::Quit => {
             let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
+            crate::utils::spawn(async move {
                 let _ = crate::utils::app::platform::request_app_exit(app_clone).await;
             });
         }

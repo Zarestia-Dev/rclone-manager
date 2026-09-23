@@ -1,6 +1,6 @@
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge},
@@ -17,12 +17,15 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     app_handle.state::<RcloneState>().set_shutting_down();
 
-    let _ = app_handle.emit(
+    bridge::emit(
         APP_EVENT,
         json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
     );
 
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
         power_state.release().await;
     }
@@ -164,7 +167,8 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     }
 }
 
-async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
+#[bridge]
+pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     let active_jobs = app
         .state::<BackendManager>()
         .job_cache
@@ -179,7 +183,9 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         .into_iter()
         .map(|job| {
             let app = app.clone();
-            tokio::spawn(async move { stop_job(app.clone(), job.jobid, job.remote_name).await })
+            crate::utils::spawn(
+                async move { stop_job(app.clone(), job.jobid, job.remote_name).await },
+            )
         })
         .collect();
 

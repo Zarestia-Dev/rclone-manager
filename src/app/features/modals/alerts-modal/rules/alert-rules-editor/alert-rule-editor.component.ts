@@ -14,6 +14,8 @@ import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({
   selector: 'app-alert-rule-editor',
@@ -29,6 +31,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     MatSelectModule,
     MatSlideToggleModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -38,23 +41,26 @@ export class AlertRuleEditorComponent {
   private readonly alertService = inject(AlertService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly backendService = inject(BackendService);
+  private readonly workflowStorage = inject(WorkflowStorageService, { optional: true });
 
   private readonly dialogData = inject(MAT_DIALOG_DATA) as { ruleId?: string } | undefined;
   readonly data?: AlertRule;
   readonly remotes = this.remoteFacade.activeRemotes;
   readonly backends = this.backendService.backends;
-  readonly actions = this.alertService.actions;
-
-  allProfiles = computed(() => {
+  readonly allProfiles = computed(() => {
     const profiles = new Set<string>();
     this.remotes().forEach(r => {
-      const s = r.status;
+      const s = r?.status;
+      if (!s) return;
       [s.sync, s.copy, s.bisync, s.move, s.mount, s.serve].forEach(op => {
-        op.configuredProfiles?.forEach(p => profiles.add(p));
+        op?.configuredProfiles?.forEach(p => profiles.add(p));
       });
     });
     return Array.from(profiles).sort();
   });
+
+  readonly actions = this.alertService.actions;
+  readonly workflows = computed(() => this.workflowStorage?.workflows() ?? []);
 
   readonly severities: AlertSeverity[] = ['info', 'warning', 'average', 'high', 'critical'];
 
@@ -74,6 +80,7 @@ export class AlertRuleEditorComponent {
     'update',
     'automation',
     'system',
+    'workflow',
   ];
 
   readonly origins: Origin[] = [
@@ -87,7 +94,7 @@ export class AlertRuleEditorComponent {
     'quickrun',
   ];
 
-  form = this.fb.nonNullable.group({
+  readonly form = this.fb.nonNullable.group({
     id: [''],
     name: ['', Validators.required],
     enabled: [true],
@@ -97,6 +104,7 @@ export class AlertRuleEditorComponent {
     remote_filter: [[] as string[]],
     backend_filter: [[] as string[]],
     profile_filter: [[] as string[]],
+    workflow_filter: [[] as string[]],
     origin_filter: [[] as Origin[]],
     auto_acknowledge: [false],
     action_ids: [[] as string[], [Validators.required, Validators.minLength(1)]],
@@ -106,6 +114,7 @@ export class AlertRuleEditorComponent {
   });
 
   constructor() {
+    void this.workflowStorage?.loadAllWorkflows();
     const ruleId = this.dialogData?.ruleId;
     this.data = ruleId ? this.alertService.rules().find(r => r.id === ruleId) : undefined;
 

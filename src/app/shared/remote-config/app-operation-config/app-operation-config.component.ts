@@ -9,7 +9,9 @@ import {
   WritableSignal,
   signal,
   linkedSignal,
+  untracked,
 } from '@angular/core';
+
 import { NgTemplateOutlet } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 
@@ -53,6 +55,7 @@ import { NumberInputComponent } from 'src/app/shared/components/number-input/num
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
+import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -65,6 +68,7 @@ interface PathItem {
   remoteName: string;
   pathControl: FormControl;
   typeControl: FormControl;
+  inspectionStatus: WritableSignal<PathInspectionStatus | null>;
 }
 
 @Component({
@@ -85,6 +89,7 @@ interface PathItem {
     TranslatePipe,
     AlertBannerComponent,
     CdkOverlayAutoposDirective,
+    UrlPreviewComponent,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
@@ -97,6 +102,7 @@ export class OperationConfigComponent {
   readonly existingRemotes = input<string[]>([]);
   readonly description = input('');
   readonly isNewRemote = input(true);
+  readonly showAutomations = input(true);
   readonly searchQuery = input('');
 
   // Services
@@ -108,6 +114,18 @@ export class OperationConfigComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+
+  readonly fullDestPath = computed(() => {
+    this.formVersion();
+    const dest = this.destItem();
+    if (!dest) return '';
+    const pathVal = (dest.pathControl?.value || '').trim();
+    if (dest.type === 'local') {
+      return pathVal;
+    }
+    const remote = dest.remoteName || this.currentRemoteName();
+    return remote ? (pathVal ? `${remote}:${pathVal}` : `${remote}:`) : pathVal;
+  });
 
   readonly cronPanelExpanded = linkedSignal<boolean>(() => {
     this.formVersion();
@@ -179,6 +197,14 @@ export class OperationConfigComponent {
   );
 
   pathStates = new Map<string, WritableSignal<PathSelectionState>>();
+  private readonly pathInspectionStatuses = new Map<
+    string,
+    WritableSignal<PathInspectionStatus | null>
+  >();
+  private readonly inspectionDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly inspectionTokens = new Map<string, number>();
+  private readonly lastInspectedPaths = new Map<string, string>();
+  private pathResolveToken = 0;
   private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
 
   private matchesSearch(keywords: string[]): boolean {
@@ -186,25 +212,35 @@ export class OperationConfigComponent {
     return (terms.length === 1 && !terms[0]) || keywords.some(k => terms.some(t => k.includes(t)));
   }
 
-  readonly showAutoStart = computed(() => this.matchesSearch(['auto', 'start', 'enable']));
-  readonly showCronSection = computed(() =>
-    this.matchesSearch([
-      'cron',
-      'schedule',
-      'automation',
-      'watch',
-      'real-time',
-      'realtime',
-      'monitor',
-      'filesystem',
-    ])
+  readonly showAutoStart = computed(
+    () =>
+      this.showAutomations() &&
+      !this.isNewRemote() &&
+      this.matchesSearch(['auto', 'start', 'enable'])
+  );
+  readonly showCronSection = computed(
+    () =>
+      this.showAutomations() &&
+      !this.isNewRemote() &&
+      this.matchesSearch([
+        'cron',
+        'schedule',
+        'automation',
+        'watch',
+        'real-time',
+        'realtime',
+        'monitor',
+        'filesystem',
+      ])
   );
   readonly isMobilePlatform = computed(() => isMobile());
   readonly selectedMountType = computed(() => {
     this.formVersion();
     const fg = this.opFormGroup();
     const val = fg.get('options.mountType')?.value ?? fg.get('mountType')?.value;
-    return val ? String(val).toLowerCase() : this.isMobilePlatform() ? 'saf' : 'mount';
+    if (val) return String(val).toLowerCase();
+    const destPath = String(fg.get('dest.path')?.value ?? '');
+    return destPath.startsWith('saf://') ? 'saf' : 'mount';
   });
   readonly isLocalMobileSafMount = computed(
     () =>
@@ -297,6 +333,39 @@ export class OperationConfigComponent {
     });
 
     effect(() => {
+      const type = this.operationType();
+      const rName = this.currentRemoteName()?.trim();
+      const isNew = this.isNewRemote();
+      const form = this.opFormGroup();
+
+      if (!isNew || !rName || (type !== 'mount' && type !== 'bisync')) {
+        return;
+      }
+
+      const isMobileSaf = type === 'mount' && untracked(() => this.isLocalMobileSafMount());
+      if (isMobileSaf) {
+        return;
+      }
+
+      const dstCtrl = form.get('dest') as FormGroup | null;
+      const pathCtrl = dstCtrl?.get('path') as FormControl | null;
+      if (!dstCtrl || !pathCtrl || !pathCtrl.pristine) {
+        return;
+      }
+
+      const token = ++this.pathResolveToken;
+      this.pathInspectionService
+        .resolveDefaultPath(rName, type as 'mount' | 'bisync')
+        .then(defaultPath => {
+          if (token !== this.pathResolveToken) return;
+          if (pathCtrl.pristine && pathCtrl.value !== defaultPath) {
+            dstCtrl.patchValue({ type: 'local', path: defaultPath });
+          }
+        })
+        .catch(err => console.warn(`[OperationConfig] resolveDefaultPath(${type}) failed:`, err));
+    });
+
+    effect(() => {
       const dest = this.destItem();
       const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
       if (this.isNewRemote()) {
@@ -374,8 +443,33 @@ export class OperationConfigComponent {
       }
     });
 
+    effect(() => {
+      const opType = this.operationType();
+      const needsInspection = opType === 'mount' || opType === 'bisync';
+      const dest = this.destItem();
+      const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
+
+      untracked(() => {
+        for (const item of items) {
+          const itemKey = `${item.group}-${item.index}`;
+          if (needsInspection && item.type === 'local') {
+            this.triggerPathInspection(
+              itemKey,
+              item.pathControl.value,
+              item.remoteName,
+              item.inspectionStatus
+            );
+          } else {
+            this.cancelAndClearInspection(itemKey, item.inspectionStatus);
+          }
+        }
+      });
+    });
+
     this.destroyRef.onDestroy(() => {
       this.clearAutocomplete();
+      this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
+      this.inspectionDebounceTimers.clear();
     });
   }
 
@@ -390,17 +484,111 @@ export class OperationConfigComponent {
     return (controls as FormGroup[]).filter(Boolean).map((control, index) => {
       const typeValue =
         control.get('type')?.value || (group === 'source' ? 'currentRemote' : 'local');
+      const pathType = this.pathService.parsePathType(typeValue);
+      const remoteName =
+        this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
+      const pathControl = control.get('path') as FormControl;
+
+      const itemKey = `${group}-${index}`;
+      let inspectionStatus = this.pathInspectionStatuses.get(itemKey);
+
+      if (!inspectionStatus) {
+        inspectionStatus = signal<PathInspectionStatus | null>(null);
+        this.pathInspectionStatuses.set(itemKey, inspectionStatus);
+      }
+
       return {
         control,
         index,
         group,
-        type: this.pathService.parsePathType(typeValue),
-        remoteName:
-          this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '',
-        pathControl: control.get('path') as FormControl,
+        type: pathType,
+        remoteName,
+        pathControl,
         typeControl: control.get('type') as FormControl,
+        inspectionStatus,
       };
     });
+  }
+
+  private cancelAndClearInspection(
+    itemKey: string,
+    statusSignal: WritableSignal<PathInspectionStatus | null>
+  ): void {
+    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.inspectionDebounceTimers.delete(itemKey);
+    }
+    this.lastInspectedPaths.delete(itemKey);
+    if (statusSignal() !== null) {
+      statusSignal.set(null);
+    }
+  }
+
+  private triggerPathInspection(
+    itemKey: string,
+    path: string | null | undefined,
+    remoteName: string,
+    statusSignal: WritableSignal<PathInspectionStatus | null>
+  ): void {
+    const trimmedPath = path?.trim() || '';
+    if (!trimmedPath) {
+      const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.inspectionDebounceTimers.delete(itemKey);
+      }
+      this.lastInspectedPaths.delete(itemKey);
+      statusSignal.set(null);
+      return;
+    }
+
+    const inspectionKey = `${remoteName}::${trimmedPath}`;
+    if (this.lastInspectedPaths.get(itemKey) === inspectionKey) {
+      return;
+    }
+
+    const existingTimer = this.inspectionDebounceTimers.get(itemKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.inspectionDebounceTimers.delete(itemKey);
+    }
+
+    const token = (this.inspectionTokens.get(itemKey) || 0) + 1;
+    this.inspectionTokens.set(itemKey, token);
+
+    const timer = setTimeout(() => {
+      this.inspectionDebounceTimers.delete(itemKey);
+      if (this.inspectionTokens.get(itemKey) !== token) return;
+
+      this.lastInspectedPaths.set(itemKey, inspectionKey);
+      statusSignal.set({
+        state: 'checking',
+        icon: 'spinner',
+        badgeClass: 'checking',
+        labelKey: 'remoteConfig.pathStatus.checking',
+      });
+
+      this.pathInspectionService
+        .inspect(trimmedPath, remoteName)
+        .then(status => {
+          if (this.inspectionTokens.get(itemKey) === token) {
+            statusSignal.set(status);
+          }
+        })
+        .catch(() => {
+          if (this.inspectionTokens.get(itemKey) === token) {
+            statusSignal.set({
+              state: 'willCreate',
+              icon: 'folder-plus',
+              badgeClass: 'will-create',
+              labelKey: 'remoteConfig.pathStatus.willCreate',
+            });
+          }
+        });
+    }, 300);
+
+    this.inspectionDebounceTimers.set(itemKey, timer);
   }
 
   setType(item: PathItem, typeValue: string): void {
@@ -603,15 +791,5 @@ export class OperationConfigComponent {
   onMenuOpened(item: PathItem): void {
     const id = `${item.group}-${item.index}`;
     this.pathSelectionService.triggerLoad(id, item.remoteName, item.pathControl.value);
-  }
-
-  getPathStatus(item: PathItem): PathInspectionStatus | null {
-    const type = this.operationType();
-    if (type !== 'mount' && type !== 'bisync') return null;
-    return this.pathInspectionService.getPathStatus(
-      item.pathControl.value,
-      type,
-      this.currentRemoteName()
-    );
   }
 }

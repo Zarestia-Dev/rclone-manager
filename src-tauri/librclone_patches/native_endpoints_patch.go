@@ -3,27 +3,25 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
 
+	"github.com/mholt/archives"
 	_ "github.com/rclone/rclone/backend/all"
 	"github.com/rclone/rclone/backend/crypt"
 	"github.com/rclone/rclone/cmd"
+	_ "github.com/rclone/rclone/cmd/all"
 	"github.com/rclone/rclone/cmd/archive/create"
 	"github.com/rclone/rclone/cmd/archive/extract"
 	"github.com/rclone/rclone/cmd/archive/list"
-	_ "github.com/rclone/rclone/cmd/all"
 	"github.com/rclone/rclone/cmd/check"
 	"github.com/rclone/rclone/fs"
 	"github.com/rclone/rclone/fs/filter"
 	"github.com/rclone/rclone/fs/hash"
 	"github.com/rclone/rclone/fs/operations"
 	"github.com/rclone/rclone/fs/rc"
-	"github.com/mholt/archives"
 )
 
 func init() {
@@ -39,13 +37,6 @@ func init() {
 		Fn:    rcOperationsCryptCheck,
 		Title: "Cryptcheck encrypted remotes directly in process.",
 		Help:  "Checks encrypted remotes in-process over FFI.",
-	})
-
-	rc.Add(rc.Call{
-		Path:  "operations/cat",
-		Fn:    rcOperationsCat,
-		Title: "Cat a remote file directly in process.",
-		Help:  "Reads a remote file content in-process over FFI.",
 	})
 }
 
@@ -207,9 +198,15 @@ func rcOperationsArchive(ctx context.Context, in rc.Params) (out rc.Params, err 
 func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, err error) {
 	srcPath, _ := in.GetString("src")
 	if srcPath == "" {
+		srcPath, _ = in.GetString("srcFs")
+	}
+	if srcPath == "" {
 		srcPath, _ = in.GetString("source")
 	}
 	dstPath, _ := in.GetString("dst")
+	if dstPath == "" {
+		dstPath, _ = in.GetString("dstFs")
+	}
 	if dstPath == "" {
 		dstPath, _ = in.GetString("destination")
 	}
@@ -277,55 +274,4 @@ func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, e
 	}
 
 	return rc.Params{"success": true, "result": "cryptcheck passed"}, nil
-}
-
-// rcOperationsCat reads a file directly in process.
-func rcOperationsCat(ctx context.Context, in rc.Params) (out rc.Params, err error) {
-	pathStr, err := in.GetString("path")
-	if err != nil || pathStr == "" {
-		var arg []string
-		_ = in.GetStructMissingOK("arg", &arg)
-		if len(arg) > 0 {
-			pathStr = arg[0]
-		} else {
-			return nil, errors.New("cat requires a path parameter")
-		}
-	}
-
-	src, srcFile := cmd.NewFsFile(pathStr)
-	obj, err := src.NewObject(ctx, srcFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to access object %s: %w", pathStr, err)
-	}
-
-	var options []fs.OpenOption
-	if offset, err := in.GetInt64("offset"); err == nil {
-		options = append(options, &fs.RangeOption{Start: offset, End: -1})
-	}
-	if count, err := in.GetInt64("count"); err == nil && count > 0 {
-		if len(options) > 0 {
-			if rangeOpt, ok := options[len(options)-1].(*fs.RangeOption); ok {
-				rangeOpt.End = rangeOpt.Start + count - 1
-			}
-		} else {
-			options = append(options, &fs.RangeOption{Start: 0, End: count - 1})
-		}
-	}
-
-	reader, err := operations.Open(ctx, obj, options...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", pathStr, err)
-	}
-	defer func() { _ = reader.Close() }()
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", pathStr, err)
-	}
-
-	return rc.Params{
-		"result":        string(data),
-		"result_base64": base64.StdEncoding.EncodeToString(data),
-		"success":       true,
-	}, nil
 }

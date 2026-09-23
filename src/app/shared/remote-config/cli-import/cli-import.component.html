@@ -18,6 +18,7 @@
             rows="4"
             [ngModel]="cliInput()"
             (ngModelChange)="cliInput.set($event)"
+            [ngModelOptions]="{ standalone: true }"
             [placeholder]="'wizards.cliImport.placeholderText' | translate"
           ></textarea>
         </mat-form-field>
@@ -131,6 +132,7 @@
                       <mat-checkbox
                         [ngModel]="isFlagSelected(item.flag.key)"
                         (ngModelChange)="toggleFlag(item.flag.key)"
+                        [ngModelOptions]="{ standalone: true }"
                       >
                         <div class="flag-row-content">
                           <code class="flag-key">--{{ item.flag.key }}</code>
@@ -202,6 +204,7 @@
                 <mat-checkbox
                   [ngModel]="importSourcePath()"
                   (ngModelChange)="importSourcePath.set($event)"
+                  [ngModelOptions]="{ standalone: true }"
                 >
                   {{ 'wizards.cliImport.importSourcePath' | translate }}
                 </mat-checkbox>
@@ -210,6 +213,7 @@
                 <mat-checkbox
                   [ngModel]="importDestPath()"
                   (ngModelChange)="importDestPath.set($event)"
+                  [ngModelOptions]="{ standalone: true }"
                 >
                   {{
                     (verb === 'mount'
@@ -234,7 +238,11 @@
             }
 
             @if (!isQuickRun()) {
-              <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
+              <mat-radio-group
+                [ngModel]="profileMode()"
+                (ngModelChange)="profileMode.set($event)"
+                [ngModelOptions]="{ standalone: true }"
+              >
                 <mat-radio-button value="new" [disabled]="!canCreateNew()">
                   {{ 'wizards.cliImport.newProfile' | translate }}
                 </mat-radio-button>
@@ -253,6 +261,7 @@
                     matInput
                     [ngModel]="newProfileName()"
                     (ngModelChange)="newProfileName.set($event)"
+                    [ngModelOptions]="{ standalone: true }"
                     placeholder="e.g. daily-backup"
                   />
                 </mat-form-field>
@@ -264,6 +273,7 @@
                   <mat-select
                     [ngModel]="selectedOverrideProfile()"
                     (ngModelChange)="selectedOverrideProfile.set($event)"
+                    [ngModelOptions]="{ standalone: true }"
                   >
                     @for (p of detectedVerbProfiles(); track p) {
                       <mat-option [value]="p">{{ p }}</mat-option>

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 #[cfg(target_os = "linux")]
 use std::process::Command;
 
@@ -50,16 +50,32 @@ async fn run_fs_command_as_job(
     )
     .await?;
 
-    if let Some(job) = backend_manager.job_cache.get_job(jobid).await
-        && job.status == JobStatus::Stopped
-    {
-        return Err("Operation cancelled".to_string());
+    if let Some(job) = backend_manager.job_cache.get_job(jobid).await {
+        if job.status == JobStatus::Stopped {
+            return Err("Operation cancelled".to_string());
+        }
+        if job.status == JobStatus::Failed {
+            return Err(job.error.unwrap_or_else(|| "Operation failed".to_string()));
+        }
     }
 
     let value = transport
         .rpc(job_endpoints::STATUS, Some(&json!({ "jobid": jobid })))
         .await
         .map_err(|e| format!("Failed to fetch async job status: {e}"))?;
+
+    if value.get("success").and_then(|v| v.as_bool()) == Some(false)
+        || value
+            .get("error")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty())
+    {
+        let error_msg = value
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Operation failed");
+        return Err(error_msg.to_string());
+    }
 
     Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
 }
@@ -171,19 +187,40 @@ fn detect_home_dir() -> Option<String> {
 }
 
 fn normalize_drive_path(path: &str) -> String {
-    let mut p = path.to_string();
-    // Normalize Windows drive letters (e.g., "C:") to root paths (e.g., "C:\")
-    // This ensures rclone lists the root directory instead of the current working directory of the drive.
-    if p.len() == 2 && p.ends_with(':') && p.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    #[cfg(windows)]
+    if trimmed.len() == 2
+        && trimmed.ends_with(':')
+        && trimmed
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic())
     {
-        p.push('\\');
+        return format!("{trimmed}\\");
     }
-    if p == "/sdcard" {
-        p = "/storage/emulated/0".to_string();
-    } else if let Some(suffix) = p.strip_prefix("/sdcard/") {
-        p = format!("/storage/emulated/0/{suffix}");
+
+    if trimmed == "/sdcard" {
+        return "/storage/emulated/0".to_string();
     }
-    p
+    if let Some(suffix) = trimmed.strip_prefix("/sdcard/") {
+        return format!("/storage/emulated/0/{suffix}");
+    }
+
+    #[cfg(any(target_os = "android", test))]
+    if !trimmed.starts_with('/') {
+        let folder = if trimmed.eq_ignore_ascii_case("downloads") {
+            "Download"
+        } else {
+            trimmed
+        };
+        return format!("/storage/emulated/0/{folder}");
+    }
+
+    trimmed.to_string()
 }
 
 fn is_home_directory(normalized_path: &str, home: Option<&str>) -> bool {
@@ -304,6 +341,16 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
         }
     };
 
+    #[cfg(target_os = "android")]
+    let disks_paths = {
+        let mut paths = disks_paths;
+        let emulated_root = "/storage/emulated/0".to_string();
+        if !paths.iter().any(|p| p == &emulated_root || p == "/sdcard") {
+            paths.insert(0, emulated_root);
+        }
+        paths
+    };
+
     let home = detect_home_dir();
 
     // Pre-build a lookup table keyed by normalized mount point so we don't
@@ -324,10 +371,15 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
     #[cfg(target_os = "linux")]
     let labels = fetch_linux_drive_labels().await;
 
+    let mut seen_paths = HashSet::new();
     let drives = disks_paths
         .into_iter()
-        .map(|path| {
+        .filter_map(|path| {
             let normalized_path = normalize_drive_path(&path);
+
+            if normalized_path.is_empty() || !seen_paths.insert(normalized_path.clone()) {
+                return None;
+            }
 
             // O(1) lookup with fuzzy trailing-slash matching.
             let sys_disk_idx = sys_disk_by_mount
@@ -350,7 +402,9 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
 
             let is_home = is_home_directory(&normalized_path, home.as_deref());
 
-            let (label, show_name) = if is_home {
+            let (label, show_name) = if normalized_path == "/storage/emulated/0" {
+                ("nautilus.titles.internalStorage".to_string(), false)
+            } else if is_home {
                 ("titlebar.home".to_string(), false)
             } else if normalized_path == "/" || normalized_path == "C:\\" {
                 ("nautilus.titles.fileSystem".to_string(), false)
@@ -392,7 +446,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                 .filter(|n| !n.is_empty())
                 .unwrap_or_else(|| normalized_path.clone());
 
-            LocalDrive {
+            Some(LocalDrive {
                 id,
                 name: normalized_path.clone(),
                 label,
@@ -404,7 +458,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                     .unwrap_or_default(),
                 is_removable: sys_disk.is_some_and(sysinfo::Disk::is_removable),
                 mount_point: normalized_path,
-            }
+            })
         })
         .collect();
 
@@ -504,12 +558,16 @@ pub async fn get_stat(
     app: AppHandle,
     remote: String,
     path: String,
+    opt: Option<serde_json::Value>,
     origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let params = create_fs_params(&remote, Some(&path));
+    let mut params = create_fs_params(&remote, Some(&path));
+    if let Some(opt_val) = opt {
+        params.insert("opt".to_string(), opt_val);
+    }
     let source = build_full_path(&remote, &path);
 
     run_fs_command_as_job(
@@ -601,4 +659,45 @@ pub async fn get_public_link(
         JobMetadata::for_query(remote, source, JobType::Info, origin, group),
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_drive_path() {
+        assert_eq!(normalize_drive_path("/"), "/");
+        assert_eq!(normalize_drive_path("/sdcard"), "/storage/emulated/0");
+        assert_eq!(
+            normalize_drive_path("/sdcard/Download"),
+            "/storage/emulated/0/Download"
+        );
+        assert_eq!(
+            normalize_drive_path("Download"),
+            "/storage/emulated/0/Download"
+        );
+        assert_eq!(
+            normalize_drive_path("Downloads"),
+            "/storage/emulated/0/Download"
+        );
+        assert_eq!(
+            normalize_drive_path("Documents"),
+            "/storage/emulated/0/Documents"
+        );
+        assert_eq!(
+            normalize_drive_path("/storage/emulated/0"),
+            "/storage/emulated/0"
+        );
+        assert_eq!(
+            normalize_drive_path("/storage/1234-5678"),
+            "/storage/1234-5678"
+        );
+        assert_eq!(normalize_drive_path("/data/user/0/app"), "/data/user/0/app");
+        assert_eq!(normalize_drive_path(""), "");
+        assert_eq!(normalize_drive_path("   "), "");
+
+        #[cfg(windows)]
+        assert_eq!(normalize_drive_path("C:"), "C:\\");
+    }
 }

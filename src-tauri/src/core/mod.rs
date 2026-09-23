@@ -12,10 +12,12 @@ pub mod lifecycle;
 pub mod paths;
 pub mod security;
 pub mod settings;
+
+#[cfg(all(desktop, feature = "tray"))]
 pub mod tray;
 
 #[cfg(not(feature = "librclone"))]
 pub mod check_binaries;
 
-#[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod power;

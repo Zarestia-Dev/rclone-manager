@@ -33,27 +33,37 @@
     mat-table
     [dataSource]="filteredShortcuts()"
     class="shortcut-table"
-    role="table"
     [attr.aria-label]="'shortcuts.ariaList' | translate"
   >
     <ng-container matColumnDef="keys">
-      <td mat-cell *matCellDef="let shortcut" class="shortcut-key" role="gridcell">
-        @for (key of shortcut.keys.split('+'); track key; let isLast = $last) {
-          <span class="key" [attr.data-key]="key.trim()">{{ key.trim() }}</span>
-          @if (!isLast) {
-            <span class="key-separator" aria-hidden="true">+</span>
+      <td mat-cell *matCellDef="let shortcut" class="shortcut-key">
+        @for (combo of shortcut.combos; track $index; let isLastCombo = $last) {
+          <span class="key-combo">
+            @for (key of combo; track key; let isLastKey = $last) {
+              <span class="key" [attr.data-key]="key">{{ key }}</span>
+              @if (!isLastKey) {
+                <span class="key-separator" aria-hidden="true">+</span>
+              }
+            }
+          </span>
+          @if (!isLastCombo) {
+            <span class="combo-separator" aria-hidden="true">/</span>
           }
         }
       </td>
     </ng-container>
 
     <ng-container matColumnDef="description">
-      <td mat-cell *matCellDef="let shortcut" class="shortcut-desc" role="gridcell">
+      <td mat-cell *matCellDef="let shortcut" class="shortcut-desc">
         {{ shortcut.description | translate }}
       </td>
     </ng-container>
 
-    <tr mat-row *matRowDef="let row; columns: ['keys', 'description']" role="row"></tr>
+    <tr
+      mat-row
+      *matRowDef="let row; columns: ['keys', 'description']"
+      [class.shortcut-hit]="pressedShortcutKeys() === row.keys"
+    ></tr>
   </table>
 
   <!-- Empty state when no shortcuts match search -->

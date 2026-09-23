@@ -8,6 +8,7 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
@@ -20,6 +21,12 @@
 <p align="center">
   <b>Uma interface gráfica poderosa e multiplataforma para gerenciar remotos do Rclone com estilo e facilidade.</b><br>
   <i>Criado com Angular 22 + Tauri · Suporte a Linux • Windows • macOS • Android (Beta) • ARM</i>
+</p>
+
+<p align="center">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/architecture">
+    <img src="https://img.shields.io/badge/Architecture-Specification-blueviolet?style=for-the-badge" alt="Architecture Specification">
+  </a>
 </p>
 
 <p align="center">
@@ -51,21 +58,39 @@ O **RClone Manager** simplifica o gerenciamento e a sincronização de arquivos 
 
 - 📂 **Gerenciador de Arquivos Nautilus:** Navegue, edite, mova, copie, renomeie e exclua arquivos remotos.
 - 👁️ **Visualizador de Arquivos:** Visualizações integradas para vídeos, imagens, PDFs, áudio e texto.
+- ⚡ **Fluxos de Trabalho Visuais (Workflows):** Projete e automatize pipelines em nuvem com um canvas interativo baseado em nós, agendamentos cron, monitoramento de pastas e notificações de alerta instantâneas.
+- 🚀 **Execuções Rápidas (Quick Runs):** Inicie operações na nuvem com um clique e acesse predefinições de argumentos CLI diretamente de uma grade de cartões com status em tempo real.
 - ⚙️ **Montar e Servir:** Controles fáceis de montagem e gerenciamento de servidores (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Monitor de Tarefas:** Monitoramento de transferências em tempo real e controle de largura de banda.
 - 🌐 **Modo Headless:** Confira o [RClone Manager Headless](headless/README.md) para executá-lo como um servidor web no seu VPS/NAS!
 
 ---
 
-## Captura de Tela
+## Capturas de Tela
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="Interface Desktop do RClone Manager" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Painel" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Painel - Execuções rápidas, montagens e visão geral dos remotos</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Editor de Workflows" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>Editor de Workflows - Projete e automatize pipelines em nuvem com um canvas interativo baseado em nós</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Gerenciador de Arquivos Nautilus" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Navegue, transfira e gerencie arquivos em todos os seus remotos</sub>
+</p>
+
+<p align="center">
   <i>📖 Quer ver mais? Confira a <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Galeria da Wiki</a></b> com todos os recursos.</i>
 </p>
 

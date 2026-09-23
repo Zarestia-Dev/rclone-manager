@@ -465,17 +465,20 @@
         [attr.title]="'shared.vfsControl.actions.refreshMetadata' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
-        <mat-icon svgIcon="sync"></mat-icon>
+        @if (loading()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="refresh" class="purple"></mat-icon>
+        }
       </button>
 
       <button
         matIconButton
-        class="warn"
         (click)="clearMetadataCache()"
         [attr.title]="'shared.vfsControl.actions.clearCache' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
-        <mat-icon svgIcon="trash"></mat-icon>
+        <mat-icon svgIcon="trash" class="warn"></mat-icon>
       </button>
 
       <button
@@ -487,7 +490,7 @@
         @if (loading()) {
           <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
-          <mat-icon svgIcon="refresh"></mat-icon>
+          <mat-icon svgIcon="refresh" class="accent"></mat-icon>
         }
       </button>
     </mat-card-actions>

@@ -2,6 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  ElementRef,
   inject,
   signal,
   viewChild,
@@ -16,6 +18,18 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { isInputFocused, matchesCombo, parseCombos } from '../../../../shared/utils/keyboard-utils';
+import {
+  getShortcutsForContext,
+  ShortcutContext,
+} from '../../../../shared/models/shortcut-definitions';
+
+export interface ShortcutItem {
+  keys: string;
+  description: string;
+  category: string;
+  combos: string[][];
+}
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
@@ -37,7 +51,10 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 export class KeyboardShortcutsModalComponent {
   private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly data = inject(MAT_DIALOG_DATA, { optional: true }) as {
+    context?: ShortcutContext;
     nautilus?: boolean;
   } | null;
 
@@ -46,200 +63,11 @@ export class KeyboardShortcutsModalComponent {
   // Signals
   readonly searchText = signal('');
   readonly searchVisible = signal(false);
+  readonly pressedShortcutKeys = signal<string | null>(null);
 
-  // Schema using translation keys
-  private readonly defaultShortcuts = [
-    {
-      keys: 'Ctrl + Q',
-      description: 'shortcuts.actions.quit',
-      category: 'shortcuts.categories.global',
-    },
-    {
-      keys: 'Ctrl + ?',
-      description: 'shortcuts.actions.showShortcuts',
-      category: 'shortcuts.categories.application',
-    },
-    {
-      keys: 'Ctrl + ,',
-      description: 'shortcuts.actions.openPreferences',
-      category: 'shortcuts.categories.application',
-    },
-    {
-      keys: 'Ctrl + .',
-      description: 'shortcuts.actions.openFlags',
-      category: 'shortcuts.categories.application',
-    },
-    {
-      keys: 'Ctrl + Alt + A',
-      description: 'alerts.title',
-      category: 'shortcuts.categories.application',
-    },
-    {
-      keys: 'Ctrl + Shift + M',
-      description: 'shortcuts.actions.forceCheck',
-      category: 'shortcuts.categories.remoteManagement',
-    },
-    {
-      keys: 'Ctrl + Shift + S',
-      description: 'shortcuts.actions.forceCheckServes',
-      category: 'shortcuts.categories.remoteManagement',
-    },
-    {
-      keys: 'Ctrl + N',
-      description: 'shortcuts.actions.newRemoteDetailed',
-      category: 'shortcuts.categories.remoteManagement',
-    },
-    {
-      keys: 'Ctrl + R',
-      description: 'shortcuts.actions.newRemoteQuick',
-      category: 'shortcuts.categories.remoteManagement',
-    },
-    {
-      keys: 'Ctrl + I',
-      description: 'shortcuts.actions.loadConfig',
-      category: 'shortcuts.categories.fileOperations',
-    },
-    {
-      keys: 'Ctrl + E',
-      description: 'shortcuts.actions.exportConfig',
-      category: 'shortcuts.categories.fileOperations',
-    },
-    {
-      keys: 'Ctrl + B',
-      description: 'shortcuts.actions.toggleBrowser',
-      category: 'shortcuts.categories.fileBrowser',
-    },
-    {
-      keys: 'Ctrl + Alt + F',
-      description: 'shortcuts.actions.openFlowOverlay',
-      category: 'shortcuts.categories.application',
-    },
-    {
-      keys: 'Escape',
-      description: 'shortcuts.actions.closeDialog',
-      category: 'shortcuts.categories.navigation',
-    },
-  ];
+  private hitTimeout?: ReturnType<typeof setTimeout>;
 
-  private readonly nautilusShortcuts = [
-    {
-      keys: 'Ctrl + C',
-      description: 'nautilus.contextMenu.copy',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + X',
-      description: 'nautilus.contextMenu.cut',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + V',
-      description: 'nautilus.contextMenu.paste',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Delete',
-      description: 'nautilus.contextMenu.delete',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + A',
-      description: 'nautilus.contextMenu.selectAll',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'F5 / Ctrl + R',
-      description: 'nautilus.contextMenu.refresh',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + Shift + N',
-      description: 'nautilus.contextMenu.newFolder',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + F',
-      description: 'nautilus.contextMenu.search',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + H',
-      description: 'nautilus.view.showHidden',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Alt + Enter',
-      description: 'nautilus.contextMenu.properties',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Backspace / Alt + Up',
-      description: 'nautilus.contextMenu.goUp',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Alt + Left',
-      description: 'nautilus.contextMenu.goBack',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Alt + Right',
-      description: 'nautilus.contextMenu.goForward',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Enter',
-      description: 'nautilus.contextMenu.open',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + L',
-      description: 'nautilus.contextMenu.focusPath',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + T',
-      description: 'nautilus.contextMenu.newTab',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + Tab',
-      description: 'nautilus.contextMenu.nextTab',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + Shift + Tab',
-      description: 'nautilus.contextMenu.previousTab',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + Shift + T',
-      description: 'nautilus.contextMenu.duplicateTab',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + W',
-      description: 'nautilus.contextMenu.closeTab',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + /',
-      description: 'nautilus.contextMenu.toggleSplit',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Ctrl + I',
-      description: 'nautilus.contextMenu.switchPane',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-    {
-      keys: 'Escape',
-      description: 'shortcuts.actions.closeDialog',
-      category: 'shortcuts.categories.fileBrowserNautilus',
-    },
-  ];
-
-  readonly shortcuts: { keys: string; description: string; category: string }[];
+  readonly shortcuts: ShortcutItem[];
   readonly title: string;
 
   readonly filteredShortcuts = computed(() => {
@@ -251,20 +79,83 @@ export class KeyboardShortcutsModalComponent {
       return (
         description.includes(term) ||
         shortcut.keys.toLowerCase().includes(term) ||
-        shortcut.keys.split('+').some(key => key.trim().toLowerCase().includes(term))
+        shortcut.combos.some(combo => combo.some(key => key.toLowerCase().includes(term)))
       );
     });
   });
 
   constructor() {
-    if (this.data?.nautilus) {
-      this.shortcuts = [...this.nautilusShortcuts];
-      this.title = 'nautilus.shortcuts.title';
-    } else {
-      this.shortcuts = [...this.defaultShortcuts];
-      this.title = 'shortcuts.title';
+    let resolvedContext: ShortcutContext = 'main';
+    if (this.data?.context) {
+      resolvedContext = this.data.context;
+    } else if (this.data?.nautilus) {
+      resolvedContext = 'nautilus';
+    }
+
+    const sourceList = getShortcutsForContext(resolvedContext);
+    this.shortcuts = sourceList.map(item => ({
+      keys: item.keys,
+      description: item.descriptionKey,
+      category: item.categoryKey,
+      combos: parseCombos(item.keys),
+    }));
+
+    switch (resolvedContext) {
+      case 'nautilus':
+        this.title = 'nautilus.shortcuts.title';
+        break;
+      case 'flow':
+        this.title = 'flow.shortcuts.title';
+        break;
+      case 'main':
+      default:
+        this.title = 'shortcuts.title';
+        break;
+    }
+
+    this.destroyRef.onDestroy(() => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', this.handleKeyDown, { capture: true });
+      }
+      if (this.hitTimeout) {
+        clearTimeout(this.hitTimeout);
+      }
+    });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this.handleKeyDown, { capture: true });
     }
   }
+
+  readonly handleKeyDown = (event: KeyboardEvent): void => {
+    if (isInputFocused(event)) {
+      return;
+    }
+
+    const matched = this.shortcuts.find(s => s.combos.some(combo => matchesCombo(combo, event)));
+
+    if (matched) {
+      if (event.key !== 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+      this.pressedShortcutKeys.set(matched.keys);
+
+      setTimeout(() => {
+        this.elementRef.nativeElement
+          .querySelector('.shortcut-hit')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 0);
+
+      if (this.hitTimeout) {
+        clearTimeout(this.hitTimeout);
+      }
+      this.hitTimeout = setTimeout(() => {
+        this.pressedShortcutKeys.set(null);
+      }, 850);
+    }
+  };
 
   toggleSearch(): void {
     this.searchVisible.update(v => !v);

@@ -1,0 +1,1342 @@
+{
+  "check_file_remote": {
+    "title": "檢查遠端檔案",
+    "help": "將 checkFileFs:checkFileRemote 視為包含雜湊值 (Hash)的 SUM 檔案。"
+  },
+  "combined": {
+    "title": "合併報告",
+    "help": "生成變化的合併報告。"
+  },
+  "missing_on_src": {
+    "title": "源中缺失",
+    "help": "報告所有在源中缺失的檔案。"
+  },
+  "missing_on_dst": {
+    "title": "目標中缺失",
+    "help": "報告所有在目標中缺失的檔案。"
+  },
+  "match": {
+    "title": "匹配",
+    "help": "報告所有匹配的檔案。"
+  },
+  "differ": {
+    "title": "差異",
+    "help": "報告所有不匹配的檔案。"
+  },
+  "error": {
+    "title": "錯誤",
+    "help": "報告所有發生錯誤（雜湊 (Hash)或讀取）的檔案。"
+  },
+  "addr": {
+    "title": "地址",
+    "help": "伺服器繫結的IP地址:連線埠 或 :連線埠"
+  },
+  "name": {
+    "title": "名稱",
+    "help": "DLNA伺服器名稱"
+  },
+  "log_trace": {
+    "title": "日誌追蹤",
+    "help": "啟用SOAP流量的追蹤日誌"
+  },
+  "interface": {
+    "title": "網路介面",
+    "help": "用於SSDP的網路介面（可重複指定）"
+  },
+  "announce_interval": {
+    "title": "公告間隔",
+    "help": "SSDP公告的傳送間隔"
+  },
+  "delete_excluded": {
+    "title": "刪除排除項",
+    "help": "刪除目標端中被排除在同步範圍外的檔案"
+  },
+  "exclude_if_present": {
+    "title": "存在指定檔案則排除",
+    "help": "若目錄下存在指定檔案名，則排除該目錄"
+  },
+  "files_from": {
+    "title": "檔案清單來源",
+    "help": "從檔案讀取源檔案名稱列表（使用-表示從標準輸入讀取）"
+  },
+  "files_from_raw": {
+    "title": "原始檔案清單來源",
+    "help": "從檔案讀取源檔案名稱列表，不對行做任何處理（使用-表示從標準輸入讀取）"
+  },
+  "min_age": {
+    "title": "最小檔案年齡",
+    "help": "僅傳輸超過該時長的檔案，單位為秒，或帶字尾 ms|s|m|h|d|w|M|y"
+  },
+  "max_age": {
+    "title": "最大檔案年齡",
+    "help": "僅傳輸不到該時長的檔案，單位為秒，或帶字尾 ms|s|m|h|d|w|M|y"
+  },
+  "min_size": {
+    "title": "最小檔案大小",
+    "help": "僅傳輸大於該大小的檔案，單位為KiB，或帶字尾 B|K|M|G|T|P"
+  },
+  "max_size": {
+    "title": "最大檔案大小",
+    "help": "僅傳輸小於該大小的檔案，單位為KiB，或帶字尾 B|K|M|G|T|P"
+  },
+  "ignore_case": {
+    "title": "忽略大小寫",
+    "help": "過濾規則中忽略大小寫（大小寫不敏感）"
+  },
+  "hash_filter": {
+    "title": "雜湊 (Hash)過濾",
+    "help": "按雜湊值 (Hash) k/n 或隨機 @/n 對檔案名進行分割槽過濾"
+  },
+  "filter": {
+    "title": "過濾規則",
+    "help": "新增檔案過濾規則"
+  },
+  "filter_from": {
+    "title": "過濾規則來源",
+    "help": "從檔案讀取檔案過濾模式（使用-表示從標準輸入讀取）"
+  },
+  "exclude": {
+    "title": "排除規則",
+    "help": "排除匹配指定模式的檔案"
+  },
+  "exclude_from": {
+    "title": "排除規則來源",
+    "help": "從檔案讀取檔案排除模式（使用-表示從標準輸入讀取）"
+  },
+  "include": {
+    "title": "包含規則",
+    "help": "包含匹配指定模式的檔案"
+  },
+  "include_from": {
+    "title": "包含規則來源",
+    "help": "從檔案讀取檔案包含模式（使用-表示從標準輸入讀取）"
+  },
+  "metadata_filter": {
+    "title": "中繼資料過濾規則",
+    "help": "新增中繼資料過濾規則"
+  },
+  "metadata_filter_from": {
+    "title": "中繼資料過濾規則來源",
+    "help": "從檔案讀取中繼資料過濾模式（使用-表示從標準輸入讀取）"
+  },
+  "metadata_exclude": {
+    "title": "中繼資料排除規則",
+    "help": "排除匹配指定模式的中繼資料"
+  },
+  "metadata_exclude_from": {
+    "title": "中繼資料排除規則來源",
+    "help": "從檔案讀取中繼資料排除模式（使用-表示從標準輸入讀取）"
+  },
+  "metadata_include": {
+    "title": "中繼資料包含規則",
+    "help": "包含匹配指定模式的中繼資料"
+  },
+  "metadata_include_from": {
+    "title": "中繼資料包含規則來源",
+    "help": "從檔案讀取中繼資料包含模式（使用-表示從標準輸入讀取）"
+  },
+  "public_ip": {
+    "title": "公網IP",
+    "help": "為被動連線公告的公網IP地址"
+  },
+  "passive_port": {
+    "title": "被動連線埠",
+    "help": "使用的被動連線埠範圍"
+  },
+  "user": {
+    "title": "使用者名稱",
+    "help": "驗證用使用者名稱"
+  },
+  "pass": {
+    "title": "密碼",
+    "help": "驗證用密碼"
+  },
+  "cert": {
+    "title": "證書",
+    "help": "TLS PEM金鑰（證書和CA證書的拼接）"
+  },
+  "key": {
+    "title": "私鑰",
+    "help": "TLS PEM私鑰"
+  },
+  "server_read_timeout": {
+    "title": "伺服器讀取逾時",
+    "help": "伺服器讀取資料的逾時時間"
+  },
+  "server_write_timeout": {
+    "title": "伺服器寫入逾時",
+    "help": "伺服器寫入資料的逾時時間"
+  },
+  "max_header_bytes": {
+    "title": "最大請求頭位元組數",
+    "help": "請求頭的最大大小"
+  },
+  "client_ca": {
+    "title": "用戶端 CA 憑證",
+    "help": "用於驗證用戶端的用戶端 CA 憑證"
+  },
+  "baseurl": {
+    "title": "基礎URL",
+    "help": "URL字首 - 根路徑留空"
+  },
+  "min_tls_version": {
+    "title": "最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "allow_origin": {
+    "title": "允許跨域源",
+    "help": "可執行跨域請求（CORS）的源地址"
+  },
+  "htpasswd": {
+    "title": "Htpasswd檔案",
+    "help": "htpasswd驗證檔案 - 未提供則不進行驗證"
+  },
+  "realm": {
+    "title": "驗證域",
+    "help": "驗證用的域名稱"
+  },
+  "salt": {
+    "title": "密碼鹽值",
+    "help": "密碼雜湊 (Hash)鹽值"
+  },
+  "user_from_header": {
+    "title": "從請求頭取得使用者名稱",
+    "help": "從指定HTTP請求頭取得使用者名稱"
+  },
+  "template": {
+    "title": "模板",
+    "help": "使用者指定的模板"
+  },
+  "log_file": {
+    "title": "日誌檔案",
+    "help": "將所有日誌輸出到該檔案"
+  },
+  "log_file_max_size": {
+    "title": "日誌檔案最大大小",
+    "help": "日誌檔案輪換前的最大大小（例如\"10M\"）"
+  },
+  "log_file_max_backups": {
+    "title": "日誌檔案最大備份數",
+    "help": "保留的舊日誌檔案最大數量"
+  },
+  "log_file_max_age": {
+    "title": "日誌檔案最大保留時長",
+    "help": "保留舊日誌檔案的最長時間（例如\"7d\"）"
+  },
+  "log_file_compress": {
+    "title": "壓縮日誌檔案",
+    "help": "若啟用，使用gzip壓縮輪換後的日誌檔案"
+  },
+  "log_format": {
+    "title": "日誌格式",
+    "help": "日誌格式選項的逗號分隔列表"
+  },
+  "syslog": {
+    "title": "系統日誌",
+    "help": "使用系統日誌（Syslog）記錄日誌"
+  },
+  "syslog_facility": {
+    "title": "系統日誌設施",
+    "help": "系統日誌的設施型別，例如KERN、USER"
+  },
+  "log_systemd": {
+    "title": "Systemd日誌整合",
+    "help": "為日誌器啟用systemd整合"
+  },
+  "windows_event_log_level": {
+    "title": "Windows事件日誌級別",
+    "help": "Windows事件日誌級別 DEBUG|INFO|NOTICE|ERROR|OFF"
+  },
+  "modify_window": {
+    "title": "修改時間視窗",
+    "help": "被視為相同檔案的最大時間差值"
+  },
+  "checkers": {
+    "title": "檢查器數量",
+    "help": "並行執行的檢查器數量"
+  },
+  "transfers": {
+    "title": "傳輸任務數",
+    "help": "並行執行的檔案傳輸任務數量"
+  },
+  "checksum": {
+    "title": "總和檢查碼 (Checksum)校驗",
+    "help": "透過大小和總和檢查碼 (Checksum)檢查檔案變化（若可用，否則僅用大小）"
+  },
+  "size_only": {
+    "title": "僅按大小校驗",
+    "help": "僅根據大小跳過檔案，忽略修改時間或總和檢查碼 (Checksum)"
+  },
+  "ignore_times": {
+    "title": "忽略時間",
+    "help": "不跳過大小和時間匹配的檔案 - 無條件傳輸所有檔案"
+  },
+  "ignore_existing": {
+    "title": "忽略已存在檔案",
+    "help": "跳過所有目標端已存在的檔案"
+  },
+  "ignore_errors": {
+    "title": "忽略錯誤",
+    "help": "即使出現I/O錯誤也繼續刪除操作"
+  },
+  "dry_run": {
+    "title": "模擬執行",
+    "help": "測試執行 (Dry Run)，不進行永久性修改"
+  },
+  "interactive": {
+    "title": "互動模式",
+    "help": "啟用互動模式"
+  },
+  "links": {
+    "title": "符號連結 (Symlink)轉換",
+    "help": "將符號連結 (Symlink)轉換為/從帶.rclonelink擴充功能名的普通檔案"
+  },
+  "contimeout": {
+    "title": "連線逾時",
+    "help": "連線逾時時間"
+  },
+  "timeout": {
+    "title": "IO逾時",
+    "help": "IO空閒逾時時間"
+  },
+  "expect_continue_timeout": {
+    "title": "Expect Continue逾時",
+    "help": "HTTP中使用expect/100-continue的逾時時間"
+  },
+  "no_check_certificate": {
+    "title": "不檢查證書",
+    "help": "不驗證伺服器SSL證書（不安全）"
+  },
+  "ask_password": {
+    "title": "詢問密碼",
+    "help": "允許為加密設定提示輸入密碼"
+  },
+  "password_command": {
+    "title": "密碼命令",
+    "help": "為加密設定提供密碼的命令"
+  },
+  "max_delete": {
+    "title": "最大刪除數",
+    "help": "同步時限制刪除檔案的數量"
+  },
+  "max_delete_size": {
+    "title": "最大刪除大小",
+    "help": "同步時限制刪除檔案的總大小"
+  },
+  "track_renames": {
+    "title": "追蹤重新命名",
+    "help": "同步時追蹤檔案重新命名，儘可能在服務端執行移動操作"
+  },
+  "track_renames_strategy": {
+    "title": "重新命名追蹤策略",
+    "help": "使用track-renames同步時的策略 hash|modtime|leaf"
+  },
+  "retries": {
+    "title": "重試次數",
+    "help": "操作失敗時的重試次數"
+  },
+  "retries_sleep": {
+    "title": "重試間隔",
+    "help": "操作失敗後重試的間隔時間，例如500ms、60s、5m（0表示禁用）"
+  },
+  "low_level_retries": {
+    "title": "底層重試次數",
+    "help": "底層操作的重試次數"
+  },
+  "update": {
+    "title": "增量更新",
+    "help": "跳過目標端中更新時間更新的檔案"
+  },
+  "use_server_modtime": {
+    "title": "使用伺服器修改時間",
+    "help": "使用伺服器修改時間而非物件中繼資料中的時間"
+  },
+  "no_gzip_encoding": {
+    "title": "禁用Gzip編碼",
+    "help": "不設定Accept-Encoding: gzip請求頭"
+  },
+  "max_depth": {
+    "title": "最大遞迴深度",
+    "help": "若設定，將遞迴深度限制為此值"
+  },
+  "ignore_size": {
+    "title": "忽略大小",
+    "help": "跳過檔案時忽略大小，使用修改時間或總和檢查碼 (Checksum)"
+  },
+  "ignore_checksum": {
+    "title": "忽略總和檢查碼 (Checksum)",
+    "help": "跳過複製後的總和檢查碼 (Checksum)驗證"
+  },
+  "ignore_case_sync": {
+    "title": "同步時忽略大小寫",
+    "help": "同步過程中忽略大小寫"
+  },
+  "fix_case": {
+    "title": "修正大小寫",
+    "help": "強制重新命名目標端大小寫不敏感的檔案以匹配源端"
+  },
+  "no_traverse": {
+    "title": "不遍歷目標端",
+    "help": "複製時不遍歷目標端檔案系統"
+  },
+  "check_first": {
+    "title": "先檢查後傳輸",
+    "help": "開始傳輸前完成所有檢查操作"
+  },
+  "no_check_dest": {
+    "title": "不檢查目標端",
+    "help": "不檢查目標端，直接複製"
+  },
+  "no_unicode_normalization": {
+    "title": "禁用Unicode歸一化",
+    "help": "不對檔案名中的Unicode字元進行歸一化處理"
+  },
+  "no_update_modtime": {
+    "title": "不更新修改時間",
+    "help": "檔案內容相同時不更新目標端檔案的修改時間"
+  },
+  "no_update_dir_modtime": {
+    "title": "不更新目錄修改時間",
+    "help": "不更新目錄的修改時間"
+  },
+  "compare_dest": {
+    "title": "對比目標端",
+    "help": "對比時包含額外的服務端路徑"
+  },
+  "copy_dest": {
+    "title": "複製目標端",
+    "help": "隱含--compare-dest，同時從指定路徑複製檔案到目標端"
+  },
+  "backup_dir": {
+    "title": "備份目錄",
+    "help": "將備份檔案存入基於指定目錄的層級結構中"
+  },
+  "suffix": {
+    "title": "字尾",
+    "help": "為修改過的檔案新增字尾"
+  },
+  "suffix_keep_extension": {
+    "title": "保留擴充功能名字尾",
+    "help": "使用--suffix時保留檔案擴充功能名"
+  },
+  "fast_list": {
+    "title": "快速列表",
+    "help": "若可用則使用遞迴列表；佔用更多記憶體但減少事務數"
+  },
+  "list_cutoff": {
+    "title": "列表閾值",
+    "help": "為節省記憶體，超過此閾值時在磁碟上排序目錄列表"
+  },
+  "tpslimit": {
+    "title": "TPS限制",
+    "help": "限制每秒HTTP事務數為此值"
+  },
+  "tpslimit_burst": {
+    "title": "TPS限制突發量",
+    "help": "--tpslimit的最大事務突發量"
+  },
+  "user_agent": {
+    "title": "使用者代理",
+    "help": "將user-agent設定為指定字串"
+  },
+  "immutable": {
+    "title": "不可變模式",
+    "help": "不修改檔案，若已有檔案被修改則執行失敗"
+  },
+  "auto_confirm": {
+    "title": "自動確認",
+    "help": "若啟用，不請求控制檯確認"
+  },
+  "stats_unit": {
+    "title": "統計單位",
+    "help": "統計資料中顯示的資料速率單位，可選'bits'（位元）或'bytes'（位元組）每秒"
+  },
+  "stats_file_name_length": {
+    "title": "統計檔案名長度",
+    "help": "統計中顯示的最大檔案名長度（0表示無限制）"
+  },
+  "log_level": {
+    "title": "日誌級別",
+    "help": "日誌級別 DEBUG|INFO|NOTICE|ERROR"
+  },
+  "stats_log_level": {
+    "title": "統計日誌級別",
+    "help": "顯示--stats輸出的日誌級別 DEBUG|INFO|NOTICE|ERROR"
+  },
+  "bwlimit": {
+    "title": "頻寬限制",
+    "help": "頻寬限制，單位為KiB/s，或帶字尾 B|K|M|G|T|P，也可使用完整時間表"
+  },
+  "bwlimit_file": {
+    "title": "單檔案頻寬限制",
+    "help": "單個檔案的頻寬限制，單位為KiB/s，或帶字尾 B|K|M|G|T|P，也可使用完整時間表"
+  },
+  "buffer_size": {
+    "title": "緩衝區大小",
+    "help": "每個--transfer讀取檔案時的記憶體緩衝區大小"
+  },
+  "streaming_upload_cutoff": {
+    "title": "流式上傳閾值",
+    "help": "檔案大小未知時切換為分塊上傳的閾值，達到閾值或檔案結束時開始上傳"
+  },
+  "dump": {
+    "title": "除錯輸出",
+    "help": "需要輸出的除錯項列表：headers、bodies、requests、responses、auth、filters、goroutines、openfiles、mapper"
+  },
+  "max_transfer": {
+    "title": "最大傳輸量",
+    "help": "最大資料傳輸量"
+  },
+  "max_duration": {
+    "title": "最大傳輸時長",
+    "help": "rclone傳輸資料的最長持續時間"
+  },
+  "cutoff_mode": {
+    "title": "閾值模式",
+    "help": "達到最大傳輸限制時停止傳輸的模式 HARD|SOFT|CAUTIOUS"
+  },
+  "max_backlog": {
+    "title": "最大待處理佇列",
+    "help": "同步或檢查待處理佇列中的最大物件數"
+  },
+  "max_stats_groups": {
+    "title": "最大統計分組數",
+    "help": "記憶體中保留的最大統計分組數，達到上限時丟棄最舊的分組"
+  },
+  "stats_one_line": {
+    "title": "單行統計",
+    "help": "將統計資訊適配為單行顯示"
+  },
+  "stats_one_line_date": {
+    "title": "帶日期的單行統計",
+    "help": "啟用--stats-one-line並新增當前日期/時間字首"
+  },
+  "stats_one_line_date_format": {
+    "title": "自定義日期格式的單行統計",
+    "help": "啟用--stats-one-line-date並使用自定義格式的日期：將日期字串用雙引號（\"）包裹，格式參考https://golang.org/pkg/time/#Time.Format"
+  },
+  "error_on_no_transfer": {
+    "title": "無傳輸時返回錯誤",
+    "help": "若沒有檔案被傳輸則設定結束碼為9，適用於指令碼場景"
+  },
+  "progress": {
+    "title": "進度顯示",
+    "help": "傳輸過程中顯示進度"
+  },
+  "progress_terminal_title": {
+    "title": "終端標題顯示進度",
+    "help": "在終端標題顯示進度（需要-P/--progress）"
+  },
+  "use_cookies": {
+    "title": "使用Cookie",
+    "help": "啟用會話CookieJar"
+  },
+  "use_mmap": {
+    "title": "使用MMAP",
+    "help": "使用mmap記憶體分配器（詳見文件）"
+  },
+  "max_buffer_memory": {
+    "title": "最大緩衝區記憶體",
+    "help": "若設定，緩衝區分配的記憶體不超過此值"
+  },
+  "ca_cert": {
+    "title": "CA證書",
+    "help": "用於驗證伺服器的CA證書"
+  },
+  "client_cert": {
+    "title": "用戶端憑證",
+    "help": "用於雙向TLS驗證的用戶端SSL證書（PEM格式）"
+  },
+  "client_key": {
+    "title": "用戶端私鑰",
+    "help": "用於雙向TLS驗證的用戶端SSL私鑰（PEM格式）"
+  },
+  "client_pass": {
+    "title": "用戶端私鑰密碼",
+    "help": "用於雙向TLS驗證的用戶端SSL私鑰（PEM格式）密碼（隱藏顯示）"
+  },
+  "multi_thread_cutoff": {
+    "title": "多執行緒閾值",
+    "help": "超過此大小的檔案使用多執行緒下載"
+  },
+  "multi_thread_streams": {
+    "title": "多執行緒流數",
+    "help": "多執行緒下載使用的流數量"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "多執行緒寫入緩衝區大小",
+    "help": "多執行緒模式下寫入的記憶體緩衝區大小"
+  },
+  "multi_thread_chunk_size": {
+    "title": "多執行緒分塊大小",
+    "help": "多執行緒下載/上傳的分塊大小，若檔案系統未指定則使用此值"
+  },
+  "use_json_log": {
+    "title": "使用JSON日誌格式",
+    "help": "使用JSON格式記錄日誌"
+  },
+  "order_by": {
+    "title": "排序方式",
+    "help": "傳輸任務的排序方式，例如'size,descending'（按大小降序）"
+  },
+  "refresh_times": {
+    "title": "重新整理時間",
+    "help": "重新整理遠端檔案的修改時間"
+  },
+  "no_console": {
+    "title": "隱藏控制檯",
+    "help": "隱藏控制檯視窗（僅Windows支援）"
+  },
+  "fs_cache_expire_duration": {
+    "title": "檔案系統快取過期時間",
+    "help": "遠端連線的快取時長（0表示禁用快取）"
+  },
+  "fs_cache_expire_interval": {
+    "title": "檔案系統快取過期檢查間隔",
+    "help": "檢查過期遠端連線的間隔時間"
+  },
+  "disable_http2": {
+    "title": "禁用HTTP2",
+    "help": "在全域性傳輸中禁用HTTP/2"
+  },
+  "human_readable": {
+    "title": "易讀格式",
+    "help": "以人類易讀的格式列印數字，大小帶字尾 Ki|Mi|Gi|Ti|Pi"
+  },
+  "kv_lock_time": {
+    "title": "KV資料庫鎖定時間",
+    "help": "處理程式鎖定鍵值資料庫的最長時間"
+  },
+  "disable_http_keep_alives": {
+    "title": "禁用HTTP長連線",
+    "help": "禁用HTTP長連線，每個連線僅使用一次"
+  },
+  "metadata": {
+    "title": "中繼資料保留",
+    "help": "若啟用，複製物件時保留中繼資料"
+  },
+  "server_side_across_configs": {
+    "title": "跨設定服務端操作",
+    "help": "允許跨不同設定執行服務端操作（例如複製）"
+  },
+  "color": {
+    "title": "顏色輸出",
+    "help": "何時顯示顏色（及其他ANSI程式碼） AUTO|NEVER|ALWAYS"
+  },
+  "default_time": {
+    "title": "預設時間",
+    "help": "檔案和目錄修改時間未知時顯示的時間"
+  },
+  "inplace": {
+    "title": "原地下載",
+    "help": "直接下載到目標檔案，而非先下載到臨時檔案再重新命名"
+  },
+  "metadata_mapper": {
+    "title": "中繼資料對應程式 (Metadata Mapper)",
+    "help": "上傳前用於轉換中繼資料的執行程式"
+  },
+  "partial_suffix": {
+    "title": "臨時檔案字尾",
+    "help": "未使用--inplace時為臨時檔案名新增的字尾"
+  },
+  "max_connections": {
+    "title": "最大連線數",
+    "help": "同時建立的後端API連線最大數量，0表示無限制"
+  },
+  "name_transform": {
+    "title": "名稱轉換",
+    "help": "複製過程中轉換路徑名稱"
+  },
+  "http_proxy": {
+    "title": "HTTP代理",
+    "help": "HTTP代理URL地址。"
+  },
+  "debug_fuse": {
+    "title": "FUSE除錯",
+    "help": "除錯FUSE內部邏輯 - 需要配合-v引數使用"
+  },
+  "attr_timeout": {
+    "title": "屬性快取逾時",
+    "help": "檔案/目錄屬性的快取時長"
+  },
+  "option": {
+    "title": "FUSE選項",
+    "help": "傳遞給libfuse/WinFsp的選項（可重複指定）"
+  },
+  "fuse_flag": {
+    "title": "FUSE旗標",
+    "help": "直接傳遞給libfuse/WinFsp的旗標或引數（可重複指定）"
+  },
+  "daemon": {
+    "title": "常駐服務模式 (Daemon)",
+    "help": "背景執行掛載並結束父處理程式（由於背景輸出被抑制，需配合--log-file和--log-format=pid,...引數監控）（Windows不支援）"
+  },
+  "daemon_timeout": {
+    "title": "常駐服務 (Daemon)逾時",
+    "help": "rclone響應核心的時間限制（Windows不支援）"
+  },
+  "default_permissions": {
+    "title": "預設許可權控制",
+    "help": "讓核心基於檔案模式強制實施存取控制（Windows不支援）"
+  },
+  "allow_non_empty": {
+    "title": "允許非空掛載",
+    "help": "允許掛載到非空目錄（Windows不支援）"
+  },
+  "allow_root": {
+    "title": "允許root訪問",
+    "help": "允許root使用者訪問掛載點（Windows不支援）"
+  },
+  "allow_other": {
+    "title": "允許其他使用者訪問",
+    "help": "允許非掛載使用者訪問掛載點（Windows不支援）"
+  },
+  "async_read": {
+    "title": "非同步讀取",
+    "help": "使用非同步讀取模式（Windows不支援）"
+  },
+  "max_read_ahead": {
+    "title": "最大預讀位元組數",
+    "help": "順序讀取時可預讀取的位元組數（Windows不支援）"
+  },
+  "write_back_cache": {
+    "title": "寫回快取",
+    "help": "讓核心先快取寫入資料再傳送給rclone（不啟用則使用直寫快取）（Windows不支援）"
+  },
+  "devname": {
+    "title": "裝置名稱",
+    "help": "設定裝置名稱 - 預設值為 remote:path"
+  },
+  "mount_case_insensitive": {
+    "title": "掛載大小寫不敏感",
+    "help": "告知作業系統掛載點是大小寫不敏感（true）或敏感（false），忽略後端實際特性（auto為自動）"
+  },
+  "direct_io": {
+    "title": "直接IO",
+    "help": "使用直接IO模式，禁用資料快取"
+  },
+  "volname": {
+    "title": "卷名",
+    "help": "設定卷名稱（僅Windows和OSX支援）"
+  },
+  "noappledouble": {
+    "title": "忽略Apple Double檔案",
+    "help": "忽略Apple Double（._）和.DS_Store檔案（僅OSX支援）"
+  },
+  "noapplexattr": {
+    "title": "忽略Apple擴充功能屬性",
+    "help": "忽略所有\"com.apple.*\"型別的擴充功能屬性（僅OSX支援）"
+  },
+  "network_mode": {
+    "title": "網路驅動器模式",
+    "help": "掛載為遠端網路驅動器，而非固定磁碟驅動器（僅Windows支援）"
+  },
+  "daemon_wait": {
+    "title": "常駐服務 (Daemon)等待時間",
+    "help": "等待常駐服務 (Daemon)完成掛載的時間（Linux為最大等待時間，OSX/BSD為固定休眠時間）（Windows不支援）"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "NFS快取控制程式碼限制",
+    "help": "同時快取的檔案控制程式碼最大數量（最小值為5）"
+  },
+  "nfs_cache_type": {
+    "title": "NFS快取型別",
+    "help": "使用的NFS控制程式碼快取型別"
+  },
+  "nfs_cache_dir": {
+    "title": "NFS快取目錄",
+    "help": "若設定，NFS控制程式碼快取將使用此目錄"
+  },
+  "auth_proxy": {
+    "title": "驗證代理",
+    "help": "用於透過驗證資訊建立後端的程式"
+  },
+  "rc": {
+    "title": "遠端控制",
+    "help": "啟用遠端控制伺服器"
+  },
+  "rc_files": {
+    "title": "遠端控制檔案服務",
+    "help": "HTTP伺服器上提供本機檔案服務的路徑"
+  },
+  "rc_serve": {
+    "title": "遠端控制物件服務",
+    "help": "啟用遠端物件的服務功能"
+  },
+  "rc_serve_no_modtime": {
+    "title": "遠端控制服務忽略修改時間",
+    "help": "不讀取檔案修改時間（可提升效能）"
+  },
+  "rc_no_auth": {
+    "title": "遠端控制免驗證",
+    "help": "某些方法無需驗證即可存取"
+  },
+  "rc_web_gui": {
+    "title": "遠端控制Web介面",
+    "help": "在本機啟動Web圖形介面"
+  },
+  "rc_web_gui_update": {
+    "title": "遠端控制Web介面更新",
+    "help": "檢查並更新到最新版本的Web介面"
+  },
+  "rc_web_gui_force_update": {
+    "title": "遠端控制Web介面強制更新",
+    "help": "強制更新到最新版本的Web介面"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "遠端控制Web介面不自動開啟瀏覽器",
+    "help": "不自動開啟瀏覽器視窗"
+  },
+  "rc_web_fetch_url": {
+    "title": "遠端控制Web介面下載地址",
+    "help": "取得Web介面版本的URL地址"
+  },
+  "rc_enable_metrics": {
+    "title": "遠端控制啟用監控指標",
+    "help": "在遠端控制伺服器啟用Prometheus監控指標路徑"
+  },
+  "rc_job_expire_duration": {
+    "title": "遠端控制任務過期時長",
+    "help": "過期此時長的已完成非同步任務將被清理"
+  },
+  "rc_job_expire_interval": {
+    "title": "遠端控制任務過期檢查間隔",
+    "help": "檢查過期非同步任務的間隔時間"
+  },
+  "metrics_addr": {
+    "title": "監控指標地址",
+    "help": "伺服器繫結的IP地址:連線埠 或 :連線埠"
+  },
+  "rc_addr": {
+    "title": "遠端控制地址",
+    "help": "伺服器繫結的IP地址:連線埠 或 :連線埠"
+  },
+  "rc_server_read_timeout": {
+    "title": "遠端控制伺服器讀取逾時",
+    "help": "伺服器讀取資料的逾時時間"
+  },
+  "rc_server_write_timeout": {
+    "title": "遠端控制伺服器寫入逾時",
+    "help": "伺服器寫入資料的逾時時間"
+  },
+  "rc_max_header_bytes": {
+    "title": "遠端控制最大請求頭位元組數",
+    "help": "請求頭的最大大小"
+  },
+  "rc_cert": {
+    "title": "遠端控制證書",
+    "help": "TLS PEM金鑰（證書和CA證書的拼接）"
+  },
+  "rc_key": {
+    "title": "遠端控制私鑰",
+    "help": "TLS PEM私鑰"
+  },
+  "rc_client_ca": {
+    "title": "遠端控制用戶端 CA 憑證",
+    "help": "用於驗證用戶端的用戶端 CA 憑證"
+  },
+  "rc_baseurl": {
+    "title": "遠端控制基礎URL",
+    "help": "URL字首 - 根路徑留空"
+  },
+  "rc_min_tls_version": {
+    "title": "遠端控制最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "rc_allow_origin": {
+    "title": "遠端控制允許跨域源",
+    "help": "可執行跨域請求（CORS）的源地址"
+  },
+  "rc_htpasswd": {
+    "title": "遠端控制Htpasswd檔案",
+    "help": "htpasswd驗證檔案 - 未提供則不進行驗證"
+  },
+  "rc_realm": {
+    "title": "遠端控制驗證域",
+    "help": "驗證用的域名稱"
+  },
+  "rc_user": {
+    "title": "遠端控制使用者名稱",
+    "help": "驗證用使用者名稱"
+  },
+  "rc_pass": {
+    "title": "遠端控制密碼",
+    "help": "驗證用密碼"
+  },
+  "rc_salt": {
+    "title": "遠端控制密碼鹽值",
+    "help": "密碼雜湊 (Hash)鹽值"
+  },
+  "rc_user_from_header": {
+    "title": "遠端控制從請求頭取得使用者名稱",
+    "help": "從指定HTTP請求頭取得使用者名稱"
+  },
+  "rc_template": {
+    "title": "遠端控制模板",
+    "help": "使用者指定的模板"
+  },
+  "metrics_server_read_timeout": {
+    "title": "監控指標伺服器讀取逾時",
+    "help": "伺服器讀取資料的逾時時間"
+  },
+  "metrics_server_write_timeout": {
+    "title": "監控指標伺服器寫入逾時",
+    "help": "伺服器寫入資料的逾時時間"
+  },
+  "metrics_max_header_bytes": {
+    "title": "監控指標最大請求頭位元組數",
+    "help": "請求頭的最大大小"
+  },
+  "metrics_cert": {
+    "title": "監控指標證書",
+    "help": "TLS PEM金鑰（證書和CA證書的拼接）"
+  },
+  "metrics_key": {
+    "title": "監控指標私鑰",
+    "help": "TLS PEM私鑰"
+  },
+  "metrics_client_ca": {
+    "title": "監控指標用戶端 CA 憑證",
+    "help": "用於驗證用戶端的用戶端 CA 憑證"
+  },
+  "metrics_baseurl": {
+    "title": "監控指標基礎URL",
+    "help": "URL字首 - 根路徑留空"
+  },
+  "metrics_min_tls_version": {
+    "title": "監控指標最小TLS版本",
+    "help": "可接受的最低TLS版本"
+  },
+  "metrics_allow_origin": {
+    "title": "監控指標允許跨域源",
+    "help": "可執行跨域請求（CORS）的源地址"
+  },
+  "metrics_htpasswd": {
+    "title": "監控指標Htpasswd檔案",
+    "help": "htpasswd驗證檔案 - 未提供則不進行驗證"
+  },
+  "metrics_realm": {
+    "title": "監控指標驗證域",
+    "help": "驗證用的域名稱"
+  },
+  "metrics_user": {
+    "title": "監控指標使用者名稱",
+    "help": "驗證用使用者名稱"
+  },
+  "metrics_pass": {
+    "title": "監控指標密碼",
+    "help": "驗證用密碼"
+  },
+  "metrics_salt": {
+    "title": "監控指標密碼鹽值",
+    "help": "密碼雜湊 (Hash)鹽值"
+  },
+  "metrics_user_from_header": {
+    "title": "監控指標從請求頭取得使用者名稱",
+    "help": "從指定HTTP請求頭取得使用者名稱"
+  },
+  "metrics_template": {
+    "title": "監控指標模板",
+    "help": "使用者指定的模板"
+  },
+  "stdio": {
+    "title": "標準IO模式",
+    "help": "在標準輸入/輸出上執行sftp伺服器"
+  },
+  "append_only": {
+    "title": "僅追加模式",
+    "help": "禁止刪除倉庫資料"
+  },
+  "private_repos": {
+    "title": "私有倉庫",
+    "help": "使用者僅能訪問自己的私有倉庫"
+  },
+  "cache_objects": {
+    "title": "物件快取",
+    "help": "快取已列出的物件"
+  },
+  "force_path_style": {
+    "title": "強制路徑樣式",
+    "help": "若為true使用路徑樣式訪問，false使用虛擬主機樣式"
+  },
+  "etag_hash": {
+    "title": "ETag雜湊 (Hash)演算法",
+    "help": "用於ETag的雜湊 (Hash)演算法，auto為自動選擇，留空則禁用"
+  },
+  "auth_key": {
+    "title": "驗證金鑰",
+    "help": "設定v4驗證的金鑰對：access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "不清理空目錄",
+    "help": "刪除物件後不清理空資料夾"
+  },
+  "authorized_keys": {
+    "title": "授權金鑰檔案",
+    "help": "授權金鑰檔案路徑"
+  },
+  "no_auth": {
+    "title": "免驗證",
+    "help": "若設定，允許無驗證連線"
+  },
+  "no_modtime": {
+    "title": "忽略修改時間",
+    "help": "不讀取/寫入檔案修改時間（可提升效能）"
+  },
+  "no_checksum": {
+    "title": "忽略總和檢查碼 (Checksum)",
+    "help": "上傳/下載時不對比總和檢查碼 (Checksum)"
+  },
+  "no_seek": {
+    "title": "禁止檔案定位",
+    "help": "不允許在檔案中進行定位操作"
+  },
+  "dir_cache_time": {
+    "title": "目錄快取時長",
+    "help": "目錄條目快取的時長"
+  },
+  "vfs_refresh": {
+    "title": "VFS快取重新整理",
+    "help": "啟動時在背景遞迴重新整理目錄快取"
+  },
+  "poll_interval": {
+    "title": "輪詢間隔",
+    "help": "輪詢變更的等待時間，必須小於dir-cache-time且僅支援部分遠端連線（設為0禁用）"
+  },
+  "read_only": {
+    "title": "只讀模式",
+    "help": "僅允許只讀訪問"
+  },
+  "vfs_links": {
+    "title": "VFS符號連結 (Symlink)轉換",
+    "help": "為VFS將符號連結 (Symlink)轉換為/從帶.rclonelink擴充功能名的普通檔案"
+  },
+  "vfs_cache_mode": {
+    "title": "VFS快取模式",
+    "help": "快取模式 off|minimal|writes|full"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "VFS快取輪詢間隔",
+    "help": "輪詢快取中過期物件的間隔時間"
+  },
+  "vfs_cache_max_age": {
+    "title": "VFS快取最大保留時長",
+    "help": "快取中物件自上次訪問後的最大保留時間"
+  },
+  "vfs_cache_max_size": {
+    "title": "VFS快取最大大小",
+    "help": "快取中物件的總大小上限"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "VFS快取最小可用空間",
+    "help": "快取所在磁碟的目標最小可用空間"
+  },
+  "vfs_read_chunk_size": {
+    "title": "VFS讀取分塊大小",
+    "help": "分塊讀取源物件"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "VFS讀取分塊大小上限",
+    "help": "若大於--vfs-read-chunk-size，每次讀取後將分塊大小翻倍，直到達到此上限（'off'表示無限制）"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "VFS讀取分塊流數",
+    "help": "同時讀取的並行流數量"
+  },
+  "dir_perms": {
+    "title": "目錄許可權",
+    "help": "目錄的許可權設定"
+  },
+  "file_perms": {
+    "title": "檔案許可權",
+    "help": "檔案的許可權設定"
+  },
+  "link_perms": {
+    "title": "連結許可權",
+    "help": "符號連結 (Symlink)的許可權設定"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS大小寫不敏感",
+    "help": "若未找到檔案名，查詢大小寫不敏感的匹配項"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "VFS阻止歸一化重複項",
+    "help": "若同一目錄下存在歸一化後的重複檔案名，記錄錯誤日誌並隱藏重複項（可能影響效能）"
+  },
+  "vfs_write_wait": {
+    "title": "VFS寫入等待時間",
+    "help": "等待順序寫入的時間，逾時則返回錯誤"
+  },
+  "vfs_read_wait": {
+    "title": "VFS讀取等待時間",
+    "help": "等待順序讀取的時間，逾時則執行定位操作"
+  },
+  "vfs_write_back": {
+    "title": "VFS寫回延遲",
+    "help": "使用快取時，檔案最後一次使用後延遲寫入的時間"
+  },
+  "vfs_read_ahead": {
+    "title": "VFS預讀大小",
+    "help": "使用cache-mode full時，超出--buffer-size的額外預讀大小"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS已用空間計算方式",
+    "help": "使用`rclone size`演算法計算已用空間"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "VFS快速指紋",
+    "help": "使用快速（精度較低）的指紋檢測檔案變更"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "VFS磁碟總空間",
+    "help": "指定磁碟的總空間大小"
+  },
+  "umask": {
+    "title": "許可權掩碼",
+    "help": "覆蓋檔案系統設定的許可權位（Windows不支援）"
+  },
+  "uid": {
+    "title": "使用者ID",
+    "help": "覆蓋檔案系統設定的uid欄位（Windows不支援）"
+  },
+  "gid": {
+    "title": "組ID",
+    "help": "覆蓋檔案系統設定的gid欄位（Windows不支援）"
+  },
+  "vfs_metadata_extension": {
+    "title": "VFS中繼資料擴充功能名",
+    "help": "設定讀取中繼資料的檔案擴充功能名。"
+  },
+  "disable_dir_list": {
+    "title": "禁用目錄列表",
+    "help": "禁用GET請求目錄時的HTML目錄列表"
+  },
+  "create_empty_src_dirs": {
+    "title": "建立空源目錄",
+    "help": "移動操作後在目標端建立空的源目錄。"
+  },
+  "delete_empty_src_dirs": {
+    "title": "刪除空源目錄",
+    "help": "移動操作後刪除空的源目錄。"
+  },
+  "dryRun": {
+    "title": "模擬執行",
+    "help": "執行模擬執行。"
+  },
+  "resync": {
+    "title": "重新同步",
+    "help": "執行重新同步操作。"
+  },
+  "checkAccess": {
+    "title": "存取檢查",
+    "help": "若未在兩端檔案系統找到RCLONE_TEST檔案則終止操作。"
+  },
+  "checkFilename": {
+    "title": "檢查檔案名",
+    "help": "--check-access使用的檔案名。"
+  },
+  "maxDelete": {
+    "title": "最大刪除比例",
+    "help": "若刪除檔案的比例超過此閾值則終止同步。"
+  },
+  "force": {
+    "title": "強制執行",
+    "help": "繞過--max-delete安全檢查並執行同步。"
+  },
+  "checkSync": {
+    "title": "同步校驗",
+    "help": "控制最終列表的對比方式。"
+  },
+  "remove_empty_dirs": {
+    "title": "移除空目錄",
+    "help": "在最終清理步驟中移除空目錄。"
+  },
+  "filters_file": {
+    "title": "過濾規則檔案",
+    "help": "從檔案讀取過濾模式。"
+  },
+  "ignore_listing_checksum": {
+    "title": "忽略列表總和檢查碼 (Checksum)",
+    "help": "列表操作中不使用總和檢查碼 (Checksum)。"
+  },
+  "resilient": {
+    "title": "彈性模式",
+    "help": "允許後續執行重試某些非嚴重錯誤。"
+  },
+  "work_dir": {
+    "title": "工作目錄",
+    "help": "存放歷史檔案的伺服器目錄。"
+  },
+  "backup_dir1": {
+    "title": "備份目錄1",
+    "help": "Path1對應的--backup-dir引數。"
+  },
+  "backup_dir2": {
+    "title": "備份目錄2",
+    "help": "Path2對應的--backup-dir引數。"
+  },
+  "disable_zip": {
+    "title": "禁用 Zip 下載",
+    "help": "禁用目錄的 zip 下載。"
+  },
+  "vfs_handle_caching": {
+    "title": "VFS 控制程式碼快取",
+    "help": "最後一次關閉後，保持檔案控制程式碼和下載器活躍的時間"
+  },
+  "mountType": {
+    "title": "掛載型別",
+    "help": "要使用的掛載型別。"
+  },
+  "type": {
+    "title": "服務型別",
+    "help": "要使用的服務型別."
+  },
+  "mount_type_mount": {
+    "title": "標準掛載",
+    "help": "標準 FUSE 掛載"
+  },
+  "mount_type_cmount": {
+    "title": "Windows/macOS FUSE 掛載",
+    "help": "使用 cgofuse 的 FUSE 掛載（Windows/macOS 上的預設設定）"
+  },
+  "mount_type_mount2": {
+    "title": "Go 原生掛載",
+    "help": "使用 go-fuse 的 Go 原生 FUSE 掛載"
+  },
+  "mount_type_nfsmount": {
+    "title": "NFS 掛載",
+    "help": "使用 NFS 協議掛載"
+  },
+  "mount_type_saf": {
+    "title": "儲存訪問框架 (SAF)",
+    "help": "Android 原生儲存訪問框架掛載"
+  },
+  "serve_type_http": {
+    "title": "HTTP 伺服器",
+    "help": "透過 HTTP 服務遠端連線"
+  },
+  "serve_type_webdav": {
+    "title": "WebDAV 伺服器",
+    "help": "透過 WebDAV 服務遠端連線"
+  },
+  "serve_type_ftp": {
+    "title": "FTP 伺服器",
+    "help": "透過 FTP 服務遠端連線"
+  },
+  "serve_type_sftp": {
+    "title": "SFTP 伺服器",
+    "help": "透過 SFTP 服務遠端連線"
+  },
+  "serve_type_nfs": {
+    "title": "NFS 伺服器",
+    "help": "透過 NFS 服務遠端連線"
+  },
+  "serve_type_dlna": {
+    "title": "DLNA 媒體伺服器",
+    "help": "透過 DLNA 服務遠端連線"
+  },
+  "serve_type_docker": {
+    "title": "Docker 資料卷外掛程式",
+    "help": "將遠端連線作為 Docker 資料卷外掛程式提供服務"
+  },
+  "serve_type_restic": {
+    "title": "Restic REST 伺服器",
+    "help": "透過 Restic REST API 服務遠端連線"
+  },
+  "serve_type_s3": {
+    "title": "相容 Amazon S3 的伺服器",
+    "help": "透過 Amazon S3 API 服務遠端連線"
+  },
+  "check_file_hash": {
+    "title": "檢查檔案雜湊 (Hash)",
+    "help": "將 checkFileFs:checkFileRemote 視為包含給定型別雜湊值 (Hash)的 SUM 檔案。"
+  },
+  "check_file_fs": {
+    "title": "檢查檔案系統",
+    "help": "將 checkFileFs:checkFileRemote 視為包含雜湊值 (Hash)的 SUM 檔案。"
+  },
+  "one_way": {
+    "title": "單向檢查",
+    "help": "僅進行單向檢查：查詢源中存在但目標中不存在的檔案。"
+  },
+  "auto_filename": {
+    "title": "自動檔案名",
+    "help": "若目標為目錄，則從 URL 或響應頭中取得檔案名。"
+  },
+  "rmdirs": {
+    "title": "移除空目錄",
+    "help": "刪除檔案後移除空目錄。"
+  },
+  "format": {
+    "title": "歸檔格式",
+    "help": "歸檔壓縮格式（zip, tar, tgz, tbz, txz 等）"
+  },
+  "prefix": {
+    "title": "字首路徑",
+    "help": "在歸檔檔案中新增字首目錄"
+  },
+  "full_path": {
+    "title": "完整路徑",
+    "help": "在歸檔檔案中使用檔案的完整路徑"
+  },
+  "download": {
+    "title": "下載並檢查",
+    "help": "下載檔案以驗證完整性/對比雜湊值 (Hash)。"
+  },
+  "resync_mode": {
+    "title": "重新同步模式",
+    "help": "在重新同步期間，首選以下版本：path1、path2、較新、較舊、較大、較小（預設：如果指定了 --resync 則為 path1，否則為 none 表示不重新同步）"
+  },
+  "compare": {
+    "title": "比較",
+    "help": "雙向同步 (Bisync)（bisync）特定比較選項的逗號分隔列表，例如 'size,modtime,checksum'（預設：'size,modtime'）"
+  },
+  "download_hash": {
+    "title": "下載雜湊 (Hash)",
+    "help": "在無法取得雜湊 (Hash)時透過下載來計算（警告：可能會很慢並消耗大量資料！）"
+  },
+  "max_lock": {
+    "title": "最大鎖定時間",
+    "help": "將早於該時間的鎖定檔案視為已過期（預設：0（永不過期））（最小值：2m）"
+  },
+  "no_slow_hash": {
+    "title": "忽略慢雜湊 (Hash)",
+    "help": "僅在列出雜湊 (Hash)較慢的後端上忽略列出雜湊 (Hash)"
+  },
+  "slow_hash_sync_only": {
+    "title": "僅在同步時應用慢雜湊 (Hash)",
+    "help": "在列出和計算增量時忽略慢雜湊 (Hash)，但在同步呼叫期間仍會考慮它們。"
+  },
+  "recover": {
+    "title": "恢復",
+    "help": "自動從中斷中恢復，而不需要使用 --resync。"
+  },
+  "workdir": {
+    "title": "工作目錄",
+    "help": "使用自定義工作目錄 - 適用於測試。"
+  },
+  "check_access": {
+    "title": "檢查存取許可權",
+    "help": "如果在兩個檔案系統上均未找到 RCLONE_TEST 檔案，則中止同步。"
+  },
+  "check_filename": {
+    "title": "檢查檔案名",
+    "help": "用於 --check-access 的檔案名。"
+  },
+  "check_sync": {
+    "title": "檢查同步狀態",
+    "help": "控制最終列表的比較。"
+  },
+  "conflict_loser": {
+    "title": "衝突落敗者",
+    "help": "對同步衝突中落敗的版本（有勝者時）或兩個檔案（無勝者時）採取的動作：num、pathname、delete（預設：num）"
+  },
+  "conflict_resolve": {
+    "title": "衝突解決方式",
+    "help": "透過首選以下版本自動解決衝突：none、path1、path2、較新、較舊、較大、較小（預設：none）"
+  },
+  "conflict_suffix": {
+    "title": "衝突字尾",
+    "help": "重新命名衝突落敗者時使用的字尾。可以是一個字串，也可以是用逗號分隔的兩個字串，分別用於 Path1/Path2（預設：'conflict'）"
+  }
+}

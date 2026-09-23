@@ -82,7 +82,6 @@ pub async fn provision_rclone(
 
     // Stage: Verifying
     provision_state.set_stage(
-        &app_handle,
         ProvisionComponent::Rclone,
         ProvisionStage::Verifying,
         zip_len,
@@ -95,7 +94,6 @@ pub async fn provision_rclone(
             error!("SHA256 verification failed: {err}");
             let _ = std::fs::remove_dir_all(&temp_dir);
             provision_state.set_stage(
-                &app_handle,
                 ProvisionComponent::Rclone,
                 ProvisionStage::Error,
                 zip_len,
@@ -107,7 +105,6 @@ pub async fn provision_rclone(
 
     // Stage: Extracting
     provision_state.set_stage(
-        &app_handle,
         ProvisionComponent::Rclone,
         ProvisionStage::Extracting,
         zip_len,
@@ -118,7 +115,6 @@ pub async fn provision_rclone(
     if let Err(e) = extract_rclone_zip(&zip_file_path, &extract_path) {
         let _ = std::fs::remove_dir_all(&temp_dir);
         provision_state.set_stage(
-            &app_handle,
             ProvisionComponent::Rclone,
             ProvisionStage::Error,
             zip_len,
@@ -137,7 +133,6 @@ pub async fn provision_rclone(
         let _ = std::fs::remove_dir_all(&temp_dir);
         let err = crate::localized_error!("backendErrors.rclone.binaryNotFound");
         provision_state.set_stage(
-            &app_handle,
             ProvisionComponent::Rclone,
             ProvisionStage::Error,
             zip_len,
@@ -148,7 +143,6 @@ pub async fn provision_rclone(
 
     // Stage: Installing
     provision_state.set_stage(
-        &app_handle,
         ProvisionComponent::Rclone,
         ProvisionStage::Installing,
         zip_len,
@@ -163,7 +157,6 @@ pub async fn provision_rclone(
     if let Err(e) = safe_copy_rclone(&extracted_path, &install_dir, binary_name) {
         let _ = std::fs::remove_dir_all(&temp_dir);
         provision_state.set_stage(
-            &app_handle,
             ProvisionComponent::Rclone,
             ProvisionStage::Error,
             zip_len,
@@ -196,7 +189,6 @@ pub async fn provision_rclone(
 
     // Stage: Completed
     provision_state.set_stage(
-        &app_handle,
         ProvisionComponent::Rclone,
         ProvisionStage::Completed,
         zip_len,

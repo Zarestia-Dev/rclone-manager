@@ -1,7 +1,6 @@
 //! Tauri commands for the Flow workspace Quick Run feature.
-
 use log::{info, warn};
-use serde_json::{Value, json};
+use serde_json::json;
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -11,15 +10,16 @@ use crate::{
         settings::AppSettingsManager,
     },
     rclone::commands::{
-        common::{FromConfig, is_directory, parse_common_config},
-        job::{JobMetadata, submit_batch_job},
+        common::{FromConfig, parse_common_config},
+        job::JobMetadata,
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
-        sync::GenericTransferParams,
+        sync::{lookup_dry_run, submit_transfer_batch},
     },
     utils::{
         constants::SUB_QUICK_RUNS,
         types::{
+            events::UPDATE_TRAY_MENU,
             jobs::{JobStatus, JobType},
             origin::Origin,
             remotes::OperationType,
@@ -57,6 +57,7 @@ pub async fn create_quick_run(
     };
 
     save_quick_run(&manager, &record)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(record)
 }
@@ -85,6 +86,7 @@ pub async fn update_quick_run(
     existing.config = quick_run.config;
 
     save_quick_run(&manager, &existing)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(existing)
 }
@@ -95,34 +97,26 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     info!("Deleting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_quick_run_by_id(&manager, &quick_run_id)?;
+    bridge::emit(UPDATE_TRAY_MENU, ());
     sync_quick_run_automations_bg(&app).await;
     Ok(())
 }
 
 pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
-    use crate::core::automation::{engine::AutomationScheduler, watcher::WatcherManager};
+    use crate::core::automation::engine::apply_and_sync_automations;
     use crate::core::settings::AppSettingsManager;
     use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
 
     let manager = app.state::<AppSettingsManager>();
     let cache = app.state::<AutomationsCache>();
-    let scheduler = app.state::<AutomationScheduler>();
-    let watcher = app.state::<WatcherManager>();
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
-    if let Ok(quick_runs) = get_all_quick_runs_sync(&manager) {
-        if let Ok(result) = cache
-            .load_from_quick_runs(&quick_runs, &backend_name, Some(app))
-            .await
-        {
-            let _ = scheduler.apply_cache_result(&result, cache).await;
-        }
-        let _ = watcher.sync_watchers(app.clone()).await;
+    if let Ok(quick_runs) = get_all_quick_runs_sync(&manager)
+        && let Ok(result) = cache.load_from_quick_runs(&quick_runs, &backend_name).await
+    {
+        apply_and_sync_automations(app, &result).await;
     }
-
-    #[cfg(all(desktop, feature = "tray"))]
-    let _ = crate::core::tray::core::update_tray_menu(app.clone()).await;
 }
 
 /// Start execution of a quick run.
@@ -130,6 +124,8 @@ pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
 pub async fn start_quick_run(
     app: AppHandle,
     quick_run_id: String,
+    workflow_id: Option<String>,
+    node_id: Option<String>,
 ) -> Result<StartQuickRunResponse, String> {
     info!("Starting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
@@ -150,6 +146,7 @@ pub async fn start_quick_run(
         let mount_point = mount_params.mount_point.clone();
         mount_params.profile = None;
         mount_params.quick_run_id = Some(quick_run_id.clone());
+        mount_params.workflow_id = workflow_id;
         mount_params.execute_id = Some(execute_id.clone());
         mount_params.origin = Some(Origin::QuickRun);
 
@@ -181,6 +178,7 @@ pub async fn start_quick_run(
                 })?;
         serve_params.profile = None;
         serve_params.quick_run_id = Some(quick_run_id.clone());
+        serve_params.workflow_id = workflow_id;
         serve_params.execute_id = Some(execute_id.clone());
         serve_params.origin = Some(Origin::QuickRun);
 
@@ -207,55 +205,17 @@ pub async fn start_quick_run(
     let common = parse_common_config(&qr.config, &empty_settings)
         .ok_or_else(|| format!("Quick run '{}' configuration is incomplete", qr.name))?;
 
-    let dry_run = if qr.operation_type == OperationType::Bisync {
-        common
-            .rclone_config
-            .get("dryRun")
-            .or_else(|| common.rclone_config.get("dry_run"))
-            .or_else(|| common.rclone_config.get("DryRun"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-    } else {
-        common
-            .backend_options
-            .as_ref()
-            .and_then(|opts| {
-                opts.get("DryRun")
-                    .or_else(|| opts.get("dry_run"))
-                    .or_else(|| opts.get("dryRun"))
-            })
-            .or_else(|| {
-                common
-                    .rclone_config
-                    .get("DryRun")
-                    .or_else(|| common.rclone_config.get("dry_run"))
-                    .or_else(|| common.rclone_config.get("dryRun"))
-            })
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-    };
+    let dry_run = lookup_dry_run(
+        &common.rclone_config,
+        common.backend_options.as_ref(),
+        qr.operation_type,
+    );
 
-    let mut inputs = Vec::new();
-    for source in &common.source {
-        let is_dir = is_directory(&app, source, common.runtime_remote_options.as_ref())
-            .await
-            .unwrap_or(true);
-
-        let body = GenericTransferParams {
-            source: source.clone(),
-            dest: common.dest.clone(),
-            rclone_config: common.rclone_config.clone(),
-            filter_options: common.filter_options.clone(),
-            backend_options: common.backend_options.clone(),
-            runtime_remote_options: common.runtime_remote_options.clone(),
-            transfer_type: qr.operation_type,
-            is_dir,
-        }
-        .to_rclone_body()
-        .map_err(|e| format!("Body generation error: {e}"))?;
-
-        inputs.push(body);
-    }
+    let target_pairs: Vec<(String, String)> = common
+        .source
+        .iter()
+        .map(|s| (s.clone(), common.dest.clone()))
+        .collect();
 
     let metadata = JobMetadata::new(
         qr.remote_name.clone(),
@@ -267,9 +227,19 @@ pub async fn start_quick_run(
     .with_origin(Some(Origin::QuickRun))
     .with_dry_run(dry_run)
     .with_quick_run_id(Some(quick_run_id.clone()))
-    .with_execute_id(Some(execute_id.clone()));
+    .with_execute_id(Some(execute_id.clone()))
+    .with_workflow_id(workflow_id)
+    .with_node_id(node_id);
 
-    let job_id_str = submit_batch_job(app.clone(), inputs, metadata).await?;
+    let job_id_str = submit_transfer_batch(
+        app.clone(),
+        qr.operation_type,
+        target_pairs,
+        &common,
+        dry_run,
+        metadata,
+    )
+    .await?;
 
     let job_id = job_id_str
         .parse::<u64>()
@@ -315,21 +285,21 @@ pub async fn stop_quick_run(
             .iter()
             .find(|m| m.quick_run_id.as_deref() == Some(&quick_run_id))
         {
-            let _ = crate::rclone::commands::mount::unmount_remote(
+            crate::rclone::commands::mount::unmount_remote(
                 app.clone(),
                 m.mount_point.clone(),
                 qr.remote_name.clone(),
             )
-            .await;
+            .await?;
         } else if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
             let mount_point = common.dest;
             if !mount_point.is_empty() {
-                let _ = crate::rclone::commands::mount::unmount_remote(
+                crate::rclone::commands::mount::unmount_remote(
                     app.clone(),
                     mount_point,
                     qr.remote_name.clone(),
                 )
-                .await;
+                .await?;
             }
         }
     } else if qr.operation_type == OperationType::Serve {
@@ -337,12 +307,12 @@ pub async fn stop_quick_run(
         let running_serves = backend_manager.remote_cache.get_serves().await;
         for s in running_serves {
             if s.quick_run_id.as_deref() == Some(&quick_run_id) {
-                let _ = crate::rclone::commands::serve::stop_serve(
+                crate::rclone::commands::serve::stop_serve(
                     app.clone(),
                     s.id,
                     qr.remote_name.clone(),
                 )
-                .await;
+                .await?;
             }
         }
     } else {
@@ -373,12 +343,8 @@ pub async fn stop_quick_run(
 
         for jid in job_ids_to_stop {
             info!("Stopping quick run job {jid} for {quick_run_id}");
-            let res =
-                crate::rclone::commands::job::stop_job(app.clone(), jid, qr.remote_name.clone())
-                    .await;
-            if let Err(e) = res {
-                warn!("Failed to stop job {jid} for quick run {quick_run_id}: {e}");
-            }
+            crate::rclone::commands::job::stop_job(app.clone(), jid, qr.remote_name.clone())
+                .await?;
         }
     }
 
@@ -398,7 +364,7 @@ pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<Quick
         .filter_map(|v| serde_json::from_value::<QuickRun>(v).ok())
         .collect();
 
-    list.sort_by_key(|a| a.name.to_lowercase());
+    list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
 }
 
@@ -406,7 +372,10 @@ fn get_all_quick_runs(manager: &AppSettingsManager) -> Result<Vec<QuickRun>, Str
     get_all_quick_runs_sync(manager)
 }
 
-fn get_quick_run(manager: &AppSettingsManager, id: &str) -> Result<Option<QuickRun>, String> {
+pub(crate) fn get_quick_run(
+    manager: &AppSettingsManager,
+    id: &str,
+) -> Result<Option<QuickRun>, String> {
     let sub = manager
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;
@@ -577,6 +546,7 @@ mod tests {
             runtime_remote_options: common.runtime_remote_options.clone(),
             transfer_type: OperationType::Sync,
             is_dir: true,
+            dry_run: None,
         }
         .to_rclone_body()
         .unwrap();

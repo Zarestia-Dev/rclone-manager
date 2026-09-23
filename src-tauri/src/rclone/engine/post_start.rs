@@ -1,5 +1,5 @@
 use log::{debug, error};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::initialization::apply_settings::apply_core_settings,
@@ -19,9 +19,7 @@ pub async fn run_post_start_setup(app: &AppHandle) {
             apply_core_settings(app, &settings).await;
             refresh_caches_and_tray(app).await;
 
-            if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready) {
-                error!("Post-start: Failed to emit ready event: {e}");
-            }
+            crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready);
         }
         Err(e) => {
             error!(

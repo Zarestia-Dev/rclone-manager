@@ -9,7 +9,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::RwLock;
-use tauri::{AppHandle, Emitter};
 
 /// Directory where backend translation files are stored (relative to executable)
 const I18N_DIR: &str = "i18n";
@@ -252,27 +251,26 @@ pub fn set_language(lang: &str) {
 }
 
 /// Apply a language change across the application (backend, frontend event, and tray)
-pub fn apply_language_change(app: &AppHandle, lang: &str) {
+pub fn apply_language_change(lang: &str) {
     log::debug!("🌐 Applying language change to: {lang}");
     set_language(lang);
 
     // Notify frontend
-    if let Err(e) = app.emit(
+    crate::core::bridge::emit(
         crate::utils::types::events::APP_EVENT,
         serde_json::json!({ "status": "language_changed", "language": lang }),
-    ) {
-        log::error!("Failed to emit language change event: {e}");
-    }
+    );
 
     // Update tray menu
     #[cfg(feature = "tray")]
     {
-        let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
-                log::error!("Failed to update tray menu: {e}");
-            }
-        });
+        if let Some(app_handle) = crate::core::bridge::get_app_handle() {
+            crate::utils::spawn(async move {
+                if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
+                    log::error!("Failed to update tray menu: {e}");
+                }
+            });
+        }
     }
 }
 
@@ -444,5 +442,22 @@ mod tests {
 
         // Empty string
         assert_eq!(resolve_error(""), "");
+    }
+
+    #[test]
+    fn test_resolve_unmount_failed() {
+        super::init_test_translations();
+        let rendered = t_with_params(
+            "notification.body.unmountFailed",
+            &[
+                ("backend", "Local"),
+                ("remote", "Google Drive"),
+                ("error", "Device or resource busy"),
+            ],
+        );
+        assert_eq!(
+            rendered,
+            "Failed to unmount Google Drive from Local: Device or resource busy"
+        );
     }
 }

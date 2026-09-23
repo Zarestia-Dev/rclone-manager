@@ -6,6 +6,7 @@ import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 /**
  * Service for file system operations
@@ -74,11 +75,7 @@ export class FileSystemService extends TauriBaseService {
    * Select a path using the integrated Nautilus file browser
    */
   async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
-    const requestId =
-      config.requestId ??
-      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `picker_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const requestId = config.requestId ?? generatePrefixedId('picker');
 
     this.nautilusService.openFilePicker({ ...config, requestId });
     return firstValueFrom(
@@ -150,47 +147,34 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
-   * Open a remote root directly in Android system files (SAF provider)
-   */
-  async openSafRemote(remoteName: string): Promise<void> {
-    try {
-      let cleanRemote = remoteName
-        .replace(/^saf:\/\//i, '')
-        .replace(/:$/, '')
-        .trim();
-      if (cleanRemote.includes('/')) {
-        cleanRemote = cleanRemote.split('/')[0].trim();
-      }
-      return await this.invokeCommand('open_saf_remote', { remote: cleanRemote });
-    } catch (error) {
-      const translatedError = this.backendTranslation.translateBackendMessage(error);
-      this.notificationService.showError(
-        this.translate.instant('home.errors.openFailed', { name: remoteName }) +
-          ': ' +
-          translatedError
-      );
-      throw error;
-    }
-  }
-
-  /**
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
-    if (isMobile() && (this.pathService.isLocalPath(path) || path.startsWith('saf://'))) {
-      let targetRemote = path;
-      if (targetRemote.startsWith('saf://')) {
-        targetRemote = targetRemote.replace(/^saf:\/\//i, '');
-      } else {
-        const { remote } = this.pathService.splitLocalPath(path);
-        targetRemote = remote || 'local';
-      }
-      return this.openSafRemote(targetRemote);
-    }
-    if (this.isInternalBrowserPreferred()) {
+    if (!path) return;
+
+    if (!this.isTauri) {
       const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }
+
+    if (!this.pathService.isTrulyLocalPath(path) && !path.startsWith('saf://')) {
+      const { remote, path: relativePath } = this.pathService.splitFsPath(path);
+      if (remote) {
+        return this.nautilusService.newNautilusWindow(remote, relativePath);
+      }
+    }
+
+    if (isMobile()) {
+      const isInternalAppPath =
+        path.startsWith('/data/') ||
+        path.startsWith('/data/user/') ||
+        path.includes('com.rclone.manager');
+      if (isInternalAppPath) {
+        const { remote, remainder } = this.pathService.splitLocalPath(path);
+        return this.nautilusService.newNautilusWindow(remote, remainder);
+      }
+    }
+
     try {
       return await this.invokeCommand('open_in_files', { path });
     } catch (error) {

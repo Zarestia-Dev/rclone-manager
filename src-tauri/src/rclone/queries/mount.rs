@@ -27,15 +27,17 @@ pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, S
 
         let mounts = json["mountPoints"]
             .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .filter_map(|mp| {
-                Some(MountedRemote::new(
-                    mp["Fs"].as_str()?,
-                    mp["MountPoint"].as_str()?,
-                ))
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|mp| {
+                        Some(MountedRemote::new(
+                            mp["Fs"].as_str()?,
+                            mp["MountPoint"].as_str()?,
+                        ))
+                    })
+                    .collect()
             })
-            .collect();
+            .unwrap_or_default();
 
         debug!("📂 Mounted Remotes: {mounts:?}");
         Ok(mounts)
@@ -48,23 +50,26 @@ pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
         .rpc(mount::TYPES, None)
         .await;
 
-    #[allow(unused_mut)]
-    let mut mount_types: Vec<String> = match json {
+    let mount_types: Vec<String> = match json {
         Ok(res) => res["mountTypes"]
             .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .filter_map(|mt| mt.as_str().map(String::from))
-            .collect(),
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|mt| mt.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
         Err(_) => vec!["mount".to_string(), "cmount".to_string()],
     };
 
     #[cfg(target_os = "android")]
-    {
+    let mount_types = {
+        let mut mount_types = mount_types;
         if !mount_types.contains(&"saf".to_string()) {
             mount_types.insert(0, "saf".to_string());
         }
-    }
+        mount_types
+    };
 
     debug!("📂 Mount Types: {mount_types:?}");
     Ok(mount_types)

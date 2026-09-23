@@ -35,6 +35,8 @@ pub struct MountParams {
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
+    pub workflow_id: Option<String>,
+    pub node_id: Option<String>,
     pub no_cache: Option<bool>,
 }
 
@@ -76,6 +78,8 @@ impl FromConfig for MountParams {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
             no_cache: None,
         })
     }
@@ -143,12 +147,14 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             quick_run_id: params.quick_run_id.clone(),
             execute_id: params.execute_id.clone(),
             origin: params.origin.clone(),
+            workflow_id: params.workflow_id.clone(),
+            node_id: params.node_id.clone(),
         };
 
         let mut current_mounts = cache.get_mounted_remotes().await;
         current_mounts.retain(|m| m.mount_point != mount_point);
         current_mounts.push(mounted_remote);
-        cache.update_mounts_if_changed(current_mounts, &app).await;
+        cache.update_mounts_if_changed(current_mounts).await;
         cache
             .store_mount_profile(
                 &mount_point,
@@ -156,7 +162,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 params.quick_run_id.clone(),
                 params.origin.clone(),
                 params.execute_id.clone(),
-                Some(&app),
+                params.workflow_id.clone(),
+                params.node_id.clone(),
             )
             .await;
 
@@ -218,7 +225,9 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     .with_origin(params.origin.clone())
     .with_no_cache(params.no_cache.unwrap_or(false))
     .with_quick_run_id(params.quick_run_id.clone())
-    .with_execute_id(params.execute_id.clone());
+    .with_execute_id(params.execute_id.clone())
+    .with_workflow_id(params.workflow_id.clone())
+    .with_node_id(params.node_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
     let _ = super::job::submit_job_with_options(
@@ -241,7 +250,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
-            Some(&app),
+            params.workflow_id.clone(),
+            params.node_id.clone(),
         )
         .await;
     refresh_mounts_quietly(&app).await;
@@ -280,7 +290,7 @@ pub async fn unmount_remote(
         );
         notify(
             &app,
-            NotificationEvent::Mount(MountStage::Failed {
+            NotificationEvent::Mount(MountStage::UnmountFailed {
                 backend: backend_manager.get_active_name().await,
                 remote: remote_name.clone(),
                 profile: None,
@@ -299,7 +309,7 @@ pub async fn unmount_remote(
         let profile = mounted_entry
             .as_ref()
             .and_then(|m| m.profile.clone())
-            .unwrap_or_default();
+            .filter(|p| !p.trim().is_empty());
         let fs_name = mounted_entry
             .as_ref()
             .map(|m| m.fs.clone())
@@ -316,7 +326,7 @@ pub async fn unmount_remote(
             .retain(|m| m.mount_point != mount_point && m.fs != remote_name && m.fs != fs_name);
         backend_manager
             .remote_cache
-            .update_mounts_if_changed(current_mounts, &app)
+            .update_mounts_if_changed(current_mounts)
             .await;
 
         let transport = crate::rclone::commands::common::transport(&app);
@@ -332,7 +342,7 @@ pub async fn unmount_remote(
             NotificationEvent::Mount(MountStage::UnmountSucceeded {
                 backend: backend_name,
                 remote: remote_name.clone(),
-                profile: Some(profile),
+                profile,
             }),
         );
 
@@ -363,36 +373,42 @@ pub async fn unmount_remote(
         .get_mount_by_point(&mount_point)
         .await
         .and_then(|m| m.profile)
-        .unwrap_or_default();
+        .filter(|p| !p.trim().is_empty());
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = transport
+    if let Err(e) = transport
         .rpc(
             crate::utils::rclone::endpoints::mount::UNMOUNT,
             Some(&payload),
         )
         .await
-        .map_err(|e| {
-            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => e);
-            log_operation(
-                LogLevel::Error,
-                Some(remote_name.clone()),
-                Some("Unmount remote".to_string()),
-                format!("Failed to unmount {mount_point}: {error_msg}"),
-                None,
+    {
+        let raw_err = e.to_string();
+        let error_msg = crate::rclone::engine::error_mapper::map_rclone_error(&raw_err)
+            .unwrap_or_else(
+                || crate::localized_error!("backendErrors.request.failed", "error" => &raw_err),
             );
-            notify(
-                &app,
-                NotificationEvent::Mount(MountStage::Failed {
-                    backend: backend_name_for_err.clone(),
-                    remote: remote_name.clone(),
-                    profile: Some(profile.clone()),
-                    error: error_msg.clone(),
-                }),
-            );
-            error_msg
-        })?;
+
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.clone()),
+            Some("Unmount remote".to_string()),
+            format!("Failed to unmount {mount_point}: {error_msg}"),
+            None,
+        );
+        notify(
+            &app,
+            NotificationEvent::Mount(MountStage::UnmountFailed {
+                backend: backend_name_for_err,
+                remote: remote_name.clone(),
+                profile: profile.clone(),
+                error: error_msg.clone(),
+            }),
+        );
+        refresh_mounts_quietly(&app).await;
+        return Err(error_msg);
+    }
 
     log_operation(
         LogLevel::Info,
@@ -408,7 +424,7 @@ pub async fn unmount_remote(
         NotificationEvent::Mount(MountStage::UnmountSucceeded {
             backend: backend_name,
             remote: remote_name.clone(),
-            profile: Some(profile.clone()),
+            profile,
         }),
     );
 
@@ -439,7 +455,7 @@ pub async fn unmount_all_remotes(
         }
         backend_manager
             .remote_cache
-            .update_mounts_if_changed(vec![], &app)
+            .update_mounts_if_changed(vec![])
             .await;
         crate::rclone::backend::saf_bridge::notify_roots_changed();
         if !context.is_shutdown() {
@@ -630,6 +646,8 @@ mod tests {
             quick_run_id: None,
             execute_id: None,
             origin: None,
+            workflow_id: None,
+            node_id: None,
             no_cache: None,
         };
 

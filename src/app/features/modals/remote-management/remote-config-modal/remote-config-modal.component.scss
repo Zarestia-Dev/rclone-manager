@@ -6,8 +6,6 @@
 // MAIN / MODAL BODY (Sidebar + Content Area)
 // =============================================
 main {
-  flex-direction: column;
-  padding: 0 !important;
   overflow: hidden !important;
 }
 
@@ -47,10 +45,24 @@ main {
     padding: var(--space-sm) var(--space-xs);
   }
 
+  &__content-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--window-bg-color);
+  }
+
+  &__nav-item,
+  &__heading,
+  &__field,
+  &__block {
+    background: var(--bg-elevated-3);
+  }
+
   &__nav-item {
     height: 40px;
     border-radius: var(--radius-sm);
-    background: var(--bg-elevated-3);
   }
 
   &__content {
@@ -62,21 +74,18 @@ main {
     max-width: 900px;
     margin: 0 auto;
     width: 100%;
-    box-sizing: border-box;
   }
 
   &__heading {
     height: 18px;
     width: 38%;
     border-radius: var(--radius-xs);
-    background: var(--bg-elevated-3);
   }
 
   &__field {
     height: 56px;
     width: 100%;
     border-radius: var(--radius-md);
-    background: var(--bg-elevated-3);
 
     &--short {
       width: 55%;
@@ -91,7 +100,6 @@ main {
     height: 112px;
     width: 100%;
     border-radius: var(--radius-md);
-    background: var(--bg-elevated-3);
   }
 }
 
@@ -105,7 +113,6 @@ main {
   display: flex;
   flex-direction: column;
   background: var(--window-bg-color);
-  animation: fadeInUp 0.2s ease-out both;
 
   .step-container:not(.interactive) {
     flex: 1;

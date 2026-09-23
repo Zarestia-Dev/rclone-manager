@@ -4,11 +4,15 @@ use std::sync::Arc;
 use log::info;
 use serde::Deserialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::{automation::engine::get_next_run, bridge, flow::quick_run::types::QuickRun},
+    core::{
+        automation::engine::get_next_run,
+        bridge,
+        flow::{quick_run::types::QuickRun, workflow::types::WorkflowDefinition},
+    },
     utils::{
         constants::{
             AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
@@ -17,7 +21,7 @@ use crate::{
         types::{
             automation::{Automation, AutomationArgs, AutomationStatus},
             events::AUTOMATIONS_CACHE_CHANGED,
-            remotes::{OperationType, ProfileParams},
+            remotes::{OperationType, ProfileParams, RemoteSettings},
         },
     },
 };
@@ -33,6 +37,20 @@ struct ProfileConfig {
     dest: Option<Value>,
 }
 
+impl ProfileConfig {
+    fn from_profile(profile: &crate::utils::types::remotes::ProfileConfig) -> Self {
+        ProfileConfig {
+            cron_enabled: profile.app.cron_enabled,
+            cron_expression: profile.app.cron_expression.clone(),
+            watch_enabled: profile.app.watch_enabled,
+            watch_delay: profile.app.watch_delay,
+            watch_changed_only: profile.app.watch_changed_only,
+            source: profile.source_value().cloned(),
+            dest: profile.dest_value().cloned(),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for ProfileConfig {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -43,21 +61,8 @@ impl<'de> Deserialize<'de> for ProfileConfig {
         // Deserialize using ProfileConfig or fall back if unpartitioned
         let profile = crate::utils::types::remotes::ProfileConfig::parse_from_value(&val);
 
-        let source = if let Value::Object(ref map) = profile.rclone {
-            crate::utils::types::remotes::SOURCE_KEYS
-                .iter()
-                .find_map(|&key| map.get(key).cloned())
-        } else {
-            None
-        };
-
-        let dest = if let Value::Object(ref map) = profile.rclone {
-            crate::utils::types::remotes::DEST_KEYS
-                .iter()
-                .find_map(|&key| map.get(key).cloned())
-        } else {
-            None
-        };
+        let source = profile.source_value().cloned();
+        let dest = profile.dest_value().cloned();
 
         Ok(ProfileConfig {
             cron_enabled: profile.app.cron_enabled,
@@ -126,16 +131,12 @@ impl AutomationsCache {
     /// Load automations from remote configs, preserving existing automation states.
     pub async fn load_from_remote_configs(
         &self,
-        all_settings: &Value,
+        all_settings: &HashMap<String, RemoteSettings>,
         backend_name: &str,
-        app: Option<&AppHandle>,
     ) -> Result<CacheUpdateResult, String> {
-        let settings_obj = all_settings
-            .as_object()
-            .ok_or("Settings is not an object")?;
         let mut automations = Vec::new();
 
-        for (remote_name, remote_settings) in settings_obj {
+        for (remote_name, remote_settings) in all_settings {
             automations.extend(self.collect_automations_from_remote(
                 backend_name,
                 remote_name,
@@ -147,13 +148,12 @@ impl AutomationsCache {
             .sync_automations(backend_name, automations, |t| {
                 t.backend_name == backend_name
                     && t.args.params.source != Some(crate::utils::types::origin::Origin::QuickRun)
+                    && t.args.params.source != Some(crate::utils::types::origin::Origin::Flow)
             })
             .await?;
 
-        if result.has_changes()
-            && let Some(app) = app
-        {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        if result.has_changes() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
         }
 
         Ok(result)
@@ -164,7 +164,6 @@ impl AutomationsCache {
         &self,
         quick_runs: &[QuickRun],
         backend_name: &str,
-        app: Option<&AppHandle>,
     ) -> Result<CacheUpdateResult, String> {
         let mut automations = Vec::new();
 
@@ -181,10 +180,36 @@ impl AutomationsCache {
             })
             .await?;
 
-        if result.has_changes()
-            && let Some(app) = app
-        {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        if result.has_changes() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
+
+        Ok(result)
+    }
+
+    /// Load automations from Workflows, preserving existing automation states.
+    pub async fn load_from_workflows(
+        &self,
+        workflows: &[WorkflowDefinition],
+        backend_name: &str,
+    ) -> Result<CacheUpdateResult, String> {
+        let mut automations = Vec::new();
+
+        for wf in workflows {
+            if let Some(automation) = self.create_automation_from_workflow(backend_name, wf) {
+                automations.push(automation);
+            }
+        }
+
+        let result = self
+            .sync_automations(backend_name, automations, |t| {
+                t.backend_name == backend_name
+                    && t.args.params.source == Some(crate::utils::types::origin::Origin::Flow)
+            })
+            .await?;
+
+        if result.has_changes() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
         }
 
         Ok(result)
@@ -215,7 +240,7 @@ impl AutomationsCache {
                     }
                 }
             } else {
-                self.add_automation(automation.clone(), None).await?;
+                self.add_automation(automation.clone()).await?;
                 info!("➕ Added automation: {} ({})", automation.id, backend_name);
                 added.push(automation);
             }
@@ -233,7 +258,7 @@ impl AutomationsCache {
         let mut removed = Vec::with_capacity(stale.len());
         for id in stale {
             info!("🗑️ Removing stale automation: {id}");
-            removed.push(self.remove_automation(&id, None).await?);
+            removed.push(self.remove_automation(&id).await?);
         }
 
         Ok(CacheUpdateResult {
@@ -247,37 +272,25 @@ impl AutomationsCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        remote_settings: &Value,
+        remote_settings: &RemoteSettings,
     ) -> Vec<Automation> {
         let mut automations = Vec::new();
-        let Some(obj) = remote_settings.as_object() else {
-            return automations;
-        };
 
-        let operations = [
-            OperationType::Sync,
-            OperationType::Copy,
-            OperationType::Move,
-            OperationType::Bisync,
-            OperationType::Check,
-            OperationType::Delete,
-            OperationType::Copyurl,
-            OperationType::Archivecreate,
-            OperationType::Cryptcheck,
-        ];
-
-        for op_type in operations {
-            if let Some(profiles) = obj.get(op_type.config_key()).and_then(|v| v.as_object()) {
-                for (profile_name, profile_val) in profiles {
-                    if let Ok(config) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
-                        && let Some(automation) = self.create_automation_struct(
-                            backend_name,
-                            remote_name,
-                            profile_name,
-                            &op_type,
-                            &config,
-                        )
-                    {
+        for op_type in OperationType::ALL
+            .iter()
+            .copied()
+            .filter(|op| op.is_automation())
+        {
+            if let Some(profiles) = remote_settings.get_configs(op_type) {
+                for (profile_name, profile) in profiles {
+                    let config = ProfileConfig::from_profile(profile);
+                    if let Some(automation) = self.create_automation_struct(
+                        backend_name,
+                        remote_name,
+                        profile_name,
+                        &op_type,
+                        &config,
+                    ) {
                         automations.push(automation);
                     }
                 }
@@ -300,21 +313,17 @@ impl AutomationsCache {
         automation_id: &str,
         new_config: &Automation,
     ) -> Result<(), String> {
-        self.update_automation(
-            automation_id,
-            |t| {
-                t.cron_expression = new_config.cron_expression.clone();
-                t.args = new_config.args.clone();
-                t.automation_type = new_config.automation_type;
-                t.next_run = new_config.next_run;
-                t.watch_enabled = new_config.watch_enabled;
-                t.watch_delay = new_config.watch_delay;
-                t.watch_changed_only = new_config.watch_changed_only;
-                // Intentionally NOT overwriting `status` — the user's
-                // enabled/disabled choice is the source of truth in the cache.
-            },
-            None,
-        )
+        self.update_automation(automation_id, |t| {
+            t.cron_expression = new_config.cron_expression.clone();
+            t.args = new_config.args.clone();
+            t.automation_type = new_config.automation_type;
+            t.next_run = new_config.next_run;
+            t.watch_enabled = new_config.watch_enabled;
+            t.watch_delay = new_config.watch_delay;
+            t.watch_changed_only = new_config.watch_changed_only;
+            // Intentionally NOT overwriting `status` — the user's
+            // enabled/disabled choice is the source of truth in the cache.
+        })
         .await
         .map(|_| ())
     }
@@ -532,11 +541,76 @@ impl AutomationsCache {
         })
     }
 
-    pub async fn add_automation(
+    pub fn create_automation_from_workflow(
         &self,
-        automation: Automation,
-        app: Option<&AppHandle>,
-    ) -> Result<Automation, String> {
+        backend_name: &str,
+        wf: &WorkflowDefinition,
+    ) -> Option<Automation> {
+        let cron_enabled = wf.is_cron_enabled();
+        let watch_enabled = wf.is_watch_enabled();
+
+        if !cron_enabled && !watch_enabled {
+            return None;
+        }
+
+        let cron = if cron_enabled {
+            wf.effective_cron_expression()
+                .filter(|s| !s.trim().is_empty())
+        } else {
+            None
+        };
+
+        let automation_id = wf.id.clone();
+
+        let params = ProfileParams {
+            remote_name: "Workflow".to_string(),
+            profile_name: wf.name.clone(),
+            source: Some(crate::utils::types::origin::Origin::Flow),
+            no_cache: None,
+            scoped_targets: None,
+        };
+
+        let src_paths = if watch_enabled {
+            wf.watcher_paths()
+        } else {
+            vec![wf.name.clone()]
+        };
+
+        let args = AutomationArgs {
+            params,
+            src_paths,
+            dst_paths: vec!["Workflow Engine".to_string()],
+        };
+
+        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
+        let watch_delay = wf.watcher_debounce_seconds();
+
+        Some(Automation {
+            id: automation_id,
+            automation_type: OperationType::Sync,
+            remote_name: "Workflow".to_string(),
+            profile_name: wf.name.clone(),
+            cron_expression: cron,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            created_at: chrono::Utc::now(),
+            last_run: None,
+            next_run,
+            last_error: None,
+            current_job_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled,
+            watch_delay,
+            watch_changed_only: false,
+        })
+    }
+
+    pub async fn add_automation(&self, automation: Automation) -> Result<Automation, String> {
         let automation_id = automation.id.clone();
         let mut automations = self.automations.write().await;
 
@@ -546,9 +620,7 @@ impl AutomationsCache {
 
         automations.insert(automation_id.clone(), automation.clone());
         drop(automations);
-        if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
-        }
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
         Ok(automation)
     }
 
@@ -573,7 +645,6 @@ impl AutomationsCache {
         &self,
         automation_id: &str,
         update_fn: impl FnOnce(&mut Automation),
-        app: Option<&AppHandle>,
     ) -> Result<Automation, String> {
         let mut automations = self.automations.write().await;
         let automation = automations
@@ -584,35 +655,25 @@ impl AutomationsCache {
         let updated_automation = automation.clone();
         drop(automations);
 
-        if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
-        }
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         Ok(updated_automation)
     }
 
     /// Remove an automation from the cache and return it. The caller is responsible
     /// for unscheduling the associated scheduler job via `scheduler_job_id`.
-    pub async fn remove_automation(
-        &self,
-        automation_id: &str,
-        app: Option<&AppHandle>,
-    ) -> Result<Automation, String> {
+    pub async fn remove_automation(&self, automation_id: &str) -> Result<Automation, String> {
         let mut automations = self.automations.write().await;
         let automation = automations
             .remove(automation_id)
             .ok_or_else(|| format!("Automation {automation_id} not found"))?;
         drop(automations);
-        if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
-        }
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
         Ok(automation)
     }
 
-    pub async fn clear_all_automations(&self, app: Option<&AppHandle>) -> Result<(), String> {
+    pub async fn clear_all_automations(&self) -> Result<(), String> {
         self.automations.write().await.clear();
-        if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_ALL_CLEARED);
-        }
+        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_ALL_CLEARED);
         Ok(())
     }
 
@@ -622,7 +683,7 @@ impl AutomationsCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        remote_settings: &Value,
+        remote_settings: &RemoteSettings,
     ) -> Result<CacheUpdateResult, String> {
         let automations =
             self.collect_automations_from_remote(backend_name, remote_name, remote_settings);
@@ -638,7 +699,6 @@ impl AutomationsCache {
         &self,
         backend_name: &str,
         remote_name: &str,
-        app: Option<&AppHandle>,
     ) -> Result<Vec<Automation>, String> {
         let prefix = format!("{backend_name}:{remote_name}-");
         let to_remove: Vec<String> = self
@@ -651,13 +711,11 @@ impl AutomationsCache {
 
         let mut removed = Vec::with_capacity(to_remove.len());
         for id in &to_remove {
-            removed.push(self.remove_automation(id, None).await?);
+            removed.push(self.remove_automation(id).await?);
         }
 
-        if !removed.is_empty()
-            && let Some(app) = app
-        {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_REMOTE_REMOVED);
+        if !removed.is_empty() {
+            bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_REMOTE_REMOVED);
         }
         Ok(removed)
     }
@@ -671,29 +729,24 @@ impl AutomationsCache {
     pub async fn toggle_automation_status(
         &self,
         automation_id: &str,
-        app: Option<&AppHandle>,
     ) -> Result<Automation, String> {
-        self.update_automation(
-            automation_id,
-            |automation| {
-                automation.status = match automation.status {
-                    AutomationStatus::Enabled | AutomationStatus::Failed => {
-                        automation.next_run = None;
-                        AutomationStatus::Disabled
-                    }
-                    AutomationStatus::Disabled => {
-                        automation.next_run = automation
-                            .cron_expression
-                            .as_ref()
-                            .and_then(|expr| get_next_run(expr).ok());
-                        AutomationStatus::Enabled
-                    }
-                    AutomationStatus::Running => AutomationStatus::Stopping,
-                    AutomationStatus::Stopping => AutomationStatus::Stopping,
-                };
-            },
-            app,
-        )
+        self.update_automation(automation_id, |automation| {
+            automation.status = match automation.status {
+                AutomationStatus::Enabled | AutomationStatus::Failed => {
+                    automation.next_run = None;
+                    AutomationStatus::Disabled
+                }
+                AutomationStatus::Disabled => {
+                    automation.next_run = automation
+                        .cron_expression
+                        .as_ref()
+                        .and_then(|expr| get_next_run(expr).ok());
+                    AutomationStatus::Enabled
+                }
+                AutomationStatus::Running => AutomationStatus::Stopping,
+                AutomationStatus::Stopping => AutomationStatus::Stopping,
+            };
+        })
         .await
     }
 
@@ -1198,10 +1251,7 @@ mod tests {
         let automation = base_automation();
         let id = automation.id.clone();
 
-        cache
-            .add_automation(automation.clone(), None)
-            .await
-            .unwrap();
+        cache.add_automation(automation.clone()).await.unwrap();
         let fetched = cache.get_automation(&id).await.unwrap();
         assert_eq!(fetched.id, id);
     }
@@ -1210,11 +1260,8 @@ mod tests {
     async fn test_add_duplicate_automation_returns_error() {
         let cache = make_cache();
         let automation = base_automation();
-        cache
-            .add_automation(automation.clone(), None)
-            .await
-            .unwrap();
-        let result = cache.add_automation(automation, None).await;
+        cache.add_automation(automation.clone()).await.unwrap();
+        let result = cache.add_automation(automation).await;
         assert!(result.is_err(), "duplicate insert should fail");
     }
 
@@ -1229,10 +1276,10 @@ mod tests {
         let cache = make_cache();
         let automation = base_automation();
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
         let updated = cache
-            .update_automation(&id, |t| t.run_count += 1, None)
+            .update_automation(&id, |t| t.run_count += 1)
             .await
             .unwrap();
         assert_eq!(updated.run_count, 1);
@@ -1244,7 +1291,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_nonexistent_automation_returns_error() {
         let cache = make_cache();
-        let result = cache.update_automation("ghost", |_| {}, None).await;
+        let result = cache.update_automation("ghost", |_| {}).await;
         assert!(result.is_err());
     }
 
@@ -1253,12 +1300,9 @@ mod tests {
         let cache = make_cache();
         let automation = base_automation();
         let id = automation.id.clone();
-        cache
-            .add_automation(automation.clone(), None)
-            .await
-            .unwrap();
+        cache.add_automation(automation.clone()).await.unwrap();
 
-        let removed = cache.remove_automation(&id, None).await.unwrap();
+        let removed = cache.remove_automation(&id).await.unwrap();
         assert_eq!(removed.id, id);
         assert!(
             cache.get_automation(&id).await.is_none(),
@@ -1269,7 +1313,7 @@ mod tests {
     #[tokio::test]
     async fn test_remove_nonexistent_automation_returns_error() {
         let cache = make_cache();
-        let result = cache.remove_automation("ghost", None).await;
+        let result = cache.remove_automation("ghost").await;
         assert!(result.is_err());
     }
 
@@ -1279,9 +1323,9 @@ mod tests {
         let mut automation = base_automation();
         automation.scheduler_job_id = Some("550e8400-e29b-41d4-a716-446655440000".to_string());
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
-        let removed = cache.remove_automation(&id, None).await.unwrap();
+        let removed = cache.remove_automation(&id).await.unwrap();
         assert_eq!(
             removed.scheduler_job_id.as_deref(),
             Some("550e8400-e29b-41d4-a716-446655440000"),
@@ -1297,8 +1341,8 @@ mod tests {
         let mut t2 = base_automation();
         t2.id = "id2".to_string();
 
-        cache.add_automation(t1, None).await.unwrap();
-        cache.add_automation(t2, None).await.unwrap();
+        cache.add_automation(t1).await.unwrap();
+        cache.add_automation(t2).await.unwrap();
 
         let all = cache.get_all_automations().await;
         assert_eq!(all.len(), 2);
@@ -1307,8 +1351,8 @@ mod tests {
     #[tokio::test]
     async fn test_clear_all_automations() {
         let cache = make_cache();
-        cache.add_automation(base_automation(), None).await.unwrap();
-        cache.clear_all_automations(None).await.unwrap();
+        cache.add_automation(base_automation()).await.unwrap();
+        cache.clear_all_automations().await.unwrap();
         assert!(cache.get_all_automations().await.is_empty());
     }
 
@@ -1327,8 +1371,8 @@ mod tests {
         t2.id = "b2:r-sync-p".to_string();
         t2.backend_name = "b2".to_string();
 
-        cache.add_automation(t1, None).await.unwrap();
-        cache.add_automation(t2, None).await.unwrap();
+        cache.add_automation(t1).await.unwrap();
+        cache.add_automation(t2).await.unwrap();
 
         let evicted = cache.clear_backend_automations("b1").await;
         assert_eq!(evicted.len(), 1);
@@ -1352,9 +1396,9 @@ mod tests {
         let mut automation = base_automation();
         automation.status = AutomationStatus::Enabled;
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
-        let toggled = cache.toggle_automation_status(&id, None).await.unwrap();
+        let toggled = cache.toggle_automation_status(&id).await.unwrap();
         assert_eq!(toggled.status, AutomationStatus::Disabled);
         assert!(toggled.next_run.is_none());
     }
@@ -1365,9 +1409,9 @@ mod tests {
         let mut automation = base_automation();
         automation.status = AutomationStatus::Failed;
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
-        let toggled = cache.toggle_automation_status(&id, None).await.unwrap();
+        let toggled = cache.toggle_automation_status(&id).await.unwrap();
         assert_eq!(toggled.status, AutomationStatus::Disabled);
         assert!(toggled.next_run.is_none());
     }
@@ -1378,9 +1422,9 @@ mod tests {
         let mut automation = base_automation();
         automation.status = AutomationStatus::Disabled;
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
-        let toggled = cache.toggle_automation_status(&id, None).await.unwrap();
+        let toggled = cache.toggle_automation_status(&id).await.unwrap();
         assert_eq!(toggled.status, AutomationStatus::Enabled);
     }
 
@@ -1390,9 +1434,9 @@ mod tests {
         let mut automation = base_automation();
         automation.status = AutomationStatus::Running;
         let id = automation.id.clone();
-        cache.add_automation(automation, None).await.unwrap();
+        cache.add_automation(automation).await.unwrap();
 
-        let result = cache.toggle_automation_status(&id, None).await.unwrap();
+        let result = cache.toggle_automation_status(&id).await.unwrap();
         assert_eq!(
             result.status,
             AutomationStatus::Stopping,
@@ -1433,8 +1477,8 @@ mod tests {
         t2.id = "backend_b:remote-sync-p".to_string();
         t2.backend_name = "backend_b".to_string();
 
-        cache.add_automation(t1, None).await.unwrap();
-        cache.add_automation(t2, None).await.unwrap();
+        cache.add_automation(t1).await.unwrap();
+        cache.add_automation(t2).await.unwrap();
 
         let a_automations = cache.get_automations_for_backend("backend_a").await;
         assert_eq!(a_automations.len(), 1);
@@ -1444,7 +1488,7 @@ mod tests {
     #[test]
     fn test_collect_automations_from_remote() {
         let cache = make_cache();
-        let remote_settings = json!({
+        let remote_settings_val = json!({
             "syncConfigs": {
                 "watcher_profile": {
                     "app": {
@@ -1470,6 +1514,8 @@ mod tests {
                 }
             }
         });
+        let remote_settings: RemoteSettings =
+            serde_json::from_value(remote_settings_val).expect("valid RemoteSettings");
 
         let automations =
             cache.collect_automations_from_remote("local", "gdrive", &remote_settings);
@@ -1488,5 +1534,146 @@ mod tests {
             .expect("scheduled automation found");
         assert_eq!(scheduled.automation_type, OperationType::Copy);
         assert_eq!(scheduled.cron_expression.as_deref(), Some("0 12 * * *"));
+    }
+
+    #[tokio::test]
+    async fn test_create_and_load_workflow_automations() {
+        let cache = make_cache();
+
+        let wf_with_cron = WorkflowDefinition {
+            id: "wf-cron-1".to_string(),
+            name: "Nightly Sync Flow".to_string(),
+            nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
+                id: "node-c".to_string(),
+                node_type: "cron".to_string(),
+                category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
+                title: "Cron".to_string(),
+                config: serde_json::json!({
+                    "cronExpression": "0 3 * * *"
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        let wf_without_cron = WorkflowDefinition {
+            id: "wf-manual-1".to_string(),
+            name: "Manual Flow".to_string(),
+            ..Default::default()
+        };
+
+        let wf_with_watcher = WorkflowDefinition {
+            id: "wf-watcher-1".to_string(),
+            name: "Watcher Flow".to_string(),
+            nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
+                id: "node-w".to_string(),
+                node_type: "watcher".to_string(),
+                category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
+                title: "Watcher".to_string(),
+                config: serde_json::json!({
+                    "watchPaths": ["/tmp/sync_dir"],
+                    "debounceSeconds": 8
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        let auto1 = cache.create_automation_from_workflow("local", &wf_with_cron);
+        assert!(auto1.is_some());
+        let a1 = auto1.unwrap();
+        assert_eq!(a1.id, "wf-cron-1");
+        assert_eq!(a1.cron_expression.as_deref(), Some("0 3 * * *"));
+        assert!(!a1.watch_enabled);
+        assert_eq!(
+            a1.args.params.source,
+            Some(crate::utils::types::origin::Origin::Flow)
+        );
+
+        let auto2 = cache.create_automation_from_workflow("local", &wf_without_cron);
+        assert!(auto2.is_none());
+
+        let auto3 = cache.create_automation_from_workflow("local", &wf_with_watcher);
+        assert!(auto3.is_some());
+        let a3 = auto3.unwrap();
+        assert_eq!(a3.id, "wf-watcher-1");
+        assert!(a3.cron_expression.is_none());
+        assert!(a3.watch_enabled);
+        assert_eq!(a3.watch_delay, 8);
+        assert_eq!(a3.args.src_paths, vec!["/tmp/sync_dir".to_string()]);
+
+        let res = cache
+            .load_from_workflows(&[wf_with_cron, wf_without_cron, wf_with_watcher], "local")
+            .await
+            .expect("load_from_workflows succeeds");
+        assert_eq!(res.added.len(), 2);
+
+        let loaded = cache.get_automation("wf-watcher-1").await;
+        assert!(loaded.is_some());
+        assert!(loaded.unwrap().watch_enabled);
+    }
+
+    #[tokio::test]
+    async fn test_load_from_remote_configs_preserves_quickrun_and_flow_automations() {
+        let cache = make_cache();
+
+        // 1. Load a workflow automation
+        let wf = WorkflowDefinition {
+            id: "wf-preserve".to_string(),
+            name: "Preserve Me".to_string(),
+            nodes: vec![crate::core::flow::workflow::types::WorkflowNode {
+                id: "node-c-preserve".to_string(),
+                node_type: "cron".to_string(),
+                category: crate::core::flow::workflow::types::WorkflowNodeCategory::Trigger,
+                title: "Cron".to_string(),
+                config: serde_json::json!({
+                    "cronExpression": "0 1 * * *"
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        cache
+            .load_from_workflows(&[wf], "local")
+            .await
+            .expect("load_from_workflows");
+
+        // 2. Load a quick run automation
+        let qr = QuickRun {
+            id: "qr-preserve".to_string(),
+            name: "QR Preserve".to_string(),
+            description: None,
+            operation_type: OperationType::Sync,
+            remote_name: "drive:".to_string(),
+            config: serde_json::json!({
+                "app": {
+                    "cronEnabled": true,
+                    "cronExpression": "0 2 * * *"
+                },
+                "rclone": {
+                    "srcFs": "drive:src",
+                    "dstFs": "/tmp/dst"
+                }
+            }),
+        };
+        cache
+            .load_from_quick_runs(&[qr], "local")
+            .await
+            .expect("load_from_quick_runs");
+
+        assert!(cache.get_automation("wf-preserve").await.is_some());
+        assert!(cache.get_automation("qr-preserve").await.is_some());
+
+        // 3. Now trigger load_from_remote_configs with an empty remote map
+        let empty_remotes = HashMap::new();
+        let res = cache
+            .load_from_remote_configs(&empty_remotes, "local")
+            .await
+            .expect("load_from_remote_configs");
+
+        // Should not remove either the workflow or quick run automation!
+        assert_eq!(res.removed.len(), 0);
+        assert!(cache.get_automation("wf-preserve").await.is_some());
+        assert!(cache.get_automation("qr-preserve").await.is_some());
     }
 }

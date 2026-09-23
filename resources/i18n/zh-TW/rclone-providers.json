@@ -1,0 +1,3938 @@
+{
+  "providers": {
+    "alias": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要建立別名的遠端連線或路徑。\n\n格式可為 \"myremote:path/to/dir\"、\"myremote:bucket\"、\"myremote:\" 或 \"/local/path\"。"
+      }
+    },
+    "archive": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "用於讀取封存檔案的封裝遠端連線。\n\n通常應包含冒號和路徑，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"。\n\n若留空，則封存後端會將根目錄作為\n遠端連線使用。\n\n這意味著你可以使用 :archive:remote:path，其效果等同於設定 remote=\"remote:path\"。\n"
+      }
+    },
+    "azureblob": {
+      "access_tier": {
+        "title": "存取層級",
+        "help": "Blob的存取層級：hot（熱）、cool（冷）、cold（極冷）或archive（歸檔）。\n\n歸檔層級的Blob可透過將存取層級設定為hot、cool或cold來恢復。若打算使用賬戶級別的預設存取層級，留空即可。\n\n若未指定\"存取層級\"，rclone不會應用任何層級設定。\nrclone會在上傳時對Blob執行\"設定層級\"操作，若物件未被修改，即使指定新的\"存取層級\"也不會生效。\n若遠端端的Blob處於\"歸檔層級\"，則不允許從遠端端執行資料傳輸操作。使用者需先將Blob層級調整為\"Hot\"、\"Cool\"或\"Cold\"以恢復存取。"
+      },
+      "account": {
+        "title": "儲存賬戶",
+        "help": "Azure儲存賬戶名稱。\n\n設定為當前使用的Azure儲存賬戶名稱。\n\n若使用SAS URL或模擬器則留空，否則必須設定。\n\n若此項留空且啟用了env_auth，將嘗試從環境變數`AZURE_STORAGE_ACCOUNT_NAME`讀取。\n"
+      },
+      "archive_tier_delete": {
+        "title": "封存層級刪除",
+        "help": "覆蓋前刪除封存層級的Blob。\n\n封存層級的Blob無法更新。因此若未設定此標誌，嘗試更新封存層級Blob時，rclone會丟擲以下錯誤：\n\n    can't update archive tier blob without --azureblob-archive-tier-delete\n\n啟用此標誌後，rclone在嘗試覆蓋封存層級Blob前，會先刪除現有Blob再上傳替換檔案。這可能導致上傳失敗時的資料丟失（與更新普通Blob不同），且提前刪除封存層級Blob可能產生額外費用。\n"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n注意：該資料會儲存在記憶體中，同時儲存的分塊數量最多可達\"--transfers\" * \"--azureblob-upload-concurrency\"。"
+      },
+      "client_certificate_password": {
+        "title": "用戶端憑證密碼",
+        "help": "證書檔案的密碼（可選）。\n\n若滿足以下條件可選擇性設定：\n- 使用帶證書的服務主體 (Service Principal)\n\n且證書設有密碼。\n"
+      },
+      "client_certificate_path": {
+        "title": "用戶端憑證路徑",
+        "help": "包含私鑰的PEM或PKCS12證書檔案路徑。\n\n滿足以下條件時設定：\n- 使用帶證書的服務主體 (Service Principal)\n"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "當前使用的用戶端 ID (Client ID)。\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n- 使用帶證書的服務主體 (Service Principal)\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "服務主體 (Service Principal)的用戶端金鑰之一\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "傳送用戶端憑證鏈",
+        "help": "使用證書驗證時傳送證書鏈。\n\n指定驗證請求是否包含x5c頭部，以支援基於主體名稱/頒發者的驗證。設為true時，驗證請求會包含x5c頭部。\n\n滿足以下條件可選擇性設定：\n- 使用帶證書的服務主體 (Service Principal)\n"
+      },
+      "copy_concurrency": {
+        "title": "複製並行數",
+        "help": "分塊複製的並行數。\n\n即同一檔案的分塊同時複製的數量。\n\n這些分塊不會在記憶體中緩衝，Microsoft在azcopy文件中建議將此值設定為大於1000。\n\nhttps://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-optimize#increase-concurrency\n\n測試表明，複製速度幾乎隨複製並行數線性增長。"
+      },
+      "copy_cutoff": {
+        "title": "複製閾值",
+        "help": "切換至分塊複製的檔案大小閾值。\n\n任何大於此值且需要服務端複製的檔案，將透過put block list API以chunk_size大小的分塊進行複製。\n\n小於此限制的檔案將使用Copy Blob API複製。"
+      },
+      "delete_snapshots": {
+        "title": "刪除快照",
+        "help": "設定刪除Blob時如何處理快照。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "directory_markers": {
+        "title": "目錄標記",
+        "help": "建立新目錄時上傳一個帶末尾斜槓的空物件\n\n基於儲存貯體 (Bucket)的遠端連線不支援空資料夾，此選項會建立一個以\"/\"結尾的空物件來保留資料夾。\n\n該物件還會設定中繼資料\"hdi_isfolder = true\"以符合Microsoft標準。\n "
+      },
+      "disable_checksum": {
+        "title": "禁用總和檢查碼 (Checksum)",
+        "help": "不在物件中繼資料中儲存MD5總和檢查碼 (Checksum)。\n\n預設情況下，rclone會在上傳前計算輸入檔案的MD5總和檢查碼 (Checksum)，並新增到物件中繼資料中。這有助於資料完整性校驗，但會導致大檔案開始上傳前出現較長延遲。"
+      },
+      "disable_instance_discovery": {
+        "title": "禁用執行個體發現",
+        "help": "跳過請求Microsoft Entra 執行個體中繼資料 (Instance Metadata)\n\n僅在斷開連線的雲環境或私有雲（如Azure Stack）中驗證的應用程式需設為true。\n\n該選項決定rclone在驗證前是否從`https://login.microsoft.com/`請求Microsoft Entra 執行個體中繼資料 (Instance Metadata)。\n\n設為true將跳過此請求，需自行確保設定的授權機構有效且可信。\n"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "服務接入點。\n\n通常留空。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行時讀取憑證（環境變數、CLI或MSI）。\n\n詳見[驗證文件](/azureblob#authentication)。"
+      },
+      "key": {
+        "title": "訪問金鑰",
+        "help": "儲存賬戶共享金鑰。\n\n若使用SAS URL或模擬器則留空。"
+      },
+      "list_chunk": {
+        "title": "列表分塊大小",
+        "help": "Blob列表的大小。\n\n設定每次列出操作請求的Blob數量。預設值為最大值5000。\"列出Blob\"請求允許每兆位元組2分鐘的完成時間。若操作平均耗時超過每兆位元組2分鐘，將逾時（\n[來源](https://docs.microsoft.com/en-us/rest/api/storageservices/setting-timeouts-for-blob-service-operations#exceptions-to-default-timeout-interval)\n）。可透過此引數限制返回的Blob數量以避免逾時。"
+      },
+      "memory_pool_flush_time": {
+        "title": "記憶體池重新整理時間",
+        "help": "內部記憶體緩衝池的重新整理頻率。（已不再使用）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "記憶體池使用mmap",
+        "help": "內部記憶體池是否使用mmap緩衝區。（已不再使用）"
+      },
+      "msi_client_id": {
+        "title": "MSI用戶端 ID (Client ID)",
+        "help": "要使用的使用者分配MSI的物件ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id則留空。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI資源ID",
+        "help": "要使用的使用者分配MSI的Azure資源ID（如有）。\n\n若指定了msi_client_id或msi_object_id則留空。"
+      },
+      "msi_object_id": {
+        "title": "MSI物件ID",
+        "help": "要使用的使用者分配MSI的物件ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id則留空。"
+      },
+      "no_check_container": {
+        "title": "不檢查容器",
+        "help": "若設定，不檢查容器是否存在或建立容器。\n\n若確定容器已存在，此選項有助於減少rclone的事務數量。\n"
+      },
+      "no_head_object": {
+        "title": "不執行HEAD請求",
+        "help": "若設定，取得物件時不在GET前執行HEAD請求。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "使用者密碼\n\n滿足以下條件時設定：\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "public_access": {
+        "title": "公共存取級別",
+        "help": "容器的公共存取級別：blob（僅Blob）或container（容器級）。"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "僅容器級訪問的SAS URL。\n\n若使用賬戶/金鑰或模擬器則留空。"
+      },
+      "service_principal_file": {
+        "title": "服務主體 (Service Principal)檔案",
+        "help": "包含服務主體 (Service Principal)憑證的檔案路徑。\n\n通常留空。僅當希望使用服務主體 (Service Principal)而非互動式登入時需要設定。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Blob Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n詳見[\"建立Azure服務主體 (Service Principal)\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以訪問Blob資料\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文件。\n\n也可直接將憑證填寫到rclone設定檔案的`client_id`、`tenant`和`client_secret`欄位，而非設定`service_principal_file`。\n"
+      },
+      "tenant": {
+        "title": "租戶ID",
+        "help": "服務主體 (Service Principal)的租戶ID，也稱為目錄ID。\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n- 使用帶證書的服務主體 (Service Principal)\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳的並行數。\n\n即同一檔案的分塊同時上傳的數量。\n\n若在高速鏈路上傳少量大檔案且未充分利用頻寬，提高此值可能加快傳輸速度。\n\n測試表明，上傳速度幾乎隨上傳並行數線性增長。例如，要填滿千兆網路鏈路可能需要將此值提高到64。注意這會佔用更多記憶體。\n\n注意：分塊儲存在記憶體中，同時儲存的分塊數量最多可達\"--transfers\" * \"--azureblob-upload-concurrency\"。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換至分塊上傳的檔案大小閾值（<= 256 MiB）（已廢棄）。"
+      },
+      "use_az": {
+        "title": "使用Azure CLI",
+        "help": "使用Azure CLI工具az進行驗證\n\n設為true時，僅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)進行驗證。\n\n若希望在帶有系統分配託管標識的主機上使用az CLI，但不想使用該標識時，此設定會很有用。\n\n請勿同時設定env_auth。\n"
+      },
+      "use_copy_blob": {
+        "title": "使用Copy Blob API",
+        "help": "複製到同一儲存賬戶時是否使用Copy Blob API。\n\n若為true（預設值），即使檔案大小超過copy_cutoff，rclone也會對同一儲存賬戶的複製操作使用Copy Blob API。\n\nrclone假定同一儲存賬戶意味著相同設定，不會檢查不同設定中的同一儲存賬戶。\n\n無需修改此值。"
+      },
+      "use_emulator": {
+        "title": "使用模擬器",
+        "help": "設為'true'時使用本機儲存空間模擬器。\n\n若使用真實Azure儲存接入點則留空。"
+      },
+      "use_msi": {
+        "title": "使用託管標識",
+        "help": "使用受控識別 (Managed Identity)進行驗證（僅在Azure環境中生效）。\n\n設為true時，使用[受控識別 (Managed Identity)](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS權杖 (Token)或賬戶金鑰驗證Azure儲存。\n\n若執行此程式的VM(SS)具有系統分配標識，將預設使用該標識。若資源無系統分配標識但僅有一個使用者分配標識，\n將預設使用該使用者分配標識。若資源有多個使用者分配標識，必須透過msi_object_id、\nmsi_client_id或msi_mi_res_id引數明確指定要使用的標識。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "使用者名稱（通常為電子郵件地址）\n\n滿足以下條件時設定：\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "connection_string": {
+        "title": "連線字串",
+        "help": "儲存連線字串。\n\n儲存的連線字串。如果使用其他驗證方法，則留空。\n"
+      },
+      "copy_total_concurrency": {
+        "title": "複製總並行度",
+        "help": "分塊複製的全域性並行限制。\n\n這限制了所有檔案上同時執行的分塊複製任務的總數。\n\n設定為 0 以禁用此限制。"
+      },
+      "decompress": {
+        "title": "解壓縮",
+        "help": "如果設定，將解密/解壓 gzip 編碼的物件。\n\n可以將帶有 \"Content-Encoding: gzip\" 設定的物件上傳到 Azure Blob 儲存。通常 rclone 會將這些檔案下載為壓縮物件。\n\n如果設定了此標誌，rclone 將在接收到這些檔案時使用 \"Content-Encoding: gzip\" 進行解壓。這意味著 rclone 無法檢查大小和雜湊 (Hash)，但檔案內容會被解壓。\n"
+      }
+    },
+    "azurefiles": {
+      "account": {
+        "title": "儲存賬戶",
+        "help": "Azure儲存賬戶名稱。\n\n設定為當前使用的Azure儲存賬戶名稱。\n\n若使用SAS URL或連線字串則留空，否則必須設定。\n\n若此項留空且啟用了env_auth，將嘗試從環境變數`AZURE_STORAGE_ACCOUNT_NAME`讀取。\n"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n注意：該資料會儲存在記憶體中，同時儲存的分塊數量最多可達\"--transfers\" * \"--azurefile-upload-concurrency\"。"
+      },
+      "client_certificate_password": {
+        "title": "用戶端憑證密碼",
+        "help": "證書檔案的密碼（可選）。\n\n若滿足以下條件可選擇性設定：\n- 使用帶證書的服務主體 (Service Principal)\n\n且證書設有密碼。\n"
+      },
+      "client_certificate_path": {
+        "title": "用戶端憑證路徑",
+        "help": "包含私鑰的PEM或PKCS12證書檔案路徑。\n\n滿足以下條件時設定：\n- 使用帶證書的服務主體 (Service Principal)\n"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "當前使用的用戶端 ID (Client ID)。\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n- 使用帶證書的服務主體 (Service Principal)\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "服務主體 (Service Principal)的用戶端金鑰之一\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "傳送用戶端憑證鏈",
+        "help": "使用證書驗證時傳送證書鏈。\n\n指定驗證請求是否包含x5c頭部，以支援基於主體名稱/頒發者的驗證。設為true時，驗證請求會包含x5c頭部。\n\n滿足以下條件可選擇性設定：\n- 使用帶證書的服務主體 (Service Principal)\n"
+      },
+      "connection_string": {
+        "title": "連線字串",
+        "help": "Azure Files連線字串。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_instance_discovery": {
+        "title": "禁用執行個體發現",
+        "help": "跳過請求Microsoft Entra 執行個體中繼資料 (Instance Metadata)\n僅在斷開連線的雲環境或私有雲（如Azure Stack）中驗證的應用程式需設為true。\n該選項決定rclone在驗證前是否從`https://login.microsoft.com/`請求Microsoft Entra 執行個體中繼資料 (Instance Metadata)。\n設為true將跳過此請求，需自行確保設定的授權機構有效且可信。\n"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "服務接入點。\n\n通常留空。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行時讀取憑證（環境變數、CLI或MSI）。\n\n詳見[驗證文件](/azurefiles#authentication)。"
+      },
+      "key": {
+        "title": "訪問金鑰",
+        "help": "儲存賬戶共享金鑰。\n\n若使用SAS URL或連線字串則留空。"
+      },
+      "max_stream_size": {
+        "title": "最大流檔案大小",
+        "help": "流式檔案的最大大小。\n\nAzure Files需要提前知道檔案大小。當rclone無法確定時，將使用此值替代。\n\n以下場景會使用此值：\n\n- 使用`--vfs-cache-mode off`引數透過`rclone mount`上傳檔案\n- 使用`rclone rcat`命令\n- 複製長度未知的檔案\n\n共享目錄中需要有足夠的可用空間，因為檔案會臨時佔用此大小的空間。\n"
+      },
+      "msi_client_id": {
+        "title": "MSI用戶端 ID (Client ID)",
+        "help": "要使用的使用者分配MSI的物件ID（如有）。\n\n若指定了msi_object_id或msi_mi_res_id則留空。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI資源ID",
+        "help": "要使用的使用者分配MSI的Azure資源ID（如有）。\n\n若指定了msi_client_id或msi_object_id則留空。"
+      },
+      "msi_object_id": {
+        "title": "MSI物件ID",
+        "help": "要使用的使用者分配MSI的物件ID（如有）。\n\n若指定了msi_client_id或msi_mi_res_id則留空。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "使用者密碼\n\n滿足以下條件時設定：\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "SAS URL。\n\n若使用賬戶/金鑰或連線字串則留空。"
+      },
+      "service_principal_file": {
+        "title": "服務主體 (Service Principal)檔案",
+        "help": "包含服務主體 (Service Principal)憑證的檔案路徑。\n\n通常留空。僅當希望使用服務主體 (Service Principal)而非互動式登入時需要設定。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Files Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n詳見[\"建立Azure服務主體 (Service Principal)\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)和[\"分配Azure角色以訪問檔案資料\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli)文件。\n\n**注意**：此部分內容需針對Azure Files更新 - 歡迎提交PR！\n\n也可直接將憑證填寫到rclone設定檔案的`client_id`、`tenant`和`client_secret`欄位，而非設定`service_principal_file`。\n"
+      },
+      "share_name": {
+        "title": "共享名稱",
+        "help": "Azure Files共享名稱。\n\n此項為必填項，指定要訪問的共享名稱。\n"
+      },
+      "tenant": {
+        "title": "租戶ID",
+        "help": "服務主體 (Service Principal)的租戶ID，也稱為目錄ID。\n\n滿足以下條件時設定：\n- 使用帶用戶端金鑰的服務主體 (Service Principal)\n- 使用帶證書的服務主體 (Service Principal)\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳的並行數。\n\n即同一檔案的分塊同時上傳的數量。\n\n若在高速鏈路上傳少量大檔案且未充分利用頻寬，提高此值可能加快傳輸速度。\n\n注意：分塊儲存在記憶體中，同時儲存的分塊數量最多可達\"--transfers\" * \"--azurefile-upload-concurrency\"。"
+      },
+      "use_az": {
+        "title": "使用Azure CLI",
+        "help": "使用Azure CLI工具az進行驗證\n設為true時，僅使用[Azure CLI工具az](https://learn.microsoft.com/en-us/cli/azure/)進行驗證。\n若希望在帶有系統分配託管標識的主機上使用az CLI，但不想使用該標識時，此設定會很有用。\n請勿同時設定env_auth。\n"
+      },
+      "use_msi": {
+        "title": "使用託管標識",
+        "help": "使用受控識別 (Managed Identity)進行驗證（僅在Azure環境中生效）。\n\n設為true時，使用[受控識別 (Managed Identity)](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)\n而非SAS權杖 (Token)或賬戶金鑰驗證Azure儲存。\n\n若執行此程式的VM(SS)具有系統分配標識，將預設使用該標識。若資源無系統分配標識但僅有一個使用者分配標識，\n將預設使用該使用者分配標識。若資源有多個使用者分配標識，必須透過msi_object_id、\nmsi_client_id或msi_mi_res_id引數明確指定要使用的標識。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "使用者名稱（通常為電子郵件地址）\n\n滿足以下條件時設定：\n- 使用使用者名稱密碼登入的使用者\n"
+      },
+      "use_emulator": {
+        "title": "使用模擬器",
+        "help": "使用本機儲存空間模擬器（如果提供）。\n\n如果使用真實的Azure儲存端點，則留空。"
+      }
+    },
+    "b2": {
+      "account": {
+        "title": "賬戶ID",
+        "help": "賬戶ID或應用金鑰ID。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n上傳大檔案時，會將檔案拆分為此大小的分塊。\n\n分塊資料需存入記憶體，同時進行的分塊最多可達\"--transfers\"個。\n\n最小值為5,000,000位元組。"
+      },
+      "copy_cutoff": {
+        "title": "複製閾值",
+        "help": "切換至分塊複製的檔案大小閾值。\n\n任何大於此值且需要服務端複製的檔案，將以此大小的分塊進行複製。\n\n最小值為0，最大值為4.6 GiB。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_checksum": {
+        "title": "禁用總和檢查碼 (Checksum)",
+        "help": "對大檔案（>上傳閾值）禁用總和檢查碼 (Checksum)。\n\n預設情況下，rclone會在上傳前計算輸入檔案的SHA1總和檢查碼 (Checksum)，並新增到物件中繼資料中。這有助於資料完整性校驗，但會導致大檔案開始上傳前出現較長延遲。"
+      },
+      "download_auth_duration": {
+        "title": "下載驗證有效期",
+        "help": "公共連結授權權杖的過期時間，單位為秒或帶字尾ms|s|m|h|d。\n\n此引數與\"rclone link\"配合使用，用於設定檔案公共存取時下載授權權杖的有效期。\n\n最小值為1秒，最大值為一週。"
+      },
+      "download_url": {
+        "title": "自定義下載地址",
+        "help": "下載使用的自定義接入點。\n\n通常設定為Cloudflare CDN URL，因為Backblaze對透過Cloudflare網路下載的資料提供免費出口流量。\nrclone透過傳送\"Authorization\"頭部訪問私有儲存貯體 (Bucket)。\n若自定義接入點重寫驗證請求（如Cloudflare Workers），需正確處理此頭部。\n若使用Backblaze提供的接入點，留空即可。\n\n此處提供的URL需包含協議，且不應包含末尾斜槓或/file/bucket子路徑，因為rclone會以\"{download_url}/file/{bucket_name}/{path}\"格式請求檔案。\n\n示例：\n> https://mysubdomain.mydomain.tld\n（無末尾\"/\"、\"file\"或\"bucket\"）"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "服務接入點。\n\n通常留空。"
+      },
+      "hard_delete": {
+        "title": "徹底刪除",
+        "help": "刪除遠端檔案時永久刪除，否則僅隱藏檔案。"
+      },
+      "key": {
+        "title": "應用金鑰",
+        "help": "應用金鑰。"
+      },
+      "lifecycle": {
+        "title": "生命週期天數",
+        "help": "建立儲存貯體 (Bucket)時設定已刪除檔案的保留天數。\n\n建立儲存貯體 (Bucket)時，此引數用於為整個儲存貯體 (Bucket)建立生命週期規則。\n\n若lifecycle為0（預設值），則不建立生命週期規則，使用B2的預設行為：刪除和覆蓋檔案時建立版本，並永久保留。\n\n若lifecycle>0，則建立一條規則，設定刪除或覆蓋的檔案永久刪除前的保留天數（對應b2文件中的daysFromHidingToDeleting）。\n\n此引數的最小值為1天。\n\n也可在設定中啟用hard_delete，這將使刪除操作不產生版本，但覆蓋仍會建立版本。\n\n詳見：[rclone backend lifecycle](#lifecycle) 瞭解儲存貯體 (Bucket)建立後設定生命週期的方法。\n"
+      },
+      "memory_pool_flush_time": {
+        "title": "記憶體池重新整理時間",
+        "help": "內部記憶體緩衝池的重新整理頻率。（已不再使用）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "記憶體池使用mmap",
+        "help": "內部記憶體池是否使用mmap緩衝區。（已不再使用）"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE-C加密演算法",
+        "help": "若使用SSE-C，指定在B2中儲存物件時使用的服務端加密演算法。"
+      },
+      "sse_customer_key": {
+        "title": "SSE-C加密金鑰",
+        "help": "使用SSE-C時，可提供UTF-8相容字串編碼的加密金鑰來加密/解密資料\n\n也可提供--sse-customer-key-base64引數。"
+      },
+      "sse_customer_key_base64": {
+        "title": "SSE-C加密金鑰（Base64）",
+        "help": "使用SSE-C時，可提供Base64編碼的加密金鑰來加密/解密資料\n\n也可提供--sse-customer-key引數。"
+      },
+      "sse_customer_key_md5": {
+        "title": "SSE-C金鑰MD5總和檢查碼 (Checksum)",
+        "help": "使用SSE-C時，可提供加密金鑰的MD5總和檢查碼 (Checksum)（可選）。\n\n若留空，將自動從提供的sse_customer_key計算。\n"
+      },
+      "test_mode": {
+        "title": "測試模式",
+        "help": "用於除錯的X-Bz-Test-Mode頭部標誌字串。\n\n僅用於除錯。設定為以下字串之一會導致b2返回特定錯誤：\n\n  * \"fail_some_uploads\"\n  * \"expire_some_account_authorization_tokens\"\n  * \"force_cap_exceeded\"\n\n這些值會設定在\"X-Bz-Test-Mode\"頭部，相關文件見[b2整合清單](https://www.backblaze.com/docs/cloud-storage-integration-checklist)。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳的並行數。\n\n即同一檔案的分塊同時上傳的數量。\n\n注意：分塊儲存在記憶體中，同時儲存的分塊數量最多可達\"--transfers\" * \"--b2-upload-concurrency\"。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換至分塊上傳的檔案大小閾值。\n\n大於此值的檔案將以\"--b2-chunk-size\"大小的分塊上傳。\n\n此值不應超過4.657 GiB（== 5 GB）。"
+      },
+      "version_at": {
+        "title": "指定時間版本",
+        "help": "顯示指定時間點的檔案版本。\n\n注意：啟用此選項後不允許執行檔案寫入操作，無法上傳或刪除檔案。"
+      },
+      "versions": {
+        "title": "顯示版本",
+        "help": "目錄列表中包含舊版本檔案。\n\n注意：啟用此選項後不允許執行檔案寫入操作，無法上傳或刪除檔案。"
+      }
+    },
+    "box": {
+      "access_token": {
+        "title": "存取權杖 (Access Token)",
+        "help": "Box應用主存取權杖 (Access Token)\n\n通常留空。"
+      },
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "box_config_file": {
+        "title": "Box設定檔案",
+        "help": "Box應用config.json檔案路徑\n\n通常留空。\n\n檔案名中的`~`會展開為使用者主目錄，環境變數如`${RCLONE_CONFIG_DIR}`也會展開。"
+      },
+      "box_sub_type": {
+        "title": "Box子型別",
+        "help": ""
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "OAuth用戶端 ID (Client ID)。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "commit_retries": {
+        "title": "提交重試次數",
+        "help": "分塊檔案提交的最大重試次數。"
+      },
+      "config_credentials": {
+        "title": "設定憑證",
+        "help": "Box應用config.json內容。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "impersonate": {
+        "title": "模擬使用者",
+        "help": "使用服務帳戶 (Service Account)時模擬此使用者ID。\n\n設定此標誌後，rclone使用JWT服務帳戶 (Service Account)時可透過設定as-user頭部代表其他使用者操作。\n\n使用者ID是Box系統中的使用者標識。管理員可透過GET /users端點取得所有使用者的ID，也可透過已驗證使用者會話呼叫GET /users/me端點取得自身ID。\n\n詳見：https://developer.box.com/guides/authentication/jwt/as-user/\n"
+      },
+      "list_chunk": {
+        "title": "列表分塊大小",
+        "help": "列表分塊大小，取值範圍1-1000。"
+      },
+      "owned_by": {
+        "title": "所屬使用者",
+        "help": "僅顯示指定登入賬號（電子郵件）擁有的專案。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾ID",
+        "help": "填寫後rclone將以此非根資料夾作為起始路徑。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換至分塊上傳的檔案大小閾值（>= 50 MiB）。"
+      }
+    },
+    "cache": {
+      "chunk_clean_interval": {
+        "title": "分塊清理間隔",
+        "help": "快取清理分塊儲存的頻率。\n\n預設值適用於大多數場景。若發現快取頻繁超過\"cache-chunk-total-size\"限制，可降低此值以提高畫質理頻率。"
+      },
+      "chunk_no_memory": {
+        "title": "禁用記憶體分塊快取",
+        "help": "禁用流式傳輸時儲存分塊的記憶體快取。\n\n預設情況下，快取會將流式傳輸中的檔案資料同時儲存在記憶體中，以最快速度提供給讀取端。\n\n這些臨時資料會在讀取後立即淘汰，儲存的分塊數量不會超過工作執行緒數。但根據\"cache-chunk-size\"和\"cache-workers\"等其他設定，若存在並行流（多個檔案同時讀取），記憶體佔用可能增加。\n\n若硬體允許，啟用此功能可提升流式傳輸的整體效能；若本機機器記憶體不足，可禁用此功能。"
+      },
+      "chunk_path": {
+        "title": "分塊儲存路徑",
+        "help": "快取分塊檔案的目錄。\n\n本機儲存空間部分檔案資料（分塊）的路徑，遠端連線名稱會附加到最終路徑後。\n\n此設定與\"--cache-db-path\"保持一致。若指定了\"--cache-db-path\"的自定義路徑但未指定\"--cache-chunk-path\"，則\"--cache-chunk-path\"將使用與\"--cache-db-path\"相同的路徑。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "分塊（部分檔案資料）的大小。\n\n低速網路可使用更小的值。若修改分塊大小，已下載的分塊將失效，需清除cache-chunk-path，否則會出現意外EOF錯誤。"
+      },
+      "chunk_total_size": {
+        "title": "分塊總大小限制",
+        "help": "分塊在本機磁碟上的總佔用空間限制。\n\n若快取超過此值，將開始刪除最舊的分塊，直至低於此限制。"
+      },
+      "db_path": {
+        "title": "資料庫路徑",
+        "help": "儲存檔案結構中繼資料資料庫的目錄。\n\n遠端連線名稱將用作資料庫檔案名。"
+      },
+      "db_purge": {
+        "title": "清除資料庫",
+        "help": "啟動時清除此遠端連線的所有快取資料。"
+      },
+      "db_wait_time": {
+        "title": "資料庫等待時間",
+        "help": "等待資料庫可用的時長 - 0表示無限制。\n\n同一時間僅一個處理程式可開啟資料庫，因此rclone會等待此時長直至資料庫可用，逾時則丟擲錯誤。\n\n設為0將永久等待。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "info_age": {
+        "title": "資訊快取時長",
+        "help": "檔案結構資訊（目錄列表、檔案大小、時間等）的快取時長。\n若所有寫入操作均透過快取執行，可安全地將此值設定得很大，因為快取儲存會實時更新。"
+      },
+      "plex_insecure": {
+        "title": "Plex不安全連線",
+        "help": "連線Plex伺服器時跳過所有證書驗證。"
+      },
+      "plex_password": {
+        "title": "Plex密碼",
+        "help": "Plex使用者的密碼。"
+      },
+      "plex_token": {
+        "title": "Plex權杖 (Token)",
+        "help": "Plex驗證權杖 (Token) - 通常自動設定。"
+      },
+      "plex_url": {
+        "title": "Plex伺服器位址",
+        "help": "Plex伺服器的URL。"
+      },
+      "plex_username": {
+        "title": "Plex使用者名稱",
+        "help": "Plex使用者的使用者名稱。"
+      },
+      "read_retries": {
+        "title": "讀取重試次數",
+        "help": "從快取儲存讀取的重試次數。\n\n由於快取流讀取與檔案資料下載相互獨立，讀取端可能遇到快取中無更多資料的情況。多數情況下，這表明快取無法提供檔案資料，可能是網路連線問題。\n\n對於極慢的連線，可提高此值直至流能夠提供資料，但體驗可能會非常卡頓。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要快取的遠端連線。\n\n通常應包含冒號和路徑，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推薦）。"
+      },
+      "rps": {
+        "title": "每秒請求數限制",
+        "help": "限制對源檔案系統的每秒請求數（-1表示禁用）。\n\n此設定硬性限制快取向雲服務商遠端連線傳送的每秒請求數，並透過在讀取之間設定等待時間來遵守此限制。\n\n若發現因快取導致被雲服務商封禁或限流，且知道較小的每秒請求數可正常工作，可使用此設定。\n\n若其他設定設定得當，此設定通常無需使用，但可用於特殊場景。\n\n**注意**：此設定僅限制流式傳輸期間的請求數，其他向雲服務商的API呼叫（如目錄列表）不受限制。"
+      },
+      "tmp_upload_path": {
+        "title": "臨時上傳路徑",
+        "help": "臨時儲存待上傳檔案的目錄。\n\n此路徑是快取用於臨時儲存需上傳至雲服務商的新檔案的位置。\n\n指定值將啟用此功能，未指定則完全禁用，檔案將直接上傳至雲服務商。"
+      },
+      "tmp_wait_time": {
+        "title": "臨時等待時間",
+        "help": "檔案在本機快取中儲存多長時間後再上傳。\n\n檔案必須在臨時路徑_cache-tmp-upload-path_中等待此時長後，才會被選中進行上傳。\n\n注意：同一時間僅上傳一個檔案，若形成上傳佇列，開始上傳的時間可能會更長。"
+      },
+      "workers": {
+        "title": "工作執行緒數",
+        "help": "並行下載分塊的工作執行緒數。\n\n值越高意味著並行處理能力越強（需要更好的CPU），且對雲服務商的並行請求越多。這會影響多個方面：雲服務商API限制、rclone執行硬體的負載，但也會使流更流暢，資料更快地提供給讀取端。\n\n**注意**：若啟用可選的Plex整合，此設定將根據讀取型別自動調整，此處指定的值將作為最大工作執行緒數。"
+      },
+      "writes": {
+        "title": "寫入快取",
+        "help": "透過檔案系統寫入時快取檔案資料。\n\n若需要在透過快取上傳檔案後立即讀取，可啟用此標誌，使檔案資料在上傳時同時儲存在快取中。"
+      }
+    },
+    "chunker": {
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "大於此大小的檔案將被拆分為分塊。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "fail_hard": {
+        "title": "嚴格失敗",
+        "help": "選擇chunker處理缺失或無效分塊檔案的方式。"
+      },
+      "hash_type": {
+        "title": "雜湊 (Hash)型別",
+        "help": "選擇chunker處理雜湊值 (Hash)的方式。\n\n除\"none\"外的所有模式都需要中繼資料。"
+      },
+      "meta_format": {
+        "title": "中繼資料格式",
+        "help": "中繼資料物件的格式或\"none\"（無）。\n\n預設值為\"simplejson\"。\n中繼資料是一個以複合檔案命名的小型JSON檔案。"
+      },
+      "name_format": {
+        "title": "名稱格式",
+        "help": "分塊檔案名的字串格式。\n\n包含兩個佔位符：基礎檔案名(*)和分塊編號(#...)。\n必須且只能有一個星號，以及一個或多個連續的#號。\n若分塊編號的位數少於#號數量，將在左側補零。\n若編號位數多於#號數量，將原樣保留。\n不符合指定格式的分塊檔案將被忽略。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要分塊/合併的遠端連線。\n\n通常應包含冒號和路徑，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推薦）。"
+      },
+      "start_from": {
+        "title": "起始編號",
+        "help": "最小有效分塊編號，通常為0或1。\n\n預設分塊編號從1開始。"
+      },
+      "transactions": {
+        "title": "事務處理",
+        "help": "選擇chunker在事務期間處理臨時檔案的方式。"
+      }
+    },
+    "cloudinary": {
+      "adjust_media_files_extensions": {
+        "title": "調整媒體檔案擴充功能名",
+        "help": "Cloudinary 將媒體格式作為檔案屬性處理，並從檔案名中剝離擴充功能名，這與大多數其他檔案系統不同"
+      },
+      "api_key": {
+        "title": "API金鑰",
+        "help": "Cloudinary API金鑰"
+      },
+      "api_secret": {
+        "title": "API金鑰金鑰",
+        "help": "Cloudinary API金鑰金鑰"
+      },
+      "cloud_name": {
+        "title": "雲環境名稱",
+        "help": "Cloudinary 環境名稱"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "eventually_consistent_delay": {
+        "title": "最終一致性延遲",
+        "help": "等待N秒以確保支援後端操作的資料庫達到最終一致性"
+      },
+      "media_extensions": {
+        "title": "媒體擴充功能名",
+        "help": "Cloudinary 支援的媒體擴充功能名"
+      },
+      "upload_prefix": {
+        "title": "上傳字首",
+        "help": "為美國以外的環境指定API接入點"
+      },
+      "upload_preset": {
+        "title": "上傳預設",
+        "help": "選擇上傳時資源處理方式的上傳預設"
+      }
+    },
+    "combine": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "upstreams": {
+        "title": "上游儲存",
+        "help": "用於合併的上游儲存\n\n格式應為\n\n    dir=remote:path dir2=remote2:path\n\n等號前指定根目錄，等號後指定要掛載到該目錄的遠端連線。\n\n包含空格的路徑可使用引號包裹\n\n    \"dir=remote:path with space\" \"dir2=remote2:path with space\"\n\n"
+      }
+    },
+    "compress": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "level": {
+        "title": "壓縮級別",
+        "help": "GZIP（級別 -2 至 9）：\n- -2 — 僅霍夫曼編碼。僅在明確知曉用途時使用。\n- -1（預設值）— 推薦使用；等效於5級壓縮。\n- 0 — 關閉壓縮。\n- 1–9 — 以速度為代價提升壓縮率。超過6級後提升效果微乎其微。\n \nZSTD（級別 0 至 4）：\n- 0 — 完全關閉壓縮。\n- 1 — 最快的壓縮速度，最低的壓縮比。\n- 2（預設值）— 速度與壓縮比的良好平衡。\n- 3 — 更好的壓縮比，但CPU佔用約為預設值的2–3倍。\n- 4 — 最佳壓縮比（最高CPU開銷）。\n \n注意：\n- 追求廣泛相容性選擇GZIP；追求更優速度/壓縮比權衡選擇ZSTD。\n- 負GZIP級別：-2 = 僅霍夫曼編碼，-1 = 預設值（≈5級）。"
+      },
+      "mode": {
+        "title": "壓縮模式",
+        "help": "壓縮模式。"
+      },
+      "ram_cache_limit": {
+        "title": "記憶體快取限制",
+        "help": "部分遠端連線不允許上傳大小未知的檔案。\n這種情況下需要快取壓縮後的檔案以確定其大小。\n\n小於此限制的檔案將快取到記憶體中，大於此限制的檔案將快取到磁碟。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要壓縮的遠端連線。"
+      }
+    },
+    "crypt": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "directory_name_encryption": {
+        "title": "目錄名加密",
+        "help": "選擇加密目錄名或保持原樣。\n\n注意：若filename_encryption設定為\"off\"，此選項將無效。"
+      },
+      "filename_encoding": {
+        "title": "檔案名編碼方式",
+        "help": "加密後的檔案名轉換為文字字串的方式。\n\n此選項有助於縮短加密後的檔案名長度。合適的選項取決於遠端連線計算檔案名長度的方式及其是否區分大小寫。"
+      },
+      "filename_encryption": {
+        "title": "檔案名加密方式",
+        "help": "檔案名的加密方式。"
+      },
+      "no_data_encryption": {
+        "title": "禁用資料加密",
+        "help": "選擇加密檔案資料或保持未加密狀態。"
+      },
+      "pass_bad_blocks": {
+        "title": "跳過損壞塊",
+        "help": "若設定，將損壞塊以全0形式傳遞。\n\n正常操作中不應設定此選項，僅在嘗試恢復有錯誤的加密檔案且希望儘可能恢復檔案資料時使用。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "加密用密碼或密碼短語。"
+      },
+      "password2": {
+        "title": "密碼2",
+        "help": "鹽值用密碼或密碼短語。\n\n可選但建議設定。\n應與前一個密碼不同。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要加密/解密的遠端連線。\n\n通常應包含冒號和路徑，例如 \"myremote:path/to/dir\"、\n\"myremote:bucket\" 或 \"myremote:\"（不推薦）。"
+      },
+      "server_side_across_configs": {
+        "title": "跨設定服務端操作",
+        "help": "已廢棄：請改用 --server-side-across-configs。\n\n允許服務端操作（如複製）跨不同crypt設定執行。\n\n通常此選項並非你所需，但如果你有兩個指向同一後端的crypt設定，可使用此選項。\n\n例如，可使用此選項在不重新上傳所有資料的情況下更改檔案名加密型別。只需建立兩個指向不同目錄的crypt後端，僅修改需要更改的引數，然後使用rclone move在這些crypt遠端連線之間移動檔案。"
+      },
+      "show_mapping": {
+        "title": "顯示對映關係",
+        "help": "列出所有檔案時顯示名稱加密方式。\n\n若設定此標誌，遠端連線列出每個檔案時，會在INFO級別記錄一行日誌，說明解密後的檔案名和加密後的檔案名。\n\n這樣你可以確定哪些加密名稱對應哪些解密名稱，以便對加密檔案名執行操作或進行除錯。"
+      },
+      "strict_names": {
+        "title": "嚴格名稱檢查",
+        "help": "若設定，當crypt遇到無法解密的檔案名時將丟擲錯誤。\n\n（預設情況下，rclone僅會記錄NOTICE級別日誌並正常繼續。）\n當加密和未加密檔案儲存在同一目錄時（不推薦）可能出現此情況。也可能表明存在需要排查的更嚴重問題。"
+      },
+      "suffix": {
+        "title": "字尾",
+        "help": "若設定，將覆蓋預設的\".bin\"字尾。\n\n設定為\"none\"將使用空字尾。當路徑長度受限\t\t\t時此設定可能有用。"
+      }
+    },
+    "doi": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "doi": {
+        "title": "DOI標識",
+        "help": "DOI標識或doi.org網址。"
+      },
+      "doi_resolver_api_url": {
+        "title": "DOI解析器API地址",
+        "help": "要使用的DOI解析器API網址。\n\n可設定DOI解析器用於測試，或在無法使用標準DOI解析器API的情況下使用。\n\n預設值為\"https://doi.org/api\"。"
+      },
+      "provider": {
+        "title": "DOI提供商",
+        "help": "DOI提供商。\n\n當rclone無法自動識別支援的DOI提供商時，可手動設定。"
+      }
+    },
+    "drive": {
+      "acknowledge_abuse": {
+        "title": "確認風險下載",
+        "help": "設定以允許下載返回cannotDownloadAbusiveFile錯誤的檔案。\n\n若下載檔案時返回錯誤\"This file has been identified\nas malware or spam and cannot be downloaded\"（此檔案被識別為惡意軟體或垃圾資訊，無法下載）且錯誤程式碼為\"cannotDownloadAbusiveFile\"，設定此標誌可表明你知曉下載該檔案的風險，rclone將強制下載。\n\n注意：若使用服務帳戶 (Service Account)，需擁有管理員許可權（非內容管理員）此標誌才生效。若服務帳戶 (Service Account)許可權不足，Google會直接忽略此標誌。"
+      },
+      "allow_import_name_change": {
+        "title": "允許匯入名稱變更",
+        "help": "上傳Google文件時允許檔案型別變更。\n\n例如file.doc變為file.docx。這會導致同步功能混淆，每次都會重新上傳檔案。"
+      },
+      "alternate_export": {
+        "title": "備用匯出方式",
+        "help": "已廢棄：不再需要。"
+      },
+      "auth_owner_only": {
+        "title": "僅驗證使用者所有",
+        "help": "僅顯示已驗證使用者擁有的檔案。"
+      },
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n必須是>=256k的2的冪。\n\n增大此值可提升效能，但請注意每個傳輸任務會在記憶體中緩衝一個分塊。\n\n減小此值可降低記憶體佔用但會降低效能。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "Google應用用戶端 ID (Client ID)\n建議使用自己的用戶端 ID (Client ID)。\n詳見https://rclone.org/drive/#making-your-own-client-id瞭解如何建立。\n若留空，將使用內部金鑰，效能較低。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "copy_shortcut_content": {
+        "title": "複製捷徑內容",
+        "help": "服務端複製時複製捷徑指向的內容而非捷徑本身。\n\n預設情況下，rclone在服務端複製時會將捷徑作為捷徑複製。\n\n設定此標誌後，rclone在服務端複製時將複製捷徑指向的內容而非捷徑本身。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_http2": {
+        "title": "禁用Http2",
+        "help": "禁用drive後端使用http2。\n\n目前Google Drive後端與HTTP/2存在未解決的問題。因此預設禁用HTTP/2，但可在此處重新啟用。問題解決後此標誌將被移除。\n\n詳見：https://github.com/rclone/rclone/issues/3631\n\n"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行時取得IAM憑證（環境變數，若無環境變數則從執行個體中繼資料 (Instance Metadata)取得）。\n\n僅在service_account_file和service_account_credentials均為空時生效。"
+      },
+      "export_formats": {
+        "title": "匯出格式",
+        "help": "下載Google文件時首選格式的逗號分隔列表。"
+      },
+      "fast_list_bug_fix": {
+        "title": "Fast List Bug修復",
+        "help": "規避Google Drive列表功能的一個bug。\n\n預設情況下，rclone會規避Google Drive使用--fast-list（ListR）時的一個bug：搜尋\"(A in parents) or (B in parents)\"有時會返回空結果。詳見#3114、#4289和https://issuetracker.google.com/issues/149522397\n\nRclone透過檢測列出多個目錄時均無專案的情況來識別此問題，並將這些目錄改為逐個列出。\n\n這意味著如果你有大量空目錄，rclone最終會逐個列出它們，這會消耗更多API呼叫次數。\n\n此標誌可禁用此規避措施。**不**建議在正常使用中禁用 - 僅在遇到特殊問題（如大量空目錄）時使用。\n"
+      },
+      "formats": {
+        "title": "格式",
+        "help": "已廢棄：請參見export_formats。"
+      },
+      "impersonate": {
+        "title": "模擬使用者",
+        "help": "使用服務帳戶 (Service Account)時模擬此使用者。"
+      },
+      "import_formats": {
+        "title": "匯入格式",
+        "help": "上傳Google文件時首選格式的逗號分隔列表。"
+      },
+      "keep_revision_forever": {
+        "title": "永久保留版本",
+        "help": "永久保留每個檔案的最新版本。"
+      },
+      "list_chunk": {
+        "title": "列表分塊大小",
+        "help": "列表分塊大小，取值範圍100-1000，0表示禁用。"
+      },
+      "metadata_labels": {
+        "title": "中繼資料標籤",
+        "help": "控制是否應在中繼資料中讀取或寫入標籤。\n\n從檔案讀取標籤中繼資料需要額外的API呼叫，會降低列表操作速度。有時不希望從中繼資料設定標籤。\n\n標籤格式詳見Drive API文件：https://developers.google.com/drive/api/reference/rest/v3/Label -\nrclone僅提供此格式的JSON資料。\n\n設定標籤時，標籤和欄位必須已存在 - rclone不會建立它們。這意味著如果你要在兩個不同賬戶間傳輸標籤，必須提前建立標籤，並使用中繼資料對應程式 (Metadata Mapper)轉換兩個賬戶間的ID。\n"
+      },
+      "metadata_owner": {
+        "title": "中繼資料所有者",
+        "help": "控制是否應在中繼資料中讀取或寫入所有者資訊。\n\n所有者是檔案中繼資料的標準部分，易於讀取。但有時不希望從中繼資料設定所有者。\n\n注意：無法在共享雲端硬碟上設定所有者，且更改所有權會向新所有者傳送郵件（無法禁用），也無法將所有權轉移給組織外部的使用者。"
+      },
+      "metadata_permissions": {
+        "title": "中繼資料許可權",
+        "help": "控制是否應在中繼資料中讀取或寫入許可權資訊。\n\n從檔案讀取許可權中繼資料速度較快，但有時不希望從中繼資料設定許可權。\n\n注意：rclone會丟棄共享雲端硬碟上的繼承許可權，以及我的雲端硬碟上的所有者許可權（這些已在所有者中繼資料中重複）。\n"
+      },
+      "pacer_burst": {
+        "title": "請求突發數",
+        "help": "允許不等待的API呼叫次數。"
+      },
+      "pacer_min_sleep": {
+        "title": "最小請求間隔",
+        "help": "API呼叫之間的最小等待時間。"
+      },
+      "resource_key": {
+        "title": "資源金鑰",
+        "help": "訪問連結共享檔案的資源金鑰。\n\n若需要訪問如下連結共享的檔案\n\n    https://drive.google.com/drive/folders/XXX?resourcekey=YYY&usp=sharing\n\n需將第一部分\"XXX\"作為\"root_folder_id\"，第二部分\"YYY\"作為\"resource_key\"，否則訪問該目錄時會出現404未找到錯誤。\n\n詳見：https://developers.google.com/drive/api/guides/resource-keys\n\n此資源金鑰要求僅適用於部分舊檔案。\n\n另請注意，使用驗證rclone的使用者在網頁介面中開啟一次該資料夾後，通常就不再需要資源金鑰。\n"
+      },
+      "root_folder_id": {
+        "title": "根資料夾ID",
+        "help": "根資料夾ID。\n通常留空。\n\n填寫以訪問\"Computers\"資料夾（見文件），或讓rclone以非根資料夾作為起始路徑。\n"
+      },
+      "scope": {
+        "title": "許可權範圍",
+        "help": "rclone向drive請求訪問許可權時使用的許可權範圍逗號分隔列表。"
+      },
+      "server_side_across_configs": {
+        "title": "跨設定服務端操作",
+        "help": "已廢棄：請改用 --server-side-across-configs。\n\n允許服務端操作（如複製）跨不同drive設定執行。\n\n若需要在兩個不同的Google Drive之間執行服務端複製，此選項非常有用。注意預設未啟用此選項，因為無法輕易判斷任意兩個設定之間是否支援此操作。"
+      },
+      "service_account_credentials": {
+        "title": "服務帳戶 (Service Account)憑證",
+        "help": "服務帳戶 (Service Account)憑證JSON資料。\n\n通常留空。\n僅在希望使用服務帳戶 (Service Account)而非互動式登入時需要設定。"
+      },
+      "service_account_file": {
+        "title": "服務帳戶 (Service Account)檔案",
+        "help": "服務帳戶 (Service Account)憑證JSON檔案路徑。\n\n通常留空。\n僅在希望使用服務帳戶 (Service Account)而非互動式登入時需要設定。\n\n檔案名中的`~`會展開為使用者主目錄，環境變數如`${RCLONE_CONFIG_DIR}`也會展開。"
+      },
+      "shared_with_me": {
+        "title": "僅顯示共享檔案",
+        "help": "僅顯示與我共享的檔案。\n\n指示rclone操作你的\"與我共享\"資料夾（Google Drive中用於訪問他人共享的檔案和資料夾的位置）。\n\n此選項適用於\"list\"命令（lsd、lsl等）、\"copy\"命令（copy、sync等）以及所有其他命令。"
+      },
+      "show_all_gdocs": {
+        "title": "顯示所有Google文件",
+        "help": "列出時顯示所有Google文件，包括不可匯出的文件。\n\n若未設定此標誌，對Google表單執行服務端複製會出現以下錯誤：\n\n    No export formats found for \"application/vnd.google-apps.form\"\n\n但設定此標誌後，可對錶單執行服務端複製。\n\n注意：在此模式下，rclone不會為Google文件檔案名新增擴充功能名。\n\n**請勿**在下載Google文件時設定此標誌 - rclone將無法下載它們。\n"
+      },
+      "size_as_quota": {
+        "title": "按配額顯示大小",
+        "help": "按儲存配額使用量顯示大小，而非實際大小。\n\n按檔案佔用的儲存配額顯示大小，包括當前版本和所有設定為永久保留的舊版本。\n\n**警告**：此標誌可能導致一些意外後果。\n\n不建議在設定中設定此標誌 - 推薦僅在執行rclone ls/lsl/lsf/lsjson等命令時使用--drive-size-as-quota標誌形式。\n\n若在同步時使用此標誌（不推薦），還需使用--ignore size標誌。"
+      },
+      "skip_checksum_gphotos": {
+        "title": "跳過Google相簿總和檢查碼 (Checksum)",
+        "help": "僅跳過Google照片和影片的總和檢查碼 (Checksum)檢查。\n\n若傳輸Google照片或影片時出現總和檢查碼 (Checksum)錯誤，可使用此選項。\n\n設定此標誌後，Google照片和影片將返回空的總和檢查碼 (Checksum)。\n\nGoogle照片透過位於\"photos\"空間來識別。\n\n總和檢查碼 (Checksum)損壞是由於Google修改了圖片/影片但未更新總和檢查碼 (Checksum)導致的。"
+      },
+      "skip_dangling_shortcuts": {
+        "title": "跳過無效捷徑",
+        "help": "若設定，列出時跳過無效的捷徑檔案。\n\n設定此標誌後，rclone在列出時不會顯示任何無效的捷徑。\n"
+      },
+      "skip_gdocs": {
+        "title": "跳過Google文件",
+        "help": "在所有列表中跳過Google文件。\n\n設定後，Google文件對rclone實際上不可見。"
+      },
+      "skip_shortcuts": {
+        "title": "跳過捷徑",
+        "help": "若設定，跳過捷徑檔案。\n\n預設情況下，rclone會解析捷徑檔案，使其表現得如同原始檔案（見[捷徑部分](#shortcuts)）。\n若設定此標誌，rclone將完全忽略捷徑檔案。\n"
+      },
+      "starred_only": {
+        "title": "僅顯示已加星標",
+        "help": "僅顯示已加星標的檔案。"
+      },
+      "stop_on_download_limit": {
+        "title": "達到下載限制時停止",
+        "help": "將下載限制錯誤設為致命錯誤。\n\n撰寫本文件時，Google Drive每日下載限制為10 TiB（未公開的限制）。達到此限制時，Google Drive會返回略微不同的錯誤訊息。設定此標誌後，這些錯誤將被視為致命錯誤，會停止正在進行的同步。\n\n注意：此檢測依賴於Google未公開的錯誤訊息字串，未來可能失效。\n"
+      },
+      "stop_on_upload_limit": {
+        "title": "達到上傳限制時停止",
+        "help": "將上傳限制錯誤設為致命錯誤。\n\n撰寫本文件時，Google Drive每日上傳限制為750 GiB（未公開的限制）。達到此限制時，Google Drive會返回略微不同的錯誤訊息。設定此標誌後，這些錯誤將被視為致命錯誤，會停止正在進行的同步。\n\n注意：此檢測依賴於Google未公開的錯誤訊息字串，未來可能失效。\n\n詳見：https://github.com/rclone/rclone/issues/3857\n"
+      },
+      "team_drive": {
+        "title": "團隊雲端硬碟",
+        "help": "共享雲端硬碟（團隊雲端硬碟）的ID。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "trashed_only": {
+        "title": "僅顯示回收站檔案",
+        "help": "僅顯示回收站中的檔案。\n\n將按原始目錄結構顯示回收站中的檔案。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換至分塊上傳的檔案大小閾值。"
+      },
+      "use_created_date": {
+        "title": "使用建立時間",
+        "help": "使用檔案建立時間而非修改時間。\n\n下載資料時若希望使用建立時間替代最後修改時間，此選項非常有用。\n\n**警告**：此標誌可能導致一些意外後果。\n\n上傳到雲端硬碟時，除非檔案自建立後未被修改，否則所有檔案都會被覆蓋。下載時則相反。可透過使用\"--checksum\"標誌避免此副作用。\n\n此功能用於保留Google相簿記錄的照片拍攝日期。需先在Google Drive設定中勾選\"建立Google相簿資料夾\"選項。然後可將照片複製或移動到本機，並將拍攝時間（建立時間）設為修改時間。"
+      },
+      "use_shared_date": {
+        "title": "使用共享時間",
+        "help": "使用檔案共享時間而非修改時間。\n\n注意：與\"--drive-use-created-date\"一樣，此標誌在上傳/下載檔案時可能導致意外後果。\n\n若同時設定此標誌和\"--drive-use-created-date\"，將使用建立時間。"
+      },
+      "use_trash": {
+        "title": "使用回收站",
+        "help": "將檔案移至回收站而非永久刪除。\n\n預設值為true，即將檔案移至回收站。\n使用`--drive-use-trash=false`可永久刪除檔案。"
+      },
+      "v2_download_min_size": {
+        "title": "V2下載最小大小",
+        "help": "若檔案大於此值，使用drive v2 API下載。"
+      },
+      "metadata_enforce_expansive_access": {
+        "title": "中繼資料強制擴充功能存取",
+        "help": "請求是否應強制執行擴充功能存取規則。\n\n從2026年2月起，此標誌將預設設定，因此可以在此之前用於測試。\n\n參見：https://developers.google.com/workspace/drive/api/guides/limited-expansive-access\n"
+      }
+    },
+    "dropbox": {
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "batch_commit_timeout": {
+        "title": "批次提交逾時",
+        "help": "等待批次提交完成的最長時間。（已不再使用）"
+      },
+      "batch_mode": {
+        "title": "批次模式",
+        "help": "檔案上傳批處理模式：sync|async|off。\n\n設定rclone使用的批次模式。\n\n詳細資訊見[主文件](https://rclone.org/dropbox/#batch-mode)\n\n有3個可選值\n\n- off - 禁用批處理\n- sync - 批次上傳並檢查完成狀態（預設值）\n- async - 批次上傳且不檢查完成狀態\n\nRclone結束時會關閉所有未完成的批處理，這可能導致結束時出現延遲。\n"
+      },
+      "batch_size": {
+        "title": "批次大小",
+        "help": "上傳批次中的最大檔案數。\n\n設定要上傳的檔案批大小，必須小於1000。\n\n預設值為0，表示rclone會根據batch_mode的設定自動計算批大小。\n\n- batch_mode: async - 預設批大小為100\n- batch_mode: sync - 預設批大小與--transfers相同\n- batch_mode: off - 不生效\n\nRclone結束時會關閉所有未完成的批處理，這可能導致結束時出現延遲。\n\n上傳大量小檔案時設定此值可顯著提升速度。可配合--transfers 32使用以最大化輸送量。\n"
+      },
+      "batch_timeout": {
+        "title": "批次逾時",
+        "help": "空閒上傳批次等待上傳的最長時間。\n\n若上傳批次空閒超過此時長，將觸發上傳。\n\n預設值為0，表示rclone會根據使用的batch_mode選擇合理的預設值。\n\n- batch_mode: async - 預設批次逾時為10秒\n- batch_mode: sync - 預設批次逾時為500毫秒\n- batch_mode: off - 不生效\n"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小（< 150Mi）。\n\n大於此值的檔案將以此大小的分塊上傳。\n\n注意：分塊會在記憶體中緩衝（一次一個），以便rclone處理重試。增大此值可略微提升速度（測試中128 MiB最多提升10%），但會佔用更多記憶體。記憶體緊張時可減小此值。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "OAuth用戶端 ID (Client ID)。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "export_formats": {
+        "title": "匯出格式",
+        "help": "檔案匯出首選格式的逗號分隔列表\n\n某些Dropbox檔案只能透過匯出為其他格式訪問。\n包括Dropbox Paper文件。\n\n對於此類檔案，rclone會選擇此列表中Dropbox支援的第一個格式。若無支援的格式，將選擇Dropbox的預設格式。\n\n已知格式包括：\"html\"、\"md\"（markdown）"
+      },
+      "impersonate": {
+        "title": "模擬使用者",
+        "help": "使用企業賬戶時模擬此使用者。\n\n注意：若要使用模擬功能，執行\"rclone config\"時必須設定此標誌，這會使rclone請求預設不會申請的\"members.read\"許可權範圍。此許可權用於將成員電子郵件地址轉換為Dropbox API使用的內部ID。\n\n使用\"members.read\"許可權範圍需要Dropbox團隊管理員在OAuth流程中批准。\n\n必須使用自己的應用（設定自己的client_id和client_secret）才能使用此選項，因為當前rclone的預設許可權集不包含\"members.read\"。v1.55或更高版本普及後會新增此許可權。\n"
+      },
+      "pacer_min_sleep": {
+        "title": "最小請求間隔",
+        "help": "API呼叫之間的最小等待時間。"
+      },
+      "root_namespace": {
+        "title": "根名稱空間",
+        "help": "指定不同的Dropbox名稱空間ID作為所有路徑的根。"
+      },
+      "shared_files": {
+        "title": "共享檔案模式",
+        "help": "指示rclone操作單個共享檔案。\n\n此模式下rclone功能受限 - 僅支援列表操作（ls、lsl等）和讀取操作（如下載）。\n所有其他操作均被禁用。"
+      },
+      "shared_folders": {
+        "title": "共享資料夾模式",
+        "help": "指示rclone操作共享資料夾。\n\t\t\t\n未指定路徑時，此標誌僅支援列表操作，會列出所有可用的共享資料夾。若指定路徑，第一部分將被解析為共享資料夾名稱。Rclone會嘗試將此共享資料夾掛載到根名稱空間。成功後，該共享資料夾將與普通資料夾無異，支援所有一般操作。\n\n注意：掛載後無需再使用--dropbox-shared-folders標誌即可訪問該共享資料夾。\n\n另請參見--dropbox-root-namespace，這是操作共享資料夾的另一種方式。"
+      },
+      "show_all_exports": {
+        "title": "顯示所有可匯出檔案",
+        "help": "列出時顯示所有可匯出檔案。\n\n設定此標誌後，所有可匯出檔案均可執行服務端複製。\n注意：在此模式下，rclone不會為可匯出檔案新增擴充功能名。\n\n**請勿**在下載可匯出檔案時設定此標誌 - rclone將無法下載它們。\n"
+      },
+      "skip_exports": {
+        "title": "跳過可匯出檔案",
+        "help": "在所有列表中跳過可匯出檔案。\n\n設定後，可匯出檔案對rclone實際上不可見。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      }
+    },
+    "fichier": {
+      "api_key": {
+        "title": "API金鑰",
+        "help": "你的API金鑰，可從https://1fichier.com/console/params.pl取得。"
+      },
+      "cdn": {
+        "title": "使用CDN",
+        "help": "設定以使用CDN下載連結。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "file_password": {
+        "title": "檔案密碼",
+        "help": "若要下載受密碼保護的共享檔案，請設定此引數。"
+      },
+      "folder_password": {
+        "title": "資料夾密碼",
+        "help": "若要列出受密碼保護的共享資料夾中的檔案，請設定此引數。"
+      },
+      "shared_folder": {
+        "title": "共享資料夾",
+        "help": "若要下載共享資料夾，請設定此引數。"
+      }
+    },
+    "filefabric": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "permanent_token": {
+        "title": "永久權杖 (Token)",
+        "help": "永久驗證權杖 (Token)。\n\n可在企業級File Fabric中建立永久驗證權杖 (Token)：在使用者儀錶板的安全部分，找到名為\"My Authentication Tokens\"的條目，點選管理按鈕建立。\n\n這些權杖 (Token)通常有效期為數年。\n\n更多資訊見：https://docs.storagemadeeasy.com/organisationcloud/api-tokens\n"
+      },
+      "root_folder_id": {
+        "title": "根資料夾ID",
+        "help": "根資料夾ID。\n\n通常留空。\n\n填寫以讓rclone從指定ID的目錄開始。\n"
+      },
+      "token": {
+        "title": "會話權杖 (Token)",
+        "help": "會話權杖 (Token)。\n\n這是rclone快取在設定檔案中的會話權杖 (Token)，通常有效期為1小時。\n\n請勿手動設定此值 - rclone會自動設定。\n"
+      },
+      "token_expiry": {
+        "title": "權杖 (Token)過期時間",
+        "help": "權杖 (Token)過期時間。\n\n請勿手動設定此值 - rclone會自動設定。\n"
+      },
+      "url": {
+        "title": "訪問地址",
+        "help": "要連線的企業級File Fabric的URL。"
+      },
+      "version": {
+        "title": "版本號",
+        "help": "從file fabric讀取的版本號。\n\n請勿手動設定此值 - rclone會自動設定。\n"
+      }
+    },
+    "filelu": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "key": {
+        "title": "金鑰",
+        "help": "從個人賬戶取得的FileLu Rclone金鑰"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換到分塊上傳的閾值。大於此值的任何檔案都將以chunk_size的塊上傳。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "分塊大小。用於分塊上傳。"
+      }
+    },
+    "filescom": {
+      "api_key": {
+        "title": "API金鑰",
+        "help": "用於驗證Files.com的API金鑰。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "用於驗證Files.com的密碼。"
+      },
+      "site": {
+        "title": "站點地址",
+        "help": "你的站點子域名（如mysite）或自定義域名（如myfiles.customdomain.com）。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "用於驗證Files.com的使用者名稱。"
+      }
+    },
+    "ftp": {
+      "allow_insecure_tls_ciphers": {
+        "title": "允許不安全的TLS加密套件",
+        "help": "允許使用不安全的TLS加密套件\n\n設定此標誌後，除安全預設套件外，還允許使用以下TLS加密套件：\n\n- TLS_RSA_WITH_AES_128_GCM_SHA256\n"
+      },
+      "ask_password": {
+        "title": "詢問密碼",
+        "help": "允許在需要時詢問FTP密碼。\n\n若設定此項且未提供密碼，rclone將提示輸入密碼\n"
+      },
+      "close_timeout": {
+        "title": "關閉逾時",
+        "help": "等待關閉響應的最長時間。"
+      },
+      "concurrency": {
+        "title": "並行連線數",
+        "help": "FTP最大並行連線數，0表示無限制。\n\n注意：設定此值極有可能導致死鎖，使用時需謹慎。\n\n執行同步或複製時，請確保並行數比`--transfers`與`--checkers`之和多1。\n\n若使用`--check-first`，只需比`--checkers`和`--transfers`中的最大值多1。\n\n例如`concurrency 3`可配合`--checkers 2 --transfers 2 --check-first`或`--checkers 1 --transfers 1`使用。\n\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_epsv": {
+        "title": "禁用EPSV",
+        "help": "即使伺服器宣告支援，也禁用EPSV模式。"
+      },
+      "disable_mlsd": {
+        "title": "禁用MLSD",
+        "help": "即使伺服器宣告支援，也禁用MLSD列表命令。"
+      },
+      "disable_tls13": {
+        "title": "禁用TLS 1.3",
+        "help": "禁用TLS 1.3（用於解決存在TLS問題的FTP伺服器）"
+      },
+      "disable_utf8": {
+        "title": "禁用UTF-8",
+        "help": "即使伺服器宣告支援，也禁用UTF-8編碼。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "explicit_tls": {
+        "title": "顯式TLS",
+        "help": "使用顯式FTPS（基於TLS的FTP）。\n\n使用顯式FTPS時，用戶端會主動向伺服器請求安全升級，將明文連線切換為加密連線。不可與隱式FTPS同時使用。"
+      },
+      "force_list_hidden": {
+        "title": "強制列出隱藏檔案",
+        "help": "使用LIST -a強制列出隱藏檔案和資料夾。這將禁用MLSD。"
+      },
+      "host": {
+        "title": "主機地址",
+        "help": "要連線的FTP主機。\n\n例如\"ftp.example.com\"。"
+      },
+      "http_proxy": {
+        "title": "HTTP代理",
+        "help": "HTTP CONNECT代理URL\n\n設定為支援HTTP CONNECT方法的HTTP代理地址。\n"
+      },
+      "idle_timeout": {
+        "title": "空閒逾時",
+        "help": "關閉空閒連線前的最長時間。\n\n若在指定時間內沒有連線返回連線池，rclone將清除連線池。\n\n設定為0表示永久保持連線。\n"
+      },
+      "no_check_certificate": {
+        "title": "不驗證證書",
+        "help": "不驗證伺服器的TLS證書。"
+      },
+      "no_check_upload": {
+        "title": "不檢查上傳結果",
+        "help": "不檢查上傳是否成功\n\n正常情況下，rclone會在檔案上傳後檢查檔案是否存在，確認大小和修改時間是否符合預期。\n\n此標誌會停止這些檢查，允許上傳到只寫資料夾。\n\n上傳到只寫資料夾時，通常還需要配合--inplace標誌使用。\n"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "FTP密碼。"
+      },
+      "port": {
+        "title": "連線埠",
+        "help": "FTP連線埠號。"
+      },
+      "shut_timeout": {
+        "title": "關閉逾時",
+        "help": "等待資料連線關閉狀態的最長時間。"
+      },
+      "socks_proxy": {
+        "title": "SOCKS代理",
+        "help": "SOCKS 5代理主機。\n\n支援格式：user:pass@host:port、user@host:port、host:port。\n\n示例：\n\n    myUser:myPass@localhost:9005\n"
+      },
+      "tls": {
+        "title": "隱式TLS",
+        "help": "使用隱式FTPS（基於TLS的FTP）。\n\n使用隱式FTPS時，用戶端從一開始就使用TLS連線，這會破壞與不支援TLS的伺服器的相容性。通常使用990連線埠而非21連線埠。不可與顯式FTPS同時使用。"
+      },
+      "tls_cache_size": {
+        "title": "TLS快取大小",
+        "help": "所有控制連線和資料連線的TLS會話快取大小。\n\nTLS快取允許恢復TLS會話並在連線間複用預共享金鑰。\n若預設大小不足導致TLS恢復錯誤，可增大此值。\n預設啟用。設定為0禁用。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "FTP使用者名稱。"
+      },
+      "writing_mdtm": {
+        "title": "使用MDTM修改時間",
+        "help": "使用MDTM命令設定修改時間（VsFtpd相容模式）"
+      }
+    },
+    "gofile": {
+      "access_token": {
+        "title": "存取權杖 (Access Token)",
+        "help": "API存取權杖 (Access Token)\n\n可從網頁控制面板取得。"
+      },
+      "account_id": {
+        "title": "賬戶ID",
+        "help": "賬戶ID\n\n通常留空，rclone會自動填寫。\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "list_chunk": {
+        "title": "列表分塊數",
+        "help": "每次呼叫列出的專案數"
+      },
+      "root_folder_id": {
+        "title": "根資料夾ID",
+        "help": "根資料夾ID\n\n通常留空，rclone會自動填寫。\n\n若需要限制rclone只能訪問特定資料夾，可填寫此值 - 詳見文件。\n"
+      }
+    },
+    "google cloud storage": {
+      "access_token": {
+        "title": "存取權杖 (Access Token)",
+        "help": "短期存取權杖 (Access Token)。\n\n通常留空。\n僅在希望使用短期存取權杖 (Access Token)而非互動式登入時需要。"
+      },
+      "anonymous": {
+        "title": "匿名訪問",
+        "help": "無需憑證訪問公共儲存空間和物件。\n\n若僅需下載檔案且不設定憑證，設定為'true'。"
+      },
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "bucket_acl": {
+        "title": "儲存空間ACL",
+        "help": "新增儲存空間的訪問控制列表。"
+      },
+      "bucket_policy_only": {
+        "title": "僅儲存空間策略",
+        "help": "訪問檢查使用儲存空間級別的IAM策略。\n\n若需要上傳物件到開啟了僅儲存空間策略的儲存空間，必須設定此項。\n\n設定後，rclone：\n\n- 忽略儲存空間上設定的ACL\n- 忽略物件上設定的ACL\n- 建立開啟僅儲存空間策略的儲存空間\n\n文件：https://cloud.google.com/storage/docs/bucket-policy-only\n"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "OAuth用戶端 ID (Client ID)。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "decompress": {
+        "title": "自動解壓",
+        "help": "若設定，將自動解壓gzip編碼的物件。\n\n可以向GCS上傳設定了\"Content-Encoding: gzip\"的物件。正常情況下，rclone會以壓縮形式下載這些檔案。\n\n若設定此標誌，rclone在接收時會自動解壓這些\"Content-Encoding: gzip\"檔案。這意味著rclone無法校驗大小和雜湊 (Hash)，但檔案內容會被解壓。\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "directory_markers": {
+        "title": "目錄標記",
+        "help": "建立新目錄時上傳一個以斜槓結尾的空物件\n\n基於儲存空間的遠端連線不支援空資料夾，此選項會建立一個以\"/\"結尾的空物件來保留資料夾。\n"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "儲存API自定義接入點。留空使用服務商預設值。\n\n使用包含子路徑的自定義接入點（如example.org/custom/endpoint）時，由於底層Google API Go用戶端庫限制，上傳操作會忽略子路徑。\n下載和列表操作可正常使用完整接入點路徑。\n若上傳需要支援子路徑，請避免在自定義接入點中使用子路徑。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行時取得GCP IAM憑證（環境變數，若無環境變數則從執行個體中繼資料 (Instance Metadata)取得）。\n\n僅在service_account_file和service_account_credentials均為空時生效。"
+      },
+      "location": {
+        "title": "區域",
+        "help": "新增儲存空間的所在區域。"
+      },
+      "no_check_bucket": {
+        "title": "不檢查儲存空間",
+        "help": "若設定，不嘗試檢查儲存空間是否存在或建立。\n\n若已知儲存空間已存在，使用此選項可減少rclone的請求次數。\n"
+      },
+      "object_acl": {
+        "title": "物件ACL",
+        "help": "新增物件的訪問控制列表。"
+      },
+      "project_number": {
+        "title": "專案編號",
+        "help": "專案編號。\n\n可選 - 僅在列出/建立/刪除儲存空間時需要 - 詳見開發者控制檯。"
+      },
+      "service_account_credentials": {
+        "title": "服務帳戶 (Service Account)憑證",
+        "help": "服務帳戶 (Service Account)憑證JSON資料。\n\n通常留空。\n僅在希望使用服務帳戶 (Service Account)而非互動式登入時需要。"
+      },
+      "service_account_file": {
+        "title": "服務帳戶 (Service Account)檔案",
+        "help": "服務帳戶 (Service Account)憑證JSON檔案路徑。\n\n通常留空。\n僅在希望使用服務帳戶 (Service Account)而非互動式登入時需要。\n\n檔案名中的`~`會展開為使用者主目錄，環境變數如`${RCLONE_CONFIG_DIR}`也會展開。"
+      },
+      "storage_class": {
+        "title": "儲存型別",
+        "help": "在Google Cloud Storage中儲存物件時使用的儲存型別。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "user_project": {
+        "title": "使用者專案",
+        "help": "使用者專案。\n\n可選 - 僅在請求者付費模式下需要。"
+      }
+    },
+    "google photos": {
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "batch_commit_timeout": {
+        "title": "批次提交逾時",
+        "help": "等待批次提交完成的最長時間。（已不再使用）"
+      },
+      "batch_mode": {
+        "title": "批次模式",
+        "help": "檔案上傳批處理模式：sync|async|off。\n\n設定rclone使用的批次模式。\n\n有3個可選值\n\n- off - 禁用批處理\n- sync - 批次上傳並檢查完成狀態（預設值）\n- async - 批次上傳且不檢查完成狀態\n\nRclone結束時會關閉所有未完成的批處理，這可能導致結束時出現延遲。\n"
+      },
+      "batch_size": {
+        "title": "批次大小",
+        "help": "上傳批次中的最大檔案數。\n\n設定要上傳的檔案批大小，必須小於50。\n\n預設值為0，表示rclone會根據batch_mode的設定自動計算批大小。\n\n- batch_mode: async - 預設批大小為50\n- batch_mode: sync - 預設批大小與--transfers相同\n- batch_mode: off - 不生效\n\nRclone結束時會關閉所有未完成的批處理，這可能導致結束時出現延遲。\n\n上傳大量小檔案時設定此值可顯著提升速度。可配合--transfers 32使用以最大化輸送量。\n"
+      },
+      "batch_timeout": {
+        "title": "批次逾時",
+        "help": "空閒上傳批次等待上傳的最長時間。\n\n若上傳批次空閒超過此時長，將觸發上傳。\n\n預設值為0，表示rclone會根據使用的batch_mode選擇合理的預設值。\n\n- batch_mode: async - 預設批次逾時為10秒\n- batch_mode: sync - 預設批次逾時為1秒\n- batch_mode: off - 不生效\n"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "OAuth用戶端 ID (Client ID)。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "include_archived": {
+        "title": "包含已封存內容",
+        "help": "同時檢視和下載已封存的媒體。\n\n預設情況下，rclone不會請求已封存媒體。因此同步時，已封存媒體不會出現在目錄列表中，也不會被傳輸。\n\n注意：相簿中的媒體無論封存狀態如何，始終可見並同步。\n\n設定此標誌後，已封存媒體將始終顯示在目錄列表中並被傳輸。\n\n不設定此標誌時，已封存媒體不會顯示在目錄列表中，也不會被傳輸。"
+      },
+      "proxy": {
+        "title": "代理",
+        "help": "使用gphotosdl代理下載全解析度圖片\n\nGoogle API返回的圖片和影片可能不是全解析度，或缺少EXIF資訊。\n\n使用gphotosdl代理可下載原始、未修改的圖片。\n\n此代理會在背景執行無頭瀏覽器。\n\n從[gphotosdl](https://github.com/rclone/gphotosdl)下載軟體\n\n首先執行\n\n    gphotosdl -login\n\n登入Google相簿後關閉瀏覽器視窗，然後執行\n\n    gphotosdl\n\n設定引數`--gphotos-proxy \"http://localhost:8282\"`使rclone使用此代理。\n"
+      },
+      "read_only": {
+        "title": "只讀模式",
+        "help": "設定Google相簿後端為只讀模式。\n\n選擇只讀模式後，rclone僅請求照片的只讀許可權，否則將請求完全訪問許可權。"
+      },
+      "read_size": {
+        "title": "讀取大小",
+        "help": "設定讀取媒體專案的大小。\n\n正常情況下，rclone不會讀取媒體專案大小，因為這需要額外請求。同步時不需要此資訊。\n但rclone掛載需要在讀取前知道檔案大小，因此使用rclone掛載並希望讀取媒體時，建議設定此標誌。"
+      },
+      "start_year": {
+        "title": "起始年份",
+        "help": "僅下載指定年份及之後上傳的照片。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      }
+    },
+    "hasher": {
+      "auto_size": {
+        "title": "自動更新大小",
+        "help": "自動更新小於此大小檔案的總和檢查碼 (Checksum)（預設禁用）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "hashes": {
+        "title": "雜湊 (Hash)演算法",
+        "help": "支援的總和檢查碼 (Checksum)型別，逗號分隔列表。"
+      },
+      "max_age": {
+        "title": "快取有效期",
+        "help": "總和檢查碼 (Checksum)在快取中的最長儲存時間（0 = 不快取，off = 永久快取）。"
+      },
+      "remote": {
+        "title": "遠端連線",
+        "help": "要快取總和檢查碼 (Checksum)的遠端連線（例如myRemote:path）。"
+      }
+    },
+    "hdfs": {
+      "data_transfer_protection": {
+        "title": "資料傳輸保護",
+        "help": "Kerberos資料傳輸保護：authentication|integrity|privacy。\n\n指定與資料節點通訊時是否需要驗證、資料簽名完整性檢查和網路加密。可選值為'authentication'、'integrity'和'privacy'。僅在啟用KERBEROS時使用。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "namenode": {
+        "title": "名稱節點",
+        "help": "Hadoop名稱節點和連線埠。\n\n例如\"namenode-1:8020,namenode-2:8020,...\"連線到8020連線埠的主機名稱節點。"
+      },
+      "service_principal_name": {
+        "title": "服務主體 (Service Principal)名稱",
+        "help": "名稱節點的Kerberos服務主體 (Service Principal)名稱。\n\n啟用KERBEROS驗證。指定名稱節點的服務主體 (Service Principal)名稱（SERVICE/FQDN）。\n例如\"hdfs/namenode.hadoop.docker\"表示執行在'hdfs'服務、FQDN為'namenode.hadoop.docker'的名稱節點。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "Hadoop使用者名稱。"
+      }
+    },
+    "hidrive": {
+      "auth_url": {
+        "title": "驗證伺服器位址",
+        "help": "驗證伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "分塊上傳的塊大小。\n\n大於設定閾值（或大小未知）的檔案將以此大小分塊上傳。\n\n上限為2147483647位元組（約2.000Gi）。\n這是單次上傳操作支援的最大位元組數。\n設定超過上限或負值會導致上傳失敗。\n\n增大此值可能提升上傳速度，但會佔用更多記憶體。\n減小此值可節省記憶體。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證OAuth流程。\n\n此選項將使用RFC 6749中定義的OAUTH2用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "OAuth用戶端 ID (Client ID)。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_fetching_member_count": {
+        "title": "禁用成員數取得",
+        "help": "除非絕對必要，否則不取得目錄中的物件數量。\n\n不取得子目錄中的物件數量可能會加快請求速度。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "服務接入點",
+        "help": "服務的接入點URL。\n\nAPI請求將傳送到此URL。"
+      },
+      "root_prefix": {
+        "title": "根路徑字首",
+        "help": "所有路徑的根/父資料夾。\n\n填寫後，rclone會將指定資料夾作為所有路徑的父目錄。\n透過此方式可將任意資料夾設為rclone的起始目錄。"
+      },
+      "scope_access": {
+        "title": "存取範圍",
+        "help": "rclone向HiDrive請求存取時使用的許可權。"
+      },
+      "scope_role": {
+        "title": "角色範圍",
+        "help": "rclone向HiDrive請求訪問時使用的使用者級別。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "JSON格式的OAuth存取權杖 (Access Token)。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)伺服器位址",
+        "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳的並行數。\n\n這是單個檔案同時執行的傳輸任務上限。\n設定小於1的值會導致上傳死鎖。\n\n若在高速鏈路下上傳少量大檔案且頻寬未被充分利用，增大此值可能提升傳輸速度。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "分塊上傳的閾值。\n\n大於此值的檔案將按設定的分塊大小分塊上傳。\n\n上限為2147483647位元組（約2.000Gi）。\n這是單次上傳操作支援的最大位元組數。\n設定超過上限會導致上傳失敗。"
+      }
+    },
+    "http": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "headers": {
+        "title": "請求頭",
+        "help": "為所有請求設定HTTP頭。\n\n用於為所有請求設定額外的HTTP頭。\n\n輸入格式為逗號分隔的鍵值對列表。可使用標準[CSV編碼](https://godoc.org/encoding/csv)。\n\n例如，設定Cookie使用'Cookie,name=value'或'\"Cookie\",\"name=value\"'。\n\n可設定多個頭，如'\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。"
+      },
+      "no_escape": {
+        "title": "禁用轉義",
+        "help": "不對路徑名中的URL元字元進行轉義。"
+      },
+      "no_head": {
+        "title": "禁用HEAD請求",
+        "help": "不使用HEAD請求。\n\nHEAD請求主要用於在目錄列表中取得檔案大小。\n若目標站點載入緩慢，可嘗試此選項。\n正常情況下，rclone會對目錄列表中的每個潛在檔案傳送HEAD請求，目的是：\n\n- 取得檔案大小\n- 檢查檔案是否存在\n- 檢查是否為目錄\n\n設定此選項後，rclone將不傳送HEAD請求。這會使目錄列表速度大幅提升，但rclone將無法取得檔案的時間和大小資訊，且列表中可能包含不存在的檔案。\n"
+      },
+      "no_slash": {
+        "title": "禁用路徑斜槓",
+        "help": "若站點的目錄結尾不加/，請設定此項。\n\n若目標網站的目錄結尾不使用/，需啟用此選項。\n\nrclone通常透過路徑結尾的/區分檔案和目錄。\n設定此標誌後，rclone會將所有Content-Type為text/html的檔案視為目錄，並從中讀取URL而非下載。\n\n注意：這可能導致rclone將真實的HTML檔案誤認為目錄。\n"
+      },
+      "url": {
+        "title": "URL地址",
+        "help": "要連線的HTTP主機URL。\n\n例如\"https://example.com\"，或使用使用者名稱密碼的形式\"https://user:pass@example.com\"。"
+      }
+    },
+    "iclouddrive": {
+      "apple_id": {
+        "title": "Apple ID",
+        "help": "蘋果賬戶ID。"
+      },
+      "client_id": {
+        "title": "用戶端 ID (Client ID)",
+        "help": "用戶端標識"
+      },
+      "cookies": {
+        "title": "Cookie",
+        "help": "Cookie（僅內部使用）"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "賬戶密碼。"
+      },
+      "trust_token": {
+        "title": "信任權杖 (Token)",
+        "help": "信任權杖 (Token)（僅內部使用）"
+      },
+      "service": {
+        "title": "服務",
+        "help": "要使用的 iCloud 服務。"
+      }
+    },
+    "imagekit": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "可在[控制檯](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的URL接入點。"
+      },
+      "only_signed": {
+        "title": "僅簽名連結",
+        "help": "若在控制檯設定中設定了`Restrict unsigned image URLs`（限制未簽名圖片URL），請設為true。"
+      },
+      "private_key": {
+        "title": "私鑰",
+        "help": "可在[控制檯](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的私鑰。"
+      },
+      "public_key": {
+        "title": "公鑰",
+        "help": "可在[控制檯](https://imagekit.io/dashboard/developer/api-keys)中找到ImageKit.io的公鑰。"
+      },
+      "upload_tags": {
+        "title": "上傳標籤",
+        "help": "新增到上傳檔案的標籤，例如\"tag1,tag2\"。"
+      },
+      "versions": {
+        "title": "版本管理",
+        "help": "在目錄列表中包含舊版本檔案。"
+      }
+    },
+    "internetarchive": {
+      "access_key_id": {
+        "title": "存取金鑰ID",
+        "help": "IAS3存取金鑰。\n\n匿名存取留空。\n可在此取得：https://archive.org/account/s3.php"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_checksum": {
+        "title": "禁用總和檢查碼 (Checksum)",
+        "help": "不要求伺服器校驗rclone計算的MD5總和檢查碼 (Checksum)。\n正常情況下，rclone會在上傳前計算輸入檔案的MD5總和檢查碼 (Checksum)，以便請求伺服器校驗物件。\n這有助於資料完整性檢查，但會導致大檔案開始上傳前出現長時間延遲。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "IAS3接入點。\n\n留空使用預設值。"
+      },
+      "front_endpoint": {
+        "title": "前端接入點",
+        "help": "InternetArchive前端主機。\n\n留空使用預設值。"
+      },
+      "item_derive": {
+        "title": "專案派生",
+        "help": "是否觸發IA專案的派生處理。設為false時，上傳後IA不會對專案進行派生處理。\n派生過程會從上傳檔案生成多個輔助檔案，使上傳內容更適合網頁展示。\n若上傳的檔案已是IA可展示的格式，或希望減輕IA基礎設施負擔，可設為false。"
+      },
+      "item_metadata": {
+        "title": "專案中繼資料",
+        "help": "要設定在IA專案上的中繼資料，與使用--metadata-set設定的檔案級中繼資料不同。\n格式為key=value，系統會自動新增'x-archive-meta-'字首。"
+      },
+      "secret_access_key": {
+        "title": "祕密存取金鑰",
+        "help": "IAS3祕密金鑰（密碼）。\n\n匿名存取留空。"
+      },
+      "wait_archive": {
+        "title": "等待封存",
+        "help": "等待伺服器處理任務（特別是封存和book_op）完成的逾時時間。\n僅在需要確保寫入操作後資料能立即同步可見時啟用。\n設為0禁用等待。逾時不會丟擲錯誤。"
+      }
+    },
+    "jottacloud": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n採用 RFC 6749 中定義的 OAuth2 用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "hard_delete": {
+        "title": "硬刪除",
+        "help": "永久刪除檔案，而不是移入回收站。"
+      },
+      "md5_memory_limit": {
+        "title": "MD5 記憶體限制",
+        "help": "超過此大小的檔案，如需計算 MD5，會快取到磁碟。"
+      },
+      "no_versions": {
+        "title": "禁用版本管理",
+        "help": "避免伺服器端版本控制：採用刪除再重建的方式，而非覆蓋檔案。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "trashed_only": {
+        "title": "僅顯示回收站",
+        "help": "只顯示回收站中的檔案。\n\n會按原目錄結構展示已刪除檔案。"
+      },
+      "upload_resume_limit": {
+        "title": "上傳續傳閾值",
+        "help": "大於此大小的檔案，上傳失敗時可支援斷點續傳。"
+      }
+    },
+    "koofr": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "要使用的 Koofr API 地址。"
+      },
+      "mountid": {
+        "title": "掛載 ID",
+        "help": "使用的掛載點 ID。\n\n省略時使用主掛載點。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "rclone 使用的密碼，在 https://app.koofr.net/app/admin/preferences/password 生成。"
+      },
+      "provider": {
+        "title": "儲存提供商",
+        "help": "選擇儲存服務商。"
+      },
+      "setmtime": {
+        "title": "設定修改時間",
+        "help": "後端是否支援設定修改時間。\n\n如果掛載 ID 指向 Dropbox 或 Amazon Drive，請設為 false。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "你的使用者名稱。"
+      }
+    },
+    "linkbox": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "從 https://www.linkbox.to/admin/account 取得的權杖 (Token)。"
+      },
+      "email": {
+        "title": "Email",
+        "help": "Email for login"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password for login"
+      },
+      "web_token": {
+        "title": "Web Token",
+        "help": "Web API login token - set automatically."
+      }
+    },
+    "local": {
+      "case_insensitive": {
+        "title": "大小寫不敏感",
+        "help": "強制檔案系統宣告為大小寫不敏感。\n\n本機後端預設在 Windows/macOS 上為大小寫不敏感，其他系統為敏感。使用此引數覆蓋預設行為。"
+      },
+      "case_sensitive": {
+        "title": "大小寫敏感",
+        "help": "強制檔案系統宣告為大小寫敏感。\n\n本機後端預設在 Windows/macOS 上為大小寫不敏感，其他系統為敏感。使用此引數覆蓋預設行為。"
+      },
+      "copy_links": {
+        "title": "複製連結",
+        "help": "跟隨符號連結 (Symlink)，複製連結指向的實際檔案。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "hashes": {
+        "title": "雜湊 (Hash)演算法",
+        "help": "支援的總和檢查碼 (Checksum)型別，逗號分隔。"
+      },
+      "links": {
+        "title": "連結處理",
+        "help": "將符號連結 (Symlink)與帶 .rclonelink 字尾的普通檔案互相轉換（僅本機後端）。"
+      },
+      "no_check_updated": {
+        "title": "不檢查檔案更新",
+        "help": "上傳時不檢查檔案是否發生變化。\n\n正常情況下，rclone 上傳時會檢查檔案大小和修改時間，如果檔案在上傳中改變，會以“無法複製——源檔案正在更新”中止。\n\n但在某些檔案系統上，修改時間檢查可能失效（如 Glusterfs），可使用此引數關閉檢查。\n\n啟用後，rclone 會盡力傳輸正在更新的檔案。如果檔案僅被追加內容（如日誌），rclone 會按首次取得的大小傳輸。\n\n如果檔案整體被修改（不只是追加），傳輸可能因雜湊 (Hash)校驗失敗而報錯。\n\n具體來說，檔案第一次 stat 之後：\n\n- 只傳輸 stat 取得的大小\n- 只對 stat 取得的大小做校驗\n- 不再更新檔案的 stat 資訊\n\n**注意**：不要在 Windows 卷影複製（VSS）上使用此引數。某些情況下，VSS 中的檔案在目錄列表和直接 stat 時顯示的大小不一致。啟用此引數會禁用 rclone 的自動修正邏輯。"
+      },
+      "no_clone": {
+        "title": "禁用克隆",
+        "help": "對伺服器端複製禁用 reflink 克隆。\n\n本機到本機傳輸時，rclone 會儘可能使用克隆，不支援時纔回退到普通複製。\n\n克隆會建立淺複製（reflink），初始與原檔案共享資料塊。與硬連結 (Hardlink)不同，兩個檔案獨立，後續修改互不影響。\n\n克隆通常更快、預設去重，比普通複製更優。但需要資料冗餘時，可使用 --local-no-clone 強制完整複製。\n\n目前僅支援 macOS APFS（未來可能增加其他平臺）。"
+      },
+      "no_preallocate": {
+        "title": "禁用預分配空間",
+        "help": "不為傳輸檔案預先分配磁碟空間。\n\n預分配空間有助於減少檔案系統碎片。\n但某些虛擬檔案系統（如 Google Drive File Stream）可能錯誤地將預分配空間當作實際檔案大小，導致總和檢查碼 (Checksum)與大小檢查失敗。\n使用此引數可禁用預分配。"
+      },
+      "no_set_modtime": {
+        "title": "不設定修改時間",
+        "help": "禁用更新檔案修改時間。\n\n正常 rclone 上傳完成後會更新檔案修改時間。在 Linux 下，如果執行 rclone 的使用者不擁有檔案（如複製到其他使用者的 CIFS 掛載），可能出現許可權問題。啟用後，rclone 不再更新修改時間。"
+      },
+      "no_sparse": {
+        "title": "禁用稀疏檔案",
+        "help": "多執行緒下載時禁用稀疏檔案。\n\nWindows 下，rclone 多執行緒下載會建立稀疏檔案，避免大檔案因系統填零出現長時間停頓。\n但稀疏檔案可能產生磁碟碎片，處理速度較慢。"
+      },
+      "nounc": {
+        "title": "禁用 UNC 路徑",
+        "help": "Windows 下禁用 UNC（長路徑）轉換。"
+      },
+      "one_file_system": {
+        "title": "單檔案系統",
+        "help": "不跨檔案系統邊界（僅 Unix/macOS）。"
+      },
+      "skip_links": {
+        "title": "跳過連結",
+        "help": "跳過符號連結 (Symlink)時不提示警告。\n\n此引數會關閉跳過符號連結 (Symlink)或交接點時的警告，表示你已確認忽略它們。"
+      },
+      "skip_specials": {
+        "title": "跳過特殊檔案",
+        "help": "跳過管道、套接字、裝置檔案時不提示警告。\n\n此引數會關閉相關警告，表示你已確認忽略它們。"
+      },
+      "time_type": {
+        "title": "時間型別",
+        "help": "設定返回的時間型別。\n\nrclone 預設操作均基於 mtime（修改時間）。\n\n設定此引數後，rclone 會返回你指定的時間。例如使用 \"rclone lsl --local-time-type ctime\" 會顯示 ctime。\n\n如果系統不支援指定的時間型別，rclone 會靜默替換為所有系統都支援的修改時間。\n\n- mtime：所有系統支援\n- atime：除 plan9、js 外均支援\n- btime：僅 Windows、macOS、freebsd、netbsd 支援\n- ctime：除 Windows、plan9、js 外均支援\n\n注意：設定時間仍然只會修改 mtime，此引數主要用於讀取。"
+      },
+      "unicode_normalization": {
+        "title": "Unicode 標準化",
+        "help": "對路徑和檔案名應用 Unicode NFC 標準化。\n\n可用於將從本機檔案系統讀取的檔案名統一為 NFC 格式。\n\nrclone 預設不會修改檔案名編碼。\n\nmacOS 預設使用分解型 Unicode（NFD），在某些語言（如韓語）在其他系統顯示異常時有用。\n\n注意：rclone 在同步時已自帶檔案名標準化比較，通常不需要此引數。"
+      },
+      "zero_size_links": {
+        "title": "零大小連結",
+        "help": "假設連結的 stat 大小為 0（並實際讀取）（已廢棄）。\n\nrclone 曾經使用連結的 stat 大小作為連結大小，但在很多場景下會出錯：\n\n- Windows\n- 某些虛擬檔案系統（如 LucidLink）\n- Android\n\n因此現在 rclone 始終會讀取連結實際內容。"
+      },
+      "metadata_restore_special_bits": {
+        "title": "恢復中繼資料特殊許可權位",
+        "help": "從中繼資料恢復 setuid、setgid 和 sticky 許可權位。\n\n使用 --metadata 恢復中繼資料時，rclone 會應用源端的 \"mode\" 屬性。預設情況下，rclone 僅應用基礎許可權位，並剝離 setuid、setgid 和 sticky 位。\n\n\"mode\" 來自源端遠端連線，可能不可信。將 setuid 或 setgid 位恢復到新寫入的檔案上可能會植入特權可執行檔案，尤其是在以 root 身份從不可信源恢復時非常危險。因此，預設情況下不會恢復這些許可權位。\n\n如果您信任源端並希望恢復 setuid、setgid 和 sticky 位（例如恢復 rclone 建立的系統備份時），請啟用此選項。"
+      },
+      "fatal_if_no_space": {
+        "title": "無空間時終止",
+        "help": "傳輸過程中空間不足時強制判定為致命錯誤。\n\n啟用後，寫入期間發生的 ENOSPC（無剩餘空間）錯誤將返回致命錯誤，使 rclone 直接中止而不是反覆重試。適用於在磁碟滿了時需要立即報錯中止的備份指令碼。"
+      }
+    },
+    "mailru": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "check_hash": {
+        "title": "校驗雜湊 (Hash)",
+        "help": "檔案總和檢查碼 (Checksum)不匹配或無效時，複製操作應如何處理。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n採用 RFC 6749 中定義的 OAuth2 用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "密碼。\n\n必須是應用專用密碼——rclone 不支援登入密碼。\n詳見文件設定章節，瞭解如何建立應用密碼。"
+      },
+      "quirks": {
+        "title": "內部除錯引數",
+        "help": "內部維護引數，逗號分隔。\n\n普通使用者不應使用。僅用於遠端排查後端問題。引數含義不公開，且版本間不保證相容。\n後端穩定後會移除此類引數。\n支援：atomicmkdir binlist unknowndirs。"
+      },
+      "speedup_enable": {
+        "title": "啟用秒傳",
+        "help": "如果存在相同雜湊 (Hash)檔案，跳過完整上傳。\n\n此功能稱為“秒傳”或“按雜湊 (Hash)上傳”。對常見檔案（書籍、影片、音訊）效率很高，因為會在所有 Mail.ru 使用者中按雜湊 (Hash)搜尋。\n如果源檔案是唯一檔案或已加密，則無意義。\n注意：rclone 可能需要記憶體和磁碟預先計算雜湊 (Hash)，判斷是否需要上傳。\n另外，如果 rclone 無法預先知道檔案大小（如流式、分片上傳），不會嘗試此最佳化。"
+      },
+      "speedup_file_patterns": {
+        "title": "秒傳檔案匹配",
+        "help": "允許秒傳的檔案名匹配規則，逗號分隔。\n\n不區分大小寫，可使用 * 或 ? 萬用字元。"
+      },
+      "speedup_max_disk": {
+        "title": "秒傳最大磁碟",
+        "help": "此選項允許你對大檔案禁用秒傳（按雜湊 (Hash)上傳）。\n\n原因：預先雜湊 (Hash)可能耗盡記憶體或磁碟空間。"
+      },
+      "speedup_max_memory": {
+        "title": "秒傳最大記憶體",
+        "help": "超過此大小的檔案，一律在磁碟上計算雜湊 (Hash)。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "使用者名稱（通常是郵箱）。"
+      },
+      "user_agent": {
+        "title": "使用者代理",
+        "help": "用戶端內部使用的 HTTP 使用者代理。\n\n預設為 \"rclone/VERSION\" 或命令列 --user-agent 指定的值。"
+      }
+    },
+    "mega": {
+      "2fa": {
+        "title": "兩步驗證",
+        "help": "MEGA 賬戶的兩步驗證碼（如已開啟）。"
+      },
+      "debug": {
+        "title": "除錯",
+        "help": "輸出 Mega 更多除錯資訊。\n\n設定此引數（配合 -vv）會列印 mega 後端的詳細除錯日誌。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "hard_delete": {
+        "title": "硬刪除",
+        "help": "永久刪除檔案，而不是移入回收站。\n\nmega 後端預設會將刪除檔案放入回收站。指定此引數後會直接永久刪除。"
+      },
+      "master_key": {
+        "title": "主金鑰",
+        "help": "主金鑰（僅內部使用）。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "密碼。"
+      },
+      "session_id": {
+        "title": "會話 ID",
+        "help": "會話（僅內部使用）。"
+      },
+      "use_https": {
+        "title": "使用 HTTPS",
+        "help": "傳輸使用 HTTPS。\n\nMEGA 預設使用明文 HTTP。\n部分運營商會限速 HTTP，導致傳輸極慢。\n啟用後強制所有傳輸使用 HTTPS。\n由於所有資料已端到端加密，通常不需要 HTTPS。\n啟用會增加 CPU 佔用與網路開銷。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "使用者名稱。"
+      }
+    },
+    "memory": {
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "discard": {
+        "title": "丟棄",
+        "help": "如果設定，所有寫入操作將被丟棄，讀取操作將返回錯誤\n\n如果設定，則在上傳檔案時，檔案內容不會被儲存。檔案\n會顯示已上傳，但在讀取時會報錯。檔案上傳時會計算其 MD5\n總和檢查碼 (Checksum)，這只需要很少的 CPU 時間，並允許檢查傳輸。\n\n這對於測試效能很有用。\n\n最簡單的使用方法是使用連線字串語法：\n\n    :memory,discard:bucket\n\n"
+      }
+    },
+    "netstorage": {
+      "account": {
+        "title": "賬戶名",
+        "help": "設定 NetStorage 賬戶名。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "host": {
+        "title": "主機",
+        "help": "要連線的 NetStorage 主機域名+路徑。\n\n格式：<域名>/<內部資料夾>。"
+      },
+      "protocol": {
+        "title": "協議",
+        "help": "選擇 HTTP 或 HTTPS 協議。\n\n大多數使用者應使用預設 HTTPS。\nHTTP 主要用於除錯。"
+      },
+      "secret": {
+        "title": "金鑰",
+        "help": "設定 NetStorage 賬戶金鑰/G2O 金鑰用於驗證。\n\n請選擇 y 設定自定義密碼，然後輸入金鑰。"
+      }
+    },
+    "onedrive": {
+      "access_scopes": {
+        "title": "存取許可權範圍",
+        "help": "設定 rclone 需要請求的許可權範圍。\n\n選擇或手動輸入自定義空格分隔列表，包含 rclone 需要申請的所有許可權。"
+      },
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "av_override": {
+        "title": "強制下載病毒檔案",
+        "help": "允許下載伺服器認為有病毒的檔案。\n\nOneDrive/SharePoint 伺服器會用防毒軟體檢查上傳檔案。檢測到病毒或惡意軟體會阻止下載。\n\n此時會出現類似提示：\n\n    server reports this file is infected with a virus - use --onedrive-av-override to download anyway: Infected (病毒名): 403 Forbidden\n\n如果你完全確定要下載，可使用 --onedrive-av-override 引數，或在設定中設 av_override = true。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "檔案上傳分塊大小——必須是 320k（327680 位元組）的倍數。\n\n超過此大小的檔案會分塊上傳，必須是 320k 倍數，且不應超過 250M，否則可能出現“請求訊息過大”錯誤。\n注意：分塊會快取在記憶體中。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n採用 RFC 6749 中定義的 OAuth2 用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "delta": {
+        "title": "增量列表",
+        "help": "啟用後，rclone 使用增量列表實現遞迴列表。\n\n啟用後，onedrive 後端會宣告支援 ListR 遞迴列表。\n\n可大幅加速：\n\n    rclone lsf -R onedrive:\n    rclone size onedrive:\n    rclone rc vfs/refresh recursive=true\n\n**但是**增量列表 API **僅**在驅動器根目錄有效。\n如果不在根目錄使用，它會從根遞迴，再丟棄目標目錄外的資料，結果正確但效率可能很低。\n\n這就是預設不開啟的原因。\n\n經驗法則：如果幾乎所有資料都在 rclone 根目錄下（onedrive:根/目錄），啟用會大幅提升效能。如果大部分資料不在根目錄，則會降低效能。\n\n如果你在根目錄（或 crypt 接近根）掛載 OneDrive，並使用 rclone rc vfs/refresh，建議開啟。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "disable_site_permission": {
+        "title": "禁用站點許可權",
+        "help": "禁用請求 Sites.Read.All 許可權。\n\n設為 true 後，設定驅動器 ID 時將無法搜尋 SharePoint 站點，因為 rclone 不會申請 Sites.Read.All。\n如果你的組織未給應用分配 Sites.Read.All，且禁止使用者自行同意許可權請求，設為 true。"
+      },
+      "drive_id": {
+        "title": "驅動器 ID",
+        "help": "要使用的驅動器 ID。"
+      },
+      "drive_type": {
+        "title": "驅動器型別",
+        "help": "驅動器型別（個人 | 商業 | 文件庫）。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "expose_onenote_files": {
+        "title": "顯示 OneNote 檔案",
+        "help": "使 OneNote 檔案在目錄列表中顯示。\n\n預設 rclone 會隱藏 OneNote 檔案，因為“開啟”“更新”等操作不支援。但這也可能導致無法刪除。\n如果你需要刪除或希望顯示，啟用此選項。"
+      },
+      "hard_delete": {
+        "title": "硬刪除",
+        "help": "刪除時永久移除檔案。\n\n預設刪除會進入回收站。設定此引數會直接永久刪除，謹慎使用。\n\nOneDrive 個人版不支援永久刪除 API，僅商業版與 SharePoint 文件庫支援。"
+      },
+      "hash_type": {
+        "title": "雜湊 (Hash)型別",
+        "help": "指定後端使用的雜湊 (Hash)演算法。\n\n設為 auto 則使用預設雜湊 (Hash) QuickXorHash。\n\nrclone 1.62 之前，OneDrive 個人版預設 SHA1。1.62 及之後所有版本預設使用 QuickXorHash。需要 SHA1 可手動設定。\n\n從 2023 年 7 月起，QuickXorHash 是商業版與個人版唯一支援的雜湊 (Hash)。\n\n可設為 none 不使用雜湊 (Hash)。\n\n如果物件不存在請求的雜湊 (Hash)，會返回空字串，rclone 視為缺失雜湊 (Hash)。"
+      },
+      "link_password": {
+        "title": "分享連結密碼",
+        "help": "為 link 命令建立的連結設定密碼。\n\n目前僅支援 OneDrive 個人付費版。"
+      },
+      "link_scope": {
+        "title": "分享連結範圍",
+        "help": "設定 link 命令建立的分享範圍。"
+      },
+      "link_type": {
+        "title": "分享連結型別",
+        "help": "設定 link 命令建立的連結型別。"
+      },
+      "list_chunk": {
+        "title": "列表分塊",
+        "help": "列表分塊大小。"
+      },
+      "metadata_permissions": {
+        "title": "中繼資料許可權",
+        "help": "控制是否在中繼資料中讀取或寫入許可權。\n\n從檔案讀取許可權中繼資料很快，但並非總是希望從中繼資料設定許可權。"
+      },
+      "no_versions": {
+        "title": "禁用版本管理",
+        "help": "修改操作時刪除所有歷史版本。\n\nOneDrive 商業版在覆蓋上傳和設定修改時間時會建立版本，佔用儲存空間。\n此引數在上傳和設定修改時間後檢查版本，只保留最新版本。\n\n**注意**：OneDrive 個人版目前無法刪除版本，請勿在個人版使用。"
+      },
+      "region": {
+        "title": "區域",
+        "help": "選擇 OneDrive 國家雲區域。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "根資料夾 ID。\n\n通常不需要，但某些特殊場景下，你知道資料夾 ID 但無法透過路徑訪問時使用。"
+      },
+      "server_side_across_configs": {
+        "title": "跨設定伺服器端複製",
+        "help": "已廢棄：請使用 --server-side-across-configs。\n\n允許伺服器端操作（如複製）在不同 OneDrive 設定間工作。\n\n可在兩個 OneDrive 個人版之間複製（檔案已共享），或同一租戶內的商業版與 SharePoint、SharePoint 與 SharePoint 之間。其他情況回退到普通複製（速度稍慢）。"
+      },
+      "tenant": {
+        "title": "租戶 ID",
+        "help": "服務主體 (Service Principal)的租戶 ID，也叫目錄 ID。\n\n使用用戶端憑證流程時設定。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換到分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n\n預設禁用，因為商業版中單塊上傳後設定修改時間會產生新版本，導致佔用雙倍空間。\n\n見：https://github.com/rclone/rclone/issues/1716"
+      }
+    },
+    "opendrive": {
+      "access": {
+        "title": "存取許可權",
+        "help": "上傳檔案和資料夾使用此許可權（預設私有）。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "檔案按此大小分塊上傳。\n\n注意：分塊會快取在記憶體，增大會增加記憶體佔用。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "密碼。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "使用者名稱。"
+      }
+    },
+    "oracleobjectstorage": {
+      "attempt_resume_upload": {
+        "title": "嘗試續傳",
+        "help": "為 true 時，嘗試恢復之前未完成的分片上傳。\n可從歷史會話恢復，加速分片傳輸。\n\n警告：如果續傳會話的分塊大小與歷史不一致，會中止舊上傳並使用新分塊重新開始。\n\n要啟用續傳並最佳化跳過已上傳塊，leave_parts_on_error 必須為 true。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳使用的分塊大小。\n\n大於 upload_cutoff 的檔案，或大小未知的檔案（如 rclone rcat、rclone mount）會使用此大小分片上傳。\n\n注意：每次傳輸會在記憶體中緩衝 upload_concurrency 個此大小的塊。\n\n如果你在高速網路傳輸大檔案且記憶體充足，增大可提升速度。\n\n上傳已知大小的大檔案時，rclone 會自動增大分塊，保證塊數低於 10000。\n\n未知大小檔案使用設定的 chunk_size。預設 5 MiB，最多 10000 塊，意味著預設最大可流式上傳 48 GiB。需要上傳更大檔案需增大分塊。\n\n增大會降低 -P 顯示的進度統計精度。"
+      },
+      "compartment": {
+        "title": "分割槽",
+        "help": "指定分割槽 OCID，用於列出儲存貯體 (Bucket)。\n\n列出物件不需要分割槽 OCID。"
+      },
+      "config_file": {
+        "title": "設定檔案",
+        "help": "OCI 設定檔案路徑。"
+      },
+      "config_profile": {
+        "title": "設定剖面",
+        "help": "OCI 設定檔案中的剖面名稱。"
+      },
+      "copy_cutoff": {
+        "title": "複製閾值",
+        "help": "伺服器端複製切換為分片的閾值。\n\n大於此大小的檔案會按此大小分片複製。\n\n最小 0，最大 5 GiB。"
+      },
+      "copy_timeout": {
+        "title": "複製逾時",
+        "help": "複製逾時時間。\n\n複製是非同步操作，指定逾時時間等待完成。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "disable_checksum": {
+        "title": "禁用總和檢查碼 (Checksum)",
+        "help": "不儲存 MD5 總和檢查碼 (Checksum)到物件中繼資料。\n\n預設 rclone 上傳前會計算 MD5 並寫入中繼資料，便於完整性檢查，但大檔案開始上傳前可能延遲較長。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "endpoint": {
+        "title": "接入點",
+        "help": "物件儲存 API 地址。\n\n留空使用區域預設接入點。"
+      },
+      "leave_parts_on_error": {
+        "title": "出錯保留分片",
+        "help": "為 true 時，上傳失敗不中止上傳，保留已成功上傳的分片用於手動恢復。\n\n跨會話續傳時應設為 true。\n\n警告：未完成的分片會計入儲存空間，不清理會產生額外費用。"
+      },
+      "max_upload_parts": {
+        "title": "最大上傳分片數",
+        "help": "分片上傳的最大分片數量。\n\n此選項定義分片上傳使用的最大塊數。\n\nOCI 最大限制 10000 塊。\n\n上傳已知大小大檔案時，rclone 會自動增大分塊，保證塊數不超限。"
+      },
+      "namespace": {
+        "title": "名稱空間",
+        "help": "物件儲存名稱空間。"
+      },
+      "no_check_bucket": {
+        "title": "不檢查桶",
+        "help": "設定後，不檢查桶是否存在或建立。\n\n如果你確定桶已存在，希望減少 rclone 請求次數，可使用此引數。\n\n如果當前使用者無建立桶許可權，也可能需要此引數。"
+      },
+      "provider": {
+        "title": "驗證提供商",
+        "help": "選擇驗證提供商。"
+      },
+      "region": {
+        "title": "區域",
+        "help": "物件儲存區域。"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE-C 加密演算法",
+        "help": "使用 SSE‑C 時，可選頭部指定 \"AES256\" 作為加密演算法。\n物件儲存支援 \"AES256\"。詳見：\n使用自定義金鑰進行伺服器端加密。"
+      },
+      "sse_customer_key": {
+        "title": "SSE-C 金鑰",
+        "help": "使用 SSE‑C 時，可選頭部指定 base64 編碼的 256 位加密金鑰，用於加解密資料。\n注意：sse_customer_key_file、sse_customer_key、sse_kms_key_id 只需設定一個。"
+      },
+      "sse_customer_key_file": {
+        "title": "SSE-C 金鑰檔案",
+        "help": "使用 SSE‑C 時，檔案包含對應物件 AES-256 加密金鑰的 base64 編碼字串。\n注意：sse_customer_key_file、sse_customer_key、sse_kms_key_id 只需設定一個。"
+      },
+      "sse_customer_key_sha256": {
+        "title": "SSE-C 金鑰 SHA256",
+        "help": "使用 SSE‑C 時，可選頭部指定加密金鑰的 base64 編碼 SHA256 雜湊 (Hash)。\n用於校驗金鑰完整性。"
+      },
+      "sse_kms_key_id": {
+        "title": "SSE-KMS 金鑰 ID",
+        "help": "在金鑰管理服務中使用自定義主金鑰時，指定主金鑰 OCID。\n用於呼叫金鑰管理服務生成資料加密金鑰或加解密資料。\n注意：sse_customer_key_file、sse_customer_key、sse_kms_key_id 只需設定一個。"
+      },
+      "storage_tier": {
+        "title": "儲存層級",
+        "help": "儲存新物件使用的儲存類別。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分片上傳並行數。\n\n同一檔案同時上傳的塊數。\n\n高速網路傳輸少量大檔案且頻寬未跑滿時，增大可提升速度。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換到分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n最小 0，最大 5 GiB。"
+      }
+    },
+    "pcloud": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n採用 RFC 6749 中定義的 OAuth2 用戶端憑證流程。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線描述。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端使用的字元編碼。\n\n更多資訊見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "hostname": {
+        "title": "主機名",
+        "help": "連線的主機名。\n\n通常在 rclone 初次 OAuth 登入時自動設定，但使用遠端設定（rclone authorize）時需要手動指定。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "pcloud 密碼。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "填寫後，rclone 使用非根資料夾作為起始目錄。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器 URL。\n\n留空使用服務商預設地址。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "pcloud 使用者名稱。\n\n僅需要使用清理命令時必填。由於 pcloud API 存在 Bug，清理相關 API 不支援 OAuth 驗證，只能使用密碼登入。"
+      }
+    },
+    "pikpak": {
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "分塊上傳的塊大小。\n\t\n大檔案將按此大小分塊上傳。\n\n注意：分塊資料會儲存在記憶體中，同一時間記憶體中可能會儲存多達\n\"--transfers\" * \"--pikpak-upload-concurrency\" 數量的分塊。\n\n如果你在高速網路下傳輸大檔案，且記憶體充足，\n增大該值可加快傳輸速度。\n\nRclone 在上傳已知大小的大檔案時，會自動增大分塊大小，\n確保分塊數量不超過 10,000 塊限制。\n\n增大分塊大小會降低使用 \"-P\" 引數顯示的進度統計精度。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "device_id": {
+        "title": "裝置 ID",
+        "help": "用於授權的裝置 ID。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "hash_memory_limit": {
+        "title": "雜湊 (Hash)記憶體限制",
+        "help": "超過此大小的檔案，如需計算雜湊值 (Hash)，將快取到磁碟進行。"
+      },
+      "no_media_link": {
+        "title": "禁用媒體連結",
+        "help": "使用原始檔案連結而非媒體連結。\n\n這可避免由無效媒體連結引起的問題，但可能降低下載速度。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "Pikpak 密碼。"
+      },
+      "root_folder_id": {
+        "title": "根目錄 ID",
+        "help": "根目錄 ID。\n通常留空。\n\n填寫後，rclone 將使用非根目錄作為起始目錄。"
+      },
+      "trashed_only": {
+        "title": "僅顯示已刪除",
+        "help": "只顯示回收站中的檔案。\n\n將在原目錄結構中顯示已刪除檔案。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳的並行數。\n\n這是同一檔案同時上傳的分塊數量。\n\n注意：分塊儲存在記憶體中，同一時間記憶體中可能會儲存多達\n\"--transfers\" * \"--pikpak-upload-concurrency\" 數量的分塊。\n\n如果你在高速網路下上傳少量大檔案，且上傳未佔滿頻寬，\n增大該值有助於提升速度。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換為分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n最小值為 0，最大值為 5 GiB。"
+      },
+      "use_trash": {
+        "title": "使用回收站",
+        "help": "檔案移至回收站而非直接永久刪除。\n\n預設為 true，即移至回收站。\n使用 --pikpak-use-trash=false 改為直接永久刪除。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "Pikpak 使用者名稱。"
+      },
+      "user_agent": {
+        "title": "使用者代理",
+        "help": "Pikpak 使用的 HTTP 使用者代理。\n\n預設為 \"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0\"\n或命令列中 --pikpak-user-agent 指定的值。"
+      }
+    },
+    "pixeldrain": {
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "Pixeldrain 賬戶的 API 金鑰。\n在 https://pixeldrain.com/user/api_keys 取得。"
+      },
+      "api_url": {
+        "title": "API 地址",
+        "help": "連線的 API 端點。絕大多數情況下使用預設即可。\n僅用於測試時修改。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "root_folder_id": {
+        "title": "根目錄 ID",
+        "help": "使用的檔案系統根目錄。\n\n設為 'me' 使用個人檔案系統。設為共享目錄 ID 使用共享目錄。"
+      }
+    },
+    "premiumizeme": {
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "API 金鑰。\n\n通常不使用，建議使用 OAuth。"
+      },
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器位址。\n\n留空使用提供商預設值。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n將使用 RFC 6749 中描述的 OAuth2 用戶端憑證模式。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器位址。\n\n留空使用提供商預設值。"
+      }
+    },
+    "protondrive": {
+      "2fa": {
+        "title": "兩步驗證",
+        "help": "兩步驗證碼。\n\n也可透過 --protondrive-2fa=000000 提供。\n\n開啟兩步驗證的 Proton Drive 賬戶所需的兩步驗證碼。"
+      },
+      "app_version": {
+        "title": "應用版本",
+        "help": "應用版本字串。\n\n該欄位標識當前執行 API 請求的用戶端。\n此為必填資訊，將隨每次請求傳送。"
+      },
+      "client_access_token": {
+        "title": "用戶端存取權杖 (Access Token)",
+        "help": "用戶端存取權杖 (Access Token)金鑰（僅內部使用）"
+      },
+      "client_refresh_token": {
+        "title": "用戶端重新整理權杖 (Token)",
+        "help": "用戶端重新整理權杖 (Token)金鑰（僅內部使用）"
+      },
+      "client_salted_key_pass": {
+        "title": "用戶端加鹽金鑰",
+        "help": "用戶端加鹽金鑰（僅內部使用）"
+      },
+      "client_uid": {
+        "title": "用戶端 UID",
+        "help": "用戶端 UID 金鑰（僅內部使用）"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "enable_caching": {
+        "title": "啟用快取",
+        "help": "快取檔案和資料夾中繼資料以減少 API 呼叫。\n\n注意：如果你將 ProtonDrive 掛載為 VFS，請禁用此功能，\n因為當前實現不會在外部發生變化時更新或清除快取。\n\nProtonDrive 上的檔案和資料夾以帶金鑰環的連結表示，\n可快取以提升效能並減輕 API 伺服器壓力。\n\n當前快取僅適用於 rclone 是唯一操作掛載點的執行個體。\nProton API 的事件系統（用於感知變化）尚未實現，\n因此其他用戶端的更新不會反映在快取中。\n若有多個用戶端同時訪問同一掛載點，可能會快取過期資料。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "mailbox_password": {
+        "title": "郵箱密碼",
+        "help": "雙密碼 Proton 賬戶的郵箱密碼。\n\n關於郵箱密碼的更多資訊，請查閱官方知識庫：\nhttps://proton.me/support/the-difference-between-the-mailbox-password-and-login-password"
+      },
+      "original_file_size": {
+        "title": "原始檔案大小",
+        "help": "返回加密前的檔案大小。\n\t\t\t\n加密後的檔案大小會與原始檔案不同（更大）。\n除非需要返回加密後的大小，否則建議設為 true，\n因為 Open() 等功能需要提供原始內容大小，否則會執行異常。"
+      },
+      "otp_secret_key": {
+        "title": "OTP 金鑰",
+        "help": "OTP 金鑰。\n\n也可透過 --protondrive-otp-secret-key=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567 提供。\n\n開啟兩步驗證的 Proton Drive 賬戶所需的 OTP 金鑰。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "Proton 賬戶密碼。"
+      },
+      "replace_existing_draft": {
+        "title": "替換現有草稿",
+        "help": "檢測到檔案名衝突時建立新版本。\n\n檔案上傳在完成前取消或失敗時，會建立草稿，\n之後向同一位置上傳同名檔案會提示衝突。\n\n也可透過 --protondrive-replace-existing-draft=true 設定。\n\n若設為 true，將替換現有草稿並重新開始上傳。\n若有其他用戶端同時向同一位置上傳，行為未知。整合測試需設為 true。\n若設為 false，將返回錯誤「草稿已存在——通常表示其他用戶端正在上傳或之前上傳失敗」，不會執行上傳。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "Proton 賬戶使用者名稱。"
+      }
+    },
+    "putio": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器位址。\n\n留空使用提供商預設值。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n將使用 RFC 6749 中描述的 OAuth2 用戶端憑證模式。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器位址。\n\n留空使用提供商預設值。"
+      }
+    },
+    "qingstor": {
+      "access_key_id": {
+        "title": "存取金鑰 ID",
+        "help": "QingStor 存取金鑰 ID。\n\n匿名存取或執行時取得憑證則留空。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳使用的分塊大小。\n\n大於 upload_cutoff 的檔案將使用此大小分塊上傳。\n\n注意：每次傳輸會在記憶體中緩衝 \"--qingstor-upload-concurrency\" 個該大小的分塊。\n\n如果你在高速網路下傳輸大檔案，且記憶體充足，增大該值可加快傳輸速度。"
+      },
+      "connection_retries": {
+        "title": "連線重試次數",
+        "help": "連線重試次數。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "endpoint": {
+        "title": "端點",
+        "help": "連線 QingStor API 的端點 URL。\n\n留空使用預設值 \"https://qingstor.com:443\"。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行環境取得 QingStor 憑證。\n\n僅在 access_key_id 和 secret_access_key 為空時生效。"
+      },
+      "secret_access_key": {
+        "title": "祕密存取金鑰",
+        "help": "QingStor 祕密存取金鑰（密碼）。\n\n匿名存取或執行時取得憑證則留空。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳並行數。\n\n這是同一檔案同時上傳的分塊數量。\n\n注意：若設為 >1，分塊上傳的總和檢查碼 (Checksum)會異常（但上傳本身不損壞）。\n\n如果你在高速網路下上傳少量大檔案，且上傳未佔滿頻寬，增大該值有助於提升速度。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換為分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n最小值為 0，最大值為 5 GiB。"
+      },
+      "zone": {
+        "title": "區域",
+        "help": "連線的區域。\n\n預設為 \"pek3a\"。"
+      }
+    },
+    "quatrix": {
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "訪問 Quatrix 賬戶的 API 金鑰"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "effective_upload_time": {
+        "title": "目標上傳時間",
+        "help": "單個分塊期望的上傳時間"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "hard_delete": {
+        "title": "硬刪除",
+        "help": "永久刪除檔案而非移入回收站"
+      },
+      "host": {
+        "title": "主機",
+        "help": "Quatrix 賬戶主機名"
+      },
+      "maximal_summary_chunk_size": {
+        "title": "最大總分塊大小",
+        "help": "所有分塊的總大小上限，不應小於 'transfers'*'minimal_chunk_size'"
+      },
+      "minimal_chunk_size": {
+        "title": "最小分塊大小",
+        "help": "單個分塊的最小大小"
+      },
+      "skip_project_folders": {
+        "title": "跳過專案資料夾",
+        "help": "操作中跳過專案資料夾"
+      }
+    },
+    "s3": {
+      "access_key_id": {
+        "title": "存取金鑰 ID",
+        "help": "AWS 存取金鑰 ID。\n\n匿名存取或執行時取得憑證則留空。"
+      },
+      "acl": {
+        "title": "ACL",
+        "help": "建立儲存貯體 (Bucket)及上傳/複製物件時使用的預定義 ACL。\n\n此 ACL 用於建立物件，若未設定 bucket_acl，也用於建立儲存貯體 (Bucket)。\n\n更多資訊請訪問 https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl\n\n注意：伺服器端複製物件時會應用此 ACL，\n因為 S3 不會複製源物件的 ACL，而是重新設定。\n\n若 acl 為空字串，則不新增 X-Amz-Acl 頭部，使用預設私有許可權。"
+      },
+      "bucket_acl": {
+        "title": "儲存貯體 (Bucket) ACL",
+        "help": "建立儲存貯體 (Bucket)時使用的預定義 ACL。\n\n更多資訊請訪問 https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl\n\n注意：僅建立儲存貯體 (Bucket)時應用此 ACL。\n若未設定，則使用 \"acl\"。\n\n若 \"acl\" 和 \"bucket_acl\" 均為空字串，\n則不新增 X-Amz-Acl 頭部，使用預設私有許可權。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳使用的分塊大小。\n\n大於 upload_cutoff 的檔案或大小未知的檔案\n（如 rclone rcat、rclone mount、谷歌相簿、谷歌文件）\n將使用此大小分塊上傳。\n\n注意：每次傳輸會在記憶體中緩衝 \"--s3-upload-concurrency\" 個該大小的分塊。\n\n如果你在高速網路下傳輸大檔案，且記憶體充足，增大該值可加快傳輸速度。\n\nRclone 在上傳已知大小的大檔案時，會自動增大分塊大小，確保分塊數量不超過 10,000 塊限制。\n\n大小未知的檔案使用設定的 chunk_size 上傳。\n預設分塊大小為 5 MiB，最多 10,000 塊，\n意味著預設可流式上傳的最大檔案為 48 GiB。\n如需上傳更大檔案，需增大 chunk_size。\n\n增大分塊大小會降低使用 \"-P\" 引數顯示的進度統計精度。\nAWS SDK 緩衝分塊時 rclone 即認為分塊已傳送，實際可能仍在上傳。\n分塊越大，SDK 緩衝越大，進度顯示與真實進度偏差越大。"
+      },
+      "copy_cutoff": {
+        "title": "複製分塊閾值",
+        "help": "切換為分塊複製的閾值。\n\n大於此大小且需要伺服器端複製的檔案將按此大小分塊複製。\n最小值為 0，最大值為 5 GiB。"
+      },
+      "decompress": {
+        "title": "解壓縮",
+        "help": "設定後將解壓縮 gzip 編碼的物件。\n\n可以上傳帶有 \"Content-Encoding: gzip\" 的物件到 S3。\n通常 rclone 會將這些檔案以壓縮形式下載。\n\n若設定此選項，rclone 收到這些檔案時會實時解壓縮。\n這意味著 rclone 無法校驗大小和雜湊 (Hash)，但檔案內容會被解壓縮。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "directory_bucket": {
+        "title": "目錄儲存貯體 (Bucket)",
+        "help": "設定以使用 AWS 目錄儲存貯體 (Bucket)。\n\n若使用 AWS 目錄儲存貯體 (Bucket)，請開啟此選項。\n\n這將確保不傳送 Content-Md5 頭部，且 ETag 不被解析為 MD5。\n所有物件（單塊或分塊上傳）都會設定 X-Amz-Meta-Md5chksum。\n\n同時會設定 no_check_bucket = true。\n\n注意：目錄儲存貯體 (Bucket)不支援：\n\n- 版本控制\n- Content-Encoding: gzip\n\nRclone 對目錄儲存貯體 (Bucket)的限制：\n\n- rclone 暫不支援透過 rclone mkdir 建立目錄儲存貯體 (Bucket)\n- 也不支援透過 rclone rmdir 刪除\n- 目錄儲存貯體 (Bucket)不會在頂層 rclone lsf 中顯示\n- rclone 暫不能刪除自動建立的目錄（理論上 directory_markers = true 應支援，但實際無效）\n- 目錄似乎不會出現在遞迴（ListR）列表中"
+      },
+      "directory_markers": {
+        "title": "目錄標記",
+        "help": "建立新目錄時上傳以斜槓結尾的空物件。\n\n基於儲存貯體 (Bucket)的遠端不支援空資料夾，此選項透過建立\n以 \"/\" 結尾的空物件來持久化目錄。"
+      },
+      "disable_checksum": {
+        "title": "禁用總和檢查碼 (Checksum)",
+        "help": "不隨物件中繼資料儲存 MD5 總和檢查碼 (Checksum)。\n\n通常 rclone 會在上傳前計算輸入的 MD5 總和檢查碼 (Checksum)，\n以便新增到物件中繼資料。\n這有利於資料完整性檢查，但大檔案開始上傳前可能延遲較長。"
+      },
+      "disable_http2": {
+        "title": "禁用 HTTP2",
+        "help": "對 S3 後端禁用 HTTP2。\n\n當前 S3（特別是 minio）後端與 HTTP/2 存在未解決問題。\nS3 後端預設啟用 HTTP2，可在此禁用。\n問題解決後此選項將移除。\n\n參閱：https://github.com/rclone/rclone/issues/4673、https://github.com/rclone/rclone/issues/3631"
+      },
+      "download_url": {
+        "title": "下載地址",
+        "help": "自定義下載端點。\n通常設為 CloudFront CDN 地址，因為 AWS S3 透過 CloudFront 下載資料更便宜。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端儲存使用的編碼。\n\n更多資訊請參閱概述中的「編碼」章節。"
+      },
+      "endpoint": {
+        "title": "端點",
+        "help": "S3 API 端點。\n\n使用 S3 相容服務時必填。"
+      },
+      "env_auth": {
+        "title": "環境驗證",
+        "help": "從執行環境取得 AWS 憑證（環境變數或 EC2/ECS 中繼資料）。\n\n僅在 access_key_id 和 secret_access_key 為空時生效。"
+      },
+      "force_path_style": {
+        "title": "強制路徑風格",
+        "help": "true 為路徑風格訪問，false 為虛擬主機風格。\n\n預設為 true，使用路徑風格訪問；\n為 false 則使用虛擬主機風格。\n更多資訊請參閱 AWS S3 文件。\n\n部分提供商（AWS、阿里雲 OSS、網易 COS、騰訊 COS）\nrclone 會根據設定自動設為 false。\n\n注意：若儲存貯體 (Bucket)名稱不是合法 DNS 名稱（含 . 或 _），需設為 true。"
+      },
+      "ibm_api_key": {
+        "title": "IBM API 金鑰",
+        "help": "用於取得 IAM 權杖 (Token)的 IBM API 金鑰"
+      },
+      "ibm_resource_instance_id": {
+        "title": "IBM 資源執行個體 ID",
+        "help": "IBM 服務執行個體 ID"
+      },
+      "leave_parts_on_error": {
+        "title": "出錯時保留分塊",
+        "help": "為 true 時，上傳失敗不中止上傳，保留已成功上傳的分塊用於手動恢復。\n\n跨會話續傳時應設為 true。\n\n警告：未完成的分塊上傳會佔用儲存空間，\n不清理會產生額外費用。"
+      },
+      "list_chunk": {
+        "title": "列表分塊大小",
+        "help": "列表分塊大小（每次 ListObject S3 請求的返回列表大小）。\n\n此選項也被稱為 AWS S3 規範中的 \"MaxKeys\"、\"max-items\" 或 \"page-size\"。\n大多數服務即使請求更多，也會將響應列表截斷為 1000 個物件。\n在 AWS S3 中這是全域性最大值，無法修改。\n在 Ceph 中可透過 \"rgw list buckets max chunk\" 增大。"
+      },
+      "list_url_encode": {
+        "title": "列表 URL 編碼",
+        "help": "列表是否進行 URL 編碼：true/false/unset\n\n部分提供商支援 URL 編碼列表，\n在檔案名含控制字元時更可靠。\n預設為 unset，由 rclone 根據提供商自動選擇，可手動覆蓋。"
+      },
+      "list_version": {
+        "title": "列表版本",
+        "help": "ListObjects 版本：1、2 或 0（自動）。\n\nS3 最初僅提供 ListObjects 介面用於列舉物件。\n\n2016 年 5 月推出 ListObjectsV2，效能更高，建議儘可能使用。\n\n預設為 0，rclone 根據提供商自動選擇。\n若判斷錯誤，可手動指定。"
+      },
+      "location_constraint": {
+        "title": "區域約束",
+        "help": "區域約束，必須與區域匹配。\n\n不確定則留空。僅建立儲存貯體 (Bucket)時使用。"
+      },
+      "max_upload_parts": {
+        "title": "最大上傳分塊數",
+        "help": "分塊上傳的最大分塊數量。\n\n此選項定義分塊上傳時使用的最大分塊數。\n\n若服務不支援 AWS S3 規範的 10,000 塊，此選項很有用。\n\nRclone 上傳已知大小的大檔案時，會自動增大分塊大小以低於此限制。"
+      },
+      "memory_pool_flush_time": {
+        "title": "記憶體池重新整理時間",
+        "help": "內部記憶體緩衝池的重新整理間隔（已不再使用）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "記憶體池使用 mmap",
+        "help": "內部記憶體池是否使用 mmap 緩衝（已不再使用）"
+      },
+      "might_gzip": {
+        "title": "可能 GZIP",
+        "help": "若後端可能壓縮物件則設定。\n\n通常提供商下載時不會修改物件。\n若物件未使用 Content-Encoding: gzip 上傳，下載時也不會設定。\n\n但部分提供商（如 Cloudflare）可能自動壓縮未上傳 gzip 的物件。\n\n症狀可能是收到錯誤：\n\n    ERROR corrupted on transfer: sizes differ NNN vs MMM\n\n若設定此標誌，且 rclone 下載的物件帶有 Content-Encoding: gzip 且為分塊傳輸編碼，將實時解壓縮。\n\n預設為 unset，由 rclone 根據提供商自動選擇，可手動覆蓋。"
+      },
+      "no_check_bucket": {
+        "title": "不檢查儲存貯體 (Bucket)",
+        "help": "設定後，不嘗試檢查儲存貯體 (Bucket)是否存在或建立。\n\n若你確定儲存貯體 (Bucket)已存在，想最小化 rclone 的事務數，此選項很有用。\n\n若你使用的使用者無儲存貯體 (Bucket)建立許可權，也可能需要此選項。\n1.52.0 版本前因 bug 會靜默透過。"
+      },
+      "no_head": {
+        "title": "禁用 HEAD",
+        "help": "設定後，不上傳後 HEAD 檢查完整性。\n\n若想最小化 rclone 的事務數，此選項很有用。\n\n設定後，若 rclone 上傳物件後收到 200 OK，即認為上傳成功。\n\n特別地，將假設：\n\n- 中繼資料（修改時間、儲存型別、內容型別）與上傳一致\n- 大小與上傳一致\n\n單塊 PUT 上傳時，從響應中讀取以下項：\n\n- MD5 總和檢查碼 (Checksum)\n- 上傳時間\n\n分塊上傳時不讀取這些資訊。\n\n若上傳大小未知的源物件，rclone 仍會執行 HEAD 請求。\n\n設定此標誌會增加未檢測到的上傳失敗機率（尤其是大小錯誤），不建議一般使用。\n實際中即使開啟，未檢測上傳失敗的機率也極低。"
+      },
+      "no_head_object": {
+        "title": "取得物件前不 HEAD",
+        "help": "設定後，取得物件前不執行 HEAD 請求。"
+      },
+      "no_system_metadata": {
+        "title": "禁用系統中繼資料",
+        "help": "禁止設定和讀取系統中繼資料"
+      },
+      "profile": {
+        "title": "設定檔案",
+        "help": "共享憑證檔案中使用的設定。\n\n若 env_auth = true，rclone 可使用共享憑證檔案。\n此變數控制使用檔案中的哪個設定。\n\n為空則預設使用環境變數 \"AWS_PROFILE\"，\n若該變數也為空，則使用 \"default\"。"
+      },
+      "provider": {
+        "title": "提供商",
+        "help": "選擇你的 S3 提供商。"
+      },
+      "region": {
+        "title": "區域",
+        "help": "連線的區域。\n\n使用 S3 相容服務且無區域時留空。"
+      },
+      "requester_pays": {
+        "title": "請求者付費",
+        "help": "與 S3 儲存貯體 (Bucket)互動時啟用請求者付費模式。"
+      },
+      "sdk_log_mode": {
+        "title": "SDK 日誌模式",
+        "help": "設定以除錯 SDK。\n\n可設為以下函式的逗號分隔列表：\n\n- `Signing`\n- `Retries`\n- `Request`\n- `RequestWithBody`\n- `Response`\n- `ResponseWithBody`\n- `DeprecatedUsage`\n- `RequestEventMessage`\n- `ResponseEventMessage`\n\n使用 `Off` 關閉，`All` 開啟所有日誌級別。\n需使用 `-vv` 檢視除錯日誌。"
+      },
+      "secret_access_key": {
+        "title": "祕密存取金鑰",
+        "help": "AWS 祕密存取金鑰（密碼）。\n\n匿名存取或執行時取得憑證則留空。"
+      },
+      "server_side_encryption": {
+        "title": "服務端加密",
+        "help": "物件儲存在 S3 時使用的服務端加密演算法。"
+      },
+      "session_token": {
+        "title": "會話權杖 (Token)",
+        "help": "AWS 會話權杖 (Token)。"
+      },
+      "shared_credentials_file": {
+        "title": "共享憑證檔案",
+        "help": "共享憑證檔案路徑。\n\n若 env_auth = true，rclone 可使用共享憑證檔案。\n\n若為空，rclone 會查詢 \"AWS_SHARED_CREDENTIALS_FILE\" 環境變數。\n若環境變數也為空，預設使用當前使用者家目錄：\n\n    Linux/OSX: \"$HOME/.aws/credentials\"\n    Windows:   \"%USERPROFILE%\\.aws\\credentials\""
+      },
+      "sign_accept_encoding": {
+        "title": "簽名包含 Accept-Encoding",
+        "help": "設定 rclone 是否將 Accept-Encoding 加入簽名。\n\n你可修改此選項，阻止 rclone 將 Accept-Encoding 加入簽名。\n\n正常操作無需修改。\n\nrclone 會為所有已知提供商自動設定正確，如有問題請提交 bug。"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE 客戶演算法",
+        "help": "使用 SSE‑C 時，物件儲存在 S3 中使用的服務端加密演算法。"
+      },
+      "sse_customer_key": {
+        "title": "SSE 客戶金鑰",
+        "help": "使用 SSE‑C 可提供用於加密/解密資料的祕密加密金鑰。\n\n也可提供 --sse-customer-key-base64。"
+      },
+      "sse_customer_key_base64": {
+        "title": "SSE 客戶金鑰（Base64）",
+        "help": "使用 SSE‑C 必須提供 Base64 編碼的祕密加密金鑰用於加密/解密資料。\n\n也可提供 --sse-customer-key。"
+      },
+      "sse_customer_key_md5": {
+        "title": "SSE 客戶金鑰 MD5",
+        "help": "使用 SSE‑C 可提供祕密加密金鑰的 MD5 總和檢查碼 (Checksum)（可選）。\n\n留空則根據提供的 sse_customer_key 自動計算。"
+      },
+      "sse_kms_key_id": {
+        "title": "SSE KMS 金鑰 ID",
+        "help": "使用 KMS ID 必須提供金鑰 ARN。"
+      },
+      "storage_class": {
+        "title": "儲存類別",
+        "help": "在 S3 中儲存新物件時使用的儲存類別。"
+      },
+      "sts_endpoint": {
+        "title": "STS 端點",
+        "help": "STS 端點（已棄用）。\n\n使用 AWS 則留空，使用對應區域的預設端點。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行數",
+        "help": "分塊上傳和複製的並行數。\n\n這是同一檔案同時上傳/複製的分塊數量。\n\n如果你在高速網路下上傳少量大檔案，且上傳未佔滿頻寬，增大該值有助於提升速度。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換為分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n最小值為 0，最大值為 5 GiB。"
+      },
+      "use_accelerate_endpoint": {
+        "title": "使用加速端點",
+        "help": "為 true 則使用 AWS S3 加速端點。\n\n參閱：AWS S3 Transfer acceleration"
+      },
+      "use_accept_encoding_gzip": {
+        "title": "使用 Accept-Encoding: gzip",
+        "help": "是否傳送 `Accept-Encoding: gzip` 頭部。\n\n預設情況下，rclone 會儘可能在下載請求中新增該頭部以下載壓縮物件。\n\n但部分提供商（如谷歌雲端儲存）可能修改 HTTP 頭部，導致請求籤名失效。\n\n症狀可能是收到錯誤：\n\n\tSignatureDoesNotMatch: 請求籤名與計算不匹配\n\n這種情況下可嘗試禁用此選項。"
+      },
+      "use_already_exists": {
+        "title": "使用已存在提示",
+        "help": "設定 rclone 是否報告 BucketAlreadyExists 錯誤。\n\n在 S3 協議發展過程中，\nAWS 嘗試建立已歸屬使用者的儲存貯體 (Bucket)時，\n開始返回 `AlreadyOwnedByYou` 錯誤，而非 `BucketAlreadyExists`。\n\n遺憾的是，S3 相容服務的實現略有不一致，\n部分返回 `AlreadyOwnedByYou`，部分返回 `BucketAlreadyExists`，部分無錯誤。\n\n這對 rclone 很重要，因為 rclone 在很多操作中\n透過建立確儲儲存貯體 (Bucket)存在（除非使用 --s3-no-check-bucket）。\n\n若 rclone 知道提供商可返回 `AlreadyOwnedByYou` 或無錯誤，\n則可在使用者嘗試建立非自有儲存貯體 (Bucket)時報告 `BucketAlreadyExists`。\n否則 rclone 會忽略 `BucketAlreadyExists`，可能導致混淆。\n\nrclone 會為所有已知提供商自動設定正確，如有問題請提交 bug。"
+      },
+      "use_arn_region": {
+        "title": "使用 ARN 區域",
+        "help": "為 true 則啟用服務的 ARN 區域支援。"
+      },
+      "use_data_integrity_protections": {
+        "title": "使用資料完整性保護",
+        "help": "為 true 則使用 AWS S3 資料完整性保護。\n\n參閱 AWS 資料完整性保護文件。"
+      },
+      "use_dual_stack": {
+        "title": "使用雙棧",
+        "help": "為 true 則使用 AWS S3 雙棧端點（支援 IPv6）。\n\n參閱 AWS 雙棧端點文件。"
+      },
+      "use_multipart_etag": {
+        "title": "使用分塊上傳 ETag",
+        "help": "是否在分塊上傳中使用 ETag 進行校驗。\n可為 true、false 或留空（使用提供商預設）。"
+      },
+      "use_multipart_uploads": {
+        "title": "使用分塊上傳",
+        "help": "設定 rclone 是否使用分塊上傳。\n\n你可修改此選項以禁用分塊上傳。\n正常操作無需修改。\n\nrclone 會為所有已知提供商自動設定正確，如有問題請提交 bug。"
+      },
+      "use_presigned_request": {
+        "title": "使用預簽名請求",
+        "help": "單塊上傳使用預簽名請求或 PutObject。\n\n為 false 時，rclone 使用 AWS SDK 的 PutObject 上傳物件。\n\nrclone < 1.59 版本使用預簽名請求上傳單塊物件，\n設定此標誌為 true 可重新啟用該功能。\n僅極端情況或測試時需要，正常操作無需修改。"
+      },
+      "use_unsigned_payload": {
+        "title": "使用無簽名負載",
+        "help": "在 PutObject 中使用無簽名負載。\n\n呼叫 PutObject 時，rclone 必須避免 AWS SDK 查詢請求體。\nAWS 提供商可在尾部新增總和檢查碼 (Checksum)以避免查詢，但其他提供商不行。\n\n可為 true、false 或留空（使用提供商預設）。"
+      },
+      "use_x_id": {
+        "title": "使用 X ID",
+        "help": "設定 rclone 是否新增 x-id URL 引數。\n\n你可修改此選項以禁用 AWS SDK 新增 x-id URL 引數。\n\n正常操作無需修改。\n\nrclone 會為所有已知提供商自動設定正確，如有問題請提交 bug。"
+      },
+      "v2_auth": {
+        "title": "V2 驗證",
+        "help": "為 true 則使用 v2 驗證。\n\n預設為 false，rclone 使用 v4 驗證。\n設定後使用 v2 驗證。\n\n僅在 v4 簽名無效時使用，例如舊版 CEPH。"
+      },
+      "version_at": {
+        "title": "指定時間版本",
+        "help": "顯示指定時間的檔案版本。\n\n引數可為日期（2006-01-02）、\n日期時間（2006-01-02 15:04:05）\n或距離當前的時長（如 100d、1h）。\n\n注意：使用此時不允許檔案寫入操作，無法上傳或刪除檔案。\n\n有效格式請參閱時間選項文件。"
+      },
+      "version_deleted": {
+        "title": "顯示已刪除版本",
+        "help": "使用版本時顯示已刪除檔案標記。\n\n使用版本時，這些標記會顯示為 0 大小檔案。\n僅可執行刪除操作。\n\n刪除刪除標記將恢復上一版本。\n\n已刪除檔案始終顯示時間戳。"
+      },
+      "versions": {
+        "title": "顯示版本",
+        "help": "目錄列表中包含歷史版本。"
+      },
+      "role_arn": {
+        "title": "角色 ARN",
+        "help": "要承擔的 IAM 角色 ARN。\n\t\t\t\n如果不使用 assume role，則留空。"
+      },
+      "role_session_name": {
+        "title": "角色會話名稱",
+        "help": "承擔角色的會話名稱。\n\t\t\t\n如果為空，將自動生成會話名稱。"
+      },
+      "role_session_duration": {
+        "title": "角色會話時長",
+        "help": "承擔角色的會話時長。\n\t\t\t\n如果為空，將使用預設會話時長。"
+      },
+      "role_external_id": {
+        "title": "角色外部 ID",
+        "help": "承擔角色的外部 ID。\n\t\t\t\n如果不使用外部 ID，則留空。"
+      },
+      "list_versions_oldest_first": {
+        "title": "最舊版本優先列出",
+        "help": "如果後端先返回最舊的物件版本，則設定此項。\n\nS3 標準會先返回最新的物件版本。某些後端（例如 Hitachi HCP）會先返回最舊的版本。\n\n如果 --s3-version-at 或 --s3-versions 在您的後端產生了錯誤結果，請設定此項。\n\n對於 rclone 已知的所有提供商，此項應當能自動正確設定 - 如果沒有，請提交 bug 報告。\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "IBM IAM 終端節點",
+        "help": "用於身分驗證的 IBM IAM 終端節點。\n\n留空以使用預設的公共終端節點。"
+      },
+      "object_lock_mode": {
+        "title": "物件鎖定模式",
+        "help": "上傳或複製物件時要應用的物件鎖定模式。\n\n設定此項可向物件應用物件鎖定保留模式。如果不設定，則不應用任何物件鎖定模式（即使有 --metadata）。\n\n注意：要啟用物件鎖定保留，您必須同時設定 object_lock_mode 和 object_lock_retain_until_date。僅設定其中一個將不起作用。\n\n- GOVERNANCE：將物件鎖定模式設定為 GOVERNANCE\n- COMPLIANCE：將物件鎖定模式設定為 COMPLIANCE\n- copy：從源物件複製模式（需要 --metadata）\n\n參考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "物件鎖定保留截止日期",
+        "help": "上傳或複製物件時要應用的物件鎖定保留截止日期。\n\n設定此項可向物件應用物件鎖定保留日期。如果不設定，則不應用保留日期（即使有 --metadata）。\n\n注意：要啟用物件鎖定保留，您必須同時設定 object_lock_mode 和 object_lock_retain_until_date。僅設定其中一個將不起作用。\n\n接收：\n- RFC 3339 格式：2030-01-02T15:04:05Z\n- 自當前起的時間跨度：365d, 1y, 6M（天、年、月）\n- copy：從源物件複製日期（需要 --metadata）\n\n參考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "物件鎖定法律保留狀態",
+        "help": "上傳或複製物件時要應用的物件鎖定法律保留狀態。\n\n設定此項可向物件應用法律保留。如果不設定，則不應用法律保留（即使有 --metadata）。\n\n注意：法律保留獨立於保留期，可以單獨設定。\n\n- ON：啟用法律保留\n- OFF：禁用法律保留\n- copy：從源物件複製法律保留狀態（需要 --metadata）\n\n參考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "繞過合規保留限制",
+        "help": "允許刪除或修改被 GOVERNANCE 模式鎖定的物件。"
+      },
+      "bucket_object_lock_enabled": {
+        "title": "啟用儲存貯體 (Bucket)物件鎖定",
+        "help": "在建立新儲存貯體 (Bucket)時啟用物件鎖定。"
+      },
+      "object_lock_set_after_upload": {
+        "title": "上傳後設定物件鎖定",
+        "help": "在上傳後透過單獨的 API 呼叫設定物件鎖定。\n\n這適用於那些在 PUT 操作期間不支援設定物件鎖定請求頭的 S3 相容提供商。啟用後，物件鎖定會在上傳完成後透過單獨的 PutObjectRetention 和 PutObjectLegalHold API 呼叫來設定。\n\n這會增加每個物件的 API 呼叫次數，因此只有當您的提供商有此要求時才啟用。"
+      },
+      "object_lock_supported": {
+        "title": "支援物件鎖定",
+        "help": "提供商是否支援 S3 物件鎖定。\n\n應當為 true、false 或保持未設定以使用提供商的預設值。\n\n對於不完全支援 S3 物件鎖定 API 的提供商（例如 GCS，它使用非標準請求頭來繞過合規保留限制，且不支援透過 S3 API 實現法律保留），請設定為 false。\n"
+      }
+    },
+    "seafile": {
+      "2fa": {
+        "title": "兩步驗證",
+        "help": "兩步驗證（賬戶開啟兩步驗證時設為 'true'）。"
+      },
+      "auth_token": {
+        "title": "驗證權杖 (Token)",
+        "help": "驗證權杖 (Token)。"
+      },
+      "create_library": {
+        "title": "建立資料庫",
+        "help": "若資料庫不存在，rclone 是否自動建立。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "library": {
+        "title": "資料庫",
+        "help": "資料庫名稱。\n\n留空可訪問所有未加密的資料庫。"
+      },
+      "library_key": {
+        "title": "資料庫金鑰",
+        "help": "資料庫密碼（僅適用於加密資料庫）。\n\n若透過命令列傳入密碼，此處留空。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "登入密碼。"
+      },
+      "url": {
+        "title": "伺服器位址",
+        "help": "要連線的 Seafile 伺服器位址。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "使用者名稱（通常為電子郵箱地址）。"
+      }
+    },
+    "sftp": {
+      "ask_password": {
+        "title": "詢問密碼",
+        "help": "必要時允許彈出密碼輸入提示（SFTP 密碼）。\n\n若啟用此選項且未提供密碼，rclone 會執行以下操作：\n- 彈出密碼輸入提示\n- 不呼叫 ssh 代理（ssh agent）\n"
+      },
+      "blake3sum_command": {
+        "title": "Blake3Sum 命令",
+        "help": "用於讀取 BLAKE3 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳和下載的分塊大小。\n\n該引數控制 SFTP 協議資料包的最大載荷大小。\nRFC 標準限制為 32768 位元組（32k），這也是預設值。但多數伺服器支援更大的尺寸，通常總包大小上限為 256k，調大該值可顯著提升高延遲鏈路的傳輸速度。OpenSSH 即支援此特性，例如設定為 255k 效果良好——既留有足夠的協議頭開銷空間，又能控制總包大小不超過 256k。\n\n使用大於 32k 的值前務必充分測試，且僅在固定連線同一伺服器或完成全面相容性測試後使用。若複製大檔案時出現以下錯誤：\n\"failed to send packet payload: EOF\"、頻繁的 \"connection lost\"（連線丟失）或 \"corrupted on transfer\"（傳輸損壞），請嘗試降低該值。\n透過【rclone serve sftp】（/commands/rclone_serve_sftp）啟動的伺服器，僅接收標準 32k 最大載荷的資料包，因此下載檔案時**不可**修改 chunk_size；但該伺服器支援接收最大 256k 的總包，因此上傳時可參考上述 OpenSSH 示例設定 chunk_size。\n"
+      },
+      "ciphers": {
+        "title": "加密演算法",
+        "help": "會話加密使用的演算法列表（按優先順序排序，空格分隔）。\n\n至少需有一個演算法與伺服器設定匹配。可透過【ssh -Q cipher】命令檢查伺服器支援的演算法。\n\n若 use_insecure_cipher 設為 true，則**禁止**設定此引數。\n\n示例：\n\n    aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com\n"
+      },
+      "concurrency": {
+        "title": "並行數",
+        "help": "單個檔案的最大待處理請求數。\n\n該引數控制單個檔案的最大並行請求數。\n調大該值可提升高延遲鏈路的輸送量，但會佔用更多記憶體。\n"
+      },
+      "connections": {
+        "title": "連線數",
+        "help": "SFTP 最大並行連線數，設為 0 表示無限制。\n\n注意：設定此引數極易導致死鎖，需謹慎使用。\n\n執行同步（sync）或複製（copy）操作時，需確保 connections 值比【--transfers】與【--checkers】的總和大 1。\n\n若使用【--check-first】引數，則只需比【--checkers】和【--transfers】中的最大值大 1 即可。\n\n例如：connections 設為 3 時，可搭配：\n【--checkers 2 --transfers 2 --check-first】或【--checkers 1 --transfers 1】。\n\n"
+      },
+      "copy_is_hardlink": {
+        "title": "複製為硬連結 (Hardlink)",
+        "help": "啟用後，服務端複製將透過硬連結 (Hardlink)實現。\n\nSFTP 協議未定義複製命令，因此 sftp 後端預設不支援服務端複製。\n\n但 SFTP 協議支援建立硬連結 (Hardlink)，啟用此標誌後，sftp 後端將支援服務端複製——透過在源檔案與目標檔案間建立硬連結 (Hardlink)實現。\n\n並非所有 SFTP 伺服器都支援此特性。\n\n注意：硬連結 (Hardlink)的兩個檔案不會佔用額外儲存空間，因為源檔案和目標檔案本質是同一個檔案。\n\n此特性在使用【--copy-dest】引數建立備份時可能有用。"
+      },
+      "crc32sum_command": {
+        "title": "Crc32Sum 命令",
+        "help": "用於讀取 CRC-32 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "disable_concurrent_reads": {
+        "title": "禁用並行讀取",
+        "help": "啟用後將禁用並行讀取。\n\n預設情況下，並行讀取是安全的，禁用會降低效能，因此該選項預設關閉。\n\n部分伺服器會限制檔案的下載次數，並行讀取可能觸發此限制。若伺服器返回以下錯誤：\n\n    Failed to copy: file does not exist\n\n則可能需要啟用此標誌。\n\n禁用並行讀取後，use_fstat 選項將被忽略。\n"
+      },
+      "disable_concurrent_writes": {
+        "title": "禁用並行寫入",
+        "help": "啟用後將禁用並行寫入。\n\n預設情況下，rclone 使用並行寫入上傳檔案，這能大幅提升效能（尤其是對遠端伺服器）。\n\n僅在必要時啟用此選項禁用並行寫入。\n"
+      },
+      "disable_hashcheck": {
+        "title": "禁用雜湊 (Hash)校驗",
+        "help": "禁止執行 SSH 命令檢測遠端檔案的雜湊 (Hash)計算能力。\n\n留空或設為 false 表示啟用雜湊 (Hash)校驗（推薦），設為 true 表示禁用雜湊 (Hash)校驗。"
+      },
+      "hashes": {
+        "title": "雜湊 (Hash)演算法",
+        "help": "支援的總和檢查碼 (Checksum)型別列表（逗號分隔）。"
+      },
+      "host": {
+        "title": "伺服器位址",
+        "help": "要連線的 SSH 伺服器位址。\n\n例如：\"example.com\"。"
+      },
+      "host_key_algorithms": {
+        "title": "主機金鑰演算法",
+        "help": "主機金鑰演算法列表（按優先順序排序，空格分隔）。\n\n至少需有一個演算法與伺服器設定匹配。可透過【ssh -Q HostKeyAlgorithms】命令檢查伺服器支援的演算法。\n\n注意：即使未啟用伺服器主機金鑰驗證，此引數也可能影響與伺服器的金鑰協商結果。\n\n示例：\n\n    ssh-ed25519 ssh-rsa ssh-dss\n"
+      },
+      "http_proxy": {
+        "title": "HTTP 代理",
+        "help": "HTTP CONNECT 代理的地址。\n\n設為支援 HTTP CONNECT 方法的 HTTP 代理地址。\n"
+      },
+      "idle_timeout": {
+        "title": "空閒逾時時間",
+        "help": "關閉空閒連線的最大等待時間。\n\n若在指定時間內無連線返回連線池，rclone 將清除連線池。\n\n設為 0 表示永久保持連線。\n"
+      },
+      "key_exchange": {
+        "title": "金鑰交換演算法",
+        "help": "金鑰交換演算法列表（按優先順序排序，空格分隔）。\n\n至少需有一個演算法與伺服器設定匹配。可透過【ssh -Q kex】命令檢查伺服器支援的演算法。\n\n若 use_insecure_cipher 設為 true，則**禁止**設定此引數。\n\n示例：\n\n    sntrup761x25519-sha512@openssh.com curve25519-sha256 curve25519-sha256@libssh.org ecdh-sha2-nistp256\n"
+      },
+      "key_file": {
+        "title": "金鑰檔案",
+        "help": "PEM 編碼的私鑰檔案路徑。\n\n留空或設定 key-use-agent 表示使用 ssh-agent。\n\n檔案名中的開頭 `~` 會被自動展開，環境變數（如 ${RCLONE_CONFIG_DIR}）也會被解析。"
+      },
+      "key_file_pass": {
+        "title": "金鑰檔案密碼",
+        "help": "解密 PEM 編碼私鑰檔案的密碼。\n\n僅支援 PEM 加密的金鑰檔案（舊版 OpenSSH 格式），不支援新版 OpenSSH 格式的加密金鑰。"
+      },
+      "key_pem": {
+        "title": "原始 PEM 金鑰",
+        "help": "原始的 PEM 編碼私鑰。\n\n注意：需寫為單行，換行符替換為 '\\n'，例如：\n\n    key_pem = -----BEGIN RSA PRIVATE KEY-----\\nMaMbaIXtE\\n0gAMbMbaSsd\\nMbaass\\n-----END RSA PRIVATE KEY-----\n\n可透過以下命令生成正確的單行格式：\n\n    awk '{printf \"%s\\\\n\", $0}' < ~/.ssh/id_rsa\n\n若指定此引數，將覆蓋 key_file 引數。"
+      },
+      "key_use_agent": {
+        "title": "使用 SSH 代理",
+        "help": "啟用後強制使用 ssh-agent。\n\n若同時設定 key-file，rclone 會讀取指定金鑰檔案對應的 .pub 檔案，並僅從 ssh-agent 請求關聯的金鑰。這可避免 ssh-agent 中存在多個金鑰時出現「Too many authentication failures for *username*」錯誤。"
+      },
+      "known_hosts_file": {
+        "title": "已知主機檔案",
+        "help": "known_hosts 檔案的可選路徑。\n\n設定此值可啟用伺服器主機金鑰驗證。\n\n檔案名中的開頭 `~` 會被自動展開，環境變數（如 ${RCLONE_CONFIG_DIR}）也會被解析。"
+      },
+      "macs": {
+        "title": "訊息驗證碼演算法",
+        "help": "訊息驗證碼（MAC）演算法列表（按優先順序排序，空格分隔）。\n\n至少需有一個演算法與伺服器設定匹配。可透過【ssh -Q mac】命令檢查伺服器支援的演算法。\n\n示例：\n\n    umac-64-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-256-etm@openssh.com\n"
+      },
+      "md5sum_command": {
+        "title": "Md5Sum 命令",
+        "help": "用於讀取 MD5 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "SSH 密碼，留空表示使用 ssh-agent。"
+      },
+      "path_override": {
+        "title": "路徑覆蓋",
+        "help": "覆蓋 SSH shell 命令使用的路徑。\n\n當 SFTP 路徑與 SSH 路徑不一致時，此引數可解決總和檢查碼 (Checksum)計算問題（該問題常見於羣暉 NAS 等裝置）。\n\n示例 1：共享資料夾位於卷目錄下\n\n    rclone sync /home/local/directory remote:/directory --sftp-path-override /volume2/directory\n\n示例 2：家目錄位於名為 \"home\" 的共享資料夾中\n\n    rclone sync /home/local/directory remote:/home/directory --sftp-path-override /volume1/homes/USER/directory\n\t\n若只需指定 SFTP 遠端的根路徑，並讓 rclone 自動追加相對子路徑（包括必要時解包/解密遠端連線），可在路徑開頭新增 `@` 符號。\n\n示例 1 可改寫為：\n\n\trclone sync /home/local/directory remote:/directory --sftp-path-override @/volume2\n\t\n注意：在羣暉 \"home\" 資料夾中使用此方式時，需指定完整路徑 \"/homes/USER\" 而非 \"/home\"。\n\n示例 2 應改寫為：\n\n\trclone sync /home/local/directory remote:/homes/USER/directory --sftp-path-override @/volume1"
+      },
+      "port": {
+        "title": "連線埠",
+        "help": "SSH 連線埠號。"
+      },
+      "pubkey": {
+        "title": "公鑰證書",
+        "help": "用於公鑰證書驗證的 SSH 公鑰證書。\n若有簽名證書用於驗證，可設定此引數。\n指定此引數將覆蓋 pubkey_file 引數。"
+      },
+      "pubkey_file": {
+        "title": "公鑰證書檔案",
+        "help": "公鑰證書檔案的可選路徑。\n\n若有簽名證書用於驗證，可設定此引數。\n\n檔案名中的開頭 `~` 會被自動展開，環境變數（如 ${RCLONE_CONFIG_DIR}）也會被解析。"
+      },
+      "server_command": {
+        "title": "伺服器命令",
+        "help": "指定在遠端主機上執行 SFTP 伺服器的路徑或命令。\n\n定義 server_command 後，subsystem 選項將被忽略。\n\n注意：將 server_command 新增到設定檔案時，**不要**使用引號包裹，否則會導致 rclone 執行失敗。\n\n可用示例：\n\n    [remote_name]\n    type = sftp\n    server_command = sudo /usr/libexec/openssh/sftp-server"
+      },
+      "set_env": {
+        "title": "設定環境變數",
+        "help": "傳遞給 SFTP 用戶端和相關命令的環境變數。\n\n按以下格式設定環境變數：\n\n    VAR=value\n\n該變數會傳遞給 SFTP 用戶端及所有執行的命令（如 md5sum）。\n\n多個變數用空格分隔，例如：\n\n    VAR1=value VAR2=value\n\n含空格的變數需用引號包裹，例如：\n\n    \"VAR3=value with space\" \"VAR4=value with space\" VAR5=nospacehere\n\n"
+      },
+      "set_modtime": {
+        "title": "設定修改時間",
+        "help": "啟用後，將在遠端檔案上設定修改時間。"
+      },
+      "sha1sum_command": {
+        "title": "Sha1Sum 命令",
+        "help": "用於讀取 SHA-1 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "sha256sum_command": {
+        "title": "Sha256Sum 命令",
+        "help": "用於讀取 SHA-256 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "shell_type": {
+        "title": "Shell 型別",
+        "help": "遠端伺服器上的 SSH Shell 型別（如有）。\n\n留空則自動檢測。"
+      },
+      "skip_links": {
+        "title": "跳過連結檔案",
+        "help": "啟用後，跳過所有符號連結 (Symlink)及其他非普通檔案。"
+      },
+      "socks_proxy": {
+        "title": "Socks 代理",
+        "help": "Socks 5 代理伺服器位址。\n\t\n支援格式：user:pass@host:port、user@host:port、host:port。\n\n示例：\n\n\tmyUser:myPass@localhost:9005\n\t"
+      },
+      "ssh": {
+        "title": "外部 SSH 命令",
+        "help": "外部 ssh 二進位制檔案的路徑及引數。\n\n預設情況下，rclone 使用內建 SSH 庫連線 SFTP 伺服器，但該庫未實現所有 SSH 功能，因此可能需要使用外部 ssh 二進位制檔案。\n\n使用此選項後，rclone 將忽略所有內部 SSH 設定，需自行設定 ssh 命令的使用者/主機/連線埠及其他引數。\n\n**重要**：ssh 命令必須無需輸入密碼即可登入（需設定金鑰或證書）。\n\nRclone 會執行指定的命令，並追加額外引數：\n- 追加 \"-s sftp\" 以訪問 SFTP 子系統\n- 追加 \"md5sum /path/to/file\" 等命令以讀取總和檢查碼 (Checksum)\n\n含空格的引數需用「雙引號」包裹。\n\n示例設定：\n\n    ssh -o ServerAliveInterval=20 user@example.com\n\n注意：使用外部 ssh 二進位制檔案時，rclone 每計算一次雜湊值 (Hash)都會新增一個 SSH 連線。\n"
+      },
+      "subsystem": {
+        "title": "子系統",
+        "help": "指定遠端主機上的 SSH2 子系統。"
+      },
+      "use_fstat": {
+        "title": "使用 Fstat",
+        "help": "啟用後，使用 fstat 而非 stat。\n\n部分伺服器限制開啟檔案數量，開啟檔案後呼叫 Stat 會觸發伺服器錯誤。啟用此標誌後，將呼叫 Fstat（作用於已開啟的檔案控制程式碼）而非 Stat。\n\n該設定已驗證對 IBM Sterling SFTP 伺服器有效——此類伺服器的「extractability」級別設為 1，表示同一時間僅允許開啟 1 個檔案。\n"
+      },
+      "use_insecure_cipher": {
+        "title": "使用不安全加密演算法",
+        "help": "啟用不安全的加密演算法和金鑰交換方法。\n\n啟用後將支援以下不安全演算法：\n\n- aes128-cbc\n- aes192-cbc\n- aes256-cbc\n- 3des-cbc\n- diffie-hellman-group-exchange-sha256\n- diffie-hellman-group-exchange-sha1\n\n這些演算法存在安全風險，攻擊者可能透過這些演算法還原明文資料。\n\n若使用 ciphers 或 key_exchange 進階選項，此引數必須設為 false。\n"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "SSH 使用者名稱。"
+      },
+      "xxh128sum_command": {
+        "title": "Xxh128Sum 命令",
+        "help": "用於讀取 XXH128 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "xxh3sum_command": {
+        "title": "Xxh3Sum 命令",
+        "help": "用於讀取 XXH3 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      }
+    },
+    "sharefile": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n必須是 2 的冪且 ≥ 256k。\n\n調大該值可提升效能，但注意每個傳輸任務會在記憶體中緩衝一個分塊。\n\n調小該值可降低記憶體佔用，但會降低效能。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n將使用 RFC 6749 中定義的 OAuth2 用戶端憑證模式。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "endpoint": {
+        "title": "API 端點",
+        "help": "API 呼叫的端點地址。\n\n該地址通常在 OAuth 流程中自動發現，也可手動設定為類似地址：https://XXX.sharefile.com\n"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "根資料夾的 ID。\n\n留空表示訪問「個人資料夾」。可使用標準值或任意資料夾 ID（長十六進位制數字）。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換為分塊上傳的檔案大小閾值。"
+      }
+    },
+    "sia": {
+      "api_password": {
+        "title": "API 密碼",
+        "help": "Sia 常駐服務 (Daemon)的 API 密碼。\n\n可在 HOME/.sia/ 目錄或常駐服務 (Daemon)目錄下的 apipassword 檔案中找到。"
+      },
+      "api_url": {
+        "title": "API 地址",
+        "help": "Sia 常駐服務 (Daemon)的 API 地址，例如 http://sia.daemon.host:9980。\n\n注意：siad 需以 --disable-api-security 引數執行，才能為非本機主機開放 API 連線埠（不推薦此做法）。\n若 Sia 常駐服務 (Daemon)執行在本機，保持預設值即可。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "user_agent": {
+        "title": "使用者代理",
+        "help": "Siad 的使用者代理字串。\n\n出於安全考慮，Sia 常駐服務 (Daemon)預設要求使用 'Sia-Agent' 使用者代理。"
+      }
+    },
+    "smb": {
+      "case_insensitive": {
+        "title": "大小寫不敏感",
+        "help": "伺服器是否設定為大小寫不敏感。\n\nWindows 共享始終為 true。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "domain": {
+        "title": "域",
+        "help": "NTLM 驗證使用的域名。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "hide_special_share": {
+        "title": "隱藏特殊共享",
+        "help": "隱藏使用者不應訪問的特殊共享（如 print$）。"
+      },
+      "host": {
+        "title": "伺服器位址",
+        "help": "要連線的 SMB 伺服器主機名。\n\n例如：\"example.com\"。"
+      },
+      "idle_timeout": {
+        "title": "空閒逾時時間",
+        "help": "關閉空閒連線的最大等待時間。\n\n若在指定時間內無連線返回連線池，rclone 將清除連線池。\n\n設為 0 表示永久保持連線。\n"
+      },
+      "kerberos_ccache": {
+        "title": "Kerberos 憑證快取",
+        "help": "Kerberos 憑證快取檔案（krb5cc）的路徑。\n\n覆蓋預設的 KRB5CCNAME 環境變數，允許該 SMB 後端執行個體使用不同的 Kerberos 快取檔案。\n此引數在掛載多個不同憑證的 SMB 共享，或多使用者環境中執行時非常有用。\n\n支援的格式：\n  - FILE:/path/to/ccache   – 使用指定檔案\n  - DIR:/path/to/ccachedir – 使用指定目錄下的主快取檔案\n  - /path/to/ccache        – 解析為檔案路徑"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "SMB 密碼。"
+      },
+      "port": {
+        "title": "連線埠",
+        "help": "SMB 連線埠號。"
+      },
+      "spn": {
+        "title": "服務主體 (Service Principal)名稱",
+        "help": "服務主體 (Service Principal)名稱（SPN）。\n\nRclone 會向伺服器提交此名稱。部分伺服器將其作為額外的驗證依據，在叢集環境中通常需要設定。例如：\n\n    cifs/remotehost:1020\n\n不確定時留空。\n"
+      },
+      "use_kerberos": {
+        "title": "使用 Kerberos 驗證",
+        "help": "使用 Kerberos 驗證而非 NTLM。\n\n啟用後，rclone 將使用 Kerberos 驗證（需設定有效的 Kerberos 環境和憑證快取，可位於預設路徑或透過 KRB5_CONFIG、KRB5CCNAME 環境變數指定）。\n"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "SMB 使用者名稱。"
+      }
+    },
+    "storj": {
+      "access_grant": {
+        "title": "存取授權",
+        "help": "存取授權憑證。"
+      },
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "API 金鑰。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "passphrase": {
+        "title": "加密口令",
+        "help": "加密口令。\n\n訪問已存在的物件時，需輸入上傳時使用的加密口令。"
+      },
+      "provider": {
+        "title": "驗證方式",
+        "help": "選擇驗證方式。"
+      },
+      "satellite_address": {
+        "title": "衛星節點地址",
+        "help": "衛星節點地址。\n\n自定義衛星節點地址格式：`<nodeid>@<address>:<port>`。"
+      }
+    },
+    "sugarsync": {
+      "access_key_id": {
+        "title": "存取金鑰 ID",
+        "help": "Sugarsync 存取金鑰 ID。\n\n留空使用 rclone 內建的金鑰。"
+      },
+      "app_id": {
+        "title": "應用 ID",
+        "help": "Sugarsync 應用 ID。\n\n留空使用 rclone 內建的 ID。"
+      },
+      "authorization": {
+        "title": "授權憑證",
+        "help": "Sugarsync 授權憑證。\n\n通常留空，由 rclone 自動設定。"
+      },
+      "authorization_expiry": {
+        "title": "授權過期時間",
+        "help": "Sugarsync 授權憑證的過期時間。\n\n通常留空，由 rclone 自動設定。"
+      },
+      "deleted_id": {
+        "title": "回收站 ID",
+        "help": "Sugarsync 回收站資料夾 ID。\n\n通常留空，由 rclone 自動設定。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "hard_delete": {
+        "title": "永久刪除",
+        "help": "設為 true 時永久刪除檔案，否則移入回收站。"
+      },
+      "private_access_key": {
+        "title": "私有存取金鑰",
+        "help": "Sugarsync 私有存取金鑰。\n\n留空使用 rclone 內建的金鑰。"
+      },
+      "refresh_token": {
+        "title": "重新整理權杖 (Token)",
+        "help": "Sugarsync 重新整理權杖 (Token)。\n\n通常留空，由 rclone 自動設定。"
+      },
+      "root_id": {
+        "title": "根目錄 ID",
+        "help": "Sugarsync 根目錄 ID。\n\n通常留空，由 rclone 自動設定。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "Sugarsync 使用者名稱。\n\n通常留空，由 rclone 自動設定。"
+      }
+    },
+    "swift": {
+      "application_credential_id": {
+        "title": "應用憑證 ID",
+        "help": "應用憑證 ID（對應環境變數 OS_APPLICATION_CREDENTIAL_ID）。"
+      },
+      "application_credential_name": {
+        "title": "應用憑證名稱",
+        "help": "應用憑證名稱（對應環境變數 OS_APPLICATION_CREDENTIAL_NAME）。"
+      },
+      "application_credential_secret": {
+        "title": "應用憑證金鑰",
+        "help": "應用憑證金鑰（對應環境變數 OS_APPLICATION_CREDENTIAL_SECRET）。"
+      },
+      "auth": {
+        "title": "驗證地址",
+        "help": "伺服器驗證地址（對應環境變數 OS_AUTH_URL）。"
+      },
+      "auth_token": {
+        "title": "驗證權杖 (Token)",
+        "help": "備用驗證方式取得的驗證權杖 (Token)（可選，對應環境變數 OS_AUTH_TOKEN）。"
+      },
+      "auth_version": {
+        "title": "驗證版本",
+        "help": "驗證版本（可選）——若驗證地址無版本號，設為 1、2 或 3（對應環境變數 ST_AUTH_VERSION）。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "超過此大小的檔案將被分塊。\n\n超過此大小的檔案會被分塊儲存到 `_segments` 容器或 `.file-segments` 目錄中（詳見 `use_segments_container` 選項）。預設值為 5 GiB（最大值），即僅超過 5 GiB 的檔案會被分塊。\n\nRclone 將分塊檔案以動態大物件（DLO）形式上傳。\n"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "domain": {
+        "title": "使用者域",
+        "help": "使用者域（可選，僅 v3 驗證使用，對應環境變數 OS_USER_DOMAIN_NAME）。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "endpoint_type": {
+        "title": "端點型別",
+        "help": "從服務目錄中選擇的端點型別（對應環境變數 OS_ENDPOINT_TYPE）。"
+      },
+      "env_auth": {
+        "title": "環境變數驗證",
+        "help": "從標準 OpenStack 格式的環境變數中取得 Swift 憑證。"
+      },
+      "fetch_until_empty_page": {
+        "title": "持續分頁直到空頁",
+        "help": "分頁時，除非收到空頁，否則始終繼續取得下一頁。\n\n若 rclone 列出的物件數量少於預期，或重複同步時會複製未修改的物件，可考慮啟用此選項。\n\n啟用此選項是安全的，但 rclone 可能會發起更多不必要的 API 呼叫。\n\n此選項是針對 Swift API 分頁實現不符合預期的兩種解決方案之一，另一個是 `partial_page_fetch_threshold`。\n"
+      },
+      "key": {
+        "title": "金鑰/密碼",
+        "help": "API 金鑰或密碼（對應環境變數 OS_PASSWORD）。"
+      },
+      "leave_parts_on_error": {
+        "title": "出錯時保留分塊",
+        "help": "設為 true 時，上傳失敗後不呼叫中止上傳介面。\n\n跨會話續傳上傳時應設為 true。"
+      },
+      "no_chunk": {
+        "title": "禁用分塊",
+        "help": "流式上傳時不分塊。\n\n執行流式上傳時（如使用 `rcat` 或 `mount` 並設定 `--vfs-cache-mode off`），啟用此標誌會讓 swift 後端不再分塊上傳檔案。\n\n這會將最大流式上傳大小限制為 5 GiB，但非分塊檔案更易處理且包含 MD5SUM。\n\n執行一般複製操作時，rclone 仍會對超過 `chunk_size` 的檔案分塊。\n"
+      },
+      "no_large_objects": {
+        "title": "禁用大物件支援",
+        "help": "禁用靜態大物件（SLO）和動態大物件（DLO）支援。\n\nSwift 無法透明儲存超過 5 GiB 的檔案，需透過靜態大物件（SLO）或動態大物件（DLO）分塊儲存。但 API 不允許 rclone 在不傳送 HEAD 請求的情況下，判斷檔案是 SLO 還是 DLO——而這些大物件需要特殊處理，因此 rclone 必須為物件傳送 HEAD 請求（例如讀取總和檢查碼 (Checksum)時）。\n\n啟用 `no_large_objects` 後，rclone 會假設儲存中無 SLO/DLO，從而停止傳送額外的 HEAD 請求，大幅提升效能（尤其是使用 `--checksum` 引數進行 swift 到 swift 傳輸時）。\n\n啟用此選項會隱含啟用 `no_chunk`，且所有檔案均不會分塊上傳，因此超過 5 GiB 的檔案上傳會失敗。\n\n若啟用此選項但儲存中存在 SLO/DLO，會導致這些檔案的雜湊值 (Hash)計算錯誤。下載操作可正常執行，但刪除、複製等操作會失敗。\n"
+      },
+      "partial_page_fetch_threshold": {
+        "title": "部分分頁取得閾值",
+        "help": "分頁時，若當前頁資料量佔分頁上限的比例低於此值，則繼續取得下一頁。\n\n若 rclone 列出的物件數量少於預期，或重複同步時會複製未修改的物件，可考慮啟用此選項。\n\n啟用此選項是安全的，但 rclone 可能會發起更多不必要的 API 呼叫。\n\n此選項是針對 Swift API 分頁實現不符合預期的兩種解決方案之一，另一個是 `fetch_until_empty_page`。\n"
+      },
+      "region": {
+        "title": "區域",
+        "help": "區域名稱（可選，對應環境變數 OS_REGION_NAME）。"
+      },
+      "storage_policy": {
+        "title": "儲存策略",
+        "help": "建立新容器時使用的儲存策略。\n\n建立新容器時會應用指定的儲存策略，且策略建立後無法修改。允許的設定值及其含義取決於 Swift 儲存服務商。"
+      },
+      "storage_url": {
+        "title": "儲存地址",
+        "help": "儲存地址（可選，對應環境變數 OS_STORAGE_URL）。"
+      },
+      "tenant": {
+        "title": "租戶名稱",
+        "help": "租戶名稱（v1 驗證可選，其他驗證方式需指定此引數或 tenant_id，對應環境變數 OS_TENANT_NAME 或 OS_PROJECT_NAME）。"
+      },
+      "tenant_domain": {
+        "title": "租戶域",
+        "help": "租戶域（可選，僅 v3 驗證使用，對應環境變數 OS_PROJECT_DOMAIN_NAME）。"
+      },
+      "tenant_id": {
+        "title": "租戶 ID",
+        "help": "租戶 ID（v1 驗證可選，其他驗證方式需指定此引數或 tenant，對應環境變數 OS_TENANT_ID）。"
+      },
+      "use_segments_container": {
+        "title": "使用分塊容器",
+        "help": "選擇大物件分塊的儲存位置。\n\nSwift 無法透明儲存超過 5 GiB 的檔案，rclone 會將超過 `chunk_size`（預設 5 GiB）的檔案分塊上傳。\n\n設為 `true` 時，分塊將儲存在名稱為「目標容器名 + _segments」的額外容器中——此方式不會在原容器中產生重複資料，但會建立額外容器。\n\n設為 `false` 時，分塊將儲存在容器根目錄下的 `.file-segments` 目錄中——列出容器時該目錄會被隱藏。部分服務商（如 Blomp）要求使用此模式（不允許建立額外容器）。若需在根目錄中顯示 `.file-segments`，需將此標誌設為 `true`。\n\n設為 `unset`（預設）時，rclone 會自動選擇值：預設 `false`，僅當檢測到需要設為 `true` 的 `auth_url` 時才會切換（此時會在 DEBUG 日誌中輸出提示）。\n"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "登入使用者名稱（對應環境變數 OS_USERNAME）。"
+      },
+      "user_id": {
+        "title": "使用者 ID",
+        "help": "登入使用者 ID（可選，多數 Swift 系統使用 user 引數，此引數留空即可；僅 v3 驗證使用，對應環境變數 OS_USER_ID）。"
+      }
+    },
+    "tardigrade": {
+      "access_grant": {
+        "title": "存取授權",
+        "help": "存取授權憑證。"
+      },
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "API 金鑰。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "passphrase": {
+        "title": "加密口令",
+        "help": "加密口令。\n\n訪問已存在的物件時，需輸入上傳時使用的加密口令。"
+      },
+      "provider": {
+        "title": "驗證方式",
+        "help": "選擇驗證方式。"
+      },
+      "satellite_address": {
+        "title": "衛星節點地址",
+        "help": "衛星節點地址。\n\n自定義衛星節點地址格式：`<nodeid>@<address>:<port>`。"
+      }
+    },
+    "ulozto": {
+      "app_token": {
+        "title": "應用權杖 (Token)",
+        "help": "標識應用的權杖 (Token)。應用 API 金鑰可在 API 文件（https://uloz.to/upload-resumable-api-beta）中找到，或透過客服取得。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "list_page_size": {
+        "title": "列表分頁大小",
+        "help": "列表命令的單頁大小，取值範圍 1-500。"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "使用者密碼。"
+      },
+      "root_folder_slug": {
+        "title": "根資料夾標識",
+        "help": "設定後，rclone 會將此資料夾作為所有操作的根目錄。例如：\n若標識對應的資料夾是 'foo/bar/'，則 'ulozto:baz' 等價於未設定根標識時的 'ulozto:foo/bar/baz'。"
+      },
+      "username": {
+        "title": "使用者名稱",
+        "help": "操作使用的使用者主體名。"
+      }
+    },
+    "union": {
+      "action_policy": {
+        "title": "操作策略",
+        "help": "在 ACTION（操作）類別下選擇上游儲存的策略。"
+      },
+      "cache_time": {
+        "title": "快取時間",
+        "help": "使用量和可用空間的快取時長（單位：秒）。\n\n僅當使用路徑保留策略時，此選項纔有效。"
+      },
+      "create_policy": {
+        "title": "建立策略",
+        "help": "在 CREATE（建立）類別下選擇上游儲存的策略。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "min_free_space": {
+        "title": "最小可用空間",
+        "help": "lfs/eplfs 策略所需的最小可用空間閾值。\n\n若遠端連線的可用空間低於此值，則不會被 lfs 或 eplfs 策略選中使用。"
+      },
+      "search_policy": {
+        "title": "搜尋策略",
+        "help": "在 SEARCH（搜尋）類別下選擇上游儲存的策略。"
+      },
+      "upstreams": {
+        "title": "上游儲存",
+        "help": "以空格分隔的上游儲存列表。\n\n格式示例：'upstreama:test/dir upstreamb:'、'\"upstreama:test/space:ro dir\" upstreamb:' 等。"
+      }
+    },
+    "webdav": {
+      "auth_redirect": {
+        "title": "驗證重定向",
+        "help": "重定向時保留驗證資訊。\n\n若 rclone 嘗試讀取檔案時，伺服器將其重定向到新域名，預設情況下 rclone 會從請求中移除 Authorization: 頭。\n\n這是標準的安全做法，避免將憑證傳送到未知的 Web 伺服器。\n\n但在某些場景下需要保留該頭。若 rclone 讀取 WebDAV 伺服器檔案時出現「401 Unauthorized」錯誤，可嘗試啟用此選項。\n"
+      },
+      "bearer_token": {
+        "title": "Bearer 權杖 (Token)",
+        "help": "替代使用者名稱/密碼的 Bearer 權杖 (Token)（例如 Macaroon 權杖 (Token)）。"
+      },
+      "bearer_token_command": {
+        "title": "Bearer 權杖 (Token)命令",
+        "help": "用於取得 Bearer 權杖 (Token)的執行命令。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。\n\n預設編碼規則：\n- sharepoint-ntlm 型別：Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,Hash,Percent,BackSlash,Del,Ctl,LeftSpace,LeftTilde,RightSpace,RightPeriod,InvalidUtf8\n- 其他型別：identity（原樣）"
+      },
+      "headers": {
+        "title": "HTTP 頭",
+        "help": "為所有請求設定 HTTP 頭。\n\n用於為所有互動請求新增額外的 HTTP 頭。\n\n輸入格式為逗號分隔的鍵值對列表，支援標準 [CSV 編碼](https://godoc.org/encoding/csv)。\n\n示例：設定 Cookie 可使用 'Cookie,name=value' 或 '\"Cookie\",\"name=value\"'。\n\n可設定多個頭，例如：'\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。\n"
+      },
+      "nextcloud_chunk_size": {
+        "title": "Nextcloud 分塊大小",
+        "help": "Nextcloud 上傳分塊大小。\n\n建議將 NextCloud 執行個體的最大分塊大小設定為 1 GB，以提升上傳效能。\n參考文件：https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/big_file_upload_configuration.html#adjust-chunk-size-on-nextcloud-side\n\n設為 0 禁用分塊上傳。\n"
+      },
+      "owncloud_exclude_mounts": {
+        "title": "排除 ownCloud 掛載儲存",
+        "help": "排除 ownCloud 中掛載的外部儲存。"
+      },
+      "owncloud_exclude_shares": {
+        "title": "排除 ownCloud 共享檔案",
+        "help": "排除 ownCloud 中的共享檔案/資料夾。"
+      },
+      "pacer_min_sleep": {
+        "title": "請求間隔最小休眠時間",
+        "help": "兩次 API 呼叫之間的最小休眠時間。"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "登入密碼。"
+      },
+      "unix_socket": {
+        "title": "Unix 套接字",
+        "help": "要連線的 Unix 域套接字路徑，替代直接建立 TCP 連線。"
+      },
+      "url": {
+        "title": "伺服器位址",
+        "help": "要連線的 HTTP 伺服器位址。\n\n例如：https://example.com。"
+      },
+      "user": {
+        "title": "使用者名稱",
+        "help": "使用者名稱。\n\n若使用 NTLM 驗證，使用者名稱格式應為 '域\\使用者'（Domain\\User）。"
+      },
+      "vendor": {
+        "title": "服務商型別",
+        "help": "你所使用的 WebDAV 站點/服務/軟體名稱。"
+      }
+    },
+    "yandex": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n將使用 RFC 6749 中定義的 OAuth2 用戶端憑證模式。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "hard_delete": {
+        "title": "永久刪除",
+        "help": "永久刪除檔案，而非移入回收站。"
+      },
+      "spoof_ua": {
+        "title": "模擬使用者代理",
+        "help": "將使用者Proxy 設定為與官方 Yandex Disk 用戶端一致，可能提升上傳效能。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器位址。\n\n留空使用服務商預設地址。"
+      }
+    },
+    "zoho": {
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n將使用 RFC 6749 中定義的 OAuth2 用戶端憑證模式。\n\n注意：並非所有後端都支援此選項。"
+      },
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常留空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常留空。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述資訊。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "region": {
+        "title": "區域",
+        "help": "要連線的 Zoho 區域。\n\n需使用你的組織註冊所在的區域。若不確定，可使用瀏覽器訪問 Zoho 時的頂級域名。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "OAuth 存取權杖 (Access Token)（JSON 格式）。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "upload_cutoff": {
+        "title": "上傳分塊閾值",
+        "help": "切換到大檔案上傳 API 的閾值（≥ 10 MiB）。"
+      }
+    },
+    "filen": {
+      "email": {
+        "title": "郵箱",
+        "help": "Filen 賬戶的郵箱"
+      },
+      "password": {
+        "title": "密碼",
+        "help": "Filen 賬戶的密碼"
+      },
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "Filen 賬戶的 API 金鑰 \n\n使用 Filen CLI 的 export-api-key 命令取得\n你可以從 https://github.com/FilenCloudDienste/filen-cli 下載 Filen CLI"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行",
+        "help": "分塊上傳的並行數。\n\n這是同一檔案正在執行的同時傳輸的最大數量。\n將其設定為小於 1 的值將導致上傳死鎖。\n\n如果你正在高頻寬鏈路上上傳少量大檔案\n且這些上傳未充分利用頻寬，那麼增加\n這個值可能會幫助加快傳輸速度。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "master_keys": {
+        "title": "主金鑰",
+        "help": "主金鑰（僅供內部使用）"
+      },
+      "private_key": {
+        "title": "私鑰",
+        "help": "私鑰（僅供內部使用）"
+      },
+      "public_key": {
+        "title": "公鑰",
+        "help": "公鑰（僅供內部使用）"
+      },
+      "auth_version": {
+        "title": "驗證版本",
+        "help": "驗證版本（僅供內部使用）"
+      },
+      "base_folder_uuid": {
+        "title": "根目錄 UUID",
+        "help": "賬戶根目錄的 UUID（僅供內部使用）"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述"
+      }
+    },
+    "drime": {
+      "access_token": {
+        "title": "存取權杖 (Access Token)",
+        "help": "API 存取權杖 (Access Token)\n\n你可以從 Web 控制面板取得此權杖 (Token)。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "根資料夾的 ID\n\n通常留空，rclone 會自動填充。\n\n如果你希望 rclone 限制在特定資料夾，可以填寫它 - 有關更多資訊，請參閱文件。\n"
+      },
+      "workspace_id": {
+        "title": "工作區 ID",
+        "help": "賬戶 ID\n\n通常留空，除非你想指定工作區 ID。\n"
+      },
+      "list_chunk": {
+        "title": "列表分塊",
+        "help": "每次呼叫的列表項數"
+      },
+      "hard_delete": {
+        "title": "永久刪除",
+        "help": "永久刪除檔案而不是放入回收站。"
+      },
+      "upload_cutoff": {
+        "title": "上傳閾值",
+        "help": "切換到分塊上傳的閾值。\n\n任何大於此大小的檔案都將以 chunk_size 的塊上傳。\n最小值為 0，最大值為 5 GiB。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "用於上傳的分塊大小。\n\n當上傳大於 upload_cutoff 的檔案或未知大小的檔案（例如來自 \"rclone rcat\" 或使用 \"rclone mount\" 或 google\nphotos 或 google docs 上傳的檔案）時，它們將使用此分塊大小作為分塊上傳。\n\n請注意，\"--drime-upload-concurrency\" 個此大小的塊將在每個傳輸中緩衝在記憶體中。\n\n如果你正在高頻寬鏈路上傳輸大檔案並且有足夠的記憶體，\n增加這個值可能會幫助加快傳輸速度。\n\nRclone 會在上傳已知大小的大檔案時自動增加分塊大小，\n以保持在 10,000 個塊的限制之下。\n\n未知大小的檔案將使用設定的 chunk_size 上傳。\n由於預設分塊大小為 5 MiB，且最多只能有 10,000 個塊，\n這意味著預設情況下，你可以流式上傳的最大檔案大小為 48 GiB。\n如果你希望流式上傳更大的檔案，則需要增加 chunk_size。\n"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行",
+        "help": "分塊上傳和複製的並行數。\n\n這是同一檔案在分塊上傳和複製時並行上傳的塊數。\n\n如果你正在高頻寬鏈路上上傳少量大檔案\n且這些上傳未充分利用頻寬，那麼增加\n這個值可能會幫助加快傳輸速度。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述"
+      }
+    },
+    "shade": {
+      "drive_id": {
+        "title": "驅動器 ID",
+        "help": "你的驅動器 ID，請在驅動器設定中檢視。每個 rclone 設定必須針對每個驅動器單獨建立。"
+      },
+      "api_key": {
+        "title": "API 金鑰",
+        "help": "你的賬戶的 API 金鑰"
+      },
+      "endpoint": {
+        "title": "端點",
+        "help": "服務的端點。\n\n通常留空。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "用於上傳的分塊大小。\n\n任何大於此大小的檔案都將以該大小的塊上傳。\n\n請注意，這會緩衝在每個傳輸的記憶體中，因此增加它會\n增加記憶體使用。\n\n最小值為 5MB，最大值為 5GB。"
+      },
+      "upload_concurrency": {
+        "title": "上傳並行",
+        "help": "分塊上傳和複製的並行數。這是同一檔案在分塊上傳和複製時並行上傳的塊數。"
+      },
+      "max_upload_parts": {
+        "title": "最大上傳分塊數",
+        "help": "分塊上傳的最大分塊數。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "用於執行 Shade FS 操作的 JWT 權杖 (Token)。不要設定此值 - rclone 會自動設定它"
+      },
+      "token_expiry": {
+        "title": "權杖 (Token)過期時間",
+        "help": "JWT 權杖 (Token)過期時間。不要設定此值 - rclone 會自動設定它"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述"
+      }
+    },
+    "internxt": {
+      "email": {
+        "title": "電子郵箱",
+        "help": "登入郵箱"
+      },
+      "pass": {
+        "title": "密碼",
+        "help": "密碼。"
+      },
+      "mnemonic": {
+        "title": "助記詞",
+        "help": "助記詞（僅供內部使用）"
+      },
+      "skip_hash_validation": {
+        "title": "跳過雜湊 (Hash)驗證",
+        "help": "下載檔案時跳過雜湊 (Hash)驗證。\n\n預設情況下禁用雜湊 (Hash)驗證。將其設定為 false 以啟用驗證。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端儲存使用的編碼方式。\n\n更多資訊請參閱概述中的【編碼】章節（/overview/#encoding）。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述"
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "用戶端 ID",
+        "help": "OAuth 用戶端 ID。\n\n通常保持為空。"
+      },
+      "client_secret": {
+        "title": "用戶端金鑰",
+        "help": "OAuth 用戶端金鑰。\n\n通常保持為空。"
+      },
+      "token": {
+        "title": "權杖 (Token)",
+        "help": "作為 JSON 資料的 OAuth 存取權杖 (Access Token)。"
+      },
+      "auth_url": {
+        "title": "驗證地址",
+        "help": "驗證伺服器 URL。\n\n留空以使用提供商預設值。"
+      },
+      "token_url": {
+        "title": "權杖 (Token)地址",
+        "help": "權杖 (Token)伺服器 URL。\n\n留空以使用提供商預設值。"
+      },
+      "client_credentials": {
+        "title": "用戶端憑證",
+        "help": "使用用戶端憑證 OAuth 流程。\n\n這將使用 RFC 6749 中所述的 OAUTH2 用戶端憑證流程。\n\n請請注意，並非所有後端都支援此選項。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "根資料夾的 ID。\n\n通常此項為自動檢測，但如果檢測失敗或者您想加速啟動，可以手動設定。\n\n通常保持為空。"
+      },
+      "chunk_size": {
+        "title": "分塊大小",
+        "help": "上傳分塊大小。\n\n必須是 2 的冪且 >= 256k 且 <= 64MB。"
+      },
+      "list_chunk": {
+        "title": "列出分塊數量",
+        "help": "列表分塊大小 1-1000。"
+      },
+      "upload_cutoff": {
+        "title": "斷點續傳閾值",
+        "help": "切換到可恢復上傳的閾值大小。\n\n大於此大小的檔案將使用可恢復上傳方法上傳。最小值為 0，最大值為 20 MiB（華為雲盤單個請求上傳 API 的限制）。"
+      },
+      "encoding": {
+        "title": "編碼",
+        "help": "後端的編碼格式。\n\n有關更多資訊，請參閱概述中的 [編碼章節](/overview/#encoding)。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "遠端連線的描述。"
+      }
+    }
+  }
+}

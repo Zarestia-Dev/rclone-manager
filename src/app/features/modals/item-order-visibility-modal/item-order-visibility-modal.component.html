@@ -3,7 +3,13 @@
     <mat-icon [svgIcon]="iconHeader"></mat-icon>
   </button>
   <p data-tauri-drag-region>{{ title | translate }}</p>
-  <button matIconButton (click)="onCancel()" [attr.aria-label]="'common.cancel' | translate">
+  <button
+    type="button"
+    matIconButton
+    (click)="onCancel()"
+    [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
+  >
     <mat-icon svgIcon="close"></mat-icon>
   </button>
 </header>
@@ -30,7 +36,6 @@
       [class.is-starred]="item.isVisible"
       [class.is-disabled]="!item.isVisible && !canShowMore()"
       cdkDrag
-      cdkDragPreviewClass="action-drag-preview"
     >
       <div class="drag-handle" cdkDragHandle>
         <mat-icon svgIcon="drag-indicator"></mat-icon>
@@ -55,6 +60,7 @@
       </div>
 
       <button
+        type="button"
         matIconButton
         class="toggle-button"
         [class.starred]="mode === 'star' && item.isVisible"
@@ -80,19 +86,21 @@
 
 <footer>
   <button
+    type="button"
     matIconButton
     class="warn"
     (click)="onReset()"
     [disabled]="!canReset()"
+    [attr.aria-label]="'common.reset' | translate"
     [attr.title]="'common.reset' | translate"
   >
     <mat-icon svgIcon="refresh"></mat-icon>
   </button>
   <div class="footer-spacer"></div>
-  <button matButton="text" (click)="onCancel()">
+  <button type="button" matButton="text" (click)="onCancel()">
     {{ 'common.cancel' | translate }}
   </button>
-  <button matButton="filled" (click)="onSave()" [disabled]="!hasChanges()">
+  <button type="button" matButton="filled" (click)="onSave()" [disabled]="!hasChanges()">
     {{ 'common.save' | translate }}
   </button>
 </footer>

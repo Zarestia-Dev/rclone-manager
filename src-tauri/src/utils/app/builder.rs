@@ -19,9 +19,16 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
         (MenuPlan::build(&snapshot, max_tray_items), icon_theme)
     };
 
+    let icon_kind = crate::core::tray::icon::TrayIconKind::resolve(false, &icon_theme);
     let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
-    let icon = crate::core::tray::icon::get_icon(false, &icon_theme)
-        .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0));
+    let icon = icon_kind.to_image();
+
+    if let Some(state) = app.try_state::<crate::core::tray::TrayMenuState>() {
+        let mut cache = state.cache.lock().unwrap();
+        cache.plan = Some(plan.clone());
+        cache.tooltip = Some(crate::t!("tray.tooltipDefault"));
+        cache.icon = Some(icon_kind);
+    }
 
     app.run_on_main_thread(move || {
         #[allow(unused_mut)]
@@ -84,6 +91,25 @@ fn apply_platform_config(
 }
 
 #[cfg(not(feature = "web-server"))]
+pub fn focus_window(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
+#[cfg(not(feature = "web-server"))]
+pub fn present_main_window(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        focus_window(&window);
+        #[cfg(target_os = "macos")]
+        crate::utils::app::platform::update_macos_dock_visibility(app);
+    } else {
+        create_app_window(app.clone());
+    }
+}
+
+#[cfg(not(feature = "web-server"))]
 pub fn create_app_window(app_handle: tauri::AppHandle) {
     let builder =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
@@ -93,9 +119,7 @@ pub fn create_app_window(app_handle: tauri::AppHandle) {
         .build()
         .expect("Failed to build main window");
 
-    window
-        .show()
-        .unwrap_or_else(|e| log::error!("Failed to show main window: {e}"));
+    focus_window(&window);
 
     #[cfg(target_os = "macos")]
     crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
@@ -120,9 +144,7 @@ use crate::core::bridge;
 #[bridge]
 pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
-        let _ = existing.show();
-        let _ = existing.unminimize();
-        let _ = existing.set_focus();
+        focus_window(&existing);
 
         // Special case: if this is a nautilus window, emit BROWSE event with the path
         if opts.label.starts_with("nautilus-") || opts.label == "nautilus" {
@@ -137,7 +159,7 @@ pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bo
                 _ => String::new(),
             };
             use crate::utils::types::events::BROWSE;
-            let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
+            crate::core::bridge::emit(BROWSE, full_path);
         }
         return false;
     }
@@ -156,7 +178,7 @@ pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bo
 
     match apply_platform_config(builder).build() {
         Ok(window) => {
-            let _ = window.show();
+            focus_window(&window);
             #[cfg(target_os = "macos")]
             crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
             true

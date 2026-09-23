@@ -1,0 +1,50 @@
+<div
+  #minimapCard
+  class="workflow-minimap-card"
+  role="button"
+  tabindex="0"
+  [style.width.px]="mapWidth"
+  [style.height.px]="mapHeight"
+  (mousedown)="onMinimapMouseDown($event)"
+  (click)="onMinimapClick($event)"
+  (keydown.enter)="onMinimapClick($event)"
+  (keydown.space)="onMinimapClick($event)"
+>
+  <!-- Mini Wires Layer -->
+  @if (scaledEdges().length > 0) {
+    <svg class="mini-wires-layer">
+      @for (w of scaledEdges(); track w.id) {
+        <line
+          [attr.x1]="w.x1"
+          [attr.y1]="w.y1"
+          [attr.x2]="w.x2"
+          [attr.y2]="w.y2"
+          class="mini-wire"
+        />
+      }
+    </svg>
+  }
+
+  <!-- Mini Nodes -->
+  @for (n of scaledNodes(); track n.id) {
+    <div
+      class="mini-node"
+      [ngClass]="['color-' + n.colorClass, 'status-' + n.state]"
+      [class.selected]="selectedNodeIds().has(n.id)"
+      [style.left.px]="n.x"
+      [style.top.px]="n.y"
+      [style.width.px]="n.width"
+      [style.height.px]="n.height"
+      [attr.title]="n.title"
+    ></div>
+  }
+
+  <!-- Viewport Camera Box -->
+  <div
+    class="mini-viewport"
+    [style.left.px]="viewportRect().x"
+    [style.top.px]="viewportRect().y"
+    [style.width.px]="viewportRect().width"
+    [style.height.px]="viewportRect().height"
+  ></div>
+</div>

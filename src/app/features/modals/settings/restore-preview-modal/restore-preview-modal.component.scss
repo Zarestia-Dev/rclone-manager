@@ -4,16 +4,14 @@
   border-radius: var(--card-border-radius);
   padding: var(--space-md);
   box-shadow: var(--shadow-gnome);
-  transition: box-shadow var(--transition-fast);
-  margin-bottom: var(--space-md);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-md);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--card-shade-color);
 
   h4 {
@@ -35,7 +33,6 @@
 }
 
 .card-icon {
-  font-size: var(--icon-size-sm);
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   color: var(--primary-color);
@@ -58,7 +55,8 @@
   background: var(--window-bg-color);
 }
 
-.info-icon-wrapper {
+// Unified Icon Wrapper
+.icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,20 +65,17 @@
   background: rgba(var(--primary-color-rgb), 0.1);
   border-radius: var(--radius-sm);
   color: var(--primary-color);
+  flex-shrink: 0;
 
   &.encrypted {
     background: rgba(var(--warn-color-rgb), 0.1);
-
-    .info-icon {
-      color: var(--warn-color);
-    }
+    color: var(--warn-color);
   }
-}
 
-.info-icon {
-  font-size: var(--icon-size-sm);
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  mat-icon {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+  }
 }
 
 .info-content {
@@ -104,10 +99,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-
-    &.encrypted {
-      color: var(--warn-color);
-    }
   }
 }
 
@@ -120,7 +111,6 @@
   color: var(--warn-color);
 
   .badge-icon {
-    font-size: var(--icon-size-xs);
     width: var(--icon-size-xs);
     height: var(--icon-size-xs);
   }
@@ -131,12 +121,10 @@
 }
 
 // Contents List
-.contents-card {
-  .contents-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-  }
+.contents-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }
 
 .content-item {
@@ -147,23 +135,6 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--box-shadow);
   background: var(--window-bg-color);
-}
-
-.item-icon-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(var(--primary-color-rgb), 0.1);
-  border-radius: var(--radius-sm);
-
-  .item-icon {
-    font-size: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-    color: var(--primary-color);
-  }
 }
 
 .item-content {
@@ -203,22 +174,33 @@
   font-weight: 700;
 }
 
-// Note Card
-.note-card {
-  .user-note {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-lg);
-    border-radius: var(--radius-sm);
-    font-style: italic;
-    color: var(--dim-color);
-    box-shadow: var(--shadow-gnome);
+// User Note
+.user-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  font-style: italic;
+  color: var(--dim-color);
+  background: var(--window-bg-color);
+  box-shadow: var(--box-shadow);
 
-    .quote-icon {
-      opacity: 0.5;
-      color: var(--accent-color);
-    }
+  .quote-icon {
+    opacity: 0.5;
+    color: var(--accent-color);
+  }
+}
+
+// Options Content
+.options-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  mat-radio-group {
+    display: flex;
+    gap: var(--space-lg);
   }
 }
 
@@ -230,7 +212,7 @@
     rgba(var(--warn-color-rgb), 0.01)
   );
 
-  .card-header.warning {
+  .card-header.warn {
     .card-icon,
     h4 {
       color: var(--warn-color);
@@ -241,7 +223,7 @@
 .password-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .warning-banner {
@@ -253,7 +235,6 @@
   border-radius: var(--radius-sm);
 
   .warning-icon {
-    font-size: var(--icon-size-sm);
     width: var(--icon-size-sm);
     height: var(--icon-size-sm);
     color: var(--warn-color);
@@ -280,8 +261,19 @@
   animation: shake 0.4s ease;
 
   mat-icon {
-    font-size: var(--icon-size-sm);
     width: var(--icon-size-sm);
     height: var(--icon-size-sm);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 540px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .options-content mat-radio-group {
+    flex-direction: column;
+    gap: var(--space-xs);
   }
 }

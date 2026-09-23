@@ -1,6 +1,6 @@
 use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 
@@ -220,13 +220,15 @@ fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
         #[cfg(not(feature = "librclone"))]
         EnginePhase::FailedVersion { .. } => {}
         #[cfg(not(feature = "librclone"))]
+        EnginePhase::FailedPort { .. } => {}
+        #[cfg(not(feature = "librclone"))]
         EnginePhase::Updating => {}
         EnginePhase::FailedOther { .. } => {}
         _ => {}
     }
 
     let status: EngineStatus = phase.into();
-    app.emit(RCLONE_ENGINE_STATUS_CHANGED, status).ok();
+    crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, status);
 }
 
 /// Desktop path: decide whether we need to spawn / respawn the rcd daemon,
@@ -331,7 +333,7 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                     backend.port, backend.port
                 );
                 error!("{msg}");
-                engine.mark_other_failed(msg);
+                engine.mark_port_failed(backend.port, msg);
                 emit_block_status(app, &engine.phase);
                 return;
             }
@@ -348,6 +350,17 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 debug!("Port {} is now free after kill", backend.port);
             }
         }
+    }
+
+    if crate::utils::process::process_manager::is_port_in_use(backend.port) {
+        let msg = format!(
+            "Port {} is already occupied by another process or application",
+            backend.port
+        );
+        error!("{msg}");
+        engine.mark_port_failed(backend.port, msg);
+        emit_block_status(app, &engine.phase);
+        return;
     }
 
     // Step 3: spawn the new rcd and wait for readiness.
@@ -373,11 +386,20 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 Err(WaitReadyError::ProcessDied) => {
                     error!("Rclone process exited during startup");
                     let _ = engine.kill_process(app).await;
-                    handle_start_failure(
-                        engine,
-                        app,
-                        "Rclone process exited during startup (check rclone log)".to_string(),
-                    );
+                    if crate::utils::process::process_manager::is_port_in_use(backend.port) {
+                        let msg = format!(
+                            "Port {} could not be bound (address already in use)",
+                            backend.port
+                        );
+                        engine.mark_port_failed(backend.port, msg);
+                        emit_block_status(app, &engine.phase);
+                    } else {
+                        handle_start_failure(
+                            engine,
+                            app,
+                            "Rclone process exited during startup (check rclone log)".to_string(),
+                        );
+                    }
                 }
                 Err(WaitReadyError::Timeout) => {
                     error!("Failed to start Rclone API within {API_READY_TIMEOUT_SECS}s");
@@ -428,28 +450,26 @@ pub fn restart_for_config_change(app: &AppHandle, change_type: &str) {
     let app = app.clone();
     let change_type = change_type.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         match restart_engine(&app, &change_type).await {
             Ok(()) => {
                 info!("Engine restarted for {change_type} change");
-                app.emit(
+                crate::core::bridge::emit(
                     RCLONE_ENGINE_STATUS_CHANGED,
                     EngineStatus::Restarted {
                         reason: change_type,
                     },
-                )
-                .ok();
+                );
                 notify(&app, NotificationEvent::Engine(EngineStage::Restarted));
             }
             Err(e) => {
                 error!("Failed to restart engine for {change_type} change: {e}");
-                app.emit(
+                crate::core::bridge::emit(
                     RCLONE_ENGINE_STATUS_CHANGED,
                     EngineStatus::Error {
                         message: e.to_string(),
                     },
-                )
-                .ok();
+                );
                 notify(
                     &app,
                     NotificationEvent::Engine(EngineStage::RestartFailed {

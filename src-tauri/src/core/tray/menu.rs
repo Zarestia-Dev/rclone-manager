@@ -4,7 +4,9 @@ use tauri::{
 };
 
 use super::tray_action::TrayAction;
-use super::{TrayProfileSummary, TrayQuickRunSummary, TrayRemoteSummary, TraySnapshot};
+use super::{
+    TrayProfileSummary, TrayQuickRunSummary, TrayRemoteSummary, TraySnapshot, TrayWorkflowSummary,
+};
 use crate::t;
 use crate::utils::types::remotes::OperationType;
 
@@ -78,6 +80,19 @@ impl MenuPlan {
         if !visible_quick_runs.is_empty() {
             items.push(MenuItemKind::Submenu(build_quick_runs_submenu(
                 &visible_quick_runs,
+            )));
+            items.push(MenuItemKind::Separator);
+        }
+
+        let visible_workflows: Vec<&TrayWorkflowSummary> = snapshot
+            .workflows
+            .iter()
+            .filter(|w| w.show_on_tray)
+            .collect();
+
+        if !visible_workflows.is_empty() {
+            items.push(MenuItemKind::Submenu(build_workflows_submenu(
+                &visible_workflows,
             )));
             items.push(MenuItemKind::Separator);
         }
@@ -432,6 +447,42 @@ fn build_quick_runs_submenu(quick_runs: &[&super::TrayQuickRunSummary]) -> Subme
     SubmenuPlan {
         label,
         enabled: !quick_runs.is_empty(),
+        items,
+    }
+}
+
+fn build_workflows_submenu(workflows: &[&super::TrayWorkflowSummary]) -> SubmenuPlan {
+    let active_count = workflows.iter().filter(|w| w.is_active).count();
+    let label = t!(
+        "tray.workflowsCount",
+        "active" => &active_count.to_string(),
+        "total" => &workflows.len().to_string()
+    );
+
+    let items = workflows
+        .iter()
+        .map(|wf| {
+            let action = if wf.is_active {
+                TrayAction::StopWorkflow(wf.id.clone())
+            } else {
+                TrayAction::StartWorkflow(wf.id.clone())
+            };
+            let item_label = if wf.is_active {
+                format!("● {} ▸ {}", wf.name, t!("tray.stop"))
+            } else {
+                format!("  {} ▸ {}", wf.name, t!("tray.start"))
+            };
+            MenuItemKind::Regular(RegularItem {
+                id: action.to_id(),
+                label: item_label,
+                enabled: true,
+            })
+        })
+        .collect();
+
+    SubmenuPlan {
+        label,
+        enabled: !workflows.is_empty(),
         items,
     }
 }

@@ -1,5 +1,5 @@
 use log::{debug, error, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 #[cfg(not(feature = "librclone"))]
@@ -40,9 +40,7 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
 
     env_manager.set_config_password(password.clone());
 
-    if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
-        error!("Failed to emit password_stored event: {e}");
-    }
+    crate::core::bridge::emit(RCLONE_PASSWORD_STORED, ());
 
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
@@ -142,9 +140,7 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
                 let env_manager = app.state::<SafeEnvironmentManager>();
                 env_manager.set_config_password(password.clone());
 
-                if let Err(e) = app.emit(crate::utils::types::events::RCLONE_CONFIG_UNLOCKED, ()) {
-                    error!("Failed to emit config unlocked event: {e}");
-                }
+                crate::core::bridge::emit(crate::utils::types::events::RCLONE_CONFIG_UNLOCKED, ());
 
                 info!("Password validation successful (librclone)");
                 Ok(())
@@ -213,9 +209,7 @@ pub async fn set_config_password_env(app: AppHandle, password: String) -> Result
     let env_manager = app.state::<SafeEnvironmentManager>();
     env_manager.set_config_password(password);
 
-    if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
-        error!("Failed to emit password_stored event: {e}");
-    }
+    crate::core::bridge::emit(RCLONE_PASSWORD_STORED, ());
 
     Ok(())
 }

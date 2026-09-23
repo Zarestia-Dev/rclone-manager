@@ -20,10 +20,7 @@ import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import {
-  isHeadlessMode,
-  isMobile,
-} from 'src/app/services/infrastructure/platform/api-client.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { SlideMenuController } from '../slide-menu';
 import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/types';
@@ -52,8 +49,7 @@ export class NautilusContextMenuComponent {
   protected readonly selectionSvc = inject(NautilusSelectionService);
   protected readonly pathService = inject(PathService);
 
-  protected readonly isHeadless = computed(() => isHeadlessMode());
-  protected readonly isMobile = computed(() => isMobile());
+  protected readonly isHeadless = isHeadlessMode();
 
   // Inputs
   readonly files = input<FileBrowserItem[]>([]);

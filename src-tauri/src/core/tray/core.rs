@@ -1,15 +1,48 @@
-use log::{error, info};
+use std::sync::atomic::Ordering;
+
+use log::{debug, error};
 use tauri::{AppHandle, Manager, Runtime};
 
+use super::icon::TrayIconKind;
 use super::menu::{MenuPlan, create_tray_menu_from_plan};
 use super::{TrayMenuState, TraySnapshot};
 use crate::core::settings::AppSettingsManager;
 
+/// Updates the full tray menu, tooltip, and icon.
+/// Coalesces rapid concurrent triggers into at most 1 in-flight and 1 trailing update.
 pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()> {
     if app.tray_by_id("main-tray").is_none() {
         return Ok(());
     }
 
+    let state = app.state::<TrayMenuState>();
+
+    // Try to acquire the update lock. If another update is in-flight, mark pending and return immediately.
+    let _guard = match state.update_lock.try_lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            state.has_pending.store(true, Ordering::SeqCst);
+            match state.update_lock.try_lock() {
+                Ok(guard) => guard,
+                Err(_) => return Ok(()),
+            }
+        }
+    };
+
+    loop {
+        perform_update_tray_menu(&app, &state).await?;
+        if !state.has_pending.swap(false, Ordering::SeqCst) {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+async fn perform_update_tray_menu<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &TrayMenuState,
+) -> tauri::Result<()> {
     let settings_manager = app.state::<AppSettingsManager>();
     let settings = settings_manager
         .get_all()
@@ -19,43 +52,43 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
         return Ok(());
     }
 
-    let state = app.state::<TrayMenuState>();
-    // Serialize execution to prevent concurrent snapshot fetches and out-of-order execution.
-    let _lock = state.update_lock.lock().await;
-
-    let snapshot = TraySnapshot::fetch(&app).await?;
+    let snapshot = TraySnapshot::fetch(app).await?;
 
     let is_active = !snapshot.active_jobs.is_empty();
     let tooltip = build_tooltip(&snapshot);
     let max_tray_items = settings.core.max_tray_items;
 
     let plan = MenuPlan::build(&snapshot, max_tray_items);
+    let icon_kind = TrayIconKind::resolve(is_active, &settings.general.tray_icon_theme);
 
-    // Track whether the menu plan structure actually changed.
-    // This allows us to skip rebuilding the menu (avoiding hover loss/flashing) but still
-    // update the icon/tooltip if needed.
-    let plan_changed = {
-        let mut last = state.last_plan.lock().unwrap();
-        if last.as_ref() == Some(&plan) {
-            false
-        } else {
-            *last = Some(plan.clone());
-            true
-        }
+    let (plan_changed, tooltip_changed, icon_changed) = state
+        .cache
+        .lock()
+        .unwrap()
+        .diff_and_update(&plan, &tooltip, icon_kind);
+
+    if !plan_changed && !tooltip_changed && !icon_changed {
+        return Ok(());
+    }
+
+    let icon = if icon_changed {
+        Some(icon_kind.to_image())
+    } else {
+        None
     };
 
-    let icon = super::icon::get_icon(is_active, &settings.general.tray_icon_theme).ok();
+    let plan_to_set = if plan_changed { Some(plan) } else { None };
+    let tooltip_to_set = if tooltip_changed { Some(tooltip) } else { None };
 
     let app_clone = app.clone();
     app.run_on_main_thread(move || {
         let Some(tray) = app_clone.tray_by_id("main-tray") else {
-            info!("Tray menu update failed: tray not found");
+            debug!("Tray menu update skipped: tray not found");
             return;
         };
 
-        // Only rebuild and set the menu if the plan changed
-        if plan_changed {
-            match create_tray_menu_from_plan(&app_clone, &plan) {
+        if let Some(ref plan) = plan_to_set {
+            match create_tray_menu_from_plan(&app_clone, plan) {
                 Ok(menu) => {
                     if let Err(e) = tray.set_menu(Some(menu)) {
                         error!("Failed to set tray menu: {e}");
@@ -68,12 +101,21 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
             }
         }
 
-        if let Some(image) = icon {
-            let _ = tray.set_icon(Some(image));
+        if let Some(image) = icon
+            && let Err(e) = tray.set_icon(Some(image))
+        {
+            error!("Failed to set tray icon: {e}");
         }
 
-        let _ = tray.set_tooltip(Some(tooltip));
-        info!("Tray menu (changed={plan_changed}) and icon updated on main thread");
+        if let Some(tooltip) = tooltip_to_set
+            && let Err(e) = tray.set_tooltip(Some(tooltip))
+        {
+            error!("Failed to set tray tooltip: {e}");
+        }
+
+        debug!(
+            "Tray visuals updated on main thread (plan_changed={plan_changed}, icon_changed={icon_changed}, tooltip_changed={tooltip_changed})"
+        );
     })?;
 
     Ok(())
@@ -150,7 +192,9 @@ mod tests {
         let mut tasks = vec![];
         for _ in 0..50 {
             let h = handle.clone();
-            tasks.push(tokio::spawn(async move { update_tray_menu(h).await }));
+            tasks.push(crate::utils::spawn(
+                async move { update_tray_menu(h).await },
+            ));
         }
 
         let results = futures::future::join_all(tasks).await;

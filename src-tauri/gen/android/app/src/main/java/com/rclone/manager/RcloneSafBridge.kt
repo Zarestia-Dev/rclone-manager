@@ -6,8 +6,10 @@ import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Base64
+import androidx.core.content.FileProvider
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,24 +39,41 @@ object RcloneSafBridge {
     }
   }
 
-  private external fun nativeInitSaf(filesDir: String)
-  private external fun nativeRpc(jsonPayload: String): String
+  private external fun nativeInitSaf(context: Context, filesDir: String, cacheDir: String)
+  private external fun nativeRpc(endpoint: String, jsonPayload: String): String
   private external fun nativeVfsRead(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
   private external fun nativeVfsWrite(handleId: Long, offset: Long, count: Int, byteArray: ByteArray): Int
 
   private val activeHandleCount = java.util.concurrent.atomic.AtomicInteger(0)
 
   @JvmStatic
+  fun getActiveHandleCount(): Int = activeHandleCount.get()
+
+  @JvmStatic
   fun ensureInitialized(context: Context) {
     try {
       loadNativeLibraries()
       if (!isLibraryLoaded) return
-      appContext = context.applicationContext
-      val configDirPath = context.filesDir.absolutePath
-      nativeInitSaf(configDirPath)
-      updateAppShortcuts(context)
+      val appCtx = context.applicationContext
+      appContext = appCtx
+      val configDirPath = appCtx.filesDir.absolutePath
+      val cacheDirPath = appCtx.cacheDir.absolutePath
+      nativeInitSaf(appCtx, configDirPath, cacheDirPath)
+      updateAppShortcuts(appCtx)
     } catch (e: Throwable) {
       Logger.error("ensureInitialized error: ${e.message}")
+    }
+  }
+
+  @JvmStatic
+  fun isNetworkMetered(): Boolean {
+    val ctx = appContext ?: return false
+    return try {
+      val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+      cm?.isActiveNetworkMetered ?: false
+    } catch (e: Throwable) {
+      Logger.error("isNetworkMetered error: ${e.message}")
+      false
     }
   }
 
@@ -70,12 +89,24 @@ object RcloneSafBridge {
     }
   }
 
+  @JvmStatic
+  fun openContentUriFd(uriString: String, mode: String): Int {
+    val ctx = appContext ?: return -1
+    return try {
+      val uri = Uri.parse(uriString)
+      val pfd = ctx.contentResolver.openFileDescriptor(uri, mode) ?: return -1
+      pfd.detachFd()
+    } catch (e: Throwable) {
+      Logger.error("openContentUriFd failed for $uriString: ${e.message}")
+      -1
+    }
+  }
+
   fun rpc(endpoint: String, params: JSONObject = JSONObject()): JSONObject {
     return try {
       loadNativeLibraries()
       if (!isLibraryLoaded) return JSONObject()
-      params.put("_path", endpoint)
-      val resStr = nativeRpc(params.toString())
+      val resStr = nativeRpc(endpoint, params.toString())
       JSONObject(resStr)
     } catch (e: Throwable) {
       Logger.error("rpc $endpoint error: ${e.message}")
@@ -89,6 +120,8 @@ object RcloneSafBridge {
   private val safRootsList = mutableListOf<SafRootItem>()
   @Volatile
   private var isMountedRemotesLoaded = false
+  @Volatile
+  private var cachedSafRoots: List<SafRootItem> = emptyList()
 
   fun getSafSource(remoteName: String): String {
     val cleanName = remoteName.trim().trimEnd(':')
@@ -149,6 +182,7 @@ object RcloneSafBridge {
       synchronized(safRootsList) {
         safRootsList.clear()
         safRootsList.addAll(newRoots)
+        cachedSafRoots = newRoots.toList()
       }
       isMountedRemotesLoaded = true
 
@@ -169,9 +203,7 @@ object RcloneSafBridge {
   fun getSafRoots(): List<SafRootItem> {
     return try {
       loadMountedRemotesIfNeeded()
-      synchronized(safRootsList) {
-        safRootsList.toList()
-      }
+      cachedSafRoots
     } catch (e: Throwable) {
       Logger.error("getSafRoots error: ${e.message}")
       emptyList()
@@ -207,18 +239,16 @@ object RcloneSafBridge {
 
   fun readVfsFile(handleId: Long, offset: Long, count: Int, destination: ByteArray): Int {
     if (isLibraryLoaded) {
-      val n = nativeVfsRead(handleId, offset, count, destination)
-      if (n >= 0) return n
+      return nativeVfsRead(handleId, offset, count, destination)
     }
-    return 0
+    return -1
   }
 
   fun writeVfsFile(handleId: Long, offset: Long, source: ByteArray, count: Int): Int {
     if (isLibraryLoaded) {
-      val n = nativeVfsWrite(handleId, offset, count, source)
-      if (n >= 0) return n
+      return nativeVfsWrite(handleId, offset, count, source)
     }
-    return 0
+    return -1
   }
 
   fun closeVfsFile(handleId: Long): Boolean {
@@ -319,7 +349,7 @@ object RcloneSafBridge {
 
   fun searchFiles(remote: String, query: String): JSONArray {
     val qClean = query.trim()
-    if (qClean.isEmpty() || qClean.length < 2) {
+    if (qClean.length < 2) {
       return JSONArray()
     }
 
@@ -335,12 +365,11 @@ object RcloneSafBridge {
     val res = rpc("operations/list", params)
     val allList = res.optJSONArray("list") ?: JSONArray()
     val filtered = JSONArray()
-    val qLower = qClean.lowercase()
 
     for (i in 0 until allList.length()) {
       val item = allList.optJSONObject(i) ?: continue
       val name = item.optString("Name", "")
-      if (name.lowercase().contains(qLower)) {
+      if (name.contains(qClean, ignoreCase = true)) {
         filtered.put(item)
         if (filtered.length() >= 100) break
       }
@@ -353,7 +382,8 @@ object RcloneSafBridge {
     appContext?.let { updateAppShortcutsInternal(it) }
   }
 
-  fun updateAppShortcuts(context: Context) {
+  fun updateAppShortcuts(context: Context? = null) {
+    if (context != null) appContext = context.applicationContext
     shortcutDebounceHandler.removeCallbacks(shortcutDebounceRunnable)
     shortcutDebounceHandler.postDelayed(shortcutDebounceRunnable, 400L)
   }
@@ -409,10 +439,15 @@ object RcloneSafBridge {
 
   @JvmStatic
   fun openSafRemote(remoteName: String): Boolean {
+    val cleanRemote = remoteName.trim()
+    if (cleanRemote.isEmpty()) {
+      Logger.warn("openSafRemote called with empty remoteName, ignoring")
+      return false
+    }
     val ctx = appContext ?: return false
     return try {
       val authority = "${ctx.packageName}.documents"
-      val rootUri = DocumentsContract.buildRootUri(authority, remoteName)
+      val rootUri = DocumentsContract.buildRootUri(authority, cleanRemote)
       val intent = Intent(Intent.ACTION_VIEW).apply {
         setDataAndType(rootUri, DocumentsContract.Root.MIME_TYPE_ITEM)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -423,5 +458,98 @@ object RcloneSafBridge {
       Logger.error("openSafRemote failed: ${e.message}")
       false
     }
+  }
+
+  @JvmStatic
+  fun openLocalPath(path: String): Boolean {
+    val ctx = appContext ?: return false
+    val cleanPath = path.trim()
+    if (cleanPath.isEmpty()) return false
+
+    val file = java.io.File(cleanPath)
+
+    // Strategy 1: ExternalStorageProvider via DocumentsContract
+    // Standard external storage paths on Android are "/storage/emulated/0/..." or "/sdcard/..."
+    try {
+      val relPath = when {
+        cleanPath.startsWith("/storage/emulated/0/") -> cleanPath.removePrefix("/storage/emulated/0/")
+        cleanPath.startsWith("/storage/emulated/0") -> cleanPath.removePrefix("/storage/emulated/0")
+        cleanPath.startsWith("/sdcard/") -> cleanPath.removePrefix("/sdcard/")
+        cleanPath.startsWith("/sdcard") -> cleanPath.removePrefix("/sdcard")
+        else -> null
+      }
+
+      if (relPath != null) {
+        val cleanRel = relPath.trim().trimStart('/')
+        val docId = if (cleanRel.isEmpty()) "primary:" else "primary:$cleanRel"
+        val docUri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId)
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(intent)
+          return true
+        }
+
+        val browseIntent = Intent("android.provider.action.BROWSE").apply {
+          data = docUri
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (browseIntent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(browseIntent)
+          return true
+        }
+      }
+    } catch (e: Exception) {
+      Logger.warn("openLocalPath via DocumentsContract failed: ${e.message}")
+    }
+
+    // Strategy 2: FileProvider content URI with MIME_TYPE_DIR or resource/folder
+    try {
+      if (file.exists()) {
+        val contentUri = FileProvider.getUriForFile(
+          ctx,
+          "${ctx.packageName}.fileprovider",
+          file
+        )
+        val mimeType = if (file.isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else "resource/folder"
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(contentUri, mimeType)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(intent)
+          return true
+        }
+
+        val wildcardIntent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(contentUri, "*/*")
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (wildcardIntent.resolveActivity(ctx.packageManager) != null) {
+          ctx.startActivity(wildcardIntent)
+          return true
+        }
+      }
+    } catch (e: Exception) {
+      Logger.warn("openLocalPath via FileProvider failed: ${e.message}")
+    }
+
+    // Strategy 3: Fallback to primary root in DocumentsUI if on external storage
+    try {
+      val rootUri = DocumentsContract.buildRootUri("com.android.externalstorage.documents", "primary")
+      val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(rootUri, DocumentsContract.Root.MIME_TYPE_ITEM)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      ctx.startActivity(intent)
+      return true
+    } catch (e: Exception) {
+      Logger.error("openLocalPath all strategies failed: ${e.message}")
+    }
+
+    return false
   }
 }

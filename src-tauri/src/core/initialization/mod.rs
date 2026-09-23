@@ -3,6 +3,7 @@ pub mod apply_settings;
 pub mod automation;
 pub mod bootstrap;
 
+use crate::core::bridge;
 use crate::core::lifecycle::startup::handle_startup;
 use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
@@ -11,7 +12,7 @@ use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 #[cfg(feature = "tray")]
 use crate::core::tray::core::update_tray_menu;
@@ -22,7 +23,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     if let Err(e) = async_core_setup(&app_handle).await {
         error!("Phase 0 Core Setup failed: {e}");
-        let _ = app_handle.emit(
+        bridge::emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
@@ -31,7 +32,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     if let Err(e) = bootstrap::init_all(&app_handle).await {
         error!("Phase 1 Bootstrap failed: {e}");
-        let _ = app_handle.emit(
+        bridge::emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
@@ -101,19 +102,13 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     initialize_caches(&app_handle).await?;
 
-    let remote_names = backend_manager.remote_cache.get_remotes().await;
-    let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
-    if let Err(e) = crate::core::automation::commands::reload_automations_from_configs(
-        app_handle.clone(),
-        all_configs,
-    )
-    .await
+    if let Err(e) =
+        crate::core::automation::commands::reload_automations_from_configs(&app_handle).await
     {
         error!("Failed to reload automations: {e}");
     }
+
+    crate::core::flow::quick_run::commands::sync_quick_run_automations_bg(&app_handle).await;
 
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
@@ -122,22 +117,15 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
-    app_handle
-        .emit(crate::utils::types::events::REMOTE_CACHE_CHANGED, ())
-        .ok();
-    app_handle
-        .emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ())
-        .ok();
-    app_handle
-        .emit(
-            SYSTEM_SETTINGS_CHANGED,
-            crate::utils::types::events::SettingsChangeEvent {
-                category: "*".to_string(),
-                key: "*".to_string(),
-                value: serde_json::Value::Null,
-            },
-        )
-        .ok();
+    bridge::emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ());
+    bridge::emit(
+        SYSTEM_SETTINGS_CHANGED,
+        crate::utils::types::events::SettingsChangeEvent {
+            category: "*".to_string(),
+            key: "*".to_string(),
+            value: serde_json::Value::Null,
+        },
+    );
 
     info!("System successfully refreshed");
     Ok(())
@@ -158,18 +146,16 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     }
     debug!("Refreshed backend caches");
 
+    let manager = app_handle.state::<AppSettingsManager>();
     #[cfg(feature = "tauri-plugin-notification")]
-    {
-        let manager = app_handle.state::<AppSettingsManager>();
-        if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
-            error!("Failed to seed alert defaults: {e}");
-        } else {
-            let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
-            alert_cache.reload_rules(manager.inner()).await;
-            alert_cache.reload_actions(manager.inner()).await;
-            info!("Alert defaults seeded and cache reloaded");
-        }
+    if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
+        error!("Failed to seed alert defaults: {e}");
     }
+
+    let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
+    alert_cache.reload_rules(manager.inner()).await;
+    alert_cache.reload_actions(manager.inner()).await;
+    debug!("Alert rules and actions loaded");
 
     Ok(())
 }
@@ -196,7 +182,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
             "Active backend '{active_name}' is remote — spawning connectivity probe in background so UI can load immediately"
         );
         let app_clone = app_handle.clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let backend_manager = app_clone.state::<BackendManager>();
             let transport = app_clone.state::<RcloneState>().transport.clone();
             if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
@@ -215,7 +201,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     }
 
     let app_handle_clone = app_handle.clone();
-    tokio::spawn(async move {
+    crate::utils::spawn(async move {
         let backend_manager = app_handle_clone.state::<BackendManager>();
         let transport = app_handle_clone.state::<RcloneState>().transport.clone();
         crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &*transport)

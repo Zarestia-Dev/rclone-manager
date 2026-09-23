@@ -14,7 +14,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 import {
-  JobInfo,
   Remote,
   Automation,
   ServeListItem,
@@ -172,10 +171,6 @@ export class GeneralOverviewComponent {
   }
 
   // --- Actions ---
-  handleJobClick(job: JobInfo): void {
-    this.navigationDispatcher.navigateToJob(job);
-  }
-
   stopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName)

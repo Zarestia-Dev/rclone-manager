@@ -9,9 +9,9 @@
 .operations-header {
   display: flex;
   flex-direction: column;
-  padding-inline: var(--space-md);
+  padding: var(--space-sm) var(--space-md) 0;
 
-  .section-label {
+  .operations-title {
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--window-fg-color);
@@ -23,11 +23,13 @@
     font-size: var(--font-size-sm);
     color: var(--dim-color);
     margin-top: 0;
+    margin-bottom: var(--space-xs);
   }
 }
 
-.operation-config {
+.step-body {
   padding: var(--space-sm);
+  display: block;
 }
 
 // =============================================
@@ -45,23 +47,14 @@
 
     &.info {
       color: var(--accent-color);
-      background: rgba(var(--accent-color-rgb), 0.1);
+      background: color-mix(in srgb, var(--accent-color) 10%, transparent);
       box-shadow: var(--box-shadow);
     }
 
     &.warning {
       color: var(--warn-color);
-      background: rgba(var(--warn-color-rgb), 0.1);
+      background: color-mix(in srgb, var(--warn-color) 10%, transparent);
       box-shadow: var(--box-shadow);
     }
-  }
-}
-
-// =============================================
-// RESPONSIVE STATES
-// =============================================
-@media (max-width: 640px) {
-  .step-content {
-    padding: var(--space-md) !important;
   }
 }

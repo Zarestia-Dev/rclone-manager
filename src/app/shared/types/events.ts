@@ -1,6 +1,8 @@
 import { GlobalStats, JobStatus } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
+import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
+
 export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
 export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
 export const BACKEND_SWITCHED = 'backend_switched' as const;
@@ -12,7 +14,9 @@ export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed' as const;
 export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed' as const;
 export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked' as const;
 export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
+export const SYSTEM_THEME_CHANGED = 'system_theme_changed' as const;
 export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
+export const JOB_STATS_UPDATED = 'job_stats_updated' as const;
 export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;
 export const SERVE_STATE_CHANGED = 'serve_state_changed' as const;
 export const SYSTEM_STATUS = 'system_status' as const;
@@ -20,9 +24,39 @@ export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed' as const;
 export const PROVISION_PROGRESS = 'provision_progress' as const;
 export const NETWORK_STATUS_CHANGED = 'network_status_changed' as const;
 export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
+export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
+export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
+export const FILE_DOWNLOAD_PROGRESS = 'file_download_progress' as const;
+
+export interface FileDownloadProgressPayload {
+  destination: string;
+  downloaded: number;
+  total?: number;
+  percentage?: number;
+}
+
+export interface WorkflowNodeStatePayload {
+  workflowId: string;
+  nodeId: string;
+  state: WorkflowNodeExecutionState;
+  errorMessage?: string;
+  durationMs?: number;
+  output?: unknown;
+}
+
+export interface WorkflowExecutionStatePayload {
+  workflowId: string;
+  state: 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
+  progress?: {
+    total: number;
+    completed: number;
+    currentStepTitle: string;
+  };
+  message?: string;
+}
 
 export interface ActiveOperationsSummary {
   hasActiveOperations: boolean;
@@ -47,6 +81,15 @@ export interface JobChangeEvent {
   remote?: string;
   source?: string;
   destination?: string;
+  profile?: string;
+  quickRunId?: string;
+  workflowId?: string;
+  nodeId?: string;
+}
+
+export interface JobStatsUpdatedEvent {
+  jobId: number;
+  stats: GlobalStats;
 }
 
 export interface SystemStatusPayload {
@@ -65,7 +108,8 @@ export type EngineStatus =
   | { status: 'authError'; payload: { message: string } }
   | { status: 'pathError' }
   | { status: 'versionError'; payload: { version: string; required: string } }
+  | { status: 'portError'; payload: { port: number; message: string } }
   | { status: 'updating' }
   | { status: 'restarted'; payload: { reason: string } };
 
-export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'generic' | null;
+export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'port' | 'generic' | null;

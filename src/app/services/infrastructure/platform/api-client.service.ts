@@ -19,6 +19,29 @@ export const isMobile = (): boolean => {
   }
 };
 
+export const isIOS = (): boolean => {
+  if (isHeadlessMode()) {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  try {
+    const p = platform();
+    return p === 'ios';
+  } catch {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+};
+
+export const isAndroid = (): boolean => {
+  if (isHeadlessMode()) {
+    return /Android/i.test(navigator.userAgent);
+  }
+  try {
+    return platform() === 'android';
+  } catch {
+    return /Android/i.test(navigator.userAgent);
+  }
+};
+
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {
   private readonly http = inject(HttpClient);

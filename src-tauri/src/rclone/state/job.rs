@@ -2,12 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use log::info;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 
 use super::job_resolver::{link_resolving_jobs, sanitize_finished_stats};
 use crate::utils::types::{
-    events::JOB_CACHE_CHANGED,
+    events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobStatsUpdatedEvent},
     jobs::{JobCache, JobInfo, JobStatus, JobType},
 };
 
@@ -21,7 +21,7 @@ pub fn spawn_stats_cleanup_by_group(app: &AppHandle, group: &str) {
         .clone();
     let group = group.to_string();
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = transport
             .rpc(
                 crate::utils::rclone::endpoints::core::STATS_DELETE,
@@ -45,7 +45,6 @@ impl JobCache {
         jobid: u64,
         metadata: crate::rclone::commands::job::JobMetadata,
         backend_name: String,
-        app: Option<&AppHandle>,
     ) -> u64 {
         let group = metadata.group_name();
         let exec_id = metadata
@@ -71,9 +70,11 @@ impl JobCache {
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
+            workflow_id: metadata.workflow_id,
+            node_id: metadata.node_id,
         };
 
-        self.add_job(job, app).await;
+        self.add_job(job).await;
         jobid
     }
 
@@ -81,7 +82,7 @@ impl JobCache {
         *self.jobs.write().await = jobs.into_iter().map(|j| (j.jobid, j)).collect();
     }
 
-    pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
+    pub async fn add_job(&self, job: JobInfo) {
         let jobid = job.jobid;
         let parent_id = job.parent_job_id;
         {
@@ -91,7 +92,7 @@ impl JobCache {
                 link_resolving_jobs(&mut jobs, p_id);
             }
         }
-        self.notify_change(app, Some(&job));
+        self.notify_change(Some(&job));
     }
 
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
@@ -147,7 +148,7 @@ impl JobCache {
         }
 
         for job in removed_jobs {
-            self.notify_change(app, Some(&job));
+            self.notify_change(Some(&job));
         }
 
         Ok(())
@@ -157,7 +158,6 @@ impl JobCache {
         &self,
         jobid: u64,
         update_fn: impl FnOnce(&mut JobInfo),
-        app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
         let job = jobs
@@ -188,28 +188,65 @@ impl JobCache {
         drop(jobs);
 
         if let Some(ref p_job) = parent_job_to_notify {
-            self.notify_change(app, Some(p_job));
+            self.notify_change(Some(p_job));
         }
-        self.notify_change(app, Some(&result));
+        self.notify_change(Some(&result));
 
         Ok(result)
     }
 
-    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        self.update_job(
-            jobid,
-            |j| {
-                let mut stats = stats;
-                if j.status.is_finished() {
-                    sanitize_finished_stats(&mut stats);
-                }
-                j.stats = Some(stats);
-                j.normalize_job_stats();
+    pub async fn update_job_stats(&self, jobid: u64, mut stats: Value) -> Result<(), String> {
+        let mut jobs = self.jobs.write().await;
+        let job = jobs
+            .get_mut(&jobid)
+            .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
+
+        if job.status.is_finished() {
+            sanitize_finished_stats(&mut stats);
+        }
+        job.stats = Some(stats);
+        job.normalize_job_stats();
+
+        let parent_id = job.parent_job_id;
+        let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
+        let mut job_stats = job.stats.clone().unwrap_or(Value::Null);
+
+        let mut parent_stats: Option<(u64, Value)> = None;
+
+        if let Some(p_id) = parent_id {
+            link_resolving_jobs(&mut jobs, p_id);
+            if let Some(p_stats) = jobs.get(&p_id).and_then(|p| p.stats.clone()) {
+                parent_stats = Some((p_id, p_stats));
+            }
+        }
+        if is_check {
+            link_resolving_jobs(&mut jobs, jobid);
+            if let Some(updated_stats) = jobs.get(&jobid).and_then(|j| j.stats.clone()) {
+                job_stats = updated_stats;
+            }
+        }
+
+        drop(jobs);
+
+        if let Some((p_id, p_stats)) = parent_stats {
+            crate::core::bridge::emit(
+                JOB_STATS_UPDATED,
+                JobStatsUpdatedEvent {
+                    job_id: p_id,
+                    stats: p_stats,
+                },
+            );
+        }
+
+        crate::core::bridge::emit(
+            JOB_STATS_UPDATED,
+            JobStatsUpdatedEvent {
+                job_id: jobid,
+                stats: job_stats,
             },
-            None,
-        )
-        .await
-        .map(|_| ())
+        );
+
+        Ok(())
     }
 
     pub async fn complete_job(
@@ -217,45 +254,36 @@ impl JobCache {
         jobid: u64,
         success: bool,
         error: Option<String>,
-        app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
-        self.update_job(
-            jobid,
-            |j| {
-                if !j.status.is_finished() {
-                    j.status = if success {
-                        JobStatus::Completed
-                    } else {
-                        JobStatus::Failed
-                    };
-                    j.error = error;
-                    j.end_time = Some(chrono::Utc::now());
-                    if let Some(stats) = j.stats.as_mut() {
-                        sanitize_finished_stats(stats);
-                    }
-                    j.normalize_job_stats();
+        self.update_job(jobid, |j| {
+            if !j.status.is_finished() {
+                j.status = if success {
+                    JobStatus::Completed
+                } else {
+                    JobStatus::Failed
+                };
+                j.error = error;
+                j.end_time = Some(chrono::Utc::now());
+                if let Some(stats) = j.stats.as_mut() {
+                    sanitize_finished_stats(stats);
                 }
-            },
-            app,
-        )
+                j.normalize_job_stats();
+            }
+        })
         .await
     }
 
-    pub async fn stop_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        self.update_job(
-            jobid,
-            |j| {
-                if !j.status.is_finished() {
-                    j.status = JobStatus::Stopped;
-                    j.end_time = Some(chrono::Utc::now());
-                    if let Some(stats) = j.stats.as_mut() {
-                        sanitize_finished_stats(stats);
-                    }
-                    j.normalize_job_stats();
+    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
+        self.update_job(jobid, |j| {
+            if !j.status.is_finished() {
+                j.status = JobStatus::Stopped;
+                j.end_time = Some(chrono::Utc::now());
+                if let Some(stats) = j.stats.as_mut() {
+                    sanitize_finished_stats(stats);
                 }
-            },
-            app,
-        )
+                j.normalize_job_stats();
+            }
+        })
         .await
         .map(|_| ())
     }
@@ -373,23 +401,16 @@ impl JobCache {
         }
 
         for job in removed_jobs {
-            self.notify_change(app, Some(&job));
+            self.notify_change(Some(&job));
         }
     }
 
-    fn notify_change(&self, app: Option<&AppHandle>, job: Option<&JobInfo>) {
-        if let (Some(app), Some(job)) = (app, job) {
-            let _ = app.emit(
+    fn notify_change(&self, job: Option<&JobInfo>) {
+        if let Some(job) = job {
+            crate::core::bridge::emit(
                 JOB_CACHE_CHANGED,
                 crate::utils::types::events::JobChangeEvent::from(job),
             );
-            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-            {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    crate::core::power::update_power_inhibition(&app_clone).await;
-                });
-            }
         }
     }
 }
@@ -425,6 +446,8 @@ mod tests {
             backend_name: default_backend_name(),
             dry_run: false,
             parent_job_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -432,7 +455,7 @@ mod tests {
     async fn test_add_and_get_job() {
         let cache = JobCache::new();
         cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, Some("default")), None)
+            .add_job(mock_job(1, "gdrive:", JobType::Sync, Some("default")))
             .await;
         let job = cache.get_job(1).await.unwrap();
         assert_eq!(job.remote_name, "gdrive:");
@@ -442,11 +465,9 @@ mod tests {
     async fn test_delete_job() {
         let cache = JobCache::new();
         cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, None), None)
+            .add_job(mock_job(1, "gdrive:", JobType::Sync, None))
             .await;
-        cache
-            .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
-            .await;
+        cache.add_job(mock_job(2, "s3:", JobType::Copy, None)).await;
         assert_eq!(cache.get_jobs().await.len(), 2);
 
         assert!(cache.delete_job(1, None).await.is_ok());
@@ -458,11 +479,11 @@ mod tests {
         let cache = JobCache::new();
         let jobid = 1;
         cache
-            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None), None)
+            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None))
             .await;
 
         // Complete the job for the first time
-        cache.complete_job(jobid, true, None, None).await.unwrap();
+        cache.complete_job(jobid, true, None).await.unwrap();
         let job1 = cache.get_job(jobid).await.unwrap();
         let first_end_time = job1.end_time.unwrap();
 
@@ -471,7 +492,7 @@ mod tests {
 
         // Complete the job again
         cache
-            .complete_job(jobid, false, Some("error".to_string()), None)
+            .complete_job(jobid, false, Some("error".to_string()))
             .await
             .unwrap();
         let job2 = cache.get_job(jobid).await.unwrap();
@@ -487,7 +508,7 @@ mod tests {
         let cache = JobCache::new();
         let jobid = 1;
         cache
-            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None), None)
+            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None))
             .await;
 
         // Populate running stats
@@ -518,7 +539,7 @@ mod tests {
         assert_eq!(stats_val["eta"].as_u64().unwrap(), 18);
 
         // Stop the job and check if stats are sanitized
-        cache.stop_job(jobid, None).await.unwrap();
+        cache.stop_job(jobid).await.unwrap();
         let job = cache.get_job(jobid).await.unwrap();
         let stats_val = job.stats.unwrap();
         assert_eq!(stats_val["transferring"].as_array().unwrap().len(), 0);
@@ -538,18 +559,18 @@ mod tests {
     async fn test_delete_job_recursive() {
         let cache = JobCache::new();
         let parent = mock_job(1, "gdrive:", JobType::Check, None);
-        cache.add_job(parent, None).await;
+        cache.add_job(parent).await;
 
         let mut child = mock_job(2, "gdrive:", JobType::Copy, None);
         child.parent_job_id = Some(1);
-        cache.add_job(child, None).await;
+        cache.add_job(child).await;
 
         let mut grandchild = mock_job(3, "gdrive:", JobType::Copy, None);
         grandchild.parent_job_id = Some(2);
-        cache.add_job(grandchild, None).await;
+        cache.add_job(grandchild).await;
 
         let other = mock_job(4, "s3:", JobType::Copy, None);
-        cache.add_job(other, None).await;
+        cache.add_job(other).await;
 
         assert_eq!(cache.get_jobs().await.len(), 4);
 
@@ -565,7 +586,7 @@ mod tests {
         let cache = JobCache::new();
         let jobid = 1;
         cache
-            .add_job(mock_job(jobid, "gdrive:", JobType::Copy, None), None)
+            .add_job(mock_job(jobid, "gdrive:", JobType::Copy, None))
             .await;
 
         let active_stats = serde_json::json!({

@@ -10,7 +10,6 @@ import {
   AlertSeverity,
   AlertStats,
   SeverityStyle,
-  ALERT_FIRED,
   SettingsChangeEvent,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
@@ -146,7 +145,8 @@ export class AlertService extends TauriBaseService {
   }
 
   private initRealtime(): void {
-    this.listenToEvent<AlertRecord>(ALERT_FIRED)
+    this.eventListeners
+      .listenToAlertFired()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(newAlert => {
         // Update history

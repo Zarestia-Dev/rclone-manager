@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use log::{debug, error};
-use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
 use crate::core::alerts::types::{
@@ -203,10 +202,8 @@ impl AlertHistoryCache {
         }
     }
 
-    pub async fn push(&self, record: AlertRecord, app: Option<&AppHandle>) {
-        if let Some(app) = app {
-            let _ = app.emit(ALERT_FIRED, &record);
-        }
+    pub async fn push(&self, record: AlertRecord) {
+        crate::core::bridge::emit(ALERT_FIRED, &record);
         {
             let mut records = self.records.write().await;
             records.push_back(record);

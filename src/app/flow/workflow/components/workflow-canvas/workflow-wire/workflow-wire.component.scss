@@ -1,0 +1,134 @@
+.workflow-wire-group {
+  cursor: pointer;
+
+  .wire-hitbox {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 22px;
+    stroke-linecap: round;
+    pointer-events: stroke;
+  }
+
+  .wire-glow {
+    fill: none;
+    stroke: var(--accent-color);
+    stroke-width: 0px;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition-fast);
+  }
+
+  .wire-main {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    pointer-events: none;
+    transition: var(--transition-fast);
+  }
+
+  &:hover {
+    .wire-main {
+      stroke: var(--accent-color);
+      stroke-width: 3.5px;
+    }
+
+    .wire-glow {
+      stroke-width: 8px;
+      opacity: 0.25;
+    }
+  }
+
+  &.selected {
+    .wire-main {
+      stroke: var(--accent-color);
+      stroke-width: 3.5px;
+    }
+
+    .wire-glow {
+      stroke-width: 10px;
+      opacity: 0.35;
+    }
+  }
+
+  &.active {
+    .wire-main {
+      stroke: var(--primary-color);
+      stroke-width: 3.5px;
+    }
+
+    .wire-glow {
+      stroke: var(--primary-color);
+      stroke-width: 12px;
+      opacity: 0.45;
+    }
+  }
+
+  .wire-pulse-flow {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 4px;
+    stroke-linecap: round;
+    stroke-dasharray: 8 14;
+    pointer-events: none;
+    animation: wireDash 1s linear infinite;
+  }
+
+  .wire-action-handle {
+    cursor: pointer;
+    pointer-events: all;
+
+    .handle-hitbox {
+      fill: transparent;
+      pointer-events: all;
+    }
+
+    .handle-bg {
+      fill: var(--destructive-bg-color);
+      stroke: var(--view-bg-color);
+      stroke-width: 2px;
+      box-shadow: var(--shadow-gnome);
+      pointer-events: all;
+      transition:
+        r 0.15s ease,
+        fill 0.15s ease,
+        filter 0.15s ease;
+    }
+
+    .handle-icon {
+      stroke: #ffffff;
+      stroke-width: 2px;
+      stroke-linecap: round;
+      pointer-events: none;
+      transition: stroke-width 0.15s ease;
+    }
+
+    &:hover {
+      .handle-bg {
+        r: 14;
+        fill: color-mix(in srgb, var(--destructive-bg-color) 85%, white);
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+      }
+
+      .handle-icon {
+        stroke-width: 2.5px;
+      }
+    }
+
+    &:active {
+      .handle-bg {
+        r: 12;
+        fill: color-mix(in srgb, var(--destructive-bg-color) 80%, black);
+      }
+    }
+  }
+}
+
+@keyframes wireDash {
+  from {
+    stroke-dashoffset: 22;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

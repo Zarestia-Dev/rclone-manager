@@ -166,16 +166,8 @@
 
 // ==================== GLOBAL ====================
 
-.timezone-note {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--bg-elevated-1);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-  margin: var(--space-md);
+.timezone-banner {
+  margin: 0 var(--space-md) var(--space-md);
 }
 
 // Responsive

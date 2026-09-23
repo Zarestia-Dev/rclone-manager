@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
+import { OperationContext, ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
@@ -125,20 +125,19 @@ export class ServeManagementService extends TauriBaseService {
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
-    const params = { remoteName: remoteName, profileName: profileName };
-    const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
-      params,
-    });
-
-    this.notificationService.showSuccess(
-      this.translate.instant('serve.successStart', {
-        remote: remoteName,
-        profile: profileName,
-        addr: response.addr,
-      })
+    const params = { remoteName, profileName };
+    return this.invokeWithNotification<ServeStartResponse>(
+      'start_serve_profile',
+      { params },
+      {
+        successKey: 'serve.successStart',
+        successParams: response => ({
+          remote: remoteName,
+          profile: profileName,
+          addr: response.addr,
+        }),
+      }
     );
-
-    return response;
   }
 
   /**
@@ -160,10 +159,10 @@ export class ServeManagementService extends TauriBaseService {
   /**
    * Stop all running serve instances
    */
-  async stopAllServes(): Promise<void> {
+  async stopAllServes(context: OperationContext = 'normal'): Promise<void> {
     await this.invokeWithNotification(
       'stop_all_serves',
-      { context: 'manual' },
+      { context },
       {
         successKey: 'serve.successStopAll',
         errorKey: 'serve.failedStopAll',

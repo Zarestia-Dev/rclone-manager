@@ -9,6 +9,7 @@ import {
   FsTransferItem,
   FsDeleteItem,
   ArchiveListResponse,
+  RenameItem,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
@@ -45,10 +46,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async getStat(
     remote: string,
     path: string,
+    opt?: Record<string, unknown>,
     source?: Origin,
     group?: string
   ): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path, origin: source, group });
+    return this.invokeCommand('get_stat', { remote, path, opt, origin: source, group });
   }
 
   async getHashsum(
@@ -152,15 +154,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string
   ): Promise<string> {
+    return this.renameBatch([{ remote, srcPath, dstPath, isDir }], source, group);
+  }
+
+  async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('rename', {
-      items: [
-        {
-          remote,
-          srcPath,
-          dstPath,
-          isDir,
-        },
-      ],
+      items,
       origin: source,
       group,
     });

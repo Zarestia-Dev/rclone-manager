@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CheckResult {
     pub successful: Vec<String>,
-    pub failed: HashMap<String, String>,
-    pub retries_used: HashMap<String, usize>,
+    pub failed: std::collections::HashMap<String, String>,
+    pub retries_used: std::collections::HashMap<String, usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

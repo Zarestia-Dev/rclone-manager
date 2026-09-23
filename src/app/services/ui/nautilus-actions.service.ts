@@ -11,9 +11,7 @@ import { NautilusFileOperationsService } from './nautilus-file-operations.servic
 import { NautilusTabService } from './nautilus-tab.service';
 import { NautilusSelectionService } from './nautilus-selection.service';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import { MultiRenameModalComponent } from 'src/app/shared/modals/multi-rename-modal/multi-rename-modal.component';
 import { FileViewerService } from './file-viewer.service';
 import { DownloadService } from 'src/app/services/operations/download.service';
 
@@ -32,7 +30,6 @@ export class NautilusActionsService {
   private readonly modalService = inject(ModalService);
   private readonly downloadService = inject(DownloadService);
   private readonly clipboard = inject(Clipboard);
-  private readonly dialog = inject(MatDialog);
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
@@ -108,41 +105,15 @@ export class NautilusActionsService {
   }
 
   openShortcutsModal(): void {
-    this.modalService.openKeyboardShortcuts({ nautilus: true });
+    this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
   }
 
   openAboutModal(remote: ExplorerRoot): void {
-    const normalized = this.pathSvc.normalizeExplorerRoot(remote);
-    this.modalService.openRemoteAbout({
-      displayName: remote.name,
-      normalizedName: normalized,
-      type: remote.type,
-    });
+    this.remoteFacadeSvc.openRemoteAbout(remote);
   }
 
   async confirmAndCleanup(r: ExplorerRoot): Promise<void> {
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('nautilus.modals.emptyTrash.title'),
-      this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name }),
-      'common.delete',
-      'common.cancel',
-      { icon: 'trash', color: 'warn' }
-    );
-    if (!confirmed) return;
-
-    try {
-      const normalized = this.pathSvc.normalizeExplorerRoot(r);
-      await this.remoteOps.cleanup(normalized, undefined, 'filemanager');
-      this.notificationService.showInfo(
-        this.translate.instant('nautilus.notifications.trashEmptied')
-      );
-    } catch (e) {
-      this.notificationService.showError(
-        this.translate.instant('nautilus.errors.emptyTrashFailed', {
-          error: (e as Error).message,
-        })
-      );
-    }
+    await this.remoteFacadeSvc.emptyTrash(r, 'filemanager');
   }
 
   async openFilePreview(item: FileBrowserItem, activePaneFiles: FileBrowserItem[]): Promise<void> {
@@ -345,13 +316,14 @@ export class NautilusActionsService {
       existingNames,
     });
 
+    let folderName: string | undefined;
     try {
-      const folderName = await firstValueFrom(ref.afterClosed());
+      folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
 
       const currentPath = this.tabSvc.activePath();
       const newPath = this.pathSvc.joinPath(currentPath, folderName);
-      const normalizedRemote = this.pathSvc.normalizeRemoteForRclone(remote.name);
+      const normalizedRemote = this.pathSvc.normalizeExplorerRoot(remote);
 
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       await this.fileOps.performFileOperations(items, remote, newPath, 'move');
@@ -362,8 +334,8 @@ export class NautilusActionsService {
       console.error('Failed to create folder with selected items', err);
       this.notificationService.showError(
         this.translate.instant('nautilus.errors.createFolderFailed', {
-          name: 'selection',
-          error: (err as Error).message || String(err),
+          name: folderName || 'selection',
+          error: (err as Error)?.message || String(err),
         })
       );
     }
@@ -376,11 +348,7 @@ export class NautilusActionsService {
     const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
     if (items.length === 0) return;
 
-    const ref = this.dialog.open(MultiRenameModalComponent, {
-      data: { items, remote },
-      disableClose: true,
-      panelClass: 'mobile-sheet-dialog',
-    });
+    const ref = this.modalService.openMultiRename({ items, remote });
 
     const changed = await firstValueFrom(ref.afterClosed());
     if (changed) {

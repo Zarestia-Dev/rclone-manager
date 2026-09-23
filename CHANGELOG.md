@@ -4,6 +4,82 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Workflow Engine & Visual Canvas UI**:
+  - **Interactive Node-Based Canvas**: Introduced a full-featured visual workflow canvas (`WorkflowCanvasComponent`) with drag-and-drop node placement, dynamic Bezier curve connection wires (`WorkflowWireComponent`), minimap navigation with viewport panning (`WorkflowMinimapComponent`), and a contextual node inspector (`WorkflowInspectorComponent`).
+  - **Native Rust Execution Engine**: Built an in-process, non-blocking workflow execution engine in Rust (`src-tauri/src/core/flow/workflow/engine.rs` & `executor.rs`) supporting conditional branching, parallel executions, loop iterations, configurable error recovery policies, and persistent execution state.
+  - **Comprehensive Node Taxonomy**:
+    - *Triggers*: Manual trigger, Cron Schedule (with dedicated visual `CronEditorModalComponent`), Webhook listeners, and File System Event monitoring.
+    - *Tasks*: Direct execution of native Rclone operations (Sync, Copy, Move, Mount, Serve, Check, Bisync, Delete, Purge) with real-time parameter inspection and an RC command editor modal (`RcEditorModalComponent`).
+    - *Logic*: Conditional branching (IF/ELSE conditions, step status checks), configurable delays and timers, concurrent branch execution, and loop iterators.
+    - *Actions*: Native desktop/OS notifications, external webhooks, custom shell scripts, and system/application power controls.
+  - **Pre-Built Workflow Recipes**: Integrated built-in workflow recipes for common synchronization, backup, and automation patterns (`workflow-recipes.ts`).
+  - **Execution Logging & Real-Time Monitoring**: Live execution log drawer (`WorkflowExecutionLogComponent`) with per-node status badges, step duration tracking, and detailed payload inspection data.
+- **Centralized Keyboard Shortcut Management System**:
+  - **Centralized Shortcut Architecture**: Unified keyboard shortcut handling via `ShortcutHandlerDirective`, `keyboard-utils.ts`, and a centralized registry (`shortcut-definitions.ts`) to eliminate fragmented listeners.
+  - **Visual Shortcut Viewer Modal**: Enhanced `KeyboardShortcutsModalComponent` with categorized shortcut groupings, platform-adaptive modifier glyphs (macOS Cmd vs Ctrl), and visual badge styling.
+  - **Contextual Key Bindings**: Added key bindings for global navigation, tab switching, file browsing actions, search filtering, and modal dismissals.
+- **Power Management & Fast Actions Modal**:
+  - **Quick Power Menu & Gestures**: Added a quick power and lifecycle management modal accessible via long-press (hold) gesture on "About RClone Manager" in the app hamburger menu on mobile and desktop.
+  - **Comprehensive Power Actions**: Supports safe application termination (`Shut Down App`), application relaunch (`Restart App`), immediate operation halt (`Emergency Stop` unmounting all remotes and stopping all serves), host power off (`Power Off System`), system suspend/sleep (`Suspend / Sleep`), and user session locking (`Lock Session`).
+  - **Cross-Platform Gating & Mobile Compliance**: Native Android and iOS builds automatically filter out unsupported OS-level device power actions (phone shutdown/sleep/lock). iOS builds exclude the app exit action for Apple App Store compliance (Guideline 2.5.4), while Android preserves background service termination. Remote headless web server sessions preserve full server power management.
+- **Rclone Port Collision Detection & Auto-Repair Flow**:
+  - Added automatic detection for occupied TCP ports prior to spawning local Rclone engines.
+  - Non-blocking startup error handling with instant child status reaping (`try_wait`) to eliminate startup timeout delays on port bind failures.
+  - Integrated port collision repair sheet with automatic next-available port suggestion, real-time TCP port availability testing via `<app-alert-banner>`, and one-click apply & restart.
+  - Added system error banner notification for port errors with dedicated translations across all 9 supported locales.
+- **Smart Remote vs. Local Authentication Error Handling**:
+  - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
+- **URL Preview Component & Utilities**:
+  - Added `UrlPreviewComponent` and accompanying `url.utils.ts` for real-time URL inspection, domain and protocol extraction, file name and extension inference, and destination path previewing across download and transfer dialogs.
+- **Binary File Inspector & MIME Sniffing**:
+  - Added `BinaryInspectorService` capable of inspecting binary file headers, parsing MIME signatures and magic numbers, and generating hex/byte dumps for unknown files in Nautilus file browser.
+- **Missing Remote Detection & UI Alerts for Quick Runs**:
+  - Added automated detection for unconfigured or missing remotes referenced by Quick Run configurations, showing visual warning badges and actionable alert banners to prevent failed job launches.
+- **Rclone-Specific Form Validation Suite**:
+  - Extended `ValidatorRegistryService` with rclone-specific validation rules: remote name validation, forbidden character filtering, port availability checking, and uniqueness guards.
+- **System Theme Event Synchronization**:
+  - Added real-time native OS theme change listeners in the Tauri backend, forwarding theme transition events to the frontend for instant dark/light mode switching without polling.
+- **Extended Backup & Export Options**:
+  - Extended `.rcman` backup format and export manager to include Workflows, Templates, and Quick Runs alongside Remotes, Automations, and Application Settings.
+- **Android Background Keep-Alive Service & Battery Optimization Integration**:
+  - **Dynamic Background Lifecycle Management**: Integrated `AndroidKeepAliveService` (`android-keep-alive.service.ts`) reacting to active mounts, background jobs, and serves to ensure uninterrupted background operations on Android devices.
+  - **Real-Time Persistent Notification**: Added status notification updates displaying active mount, serve, and transfer job counts directly in the Android system notification drawer.
+  - **Battery Optimization Exemption Request**: Added native battery optimization check (`isBatteryOptimizationIgnored`) and user prompt support (`requestIgnoreBatteryOptimizations`) to prevent Android OS Doze mode from killing active Rclone background processes.
+  - **App Settings Persistence**: Added `general.keep_alive` preference setting across backend schema and frontend settings, allowing users to toggle persistent background execution on Android.
+- **Linux NVIDIA WebKit Environment Auto-Configuration**: Automatically configures WebKitGTK rendering environment variables at startup when an NVIDIA GPU is detected on Linux desktop sessions, with session-aware and driver-version-aware logic: on **X11**, both `WEBKIT_DISABLE_DMABUF_RENDERER` and `WEBKIT_DISABLE_COMPOSITING_MODE` are applied to prevent blank windows and "Error 71" protocol errors; on **Wayland with NVIDIA 515+**, all quirks are skipped since modern drivers support DMABuf natively (previously, unconditionally disabling GPU compositing caused software-rendering fallback and severe animation lag); on **Wayland with NVIDIA < 515**, only `WEBKIT_DISABLE_DMABUF_RENDERER` is applied to guard against DMABuf instability without forcing software rendering. Thanks to [@nvandamme](https://github.com/nvandamme)! PR #300
+- **Graceful Unix SIGTERM Shutdown Handling**: Added unified SIGTERM and SIGINT (Ctrl+C) signal listeners on Unix systems to trigger the complete graceful shutdown sequence (releasing power inhibitor locks, unmounting active remotes, stopping jobs and serves, and stopping the engine) before terminating. Thanks to [@nvandamme](https://github.com/nvandamme)! PR #298
+- **New Traditional Chinese Translations**: Added support for Traditional Chinese language and translations. Thanks to [@DraftingDreamer](https://github.com/DraftingDreamer)!
+
+### Changed
+- **Decoupled Async Runtime from UI Framework**: Migrated to an application-owned Tokio runtime, eliminating dependency on Tauri's async task management. All background task spawning (`spawn`, `spawn_blocking`, `block_on`) now runs on a dedicated, framework-independent runtime, improving stability and removing edge-case "no reactor running" panics.
+- **Contributor Credits in About Modal & Documentation**:
+  - Added a dedicated Contributors section to the About modal under Credits, crediting all code, docs, and translation contributors with direct links to their GitHub profiles.
+- **Export Modal UI Overhaul**:
+  - Redesigned `ExportModalComponent` with a Libadwaita-inspired selection list, item counters, and category-level selection controls.
+- **Multi-Rename Modal Enhancements**:
+  - Upgraded `MultiRenameModalComponent` with multi-pattern search & replace, prefix/suffix additions, automatic sequence numbering, case transforms, and a real-time before-and-after preview table.
+- **Jobs Overview & Core Modal UI Polish**:
+  - Refactored `JobsOverviewPanelComponent` with cleaner layout hierarchy, responsive card formatting, and real-time execution status badges.
+  - Polished responsive layouts and type safety across `AboutModalComponent`, `BackendModalComponent`, `LogsModalComponent`, `JobDetailModalComponent`, and `RepairSheetComponent`.
+
+### Removed
+- **Obsolete Path Validation Service**: Removed deprecated `PathValidationService` in favor of centralized path resolution utilities and backend validation. Fixes #288
+
+### Fixed
+- **Cross-Platform Power Inhibitor Architecture & Linux Shutdown Deadlock**: Redesigned power inhibitor handling across all platforms to prevent automatic idle sleep during active operations while ensuring clean system behavior:
+  - **Linux**: Switched to unprivileged idle-sleep inhibition (`what = "idle"`), allowing passwordless manual sleep and laptop lid-close sleep without Polkit prompts. Added a D-Bus `PrepareForShutdown` listener to cleanly unmount remotes and stop active jobs before power-off, resolving black-screen hangs on KDE Plasma 6 and systemd. Fixes #296
+  - **Windows**: Prevents automatic idle sleep (`ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED`) while preserving the native OS warning screen (`ShutdownBlockReasonCreate`) when shutting down with active operations.
+  - **macOS**: Prevents automatic idle sleep (`IdleSystemSleepDisabled`) while respecting manual sleep and lid closure.
+- **Tray Quit Action Window Restoration with Active Operations**: Fixed an issue where clicking "Quit" in the system tray while active transfers or mounts were running failed to exit and failed to restore or present the UI window when `destroy_window_on_close` was enabled. The application now recreates or reveals and focuses the main window, cleanly prompting the user with the active operations confirmation dialog.
+- **Blank Page in Nautilus & UI Over Non-Secure HTTP Contexts**: Resolved `TypeError: crypto.randomUUID is not a function` when accessing the application over non-secure HTTP / remote IP addresses. Replaced direct `crypto.randomUUID()` calls across Nautilus, File System, Quick Run, and User Template services with a robust, zero-dependency `generatePrefixedId` utility featuring base36 monotonic timestamping, sequence counting, and context prefixes. Fixes #292
+- **Canonical Rclone Preset Flag Mapping for macOS Mounts & S3 Backend**: Corrected preset flag definitions in `RemotePresetsService` to use upstream canonical Rclone flag names (`noappledouble`, `noapplexattr` instead of snake_case `no_apple_*` for macOS mounts, and `use_server_modtime` instead of `use_server_mod_time` for S3). Fixes #290
+- **Docker FUSE Mount Failures with `--allow-other` and Non-Root `PUID`/`PGID`**: Fixed an issue where mounting cloud remotes using the `--allow-other` flag inside Docker failed with `failed to mount FUSE fs: fusermount: exit status 1` when running as a non-root user via `PUID`/`PGID`. The container entrypoint and runtime image now automatically enable `user_allow_other` in `/etc/fuse.conf` upon startup, enabling non-root FUSE mounts with multi-user access out of the box. Fixes #303
+- Various bug fixes and stability improvements.
+
+
 ## [v0.3.2] - 2026-08-24
 
 ### Added

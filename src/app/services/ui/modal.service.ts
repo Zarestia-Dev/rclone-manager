@@ -19,7 +19,13 @@ import {
   QuickRunInput,
   TemplateCategory,
   PrimaryActionType,
+  WorkflowNode,
+  FileBrowserItem,
+  ExplorerRoot,
+  ExportType,
+  ExportModalData,
 } from '@app/types';
+import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { AppSettingsService } from '../settings/app-settings.service';
@@ -36,7 +42,7 @@ export interface RemoteConfigModalOptions {
 
 export interface ExportModalOptions {
   remoteName?: string;
-  defaultExportType?: 'FullBackup' | 'AllConfigs' | 'SpecificRemote';
+  defaultExportType?: ExportType;
 }
 
 export interface PropertiesModalOptions {
@@ -73,6 +79,7 @@ export interface QuickRunEditorModalOptions {
   cloneData?: QuickRunInput | QuickRun;
   initialOpType?: PrimaryActionType;
   initialRemoteName?: string;
+  workflowNode?: WorkflowNode;
 }
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -233,7 +240,7 @@ export class ModalService extends TauriBaseService {
         m => m.PropertiesModalComponent
       ),
     'remote-about': () =>
-      import('../../features/modals/remote/remote-about-modal.component').then(
+      import('../../features/modals/remote-about/remote-about-modal.component').then(
         m => m.RemoteAboutModalComponent
       ),
     'keyboard-shortcuts': () =>
@@ -265,8 +272,24 @@ export class ModalService extends TauriBaseService {
         m => m.TemplateManagerModalComponent
       ),
     'delete-remote': () =>
-      import('../../features/modals/remote/delete-remote-modal/delete-remote-modal.component').then(
+      import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
         m => m.DeleteRemoteModalComponent
+      ),
+    'workflow-cron-editor': () =>
+      import('../../flow/workflow/modals/cron-editor-modal/cron-editor-modal.component').then(
+        m => m.CronEditorModalComponent
+      ),
+    'workflow-rc-editor': () =>
+      import('../../flow/workflow/modals/rc-editor-modal/rc-editor-modal.component').then(
+        m => m.RcEditorModalComponent
+      ),
+    'multi-rename': () =>
+      import('../../shared/modals/multi-rename-modal/multi-rename-modal.component').then(
+        m => m.MultiRenameModalComponent
+      ),
+    'power-menu': () =>
+      import('../../features/modals/power-menu-modal/power-menu-modal.component').then(
+        m => m.PowerMenuModalComponent
       ),
   };
 
@@ -398,18 +421,85 @@ export class ModalService extends TauriBaseService {
       data = { initialOpType, initialRemoteName };
     }
 
+    const title = data.workflowNode
+      ? data.workflowNode.title ||
+        this.translate.instant('flow.workflow.editor.configureNode', {
+          type: data.initialOpType ?? data.workflowNode.type,
+        })
+      : data.quickRun
+        ? this.translate.instant('flow.quickRun.editor.editTitle')
+        : this.translate.instant('flow.quickRun.editor.createTitle');
+
+    const suffix = data.workflowNode?.id ?? data.quickRun?.id ?? 'new';
+
     return this.openModal(
       'quick-run-editor',
       { ...CONFIG_MODAL_SIZE, disableClose: true, data },
       {
-        title: data.quickRun
-          ? this.translate.instant('flow.quickRun.editor.editTitle')
-          : this.translate.instant('flow.quickRun.editor.createTitle'),
+        title,
         width: 1024,
         height: 860,
-        suffix: data.quickRun?.id ?? 'new',
+        suffix,
       }
     );
+  }
+
+  openWorkflowCronEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    const titleKey =
+      node.titleKey ??
+      (node.type === 'schedule_wait'
+        ? 'flow.workflow.nodes.scheduleWait'
+        : 'flow.workflow.nodes.cronSchedule');
+    return this.openModal(
+      'workflow-cron-editor',
+      {
+        width: '640px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant(titleKey),
+        width: 640,
+        height: 600,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowRcEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    return this.openModal(
+      'workflow-rc-editor',
+      {
+        width: '780px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant('flow.workflow.nodes.rcCommand'),
+        width: 780,
+        height: 700,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowNodeEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    if (node.type === 'cron' || node.type === 'schedule_wait') {
+      return this.openWorkflowCronEditor(node);
+    }
+    if (node.type === 'rc_command') {
+      return this.openWorkflowRcEditor(node);
+    }
+    const remoteName = (node.config['remote'] ?? node.config['remoteName'] ?? '') as string;
+    return this.openQuickRunEditor({
+      workflowNode: node,
+      initialOpType: node.type as PrimaryActionType,
+      initialRemoteName: remoteName,
+    });
   }
 
   openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {
@@ -452,9 +542,11 @@ export class ModalService extends TauriBaseService {
   }
 
   openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
-    const data = {
+    const data: ExportModalData = {
       remoteName: options.remoteName,
-      defaultExportType: options.defaultExportType ?? 'FullBackup',
+      defaultExportType:
+        options.defaultExportType ??
+        (options.remoteName ? ExportType.SpecificRemote : ExportType.All),
     };
     return this.openModal(
       'export',
@@ -488,7 +580,7 @@ export class ModalService extends TauriBaseService {
       'restore-preview',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
       {
-        title: this.translate.instant('backup.restore.title') || 'Restore Backup',
+        title: this.translate.instant('backup.restore.title'),
         width: 680,
         height: 600,
         suffix: options.backupPath,
@@ -511,9 +603,9 @@ export class ModalService extends TauriBaseService {
   openBackend<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'backend',
-      { ...STANDARD_MODAL_SIZE, disableClose: false },
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
       {
-        title: this.translate.instant('modals.backend.title') || 'Backend Management',
+        title: this.translate.instant('modals.backend.title'),
         width: 680,
         height: 600,
       }
@@ -551,10 +643,10 @@ export class ModalService extends TauriBaseService {
         width: '90vw',
         maxWidth: '1200px',
         height: '85vh',
-        disableClose: false,
+        disableClose: true,
       },
       {
-        title: this.translate.instant('alerts.title') || 'Alerts & Notifications',
+        title: this.translate.instant('alerts.title'),
         width: 1200,
         height: 800,
       }
@@ -592,7 +684,10 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openKeyboardShortcuts<TResult = any>(data?: { nautilus?: boolean }): DialogRefLike<TResult> {
+  openKeyboardShortcuts<TResult = any>(data?: {
+    context?: ShortcutContext;
+    nautilus?: boolean;
+  }): DialogRefLike<TResult> {
     return this.openModal('keyboard-shortcuts', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -602,6 +697,10 @@ export class ModalService extends TauriBaseService {
 
   openAbout<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
+  }
+
+  openPowerMenu<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal('power-menu', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
   openArchiveCreate<TResult = any>(data: {
@@ -633,11 +732,24 @@ export class ModalService extends TauriBaseService {
       'delete-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
       {
-        title: this.translate.instant('home.deleteRemote.title') || 'Delete Remote',
+        title: this.translate.instant('home.deleteRemote.title'),
         width: 580,
         height: 520,
         suffix: remoteName,
       }
     );
+  }
+
+  openMultiRename<TResult = boolean>(data: {
+    items: FileBrowserItem[];
+    remote: ExplorerRoot;
+  }): DialogRefLike<TResult> {
+    return this.openModal('multi-rename', {
+      ...STANDARD_MODAL_SIZE,
+      maxWidth: '780px',
+      maxHeight: '850px',
+      disableClose: true,
+      data,
+    });
   }
 }

@@ -91,3 +91,8 @@
 .selected::before {
   box-shadow: 0 0 0 2px var(--accent-color);
 }
+
+.about-menu-item {
+  position: relative;
+  overflow: hidden;
+}

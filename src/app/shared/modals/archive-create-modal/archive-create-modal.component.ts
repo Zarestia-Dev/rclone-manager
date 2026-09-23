@@ -10,6 +10,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileBrowserItem, RcConfigOption } from '@app/types';
 import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
 import { SettingControlComponent } from '../../components/setting-control/setting-control.component';
+import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 export interface ArchiveCreateData {
   items: FileBrowserItem[];
@@ -27,9 +28,7 @@ export interface ArchiveCreateData {
     TranslatePipe,
     SettingControlComponent,
   ],
-  host: {
-    '(keydown.escape)': 'dismiss()',
-  },
+  hostDirectives: [EscapeCloseDirective],
   template: `
     <header data-tauri-drag-region>
       <button>

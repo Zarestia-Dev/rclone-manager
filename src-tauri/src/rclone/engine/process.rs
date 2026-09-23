@@ -1,5 +1,5 @@
 use log::{error, info};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
@@ -93,7 +93,7 @@ impl RcApiEngine {
                 .await;
         }
 
-        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
+        crate::core::bridge::emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
 
         Ok(())
     }

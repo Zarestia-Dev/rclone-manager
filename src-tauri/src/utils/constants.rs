@@ -36,6 +36,8 @@ pub const SUB_ALERTS_RULES: &str = "alerts/rules";
 pub const SUB_ALERTS_ACTIONS: &str = "alerts/actions";
 /// Sub-settings section holding quick run configurations.
 pub const SUB_QUICK_RUNS: &str = "quick_runs";
+/// Sub-settings section holding workflow definitions.
+pub const SUB_WORKFLOWS: &str = "workflows";
 /// Sub-settings section holding custom user preset templates.
 pub const SUB_TEMPLATES: &str = "templates";
 

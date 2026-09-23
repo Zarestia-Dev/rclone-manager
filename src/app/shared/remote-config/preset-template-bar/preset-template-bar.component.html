@@ -17,13 +17,13 @@
         <span>{{ 'templates.applyPresets' | translate }}</span>
       </button>
 
-      @if (userTemplateService.allTemplates().length > 0) {
+      @if (userTemplateService.userTemplates().length > 0) {
         <mat-divider></mat-divider>
         <div class="menu-group-label">
           <span>{{ 'templates.userTemplates' | translate }}</span>
         </div>
 
-        @for (tpl of userTemplateService.allTemplates(); track tpl.id) {
+        @for (tpl of userTemplateService.userTemplates(); track tpl.id) {
           <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="onSelectTemplate(tpl)">
             <mat-icon svgIcon="bookmark"></mat-icon>
             <span>{{ tpl.name }}</span>

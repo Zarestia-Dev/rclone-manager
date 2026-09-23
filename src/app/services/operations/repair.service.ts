@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { InstallationService } from '../settings/installation.service';
+import { BackendService } from '../infrastructure/system/backend.service';
 import { RepairData } from '@app/types';
 
 /** Detail item structure for repair UI */
@@ -20,6 +21,7 @@ interface RepairDetailItem {
 })
 export class RepairService extends TauriBaseService {
   private readonly installationService = inject(InstallationService);
+  private readonly backendService = inject(BackendService);
 
   readonly rcloneProgress = this.installationService.rcloneProgress;
   readonly mountPluginProgress = this.installationService.mountPluginProgress;
@@ -157,6 +159,44 @@ export class RepairService extends TauriBaseService {
         },
       ],
     },
+    rclone_auth_remote: {
+      titleKey: 'repairSheet.titles.authRequired',
+      messageKey: 'repairSheet.messages.remoteAuthRequired',
+      progressKey: 'repairSheet.progress.restartingEngine',
+      buttonTextKey: 'repairSheet.actions.configureBackend',
+      icon: 'lock',
+      details: [
+        {
+          icon: 'circle-info',
+          labelKey: 'repairSheet.details.issueLabel',
+          valueKey: 'repairSheet.details.rcloneAuthRemote.issue',
+        },
+        {
+          icon: 'lock',
+          labelKey: 'repairSheet.details.actionLabel',
+          valueKey: 'repairSheet.details.rcloneAuthRemote.action',
+        },
+      ],
+    },
+    rclone_port: {
+      titleKey: 'repairSheet.titles.portInUse',
+      messageKey: 'repairSheet.messages.portInUse',
+      progressKey: 'repairSheet.progress.restartingEngine',
+      buttonTextKey: 'repairSheet.actions.changePort',
+      icon: 'server',
+      details: [
+        {
+          icon: 'circle-info',
+          labelKey: 'repairSheet.details.issueLabel',
+          valueKey: 'repairSheet.details.rclonePort.issue',
+        },
+        {
+          icon: 'rotate-right',
+          labelKey: 'repairSheet.details.actionLabel',
+          valueKey: 'repairSheet.details.rclonePort.action',
+        },
+      ],
+    },
   } as const;
 
   private readonly defaultRepairUi = {
@@ -231,6 +271,33 @@ export class RepairService extends TauriBaseService {
   }
 
   /**
+   * Suggest the next available local TCP port.
+   */
+  async findNextAvailablePort(startPort?: number): Promise<number> {
+    if (!this.isTauri) {
+      return (startPort ?? 51900) + 1;
+    }
+    return this.invokeCommand<number>('find_available_port', { startPort });
+  }
+
+  /**
+   * Check if a local TCP port is currently free/available.
+   */
+  async checkPortAvailable(port: number): Promise<boolean> {
+    if (!this.isTauri) {
+      return true;
+    }
+    return this.invokeCommand<boolean>('check_port_available', { port });
+  }
+
+  /**
+   * Update the local backend port and restart the engine.
+   */
+  async repairRclonePort(newPort: number): Promise<void> {
+    return this.backendService.updateLocalBackendPort(newPort);
+  }
+
+  /**
    * Execute repair based on repair data type
    * @param repairData The repair data containing type and other info
    * @note For repairs requiring additional parameters (e.g., custom installation path),
@@ -249,6 +316,11 @@ export class RepairService extends TauriBaseService {
         return this.repairBackendUnreachable();
       case 'rclone_auth':
         return this.repairRcloneAuth();
+      case 'rclone_port':
+        if (repairData.port) {
+          return this.repairRclonePort(repairData.port);
+        }
+        return Promise.resolve();
       case 'rclone_password':
         // Password handling is done in the component, this is a no-op
         return Promise.resolve();
@@ -260,52 +332,64 @@ export class RepairService extends TauriBaseService {
   /**
    * Get repair title key based on repair type
    * @param repairType The type of repair
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairTitleKey(repairType: RepairData['type']): string {
-    return this.getRepairUi(repairType).titleKey;
+  getRepairTitleKey(repairType: RepairData['type'], isRemote?: boolean): string {
+    return this.getRepairUi(repairType, isRemote).titleKey;
   }
 
   /**
    * Get repair message key based on repair type
    * @param repairType The type of repair
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairMessageKey(repairType: RepairData['type']): string {
-    return this.getRepairUi(repairType).messageKey;
+  getRepairMessageKey(repairType: RepairData['type'], isRemote?: boolean): string {
+    return this.getRepairUi(repairType, isRemote).messageKey;
   }
 
   /**
    * Get repair progress text based on repair type
    * @param repairType The type of repair being performed
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairProgressTextKey(repairType: RepairData['type']): string {
-    return this.getRepairUi(repairType).progressKey;
+  getRepairProgressTextKey(repairType: RepairData['type'], isRemote?: boolean): string {
+    return this.getRepairUi(repairType, isRemote).progressKey;
   }
 
   /**
    * Get repair button text based on repair type
    * @param repairType The type of repair to be performed
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairButtonTextKey(repairType: RepairData['type']): string {
-    return this.getRepairUi(repairType).buttonTextKey;
+  getRepairButtonTextKey(repairType: RepairData['type'], isRemote?: boolean): string {
+    return this.getRepairUi(repairType, isRemote).buttonTextKey;
   }
 
   /**
    * Get repair button icon based on repair type
    * @param repairType The type of repair to be performed
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairButtonIcon(repairType: RepairData['type']): string {
-    return this.getRepairUi(repairType).icon;
+  getRepairButtonIcon(repairType: RepairData['type'], isRemote?: boolean): string {
+    return this.getRepairUi(repairType, isRemote).icon;
   }
 
   /**
    * Get repair details for display
    * @param repairType The type of repair
+   * @param isRemote Whether the active backend is a remote backend
    */
-  getRepairDetails(repairType: RepairData['type']): readonly RepairDetailItem[] | null {
-    return this.getRepairUi(repairType).details;
+  getRepairDetails(
+    repairType: RepairData['type'],
+    isRemote?: boolean
+  ): readonly RepairDetailItem[] | null {
+    return this.getRepairUi(repairType, isRemote).details;
   }
 
-  private getRepairUi(repairType: RepairData['type']): {
+  private getRepairUi(
+    repairType: RepairData['type'],
+    isRemote?: boolean
+  ): {
     titleKey: string;
     messageKey: string;
     progressKey: string;
@@ -313,6 +397,9 @@ export class RepairService extends TauriBaseService {
     icon: string;
     details: readonly RepairDetailItem[] | null;
   } {
+    if (repairType === 'rclone_auth' && isRemote) {
+      return this.repairUi.rclone_auth_remote;
+    }
     return this.repairUi[repairType] ?? this.defaultRepairUi;
   }
 }

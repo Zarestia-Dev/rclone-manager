@@ -4,6 +4,7 @@ import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 export type ResizeDirection =
   'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
@@ -15,8 +16,12 @@ export class WindowService extends TauriBaseService {
   private readonly _theme = signal<Theme>('system');
   public readonly theme = this._theme.asReadonly();
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly eventListeners = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  private readonly systemThemeQuery: MediaQueryList | null =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: dark)')
+      : null;
 
   private readonly _isMaximized = signal<boolean>(false);
   public readonly isMaximized = this._isMaximized.asReadonly();
@@ -38,9 +43,9 @@ export class WindowService extends TauriBaseService {
         this.applyTheme('system');
       }
     };
-    this.systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+    this.systemThemeQuery?.addEventListener('change', handleSystemThemeChange);
     this.destroyRef.onDestroy(() => {
-      this.systemThemeQuery.removeEventListener('change', handleSystemThemeChange);
+      this.systemThemeQuery?.removeEventListener('change', handleSystemThemeChange);
     });
 
     if (this.isTauri) {
@@ -52,6 +57,17 @@ export class WindowService extends TauriBaseService {
         }
       });
 
+      this.eventListeners
+        .listenToSystemThemeChanged()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(isDark => {
+          if (this._theme() === 'system') {
+            const resolvedTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';
+            document.documentElement.setAttribute('class', resolvedTheme);
+            this.updateNativeBridge(isDark);
+          }
+        });
+
       this.initWindowListeners();
       this.initLinuxResizeHandles();
     }
@@ -59,7 +75,8 @@ export class WindowService extends TauriBaseService {
 
   private async initWindowListeners(): Promise<void> {
     this.checkMaximizedState();
-    this.listenToEvent('tauri://resize')
+    this.eventListeners
+      .listenToWindowResize()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.checkMaximizedState();
@@ -203,30 +220,31 @@ export class WindowService extends TauriBaseService {
 
   async applyTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
     try {
+      const isSystemDark = this.systemThemeQuery?.matches ?? false;
       const resolvedTheme: 'light' | 'dark' =
-        theme === 'system' ? (this.systemThemeQuery.matches ? 'dark' : 'light') : theme;
+        theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
 
       document.documentElement.setAttribute('class', resolvedTheme);
-
-      // On Android, notify native Kotlin bridge to sync status bar / navigation bar icon theme
-      const bridge = (
-        window as Window & {
-          __rclone__?: {
-            setSystemTheme?: (isDark: boolean) => void;
-          };
-        }
-      ).__rclone__;
-
-      if (bridge?.setSystemTheme) {
-        bridge.setSystemTheme(resolvedTheme === 'dark');
-      }
+      this.updateNativeBridge(resolvedTheme === 'dark');
 
       await this.invokeCommand('set_theme', {
         theme,
-        systemIsDark: this.systemThemeQuery.matches,
+        systemIsDark: isSystemDark,
       });
     } catch (error) {
       console.error('Failed to apply theme:', error);
     }
+  }
+
+  private updateNativeBridge(isDark: boolean): void {
+    const bridge = (
+      window as Window & {
+        __rclone__?: {
+          setSystemTheme?: (isDark: boolean) => void;
+        };
+      }
+    ).__rclone__;
+
+    bridge?.setSystemTheme?.(isDark);
   }
 }

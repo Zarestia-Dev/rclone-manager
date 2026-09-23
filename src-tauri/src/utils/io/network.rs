@@ -1,7 +1,9 @@
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::collections::HashMap;
 
 use crate::core::bridge;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::utils::types::rclone::CheckResult;
 
 #[cfg(not(target_os = "ios"))]
@@ -9,6 +11,7 @@ use crate::utils::types::events::NETWORK_STATUS_CHANGED;
 #[cfg(not(target_os = "ios"))]
 use crate::utils::types::monitoring::NetworkStatusPayload;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[bridge]
 pub async fn check_links(
     links: Vec<String>,
@@ -19,12 +22,14 @@ pub async fn check_links(
     checker.check_links(&links).await.map_err(|e| e.to_string())
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub struct LinkChecker {
     pub client: reqwest::Client,
     pub max_retries: usize,
     pub retry_delay: std::time::Duration,
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 impl LinkChecker {
     fn new(max_retries: usize, retry_delay_secs: u64) -> Self {
         let client = reqwest::Client::builder()
@@ -59,7 +64,7 @@ impl LinkChecker {
             let failed = failed.clone();
             let retries_used = retries_used.clone();
 
-            handles.push(tokio::spawn(async move {
+            handles.push(crate::utils::spawn(async move {
                 let mut last_error = None;
                 let mut retries = 0;
 
@@ -109,7 +114,7 @@ impl LinkChecker {
     }
 }
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
+#[cfg(all(feature = "desktop", target_os = "linux"))]
 #[must_use]
 pub fn is_metered() -> bool {
     std::thread::spawn(|| {
@@ -118,7 +123,7 @@ pub fn is_metered() -> bool {
         let connection = match Connection::system() {
             Ok(c) => c,
             Err(e) => {
-                log::error!("Failed to connect to D-Bus: {e}");
+                log::debug!("Failed to connect to D-Bus for metered network check: {e}");
                 return false;
             }
         };
@@ -131,7 +136,7 @@ pub fn is_metered() -> bool {
         ) {
             Ok(p) => p,
             Err(e) => {
-                log::error!("NetworkManager D-Bus proxy error: {e}");
+                log::debug!("NetworkManager D-Bus proxy error: {e}");
                 return false;
             }
         };
@@ -139,7 +144,7 @@ pub fn is_metered() -> bool {
         match proxy.get_property::<u32>("Metered") {
             Ok(status) => matches!(status, 1 | 3),
             Err(e) => {
-                log::error!("Failed to read Metered property: {e}");
+                log::debug!("Failed to read Metered property: {e}");
                 false
             }
         }
@@ -148,15 +153,15 @@ pub fn is_metered() -> bool {
     .unwrap_or(false)
 }
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
+#[cfg(all(feature = "desktop", target_os = "linux"))]
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
-#[cfg(all(target_os = "linux", not(feature = "container")))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+pub async fn monitor_network_changes() {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
-            log::error!("Failed to connect to D-Bus: {e}");
+            log::debug!("Failed to connect to D-Bus for network change monitoring: {e}");
             return;
         }
     };
@@ -171,7 +176,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     {
         Ok(p) => p,
         Err(e) => {
-            log::error!("Failed to create NetworkManager D-Bus proxy: {e}");
+            log::debug!("Failed to create NetworkManager D-Bus proxy: {e}");
             return;
         }
     };
@@ -185,28 +190,26 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
             is_metered: is_metered(),
         };
 
-        if let Err(e) = tauri::Emitter::emit(&app_handle, NETWORK_STATUS_CHANGED, payload) {
-            log::error!("Failed to emit network status change event: {e}");
-        }
+        crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
     }
 }
 
-#[cfg(all(target_os = "linux", feature = "container"))]
+#[cfg(all(target_os = "linux", not(feature = "desktop")))]
 #[must_use]
 pub fn is_metered() -> bool {
-    log::info!(
-        "is_metered: container mode does not support metered network detection, returning false."
+    log::debug!(
+        "is_metered: headless/server mode does not support metered network detection, returning false."
     );
     false
 }
 
-#[cfg(any(target_os = "macos", all(target_os = "linux", feature = "container")))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "linux", not(feature = "desktop"))
+))]
+pub async fn monitor_network_changes() {
     let payload = NetworkStatusPayload { is_metered: false };
-    if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-        log::error!("Failed to emit network status change event: {e}");
-    }
+    crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
 }
 
 #[cfg(target_os = "macos")]
@@ -238,17 +241,13 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+pub async fn monitor_network_changes() {
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
-
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
-        if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-            log::error!("Failed to emit network status change event: {e}");
-        }
+        crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
         Ok(())
     });
 
@@ -260,56 +259,11 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 #[cfg(target_os = "android")]
 #[must_use]
 pub fn is_metered() -> bool {
-    use jni::{jni_sig, jni_str};
-
-    let ctx = ndk_context::android_context();
-    let vm_ptr = ctx.vm();
-    let context_ptr = ctx.context();
-    if vm_ptr.is_null() || context_ptr.is_null() {
-        log::warn!("is_metered: Android context or VM pointer is null");
-        return false;
-    }
-
-    let vm = unsafe { jni::JavaVM::from_raw(vm_ptr.cast()) };
-    let res: Result<bool, jni::errors::Error> = vm.attach_current_thread(|env| {
-        let context_obj = unsafe { jni::objects::JObject::from_raw(env, context_ptr.cast()) };
-
-        let service_name = env.new_string("connectivity")?;
-
-        let cm_val = env.call_method(
-            &context_obj,
-            jni_str!("getSystemService"),
-            jni_sig!("(Ljava/lang/String;)Ljava/lang/Object;"),
-            &[jni::objects::JValue::Object(&service_name)],
-        )?;
-        let cm = cm_val.l()?;
-
-        if cm.is_null() {
-            return Ok(false);
-        }
-
-        let metered_val = env.call_method(
-            &cm,
-            jni_str!("isActiveNetworkMetered"),
-            jni_sig!("()Z"),
-            &[],
-        )?;
-
-        Ok(metered_val.z().unwrap_or(false))
-    });
-
-    match res {
-        Ok(val) => val,
-        Err(e) => {
-            log::error!("is_metered: JNI error: {e}");
-            false
-        }
-    }
+    crate::rclone::backend::saf_bridge::is_network_metered()
 }
 
 #[cfg(target_os = "android")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use tauri::Emitter;
+pub async fn monitor_network_changes() {
     use tokio::time::{Duration, sleep};
 
     let mut last_metered = is_metered();
@@ -326,9 +280,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
             let payload = NetworkStatusPayload {
                 is_metered: current_metered,
             };
-            if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-                log::error!("Failed to emit network status change event: {e}");
-            }
+            crate::core::bridge::emit(NETWORK_STATUS_CHANGED, payload);
         }
     }
 }

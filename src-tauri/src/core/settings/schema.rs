@@ -10,7 +10,7 @@ use serde_json::Value;
 // List of supported BCP-47 language tags
 // When adding a new language, add its BCP-47 code here and create the translation file
 const SUPPORTED_LANGUAGES: &[&str] = &[
-    "en-US", "tr-TR", "es-ES", "zh-CN", "fr-FR", "uk-UA", "ru-RU", "pt-BR", "ja-JP",
+    "en-US", "tr-TR", "es-ES", "zh-CN", "zh-TW", "fr-FR", "uk-UA", "ru-RU", "pt-BR", "ja-JP",
 ];
 
 // Struct Definitions with Derive Macro
@@ -27,6 +27,7 @@ pub struct GeneralSettings {
             ("tr-TR", "Türkçe (Türkiye)"),
             ("es-ES", "Español (España)"),
             ("zh-CN", "中文 (简体)"),
+            ("zh-TW", "繁體中文 (台灣)"),
             ("fr-FR", "Français (France)"),
             ("uk-UA", "Українська (Україна)"),
             ("ru-RU", "Русский (Россия)"),
@@ -100,6 +101,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     pub prevent_sleep: bool,
+
+    #[setting(
+        label = "settings.general.keep_alive.label",
+        description = "settings.general.keep_alive.description"
+    )]
+    #[cfg(target_os = "android")]
+    pub keep_alive: bool,
 }
 
 impl Default for GeneralSettings {
@@ -125,6 +133,8 @@ impl Default for GeneralSettings {
             standalone_dialogs: false,
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
             prevent_sleep: true,
+            #[cfg(target_os = "android")]
+            keep_alive: true,
             language,
             default_view: "main_menu".to_string(),
             restrict: true,
@@ -189,6 +199,7 @@ pub struct CoreSettings {
         label = "settings.core.connection_check_urls.label",
         description = "settings.core.connection_check_urls.description"
     )]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub connection_check_urls: Vec<String>,
 
     #[setting(
@@ -216,6 +227,7 @@ impl Default for CoreSettings {
             rclone_additional_flags: vec![],
             #[cfg(not(feature = "librclone"))]
             rclone_env_vars: vec![],
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
                 "https://www.dropbox.com".to_string(),
@@ -410,25 +422,6 @@ pub struct UserPresetTemplate {
     pub description: Option<String>,
 
     #[setting(
-        label = "templates.icon.label",
-        description = "templates.icon.description"
-    )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
-
-    #[setting(
-        label = "templates.created_at.label",
-        description = "templates.created_at.description"
-    )]
-    pub created_at: String,
-
-    #[setting(
-        label = "templates.updated_at.label",
-        description = "templates.updated_at.description"
-    )]
-    pub updated_at: String,
-
-    #[setting(
         label = "templates.values.label",
         description = "templates.values.description"
     )]
@@ -442,9 +435,6 @@ impl Default for UserPresetTemplate {
             id: String::new(),
             name: String::new(),
             description: None,
-            icon: None,
-            created_at: String::new(),
-            updated_at: String::new(),
             values: Value::Object(Default::default()),
         }
     }

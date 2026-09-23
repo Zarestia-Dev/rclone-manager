@@ -14,9 +14,6 @@
   border-radius: var(--radius-sm);
   background: var(--view-bg-color);
   box-shadow: var(--box-shadow);
-  transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
 
   &:hover {
     background: color-mix(in srgb, var(--window-fg-color) 4%, var(--view-bg-color));
@@ -39,7 +36,7 @@
   cursor: grab;
   color: var(--dim-color);
   opacity: 0.5;
-  transition: opacity 0.15s ease;
+  transition: var(--transition-fast);
 
   &:hover {
     opacity: 1;
@@ -50,8 +47,8 @@
   }
 
   mat-icon {
-    width: 16px;
-    height: 16px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
   }
 }
 
@@ -61,16 +58,13 @@
   justify-content: center;
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   border-radius: 50%;
   background-color: var(--primary-color);
   color: var(--accent-fg-color);
   font-size: var(--font-size-sm);
   font-weight: 700;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease,
-    transform 0.2s ease;
+  transition: var(--transition-fast);
 
   &.unstarred {
     background-color: transparent;
@@ -103,6 +97,8 @@
     align-items: center;
     gap: var(--space-xs);
     overflow: hidden;
+    min-width: 0;
+    flex: 1;
 
     .action-label {
       font-size: var(--font-size-md);
@@ -135,13 +131,14 @@
 
 .drag-placeholder {
   display: flex;
-  min-height: 48px;
+  min-height: 52px;
   align-items: center;
   justify-content: center;
   color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.04);
   border-radius: var(--radius-sm);
   border: 2px dashed var(--primary-color);
-  transition: transform 0.2s ease;
+  transition: var(--transition-fast);
 }
 
 .cdk-drag-animating {

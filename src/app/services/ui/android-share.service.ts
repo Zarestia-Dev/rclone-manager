@@ -2,12 +2,22 @@ import { inject, Injectable, signal } from '@angular/core';
 import { NautilusService } from './nautilus.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 
+interface AndroidNativeBridge {
+  getPendingSharedFiles?: () => string;
+  getPendingRoute?: () => string;
+  clearSharedFiles?: () => void;
+  notifyFrontendReady?: () => void;
+}
+
+const getBridge = (): AndroidNativeBridge | undefined =>
+  (window as Window & { __rclone__?: AndroidNativeBridge }).__rclone__;
+
 /**
  * Handles the Android "Share" intent flow:
  *
- * When another app (Gallery, Files, etc.) shares files into Rclone Manager,
- * the Kotlin side dispatches an `android-share-files` CustomEvent with the
- * resolved local paths. This service:
+ * When another app (Gallery, Files, etc.) shares files into RClone Manager,
+ * the Kotlin side either queues the files (cold start) or dispatches an
+ * `android-share-files` CustomEvent (warm start). This service:
  *   1. Stores the pending paths in a signal.
  *   2. Opens the Nautilus file browser so the user can navigate to the
  *      destination remote/folder.
@@ -45,6 +55,9 @@ export class AndroidShareService {
         void this.nautilusService.newNautilusWindow(null, null);
       }
     });
+
+    // Check for pending cold start share files or route queued in Kotlin
+    this.checkPendingColdStart();
   }
 
   /** Called when the user confirms the upload destination. Clears the queue. */
@@ -54,8 +67,45 @@ export class AndroidShareService {
     return paths;
   }
 
-  /** Discard the pending share without uploading. */
+  /** Discard the pending share without uploading and clean up cached files. */
   cancelPendingShare(): void {
     this.pendingSharedPaths.set([]);
+    getBridge()?.clearSharedFiles?.();
+  }
+
+  private checkPendingColdStart(): void {
+    const bridge = getBridge();
+    if (!bridge) return;
+
+    // Pull any shared files queued during cold start
+    if (bridge.getPendingSharedFiles) {
+      try {
+        const raw = bridge.getPendingSharedFiles();
+        if (raw && raw !== '[]') {
+          const paths = JSON.parse(raw) as string[];
+          if (Array.isArray(paths) && paths.length > 0) {
+            this.pendingSharedPaths.set(paths);
+            void this.nautilusService.newNautilusWindow(null, null);
+          }
+        }
+      } catch (err) {
+        console.error('[AndroidShareService] Failed to parse pending shared files:', err);
+      }
+    }
+
+    // Pull any route intent queued during cold start (e.g. App Shortcut)
+    if (bridge.getPendingRoute) {
+      try {
+        const route = bridge.getPendingRoute();
+        if (route === 'nautilus') {
+          void this.nautilusService.newNautilusWindow(null, null);
+        }
+      } catch (err) {
+        console.error('[AndroidShareService] Failed to read pending route:', err);
+      }
+    }
+
+    // Signal to Kotlin that frontend listeners are mounted
+    bridge.notifyFrontendReady?.();
   }
 }

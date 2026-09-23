@@ -1,6 +1,10 @@
 import type { AppConfig } from './remote-config';
 import type { ConfigWithSubConfigs } from '../utils/profile-config.util';
-import { getRcloneCfg } from '../utils/profile-config.util';
+import {
+  getRcloneCfg,
+  extractProfileSource,
+  extractProfileDest,
+} from '../utils/profile-config.util';
 import type { PrimaryActionType } from './operations';
 import type { ConfigValue } from './system';
 
@@ -14,6 +18,11 @@ import type { ConfigValue } from './system';
  * - `stopped`    — last execution was stopped by the user
  */
 export type QuickRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
+
+/**
+ * Active sub-mode / panel in the Flow workspace.
+ */
+export type FlowSubMode = 'builder' | 'quick_run';
 
 /**
  * Payload sent to the backend when creating or updating a quick run.
@@ -105,8 +114,8 @@ export function getQuickRunPaths(config: ConfigWithSubConfigs): {
 } {
   const rclone = getRcloneCfg(config);
   if (!rclone) return { source: undefined, destination: undefined };
-  const rawSrc = rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs'] ?? rclone['source'];
-  const rawDst = rclone['mountPoint'] ?? rclone['dstFs'] ?? rclone['path2'] ?? rclone['dest'];
+  const rawSrc = extractProfileSource(rclone);
+  const rawDst = extractProfileDest(rclone);
 
   const source = Array.isArray(rawSrc)
     ? rawSrc.map(v => String(v ?? ''))

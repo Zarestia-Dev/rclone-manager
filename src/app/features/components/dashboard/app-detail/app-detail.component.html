@@ -38,6 +38,40 @@
     </div>
   </header>
 
+  @if (isMissingRemote()) {
+    <app-alert-banner
+      severity="warning"
+      [title]="'flow.quickRun.missingRemoteTitle' | translate"
+      [description]="
+        'flow.quickRun.missingRemoteDesc' | translate: { remote: quickRun()?.remoteName }
+      "
+    >
+      <div class="missing-remote-actions">
+        <button
+          matButton="filled"
+          class="primary"
+          (click)="onRecreateRemote(quickRun()?.remoteName || '')"
+          [attr.title]="
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          "
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+          <span>{{
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          }}</span>
+        </button>
+        <button
+          matButton="tonal"
+          (click)="onEditQuickRun()"
+          [attr.title]="'flow.quickRun.actions.changeRemote' | translate"
+        >
+          <mat-icon svgIcon="pen"></mat-icon>
+          <span>{{ 'flow.quickRun.actions.changeRemote' | translate }}</span>
+        </button>
+      </div>
+    </app-alert-banner>
+  }
+
   @if (mode() === 'remote' && mainOperationType() === 'operations') {
     <div class="toggle-container">
       <div class="operation-toggle-group" role="group">
@@ -182,31 +216,111 @@
           </app-operation-control>
         }
 
-        @if (isOperationsType()) {
-          @if (selectedCronSchedule(); as schedule) {
-            <div class="cron-human-readable" [class]="operationColorClass()">
-              <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-              <span class="cron-schedule" [attr.title]="schedule.cronExpression">{{
-                schedule.humanReadable
-              }}</span>
-            </div>
-          }
-
-          @if (selectedWatcher(); as watcher) {
-            <div class="cron-human-readable" [class]="operationColorClass()">
-              <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
-              <span class="cron-schedule">
-                {{ 'automation.monitoring.realtimeSchedule' | translate }}
-                ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
-                {{ 'automation.monitoring.seconds' | translate }}
-                @if (watcher.watchChangedOnly) {
-                  · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+        @if (hasActiveAutomations()) {
+          <div class="automation-badges-row">
+            @if (selectedCronSchedule(); as schedule) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class.p-accent]="!isAutomationDisabled() && !isAutomationStopping()"
+                [class.p-orange]="isAutomationStopping()"
+                [class.p-dim]="isAutomationDisabled()"
+                [class.disabled-automation]="isAutomationDisabled()"
+                [disabled]="isAutomationStopping() || isTogglingAutomation()"
+                (click)="onToggleAutomation($event)"
+                [title]="
+                  schedule.cronExpression +
+                  ' — ' +
+                  (isAutomationStopping()
+                    ? ('automation.toggle.stopping' | translate)
+                    : isAutomationDisabled()
+                      ? ('automation.toggle.enable' | translate)
+                      : ('automation.toggle.disable' | translate))
+                "
+              >
+                <mat-icon
+                  [svgIcon]="
+                    isTogglingAutomation()
+                      ? 'spinner'
+                      : isAutomationStopping()
+                        ? 'stop'
+                        : isAutomationDisabled()
+                          ? 'pause'
+                          : 'clock'
+                  "
+                  [class.spin]="isTogglingAutomation()"
+                ></mat-icon>
+                <span>{{ schedule.humanReadable }}</span>
+                <span class="pill-divider">·</span>
+                @if (isAutomationStopping()) {
+                  <span class="next-run-text">{{ 'automation.nextRun.stopping' | translate }}</span>
+                } @else if (isAutomationDisabled()) {
+                  <span class="next-run-text">{{ 'automation.status.disabled' | translate }}</span>
+                } @else if (nextRunFormatted(); as nextRun) {
+                  <span class="next-run-text"
+                    >{{ 'generalOverview.automations.nextRun' | translate }} {{ nextRun }}</span
+                  >
                 }
-                )
-              </span>
-            </div>
-          }
+              </button>
+            }
 
+            @if (selectedWatcher(); as watcher) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class.p-purple]="!isAutomationDisabled() && !isAutomationStopping()"
+                [class.p-orange]="isAutomationStopping()"
+                [class.p-dim]="isAutomationDisabled()"
+                [class.disabled-automation]="isAutomationDisabled()"
+                [disabled]="isAutomationStopping() || isTogglingAutomation()"
+                (click)="onToggleAutomation($event)"
+                [title]="
+                  isAutomationStopping()
+                    ? ('automation.toggle.stopping' | translate)
+                    : isAutomationDisabled()
+                      ? ('automation.toggle.enable' | translate)
+                      : ('automation.toggle.disable' | translate)
+                "
+              >
+                <mat-icon
+                  [svgIcon]="
+                    isTogglingAutomation()
+                      ? 'spinner'
+                      : isAutomationStopping()
+                        ? 'stop'
+                        : isAutomationDisabled()
+                          ? 'eye-slash'
+                          : 'eye'
+                  "
+                  [class.spin]="isTogglingAutomation()"
+                ></mat-icon>
+                <span>
+                  {{ 'automation.monitoring.realtimeSchedule' | translate }}
+                  @if (isAutomationStopping()) {
+                    · {{ 'automation.nextRun.stopping' | translate }}
+                  } @else if (isAutomationDisabled()) {
+                    · {{ 'automation.status.disabled' | translate }}
+                  } @else {
+                    ({{ watcher.watchDelay }}{{ 'automation.monitoring.seconds' | translate }}
+                    @if (watcher.watchChangedOnly) {
+                      · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+                    }
+                    )
+                  }
+                </span>
+              </button>
+            }
+
+            @if (isAutoStartEnabled()) {
+              <div class="app-pill p-yellow" [title]="'flow.quickRun.badges.autostart' | translate">
+                <mat-icon svgIcon="bolt"></mat-icon>
+                <span>{{ 'flow.quickRun.badges.autostart' | translate }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        @if (isOperationsType()) {
           <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
 
           <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>

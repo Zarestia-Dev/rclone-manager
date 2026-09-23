@@ -61,6 +61,10 @@
               matSuffix
               (click)="toggleKeychainPasswordVisibility()"
               type="button"
+              [attr.title]="(showKeychainPassword() ? 'common.hide' : 'common.show') | translate"
+              [attr.aria-label]="
+                (showKeychainPassword() ? 'common.hide' : 'common.show') | translate
+              "
             >
               <mat-icon [svgIcon]="showKeychainPassword() ? 'eye-slash' : 'eye'"></mat-icon>
             </button>
@@ -86,7 +90,7 @@
     </div>
 
     <!-- Accordion for Actions -->
-    <mat-accordion class="security-accordion" [multi]="false">
+    <mat-accordion [multi]="false">
       <!-- Change Password Panel -->
       <mat-expansion-panel (opened)="onPanelOpened()" [formGroup]="changePasswordForm">
         <mat-expansion-panel-header>
@@ -106,7 +110,14 @@
             [type]="showCurrentPassword() ? 'text' : 'password'"
             formControlName="currentPassword"
           />
-          <button matIconButton matSuffix (click)="toggleCurrentPasswordVisibility()" type="button">
+          <button
+            matIconButton
+            matSuffix
+            (click)="toggleCurrentPasswordVisibility()"
+            type="button"
+            [attr.title]="(showCurrentPassword() ? 'common.hide' : 'common.show') | translate"
+            [attr.aria-label]="(showCurrentPassword() ? 'common.hide' : 'common.show') | translate"
+          >
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (changePasswordForm.get('currentPassword')?.hasError('required')) {
@@ -121,7 +132,14 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="newPassword"
           />
-          <button matIconButton matSuffix (click)="toggleNewPasswordVisibility()" type="button">
+          <button
+            matIconButton
+            matSuffix
+            (click)="toggleNewPasswordVisibility()"
+            type="button"
+            [attr.title]="(showNewPassword() ? 'common.hide' : 'common.show') | translate"
+            [attr.aria-label]="(showNewPassword() ? 'common.hide' : 'common.show') | translate"
+          >
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (changePasswordForm.get('newPassword')?.hasError('required')) {
@@ -188,7 +206,14 @@
             [type]="showCurrentPassword() ? 'text' : 'password'"
             [formControl]="decryptPassword"
           />
-          <button matIconButton matSuffix (click)="toggleCurrentPasswordVisibility()" type="button">
+          <button
+            matIconButton
+            matSuffix
+            (click)="toggleCurrentPasswordVisibility()"
+            type="button"
+            [attr.title]="(showCurrentPassword() ? 'common.hide' : 'common.show') | translate"
+            [attr.aria-label]="(showCurrentPassword() ? 'common.hide' : 'common.show') | translate"
+          >
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (decryptPassword.hasError('required')) {
@@ -215,7 +240,7 @@
     </mat-accordion>
   } @else if (isConfigEncrypted() === false) {
     <!-- UNENCRYPTED STATE -->
-    <div class="action-card highlight" [formGroup]="encryptForm">
+    <div class="action-card" [formGroup]="encryptForm">
       <div class="card-header">
         <mat-icon svgIcon="lock"></mat-icon>
         <div class="card-title">
@@ -232,7 +257,14 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="newPassword"
           />
-          <button matIconButton matSuffix (click)="toggleNewPasswordVisibility()" type="button">
+          <button
+            matIconButton
+            matSuffix
+            (click)="toggleNewPasswordVisibility()"
+            type="button"
+            [attr.title]="(showNewPassword() ? 'common.hide' : 'common.show') | translate"
+            [attr.aria-label]="(showNewPassword() ? 'common.hide' : 'common.show') | translate"
+          >
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (encryptForm.get('newPassword')?.hasError('required')) {

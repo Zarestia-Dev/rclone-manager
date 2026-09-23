@@ -259,8 +259,8 @@ export class NautilusDragDropService {
         bg.style.cssText = `
           position: absolute; top: ${(bgCards - step) * GHOST_STACK_OFFSET}px;
           left: ${step * GHOST_STACK_OFFSET}px; width: ${GHOST_CARD_W}px; height: ${GHOST_CARD_H}px;
-          border-radius: var(--card-border-radius, 10px); background: var(--sidebar-bg-color, #272a2f);
-          border: 1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12)); box-sizing: border-box;
+          border-radius: var(--card-border-radius); background: var(--sidebar-bg-color);
+          border: 1px solid var(--card-shade-color); box-sizing: border-box;
           opacity: ${opacity};
         `;
         fragment.appendChild(bg);
@@ -273,9 +273,8 @@ export class NautilusDragDropService {
       position: absolute; top: ${bgCards * GHOST_STACK_OFFSET}px; left: 0;
       width: ${GHOST_CARD_W}px; height: ${GHOST_CARD_H}px; display: flex;
       align-items: center; gap: var(--space-xs); padding: 0 var(--space-sm);
-      border-radius: var(--card-border-radius, 10px); background: var(--popover-bg-color, #2f3136);
-      border: 1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12));
-      box-shadow: var(--shadow-popover, 0 8px 24px rgba(0, 0, 0, 0.35)); box-sizing: border-box; overflow: hidden;
+      border-radius: var(--card-border-radius); background: var(--popover-bg-color);
+      border: 1px solid var(--card-shade-color); box-sizing: border-box; overflow: hidden;
     `;
 
     const iconWrapper = document.createElement('span');
@@ -291,13 +290,13 @@ export class NautilusDragDropService {
     front.appendChild(iconWrapper);
 
     const label = document.createElement('span');
-    label.style.cssText = `flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-md); font-weight: 500; color: var(--window-fg-color, #f3f4f6);`;
+    label.style.cssText = `flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-md); font-weight: 500; color: var(--window-fg-color);`;
     label.textContent = items[0]?.entry.Name ?? '';
     front.appendChild(label);
 
     if (isMulti) {
       const badge = document.createElement('span');
-      badge.style.cssText = `flex-shrink: 0; border-radius: var(--radius-xs, 6px); padding: var(--space-xxs, 2px) var(--space-xs, 6px); font-size: var(--font-size-sm); font-weight: 700; color: var(--accent-fg-color, #ffffff); background: var(--accent-color, #0ea5e9);`;
+      badge.style.cssText = `flex-shrink: 0; border-radius: var(--radius-xs); padding: var(--space-xxs) var(--space-xs); font-size: var(--font-size-sm); font-weight: 700; color: var(--accent-fg-color); background: var(--accent-color);`;
       badge.textContent = items.length.toString();
       front.appendChild(badge);
     }

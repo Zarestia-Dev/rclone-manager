@@ -1,6 +1,7 @@
 use crate::core::alerts::types::{AlertEventKind, AlertSeverity};
 use crate::utils::app::notification::{
     AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, UpdateStage,
+    WorkflowStage,
 };
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
@@ -118,6 +119,12 @@ impl ServeStage {
                 remote,
                 profile,
                 ..
+            }
+            | Self::StopFailed {
+                backend,
+                remote,
+                profile,
+                ..
             } => Some((backend, remote, profile.as_deref())),
             Self::AllStopped => None,
         }
@@ -127,7 +134,8 @@ impl ServeStage {
         match self {
             Self::Started { protocol, .. }
             | Self::Failed { protocol, .. }
-            | Self::Stopped { protocol, .. } => Some(protocol),
+            | Self::Stopped { protocol, .. }
+            | Self::StopFailed { protocol, .. } => Some(protocol),
             Self::AllStopped => None,
         }
     }
@@ -149,6 +157,12 @@ impl MountStage {
                 ..
             }
             | Self::UnmountSucceeded {
+                backend,
+                remote,
+                profile,
+                ..
+            }
+            | Self::UnmountFailed {
                 backend,
                 remote,
                 profile,
@@ -207,6 +221,35 @@ impl AutomationStage {
     }
 }
 
+impl WorkflowStage {
+    pub fn workflow_name(&self) -> &str {
+        match self {
+            Self::Started { workflow_name, .. }
+            | Self::Completed { workflow_name, .. }
+            | Self::Failed { workflow_name, .. }
+            | Self::Stopped { workflow_name, .. } => workflow_name,
+        }
+    }
+
+    pub fn workflow_id(&self) -> &str {
+        match self {
+            Self::Started { workflow_id, .. }
+            | Self::Completed { workflow_id, .. }
+            | Self::Failed { workflow_id, .. }
+            | Self::Stopped { workflow_id, .. } => workflow_id,
+        }
+    }
+
+    pub fn origin(&self) -> &Origin {
+        match self {
+            Self::Started { origin, .. }
+            | Self::Completed { origin, .. }
+            | Self::Failed { origin, .. }
+            | Self::Stopped { origin, .. } => origin,
+        }
+    }
+}
+
 impl NotificationEvent {
     #[must_use]
     pub fn alert_meta(&self) -> AlertMeta {
@@ -227,6 +270,9 @@ impl NotificationEvent {
                 let (backend, remote, profile) = stage.meta();
                 AlertMeta::new(backend, remote, Some(profile))
             }
+            Self::Workflow(stage) => {
+                AlertMeta::new("Workflow", stage.workflow_name(), Some(stage.workflow_id()))
+            }
             Self::AppUpdate(_) | Self::RcloneUpdate(_) | Self::Engine(_) | Self::System(_) => {
                 AlertMeta::empty()
             }
@@ -243,6 +289,7 @@ impl NotificationEvent {
             Self::AppUpdate(_) | Self::RcloneUpdate(_) => AlertEventKind::Update,
             Self::Automation(_) => AlertEventKind::Automation,
             Self::System(_) => AlertEventKind::System,
+            Self::Workflow(_) => AlertEventKind::Workflow,
         }
     }
 
@@ -259,13 +306,18 @@ impl NotificationEvent {
                 AutomationStage::Stopped { .. } => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
+            Self::Workflow(stage) => match stage {
+                WorkflowStage::Failed { .. } => AlertSeverity::High,
+                WorkflowStage::Stopped { .. } => AlertSeverity::Warning,
+                _ => AlertSeverity::Info,
+            },
             Self::Serve(stage) => match stage {
-                ServeStage::Failed { .. } => AlertSeverity::High,
+                ServeStage::Failed { .. } | ServeStage::StopFailed { .. } => AlertSeverity::High,
                 ServeStage::Stopped { .. } | ServeStage::AllStopped => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
             Self::Mount(stage) => match stage {
-                MountStage::Failed { .. } => AlertSeverity::High,
+                MountStage::Failed { .. } | MountStage::UnmountFailed { .. } => AlertSeverity::High,
                 _ => AlertSeverity::Info,
             },
             Self::Engine(stage) => match stage {
@@ -290,6 +342,7 @@ impl NotificationEvent {
         match self {
             Self::Job(stage) => Some(stage.job_type().to_string()),
             Self::Automation(stage) => Some(stage.automation_type().to_string()),
+            Self::Workflow(_) => Some("Workflow".to_string()),
             Self::Serve(stage) => stage.protocol().map(String::from),
             _ => None,
         }
@@ -300,6 +353,7 @@ impl NotificationEvent {
         match self {
             Self::Job(stage) => stage.origin().clone(),
             Self::Automation(_) => Origin::Automation,
+            Self::Workflow(stage) => stage.origin().clone(),
             Self::AppUpdate(_) | Self::RcloneUpdate(_) => Origin::Update,
             Self::Engine(_) => Origin::Internal,
             Self::System(_) => Origin::Internal,
@@ -321,5 +375,59 @@ impl NotificationEvent {
             Self::Job(stage) => stage.destination().map(String::from),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::core::alerts::types::{AlertEventKind, AlertSeverity};
+    use crate::utils::app::notification::{NotificationEvent, WorkflowStage};
+    use crate::utils::types::origin::Origin;
+
+    #[test]
+    fn test_workflow_started_event_conversion() {
+        let event = NotificationEvent::Workflow(WorkflowStage::Started {
+            workflow_id: "wf-123".to_string(),
+            workflow_name: "Backup Daily".to_string(),
+            origin: Origin::Flow,
+        });
+
+        assert_eq!(event.alert_kind(), AlertEventKind::Workflow);
+        assert_eq!(event.alert_severity(), AlertSeverity::Info);
+        assert_eq!(event.alert_origin(), Origin::Flow);
+        assert_eq!(event.alert_operation(), Some("Workflow".to_string()));
+    }
+
+    #[test]
+    fn test_workflow_failed_event_conversion() {
+        let event = NotificationEvent::Workflow(WorkflowStage::Failed {
+            workflow_id: "wf-456".to_string(),
+            workflow_name: "Sync S3".to_string(),
+            error: "Connection timeout".to_string(),
+            failed_node_title: Some("Upload step".to_string()),
+            origin: Origin::Flow,
+        });
+
+        assert_eq!(event.alert_kind(), AlertEventKind::Workflow);
+        assert_eq!(event.alert_severity(), AlertSeverity::High);
+        assert_eq!(event.alert_origin(), Origin::Flow);
+    }
+
+    #[test]
+    fn test_workflow_stopped_and_completed() {
+        let completed = NotificationEvent::Workflow(WorkflowStage::Completed {
+            workflow_id: "wf-789".to_string(),
+            workflow_name: "Archive".to_string(),
+            duration_ms: 1500,
+            origin: Origin::Flow,
+        });
+        assert_eq!(completed.alert_severity(), AlertSeverity::Info);
+
+        let stopped = NotificationEvent::Workflow(WorkflowStage::Stopped {
+            workflow_id: "wf-789".to_string(),
+            workflow_name: "Archive".to_string(),
+            origin: Origin::Flow,
+        });
+        assert_eq!(stopped.alert_severity(), AlertSeverity::Warning);
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.3.2"
+version = "0.3.3"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -64,7 +64,8 @@ tauri-plugin-opener = { version = "2", optional = true, default-features = false
 rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2"
-futures = { version = "0.3" }
+futures = "0.3"
+http = "1"
 
 # Web server dependencies (optional)
 axum = { version = "0.8", features = ["multipart"], optional = true }
@@ -81,22 +82,21 @@ notify = "8"
 nix = "0.31"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-zbus = "5"
-futures-lite = "2"
-notify-rust = "4"
+zbus = { version = "5", optional = true }
+futures-lite = { version = "2", optional = true }
+notify-rust = { version = "4", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"] }
+objc2 = { version = "0.6", optional = true }
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"], optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = "0.1"
 jni = "0.22"
-rustls-platform-verifier = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
 winreg = "0.56"
 
@@ -119,7 +119,17 @@ container = ["web-server"]
 shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
-desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri"]
+desktop = [
+    "tauri-plugin-window-state",
+    "tauri/devtools",
+    "updater",
+    "shared-tauri",
+    "dep:zbus",
+    "dep:futures-lite",
+    "dep:notify-rust",
+    "dep:objc2",
+    "dep:objc2-foundation",
+]
 tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
 default = ["desktop", "tray"]
 

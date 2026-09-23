@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   FLAG_TYPES,
   FlagType,
@@ -7,6 +7,8 @@ import {
   OPERATION_REGISTRY,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { MountManagementService } from '../operations/mount-management.service';
+import { ServeManagementService } from '../operations/serve-management.service';
 import { staticFlagDefinitions } from './flag-definitions';
 import { MemoizedLoader, memoizedLoader } from './utils/memoized-loader.util';
 
@@ -18,8 +20,36 @@ const SYNC_FLAG_TYPES: ReadonlySet<string> = new Set(
   providedIn: 'root',
 })
 export class FlagConfigService extends TauriBaseService {
+  private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
+
+  private readonly mountTypesLoader: MemoizedLoader<string[]> = memoizedLoader(async () => {
+    try {
+      return await this.mountManagementService.getMountTypes();
+    } catch (err) {
+      console.warn('[FlagConfigService] Failed to load mount types:', err);
+      return [];
+    }
+  });
+  readonly mountTypes = this.mountTypesLoader.signal;
+
+  private readonly serveTypesLoader: MemoizedLoader<string[]> = memoizedLoader(async () => {
+    try {
+      return await this.serveManagementService.getServeTypes();
+    } catch (err) {
+      console.warn('[FlagConfigService] Failed to load serve types:', err);
+      return [];
+    }
+  });
+  readonly availableServeTypes = this.serveTypesLoader.signal;
+
   private readonly allFlagFieldsLoader: MemoizedLoader<Record<FlagType, RcConfigOption[]>> =
     memoizedLoader(async () => {
+      const [mountTypes, serveTypes] = await Promise.all([
+        this.mountTypesLoader.load(),
+        this.serveTypesLoader.load(),
+      ]);
+
       const result = {} as Record<FlagType, RcConfigOption[]>;
       await Promise.all(
         FLAG_TYPES.map(async type => {
@@ -28,6 +58,8 @@ export class FlagConfigService extends TauriBaseService {
           result[type] = [...staticFlags, ...dynamicFlags];
         })
       );
+
+      this.decorateFlagOptions(result, mountTypes, serveTypes);
       return result;
     });
   readonly allFlagFields = this.allFlagFieldsLoader.signal;
@@ -58,11 +90,14 @@ export class FlagConfigService extends TauriBaseService {
 
     const loader = memoizedLoader(async () => {
       try {
-        const flags = await this.invokeCommand<RcConfigOption[]>('get_serve_flags', {
-          serveType,
-        });
+        const [flags, serveTypes] = await Promise.all([
+          this.invokeCommand<RcConfigOption[]>('get_serve_flags', { serveType }),
+          this.serveTypesLoader.load(),
+        ]);
         const staticFlags = staticFlagDefinitions['serve'] || [];
-        return [...staticFlags, ...(flags ?? [])];
+        const combined = [...staticFlags, ...(flags ?? [])];
+        this.decorateServeTypeOption(combined, serveTypes);
+        return combined;
       } catch (error) {
         console.error(`Error loading serve flags for ${serveType}:`, error);
         throw error;
@@ -73,6 +108,14 @@ export class FlagConfigService extends TauriBaseService {
     next.set(serveType, loader);
     this.serveFlagsLoaders.set(next);
     return loader;
+  }
+
+  async getMountTypes(): Promise<string[]> {
+    return this.mountTypesLoader.load();
+  }
+
+  async getServeTypes(): Promise<string[]> {
+    return this.serveTypesLoader.load();
   }
 
   async getGroupedOptions(): Promise<GroupedRCloneOptions> {
@@ -125,5 +168,34 @@ export class FlagConfigService extends TauriBaseService {
 
   async loadServeFlagFields(serveType: string): Promise<RcConfigOption[]> {
     return this.getOrCreateServeFlagsLoader(serveType).load();
+  }
+
+  private decorateFlagOptions(
+    record: Record<string, RcConfigOption[]>,
+    mountTypes: string[],
+    serveTypes: string[]
+  ): void {
+    const mOpt = record['mount']?.find(f => f.Name === 'mountType' || f.FieldName === 'mountType');
+    if (mOpt && mountTypes.length) {
+      mOpt.Examples = mountTypes.map(t => ({
+        Value: t,
+        Help: this.translate.instant(`mount_type_${t}.title`) || t,
+      }));
+    }
+
+    const sOpt = record['serve']?.find(f => f.Name === 'type' || f.FieldName === 'type');
+    if (sOpt && serveTypes.length) {
+      this.decorateServeTypeOption(record['serve'], serveTypes);
+    }
+  }
+
+  private decorateServeTypeOption(options: RcConfigOption[], serveTypes: string[]): void {
+    const sOpt = options.find(f => f.Name === 'type' || f.FieldName === 'type');
+    if (sOpt && serveTypes.length) {
+      sOpt.Examples = serveTypes.map(t => ({
+        Value: t,
+        Help: this.translate.instant(`serve_type_${t}.title`) || t,
+      }));
+    }
   }
 }

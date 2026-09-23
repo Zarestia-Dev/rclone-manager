@@ -36,7 +36,7 @@
           <div class="init-skeleton__nav-item animate-shimmer"></div>
         }
       </div>
-      <div class="modal-content">
+      <div class="init-skeleton__content-container">
         <div class="init-skeleton__content">
           <div class="init-skeleton__heading animate-shimmer"></div>
           <div class="init-skeleton__field animate-shimmer"></div>
@@ -102,7 +102,7 @@
         ></app-obscure-tool>
 
         @if (state.oauthHelperUrl(); as oauthUrlValue) {
-          <section class="oauth-helper oauth-helper--actions" aria-live="polite">
+          <section class="oauth-helper" aria-live="polite">
             <div class="oauth-helper-text">
               <mat-icon svgIcon="globe"></mat-icon>
               <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
@@ -152,15 +152,8 @@
                   [isLoading]="state.isRemoteConfigLoading()"
                   [existingRemotes]="state.existingRemotes()"
                   [remoteTypes]="state.remoteTypes()"
-                  [isTypeLocked]="
-                    (state.editTarget() === 'remote' && state.isEditingExisting()) ||
-                    state.cloneTarget()
-                  "
-                  [isNameLocked]="
-                    state.editTarget() === 'remote' &&
-                    state.isEditingExisting() &&
-                    !state.cloneTarget()
-                  "
+                  [isTypeLocked]="state.isEditingExisting() || !!state.cloneTarget()"
+                  [isNameLocked]="state.isEditingExisting()"
                   [searchQuery]="state.searchQuery()"
                   [showAdvancedOptions]="state.showAdvancedOptions()"
                   [initialCommandOptions]="state.commandOptions()"
@@ -173,8 +166,7 @@
             }
 
             @default {
-              @if (state.currentStep() < state.stepConfigs().length) {
-                @let flagType = $any(state.stepConfigs()[state.currentStep() - 1].type);
+              @if (state.activeFlagType(); as flagType) {
                 <section class="step-container">
                   <app-profile-switcher [flagType]="flagType" />
 
@@ -182,7 +174,7 @@
                     <mat-expansion-panel class="linked-profiles-panel">
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <mat-icon svgIcon="gear" class="panel-icon"></mat-icon>
+                          <mat-icon svgIcon="gear"></mat-icon>
                           <span>{{
                             'modals.remoteConfig.advancedProfiles.title' | translate
                           }}</span>
@@ -201,11 +193,7 @@
                             <mat-label>{{ field.labelKey | translate }}</mat-label>
                             <mat-select
                               [formControl]="
-                                $any(
-                                  state.remoteConfigForm.get(
-                                    flagType + 'Config.' + field.profileKey
-                                  )
-                                )
+                                state.getLinkedProfileControl(flagType, field.profileKey)
                               "
                               (selectionChange)="state.selectProfile(field.type, $event.value)"
                             >
@@ -221,7 +209,7 @@
 
                   @if (!['vfs', 'filter', 'backend'].includes(flagType)) {
                     <app-operation-config
-                      [opFormGroup]="$any(state.remoteConfigForm.get(flagType + 'Config'))"
+                      [opFormGroup]="state.getOperationConfigGroup(flagType)"
                       [operationType]="flagType"
                       [currentRemoteName]="state.currentRemoteName()"
                       [existingRemotes]="state.existingRemotes()"
@@ -243,11 +231,7 @@
                     [existingRemotes]="state.existingRemotes()"
                     [currentRemoteName]="state.currentRemoteName()"
                     [searchQuery]="state.searchQuery()"
-                    [dynamicFlagFields]="
-                      flagType === 'serve'
-                        ? state.dynamicServeFields()
-                        : $any(state.dynamicFlagFields())[flagType]
-                    "
+                    [dynamicFlagFields]="state.getDynamicFlagFields(flagType)"
                     [isLoadingServeFields]="state.isLoadingServeFields()"
                     [highlightedFields]="state.highlightedFieldsForActiveProfiles()"
                     (serveTypeChange)="state.onServeTypeChange($event)"

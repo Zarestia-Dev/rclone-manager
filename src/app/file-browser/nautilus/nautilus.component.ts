@@ -150,9 +150,9 @@ export class NautilusComponent implements OnInit {
     if (!this.isPickerMode()) return false;
     const opts = this.pickerOptions();
     const count = this.tabSvc.activeSelection().size;
-    if (opts.selection === 'files' && count === 0) return true;
-    if (opts.selection === 'folders' && count === 0) return false;
-    if (opts.selection === 'both' && count === 0) return false;
+    if (count === 0) {
+      return opts.selection === 'files';
+    }
     return count < (opts.minSelection ?? 0);
   });
   protected readonly title = computed(() => {
@@ -401,10 +401,7 @@ export class NautilusComponent implements OnInit {
       const targetPath = this.nautilusService.targetPath();
       if (targetPath) {
         untracked(() => {
-          const parsed = this.pathService.parseLocation(
-            targetPath,
-            this.nautilusService.allRemotesLookup()
-          );
+          const parsed = this.pathService.parseLocation(targetPath, this.allRemotesLookup());
           if (parsed && this.tabSvc.tabs().length > 0) {
             this.navigate(parsed.remote, parsed.path, true);
             this.nautilusService.targetPath.set(null);
@@ -606,10 +603,7 @@ export class NautilusComponent implements OnInit {
   navigateToPath(rawInput: string): void {
     this.isEditingPath.set(false);
 
-    const parsed = this.pathService.parseLocation(
-      rawInput,
-      this.nautilusService.allRemotesLookup()
-    );
+    const parsed = this.pathService.parseLocation(rawInput, this.allRemotesLookup());
     if (parsed) {
       this.navigate(parsed.remote, parsed.path, true);
       return;
@@ -642,15 +636,11 @@ export class NautilusComponent implements OnInit {
       }
     } else {
       if (this.isPickerMode()) {
+        if (this.pickerOptions().multi) {
+          return;
+        }
         const pIdx = this.tabSvc.activePaneIndex();
-        const files = this.getActivePaneFiles(pIdx);
-        this.selectionSvc.handleItemClick(
-          item,
-          { ctrlKey: false, shiftKey: false } as MouseEvent,
-          -1,
-          pIdx,
-          files
-        );
+        this.tabSvc.syncSelection(new Set([this.selectionSvc.getItemKey(item)]), pIdx);
         this.confirmSelection();
         return;
       }
@@ -727,7 +717,9 @@ export class NautilusComponent implements OnInit {
 
     // On mobile, single tap navigates/opens immediately.
     if (this.isMobile() && !(event as MouseEvent).ctrlKey && !(event as MouseEvent).shiftKey) {
-      this.navigateTo(item);
+      if (item.entry.IsDir || !this.isPickerMode() || !this.pickerOptions().multi) {
+        this.navigateTo(item);
+      }
     }
   }
 
@@ -740,7 +732,7 @@ export class NautilusComponent implements OnInit {
   }
 
   protected onUpdateSelection(selection: Set<string>, paneIndex: 0 | 1): void {
-    this.tabSvc.getPaneRef(paneIndex).selection.set(selection);
+    this.tabSvc.syncSelection(selection, paneIndex);
   }
 
   selectAll(): void {
@@ -950,6 +942,19 @@ export class NautilusComponent implements OnInit {
     let items = this.selectionSvc.getSelectedItemsList(files);
     const remote = this.tabSvc.activeRemote();
     const currentPath = this.tabSvc.activePath();
+
+    if (this.isPickerMode()) {
+      const opts = this.pickerOptions();
+      // If picking files and user selected a single folder, opening it navigates into the folder
+      if (opts.selection === 'files' && items.length === 1 && items[0].entry.IsDir) {
+        this.navigateTo(items[0]);
+        return;
+      }
+      // If picking files, filter out folders from confirmed selection
+      if (opts.selection === 'files') {
+        items = items.filter(i => !i.entry.IsDir);
+      }
+    }
 
     // Allow confirming the current folder when no individual item is selected.
     if (

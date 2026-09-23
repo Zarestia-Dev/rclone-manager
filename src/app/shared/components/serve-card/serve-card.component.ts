@@ -34,8 +34,16 @@ export class ServeCardComponent {
   stopServe = output<ServeListItem>();
   cardClick = output<ServeListItem>();
 
+  readonly isFlow = computed(() => {
+    const s = this.serve();
+    return s.origin === 'flow' || !!s.workflow_id;
+  });
+
   readonly isQuickRun = computed(() => {
-    const profile = this.serve().profile;
+    if (this.isFlow()) return false;
+    const s = this.serve();
+    if (s.origin === 'quickrun' || !!s.quick_run_id) return true;
+    const profile = s.profile;
     if (!profile) return false;
     return this.quickRunService
       .quickRuns()
@@ -43,12 +51,20 @@ export class ServeCardComponent {
   });
 
   readonly originLabel = computed(() => {
-    return this.isQuickRun()
-      ? this.translate.instant('flow.tabs.quickRun') || 'Quick Run'
-      : this.translate.instant('navigation.dashboard') || 'Dashboard';
+    if (this.isFlow()) {
+      const t = this.translate.instant('flow.title');
+      return t === 'flow.title' ? 'Flow' : t;
+    }
+    if (this.isQuickRun()) {
+      const t = this.translate.instant('flow.tabs.quickRun');
+      return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
+    }
+    const t = this.translate.instant('navigation.dashboard');
+    return t === 'navigation.dashboard' ? 'Dashboard' : t;
   });
 
   readonly originIcon = computed(() => {
+    if (this.isFlow()) return 'flow';
     return this.isQuickRun() ? 'quick-run' : 'cloud';
   });
 

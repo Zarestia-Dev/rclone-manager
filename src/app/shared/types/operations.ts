@@ -30,6 +30,12 @@ export type FileOperationType =
 /** Single source of truth for `JobInfo.job_type`. */
 export type JobActionType = PrimaryActionType | FileOperationType;
 
+/**
+ * Context in which an operation (e.g., unmount_all, stop_all_serves) is invoked.
+ * Matches Rust's `crate::rclone::commands::common::OperationContext`.
+ */
+export type OperationContext = 'normal' | 'shutdown';
+
 // ── Runtime action state ────────────────────────────────────────────────────
 export interface ActionState {
   type: RemoteAction;
@@ -223,3 +229,10 @@ export const BACKEND_PROFILE_SUPPORTED_OPS = [
   'archivecreate',
 ] as const satisfies readonly PrimaryActionType[];
 export const NON_JOB_OPS = ['mount', 'serve'] as const satisfies readonly PrimaryActionType[];
+
+export interface RenameItem {
+  remote: string;
+  srcPath: string;
+  dstPath: string;
+  isDir: boolean;
+}

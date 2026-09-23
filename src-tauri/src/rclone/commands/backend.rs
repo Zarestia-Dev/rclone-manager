@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use log::{debug, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge, settings::AppSettingsManager},
@@ -15,10 +15,7 @@ use crate::{
     },
     utils::{
         rclone::endpoints::{config, core},
-        types::{
-            events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
-            state::RcloneState,
-        },
+        types::{events::BACKEND_SWITCHED, state::RcloneState},
     },
 };
 
@@ -374,6 +371,23 @@ pub async fn test_backend_connection_details(
     }
 }
 
+/// Suggest an available local TCP port starting from `start_port` (or default 51900).
+#[cfg(not(feature = "librclone"))]
+#[bridge]
+pub fn find_available_port(start_port: Option<u16>) -> Result<u16, String> {
+    let start = start_port.unwrap_or(51900);
+    Ok(crate::utils::process::process_manager::find_next_available_port(start))
+}
+
+/// Check if a specific local TCP port is available.
+#[cfg(not(feature = "librclone"))]
+#[bridge]
+pub fn check_port_available(port: u16) -> Result<bool, String> {
+    Ok(!crate::utils::process::process_manager::is_port_in_use(
+        port,
+    ))
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TestConnectionResult {
     pub success: bool,
@@ -502,8 +516,7 @@ async fn refresh_and_verify_cache(
     {
         Ok(Ok(())) => {
             info!("Cache refreshed for backend '{name}'");
-            let _ = app.emit(REMOTE_CACHE_CHANGED, ());
-            let _ = app.emit(BACKEND_SWITCHED, name);
+            crate::core::bridge::emit(BACKEND_SWITCHED, name);
             Ok(())
         }
         Ok(Err(e)) => {

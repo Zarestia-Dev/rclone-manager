@@ -15,9 +15,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // FILE OPERATIONS (Utils)
             // File Picker / System Interaction
             #[cfg(not(feature = "web-server"))]
-            (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
-            #[cfg(all(target_os = "android", not(feature = "web-server")))]
-            (open_saf_remote, $crate::utils::io::file_helper::open_saf_remote, [remote: String]);
+            (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: String]);
             #[cfg(not(feature = "web-server"))]
             (open_file_natively, $crate::utils::io::file_helper::open_file_natively, [remote: String, path: String, file_name: String, is_local: bool]);
             #[cfg(all(desktop, not(feature = "web-server")))]
@@ -41,6 +39,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
+            (check_pending_app_exit, $crate::utils::app::platform::check_pending_app_exit, [], [sync, no_app, infallible]);
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
             (request_app_exit, $crate::utils::app::platform::request_app_exit, []);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
@@ -76,7 +75,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_fs_info, $crate::rclone::queries::get_fs_info, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_disk_usage, $crate::rclone::queries::get_disk_usage, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_size, $crate::rclone::queries::get_size, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, opt: Option<serde_json::Value>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum, $crate::rclone::queries::get_hashsum, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum_file, $crate::rclone::queries::get_hashsum_file, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_public_link, $crate::rclone::queries::get_public_link, [remote: String, path: String, options: Option<$crate::rclone::queries::filesystem::PublicLinkParams>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
@@ -107,7 +106,7 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // SERVE OPERATIONS
             (start_serve_profile, $crate::rclone::commands::serve::start_serve_profile, [params: $crate::utils::types::remotes::ProfileParams]);
-            (stop_serve, $crate::rclone::commands::serve::stop_serve, [id: String, remote_name: String]);
+            (stop_serve, $crate::rclone::commands::serve::stop_serve, [server_id: String, remote_name: String]);
             (stop_all_serves, $crate::rclone::commands::serve::stop_all_serves, [context: $crate::rclone::commands::common::OperationContext]);
             (get_serve_types, $crate::rclone::queries::get_serve_types, []);
             (get_serve_flags, $crate::rclone::queries::flags::get_serve_flags, [serve_type: Option<String>]);
@@ -183,6 +182,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_export_categories, $crate::core::settings::backup::export_categories::get_export_categories, []);
 
             // NETWORK
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (check_links, $crate::utils::io::network::check_links, [links: Vec<String>, max_retries: usize, retry_delay_secs: u64], [no_app]);
             (is_network_metered, $crate::utils::io::network::is_network_metered, [], [no_app]);
 
@@ -214,6 +214,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
+            (stop_all_active_jobs, $crate::core::lifecycle::shutdown::stop_all_active_jobs, []);
             (register_preparing_job, $crate::rclone::commands::job::register_preparing_job, [jobid: u64, remote: String, destination: String, total_files: usize, total_bytes: u64, origin: Option<$crate::utils::types::origin::Origin>]);
             (update_job_stats, $crate::rclone::commands::job::update_job_stats, [jobid: u64, stats: serde_json::Value]);
 
@@ -231,6 +232,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
             (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>]);
             (clear_engine_auth_error, $crate::rclone::engine::lifecycle::clear_engine_auth_error, []);
+            #[cfg(not(feature = "librclone"))]
+            (find_available_port, $crate::rclone::commands::backend::find_available_port, [start_port: Option<u16>], [sync, no_app]);
+            #[cfg(not(feature = "librclone"))]
+            (check_port_available, $crate::rclone::commands::backend::check_port_available, [port: u16], [sync, no_app]);
 
             // AUTOMATIONS
             (get_automations, $crate::rclone::state::automations::get_automations, []);
@@ -238,7 +243,6 @@ macro_rules! MASTER_COMMAND_LIST {
             (toggle_automation, $crate::core::automation::commands::toggle_automation, [automation_id: String]);
             (validate_cron, $crate::core::automation::commands::validate_cron, [cron_expression: String], [no_app]);
             (reload_automations, $crate::core::automation::commands::reload_automations, []);
-            (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
             (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
             // QUICK RUNS (FLOW WORKSPACE)
@@ -246,8 +250,22 @@ macro_rules! MASTER_COMMAND_LIST {
             (create_quick_run, $crate::core::flow::quick_run::commands::create_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
             (update_quick_run, $crate::core::flow::quick_run::commands::update_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
             (delete_quick_run, $crate::core::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
-            (start_quick_run, $crate::core::flow::quick_run::commands::start_quick_run, [quick_run_id: String]);
+            (start_quick_run, $crate::core::flow::quick_run::commands::start_quick_run, [quick_run_id: String, workflow_id: Option<String>, node_id: Option<String>]);
             (stop_quick_run, $crate::core::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
+
+            // WORKFLOWS (FLOW WORKSPACE)
+            (list_workflows, $crate::core::flow::workflow::commands::list_workflows, []);
+            (get_workflow, $crate::core::flow::workflow::commands::get_workflow, [workflow_id: String]);
+            (create_workflow, $crate::core::flow::workflow::commands::create_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (update_workflow, $crate::core::flow::workflow::commands::update_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (delete_workflow, $crate::core::flow::workflow::commands::delete_workflow, [workflow_id: String]);
+            (duplicate_workflow, $crate::core::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
+            (validate_workflow, $crate::core::flow::workflow::commands::validate_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowDefinition], [no_app]);
+            (execute_workflow, $crate::core::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
+            (stop_workflow, $crate::core::flow::workflow::commands::stop_workflow, [workflow_id: String]);
+            (export_workflow, $crate::core::flow::workflow::commands::export_workflow, [workflow_id: String]);
+            (import_workflow, $crate::core::flow::workflow::commands::import_workflow, [json_str: String]);
+            (test_rc_command, $crate::core::flow::workflow::commands::test_rc_command, [command: String, params: Option<serde_json::Value>]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
@@ -256,7 +274,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 
             // APPLICATION CONTROL
+            #[cfg(not(any(target_os = "ios")))]
             (shutdown_app, $crate::core::lifecycle::shutdown::shutdown_app, []);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (execute_system_power, $crate::core::power::actions::execute_system_power, [action: String], [no_app]);
 
             // SECURITY & PASSWORD MANAGEMENT
             (store_config_password, $crate::core::security::store_config_password, [password: String]);

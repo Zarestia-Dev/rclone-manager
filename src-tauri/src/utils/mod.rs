@@ -1,5 +1,6 @@
 pub mod app;
 pub mod constants;
+pub mod format;
 pub mod github_client;
 pub mod i18n;
 pub mod io;
@@ -9,3 +10,6 @@ pub mod process;
 pub mod rclone;
 pub mod security;
 pub mod types;
+
+pub use format::format_file_size;
+pub use process::task::{block_on, init_runtime_handle, spawn, spawn_blocking};

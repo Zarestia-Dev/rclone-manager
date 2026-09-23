@@ -1,5 +1,5 @@
-import { Component, inject, ChangeDetectionStrategy, HostListener, computed } from '@angular/core';
-import { DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
+import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { DecimalPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +15,7 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -29,10 +30,12 @@ import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-cli
     DecimalPipe,
     DatePipe,
     TitleCasePipe,
+    UpperCasePipe,
     TransferActivityPanelComponent,
     PathDisplayComponent,
     CopyToClipboardDirective,
   ],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,10 +52,10 @@ export class JobDetailModalComponent {
 
   readonly jobData = computed<JobInfo>(() => {
     return (
-      this.jobService.jobs().find(j => j.jobid === this.initialData.jobid) ??
+      this.jobService.getJob(this.initialData.execute_id ?? '', this.initialData.jobid) ??
       ({
         jobid: this.initialData.jobid,
-        execute_id: (this.initialData as any).execute_id,
+        execute_id: this.initialData.execute_id ?? '',
         job_type: this.initialData.job_type ?? 'sync',
         source: this.initialData.source ?? [],
         destination: this.initialData.destination ?? '',
@@ -134,9 +137,11 @@ export class JobDetailModalComponent {
   readonly showStatistics = computed(
     () => !(NON_JOB_OPS as readonly string[]).includes(this.jobData().job_type)
   );
-  readonly speedAvg = computed(() => (this.jobData().stats as any)?.speedAvg ?? 0);
+  readonly speedAvg = computed(
+    () => (this.jobData().stats as { speedAvg?: number })?.speedAvg ?? 0
+  );
   readonly lastError = computed(
-    () => (this.jobData().stats as any)?.lastError || this.jobData().error || null
+    () => this.jobData().stats?.lastError || this.jobData().error || null
   );
 
   readonly statisticsTitle = computed(() =>
@@ -152,7 +157,7 @@ export class JobDetailModalComponent {
       const end = Date.parse(job.end_time);
       if (!isNaN(start) && !isNaN(end) && end >= start) return (end - start) / 1000;
     }
-    return (job.stats as any)?.transferTime ?? job.stats?.elapsedTime ?? 0;
+    return job.stats?.transferTime ?? job.stats?.elapsedTime ?? 0;
   });
 
   readonly healthStatus = computed(() => {
@@ -179,11 +184,11 @@ export class JobDetailModalComponent {
   readonly identifiers = computed(() => {
     const job = this.jobData();
     return {
-      executeId: (job as any).execute_id ?? null,
+      executeId: job.execute_id || null,
       group: job.group ?? null,
       backend: job.backend_name ?? 'Local',
       origin: job.origin ?? null,
-      profile: (job as any).profile ?? 'default',
+      profile: job.profile ?? 'default',
     };
   });
 
@@ -192,7 +197,6 @@ export class JobDetailModalComponent {
     return job.status === 'Running' ? job.group : null;
   });
 
-  @HostListener('keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

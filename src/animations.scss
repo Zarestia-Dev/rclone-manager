@@ -367,28 +367,6 @@
   }
 }
 
-@keyframes onboardingStateIn {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes onboardingStateOut {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-}
-
 @keyframes slideInFromBottomIn {
   0% {
     opacity: 0;
@@ -642,14 +620,6 @@
 
 .onboarding-entrance-leave {
   animation: onboardingEntranceOut 400ms cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
-}
-
-.onboarding-state-enter {
-  animation: onboardingStateIn 500ms 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-.onboarding-state-leave {
-  animation: onboardingStateOut 400ms cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
 }
 
 .expand-height-enter {

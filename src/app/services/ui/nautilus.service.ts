@@ -31,6 +31,7 @@ import {
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 @Injectable({
   providedIn: 'root',
@@ -92,6 +93,8 @@ export class NautilusService extends TauriBaseService {
 
   private browserOverlayRef: OverlayRef | null = null;
   private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
+  private loadRemoteDataInFlight: Promise<void> | null = null;
+  private nextLoadRemoteDataPromise: Promise<void> | null = null;
 
   private readonly collectionConfig: Record<
     CollectionType,
@@ -131,65 +134,73 @@ export class NautilusService extends TauriBaseService {
   }
 
   async loadRemoteData(): Promise<void> {
-    try {
-      const loadCloud = (async (): Promise<void> => {
-        try {
-          const [remotesRes, configsRes] = await Promise.allSettled([
-            this.remoteManagement.getRemotes(),
-            this.remoteManagement.getAllRemoteConfigs(),
-          ]);
-
-          const remoteNames = remotesRes.status === 'fulfilled' ? remotesRes.value : [];
-          const configs =
-            configsRes.status === 'fulfilled'
-              ? (configsRes.value as Record<string, { type?: string; Type?: string }>)
-              : {};
-
-          if (remotesRes.status === 'rejected') {
-            console.warn('[NautilusService] Failed to load remote names:', remotesRes.reason);
-          }
-
-          this._cloudRemotes.set(
-            remoteNames.map(name => {
-              const config = configs[name];
-              return {
-                name,
-                label: name,
-                type: config?.type ?? config?.Type ?? 'cloud',
-                isLocal: false,
-              };
-            })
-          );
-        } catch (err) {
-          console.warn('[NautilusService] Error loading cloud remotes:', err);
-        }
-      })();
-
-      const loadDrives = (async (): Promise<void> => {
-        try {
-          const drives = await this.remoteManagement.getLocalDrives();
-          this._localDrives.set(
-            drives.map(drive => ({
-              name: drive.name,
-              label: drive.label || drive.name,
-              type: 'hard-drive',
-              isLocal: true,
-              showName: drive.show_name,
-              totalSpace: drive.total_space,
-              availableSpace: drive.available_space,
-              fileSystem: drive.file_system,
-              isRemovable: drive.is_removable,
-            }))
-          );
-        } catch (err) {
-          console.warn('[NautilusService] Failed to load local drives:', err);
-        }
-      })();
-
-      await Promise.allSettled([loadCloud, loadDrives]);
-    } catch (e) {
-      console.error('[NautilusService] Failed to load remote data:', e);
+    if (this.loadRemoteDataInFlight) {
+      if (!this.nextLoadRemoteDataPromise) {
+        this.nextLoadRemoteDataPromise = this.loadRemoteDataInFlight
+          .catch(() => undefined)
+          .then(() => {
+            this.nextLoadRemoteDataPromise = null;
+            return this.loadRemoteData();
+          });
+      }
+      return this.nextLoadRemoteDataPromise;
     }
+
+    const promise = (async (): Promise<void> => {
+      try {
+        const loadCloud = (async (): Promise<void> => {
+          try {
+            const configsRes = await this.remoteManagement.getAllRemoteConfigs();
+            const configs = (configsRes ?? {}) as Record<string, { type?: string; Type?: string }>;
+            const remoteNames = Object.keys(configs);
+
+            this._cloudRemotes.set(
+              remoteNames.map(name => {
+                const config = configs[name];
+                return {
+                  name,
+                  label: name,
+                  type: config?.type ?? config?.Type ?? 'cloud',
+                  isLocal: false,
+                };
+              })
+            );
+          } catch (err) {
+            console.warn('[NautilusService] Error loading cloud remotes:', err);
+          }
+        })();
+
+        const loadDrives = (async (): Promise<void> => {
+          try {
+            const drives = await this.remoteManagement.getLocalDrives();
+            this._localDrives.set(
+              drives.map(drive => ({
+                name: drive.name,
+                label: drive.label || drive.name,
+                type: 'hard-drive',
+                isLocal: true,
+                showName: drive.show_name,
+                totalSpace: drive.total_space,
+                availableSpace: drive.available_space,
+                fileSystem: drive.file_system,
+                isRemovable: drive.is_removable,
+              }))
+            );
+          } catch (err) {
+            console.warn('[NautilusService] Failed to load local drives:', err);
+          }
+        })();
+
+        await Promise.allSettled([loadCloud, loadDrives]);
+      } catch (e) {
+        console.error('[NautilusService] Failed to load remote data:', e);
+      } finally {
+        this.loadRemoteDataInFlight = null;
+      }
+    })();
+
+    this.loadRemoteDataInFlight = promise;
+    return promise;
   }
 
   openFromBrowseQueryParam(): void {
@@ -360,7 +371,7 @@ export class NautilusService extends TauriBaseService {
     try {
       this._filePickerState.set({
         isOpen: true,
-        options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
+        options: { ...options, requestId: options.requestId ?? generatePrefixedId('picker') },
       });
       await this.createPickerOverlay();
     } catch (err) {

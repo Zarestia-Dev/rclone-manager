@@ -16,7 +16,7 @@ export class BackendService extends TauriBaseService {
   // Use Angular 19+ resource API for native async loading, caching, and state management
   readonly backendData = resource({
     loader: async () => {
-      const backends = await this.invokeCommand<BackendInfo[]>('list_backends');
+      const backends = (await this.invokeCommand<BackendInfo[]>('list_backends')) || [];
       const active = backends.find(b => b.isActive);
       if (active) this.activeBackend.set(active.name);
       return backends;
@@ -38,6 +38,13 @@ export class BackendService extends TauriBaseService {
         if (typeof evt === 'string') {
           this.activeBackend.set(evt);
         }
+        this.backendData.reload();
+      });
+
+    this.eventListenersService
+      .listenToSettingsCategory('connections')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
         this.backendData.reload();
       });
   }
@@ -153,6 +160,24 @@ export class BackendService extends TauriBaseService {
       username: localBackend.username,
       password: localBackend.password,
       configPath: configPath || undefined,
+    });
+  }
+
+  async updateLocalBackendPort(port: number): Promise<void> {
+    let localBackend = this.backends().find(b => b.name === 'Local');
+    if (!localBackend) {
+      await this.loadBackends();
+      localBackend = this.backends().find(b => b.name === 'Local');
+    }
+    if (!localBackend) return;
+    await this.updateBackend({
+      name: 'Local',
+      host: localBackend.host,
+      port,
+      isLocal: true,
+      username: localBackend.username,
+      password: localBackend.password,
+      configPath: localBackend.configPath,
     });
   }
 

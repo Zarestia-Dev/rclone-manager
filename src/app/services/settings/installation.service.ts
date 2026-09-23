@@ -53,9 +53,6 @@ export class InstallationService extends TauriBaseService {
     }
   }
 
-  /**
-   * Check if an error represents a user-initiated download cancellation
-   */
   isCancellationError(error: unknown): boolean {
     const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
     return msg.includes('downloadCancelled');
@@ -67,18 +64,15 @@ export class InstallationService extends TauriBaseService {
    */
   async installRclone(path?: string | null): Promise<string> {
     try {
-      return await this.invokeCommand<string>('provision_rclone', { path });
-    } catch (error) {
+      return await this.invokeWithNotification<string>(
+        'provision_rclone',
+        { path },
+        {
+          errorKey: 'repairSheet.errors.rcloneInstallFailed',
+        }
+      );
+    } finally {
       this.rcloneProgress.set(null);
-      if (!this.isCancellationError(error)) {
-        const translatedError = this.backendTranslation.translateBackendMessage(error);
-        this.notificationService.showError(
-          this.translate.instant('repairSheet.errors.rcloneInstallFailed', {
-            error: translatedError,
-          })
-        );
-      }
-      throw error;
     }
   }
 
@@ -100,15 +94,11 @@ export class InstallationService extends TauriBaseService {
    */
   async isMountPluginInstalled(): Promise<boolean> {
     try {
-      return await this.invokeCommand<boolean>('check_mount_plugin_installed');
+      return await this.invokeWithNotification<boolean>('check_mount_plugin_installed', undefined, {
+        errorKey: 'repairSheet.messages.mountPluginStatusError',
+      });
     } catch (error) {
       console.error('Error checking mount plugin installation:', error);
-
-      const translatedError = this.backendTranslation.translateBackendMessage(error);
-      this.notificationService.showError(
-        `${this.translate.instant('repairSheet.messages.mountPluginStatusError')}: ${translatedError}`
-      );
-
       return false;
     }
   }
@@ -118,22 +108,12 @@ export class InstallationService extends TauriBaseService {
    */
   async installMountPlugin(): Promise<string> {
     try {
-      const res = await this.invokeCommand<string>('install_mount_plugin');
-      this.notificationService.showSuccess(
-        this.translate.instant('backendSuccess.rclone.mountPluginInstalled')
-      );
-      return res;
-    } catch (error) {
+      return await this.invokeWithNotification<string>('install_mount_plugin', undefined, {
+        successKey: 'backendSuccess.rclone.mountPluginInstalled',
+        errorKey: 'backendErrors.rclone.mountPluginInstallFailed',
+      });
+    } finally {
       this.mountPluginProgress.set(null);
-      if (!this.isCancellationError(error)) {
-        const translatedError = this.backendTranslation.translateBackendMessage(error);
-        this.notificationService.showError(
-          this.translate.instant('backendErrors.rclone.mountPluginInstallFailed', {
-            error: translatedError,
-          })
-        );
-      }
-      throw error;
     }
   }
 

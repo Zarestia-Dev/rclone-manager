@@ -36,6 +36,8 @@ pub struct ServeParams {
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub quick_run_id: Option<String>,
     pub execute_id: Option<String>,
+    pub workflow_id: Option<String>,
+    pub node_id: Option<String>,
 }
 
 impl ServeParams {
@@ -63,6 +65,8 @@ impl ServeParams {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         })
     }
 
@@ -219,7 +223,8 @@ pub async fn start_serve(
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
-            Some(&app),
+            params.workflow_id.clone(),
+            params.node_id.clone(),
         )
         .await;
     refresh_serves_quietly(&app).await;
@@ -275,7 +280,7 @@ pub async fn stop_serve(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = transport
+    let result = transport
         .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
@@ -291,7 +296,7 @@ pub async fn stop_serve(
             );
             notify(
                 &app,
-                NotificationEvent::Serve(ServeStage::Failed {
+                NotificationEvent::Serve(ServeStage::StopFailed {
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: profile.clone(),
@@ -300,7 +305,12 @@ pub async fn stop_serve(
                 }),
             );
             error
-        })?;
+        });
+
+    if let Err(err) = result {
+        refresh_serves_quietly(&app).await;
+        return Err(err);
+    }
 
     log_operation(
         LogLevel::Info,
@@ -451,6 +461,8 @@ mod tests {
             origin: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
             serve_type: "webdav".to_string(),
         };
 

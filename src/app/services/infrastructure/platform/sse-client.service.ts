@@ -71,7 +71,7 @@ export class SseClientService {
 
       if (this.reconnectAttempt >= this.maxReconnectAttempts) return;
 
-      const delay = 1000 * Math.pow(2, this.reconnectAttempt++);
+      const delay = Math.min(5000, 1000 * Math.pow(1.5, Math.min(this.reconnectAttempt++, 10)));
       this.reconnectTimer = setTimeout(() => this.openSource(url), delay);
     };
 

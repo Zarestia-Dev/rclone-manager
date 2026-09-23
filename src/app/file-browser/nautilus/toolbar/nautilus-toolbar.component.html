@@ -1,8 +1,20 @@
 <div class="left-section" data-tauri-drag-region>
-  <button (click)="goBack.emit()" [disabled]="!effectiveCanGoBack()" class="nav-button">
+  <button
+    (click)="goBack.emit()"
+    [disabled]="!effectiveCanGoBack()"
+    class="nav-button"
+    [attr.title]="'nautilus.toolbar.goBack' | translate"
+    [attr.aria-label]="'nautilus.toolbar.goBack' | translate"
+  >
     <mat-icon svgIcon="chevron-left"></mat-icon>
   </button>
-  <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
+  <button
+    (click)="goForward.emit()"
+    [disabled]="!canGoForward()"
+    class="nav-button"
+    [attr.title]="'nautilus.toolbar.goForward' | translate"
+    [attr.aria-label]="'nautilus.toolbar.goForward' | translate"
+  >
     <mat-icon svgIcon="chevron-right"></mat-icon>
   </button>
 </div>
@@ -79,6 +91,8 @@
       class="nav-button nav-button--flush"
       (click)="$event.stopPropagation()"
       [cdkMenuTriggerFor]="pathOptionsMenu()"
+      [attr.title]="'nautilus.toolbar.pathOptions' | translate"
+      [attr.aria-label]="'nautilus.toolbar.pathOptions' | translate"
     >
       <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
     </button>
@@ -96,7 +110,12 @@
 
 <div class="right-section" data-tauri-drag-region>
   @if (!isMobile()) {
-    <button class="nav-button" (click)="layoutChange.emit(toggledLayout())">
+    <button
+      class="nav-button"
+      (click)="layoutChange.emit(toggledLayout())"
+      [attr.title]="'nautilus.view.toggleLayout' | translate"
+      [attr.aria-label]="'nautilus.view.toggleLayout' | translate"
+    >
       <mat-icon [svgIcon]="toggledLayout()"></mat-icon>
     </button>
 
@@ -106,6 +125,8 @@
       [cdkMenuPosition]="[
         { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
       ]"
+      [attr.title]="'nautilus.view.viewOptions' | translate"
+      [attr.aria-label]="'nautilus.view.viewOptions' | translate"
     >
       <mat-icon svgIcon="chevron-down"></mat-icon>
     </button>
@@ -122,13 +143,19 @@
     @if (!isMobileOS()) {
       <button
         class="nav-button"
-        [title]="'nautilus.contextMenu.openNewWindow' | translate"
+        [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
+        [attr.aria-label]="'nautilus.contextMenu.openNewWindow' | translate"
         (click)="popOutToWindow.emit()"
       >
         <mat-icon svgIcon="open-link"></mat-icon>
       </button>
     }
-    <button class="nav-button" (click)="closeOverlay.emit()">
+    <button
+      class="nav-button"
+      (click)="closeOverlay.emit()"
+      [attr.title]="'common.close' | translate"
+      [attr.aria-label]="'common.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   }

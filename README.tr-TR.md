@@ -8,18 +8,25 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
-  <a href="CONTRIBUTING.md#adding-translations">Çeviriye Yardım Edin</a> •
+  <a href="CONTRIBUTING.md#adding-translations">Çeviriye yardım edin</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
 <p align="center">
   <b>Rclone uzak bağlantılarını stil ve kolaylıkla yönetmek için güçlü, çapraz platform bir GUI.</b><br>
   <i>Angular 22 + Tauri ile yapıldı · Linux • Windows • macOS • Android (Beta) • ARM Desteği</i>
+</p>
+
+<p align="center">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/architecture">
+    <img src="https://img.shields.io/badge/Architecture-Specification-blueviolet?style=for-the-badge" alt="Mimari Spesifikasyon">
+  </a>
 </p>
 
 <p align="center">
@@ -51,21 +58,39 @@
 
 - 📂 **Nautilus Dosya Yöneticisi:** Uzak dosyaları tarayın, düzenleyin, taşıyın, kopyalayın, yeniden adlandırın ve silin.
 - 👁️ **Dosya Görüntüleyici:** Videolar, resimler, PDF'ler, ses ve metinler için yerleşik önizlemeler.
+- ⚡ **Görsel İş Akışları (Workflows):** Etkileşimli düğüm tabanlı tuval, cron zamanlayıcılar, klasör izleyiciler ve anlık uyarı bildirimleriyle çok adımlı bulut hatlarını tasarlayın ve otomatikleştirin.
+- 🚀 **Hızlı Görevler (Quick Runs):** Duruma duyarlı bir kart ızgarasından tek tıklamayla bulut işlemlerini ve özel CLI bayrak ön ayarlarını tetikleyin.
 - ⚙️ **Bağlama ve Sunma:** Kolay bağlama kontrolleri ve sunma yönetimi (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Görev İzleyici:** Gerçek zamanlı aktarım izleme ve bant genişliği kontrolü.
 - 🌐 **Headless Modu:** VPS/NAS sunucularında GUI olmadan bir web sunucusu olarak çalıştırmak için [RClone Manager Headless](headless/README.md) sürümüne göz atın!
 
 ---
 
-## Ekran Görüntüsü
+## Ekran Görüntüleri
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="RClone Manager Masaüstü UI" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Kontrol Paneli" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Kontrol Paneli - Hızlı Görevler, Bağlantılar ve uzak depolama genel görünümü</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - İş Akışı Tasarımcısı" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>İş Akışı Tasarımcısı - Etkileşimli düğüm tabanlı tuval üzerinde çok adımlı bulut hatları tasarlayın ve otomatikleştirin</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Nautilus Dosya Yöneticisi" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Tüm uzak depolarınız arasında dosyalarınızı görüntüleyin, aktarın ve yönetin</sub>
+</p>
+
+<p align="center">
   <i>📖 Daha fazla görmek ister misiniz? Tüm özellikler için <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki Galeri</a></b> sayfasına göz atın.</i>
 </p>
 

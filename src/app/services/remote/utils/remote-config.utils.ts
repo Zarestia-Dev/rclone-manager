@@ -2,11 +2,37 @@ import {
   RcConfigQuestionResponse,
   InteractiveFlowState,
   RcConfigOption,
+  RcConfigExample,
   OperationType,
   SharedProfileType,
+  RCLONE_PATH_KEYS,
 } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import { PathGroup } from '../../infrastructure/platform/path.service';
+
+import { TYPE_DEFAULT_EXAMPLES } from './remote-config-examples.constant';
+
+export function resolveOptionExamples(opt: RcConfigOption | null | undefined): RcConfigExample[] {
+  if (!opt) return [];
+  if (opt.Examples && opt.Examples.length > 0) {
+    return [...opt.Examples];
+  }
+
+  const typeKey = opt.Type;
+  if (typeKey && TYPE_DEFAULT_EXAMPLES[typeKey]) {
+    return [...TYPE_DEFAULT_EXAMPLES[typeKey]];
+  }
+
+  const rawName = (opt.Name || opt.FieldName || '').toLowerCase();
+  const normalizedKey = rawName.replace(/^--?/, '').replace(/[- ]/g, '_');
+
+  // Bandwidth limit options default to BwTimetable examples
+  if (normalizedKey.includes('bwlimit') || normalizedKey.includes('bandwidth')) {
+    const bwExamples = TYPE_DEFAULT_EXAMPLES['BwTimetable'];
+    return bwExamples ? [...bwExamples] : [];
+  }
+  return [];
+}
 
 export function createInitialInteractiveFlowState(): InteractiveFlowState {
   return {
@@ -491,12 +517,90 @@ export function mapConfigToFormProfile(
   const incomingOptions = collectIncomingOptions(rcloneConfig);
 
   if (type === 'mount') {
-    incomingOptions[MOUNT_TYPE_KEY] = rcloneConfig[MOUNT_TYPE_KEY] || null;
+    const rawMountType = rcloneConfig[MOUNT_TYPE_KEY];
+    const mountPoint = String(rcloneConfig['mountPoint'] ?? rcloneConfig['mount_point'] ?? '');
+    incomingOptions[MOUNT_TYPE_KEY] =
+      rawMountType || (mountPoint.startsWith('saf://') ? 'saf' : 'mount');
   } else if (type === 'serve') {
-    incomingOptions[SERVE_TYPE_KEY] = rcloneConfig[SERVE_TYPE_KEY] || null;
+    incomingOptions[SERVE_TYPE_KEY] = rcloneConfig[SERVE_TYPE_KEY] || 'http';
   }
 
   result['options'] = incomingOptions;
 
   return result;
+}
+
+function retargetPath(val: unknown, oldRemote: string, newRemote: string): unknown {
+  const replace = (s: string): string =>
+    s === oldRemote || s === `${oldRemote}:`
+      ? `${newRemote}:`
+      : s.startsWith(`${oldRemote}:`)
+        ? `${newRemote}:${s.slice(oldRemote.length + 1)}`
+        : s;
+
+  if (typeof val === 'string') return replace(val);
+  if (Array.isArray(val)) return val.map(item => (typeof item === 'string' ? replace(item) : item));
+  return val;
+}
+
+export function retargetProfileRemote(
+  profile: Record<string, unknown>,
+  oldRemote: string,
+  newRemote: string
+): Record<string, unknown> {
+  if (!profile || !oldRemote || !newRemote || oldRemote === newRemote) return profile;
+
+  const updated = structuredClone(profile);
+  const patchKeys = (target: Record<string, unknown>): void => {
+    for (const key of RCLONE_PATH_KEYS) {
+      if (key in target) target[key] = retargetPath(target[key], oldRemote, newRemote);
+    }
+  };
+
+  if (
+    updated['rclone'] &&
+    typeof updated['rclone'] === 'object' &&
+    !Array.isArray(updated['rclone'])
+  ) {
+    patchKeys(updated['rclone'] as Record<string, unknown>);
+  }
+  patchKeys(updated);
+
+  if (oldRemote in updated) {
+    updated[newRemote] = updated[oldRemote];
+    delete updated[oldRemote];
+  }
+
+  return updated;
+}
+
+export function retargetProfilesRemote<T extends Record<string, unknown>>(
+  sections: T,
+  oldRemote: string,
+  newRemote: string
+): T {
+  if (!sections || !oldRemote || !newRemote || oldRemote === newRemote) return sections;
+
+  const updated = structuredClone(sections) as Record<string, unknown>;
+  for (const [secKey, secVal] of Object.entries(updated)) {
+    if (!secVal || typeof secVal !== 'object' || Array.isArray(secVal)) continue;
+
+    const isRuntime = secKey === 'runtimeRemote' || secKey === 'runtimeRemoteConfigs';
+    const newMap: Record<string, unknown> = {};
+
+    for (const [pName, pData] of Object.entries(secVal as Record<string, unknown>)) {
+      if (pData && typeof pData === 'object' && !Array.isArray(pData)) {
+        const targetName = isRuntime && pName === oldRemote ? newRemote : pName;
+        newMap[targetName] = retargetProfileRemote(
+          pData as Record<string, unknown>,
+          oldRemote,
+          newRemote
+        );
+      } else {
+        newMap[pName] = pData;
+      }
+    }
+    updated[secKey] = newMap;
+  }
+  return updated as T;
 }

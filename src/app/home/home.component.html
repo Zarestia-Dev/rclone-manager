@@ -154,17 +154,27 @@
   @if (activeRemote) {
     <div class="material-context-menu" cdkMenu>
       <!-- Show in Tray Menu (Toggle) -->
-      <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
-        <mat-checkbox
-          labelPosition="before"
-          [checked]="getRemoteSettingValue(activeRemote.name, 'showOnTray')"
-          (change)="saveRemoteSettings(activeRemote.name, { showOnTray: $event.checked })"
-        >
-          <span>{{ 'home.options.showInTray' | translate }}</span>
-        </mat-checkbox>
-      </button>
-      <mat-divider></mat-divider>
+      @if (isTrayAvailable()) {
+        <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
+          <mat-checkbox
+            labelPosition="before"
+            [checked]="getRemoteSettingValue(activeRemote.name, 'showOnTray')"
+            (change)="saveRemoteSettings(activeRemote.name, { showOnTray: $event.checked })"
+          >
+            <span>{{ 'home.options.showInTray' | translate }}</span>
+          </mat-checkbox>
+        </button>
+        <mat-divider></mat-divider>
+      }
       <!-- Remote Actions -->
+      <button class="menu-item" cdkMenuItem (click)="openRemoteAbout(activeRemote)">
+        <span>{{ 'home.options.aboutRemote' | translate }}</span>
+      </button>
+      @if (hasCleanUpFeature(activeRemote)) {
+        <button class="menu-item danger-item" cdkMenuItem (click)="emptyTrash(activeRemote)">
+          <span>{{ 'home.options.emptyTrash' | translate }}</span>
+        </button>
+      }
       <button class="menu-item" cdkMenuItem (click)="openLogsModal(activeRemote.name)">
         <span>{{ 'home.options.viewLogs' | translate }}</span>
       </button>

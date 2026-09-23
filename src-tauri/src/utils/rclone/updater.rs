@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use log::{debug, info, warn};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 use crate::core::check_binaries::read_rclone_binary;
@@ -107,12 +107,10 @@ pub async fn check_rclone_update(
     let result_meta = perform_check_rclone_update(app_handle.clone(), channel).await?;
 
     if result_meta.metadata.update_available {
-        if let Err(e) = app_handle.emit(
+        crate::core::bridge::emit(
             APP_EVENT,
             json!({ "status": "rclone_update_found", "data": &result_meta }),
-        ) {
-            log::warn!("Failed to emit rclone update event: {e}");
-        }
+        );
 
         let is_skipped = app_handle
             .try_state::<crate::core::settings::AppSettingsManager>()
@@ -365,9 +363,7 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
         return Err(Error::BinaryNotFound);
     }
 
-    if let Err(e) = app_handle.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Updating) {
-        return Err(Error::Backend(format!("Failed to emit update event: {e}")));
-    }
+    crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Updating);
 
     notify(
         &app_handle,

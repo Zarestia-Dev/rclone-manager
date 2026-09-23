@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
@@ -20,6 +20,11 @@ export class AppSettingsService extends TauriBaseService {
   private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
   public readonly options = this._options.asReadonly();
   public readonly options$ = toObservable(this._options);
+
+  public readonly isTrayAvailable = computed(() => {
+    const setting = this._options()?.['general.tray_enabled'];
+    return setting?.value === true;
+  });
 
   constructor() {
     super();
@@ -91,16 +96,14 @@ export class AppSettingsService extends TauriBaseService {
 
   async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
-
-    try {
-      return await this.invokeCommand('reset_setting', { category, key });
-    } catch (err) {
-      console.error(`Failed to reset setting ${fullKey}:`, err);
-      this.notificationService.showError(
-        this.translate.instant('settings.resetFailed', { key: fullKey })
-      );
-      throw err;
-    }
+    return this.invokeWithNotification(
+      'reset_setting',
+      { category, key },
+      {
+        errorKey: 'settings.resetFailed',
+        errorParams: { key: fullKey },
+      }
+    );
   }
 
   async resetSettings(): Promise<boolean> {
@@ -116,8 +119,9 @@ export class AppSettingsService extends TauriBaseService {
     );
 
     if (confirmed) {
-      await this.invokeCommand('reset_settings');
-      this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
+      await this.invokeWithNotification('reset_settings', undefined, {
+        successKey: 'settings.resetSuccess',
+      });
       return true;
     }
     return false;
@@ -134,6 +138,7 @@ export class AppSettingsService extends TauriBaseService {
       // Matches the resetAll settings event payload shape
       this._options.set(null);
       this.loadSettings();
+      void this.applySavedLanguage();
       return;
     }
 
@@ -184,9 +189,13 @@ export class AppSettingsService extends TauriBaseService {
    * Reset settings for a specific remote
    */
   async resetRemoteSettings(remoteName: string): Promise<void> {
-    await this.invokeCommand('delete_remote_settings', { remoteName });
-    this.notificationService.showSuccess(
-      this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
+    await this.invokeWithNotification(
+      'delete_remote_settings',
+      { remoteName },
+      {
+        successKey: 'settings.remoteResetSuccess',
+        successParams: { remote: remoteName },
+      }
     );
   }
 

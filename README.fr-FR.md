@@ -8,19 +8,25 @@
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.zh-TW.md">🇹🇼 繁體中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
-  <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
-  <a href="CONTRIBUTING.md#adding-translations">Aider à traduire</a> •
+  <a href="CONTRIBUTING.md#adding-translations">Aidez à traduire</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
 
 <p align="center">
   <b>Une interface graphique puissante et multiplateforme pour gérer les remotes Rclone avec style et simplicité.</b><br>
   <i>Conçu avec Angular 22 + Tauri · Support Linux • Windows • macOS • Android (Bêta) • ARM</i>
+</p>
+
+<p align="center">
+  <a href="https://hakanismail.info/zarestia/rclone-manager/architecture">
+    <img src="https://img.shields.io/badge/Architecture-Specification-blueviolet?style=for-the-badge" alt="Architecture Specification">
+  </a>
 </p>
 
 <p align="center">
@@ -52,21 +58,39 @@
 
 - 📂 **Gestionnaire de fichiers Nautilus:** Parcourez, modifiez, déplacez, copiez, renommez et supprimez des fichiers distants.
 - 👁️ **Visionneuse de fichiers:** Aperçus intégrés pour les vidéos, images, PDF, fichiers audio et textes.
+- ⚡ **Flux de travail visuels (Workflows):** Concevez et automatisez des pipelines cloud multi-étapes avec un canevas interactif basé sur des nœuds, des déclencheurs cron, la surveillance de dossiers et des alertes instantanées.
+- 🚀 **Exécutions rapides (Quick Runs):** Déclenchez des opérations cloud en un clic et gérez des préconfigurations d'arguments CLI depuis une grille de cartes interactive.
 - ⚙️ **Montage & Diffusion:** Contrôles de montage simples et gestion des serveurs de diffusion (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Suivi des tâches:** Surveillance des transferts en temps réel et contrôle de la bande passante.
 - 🌐 **Mode Headless (Sans tête):** Consultez [RClone Manager Headless](headless/README.md) pour l'exécuter en tant que serveur web sur VPS/NAS !
 
 ---
 
-## Capture d'écran
+## Captures d'écran
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="Interface graphique RClone Manager" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Tableau de bord" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Tableau de bord - Exécutions rapides, montages et aperçu des dépôts distants</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Éditeur de Workflows" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>Éditeur de Workflows - Concevez et automatisez des pipelines cloud multi-étapes sur un canevas interactif de nœuds</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Gestionnaire de fichiers Nautilus" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Parcourez, transférez et gérez vos fichiers à travers tous vos dépôts distants</sub>
+</p>
+
+<p align="center">
   <i>📖 Vous voulez en voir plus ? Découvrez la <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Galerie Wiki</a></b> pour toutes les fonctionnalités.</i>
 </p>
 

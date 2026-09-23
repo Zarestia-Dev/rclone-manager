@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use log::debug;
 use serde_json::Value;
 use tauri::AppHandle;
 
@@ -13,27 +12,6 @@ pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value,
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
 
     Ok(json)
-}
-
-pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
-    let json = crate::rclone::commands::common::transport(&app)
-        .rpc(config::LISTREMOTES, None)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Failed to fetch remotes: {e}");
-            format!("❌ Failed to fetch remotes: {e}")
-        })?;
-
-    let remotes: Vec<String> = json["remotes"]
-        .as_array()
-        .unwrap_or(&vec![])
-        .iter()
-        .filter_map(|r| r.as_str())
-        .map(std::string::ToString::to_string)
-        .collect();
-
-    debug!("📡 Found {} remotes: {:?}", remotes.len(), remotes);
-    Ok(remotes)
 }
 
 /// Fetch all remote types

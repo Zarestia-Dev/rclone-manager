@@ -42,7 +42,11 @@
 
               <mat-divider></mat-divider>
 
-              <button class="menu-item" cdkMenuItem (click)="actions.deleteSelectedItems()">
+              <button
+                class="menu-item danger-item"
+                cdkMenuItem
+                (click)="actions.deleteSelectedItems()"
+              >
                 <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
                 <span class="shortcut">Delete</span>
               </button>
@@ -73,7 +77,7 @@
                   <span class="shortcut">Return</span>
                 </button>
 
-                @if (!isHeadless()) {
+                @if (!isHeadless) {
                   <button class="menu-item" cdkMenuItem (click)="actions.openNativeContextItem()">
                     <span class="item-label">{{
                       'fileBrowser.fileViewer.openNative' | translate
@@ -135,7 +139,11 @@
 
               <mat-divider></mat-divider>
 
-              <button class="menu-item" cdkMenuItem (click)="actions.deleteSelectedItems()">
+              <button
+                class="menu-item danger-item"
+                cdkMenuItem
+                (click)="actions.deleteSelectedItems()"
+              >
                 <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
                 <span class="shortcut">Delete</span>
               </button>

@@ -8,6 +8,7 @@
     matIconButton
     (click)="close()"
     [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
   >
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
@@ -18,7 +19,7 @@
   @switch (currentStep()) {
     @case ('setup') {
       <app-remote-config-step
-        class="operation-config"
+        class="step-body"
         [form]="setupFormGroup"
         [remoteTypes]="remoteTypes()"
         [existingRemotes]="existingRemotes()"
@@ -32,7 +33,7 @@
       <div formGroupName="operations">
         <div class="section-group">
           <div class="operations-header">
-            <h3 class="section-label">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
+            <h3 class="operations-title">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
             <p class="section-description">
               {{ 'modals.quickAdd.operations.description' | translate }}
             </p>
@@ -41,11 +42,11 @@
           <mat-tab-group>
             @for (tab of operationTabs; track tab.type) {
               <mat-tab [label]="tab.label | translate">
-                <div class="operation-config">
+                <div class="step-body">
                   <app-operation-config
                     [opFormGroup]="operationFormGroups.get(tab.type)!"
                     [operationType]="tab.type"
-                    [currentRemoteName]="setupNameValue() || 'remote'"
+                    [currentRemoteName]="setupNameValue()"
                     [existingRemotes]="existingRemotes()"
                     [description]="tab.description | translate"
                   ></app-operation-config>
@@ -128,6 +129,8 @@
         class="primary"
         (click)="nextStep()"
         [disabled]="!isSetupStepValid()"
+        [attr.title]="'common.next' | translate"
+        [attr.aria-label]="'common.next' | translate"
       >
         {{ 'common.next' | translate }}
         <mat-icon iconPositionEnd svgIcon="right-arrow"></mat-icon>
@@ -136,14 +139,27 @@
 
     @case ('operations') {
       @if (!isAuthInProgress()) {
-        <button type="button" matButton="text" (click)="prevStep()">
+        <button
+          type="button"
+          matButton="text"
+          (click)="prevStep()"
+          [attr.title]="'common.back' | translate"
+          [attr.aria-label]="'common.back' | translate"
+        >
           <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
           {{ 'common.back' | translate }}
         </button>
       }
 
       @if (isAuthInProgress() && !isAuthCancelled()) {
-        <button type="button" matButton="text" class="warn" (click)="cancelAuth()">
+        <button
+          type="button"
+          matButton="text"
+          class="warn"
+          (click)="cancelAuth()"
+          [attr.title]="'common.cancel' | translate"
+          [attr.aria-label]="'common.cancel' | translate"
+        >
           {{ 'common.cancel' | translate }}
         </button>
       }
@@ -154,6 +170,8 @@
         type="button"
         (click)="onSubmit()"
         [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
+        [attr.title]="submitButtonText() | translate"
+        [attr.aria-label]="submitButtonText() | translate"
       >
         @if (isAuthInProgress() && !isAuthCancelled()) {
           <mat-icon svgIcon="spinner"></mat-icon>
@@ -168,7 +186,14 @@
       @let continueLabel =
         (flow.isProcessing ? 'modals.quickAdd.buttons.processing' : 'common.continue') | translate;
 
-      <button matButton="text" class="warn" type="button" (click)="cancelAuth()">
+      <button
+        matButton="text"
+        class="warn"
+        type="button"
+        (click)="cancelAuth()"
+        [attr.title]="'common.cancel' | translate"
+        [attr.aria-label]="'common.cancel' | translate"
+      >
         {{ 'common.cancel' | translate }}
       </button>
 

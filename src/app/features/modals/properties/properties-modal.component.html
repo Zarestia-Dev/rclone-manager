@@ -29,12 +29,13 @@
     </div>
   } @else {
     @let currentItem = item();
+    @let share = shareInfo();
     <div class="item-overview">
       <div class="item-icon">
         <mat-icon [svgIcon]="getIcon(currentItem)"></mat-icon>
       </div>
       <div class="item-details">
-        <code class="item-name" [title]="currentItem?.Name ?? displayLocation">
+        <code class="item-name truncate" [title]="currentItem?.Name ?? displayLocation">
           {{ currentItem?.Name ?? displayLocation }}
         </code>
         <span class="item-type">
@@ -45,6 +46,15 @@
                 : ('fileBrowser.properties.file' | translate))
           }}
         </span>
+        @if (share.isShared || share.isShortcut) {
+          <span class="app-pill p-dim pill-sm">
+            <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
+            <span>{{
+              (share.isShortcut ? 'nautilus.shared.shortcutBadge' : 'nautilus.shared.sharedBadge')
+                | translate
+            }}</span>
+          </span>
+        }
       </div>
     </div>
 
@@ -55,6 +65,14 @@
         <span class="label">{{ 'fileBrowser.properties.location' | translate }}</span>
         <code class="value path" [title]="displayLocation">{{ displayLocation }}</code>
       </div>
+      @if (share.targetId) {
+        <div class="prop-row">
+          <span class="label">{{ 'fileBrowser.properties.targetId' | translate }}</span>
+          <code class="value truncate" [appCopyToClipboard]="share.targetId">{{
+            share.targetId
+          }}</code>
+        </div>
+      }
       @if (currentItem?.ModTime) {
         <div class="prop-row">
           <span class="label">{{ 'fileBrowser.properties.modified' | translate }}</span>
@@ -68,6 +86,37 @@
         </div>
       }
     </div>
+
+    <!-- Metadata Navigation Row (Nautilus Subpage Trigger) -->
+    @if (loadingMetadata()) {
+      <mat-divider></mat-divider>
+      <div class="properties-group">
+        <div class="metadata-trigger-row is-loading">
+          <div class="trigger-left">
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+            <span>{{ 'fileBrowser.properties.metadata' | translate }}</span>
+          </div>
+          <span class="meta-status-hint">{{ 'fileBrowser.properties.loading' | translate }}</span>
+        </div>
+      </div>
+    } @else if (metadataEntries().length > 0) {
+      <mat-divider></mat-divider>
+      <div class="properties-group">
+        <button
+          type="button"
+          class="metadata-trigger-row"
+          (click)="showMetadataOverlay.set(true)"
+          [attr.aria-label]="'fileBrowser.properties.metadata' | translate"
+        >
+          <div class="trigger-left">
+            <mat-icon svgIcon="tag"></mat-icon>
+            <span>{{ 'fileBrowser.properties.metadata' | translate }}</span>
+            <span class="count-badge">{{ metadataEntries().length }}</span>
+          </div>
+          <mat-icon svgIcon="chevron-right" class="trigger-chevron"></mat-icon>
+        </button>
+      </div>
+    }
 
     @if (currentItem?.IsDir ?? true) {
       <mat-divider></mat-divider>
@@ -285,3 +334,47 @@
     }
   }
 </main>
+
+<!-- Metadata Overlay Subpage (Like About Modal / Nautilus Subpage) -->
+@if (showMetadataOverlay()) {
+  <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
+    <header data-tauri-drag-region>
+      <button
+        type="button"
+        matIconButton
+        (click)="showMetadataOverlay.set(false)"
+        [attr.aria-label]="'common.back' | translate"
+      >
+        <mat-icon svgIcon="chevron-left"></mat-icon>
+      </button>
+      <p>{{ 'fileBrowser.properties.metadata' | translate }}</p>
+      <button
+        type="button"
+        matIconButton
+        (click)="closeModal()"
+        [attr.aria-label]="'fileBrowser.properties.close' | translate"
+      >
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </header>
+
+    <main class="overlay-content">
+      <div class="metadata-list">
+        @for (entry of metadataEntries(); track entry.key) {
+          <div
+            class="meta-card"
+            [appCopyToClipboard]="entry.value"
+            [attr.title]="'fileBrowser.properties.copyToClipboard' | translate"
+          >
+            <span class="meta-key" [title]="entry.key">{{ entry.key }}</span>
+            <pre
+              class="meta-val truncate"
+              [title]="entry.value"
+              [appCopyToClipboard]="entry.value"
+              >{{ entry.value }}</pre>
+          </div>
+        }
+      </div>
+    </main>
+  </div>
+}

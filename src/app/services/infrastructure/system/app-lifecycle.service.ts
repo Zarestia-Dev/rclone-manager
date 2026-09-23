@@ -7,6 +7,7 @@ import { NotificationService } from '../../ui/notification.service';
 import { NautilusService } from '../../ui/nautilus.service';
 import { FlowOverlayService } from '../../ui/flow-overlay.service';
 import { MainUiOverlayService } from '../../ui/main-ui-overlay.service';
+import { ActiveOperationsSummary, SystemPowerAction } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class AppLifecycleService {
@@ -20,6 +21,7 @@ export class AppLifecycleService {
   private readonly destroyRef = inject(DestroyRef);
 
   private exitListenerInitialized = false;
+  private isConfirmModalOpen = false;
 
   public initialize(): void {
     if (this.exitListenerInitialized) {
@@ -33,26 +35,67 @@ export class AppLifecycleService {
       return;
     }
 
+    // Check if window was created or restored due to a pending exit request
+    void this.checkPendingExit();
+
     this.eventListenersService
       .listenToAppExitRequested()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(async summary => {
-        const confirmed = await this.notificationService.confirmModal(
-          'app.shutdown.confirmTitle',
-          this.translate.instant('app.shutdown.confirmMessage', {
-            jobs: summary.activeJobsCount,
-            mounts: summary.activeMountsCount,
-            serves: summary.activeServesCount,
-          }),
-          'app.shutdown.stopAndQuit',
-          'common.cancel',
-          { icon: 'warning', color: 'warn' }
-        );
-
-        if (confirmed) {
-          await this.apiClient.invoke('shutdown_app');
-        }
+      .subscribe(summary => {
+        void this.promptExitConfirmation(summary);
       });
+  }
+
+  private async checkPendingExit(): Promise<void> {
+    try {
+      const summary = await this.apiClient.invoke<ActiveOperationsSummary | null>(
+        'check_pending_app_exit'
+      );
+      if (summary?.hasActiveOperations) {
+        await this.promptExitConfirmation(summary);
+      }
+    } catch {
+      // Ignore if not supported or failed
+    }
+  }
+
+  private async promptExitConfirmation(summary: ActiveOperationsSummary): Promise<void> {
+    if (this.isConfirmModalOpen) {
+      return;
+    }
+    this.isConfirmModalOpen = true;
+
+    try {
+      const confirmed = await this.notificationService.confirmModal(
+        'app.shutdown.confirmTitle',
+        this.translate.instant('app.shutdown.confirmMessage', {
+          jobs: summary.activeJobsCount,
+          mounts: summary.activeMountsCount,
+          serves: summary.activeServesCount,
+        }),
+        'app.shutdown.stopAndQuit',
+        'common.cancel',
+        { icon: 'warning', color: 'warn' }
+      );
+
+      if (confirmed) {
+        await this.shutdownApp();
+      }
+    } finally {
+      this.isConfirmModalOpen = false;
+    }
+  }
+
+  async shutdownApp(): Promise<void> {
+    await this.apiClient.invoke('shutdown_app');
+  }
+
+  async relaunchApp(): Promise<void> {
+    await this.apiClient.invoke('relaunch_app');
+  }
+
+  async executeSystemPower(action: SystemPowerAction): Promise<void> {
+    await this.apiClient.invoke('execute_system_power', { action });
   }
 
   private isStandaloneWindow(): boolean {

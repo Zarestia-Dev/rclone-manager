@@ -276,13 +276,10 @@
       <code>{{ cronValue() }}</code>
     </div>
   </div>
-}
-
-@if (validationResponse()?.isValid && cronValue()) {
-  <div class="timezone-note">
-    <mat-icon svgIcon="globe"></mat-icon>
-    <span>
-      {{ 'wizards.appOperation.timezoneNote' | translate: { timezone: userTimezone } }}
-    </span>
-  </div>
+  <app-alert-banner
+    class="timezone-banner"
+    severity="dim"
+    icon="globe"
+    [description]="'wizards.appOperation.timezoneNote' | translate: { timezone: userTimezone }"
+  />
 }

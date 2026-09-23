@@ -67,9 +67,16 @@
 
   .grid-item {
     outline: none;
-    user-select: none;
     touch-action: pan-y;
-    -webkit-user-drag: none;
+
+    &.unselectable {
+      opacity: 0.45;
+      cursor: not-allowed;
+
+      .folder-card:hover {
+        background: transparent;
+      }
+    }
 
     .folder-card {
       padding: var(--space-xs);
@@ -87,7 +94,7 @@
 
   .star-button {
     position: absolute;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     padding: var(--space-xxs);
     transition: var(--transition-fast);
     width: var(--icon-size-sm);
@@ -198,9 +205,16 @@ tr.folder-drag-over {
   tr.mat-mdc-row {
     transition: none;
     border-radius: var(--border-radius);
-    user-select: none;
     touch-action: pan-y;
-    -webkit-user-drag: none;
+
+    &.unselectable {
+      opacity: 0.45;
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
 
     &:hover {
       background-color: var(--hover-bg-color);
@@ -229,10 +243,18 @@ tr.folder-drag-over {
     color: var(--dim-color);
     border-bottom: none;
 
+    &.sortable-header {
+      cursor: pointer;
+    }
+
     .header-content {
       display: flex;
       align-items: center;
       gap: var(--space-xxs);
+
+      &.right-aligned {
+        justify-content: flex-end;
+      }
 
       mat-icon {
         width: var(--icon-size-sm);
@@ -253,14 +275,10 @@ tr.folder-drag-over {
       align-items: center;
       gap: var(--space-sm);
       width: 100%;
-      overflow: hidden;
 
-      span {
+      > .truncate {
         flex: 1;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
     }
   }
@@ -293,6 +311,50 @@ tr.folder-drag-over {
   }
 }
 
+.entry-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  .shared-emblem {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 20px;
+    height: 20px;
+    background: var(--card-bg-color);
+    border: 1.5px solid var(--window-bg-color);
+    border-radius: var(--radius-circle);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    box-shadow: var(--shadow-popover);
+
+    mat-icon {
+      pointer-events: none;
+      width: 12px;
+      height: 12px;
+      font-size: 12px;
+      color: var(--accent-color);
+    }
+
+    &.list-view {
+      bottom: -3px;
+      right: -3px;
+      width: 14px;
+      height: 14px;
+
+      mat-icon {
+        width: 9px;
+        height: 9px;
+        font-size: 9px;
+      }
+    }
+  }
+}
+
 /* ==========================================================================
    7. Overlays — Loading & Empty State
    ========================================================================== */
@@ -309,6 +371,29 @@ tr.folder-drag-over {
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--font-size-base);
+
+  .nav-button {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-circle);
+    cursor: pointer;
+    color: var(--window-fg-color);
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
+      font-size: var(--icon-size-xs);
+    }
+
+    &:hover {
+      background: var(--hover-bg-color);
+    }
+  }
 }
 
 .empty-folder-container {
@@ -356,6 +441,6 @@ tr.folder-drag-over {
   padding: var(--space-sm) var(--space-md);
   text-align: center;
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+  color: var(--dim-color);
   opacity: 0.7;
 }

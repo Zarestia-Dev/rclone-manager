@@ -35,6 +35,21 @@ pub async fn vfs_forget(
         .map_err(|e| format!("Failed to forget paths: {e}"))
 }
 
+pub(crate) fn build_vfs_refresh_payload(
+    fs: Option<String>,
+    dir: Option<String>,
+    recursive: bool,
+) -> Value {
+    let mut payload = json!({ "recursive": recursive.to_string() });
+    if let Some(f) = fs.filter(|s| !s.trim().is_empty()) {
+        payload["fs"] = Value::String(f);
+    }
+    if let Some(d) = dir.filter(|s| !s.trim().is_empty()) {
+        payload["dir"] = Value::String(d);
+    }
+    payload
+}
+
 #[bridge]
 pub async fn vfs_refresh(
     app: AppHandle,
@@ -42,13 +57,7 @@ pub async fn vfs_refresh(
     dir: Option<String>,
     recursive: bool,
 ) -> Result<Value, String> {
-    let mut payload = json!({ "recursive": recursive });
-    if let Some(f) = fs {
-        payload["fs"] = Value::String(f);
-    }
-    if let Some(d) = dir {
-        payload["dir"] = Value::String(d);
-    }
+    let payload = build_vfs_refresh_payload(fs, dir, recursive);
     crate::rclone::commands::common::transport(&app)
         .rpc(vfs::REFRESH, Some(&payload))
         .await
@@ -132,4 +141,27 @@ pub async fn vfs_queue_set_expiry(
         .rpc(vfs::QUEUE_SET_EXPIRY, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set queue expiry: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_vfs_refresh_payload_string_recursive_and_empty_filtering() {
+        let p1 = build_vfs_refresh_payload(Some("Dropbox:".into()), None, true);
+        assert_eq!(p1["recursive"], "true");
+        assert_eq!(p1["fs"], "Dropbox:");
+        assert!(p1.get("dir").is_none());
+
+        let p2 = build_vfs_refresh_payload(Some("Dropbox:".into()), Some("".into()), false);
+        assert_eq!(p2["recursive"], "false");
+        assert_eq!(p2["fs"], "Dropbox:");
+        assert!(p2.get("dir").is_none());
+
+        let p3 = build_vfs_refresh_payload(None, Some("photos/2026".into()), true);
+        assert_eq!(p3["recursive"], "true");
+        assert_eq!(p3["dir"], "photos/2026");
+        assert!(p3.get("fs").is_none());
+    }
 }

@@ -6,4 +6,8 @@
     <string name="saf_keepalive_text">Active background file stream in progress</string>
     <string name="saf_keepalive_channel_name">Rclone Storage Service</string>
     <string name="saf_keepalive_channel_desc">Keeps Rclone process active during external SAF file streaming</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">Running in background</string>
+    <string name="keepalive_channel_name">RClone Background Service</string>
+    <string name="keepalive_channel_desc">Maintains active mounts, transfers, and background tasks</string>
 </resources>

@@ -5,31 +5,31 @@
         *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
       ></ng-container>
     } @else if (nautilusService.isStandaloneWindow()) {
-      @defer {
+      @defer (on immediate) {
         <app-nautilus></app-nautilus>
       }
     } @else if (flowOverlayService.isStandaloneWindow()) {
-      @defer {
+      @defer (on immediate) {
         <app-flow-container></app-flow-container>
       }
     } @else if (mainUiOverlayService.isStandaloneWindow()) {
-      @defer {
+      @defer (on immediate) {
         <app-main-ui-container></app-main-ui-container>
       }
     } @else if (!completedOnboarding()) {
-      @defer {
+      @defer (on immediate) {
         <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
     } @else if (selectedMainView() === 'nautilus') {
-      @defer {
+      @defer (on immediate) {
         <app-nautilus></app-nautilus>
       }
     } @else if (selectedMainView() === 'flow') {
-      @defer {
+      @defer (on immediate) {
         <app-flow-container></app-flow-container>
       }
     } @else {
-      @defer {
+      @defer (on immediate) {
         <app-main-ui-container></app-main-ui-container>
       }
     }

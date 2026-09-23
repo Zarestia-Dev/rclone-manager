@@ -63,7 +63,7 @@ mat-toolbar {
   height: 30px;
   border-radius: var(--radius-xs);
   color: var(--window-fg-color);
-  transition: background-color 80ms ease;
+  transition: var(--transition-fast);
 
   mat-icon {
     width: 20px;
@@ -147,7 +147,7 @@ mat-toolbar {
   color: var(--window-fg-color);
   font-size: var(--font-size-md);
   font-weight: 500;
-  transition: background-color 80ms ease;
+  transition: var(--transition-fast);
 
   &:last-child {
     margin-bottom: 0;

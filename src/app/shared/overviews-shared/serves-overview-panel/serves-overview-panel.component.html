@@ -42,6 +42,16 @@
       <button
         type="button"
         class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'flow'"
+        (click)="selectedOriginFilter.set('flow')"
+        [attr.title]="'flow.title' | translate"
+      >
+        <mat-icon svgIcon="workflow"></mat-icon>
+        <span>{{ 'flow.title' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
         [class.is-selected]="selectedOriginFilter() === 'quickrun'"
         (click)="selectedOriginFilter.set('quickrun')"
         [attr.title]="'flow.tabs.quickRun' | translate"

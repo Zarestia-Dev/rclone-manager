@@ -40,6 +40,8 @@ static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
 pub enum Error {
     #[error("HTTP request error: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("GitHub API rate limit exceeded")]
+    RateLimitExceeded,
     #[error("GitHub API error (Status {status}): {body}")]
     ApiError {
         status: reqwest::StatusCode,
@@ -69,7 +71,24 @@ async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response
         Ok(response)
     } else {
         let status = response.status();
+        let is_rate_limit_header = response
+            .headers()
+            .get("x-ratelimit-remaining")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v == "0")
+            .unwrap_or(false);
+
         let body = response.text().await.unwrap_or_default();
+
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            || (status == reqwest::StatusCode::FORBIDDEN
+                && (is_rate_limit_header
+                    || body.contains("API rate limit exceeded")
+                    || body.contains("rate limit")))
+        {
+            return Err(Error::RateLimitExceeded);
+        }
+
         Err(Error::ApiError { status, body })
     }
 }

@@ -25,7 +25,8 @@ mat-sidenav-content {
   position: absolute;
   top: 10px;
   left: 20px;
-  z-index: 1;
+  z-index: 10;
+  background: var(--window-bg-color);
 }
 
 .ellipsis-button {

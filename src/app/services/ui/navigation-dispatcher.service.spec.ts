@@ -4,6 +4,8 @@ import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
+import { WorkflowStorageService } from '../flow/workflow-storage.service';
+import { WorkflowStateService } from '../flow/workflow-state.service';
 import {
   JobInfo,
   Remote,
@@ -12,6 +14,7 @@ import {
   QuickRun,
   DEFAULT_JOB_STATS,
 } from '@app/types';
+import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
 
 describe('NavigationDispatcherService', () => {
@@ -26,6 +29,15 @@ describe('NavigationDispatcherService', () => {
   let mockQuickRunService: {
     quickRuns: ReturnType<typeof vi.fn>;
     select: ReturnType<typeof vi.fn>;
+  };
+  let mockWorkflowStorageService: {
+    workflows: ReturnType<typeof vi.fn>;
+  };
+  let mockWorkflowStateService: {
+    loadWorkflow: ReturnType<typeof vi.fn>;
+    requestedSubMode: {
+      set: ReturnType<typeof vi.fn>;
+    };
   };
 
   const mockRemote = {
@@ -45,6 +57,13 @@ describe('NavigationDispatcherService', () => {
     createdAt: '2026-01-01',
   } as unknown as QuickRun;
 
+  const mockWorkflow = {
+    id: 'wf-1',
+    name: 'Nightly Sync',
+    nodes: [],
+    edges: [],
+  } as unknown as WorkflowDefinition;
+
   beforeEach((): void => {
     mockUiStateService = {
       setMainView: vi.fn(),
@@ -61,6 +80,15 @@ describe('NavigationDispatcherService', () => {
       quickRuns: vi.fn().mockReturnValue([mockQuickRun]),
       select: vi.fn(),
     };
+    mockWorkflowStorageService = {
+      workflows: vi.fn().mockReturnValue([mockWorkflow]),
+    };
+    mockWorkflowStateService = {
+      loadWorkflow: vi.fn(),
+      requestedSubMode: {
+        set: vi.fn(),
+      },
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -69,6 +97,8 @@ describe('NavigationDispatcherService', () => {
         { provide: RemoteFacadeService, useValue: mockRemoteFacade },
         { provide: PathService, useValue: mockPathService },
         { provide: QuickRunService, useValue: mockQuickRunService },
+        { provide: WorkflowStorageService, useValue: mockWorkflowStorageService },
+        { provide: WorkflowStateService, useValue: mockWorkflowStateService },
       ],
     });
 
@@ -98,7 +128,29 @@ describe('NavigationDispatcherService', () => {
       service.navigateToJob(job);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+    });
+
+    it('should navigate to flow and load workflow when job origin is flow', (): void => {
+      const job: JobInfo = {
+        jobid: 3,
+        execute_id: 'exec-3',
+        job_type: 'sync',
+        source: '/local',
+        destination: 'test-remote:/backup',
+        start_time: '2026-01-01',
+        status: 'Running',
+        remote_name: 'Workflow',
+        stats: DEFAULT_JOB_STATS,
+        origin: 'flow',
+        profile: 'wf-1',
+      };
+
+      service.navigateToJob(job);
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
     it('should navigate to operations tab for standard job', (): void => {
@@ -185,6 +237,78 @@ describe('NavigationDispatcherService', () => {
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
       expect(mockUiStateService.setTab).toHaveBeenCalledWith('operations');
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
+    });
+
+    it('should navigate to flow and load workflow when automation source is flow', (): void => {
+      const automation = {
+        id: 'wf-1',
+        automationType: 'sync',
+        remoteName: 'Workflow',
+        profileName: 'Nightly Sync',
+        status: 'enabled',
+        backendName: 'Local',
+        args: {
+          source: 'flow',
+          srcPaths: ['Nightly Sync'],
+          dstPaths: ['Workflow Engine'],
+          remoteName: 'Workflow',
+          profileName: 'Nightly Sync',
+        },
+      } as unknown as Automation;
+
+      service.navigateToAutomation(automation);
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
+    });
+
+    it('should navigate to flow quick run when automation has quickrun profile', (): void => {
+      const automation = {
+        id: 'auto-2',
+        automationType: 'sync',
+        profileName: 'Sync Drive',
+        status: 'enabled',
+        backendName: 'Local',
+        createdAt: '2026-01-01',
+        runCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        stoppedCount: 0,
+      } as unknown as Automation;
+
+      service.navigateToAutomation(automation);
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+    });
+  });
+
+  describe('navigateToQuickRun', () => {
+    it('should set main view to flow, set requestedSubMode to quick_run, and select quick run', (): void => {
+      service.navigateToQuickRun('qr-1');
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
+    });
+  });
+
+  describe('navigateToServe with quick run profile', () => {
+    it('should navigate to flow quick run when serve has profile', (): void => {
+      mockPathService.getRemoteNameFromFs.mockReturnValue(null);
+      const serve: ServeListItem = {
+        id: 'serve-2',
+        addr: 'localhost:8080',
+        profile: 'Sync Drive',
+        params: { fs: 'remote:path', type: 'http' },
+      };
+
+      service.navigateToServe(serve);
+
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
   });
 });

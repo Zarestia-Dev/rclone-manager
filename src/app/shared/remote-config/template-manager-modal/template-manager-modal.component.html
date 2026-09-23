@@ -100,37 +100,35 @@
         </div>
       </div>
       <mat-divider></mat-divider>
+      @if (!keySearchQuery().trim()) {
+        <div class="template-edit-fields" [formGroup]="saveForm">
+          <mat-form-field class="tpl-name-field no-subscript">
+            <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="name"
+              [placeholder]="'templates.namePlaceholder' | translate"
+            />
+          </mat-form-field>
+
+          <mat-form-field class="tpl-desc-field no-subscript">
+            <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="description"
+              [placeholder]="'templates.descPlaceholder' | translate"
+            />
+          </mat-form-field>
+        </div>
+      }
       @if (saveViewMode() === 'visual') {
         <div class="visual-inspector">
-          @if (!keySearchQuery().trim()) {
-            <div class="template-edit-fields" [formGroup]="saveForm">
-              <mat-form-field class="tpl-name-field no-subscript">
-                <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
-                <input
-                  matInput
-                  formControlName="name"
-                  [placeholder]="'templates.namePlaceholder' | translate"
-                />
-              </mat-form-field>
-
-              <mat-form-field class="tpl-desc-field no-subscript">
-                <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
-                <input
-                  matInput
-                  formControlName="description"
-                  [placeholder]="'templates.descPlaceholder' | translate"
-                />
-              </mat-form-field>
-            </div>
-          }
-
           <mat-accordion multi class="dull">
             @for (catKey of availableCategories; track catKey) {
               @if (shouldShowSaveCategory(catKey)) {
                 <mat-expansion-panel [expanded]="isSaveCategoryExpanded(catKey)" class="dull">
                   <mat-expansion-panel-header>
                     <mat-panel-title>
-                      <mat-icon></mat-icon>
                       <span class="cat-badge">{{ catKey }}</span>
                     </mat-panel-title>
                     <mat-panel-description>
@@ -320,32 +318,31 @@
           <p>{{ 'templates.noUserTemplates' | translate }}</p>
         </div>
       } @else {
+        @if (!keySearchQuery().trim()) {
+          <div class="template-edit-fields">
+            <mat-form-field class="tpl-name-field no-subscript">
+              <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
+              <input
+                matInput
+                [value]="draftName()"
+                [placeholder]="'templates.namePlaceholder' | translate"
+                (input)="updateTemplateName($any($event.target).value)"
+              />
+            </mat-form-field>
+
+            <mat-form-field class="tpl-desc-field no-subscript">
+              <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
+              <input
+                matInput
+                [value]="draftDescription()"
+                [placeholder]="'templates.descPlaceholder' | translate"
+                (input)="updateTemplateDesc($any($event.target).value)"
+              />
+            </mat-form-field>
+          </div>
+        }
         @if (manageViewMode() === 'visual') {
           <div class="visual-inspector">
-            @if (!keySearchQuery().trim()) {
-              <div class="template-edit-fields">
-                <mat-form-field class="tpl-name-field no-subscript">
-                  <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
-                  <input
-                    matInput
-                    [value]="draftName()"
-                    [placeholder]="'templates.namePlaceholder' | translate"
-                    (input)="updateTemplateName($any($event.target).value)"
-                  />
-                </mat-form-field>
-
-                <mat-form-field class="tpl-desc-field no-subscript">
-                  <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
-                  <input
-                    matInput
-                    [value]="draftDescription()"
-                    [placeholder]="'templates.descPlaceholder' | translate"
-                    (input)="updateTemplateDesc($any($event.target).value)"
-                  />
-                </mat-form-field>
-              </div>
-            }
-
             <mat-accordion multi class="dull">
               @for (catKey of availableCategories; track catKey) {
                 @if (shouldShowManageCategory(catKey)) {

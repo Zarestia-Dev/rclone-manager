@@ -83,6 +83,7 @@ export class TitlebarComponent implements OnInit {
   ];
 
   async ngOnInit(): Promise<void> {
+    if (this.isMobile()) return;
     try {
       await this.connectionService.runInternetCheck();
     } catch (error) {

@@ -71,6 +71,7 @@
                   <mat-slide-toggle
                     [ngModel]="answer()"
                     (ngModelChange)="onAnswerChange($event)"
+                    [ngModelOptions]="{ standalone: true }"
                     [disabled]="canceling()"
                     class="toggle-input primary"
                     [attr.aria-label]="opt.Name || 'Toggle option'"
@@ -95,6 +96,7 @@
                       <mat-select
                         [ngModel]="selectedIndex()"
                         (ngModelChange)="onSelectionChange($event)"
+                        [ngModelOptions]="{ standalone: true }"
                         [disabled]="canceling()"
                         [attr.aria-label]="
                           opt.Name || ('wizards.remoteConfig.selectOption' | translate)
@@ -146,6 +148,7 @@
                           [type]="isPassword() && !showPassword() ? 'password' : 'text'"
                           [ngModel]="answer()"
                           (ngModelChange)="onAnswerChange($event)"
+                          [ngModelOptions]="{ standalone: true }"
                           [disabled]="canceling()"
                           [placeholder]="inputPlaceholder()"
                           [attr.aria-label]="
@@ -183,6 +186,7 @@
                       [type]="isPassword() && !showPassword() ? 'password' : 'text'"
                       [ngModel]="answer()"
                       (ngModelChange)="onAnswerChange($event)"
+                      [ngModelOptions]="{ standalone: true }"
                       [disabled]="canceling()"
                       [placeholder]="inputPlaceholder()"
                       [attr.aria-label]="

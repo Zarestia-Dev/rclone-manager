@@ -33,10 +33,12 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 
     let serve_types = json["types"]
         .as_array()
-        .unwrap_or(&vec![])
-        .iter()
-        .filter_map(|st| st.as_str().map(String::from))
-        .collect();
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|st| st.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
 
     debug!("✅ Serve types: {serve_types:?}");
 

@@ -105,7 +105,12 @@ export class AppUpdaterService extends TauriBaseService {
       if (checkId !== this._latestCheckId) return null;
 
       console.error('Failed to check for updates:', error);
-      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.checkFailed', {
+          error: translatedError || this.translate.instant('common.error'),
+        })
+      );
       return null;
     } finally {
       if (checkId === this._latestCheckId) {
@@ -145,7 +150,6 @@ export class AppUpdaterService extends TauriBaseService {
 
       await this.invokeWithNotification('install_update', undefined, {
         errorKey: 'updates.installFailed',
-        showSuccess: false,
       });
     } catch (error) {
       console.error('Failed to install update:', error);
@@ -164,7 +168,9 @@ export class AppUpdaterService extends TauriBaseService {
     if (!this.updateInProgress()) return;
 
     try {
-      await this.invokeCommand('cancel_app_update');
+      await this.invokeWithNotification('cancel_app_update', undefined, {
+        errorKey: 'updates.cancelFailed',
+      });
       this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
@@ -173,7 +179,6 @@ export class AppUpdaterService extends TauriBaseService {
       await this.syncUpdateStatus();
     } catch (error) {
       console.error('Failed to cancel app update:', error);
-      this.notificationService.showError(this.translate.instant('updates.cancelFailed'));
     }
   }
 
@@ -190,7 +195,6 @@ export class AppUpdaterService extends TauriBaseService {
 
       await this.invokeWithNotification('apply_app_update', undefined, {
         errorKey: 'updates.restartFailed',
-        showSuccess: false,
       });
     } catch (error) {
       console.error('Failed to apply update and restart:', error);

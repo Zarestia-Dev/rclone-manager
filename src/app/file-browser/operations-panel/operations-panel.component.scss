@@ -26,8 +26,8 @@
         font-size: var(--font-size-xxs);
         font-weight: 600;
         background: var(--primary-color);
-        color: white;
-        border-radius: var(--radius-lg);
+        color: var(--accent-fg-color);
+        border-radius: var(--radius-circle);
       }
     }
   }
@@ -44,6 +44,7 @@
     padding: var(--space-xs) var(--space-sm);
     border-top: 1px solid var(--border-color);
     transition: var(--transition-fast);
+    cursor: pointer;
 
     &:first-child {
       border-top: none;
@@ -90,19 +91,7 @@
         height: var(--icon-size-sm);
         font-size: var(--icon-size-sm);
         color: var(--dim-color);
-      }
-
-      .action-btn {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
         flex-shrink: 0;
-        opacity: 0.4;
-        transition: var(--transition-fast);
-
-        &:hover {
-          opacity: 1;
-        }
       }
     }
 
@@ -115,14 +104,14 @@
       .stats-text {
         font-size: var(--font-size-xs);
         color: var(--dim-color);
-      }
 
-      .stats-text.success {
-        color: var(--primary-color);
-      }
+        &.success {
+          color: var(--success-color);
+        }
 
-      .stats-text.error {
-        color: var(--warn-color);
+        &.error {
+          color: var(--warn-color);
+        }
       }
     }
   }
@@ -130,7 +119,8 @@
 
 ::ng-deep .job-details-menu {
   max-width: 400px;
-  background: var(--window-bg-color);
+  background: var(--popover-bg-color);
+  color: var(--window-fg-color);
   box-shadow: var(--shadow-popover);
   border-radius: var(--radius-md);
   overflow: auto;
@@ -146,15 +136,15 @@
     padding-bottom: var(--space-xs);
 
     mat-icon {
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
       color: var(--primary-color);
     }
 
     .detail-title {
       font-weight: 700;
-      font-size: 14px;
+      font-size: var(--font-size-sm);
       color: var(--window-fg-color);
     }
   }
@@ -162,19 +152,18 @@
   .detail-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-xxs);
 
     .detail-label {
-      font-size: 10px;
+      font-size: var(--font-size-xxs);
       font-weight: 600;
       color: var(--dim-color);
       text-transform: uppercase;
       letter-spacing: 0.8px;
     }
 
-    .path-text,
     .value {
-      font-size: 13px;
+      font-size: var(--font-size-sm);
       color: var(--window-fg-color);
       word-break: break-all;
       font-weight: 500;
@@ -183,14 +172,14 @@
 
     &.error-item {
       grid-column: 1 / -1;
-      margin-top: 8px;
+      margin-top: var(--space-xs);
       position: relative;
 
       .error-container {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 8px;
+        gap: var(--space-xs);
 
         .error-text {
           display: flex;
@@ -199,24 +188,24 @@
 
           .detail-label {
             color: var(--warn-color);
-            margin-bottom: 4px;
+            margin-bottom: var(--space-xxs);
           }
 
           .errors-list {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xxs);
             max-height: 120px;
             overflow-y: auto;
-            padding-right: 4px;
+            padding-right: var(--space-xxs);
 
             .error-entry {
               color: var(--warn-color);
               word-break: break-all;
-              padding: 6px 8px;
-              border-radius: 6px;
+              padding: var(--space-xxs) var(--space-xs);
+              border-radius: var(--radius-xs);
               background: rgba(var(--window-fg-color-rgb), 0.04);
-              font-size: 12px;
+              font-size: var(--font-size-xs);
               line-height: 1.4;
             }
           }
@@ -224,16 +213,14 @@
 
         .copy-error-btn {
           transform: scale(0.85);
-          margin: -8px -8px 0 0;
-          color: var(--text-color-secondary);
+          margin: calc(-1 * var(--space-xs)) calc(-1 * var(--space-xs)) 0 0;
+          color: var(--dim-color);
           opacity: 0.6;
-          transition:
-            opacity 0.2s ease,
-            color 0.2s ease;
+          transition: var(--transition-fast);
 
           &:hover {
             opacity: 1;
-            color: var(--text-color);
+            color: var(--window-fg-color);
           }
         }
       }
@@ -261,17 +248,17 @@
   .transferring-files-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-xxs);
     max-height: 120px;
     overflow: auto;
-    padding-right: 4px;
-    margin-top: 4px;
+    padding-right: var(--space-xxs);
+    margin-top: var(--space-xxs);
   }
 
   .transferring-file-entry {
     display: block;
-    padding: 6px 8px;
-    border-radius: 6px;
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-xs);
     background: rgba(var(--window-fg-color-rgb), 0.04);
     word-break: break-word;
   }
@@ -283,32 +270,32 @@
   .uploaded-files-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-xxs);
     max-height: 180px;
     overflow: auto;
-    padding-right: 4px;
+    padding-right: var(--space-xxs);
   }
 
   .uploaded-file-entry {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    gap: var(--space-xs);
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-xs);
     background: rgba(var(--window-fg-color-rgb), 0.04);
     word-break: break-all;
 
     .file-info {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-xs);
       flex: 1;
       overflow: hidden;
       min-width: 0;
 
       .file-name {
-        font-size: 13px;
+        font-size: var(--font-size-sm);
         color: var(--window-fg-color);
         white-space: nowrap;
         overflow: hidden;
@@ -316,7 +303,7 @@
       }
 
       .file-size {
-        font-size: 11px;
+        font-size: var(--font-size-xxs);
         color: var(--dim-color);
         font-weight: 500;
         flex-shrink: 0;
@@ -330,15 +317,14 @@
       .file-info {
         .file-name {
           color: var(--warn-color);
-          font-weight: 500;
         }
       }
 
       .error-icon {
         color: var(--warn-color);
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
         flex-shrink: 0;
       }
     }

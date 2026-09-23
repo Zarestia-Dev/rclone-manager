@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { ExportModalData, ExportType, BackupExportOption } from '@app/types';
@@ -25,7 +26,7 @@ import {
 } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { MatRadioModule } from '@angular/material/radio';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -35,6 +36,9 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
   remotes: 'cloud',
   external: 'file-export',
   alerts: 'bell',
+  workflows: 'workflow',
+  templates: 'bookmark',
+  quick_runs: 'quick-run',
 };
 
 // Maps specific category IDs to their translation key roots
@@ -44,11 +48,15 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
   connections: 'modals.export.categories.connections',
   remotes: 'modals.export.categories.remotes',
   alerts: 'modals.export.categories.alerts',
+  workflows: 'modals.export.categories.workflows',
+  templates: 'modals.export.categories.templates',
+  quick_runs: 'modals.export.categories.quickRuns',
 };
 
 // Maps ExportType string values to option IDs used in the UI
 const EXPORT_TYPE_TO_ID: Record<string, string> = {
   All: 'full',
+  FullBackup: 'full',
   Settings: 'settings',
   SpecificRemote: 'specific_remote',
 };
@@ -65,8 +73,9 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatButtonModule,
     MatSlideToggleModule,
     MatCheckboxModule,
+    MatExpansionModule,
     TranslatePipe,
-    MatRadioModule,
+    AlertBannerComponent,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -92,7 +101,12 @@ export class ExportModalComponent implements OnInit {
   readonly isExporting = signal(false);
   readonly userNote = signal('');
   readonly exportOptions = signal<BackupExportOption[]>([]);
-  readonly includeSecrets = signal(false);
+  readonly isTypeMenuExpanded = signal(false);
+
+  readonly selectedOptionDetails = computed(
+    () => this.exportOptions().find(o => o.id === this.selectedOption()) ?? this.exportOptions()[0]
+  );
+  readonly includeSecrets = computed(() => this.withPassword());
 
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
@@ -100,7 +114,8 @@ export class ExportModalComponent implements OnInit {
     const hasValidPassword = !this.withPassword() || !!this.password().trim();
     const hasRemoteSelected =
       this.selectedOption() !== 'specific_remote' || !!this.selectedRemoteName().trim();
-    return hasPath && hasValidPassword && hasRemoteSelected;
+    const hasProfiles = !this.shouldShowProfileSelection() || this.selectedProfiles().length > 0;
+    return hasPath && hasValidPassword && hasRemoteSelected && hasProfiles;
   });
 
   readonly showSpecificRemoteSection = computed(() => this.selectedOption() === 'specific_remote');
@@ -123,9 +138,7 @@ export class ExportModalComponent implements OnInit {
       if (profilesList.status === 'fulfilled') {
         const profiles = profilesList.value;
         this.availableProfiles.set(profiles);
-        // Pre-select "default" if present, otherwise first available
-        const preselect = profiles.includes('default') ? 'default' : profiles[0];
-        if (preselect) this.selectedProfiles.set([preselect]);
+        this.selectedProfiles.set([...profiles]);
       }
 
       const backendCategories = categoriesList.status === 'fulfilled' ? categoriesList.value : [];
@@ -149,22 +162,25 @@ export class ExportModalComponent implements OnInit {
       },
     ];
 
-    // Group alerts
-    const hasAlerts = categories.some(c => c.id.startsWith('alerts/'));
-    if (hasAlerts) {
-      const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
-      options.push({
-        id: 'alerts',
-        label: translationRoot ? `${translationRoot}.label` : 'Alerts',
-        description: translationRoot ? `${translationRoot}.description` : 'Alert rules and actions',
-        icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
-        categoryType: 'subsettings',
-        isTranslationKey: !!translationRoot,
-      });
-    }
-
+    let alertsAdded = false;
     for (const cat of categories) {
-      if (cat.id.startsWith('alerts/')) continue;
+      if (cat.id.startsWith('alerts/')) {
+        if (!alertsAdded) {
+          alertsAdded = true;
+          const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
+          options.push({
+            id: 'alerts',
+            label: translationRoot ? `${translationRoot}.label` : 'Alerts',
+            description: translationRoot
+              ? `${translationRoot}.description`
+              : 'Alert rules and actions',
+            icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
+            categoryType: 'subsettings',
+            isTranslationKey: !!translationRoot,
+          });
+        }
+        continue;
+      }
 
       const translationRoot = CATEGORY_TRANSLATION_MAP[cat.id];
       const hasTranslation = !!translationRoot;
@@ -179,16 +195,16 @@ export class ExportModalComponent implements OnInit {
         categoryType: cat.categoryType,
         isTranslationKey: hasTranslation,
       });
-    }
 
-    if (categories.some(c => c.id === 'remotes')) {
-      options.push({
-        id: 'specific_remote',
-        label: 'modals.export.singleRemote',
-        description: 'modals.export.singleRemoteDesc',
-        icon: 'hard-drive',
-        isTranslationKey: true,
-      });
+      if (cat.id === 'remotes') {
+        options.push({
+          id: 'specific_remote',
+          label: 'modals.export.singleRemote',
+          description: 'modals.export.singleRemoteDesc',
+          icon: 'hard-drive',
+          isTranslationKey: true,
+        });
+      }
     }
 
     this.exportOptions.set(options);
@@ -214,11 +230,6 @@ export class ExportModalComponent implements OnInit {
   }
 
   private initializeFromData(): void {
-    if (this.data?.remoteName) {
-      this.selectedOption.set('specific_remote');
-      this.selectedRemoteName.set(this.data.remoteName);
-    }
-
     if (this.data?.defaultExportType) {
       const type = this.data.defaultExportType;
       let id: string;
@@ -232,10 +243,19 @@ export class ExportModalComponent implements OnInit {
 
       this.selectedOption.set(id);
     }
+
+    if (this.data?.remoteName) {
+      this.selectedOption.set('specific_remote');
+      this.selectedRemoteName.set(this.data.remoteName);
+    }
   }
 
   @HostListener('document:keydown.escape')
   close(): void {
+    if (this.isTypeMenuExpanded()) {
+      this.isTypeMenuExpanded.set(false);
+      return;
+    }
     if (!this.isExporting()) {
       this.dialogRef.close(false);
     }
@@ -301,6 +321,18 @@ export class ExportModalComponent implements OnInit {
     this.showPassword.update(v => !v);
   }
 
+  toggleTypeMenu(): void {
+    if (!this.isExporting()) {
+      this.isTypeMenuExpanded.update(v => !v);
+    }
+  }
+
+  selectOption(optionId: string): void {
+    if (this.isExporting()) return;
+    this.onExportOptionChange(optionId);
+    this.isTypeMenuExpanded.set(false);
+  }
+
   onExportOptionChange(optionId: string): void {
     this.selectedOption.set(optionId);
     if (optionId !== 'specific_remote') this.selectedRemoteName.set('');
@@ -311,9 +343,6 @@ export class ExportModalComponent implements OnInit {
     if (!enabled) {
       this.password.set('');
       this.showPassword.set(false);
-      this.includeSecrets.set(false);
-    } else {
-      this.includeSecrets.set(true);
     }
   }
 

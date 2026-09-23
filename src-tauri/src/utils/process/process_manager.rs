@@ -138,3 +138,25 @@ pub fn kill_all_rclone_processes(api_port: u16) -> Result<(), String> {
     let _ = kill_processes_on_port(api_port);
     Ok(())
 }
+
+/// Check if a local TCP port is already bound / occupied.
+#[must_use]
+pub fn is_port_in_use(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
+/// Find the next available TCP port starting from `start_port`.
+#[must_use]
+pub fn find_next_available_port(start_port: u16) -> u16 {
+    for port in start_port..=65535 {
+        if !is_port_in_use(port) {
+            return port;
+        }
+    }
+    for port in 1024..start_port {
+        if !is_port_in_use(port) {
+            return port;
+        }
+    }
+    start_port
+}

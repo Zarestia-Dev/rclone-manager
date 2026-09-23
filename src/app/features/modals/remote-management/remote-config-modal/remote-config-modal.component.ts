@@ -7,16 +7,14 @@ import {
   inject,
   signal,
   afterNextRender,
-  viewChild,
 } from '@angular/core';
-import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
@@ -29,7 +27,6 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
-import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
   RemoteConfigStateService,
@@ -37,12 +34,15 @@ import {
 } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
 import { RcloneValueMapperService } from '../../../../services/remote/rclone-value-mapper.service';
+import { retargetProfilesRemote } from '../../../../services/remote/utils/remote-config.utils';
 import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
   LINKED_PROFILE_TYPES,
   PROFILE_ICONS,
   EditTarget,
+  TemplateCategory,
+  FlagType,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
@@ -50,6 +50,7 @@ import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -61,7 +62,6 @@ import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-temp
     MatButtonModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatInputModule,
     MatExpansionModule,
     MatSidenavModule,
     RemoteConfigStepComponent,
@@ -90,10 +90,8 @@ export class RemoteConfigModalComponent {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
     DialogData | undefined;
-  readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -117,52 +115,14 @@ export class RemoteConfigModalComponent {
     },
   ] as const;
 
-  /**
-   * Sections currently visible in the remote-edit view.
-   *
-   * ⚠️ Known anti-pattern: this computed reads 6 internal computeds of the
-   * `RemoteConfigStepComponent` via `viewChild()`, which breaks OnPush
-   * isolation between parent and child and creates a one-cycle CD lag (the
-   * viewChild is `undefined` on first render).
-   *
-   * The proper fix is to move the underlying `showNameField`, `providerField`,
-   * `showAdvancedOptions`, `advancedFields`, `providerReady` computeds into
-   * `RemoteConfigStateService` (which already owns `showAdvancedOptions()`)
-   * and read them from there. Deferred to a follow-up PR because the step
-   * component currently computes them locally from its `remoteFields` input.
-   */
-  readonly visibleSections = computed(() => {
-    const step = this.configStep();
-    if (!step) return new Set<string>();
-
-    const visible = new Set<string>();
-    if (step.showNameField() || step.showAdvancedToggle()) visible.add('section-general');
-    if (step.providerField()) visible.add('section-auth');
-    if (step.showAdvancedOptions() && step.advancedFields().length > 0 && step.providerReady()) {
-      visible.add('section-advanced');
-    }
-    return visible;
-  });
+  readonly visibleSections = this.state.remoteEditVisibleSections;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() =>
+      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef)
+    );
     this.initializeState();
-  }
-
-  private setupResponsiveLayout(): void {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const update = (matches: boolean): void => {
-      this.sidebarMode.set(matches ? 'side' : 'over');
-      if (!matches) {
-        this.isSidebarOpen.set(false);
-      }
-    };
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   private async initializeState(): Promise<void> {
@@ -244,7 +204,6 @@ export class RemoteConfigModalComponent {
   );
 
   private async handleCreateMode(): Promise<{ success: boolean }> {
-    this.state.PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
@@ -273,10 +232,10 @@ export class RemoteConfigModalComponent {
     const remoteName = this.state.currentRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    if (this.state.editTarget() === 'remote') {
+    if (this.state.editTarget() === 'remote' || this.state.editTarget() === null) {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
       if (this.requiresInteractiveFlow()) {
-        const finalConfig = this.buildFinalConfig(true);
+        const finalConfig = this.buildFinalConfig();
         this.orchestrator.setPendingConfig(remoteData, finalConfig);
         const completed = await this.orchestrator.startInteractiveCreation(
           remoteData,
@@ -286,24 +245,37 @@ export class RemoteConfigModalComponent {
         return { success: completed };
       }
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-      return { success: true };
+      let profileSuccess = true;
+      if (this.state.editTarget() === null) {
+        profileSuccess = await this.state.saveRemoteProfiles(remoteName);
+      }
+      return { success: profileSuccess };
     }
 
     const target = this.state.editTarget();
-    if (target === 'remote' || target === null) {
+    if (!target || target === 'remote') {
       return { success: false };
     }
     const success = await this.state.saveRemoteProfiles(remoteName, target);
     return { success };
   }
 
-  private buildFinalConfig(empty = false): RemoteConfigSections {
+  private buildFinalConfig(): RemoteConfigSections {
     this.saveCurrentStepProfile();
-    const p = this.state.profiles();
+    let p = this.state.profiles();
+
+    if (this.state.cloneTarget()) {
+      const cloneFrom = this.dialogData?.cloneFrom;
+      const targetName = this.state.remoteForm.get('name')?.value || this.state.currentRemoteName();
+      if (cloneFrom && targetName && cloneFrom !== targetName) {
+        p = retargetProfilesRemote(p, cloneFrom, targetName);
+      }
+    }
+
     const sections = Object.fromEntries(
       Object.entries(REMOTE_CONFIG_KEYS).map(([type, key]) => [
         key,
-        empty ? {} : p[type as keyof typeof p],
+        p[type as keyof typeof p] ?? {},
       ])
     ) as unknown as RemoteConfigSections;
     return { ...sections, showOnTray: true };
@@ -311,10 +283,13 @@ export class RemoteConfigModalComponent {
 
   saveCurrentStepProfile(): void {
     const editTargetValue = this.state.editTarget();
+    const stepIdx = this.state.currentStep() - 1;
     const type =
       editTargetValue && editTargetValue !== 'remote'
         ? editTargetValue
-        : this.state.stepConfigs()[this.state.currentStep() - 1]?.type;
+        : stepIdx >= 0
+          ? this.state.stepConfigs()[stepIdx]?.type
+          : undefined;
     if (type && type !== 'remote') this.state.saveCurrentProfile(type);
   }
 
@@ -323,7 +298,7 @@ export class RemoteConfigModalComponent {
     this.state.interactiveFlowState.update(s => ({
       ...s,
       isProcessing: true,
-      answer: String(answer),
+      answer: answer != null ? String(answer) : '',
     }));
     void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
       this.closeIfFlowComplete();
@@ -349,7 +324,7 @@ export class RemoteConfigModalComponent {
 
   scrollToSection(sectionId: string): void {
     this.hostEl.nativeElement
-      .querySelector('#' + sectionId)
+      .querySelector('#' + CSS.escape(sectionId))
       ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
@@ -415,53 +390,37 @@ export class RemoteConfigModalComponent {
 
   readonly currentValues = computed(() => {
     const rcf = this.state.remoteConfigForm;
-    const flagFields = this.state.dynamicFlagFields();
-
-    const getCleanOptions = (
-      configKey: string,
-      flagType: 'vfs' | 'mount' | 'backend' | 'filter'
-    ): Record<string, unknown> => {
+    const getCleanOptions = (configKey: string, flagType: FlagType): Record<string, unknown> => {
       const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
-      return this.valueMapper.cleanData(opts, flagFields[flagType] ?? []);
+      const fields = this.state.getDynamicFlagFields(flagType);
+      return this.valueMapper.cleanData(opts, fields);
     };
 
     const remoteRaw = this.state.remoteForm.getRawValue();
-    const cleanRemoteData = this.state.cleanFormData(remoteRaw) as Record<string, unknown>;
-    delete cleanRemoteData['name'];
-    delete cleanRemoteData['type'];
+    const remoteClean = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
+    const cleanRemoteData: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(remoteClean)) {
+      if (k !== 'name' && k !== 'type') cleanRemoteData[k] = v;
+    }
 
-    return {
+    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
       vfs: getCleanOptions('vfsConfig', 'vfs'),
       mount: getCleanOptions('mountConfig', 'mount'),
       backend: getCleanOptions('backendConfig', 'backend'),
       filter: getCleanOptions('filterConfig', 'filter'),
       remote: cleanRemoteData,
     };
+
+    const activeFlag = this.state.activeFlagType();
+    if (activeFlag && !result[activeFlag]) {
+      result[activeFlag] = getCleanOptions(`${activeFlag}Config`, activeFlag);
+    }
+
+    return result;
   });
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
-    const { values } = event;
-    const patchGroupOptions = (configKey: string, opts?: Record<string, unknown>): void => {
-      if (!opts) return;
-      const group = this.state.remoteConfigForm.get(`${configKey}.options`) as FormGroup | null;
-      if (group) {
-        for (const [k, v] of Object.entries(opts)) {
-          if (!group.contains(k)) {
-            group.addControl(k, new FormControl(v));
-          } else {
-            group.get(k)?.setValue(v);
-          }
-        }
-      }
-    };
-
-    if (values.vfs) patchGroupOptions('vfsConfig', values.vfs);
-    if (values.mount) patchGroupOptions('mountConfig', values.mount);
-    if (values.backend) patchGroupOptions('backendConfig', values.backend);
-    if (values.filter) patchGroupOptions('filterConfig', values.filter);
-    if (values.remote) {
-      this.state.remoteForm.patchValue(values.remote, { emitEvent: false });
-    }
+    this.state.applyTemplate(event.values);
     const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
     this.notificationService.showSuccess(msg);
   }

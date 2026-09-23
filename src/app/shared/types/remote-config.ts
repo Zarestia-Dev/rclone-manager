@@ -448,6 +448,7 @@ export interface Entry {
   Path: string;
   Size: number;
   Starred?: boolean;
+  Metadata?: Record<string, string>;
 }
 
 export interface LocalDrive {
@@ -485,6 +486,14 @@ export const RCLONE_PATH_KEYS = [
   'source',
   'path',
 ] as const;
+
+export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
+
+export const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
+
+export function isRclonePathKey(key: string): boolean {
+  return RCLONE_PATH_KEYS_SET.has(key);
+}
 
 export interface JobProfile {
   autoStart?: boolean;

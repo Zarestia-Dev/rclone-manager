@@ -23,7 +23,10 @@
   </div>
 
   <!-- Connection Status Indicator -->
-  @if (connectionService.status() === 'offline' || connectionService.status() === 'checking') {
+  @if (
+    !isMobile() &&
+    (connectionService.status() === 'offline' || connectionService.status() === 'checking')
+  ) {
     <button
       matIconButton
       (click)="connectionService.runInternetCheck()"

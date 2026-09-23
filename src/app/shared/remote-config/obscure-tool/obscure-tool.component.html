@@ -11,13 +11,14 @@
       <section class="input-section">
         <p class="description">{{ 'wizards.obscure.description' | translate }}</p>
 
-        <mat-form-field class="full-width">
+        <mat-form-field>
           <mat-label>{{ 'wizards.obscure.clearPlaceholder' | translate }}</mat-label>
           <input
             matInput
             [type]="hidePassword() ? 'password' : 'text'"
             [ngModel]="clearText()"
             (ngModelChange)="clearText.set($event)"
+            [ngModelOptions]="{ standalone: true }"
             [placeholder]="'wizards.obscure.clearPlaceholderText' | translate"
             (keyup.enter)="clearText().trim() && performObscure()"
           />
@@ -80,7 +81,7 @@
 
           @if (sensitiveFields().length > 0) {
             <div class="apply-to-field-section">
-              <mat-form-field class="full-width">
+              <mat-form-field>
                 <mat-label>{{ 'wizards.obscure.applyToField' | translate }}</mat-label>
                 <mat-select [formControl]="targetFieldCtrl">
                   @for (field of sensitiveFields(); track field.key) {
@@ -100,7 +101,7 @@
               </mat-form-field>
               <button
                 matButton="elevated"
-                class="accent full-width"
+                class="accent"
                 [disabled]="!targetFieldCtrl.value"
                 (click)="applyToField()"
               >

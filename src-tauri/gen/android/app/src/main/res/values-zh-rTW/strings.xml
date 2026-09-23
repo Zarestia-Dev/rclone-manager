@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Rclone SAF 儲存服務</string>
+    <string name="saf_keepalive_text">背景檔案串流傳輸進行中</string>
+    <string name="saf_keepalive_channel_name">Rclone 儲存服務</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">正在後台執行</string>
+    <string name="keepalive_channel_name">RClone 後台服務</string>
+    <string name="keepalive_channel_desc">保持作用中掛載、傳輸與後台任務執行</string>
+</resources>

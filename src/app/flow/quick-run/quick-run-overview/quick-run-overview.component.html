@@ -101,7 +101,15 @@
                             type="button"
                             class="app-pill interactive"
                             [class.is-selected]="selectedRemoteFilter() === group.remoteName"
-                            [class.p-primary]="selectedRemoteFilter() === group.remoteName"
+                            [class.p-primary]="
+                              selectedRemoteFilter() === group.remoteName && !group.isMissing
+                            "
+                            [class.p-warn]="group.isMissing"
+                            [attr.title]="
+                              group.isMissing
+                                ? ('flow.quickRun.badges.missingRemote' | translate)
+                                : group.remoteName
+                            "
                             (click)="setRemoteFilter(group.remoteName)"
                           >
                             <mat-icon [svgIcon]="group.icon"></mat-icon>
@@ -117,7 +125,6 @@
                           <app-quick-run-card
                             [quickRun]="qr"
                             [isRunning]="isRunning(qr.id)"
-                            variant="overview"
                             (selectedChange)="onSelectQuickRunById($event)"
                             (startRun)="onStartQuickRun($event)"
                             (stopRun)="onStopQuickRun($event)"
@@ -199,7 +206,6 @@
                     [expanded]="panelOpenStates()['jobs']"
                     (expandedChange)="setPanelOpenState('jobs', $event)"
                     [showFilterChips]="true"
-                    (jobClick)="handleJobClick($event)"
                     (stopJob)="handleStopJob($event)"
                   ></app-jobs-overview-panel>
                 }

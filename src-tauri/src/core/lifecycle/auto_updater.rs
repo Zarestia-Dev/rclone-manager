@@ -26,7 +26,7 @@ pub fn init_auto_updater(app: AppHandle) {
         UPDATE_CHECK_INTERVAL.as_secs() / 3600
     );
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         // Run initial check immediately on startup
         run_update_checks(&app).await;
 

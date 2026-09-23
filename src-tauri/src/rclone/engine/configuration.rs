@@ -1,5 +1,5 @@
 use log::{error, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::security::SafeEnvironmentManager,
@@ -30,9 +30,7 @@ impl RcApiEngine {
                 error!("Rclone configuration validation failed: {e}");
                 self.apply_config_error(&e);
                 let status: EngineStatus = (&self.phase).into();
-                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, status) {
-                    error!("Failed to emit validation error event: {emit_err}");
-                }
+                crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, status);
                 false
             }
         }

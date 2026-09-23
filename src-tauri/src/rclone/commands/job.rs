@@ -51,6 +51,10 @@ pub struct JobMetadata {
     pub quick_run_id: Option<String>,
     #[serde(default)]
     pub execute_id: Option<String>,
+    #[serde(default)]
+    pub workflow_id: Option<String>,
+    #[serde(default)]
+    pub node_id: Option<String>,
 }
 
 impl JobMetadata {
@@ -74,6 +78,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -104,6 +110,18 @@ impl JobMetadata {
     #[must_use]
     pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
         self.quick_run_id = quick_run_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_workflow_id(mut self, workflow_id: Option<String>) -> Self {
+        self.workflow_id = workflow_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_node_id(mut self, node_id: Option<String>) -> Self {
+        self.node_id = node_id;
         self
     }
 
@@ -146,6 +164,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -176,6 +196,8 @@ impl JobMetadata {
             parent_job_id: None,
             quick_run_id: None,
             execute_id: None,
+            workflow_id: None,
+            node_id: None,
         }
     }
 
@@ -297,7 +319,7 @@ pub async fn submit_job_with_options(
             .map_err(|e| e.to_string())?;
     } else {
         let app = app.clone();
-        tauri::async_runtime::spawn(async move {
+        crate::utils::spawn(async move {
             let _ = monitor_job(backend_name, metadata, jobid, app).await;
         });
     }
@@ -333,14 +355,7 @@ async fn initialize_and_register_job(
     let backend_name = backend_manager.get_active().await.name;
 
     if !metadata.no_cache {
-        add_job_to_cache(
-            &backend_manager.job_cache,
-            jobid,
-            &metadata,
-            &backend_name,
-            Some(app),
-        )
-        .await;
+        add_job_to_cache(&backend_manager.job_cache, jobid, &metadata, &backend_name).await;
         if metadata.job_type != JobType::Mount {
             notify(app, metadata.started_event(backend_name.clone()));
         }
@@ -396,10 +411,9 @@ async fn add_job_to_cache(
     jobid: u64,
     metadata: &JobMetadata,
     backend_name: &str,
-    app: Option<&AppHandle>,
 ) {
     job_cache
-        .create_job(jobid, metadata.clone(), backend_name.to_string(), app)
+        .create_job(jobid, metadata.clone(), backend_name.to_string())
         .await;
 }
 
@@ -618,12 +632,7 @@ async fn persist_final_job_state(
     }
 
     let _ = job_cache
-        .complete_job(
-            jobid,
-            outcome.success,
-            outcome.error_msg.clone(),
-            if outcome.stopped { None } else { Some(app) },
-        )
+        .complete_job(jobid, outcome.success, outcome.error_msg.clone())
         .await;
 }
 
@@ -650,14 +659,10 @@ async fn update_associated_automation(
 
     if outcome.success {
         automations_cache
-            .update_automation(
-                &automation.id,
-                |t| {
-                    t.mark_success();
-                    t.next_run = next_run;
-                },
-                Some(app),
-            )
+            .update_automation(&automation.id, |t| {
+                t.mark_success();
+                t.next_run = next_run;
+            })
             .await
             .map_err(RcloneError::JobError)?;
 
@@ -673,14 +678,10 @@ async fn update_associated_automation(
         );
     } else if outcome.stopped {
         automations_cache
-            .update_automation(
-                &automation.id,
-                |t| {
-                    t.mark_stopped();
-                    t.next_run = next_run;
-                },
-                Some(app),
-            )
+            .update_automation(&automation.id, |t| {
+                t.mark_stopped();
+                t.next_run = next_run;
+            })
             .await
             .map_err(RcloneError::JobError)?;
 
@@ -697,14 +698,10 @@ async fn update_associated_automation(
     } else {
         let err = outcome.error_msg.clone().unwrap_or_default();
         automations_cache
-            .update_automation(
-                &automation.id,
-                |t| {
-                    t.mark_failure(err.clone());
-                    t.next_run = next_run;
-                },
-                Some(app),
-            )
+            .update_automation(&automation.id, |t| {
+                t.mark_failure(err.clone());
+                t.next_run = next_run;
+            })
             .await
             .map_err(RcloneError::JobError)?;
 
@@ -862,10 +859,7 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
         }
     }
 
-    job_cache
-        .stop_job(jobid, Some(&app))
-        .await
-        .map_err(|e| e.clone())?;
+    job_cache.stop_job(jobid).await.map_err(|e| e.clone())?;
 
     log_operation(
         LogLevel::Info,
@@ -908,7 +902,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     let jobs = job_cache.get_jobs().await;
     for job in jobs {
         if job.group == group && job.status == JobStatus::Running {
-            let _ = job_cache.stop_job(job.jobid, Some(&app)).await;
+            let _ = job_cache.stop_job(job.jobid).await;
         }
     }
 
@@ -978,14 +972,7 @@ pub async fn submit_batch_job(
     let backend_name = backend_manager.get_active_name().await;
 
     if !metadata.no_cache {
-        add_job_to_cache(
-            &backend_manager.job_cache,
-            jobid,
-            &metadata,
-            &backend_name,
-            Some(&app),
-        )
-        .await;
+        add_job_to_cache(&backend_manager.job_cache, jobid, &metadata, &backend_name).await;
 
         let redacted_payload = redact_value(&payload, &app);
         log_operation(
@@ -1003,7 +990,7 @@ pub async fn submit_batch_job(
     }
 
     let backend_name_for_monitor = backend_name;
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = monitor_job(backend_name_for_monitor, metadata, jobid, app).await;
     });
 
@@ -1032,9 +1019,7 @@ pub async fn register_preparing_job(
     )
     .with_origin(origin);
 
-    job_cache
-        .create_job(jobid, metadata, backend_name, Some(&app))
-        .await;
+    job_cache.create_job(jobid, metadata, backend_name).await;
 
     let stats = json!({
         "totalBytes": total_bytes,

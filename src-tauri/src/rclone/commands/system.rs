@@ -1,6 +1,6 @@
-use log::{debug, error, info};
+use log::{debug, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
     core::bridge,
@@ -81,8 +81,7 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| crate::localized_error!("backendErrors.system.unlockFailed", "error" => e))?;
 
-    app.emit(RCLONE_CONFIG_UNLOCKED, ())
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    crate::core::bridge::emit(RCLONE_CONFIG_UNLOCKED, ());
 
     info!("Remote config unlocked");
     Ok(())
@@ -105,7 +104,7 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
     let transport = app.state::<RcloneState>().transport.clone();
     match transport.rpc(core::QUIT, None).await {
         Ok(_) => info!("Rclone engine quit request sent"),
-        Err(e) => error!("Failed to quit rclone engine: {e}"),
+        Err(e) => log::error!("Failed to quit rclone engine: {e}"),
     }
 
     Ok(())
@@ -120,11 +119,18 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
 pub async fn cancel_oauth(app: AppHandle) -> Result<(), String> {
     info!("Cancelling in-progress OAuth flow");
     let transport = app.state::<RcloneState>().transport.clone();
-    transport
-        .rpc(config::OAUTHSTOP, None)
-        .await
-        .map(|_| ())
-        .map_err(|e| format!("Failed to stop OAuth server: {e}"))
+    match transport.rpc(config::OAUTHSTOP, None).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("no oauth authentication is in progress") {
+                debug!("OAuth stop called when no OAuth flow was in progress; ignoring");
+                Ok(())
+            } else {
+                Err(format!("Failed to stop OAuth server: {err_str}"))
+            }
+        }
+    }
 }
 
 #[bridge]
@@ -147,9 +153,7 @@ pub async fn bandwidth_limit(
 
     debug!("Bandwidth limit set: {response_data:?}");
 
-    if let Err(e) = app.emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone()) {
-        error!("Failed to emit bandwidth limit changed event: {e}");
-    }
+    crate::core::bridge::emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone());
 
     Ok(response_data)
 }
@@ -163,8 +167,7 @@ pub async fn unlock_rclone_config(app: AppHandle, password: String) -> Result<()
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    app.emit(RCLONE_CONFIG_UNLOCKED, ())
-        .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;
+    crate::core::bridge::emit(RCLONE_CONFIG_UNLOCKED, ());
 
     Ok(())
 }

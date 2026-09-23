@@ -80,7 +80,7 @@ mod tests {
             let addr = listener.local_addr().unwrap();
             let (tx, rx) = tokio::sync::mpsc::channel(10);
 
-            tokio::spawn(async move {
+            crate::utils::spawn(async move {
                 let mut response_iter = responses.into_iter();
                 while let Ok((mut stream, _)) = listener.accept().await {
                     let mut buf = [0u8; 4096];

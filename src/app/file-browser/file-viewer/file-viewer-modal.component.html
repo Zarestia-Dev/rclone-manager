@@ -10,7 +10,7 @@
     </div>
   </div>
   <div class="header-actions">
-    @if (isMarkdownFile() && currentFileType() === 'text') {
+    @if (!data.isDirectUrl && isMarkdownFile() && currentFileType() === 'text') {
       <button
         matIconButton
         [attr.title]="
@@ -19,7 +19,6 @@
             : 'fileBrowser.fileViewer.showPreview'
           ) | translate
         "
-        class="header-button"
         (click)="toggleMarkdownPreview(); $event.stopPropagation()"
         [attr.aria-label]="
           (showMarkdownPreview()
@@ -33,12 +32,11 @@
     }
 
     <!-- Edit Actions -->
-    @if (currentFileType() === 'text') {
+    @if (!data.isDirectUrl && currentFileType() === 'text') {
       @if (isEditing()) {
         <button
           matIconButton
           [attr.title]="'fileBrowser.fileViewer.save' | translate"
-          class="header-button save-button"
           (click)="saveChanges(); $event.stopPropagation()"
           [disabled]="isSaving()"
           [attr.aria-label]="'fileBrowser.fileViewer.save' | translate"
@@ -52,7 +50,6 @@
         <button
           matIconButton
           [attr.title]="'fileBrowser.fileViewer.cancel' | translate"
-          class="header-button"
           (click)="cancelEditing(); $event.stopPropagation()"
           [disabled]="isSaving()"
           [attr.aria-label]="'fileBrowser.fileViewer.cancel' | translate"
@@ -63,7 +60,6 @@
         <button
           matIconButton
           [attr.title]="'fileBrowser.fileViewer.edit' | translate"
-          class="header-button"
           (click)="startEditing(); $event.stopPropagation()"
           [attr.aria-label]="'fileBrowser.fileViewer.edit' | translate"
         >
@@ -72,11 +68,10 @@
       }
     }
 
-    @if (currentFileType() === 'archive') {
+    @if (!data.isDirectUrl && currentFileType() === 'archive') {
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.extract' | translate"
-        class="header-button"
         [disabled]="isExtracting()"
         (click)="extractArchive(); $event.stopPropagation()"
         [attr.aria-label]="'fileBrowser.fileViewer.extract' | translate"
@@ -89,13 +84,12 @@
       </button>
     }
 
-    @if (!isHeadless()) {
+    @if (!data.isDirectUrl && !isHeadless()) {
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.openNativeTooltip' | translate"
-        class="header-button"
         [disabled]="isOpeningNative()"
-        (click)="openNativePdf(); $event.stopPropagation()"
+        (click)="openNativeFile(); $event.stopPropagation()"
         [attr.aria-label]="'fileBrowser.fileViewer.openNative' | translate"
       >
         @if (isOpeningNative()) {
@@ -110,7 +104,6 @@
       <button
         matIconButton
         [attr.title]="'fileBrowser.fileViewer.download' | translate: { name: fileName() }"
-        class="header-button"
         [disabled]="isDownloading()"
         (click)="download(); $event.stopPropagation()"
         [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: fileName() }"
@@ -125,7 +118,6 @@
     <button
       matIconButton
       [attr.title]="'fileBrowser.fileViewer.closeViewer' | translate"
-      class="header-button close-button"
       (click)="closeViewer.emit(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.closeViewer' | translate"
     >
@@ -150,23 +142,102 @@
       <!-- Empty placeholder to unmount content layout while loading new type -->
     }
     @case ('image') {
-      <img
-        [src]="currentUrl()"
-        [alt]="fileName()"
-        class="preview-content"
-        (load)="onLoadComplete()"
-        (error)="onLoadError()"
-      />
+      <div
+        class="image-viewer-container"
+        (wheel)="onImageWheel($event)"
+        (mousedown)="onImageMouseDown($event)"
+        (mousemove)="onImageMouseMove($event)"
+        (mouseup)="onImageMouseUp()"
+        (mouseleave)="onImageMouseUp()"
+        [style.cursor]="imageCursor()"
+      >
+        @if (currentUrl()) {
+          <img
+            [src]="currentUrl()"
+            [alt]="fileName()"
+            class="preview-content image-zoomable"
+            [style.transform]="imageTransform()"
+            (load)="onLoadComplete()"
+            (error)="onLoadError()"
+            draggable="false"
+          />
+        }
+
+        <!-- Floating Zoom Toolbar -->
+        <div
+          class="floating-zoom-toolbar"
+          (mousedown)="$event.stopPropagation()"
+          (wheel)="$event.stopPropagation()"
+        >
+          <button
+            type="button"
+            [attr.title]="'fileBrowser.fileViewer.zoomOut' | translate"
+            class="action-button"
+            (click)="zoomOut(); $event.stopPropagation()"
+            [disabled]="zoomLevel() <= 0.25"
+            [attr.aria-label]="'fileBrowser.fileViewer.zoomOut' | translate"
+          >
+            <mat-icon svgIcon="remove"></mat-icon>
+          </button>
+          <button
+            type="button"
+            matButton="text"
+            [attr.title]="'fileBrowser.fileViewer.resetZoom' | translate"
+            class="action-button zoom-percentage"
+            (click)="resetZoom(); $event.stopPropagation()"
+            [attr.aria-label]="'fileBrowser.fileViewer.resetZoom' | translate"
+          >
+            {{ zoomPercentage() }}
+          </button>
+          <button
+            type="button"
+            [attr.title]="'fileBrowser.fileViewer.zoomIn' | translate"
+            class="action-button"
+            (click)="zoomIn(); $event.stopPropagation()"
+            [disabled]="zoomLevel() >= 5"
+            [attr.aria-label]="'fileBrowser.fileViewer.zoomIn' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+          </button>
+        </div>
+      </div>
     }
     @case ('video') {
-      <video
-        [src]="currentUrl()"
-        controls
-        class="preview-content"
-        (loadeddata)="onLoadComplete()"
-        (error)="onLoadError()"
-        [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
-      ></video>
+      @if (isMobile() && !data.isDirectUrl) {
+        <div class="unsupported-container mobile-video-card">
+          <mat-icon
+            [svgIcon]="iconService.getIconForFileType('video')"
+            class="media-card-icon"
+            aria-hidden="true"
+          ></mat-icon>
+          <h3 class="media-card-title">{{ fileName() }}</h3>
+          @if (fileSize()) {
+            <p class="unsupported-subtext">{{ fileSize() | formatFileSize }}</p>
+          }
+          <button
+            matButton="filled"
+            class="accent"
+            [disabled]="isOpeningNative()"
+            (click)="openNativeFile()"
+          >
+            @if (isOpeningNative()) {
+              <mat-icon svgIcon="spinner"></mat-icon>
+            } @else {
+              <mat-icon svgIcon="play"></mat-icon>
+            }
+            <span>{{ 'fileBrowser.fileViewer.playVideo' | translate }}</span>
+          </button>
+        </div>
+      } @else {
+        <video
+          [src]="currentUrl()"
+          controls
+          class="preview-content"
+          (loadeddata)="onLoadComplete()"
+          (error)="onLoadError($event)"
+          [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
+        ></video>
+      }
     }
     @case ('audio') {
       <div class="audio-container">
@@ -204,10 +275,10 @@
             <p class="unsupported-subtext">{{ fileSize() | formatFileSize }}</p>
           }
           <button
-            mat-flat-button
+            matButton="filled"
             class="accent"
             [disabled]="isOpeningNative()"
-            (click)="openNativePdf()"
+            (click)="openNativeFile()"
           >
             @if (isOpeningNative()) {
               <mat-icon svgIcon="spinner"></mat-icon>
@@ -226,13 +297,18 @@
           (error)="onLoadError()"
         >
           <div class="unsupported-container">
-            <p>{{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}</p>
+            <div class="icon-wrapper">
+              <mat-icon svgIcon="application-pdf" aria-hidden="true"></mat-icon>
+            </div>
+            <p class="unsupported-text">
+              {{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}
+            </p>
             <p class="unsupported-subtext">{{ fileName() }}</p>
             <button
-              mat-stroked-button
+              matButton="outlined"
               class="accent"
               [disabled]="isOpeningNative()"
-              (click)="openNativePdf()"
+              (click)="openNativeFile()"
             >
               @if (isOpeningNative()) {
                 <mat-icon svgIcon="spinner"></mat-icon>
@@ -333,27 +409,68 @@
           <mat-icon svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
         </div>
         <p class="unsupported-text error">{{ 'common.error' | translate }}</p>
-        <p class="unsupported-subtext error-detail">{{ errorMessage() }}</p>
+        <p class="error-detail">{{ errorMessage() }}</p>
         <p class="unsupported-subtext">{{ fileName() }}</p>
+        @if (!data.isDirectUrl && !isHeadless()) {
+          <button
+            matButton="filled"
+            class="accent"
+            [disabled]="isOpeningNative()"
+            (click)="openNativeFile()"
+          >
+            @if (isOpeningNative()) {
+              <mat-icon svgIcon="spinner"></mat-icon>
+            } @else {
+              <mat-icon svgIcon="open-link"></mat-icon>
+            }
+            <span>{{ 'fileBrowser.fileViewer.openNative' | translate }}</span>
+          </button>
+        }
       </div>
     }
     @case ('binary') {
-      <div class="unsupported-container" role="status">
+      <div
+        class="unsupported-container"
+        [class.has-hex-dump]="hexDumpRows().length > 0"
+        role="status"
+      >
         <div class="icon-wrapper">
           <mat-icon
-            [svgIcon]="iconService.getIconForEntry(data.items[currentIndex()])"
+            [svgIcon]="
+              detectedSignature()?.format === 'pdf'
+                ? 'application-pdf'
+                : iconService.getIconForEntry(currentItem())
+            "
             aria-hidden="true"
           ></mat-icon>
         </div>
-        <p class="unsupported-text">{{ 'fileBrowser.fileViewer.binaryFile' | translate }}</p>
+        <p class="unsupported-text">
+          @if (detectedSignature(); as sig) {
+            {{ sig.label }}
+          } @else {
+            {{ 'fileBrowser.fileViewer.binaryFile' | translate }}
+          }
+        </p>
         <p class="unsupported-subtext">{{ fileName() }}</p>
+
+        @if (hexDumpRows().length > 0) {
+          <div class="hex-dump-container">
+            <div class="hex-dump-header">
+              <span>{{ 'fileBrowser.fileViewer.hexPreview' | translate }}</span>
+            </div>
+            <pre
+              class="hex-dump-content"
+            ><code>@for (row of hexDumpRows(); track row.offset) {<span class="hex-row"><span class="hex-offset">{{ row.offset }}</span>  <span class="hex-bytes">{{ row.hex }}</span>  <span class="hex-ascii">{{ row.ascii }}</span>
+</span>}</code></pre>
+          </div>
+        }
       </div>
     }
     @default {
       <div class="unsupported-container" role="status">
         <div class="icon-wrapper">
           <mat-icon
-            [svgIcon]="iconService.getIconForEntry(data.items[currentIndex()])"
+            [svgIcon]="iconService.getIconForEntry(currentItem())"
             aria-hidden="true"
           ></mat-icon>
         </div>
@@ -371,7 +488,7 @@
   @if (data.items.length > 1 && currentIndex() > 0) {
     <button
       matIconButton
-      class="nav-button prev"
+      class="nav-button"
       (click)="back(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.previousFile' | translate"
       [attr.aria-keyshortcuts]="'ArrowLeft'"
@@ -397,7 +514,7 @@
   @if (data.items.length > 1 && currentIndex() < data.items.length - 1) {
     <button
       matIconButton
-      class="nav-button next"
+      class="nav-button"
       (click)="next(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.nextFile' | translate"
       [attr.aria-keyshortcuts]="'ArrowRight'"

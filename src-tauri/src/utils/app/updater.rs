@@ -12,11 +12,11 @@ use crate::utils::{
     github_client,
 };
 use log::{debug, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_updater::UpdaterExt;
 
-fn emit_progress(app: &AppHandle, status: DownloadStatus) {
-    let _ = app.emit(
+fn emit_progress(status: DownloadStatus) {
+    crate::core::bridge::emit(
         APP_EVENT,
         serde_json::json!({ "status": "download_progress", "data": status }),
     );
@@ -25,12 +25,26 @@ fn emit_progress(app: &AppHandle, status: DownloadStatus) {
 #[bridge]
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();
+    let result = fetch_update_inner(&app, &channel, &updater_state).await;
+    if result.is_err() {
+        let mut data = updater_state.data.lock();
+        if data.state == UpdateState::Checking {
+            data.state = UpdateState::Idle;
+        }
+    }
+    result
+}
 
+async fn fetch_update_inner(
+    app: &AppHandle,
+    channel: &str,
+    updater_state: &AppUpdaterState,
+) -> Result<Option<UpdateInfo>> {
     {
         let mut data = updater_state.data.lock();
         if data.state == UpdateState::ReadyToRestart {
             if let Some(ref m) = data.last_metadata
-                && m.channel.as_deref() == Some(&channel)
+                && m.channel.as_deref() == Some(channel)
             {
                 return Ok(Some(UpdateInfo {
                     metadata: m.clone(),
@@ -49,7 +63,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
                     version: String::new(),
                     current_version: app.package_info().version.to_string(),
                     update_available: true,
-                    channel: Some(channel),
+                    channel: Some(channel.to_string()),
                     ..Default::default()
                 },
                 status: UpdateState::Downloading,
@@ -69,7 +83,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
     let Some(release) = releases
         .into_iter()
         .filter(|r| !r.draft)
-        .find(|r| is_release_for_channel(r, &channel))
+        .find(|r| is_release_for_channel(r, channel))
     else {
         info!("No suitable release found for channel: {channel}");
         updater_state.data.lock().state = UpdateState::Idle;
@@ -103,7 +117,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
         .on_before_exit(move || {
             let app = app_exit.clone();
             warn!("Shutting down for update installation...");
-            tauri::async_runtime::block_on(async move {
+            crate::utils::block_on(async move {
                 handle_shutdown(app).await;
             });
         })
@@ -122,7 +136,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
                 release_date: release.published_at,
                 release_url: Some(release.html_url),
                 update_available: true,
-                channel: Some(channel.clone()),
+                channel: Some(channel.to_string()),
             };
             (Some(u), Some(metadata))
         }
@@ -135,7 +149,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
     });
 
     if let Some(ref info) = update_info {
-        let _ = app.emit(
+        crate::core::bridge::emit(
             APP_EVENT,
             serde_json::json!({ "status": "update_found", "data": info }),
         );
@@ -151,7 +165,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
 
         if !is_skipped {
             notify(
-                &app,
+                app,
                 NotificationEvent::AppUpdate(UpdateStage::Available {
                     version: info.metadata.version.clone(),
                 }),
@@ -255,7 +269,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     let app_clone = app.clone();
     let update_clone = update.clone();
 
-    let handle = tauri::async_runtime::spawn(async move {
+    let handle = crate::utils::spawn(async move {
         let progress_app = app_clone.clone();
         let mut last_emit = std::time::Instant::now();
 
@@ -274,19 +288,16 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 
                     let now = std::time::Instant::now();
                     if now.duration_since(last_emit).as_millis() >= 200 {
-                        emit_progress(
-                            &progress_app,
-                            DownloadStatus {
-                                downloaded_bytes: downloaded,
-                                total_bytes: total,
-                                percentage: if total > 0 {
-                                    (downloaded as f64 / total as f64) * 100.0
-                                } else {
-                                    0.0
-                                },
-                                state: DownloadState::InProgress,
+                        emit_progress(DownloadStatus {
+                            downloaded_bytes: downloaded,
+                            total_bytes: total,
+                            percentage: if total > 0 {
+                                (downloaded as f64 / total as f64) * 100.0
+                            } else {
+                                0.0
                             },
-                        );
+                            state: DownloadState::InProgress,
+                        });
                         last_emit = now;
                     }
                 },
@@ -310,15 +321,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                         version: update_clone.version.clone(),
                     }),
                 );
-                emit_progress(
-                    &app_clone,
-                    DownloadStatus {
-                        downloaded_bytes: downloaded,
-                        total_bytes: total,
-                        percentage: 100.0,
-                        state: DownloadState::Complete,
-                    },
-                );
+                emit_progress(DownloadStatus {
+                    downloaded_bytes: downloaded,
+                    total_bytes: total,
+                    percentage: 100.0,
+                    state: DownloadState::Complete,
+                });
             }
             Err(e) => {
                 warn!("App update download failed: {e}");
@@ -335,15 +343,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                         error: e.to_string(),
                     }),
                 );
-                emit_progress(
-                    &app_clone,
-                    DownloadStatus {
-                        downloaded_bytes: downloaded,
-                        total_bytes: total,
-                        percentage: 0.0,
-                        state: DownloadState::Failed(e.to_string()),
-                    },
-                );
+                emit_progress(DownloadStatus {
+                    downloaded_bytes: downloaded,
+                    total_bytes: total,
+                    percentage: 0.0,
+                    state: DownloadState::Failed(e.to_string()),
+                });
             }
         }
     });
@@ -404,7 +409,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
         }
 
         #[cfg(not(target_os = "windows"))]
-        tauri::async_runtime::block_on(async move {
+        crate::utils::block_on(async move {
             notify(
                 &app,
                 NotificationEvent::AppUpdate(UpdateStage::Installed { version }),

@@ -9,7 +9,7 @@ export interface SeverityStyle {
 }
 
 export type AlertEventKind =
-  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system';
+  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system' | 'workflow';
 
 export interface AlertRule {
   id: string;
@@ -20,6 +20,7 @@ export interface AlertRule {
   remote_filter: string[];
   backend_filter: string[];
   profile_filter: string[];
+  workflow_filter?: string[];
   origin_filter: Origin[];
   action_ids: string[];
   cooldown_secs: number;
@@ -84,7 +85,9 @@ export interface WhatsappAction extends BaseAlertAction {
 
 export interface MqttAction extends BaseAlertAction {
   kind: 'mqtt';
-  broker_url: string;
+  host: string;
+  port: number;
+  use_tls: boolean;
   topic: string;
   username?: string;
   password?: string;
@@ -93,6 +96,7 @@ export interface MqttAction extends BaseAlertAction {
   body_template: string;
   timeout_secs: number;
   retry_count: number;
+  broker_url?: string;
 }
 
 export interface EmailAction extends BaseAlertAction {
@@ -107,6 +111,7 @@ export interface EmailAction extends BaseAlertAction {
   body_template: string;
   encryption: 'none' | 'tls' | 'starttls';
   timeout_secs: number;
+  retry_count: number;
 }
 
 export type AlertAction =

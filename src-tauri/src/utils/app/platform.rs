@@ -23,13 +23,27 @@ pub fn is_librclone() -> bool {
     cfg!(feature = "librclone")
 }
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ActiveOperationsSummary {
     pub has_active_operations: bool,
     pub active_jobs_count: usize,
     pub active_mounts_count: usize,
     pub active_serves_count: usize,
+}
+
+static PENDING_APP_EXIT_SUMMARY: once_cell::sync::Lazy<
+    parking_lot::Mutex<Option<ActiveOperationsSummary>>,
+> = once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(None));
+
+pub fn set_pending_app_exit_summary(summary: ActiveOperationsSummary) {
+    *PENDING_APP_EXIT_SUMMARY.lock() = Some(summary);
+}
+
+#[bridge]
+#[must_use]
+pub fn check_pending_app_exit() -> Option<ActiveOperationsSummary> {
+    PENDING_APP_EXIT_SUMMARY.lock().take()
 }
 
 pub async fn get_active_operations_summary(
@@ -59,20 +73,28 @@ pub async fn get_active_operations_summary(
 
 #[bridge]
 pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-    use tauri::{Emitter, Manager};
+    #[cfg(all(
+        desktop,
+        not(feature = "web-server"),
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    use tauri::Manager;
 
     let summary = get_active_operations_summary(app.clone()).await?;
 
     if summary.has_active_operations {
-        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.show();
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+        #[cfg(all(
+            desktop,
+            not(feature = "web-server"),
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        {
+            if app.get_webview_window("main").is_none() {
+                set_pending_app_exit_summary(summary.clone());
+            }
+            crate::utils::app::builder::present_main_window(&app);
+            crate::core::bridge::emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
         }
-        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-        let _ = app.emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
     } else {
         crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
         app.exit(0);
@@ -217,122 +239,159 @@ pub fn is_updater_enabled() -> bool {
 }
 
 /// Applies WebKitGTK environment workarounds for known Linux NVIDIA rendering
-/// failures (blank windows on X11, "Error 71" protocol errors on strict Wayland
-/// compositors). See https://v2.tauri.app/develop/debug/linux-graphics/. Must run
-/// before any webview is created: these variables are read by native libraries
-/// during initialization. Only NVIDIA GPUs are affected; Mesa (Intel/AMD) users
-/// keep the default rendering path untouched, and `GDK_BACKEND` is left alone so
-/// sessions stay on their native backend.
+/// failures. Must run before any webview is created — these variables are read
+/// by native libraries during initialization.
+/// See https://v2.tauri.app/develop/debug/linux-graphics/.
+///
+/// # Session-aware logic
+///
+/// **X11**: Both `WEBKIT_DISABLE_DMABUF_RENDERER` and
+/// `WEBKIT_DISABLE_COMPOSITING_MODE` are set to prevent blank windows and
+/// "Error 71" protocol errors.
+///
+/// **Wayland + NVIDIA 515+**: Both quirks are skipped. Modern drivers support
+/// DMABuf natively; disabling compositing forces software rendering and causes
+/// severe animation lag.
+///
+/// **Wayland + NVIDIA < 515**: Only `WEBKIT_DISABLE_DMABUF_RENDERER` is set.
+/// Older drivers do not reliably support DMABuf on Wayland, so the renderer is
+/// disabled to prevent flickering or corruption. `WEBKIT_DISABLE_COMPOSITING_MODE`
+/// is intentionally left unset to avoid software-rendering fallback.
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
 // Sound: invoked from main() single-threaded, before the async runtime spawns threads.
 #[allow(clippy::disallowed_methods)]
 pub fn apply_linux_graphics_quirks() {
-    if !nvidia_gpu_present() {
+    if !nvidia_proprietary_driver_loaded() {
         return;
     }
 
+    let wayland = is_wayland_session();
+
     // Sound: runs single-threaded in main before the runtime spawns any threads.
     unsafe {
-        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
-            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        }
-        if std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err() {
-            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        if wayland {
+            // On Wayland, WEBKIT_DISABLE_COMPOSITING_MODE forces software rendering —
+            // never set it. Only disable DMABuf if the driver is too old to support it
+            // natively (< 515).
+            let old_driver = nvidia_driver_version().map(|v| v < 515).unwrap_or(false);
+            if old_driver && std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            }
+        } else {
+            // X11: disable both to prevent blank windows and Error 71 protocol errors.
+            if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            }
+            if std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err() {
+                std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+            }
         }
     }
 }
 
-/// Returns true when an NVIDIA GPU is present (driver loaded or PCI vendor 0x10de).
+/// Returns true when the current session is running on Wayland.
+///
+/// Checks `XDG_SESSION_TYPE=wayland` (set by the login manager) and
+/// `WAYLAND_DISPLAY` (set by the compositor). Either variable being present
+/// indicates a Wayland session.
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
-fn nvidia_gpu_present() -> bool {
-    // NVIDIA driver loaded (proprietary or open kernel module).
-    if std::path::Path::new("/proc/driver/nvidia/version").exists() {
-        return true;
-    }
-
-    nvidia_vendor_in_drm_root(std::path::Path::new("/sys/class/drm"))
+fn is_wayland_session() -> bool {
+    std::env::var("XDG_SESSION_TYPE").is_ok_and(|v| v.eq_ignore_ascii_case("wayland"))
+        || std::env::var("WAYLAND_DISPLAY").is_ok()
 }
 
-/// Returns true when any DRM card under `drm_root` has PCI vendor 0x10de (NVIDIA).
+/// Returns the major version number of the loaded NVIDIA driver, parsed from
+/// `/proc/driver/nvidia/version`.
+///
+/// Returns `None` if the version file is absent, unreadable, or unparseable.
+///
+/// # Example line format
+/// ```text
+/// NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  515.43.04  Release Build ...
+/// ```
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
-fn nvidia_vendor_in_drm_root(drm_root: &std::path::Path) -> bool {
-    let Ok(cards) = std::fs::read_dir(drm_root) else {
-        return false;
-    };
-
-    cards.flatten().any(|entry| {
-        let file_name = entry.file_name();
-        let Some(name) = file_name.to_str() else {
-            return false;
-        };
-        if !name.starts_with("card") || !name[4..].chars().all(|c| c.is_ascii_digit()) {
-            return false;
-        }
-
-        std::fs::read_to_string(drm_root.join(name).join("device/vendor"))
-            .is_ok_and(|vendor| vendor.trim() == "0x10de")
+fn nvidia_driver_version() -> Option<u32> {
+    let content = std::fs::read_to_string("/proc/driver/nvidia/version").ok()?;
+    // The version token looks like "515.43.04" — take the major part.
+    content.split_whitespace().find_map(|token| {
+        let major = token.split('.').next()?;
+        major.parse::<u32>().ok().filter(|&v| v > 100)
     })
+}
+
+/// Returns true when the NVIDIA proprietary or open kernel module driver is
+/// actively loaded in the running kernel.
+///
+/// Detection is based solely on `/proc/driver/nvidia/version`, which is created
+/// by the NVIDIA kernel module (`nvidia.ko`) on load — both the proprietary driver
+/// and NVIDIA's officially open-sourced kernel module create this file.
+///
+/// **Nouveau** (the community reverse-engineered driver) does **not** create this
+/// file, so this function correctly returns `false` for Nouveau users, avoiding
+/// unnecessary WebKit rendering quirks that would degrade performance.
+#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+fn nvidia_proprietary_driver_loaded() -> bool {
+    std::path::Path::new("/proc/driver/nvidia/version").exists()
 }
 
 #[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
 mod graphics_quirks_tests {
-    use super::nvidia_vendor_in_drm_root;
+    use super::is_wayland_session;
 
-    fn temp_dir(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "rclone-manager-nvidia-test-{}-{}",
-            name,
-            std::process::id()
-        ));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    #[test]
+    fn wayland_detected_via_xdg_session_type() {
+        let prev_xdg = std::env::var("XDG_SESSION_TYPE").ok();
+        // Remove WAYLAND_DISPLAY so only XDG_SESSION_TYPE is in effect.
+        let prev_wd = std::env::var("WAYLAND_DISPLAY").ok();
+        unsafe { std::env::remove_var("WAYLAND_DISPLAY") };
 
-    /// Creates a fake DRM card with the given PCI vendor ID (e.g. "0x10de").
-    fn write_fake_card(drm_root: &std::path::Path, name: &str, vendor: &str) {
-        let device_path = drm_root.join(name).join("device");
-        std::fs::create_dir_all(&device_path).unwrap();
-        std::fs::write(device_path.join("vendor"), vendor).unwrap();
+        unsafe { std::env::set_var("XDG_SESSION_TYPE", "wayland") };
+        assert!(
+            is_wayland_session(),
+            "should detect wayland via XDG_SESSION_TYPE"
+        );
+
+        unsafe { std::env::set_var("XDG_SESSION_TYPE", "x11") };
+        assert!(
+            !is_wayland_session(),
+            "x11 session should not be detected as wayland"
+        );
+
+        // Restore.
+        match prev_xdg {
+            Some(v) => unsafe { std::env::set_var("XDG_SESSION_TYPE", v) },
+            None => unsafe { std::env::remove_var("XDG_SESSION_TYPE") },
+        }
+        match prev_wd {
+            Some(v) => unsafe { std::env::set_var("WAYLAND_DISPLAY", v) },
+            None => unsafe { std::env::remove_var("WAYLAND_DISPLAY") },
+        }
     }
 
     #[test]
-    fn nvidia_card_detected_by_vendor() {
-        let dir = temp_dir("nvidia");
-        write_fake_card(&dir, "card0", "0x10de");
-        assert!(nvidia_vendor_in_drm_root(&dir));
-    }
+    fn wayland_detected_via_wayland_display() {
+        let prev_wd = std::env::var("WAYLAND_DISPLAY").ok();
+        let prev_xdg = std::env::var("XDG_SESSION_TYPE").ok();
+        // Ensure XDG_SESSION_TYPE doesn't interfere.
+        unsafe { std::env::remove_var("XDG_SESSION_TYPE") };
 
-    #[test]
-    fn non_nvidia_cards_ignored() {
-        let dir = temp_dir("other_vendors");
-        write_fake_card(&dir, "card0", "0x8086"); // Intel
-        write_fake_card(&dir, "card1", "0x1002"); // AMD
-        assert!(!nvidia_vendor_in_drm_root(&dir));
-    }
+        unsafe { std::env::set_var("WAYLAND_DISPLAY", "wayland-0") };
+        assert!(
+            is_wayland_session(),
+            "should detect wayland via WAYLAND_DISPLAY"
+        );
 
-    #[test]
-    fn nvidia_detected_among_other_cards() {
-        let dir = temp_dir("mixed");
-        write_fake_card(&dir, "card0", "0x8086"); // Intel iGPU
-        write_fake_card(&dir, "card1", "0x10de"); // NVIDIA dGPU
-        assert!(nvidia_vendor_in_drm_root(&dir));
-    }
+        unsafe { std::env::remove_var("WAYLAND_DISPLAY") };
+        assert!(!is_wayland_session(), "no Wayland vars → not wayland");
 
-    #[test]
-    fn non_card_entries_ignored() {
-        let dir = temp_dir("non_cards");
-        write_fake_card(&dir, "card0", "0x8086");
-        std::fs::write(dir.join("card0-video-D0"), "noise").unwrap();
-        assert!(!nvidia_vendor_in_drm_root(&dir));
-    }
-
-    #[test]
-    fn empty_or_missing_dir_is_false() {
-        let dir = temp_dir("empty");
-        assert!(!nvidia_vendor_in_drm_root(&dir));
-        assert!(!nvidia_vendor_in_drm_root(std::path::Path::new(
-            "/nonexistent/drm/root"
-        )));
+        // Restore.
+        match prev_wd {
+            Some(v) => unsafe { std::env::set_var("WAYLAND_DISPLAY", v) },
+            None => unsafe { std::env::remove_var("WAYLAND_DISPLAY") },
+        }
+        match prev_xdg {
+            Some(v) => unsafe { std::env::set_var("XDG_SESSION_TYPE", v) },
+            None => unsafe { std::env::remove_var("XDG_SESSION_TYPE") },
+        }
     }
 }

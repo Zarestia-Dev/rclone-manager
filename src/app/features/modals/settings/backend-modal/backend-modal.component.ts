@@ -77,6 +77,7 @@ export class BackendModalComponent implements OnInit {
 
   readonly formMode = signal<'add' | 'edit' | null>(null);
   readonly editingName = signal<string | null>(null);
+  readonly selectedTabIndex = signal(0);
 
   readonly isSaving = signal(false);
 
@@ -190,11 +191,13 @@ export class BackendModalComponent implements OnInit {
   toggleAddForm(): void {
     if (this.formMode() === null) {
       this.formMode.set('add');
+      this.selectedTabIndex.set(0);
       this.copyBackendFrom.set('none');
       this.copyRemotesFrom.set('none');
     } else {
       this.formMode.set(null);
       this.editingName.set(null);
+      this.selectedTabIndex.set(0);
       this.resetForm();
     }
   }
@@ -202,6 +205,7 @@ export class BackendModalComponent implements OnInit {
   startEdit(backend: BackendInfo): void {
     this.formMode.set('edit');
     this.editingName.set(backend.name);
+    this.selectedTabIndex.set(0);
 
     const hasCustomAuth = backend.hasAuth && !backend.isAuthGenerated;
 
@@ -223,6 +227,7 @@ export class BackendModalComponent implements OnInit {
   cancelEdit(): void {
     this.formMode.set(null);
     this.editingName.set(null);
+    this.selectedTabIndex.set(0);
     this.resetForm();
     this.backendForm.get('name')?.enable();
   }

@@ -7,6 +7,8 @@ import {
   model,
   output,
   linkedSignal,
+  signal,
+  effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -17,6 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { extractProfileSource, extractProfileDest } from 'src/app/shared/utils';
 import {
   CompletedTransfer,
   GlobalStats,
@@ -58,7 +61,9 @@ import {
   BACKEND_PROFILE_SUPPORTED_OPS,
   QuickRun,
   Remote,
+  createDefaultRemoteFeatures,
   findInFlightAction,
+  Automation,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -70,6 +75,7 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
@@ -81,6 +87,9 @@ import {
   buildActionOrderItems,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
+import { ModalService } from 'src/app/services/ui/modal.service';
+
 @Component({
   selector: 'app-app-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,6 +100,7 @@ import {
     MatButtonModule,
     MatTabsModule,
     CdkMenuModule,
+    AlertBannerComponent,
     OperationControlComponent,
     JobInfoPanelComponent,
     StatsPanelComponent,
@@ -135,6 +145,52 @@ export class AppDetailComponent {
   private readonly formatTime = inject(FormatTimePipe);
   private readonly localStorage = inject(LocalStorageService);
   private readonly dialog = inject(MatDialog);
+  private readonly modalService = inject(ModalService);
+  private readonly automationService = inject(AutomationService);
+
+  private readonly _cronNextRun = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      const cron = this.selectedCronSchedule()?.cronExpression;
+      if (!cron) {
+        this._cronNextRun.set(null);
+        return;
+      }
+      this.automationService
+        .validateCron(cron)
+        .then(res => {
+          if (res.isValid && res.nextRun) {
+            try {
+              this._cronNextRun.set(new Date(res.nextRun).toLocaleString());
+            } catch {
+              this._cronNextRun.set(res.nextRun);
+            }
+          } else {
+            this._cronNextRun.set(null);
+          }
+        })
+        .catch(() => this._cronNextRun.set(null));
+    });
+  }
+
+  readonly isMissingRemote = computed<boolean>(() => {
+    if (this.mode() !== 'quickRun') return false;
+    const qr = this.quickRun();
+    if (!qr?.remoteName) return false;
+    return !this.remoteFacade.isRemoteActive(qr.remoteName);
+  });
+
+  onRecreateRemote(name: string): void {
+    this.modalService.openRemoteConfig({ remoteName: name });
+  }
+
+  onEditQuickRun(): void {
+    const qr = this.quickRun();
+    if (qr) {
+      this.quickRunService.openEditor(qr);
+    }
+  }
 
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
@@ -183,15 +239,7 @@ export class AppDetailComponent {
           cryptcheck: { active: false },
           serve: { active: false, count: 0, serves: [] },
         },
-        features: {
-          IsLocal: false,
-          About: false,
-          BucketBased: false,
-          CleanUp: false,
-          PublicLink: false,
-          ChangeNotify: false,
-          Hashes: [],
-        },
+        features: createDefaultRemoteFeatures(),
         primaryActions: [],
         syncActions: [],
       };
@@ -464,7 +512,7 @@ export class AppDetailComponent {
     }
     const configs = this.getProfileConfigMap<ProfileConfig>(this.currentOpType());
     const profile = this.selectedProfile();
-    return configs?.[profile]?.app;
+    return configs?.[profile]?.app ?? (configs ? Object.values(configs)[0]?.app : undefined);
   });
 
   readonly selectedCronSchedule = computed(() => {
@@ -500,6 +548,75 @@ export class AppDetailComponent {
       watchChangedOnly: app.watchChangedOnly ?? false,
     };
   });
+
+  readonly isAutoStartEnabled = computed(() => {
+    return !!this.currentAppConfig()?.autoStart;
+  });
+
+  readonly hasActiveAutomations = computed(() => {
+    return !!this.selectedCronSchedule() || !!this.selectedWatcher() || this.isAutoStartEnabled();
+  });
+
+  readonly matchingAutomation = computed<Automation | undefined>(() => {
+    if (this.mode() === 'quickRun') {
+      const qrId = this.quickRun()?.id;
+      return this.automationService.automations().find(a => qrId && a.id.includes(qrId));
+    }
+    const remote = this.selectedRemote()?.name;
+    const profile = this.selectedProfile();
+    const op = this.currentOpType();
+    return this.automationService
+      .automations()
+      .find(
+        a =>
+          a.remoteName === remote &&
+          (a.profileName === profile || a.profileName?.toLowerCase() === profile?.toLowerCase()) &&
+          a.automationType?.toLowerCase() === op?.toLowerCase()
+      );
+  });
+
+  readonly isAutomationDisabled = computed(() => {
+    return this.matchingAutomation()?.status === 'disabled';
+  });
+
+  readonly isAutomationStopping = computed(() => {
+    return this.matchingAutomation()?.status === 'stopping';
+  });
+
+  readonly isTogglingAutomation = signal<boolean>(false);
+
+  readonly nextRunFormatted = computed<string | null>(() => {
+    this._lang();
+    const auto = this.matchingAutomation();
+    if (auto?.status === 'disabled') {
+      return null;
+    }
+    if (auto?.status === 'stopping') {
+      return this.translate.instant('automation.nextRun.stopping');
+    }
+    if (auto?.nextRun) {
+      try {
+        return new Date(auto.nextRun).toLocaleString();
+      } catch {
+        return auto.nextRun;
+      }
+    }
+    return this._cronNextRun();
+  });
+
+  async onToggleAutomation(event?: Event): Promise<void> {
+    event?.stopPropagation();
+    const auto = this.matchingAutomation();
+    if (!auto || this.isAutomationStopping() || this.isTogglingAutomation()) return;
+    this.isTogglingAutomation.set(true);
+    try {
+      await this.automationService.toggleAutomation(auto.id);
+    } catch (error) {
+      console.error('Failed to toggle automation:', error);
+    } finally {
+      this.isTogglingAutomation.set(false);
+    }
+  }
 
   // --- Derived: Settings Sections ---
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
@@ -1012,12 +1129,8 @@ export class AppDetailComponent {
 
     const rawRclone = (config.rclone || {}) as Record<string, unknown>;
     const opData = (rawRclone[type] as Record<string, unknown> | undefined) ?? rawRclone;
-    const resolvedSource = (opData['srcFs'] ??
-      opData['path1'] ??
-      opData['fs'] ??
-      rawRclone['srcFs'] ??
-      rawRclone['path1'] ??
-      rawRclone['fs']) as string | undefined;
+    const resolvedSource = (extractProfileSource(opData) ?? extractProfileSource(rawRclone)) as
+      string | undefined;
     const isSafMount =
       isMount &&
       (opData['mountType'] === 'saf' ||
@@ -1025,12 +1138,7 @@ export class AppDetailComponent {
         String(opData['mountPoint'] ?? rawRclone['mountPoint'] ?? '').startsWith('saf://'));
     const rawDest = isSafMount
       ? `saf://${this.selectedRemote().name}`
-      : ((opData['dstFs'] ??
-          opData['path2'] ??
-          opData['mountPoint'] ??
-          rawRclone['dstFs'] ??
-          rawRclone['path2'] ??
-          rawRclone['mountPoint']) as string | undefined);
+      : ((extractProfileDest(opData) ?? extractProfileDest(rawRclone)) as string | undefined);
     const resolvedDest = rawDest;
 
     const pathConfig: PathDisplayConfig =

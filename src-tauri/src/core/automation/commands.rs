@@ -7,7 +7,10 @@ use crate::{
         bridge,
     },
     rclone::state::automations::AutomationsCache,
-    utils::types::automation::{Automation, AutomationStatus, CronValidationResponse},
+    utils::types::{
+        automation::{Automation, AutomationStatus, CronValidationResponse},
+        remotes::RemoteSettings,
+    },
 };
 
 /// Toggle automation scheduling state.
@@ -21,9 +24,7 @@ pub async fn toggle_automation(
     let cache = app.state::<AutomationsCache>();
     let scheduler = app.state::<AutomationScheduler>();
 
-    let automation = cache
-        .toggle_automation_status(&automation_id, Some(&app))
-        .await?;
+    let automation = cache.toggle_automation_status(&automation_id).await?;
 
     if let Err(e) = scheduler
         .reschedule_automation(&automation, cache.clone())
@@ -104,19 +105,18 @@ pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    cache.clear_all_automations(Some(&app)).await?;
+    cache.clear_all_automations().await?;
 
     info!("All automations cleared");
     Ok(())
 }
 
-/// Reload automations from remote configs
-#[bridge]
-pub async fn reload_automations_from_configs(
-    app: AppHandle,
-    all_settings: serde_json::Value,
-) -> Result<usize, String> {
+/// Reload automations from remote configs stored in AppSettingsManager
+pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, String> {
     info!("Reloading automations from configs...");
+
+    let manager = app.state::<crate::core::settings::AppSettingsManager>();
+    let all_settings = RemoteSettings::load_all(manager.inner());
 
     let cache = app.state::<AutomationsCache>();
     let scheduler = app.state::<AutomationScheduler>();
@@ -124,7 +124,7 @@ pub async fn reload_automations_from_configs(
     let backend_name = backend_manager.get_active_name().await;
 
     let result = cache
-        .load_from_remote_configs(&all_settings, &backend_name, Some(&app))
+        .load_from_remote_configs(&all_settings, &backend_name)
         .await?;
 
     let counts = (

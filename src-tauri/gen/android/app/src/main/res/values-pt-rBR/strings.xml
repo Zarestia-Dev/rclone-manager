@@ -5,5 +5,8 @@
     <string name="saf_keepalive_title">Serviço de Armazenamento Rclone SAF</string>
     <string name="saf_keepalive_text">Transmissão de arquivos em segundo plano ativa</string>
     <string name="saf_keepalive_channel_name">Serviço de Armazenamento Rclone</string>
-    <string name="saf_keepalive_channel_desc">Mantém o processo Rclone ativo durante a transmissão de arquivos SAF</string>
+    <string name="keepalive_title">RClone Manager</string>
+    <string name="keepalive_text">Em execução em segundo plano</string>
+    <string name="keepalive_channel_name">Serviço em Segundo Plano do RClone</string>
+    <string name="keepalive_channel_desc">Mantém montagens ativas, transferências e tarefas em segundo plano</string>
 </resources>

@@ -117,6 +117,13 @@ pub enum ServeStage {
         profile: Option<String>,
         protocol: String,
     },
+    StopFailed {
+        backend: String,
+        remote: String,
+        profile: Option<String>,
+        protocol: String,
+        error: String,
+    },
     AllStopped,
 }
 
@@ -140,6 +147,12 @@ pub enum MountStage {
         remote: String,
         profile: Option<String>,
     },
+    UnmountFailed {
+        backend: String,
+        remote: String,
+        profile: Option<String>,
+        error: String,
+    },
     AllUnmounted,
 }
 
@@ -162,6 +175,34 @@ pub enum EngineStage {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "stage", content = "data", rename_all = "snake_case")]
+pub enum WorkflowStage {
+    Started {
+        workflow_id: String,
+        workflow_name: String,
+        origin: Origin,
+    },
+    Completed {
+        workflow_id: String,
+        workflow_name: String,
+        duration_ms: u64,
+        origin: Origin,
+    },
+    Failed {
+        workflow_id: String,
+        workflow_name: String,
+        error: String,
+        failed_node_title: Option<String>,
+        origin: Origin,
+    },
+    Stopped {
+        workflow_id: String,
+        workflow_name: String,
+        origin: Origin,
+    },
+}
+
 // Main Notification Event Enum
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +216,7 @@ pub enum NotificationEvent {
     Mount(MountStage),
     Engine(EngineStage),
     System(SystemStage),
+    Workflow(WorkflowStage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,6 +233,14 @@ pub struct RenderedContent {
     pub level: LogLevel,
 }
 
+#[inline]
+fn format_target(remote: &str, profile: Option<&str>) -> String {
+    match profile.map(str::trim).filter(|p| !p.is_empty()) {
+        Some(p) => format!("{remote} ({p})"),
+        None => remote.to_string(),
+    }
+}
+
 impl NotificationEvent {
     #[must_use]
     pub fn render(&self) -> RenderedContent {
@@ -203,44 +253,48 @@ impl NotificationEvent {
                     profile,
                     job_type,
                     ..
-                } => RenderedContent {
-                    title: t_with_params(
-                        "notification.title.jobStarted",
-                        &[("type", &job_type.to_string())],
-                    ),
-                    body: t_with_params(
-                        "notification.body.jobStarted",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("type", &job_type.to_string().to_lowercase()),
-                        ],
-                    ),
-                    level: LogLevel::Info,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t_with_params(
+                            "notification.title.jobStarted",
+                            &[("type", &job_type.to_string())],
+                        ),
+                        body: t_with_params(
+                            "notification.body.jobStarted",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("type", &job_type.to_string().to_lowercase()),
+                            ],
+                        ),
+                        level: LogLevel::Info,
+                    }
+                }
                 JobStage::Completed {
                     backend,
                     remote,
                     profile,
                     job_type,
                     ..
-                } => RenderedContent {
-                    title: t_with_params(
-                        "notification.title.jobCompleted",
-                        &[("type", &job_type.to_string())],
-                    ),
-                    body: t_with_params(
-                        "notification.body.jobCompleted",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("type", &job_type.to_string().to_lowercase()),
-                        ],
-                    ),
-                    level: LogLevel::Info,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t_with_params(
+                            "notification.title.jobCompleted",
+                            &[("type", &job_type.to_string())],
+                        ),
+                        body: t_with_params(
+                            "notification.body.jobCompleted",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("type", &job_type.to_string().to_lowercase()),
+                            ],
+                        ),
+                        level: LogLevel::Info,
+                    }
+                }
                 JobStage::Failed {
                     backend,
                     remote,
@@ -248,45 +302,49 @@ impl NotificationEvent {
                     job_type,
                     error,
                     ..
-                } => RenderedContent {
-                    title: t_with_params(
-                        "notification.title.jobFailed",
-                        &[("type", &job_type.to_string())],
-                    ),
-                    body: t_with_params(
-                        "notification.body.jobFailed",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("type", &job_type.to_string().to_lowercase()),
-                            ("error", error),
-                        ],
-                    ),
-                    level: LogLevel::Error,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t_with_params(
+                            "notification.title.jobFailed",
+                            &[("type", &job_type.to_string())],
+                        ),
+                        body: t_with_params(
+                            "notification.body.jobFailed",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("type", &job_type.to_string().to_lowercase()),
+                                ("error", error),
+                            ],
+                        ),
+                        level: LogLevel::Error,
+                    }
+                }
                 JobStage::Stopped {
                     backend,
                     remote,
                     profile,
                     job_type,
                     ..
-                } => RenderedContent {
-                    title: t_with_params(
-                        "notification.title.jobStopped",
-                        &[("type", &job_type.to_string())],
-                    ),
-                    body: t_with_params(
-                        "notification.body.jobStopped",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("type", &job_type.to_string().to_lowercase()),
-                        ],
-                    ),
-                    level: LogLevel::Warn,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t_with_params(
+                            "notification.title.jobStopped",
+                            &[("type", &job_type.to_string())],
+                        ),
+                        body: t_with_params(
+                            "notification.body.jobStopped",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("type", &job_type.to_string().to_lowercase()),
+                            ],
+                        ),
+                        level: LogLevel::Warn,
+                    }
+                }
             },
 
             // --- AUTOMATION DOMAIN ---
@@ -400,44 +458,48 @@ impl NotificationEvent {
                     remote,
                     profile,
                     protocol,
-                } => RenderedContent {
-                    title: t("notification.title.serveStarted"),
-                    body: t_with_params(
-                        "notification.body.serveStarted",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("protocol", protocol),
-                        ],
-                    ),
-                    level: LogLevel::Info,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t("notification.title.serveStarted"),
+                        body: t_with_params(
+                            "notification.body.serveStarted",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("protocol", protocol),
+                            ],
+                        ),
+                        level: LogLevel::Info,
+                    }
+                }
                 ServeStage::Failed {
                     backend,
                     remote,
                     profile,
                     protocol,
                     error,
-                } => RenderedContent {
-                    title: t("notification.title.serveFailed"),
-                    body: t_with_params(
-                        "notification.body.serveFailed",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("protocol", protocol),
-                            ("error", error),
-                        ],
-                    ),
-                    level: LogLevel::Error,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t("notification.title.serveFailed"),
+                        body: t_with_params(
+                            "notification.body.serveFailed",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("protocol", protocol),
+                                ("error", error),
+                            ],
+                        ),
+                        level: LogLevel::Error,
+                    }
+                }
                 ServeStage::Stopped {
                     backend,
                     remote,
-                    profile,
                     protocol,
+                    ..
                 } => RenderedContent {
                     title: t("notification.title.serveStopped"),
                     body: t_with_params(
@@ -445,11 +507,29 @@ impl NotificationEvent {
                         &[
                             ("backend", backend),
                             ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
                             ("protocol", protocol),
                         ],
                     ),
                     level: LogLevel::Warn,
+                },
+                ServeStage::StopFailed {
+                    backend,
+                    remote,
+                    protocol,
+                    error,
+                    ..
+                } => RenderedContent {
+                    title: t("notification.title.serveStopFailed"),
+                    body: t_with_params(
+                        "notification.body.serveStopFailed",
+                        &[
+                            ("backend", backend),
+                            ("remote", remote),
+                            ("protocol", protocol),
+                            ("error", error),
+                        ],
+                    ),
+                    level: LogLevel::Error,
                 },
                 ServeStage::AllStopped => RenderedContent {
                     title: t("notification.title.allServesStopped"),
@@ -465,52 +545,59 @@ impl NotificationEvent {
                     remote,
                     profile,
                     mount_point,
-                } => RenderedContent {
-                    title: t("notification.title.mountSucceeded"),
-                    body: t_with_params(
-                        "notification.body.mountSucceeded",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("mountPoint", mount_point),
-                        ],
-                    ),
-                    level: LogLevel::Info,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t("notification.title.mountSucceeded"),
+                        body: t_with_params(
+                            "notification.body.mountSucceeded",
+                            &[
+                                ("backend", backend),
+                                ("remote", &target),
+                                ("mountPoint", mount_point),
+                            ],
+                        ),
+                        level: LogLevel::Info,
+                    }
+                }
                 MountStage::Failed {
                     backend,
                     remote,
                     profile,
                     error,
-                } => RenderedContent {
-                    title: t("notification.title.mountFailed"),
-                    body: t_with_params(
-                        "notification.body.mountFailed",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                            ("error", error),
-                        ],
-                    ),
-                    level: LogLevel::Error,
-                },
+                } => {
+                    let target = format_target(remote, profile.as_deref());
+                    RenderedContent {
+                        title: t("notification.title.mountFailed"),
+                        body: t_with_params(
+                            "notification.body.mountFailed",
+                            &[("backend", backend), ("remote", &target), ("error", error)],
+                        ),
+                        level: LogLevel::Error,
+                    }
+                }
                 MountStage::UnmountSucceeded {
-                    backend,
-                    remote,
-                    profile,
+                    backend, remote, ..
                 } => RenderedContent {
                     title: t("notification.title.unmountSucceeded"),
                     body: t_with_params(
                         "notification.body.unmountSucceeded",
-                        &[
-                            ("backend", backend),
-                            ("remote", remote),
-                            ("profile", profile.as_deref().unwrap_or("")),
-                        ],
+                        &[("backend", backend), ("remote", remote)],
                     ),
                     level: LogLevel::Warn,
+                },
+                MountStage::UnmountFailed {
+                    backend,
+                    remote,
+                    error,
+                    ..
+                } => RenderedContent {
+                    title: t("notification.title.unmountFailed"),
+                    body: t_with_params(
+                        "notification.body.unmountFailed",
+                        &[("backend", backend), ("remote", remote), ("error", error)],
+                    ),
+                    level: LogLevel::Error,
                 },
                 MountStage::AllUnmounted => RenderedContent {
                     title: t("notification.title.allUnmounted"),
@@ -567,6 +654,70 @@ impl NotificationEvent {
                     level: LogLevel::Warn,
                 },
             },
+
+            // --- WORKFLOW DOMAIN ---
+            Self::Workflow(stage) => match stage {
+                WorkflowStage::Started { workflow_name, .. } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowStarted",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowStarted",
+                        &[("name", workflow_name)],
+                    ),
+                    level: LogLevel::Info,
+                },
+                WorkflowStage::Completed {
+                    workflow_name,
+                    duration_ms,
+                    ..
+                } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowCompleted",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowCompleted",
+                        &[
+                            ("name", workflow_name),
+                            ("duration", &format!("{:.2}s", *duration_ms as f64 / 1000.0)),
+                        ],
+                    ),
+                    level: LogLevel::Info,
+                },
+                WorkflowStage::Failed {
+                    workflow_name,
+                    error,
+                    failed_node_title,
+                    ..
+                } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowFailed",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowFailed",
+                        &[
+                            ("name", workflow_name),
+                            ("error", error),
+                            ("node", failed_node_title.as_deref().unwrap_or("")),
+                        ],
+                    ),
+                    level: LogLevel::Error,
+                },
+                WorkflowStage::Stopped { workflow_name, .. } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.workflowStopped",
+                        &[("name", workflow_name)],
+                    ),
+                    body: t_with_params(
+                        "notification.body.workflowStopped",
+                        &[("name", workflow_name)],
+                    ),
+                    level: LogLevel::Warn,
+                },
+            },
         }
     }
 }
@@ -579,7 +730,7 @@ pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     emit_log(level, &title, &body);
 
     let app_handle = app.clone();
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         crate::core::alerts::engine::process(&app_handle, &event, title, body);
     });
 }
@@ -676,7 +827,7 @@ mod tests {
         assert_eq!(rendered.title, "mount Failed");
         assert_eq!(
             rendered.body,
-            "Failed mount for Google Drive profile 'Default' on Local: Job execution failed: failed to mount FUSE fs: no such directory"
+            "Failed mount for Google Drive (Default) on Local: Job execution failed: failed to mount FUSE fs: no such directory"
         );
     }
 
@@ -695,7 +846,34 @@ mod tests {
         assert_eq!(rendered.title, "Mount Error");
         assert_eq!(
             rendered.body,
-            "Failed to mount Google Drive profile 'Default' from Local: Mount point cannot be empty"
+            "Failed to mount Google Drive (Default) from Local: Mount point cannot be empty"
         );
+    }
+
+    #[test]
+    fn test_mount_failed_without_profile() {
+        crate::utils::i18n::init_test_translations();
+
+        let event = NotificationEvent::Mount(MountStage::Failed {
+            backend: "Local".to_string(),
+            remote: "Google Drive".to_string(),
+            profile: None,
+            error: "backendErrors.mount.pointEmpty".to_string(),
+        });
+
+        let rendered = event.render();
+        assert_eq!(rendered.title, "Mount Error");
+        assert_eq!(
+            rendered.body,
+            "Failed to mount Google Drive from Local: Mount point cannot be empty"
+        );
+    }
+
+    #[test]
+    fn test_format_target() {
+        assert_eq!(format_target("gdrive", Some("fast")), "gdrive (fast)");
+        assert_eq!(format_target("gdrive", None), "gdrive");
+        assert_eq!(format_target("gdrive", Some("")), "gdrive");
+        assert_eq!(format_target("gdrive", Some("   ")), "gdrive");
     }
 }

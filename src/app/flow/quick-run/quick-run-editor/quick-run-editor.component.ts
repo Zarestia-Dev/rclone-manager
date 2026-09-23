@@ -47,7 +47,10 @@ import {
   PROFILE_ICONS,
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
+  WorkflowNode,
+  isRclonePathKey,
 } from '@app/types';
+import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { FlagConfigStepComponent } from 'src/app/shared/remote-config/flag-config-step/flag-config-step.component';
 import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
@@ -72,6 +75,11 @@ import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/plat
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
+import {
+  syncResponsiveSidebar,
+  extractProfileSource,
+  extractProfileDest,
+} from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const ALL_FLAG_TYPES = [
@@ -136,15 +144,22 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly valueMapper = inject(RcloneValueMapperService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly workflowStateService = inject(WorkflowStateService, { optional: true });
   private readonly dialogRef = inject(MatDialogRef<QuickRunEditorComponent>, { optional: true });
   private readonly dialogData = inject<QuickRunEditorModalOptions | null>(MAT_DIALOG_DATA, {
     optional: true,
   });
 
+  /** When set, the editor loads this workflow node for editing. */
+  readonly workflowNode = input<WorkflowNode | null>(null);
   /** When set, the editor loads this quick run for editing. */
   readonly editTarget = input<QuickRun | null>(null);
   /** Resolved target QuickRun whether passed via dialog data or input property. */
   readonly targetQuickRun = computed(() => this.dialogData?.quickRun ?? this.editTarget());
+  /** Resolved target WorkflowNode whether passed via dialog data or input property. */
+  readonly targetNode = computed(() => this.dialogData?.workflowNode ?? this.workflowNode());
+  /** True when editing a WorkflowNode instead of a standalone QuickRun. */
+  readonly isWorkflowMode = computed(() => !!this.targetNode());
   /** Emitted when the user cancels or after a successful save. */
   readonly closed = output<void>();
 
@@ -163,12 +178,20 @@ export class QuickRunEditorComponent implements OnInit {
       type: [''],
     })
   );
+  readonly mountTypes = this.flagConfigService.mountTypes;
+  readonly availableServeTypes = this.flagConfigService.availableServeTypes;
+  readonly selectedServeType = signal('http');
+  readonly dynamicServeFields = signal<RcConfigOption[]>([]);
+  readonly isLoadingServeFields = signal(false);
+  private readonly _serveLoadToken = { token: 0 };
   private seedRcloneConfig?: Record<string, unknown>;
   private destPathGeneration = 0;
 
   // ── UI state ──────────────────────────────────────────────────────────────
 
-  readonly isSaving = this.quickRunService.isSaving;
+  readonly isSaving = computed(() =>
+    this.isWorkflowMode() ? false : this.quickRunService.isSaving()
+  );
   readonly showSearch = signal(false);
   readonly showCliImport = signal(false);
   readonly showObscureTool = signal(false);
@@ -248,7 +271,9 @@ export class QuickRunEditorComponent implements OnInit {
   );
 
   constructor() {
-    afterNextRender(() => this.setupResponsiveLayout());
+    afterNextRender(() => {
+      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef);
+    });
 
     effect(() => {
       const all = this.flagConfigService.allFlagFields();
@@ -278,11 +303,31 @@ export class QuickRunEditorComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
+    const targetNode = this.targetNode();
     const target = this.targetQuickRun();
     const cloneData = this.dialogData?.cloneData;
     const initOp = this.dialogData?.initialOpType;
     const initRemote = this.dialogData?.initialRemoteName;
-    if (target) {
+
+    if (targetNode) {
+      const cfg = targetNode.config || {};
+      const opType = (targetNode.type as PrimaryActionType) || initOp || 'sync';
+      const remote = (cfg['remoteName'] ?? cfg['remote'] ?? initRemote ?? '') as string;
+      const seed =
+        (cfg['config'] as QuickRunConfig | undefined) ?? (cfg as unknown as QuickRunConfig);
+
+      this.form.patchValue({
+        name: targetNode.title,
+        description: targetNode.subtitle ?? '',
+        operationType: opType,
+        remoteName: remote,
+      });
+      this.currentOpType.set(opType);
+      this.activeTab.set(opType as FlagType);
+      this.currentRemoteName.set(remote);
+
+      this.populateFormFromSeed(seed);
+    } else if (target) {
       this.form.patchValue({
         name: target.name,
         description: target.description ?? '',
@@ -327,6 +372,9 @@ export class QuickRunEditorComponent implements OnInit {
         }
         this.syncAllDynamicControls();
         this.checkAndSetDefaultDestPath();
+        if (opType === 'serve') {
+          void this.loadServeFields();
+        }
         if (this.activeTab() === (prevOp as FlagType)) {
           this.activeTab.set(opType as FlagType);
         }
@@ -354,6 +402,15 @@ export class QuickRunEditorComponent implements OnInit {
       configControls[`${flag}Config`] = isShared
         ? this.createSharedConfigGroup()
         : this.createOpConfigGroup(flag as PrimaryActionType);
+    }
+
+    const mountOpts = configControls['mountConfig']?.get('options') as FormGroup | null;
+    if (mountOpts && !mountOpts.contains('mountType')) {
+      mountOpts.addControl('mountType', new FormControl('mount'));
+    }
+    const serveOpts = configControls['serveConfig']?.get('options') as FormGroup | null;
+    if (serveOpts && !serveOpts.contains('type')) {
+      serveOpts.addControl('type', new FormControl('http'));
     }
 
     return this.fb.group({
@@ -391,6 +448,11 @@ export class QuickRunEditorComponent implements OnInit {
 
     const newGroup = this.createOpConfigGroup(newOp, seed);
     this.form.setControl(`${newOp}Config`, newGroup);
+    if (newOp === 'serve') {
+      const sType = (newGroup.get('options.type')?.value as string) || 'http';
+      this.selectedServeType.set(sType);
+      void this.loadServeFields();
+    }
   }
 
   private createSharedConfigGroup(): FormGroup {
@@ -418,20 +480,26 @@ export class QuickRunEditorComponent implements OnInit {
     const optionsGroup = this.fb.group({});
     if (rclone && typeof rclone === 'object') {
       for (const [k, v] of Object.entries(rclone)) {
-        if (['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint'].includes(k)) continue;
+        if (isRclonePathKey(k)) continue;
         if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
         optionsGroup.addControl(k, new FormControl(v));
       }
       const opSubObj = rclone[opType] as Record<string, unknown> | undefined;
       if (opSubObj && typeof opSubObj === 'object') {
         for (const [k, v] of Object.entries(opSubObj)) {
-          if (['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint'].includes(k)) continue;
+          if (isRclonePathKey(k)) continue;
           if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
           if (!optionsGroup.contains(k)) {
             optionsGroup.addControl(k, new FormControl(v));
           }
         }
       }
+    }
+
+    if (opType === 'mount' && !optionsGroup.contains('mountType')) {
+      optionsGroup.addControl('mountType', new FormControl('mount'));
+    } else if (opType === 'serve' && !optionsGroup.contains('type')) {
+      optionsGroup.addControl('type', new FormControl('http'));
     }
 
     const group: Record<string, unknown> = {
@@ -485,6 +553,15 @@ export class QuickRunEditorComponent implements OnInit {
 
     const opGroup = this.createOpConfigGroup(opType, seed);
     this.form.setControl(`${opType}Config`, opGroup);
+
+    if (opType === 'serve') {
+      const serveType =
+        (opGroup.get('options.type')?.value as string) ||
+        (rawRclone['type'] as string) ||
+        ((rawRclone['serve'] as Record<string, unknown> | undefined)?.['type'] as string) ||
+        'http';
+      this.selectedServeType.set(serveType);
+    }
 
     for (const shared of ['vfs', 'filter', 'backend'] as const) {
       const sharedObj = rawRclone[shared] as Record<string, unknown> | undefined;
@@ -603,18 +680,51 @@ export class QuickRunEditorComponent implements OnInit {
     return dst != null ? String(dst) : '';
   }
 
+  private async loadServeFields(): Promise<void> {
+    const t = this.selectedServeType() || 'http';
+    const token = ++this._serveLoadToken.token;
+    this.isLoadingServeFields.set(true);
+    try {
+      const fields = await this.flagConfigService.loadServeFlagFields(t);
+      if (token !== this._serveLoadToken.token) return;
+      this.dynamicServeFields.set(fields);
+      this.rebuildServeOptionsGroup();
+    } catch (err) {
+      console.warn('[QuickRunEditor] loadServeFields failed:', err);
+    } finally {
+      if (token === this._serveLoadToken.token) {
+        this.isLoadingServeFields.set(false);
+      }
+    }
+  }
+
+  async onServeTypeChange(type: string): Promise<void> {
+    if (this.selectedServeType() === type) return;
+    this.selectedServeType.set(type || 'http');
+    const typeCtrl = this.form.get('serveConfig.options.type');
+    if (typeCtrl && typeCtrl.value !== type) {
+      typeCtrl.setValue(type, { emitEvent: false });
+    }
+    await this.loadServeFields();
+  }
+
+  rebuildServeOptionsGroup(): void {
+    const g = this.form.get('serveConfig.options') as FormGroup | null;
+    if (!g) return;
+    this.syncDynamicControls(g, this.dynamicServeFields(), {
+      preserveKeys: new Set(['type']),
+    });
+  }
+
   private async loadAllFlagFields(): Promise<void> {
     this.isLoadingFlags.set(true);
     try {
-      let all = this.flagConfigService.allFlagFields();
-      if (!all) {
-        await this.flagConfigService.loadAllFlagFields();
-        all = this.flagConfigService.allFlagFields();
-      }
-      if (all) {
-        this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
-        this.syncAllDynamicControls();
-      }
+      const [all] = await Promise.all([
+        this.flagConfigService.loadAllFlagFields(),
+        this.loadServeFields(),
+      ]);
+      this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
+      this.syncAllDynamicControls();
     } catch (err) {
       console.warn('[QuickRunEditor] loadAllFlagFields failed:', err);
     } finally {
@@ -637,7 +747,7 @@ export class QuickRunEditorComponent implements OnInit {
       if (!configGroup) continue;
       const optionsGroup = configGroup.get('options') as FormGroup | null;
       if (!optionsGroup) continue;
-      const typeFields = fields[type] ?? [];
+      const typeFields = type === 'serve' ? this.dynamicServeFields() : (fields[type] ?? []);
       this.syncDynamicControls(optionsGroup, typeFields);
     }
   }
@@ -646,7 +756,18 @@ export class QuickRunEditorComponent implements OnInit {
    * Add FormControl instances for each field that doesn't already exist on
    * the group. Existing controls are preserved.
    */
-  private syncDynamicControls(group: FormGroup, fields: RcConfigOption[]): void {
+  private syncDynamicControls(
+    group: FormGroup,
+    fields: RcConfigOption[],
+    opts?: { preserveKeys?: Set<string> }
+  ): void {
+    if (opts?.preserveKeys) {
+      for (const k of Object.keys(group.controls)) {
+        if (!opts.preserveKeys.has(k)) {
+          group.removeControl(k);
+        }
+      }
+    }
     for (const f of fields) {
       const key = f.Name || f.FieldName;
       if (!key || group.contains(key)) continue;
@@ -679,21 +800,6 @@ export class QuickRunEditorComponent implements OnInit {
           }
         });
     }
-  }
-
-  private setupResponsiveLayout(): void {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const update = (matches: boolean): void => {
-      this.sidebarMode.set(matches ? 'side' : 'over');
-      if (!matches) {
-        this.isSidebarOpen.set(false);
-      }
-    };
-    const handler = (e: MediaQueryListEvent): void => update(e.matches);
-
-    update(mql.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -729,7 +835,38 @@ export class QuickRunEditorComponent implements OnInit {
       return;
     }
     const input = this.buildInput();
-    await this.quickRunService.save(input);
+
+    try {
+      await this.pathInspectionService.createRequiredDirectoriesForOperation(
+        input.operationType,
+        input.config.rclone as Record<string, unknown>
+      );
+    } catch (err) {
+      console.error('Failed to create required directories for Quick Run:', err);
+    }
+
+    const node = this.targetNode();
+    if (this.isWorkflowMode() && node) {
+      if (this.workflowStateService) {
+        this.workflowStateService.updateNode(node.id, {
+          title: input.name,
+          subtitle: input.description,
+          config: {
+            remoteName: input.remoteName,
+            config: input.config,
+          },
+        });
+      }
+      this.notificationService.showSuccess(
+        this.translate.instant('flow.workflow.editor.nodeSaved')
+      );
+      this.closed.emit();
+      this.dialogRef?.close(true);
+      return;
+    }
+
+    const saved = await this.quickRunService.save(input);
+    if (!saved) return;
     this.closed.emit();
     this.dialogRef?.close(true);
   }
@@ -904,6 +1041,9 @@ export class QuickRunEditorComponent implements OnInit {
       const mountOpts = this.form.get('mountConfig.options') as FormGroup | null;
       mountOpts?.get('mountType')?.setValue(result.mountSubtype);
     }
+    if (result.serveSubtype && currentOp === 'serve') {
+      void this.onServeTypeChange(result.serveSubtype);
+    }
 
     this.highlightedFields.set(newHighlighted);
     this.showCliImport.set(false);
@@ -944,15 +1084,23 @@ export class QuickRunEditorComponent implements OnInit {
     if (sourceValue) {
       if (Array.isArray(sourceValue)) {
         const paths = (sourceValue as Record<string, unknown>[]).map(item =>
-          this.resolvePath(item, remoteName)
+          opType === 'copyurl'
+            ? String(item['path'] ?? '').trim()
+            : this.resolvePath(item, remoteName)
         );
         if (opType === 'bisync') opConfig['path1'] = paths[0] ?? '';
+        else if (opType === 'copyurl')
+          opConfig['url'] = paths.length === 1 ? (paths[0] ?? '') : paths;
         else opConfig['srcFs'] = paths.length === 1 ? (paths[0] ?? '') : paths;
       } else if (typeof sourceValue === 'object') {
-        const path = this.resolvePath(sourceValue as Record<string, unknown>, remoteName);
+        const path =
+          opType === 'copyurl'
+            ? String((sourceValue as Record<string, unknown>)['path'] ?? '').trim()
+            : this.resolvePath(sourceValue as Record<string, unknown>, remoteName);
         if (opType === 'mount') opConfig['srcFs'] = path;
         else if (opType === 'serve') opConfig['fs'] = path;
         else if (opType === 'bisync') opConfig['path1'] = path;
+        else if (opType === 'copyurl') opConfig['url'] = path;
         else opConfig['srcFs'] = path;
       }
     }
@@ -969,11 +1117,25 @@ export class QuickRunEditorComponent implements OnInit {
 
     const opOptsGroup = inner.get('options') as FormGroup | null;
     if (opOptsGroup) {
+      const opFields =
+        opType === 'serve' ? this.dynamicServeFields() : (fields[opType as FlagType] ?? []);
       const cleanedOp = this.valueMapper.cleanData(
         opOptsGroup.getRawValue() as Record<string, unknown>,
-        fields[opType as FlagType] ?? []
+        opFields
       );
       Object.assign(opConfig, cleanedOp);
+
+      if (opType === 'mount') {
+        const mt = opOptsGroup.get('mountType')?.value;
+        if (mt && mt !== 'mount') {
+          opConfig['mountType'] = mt;
+        }
+      } else if (opType === 'serve') {
+        const st = opOptsGroup.get('type')?.value;
+        if (st) {
+          opConfig['type'] = st;
+        }
+      }
     }
 
     const rclone: Record<string, unknown> = {
@@ -1051,6 +1213,9 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   getFlagFields(type: FlagType | string): RcConfigOption[] {
+    if (type === 'serve') {
+      return this.dynamicServeFields();
+    }
     return this.dynamicFlagFields()[type] ?? [];
   }
 
@@ -1066,7 +1231,8 @@ export class QuickRunEditorComponent implements OnInit {
       const opts =
         (raw[`${flagType}Config`] as { options?: Record<string, unknown> } | undefined)?.options ??
         {};
-      const typeFields = fields[flagType as FlagType] ?? [];
+      const typeFields =
+        flagType === 'serve' ? this.dynamicServeFields() : (fields[flagType as FlagType] ?? []);
       return this.valueMapper.cleanData(opts, typeFields);
     };
 
@@ -1075,6 +1241,7 @@ export class QuickRunEditorComponent implements OnInit {
     const res: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
       vfs: isVfsApplicable ? getCleanOptions('vfs') : {},
       mount: getCleanOptions('mount'),
+      serve: getCleanOptions('serve'),
       backend: getCleanOptions('backend'),
       filter: getCleanOptions('filter'),
       sync: getCleanOptions('sync'),
@@ -1092,7 +1259,7 @@ export class QuickRunEditorComponent implements OnInit {
   private patchGroupOptions(
     configKey: string,
     opts?: Record<string, unknown>,
-    ignoredKeys?: string[]
+    ignoredKeys?: readonly string[]
   ): void {
     if (!opts) return;
     const groupKey = configKey.endsWith('Config') ? configKey : `${configKey}Config`;
@@ -1102,7 +1269,7 @@ export class QuickRunEditorComponent implements OnInit {
     const optsGroup = configGroup.get('options') as FormGroup | null;
     if (optsGroup) {
       for (const [k, v] of Object.entries(opts)) {
-        if (ignoredKeys && ignoredKeys.includes(k)) continue;
+        if (ignoredKeys ? ignoredKeys.includes(k) : isRclonePathKey(k)) continue;
         if (!optsGroup.contains(k)) {
           optsGroup.addControl(k, new FormControl(v));
         } else {
@@ -1114,24 +1281,28 @@ export class QuickRunEditorComponent implements OnInit {
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
     const { values } = event;
-    const PATH_KEYS = ['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint', 'source', 'dest'];
 
-    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs, PATH_KEYS);
-    if (values.mount) this.patchGroupOptions('mountConfig', values.mount, PATH_KEYS);
-    if (values.backend) this.patchGroupOptions('backendConfig', values.backend, PATH_KEYS);
-    if (values.filter) this.patchGroupOptions('filterConfig', values.filter, PATH_KEYS);
-    if (values.sync) this.patchGroupOptions('syncConfig', values.sync, PATH_KEYS);
-    if (values.copy) this.patchGroupOptions('copyConfig', values.copy, PATH_KEYS);
+    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs);
+    if (values.mount) this.patchGroupOptions('mountConfig', values.mount);
+    if (values.backend) this.patchGroupOptions('backendConfig', values.backend);
+    if (values.filter) this.patchGroupOptions('filterConfig', values.filter);
+    if (values.sync) this.patchGroupOptions('syncConfig', values.sync);
+    if (values.copy) this.patchGroupOptions('copyConfig', values.copy);
+    const serveValues = (values as Record<string, Record<string, unknown> | undefined>)['serve'];
+    if (serveValues) {
+      this.patchGroupOptions('serveConfig', serveValues);
+      const sType = serveValues['type'] as string | undefined;
+      if (sType) void this.onServeTypeChange(sType);
+    }
 
     const currentOp = this.currentOpType();
     if (currentOp) {
       const opGroup = this.getOpFormGroup(currentOp);
       const opOpts = (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
       if (opOpts && typeof opOpts === 'object') {
-        this.patchGroupOptions(`${currentOp}Config`, opOpts, PATH_KEYS);
+        this.patchGroupOptions(`${currentOp}Config`, opOpts);
 
-        const srcPath = (opOpts['srcFs'] ?? opOpts['path1'] ?? opOpts['fs'] ?? opOpts['source']) as
-          string | undefined;
+        const srcPath = extractProfileSource(opOpts) as string | undefined;
         if (srcPath && typeof srcPath === 'string') {
           const sourceCtrl = opGroup.get('source');
           if (sourceCtrl instanceof FormArray && sourceCtrl.length > 0) {
@@ -1140,10 +1311,7 @@ export class QuickRunEditorComponent implements OnInit {
             sourceCtrl.get('path')?.setValue(srcPath);
           }
         }
-        const dstPath = (opOpts['mountPoint'] ??
-          opOpts['dstFs'] ??
-          opOpts['path2'] ??
-          opOpts['dest']) as string | undefined;
+        const dstPath = extractProfileDest(opOpts) as string | undefined;
         if (dstPath && typeof dstPath === 'string') {
           const destCtrl = opGroup.get('dest') as FormGroup | null;
           destCtrl?.get('path')?.setValue(dstPath);

@@ -9,6 +9,7 @@
 
   strong {
     display: block;
+    font-weight: 600;
     font-size: var(--font-size-md);
     margin-bottom: var(--space-xs);
   }
@@ -19,6 +20,8 @@
     font-size: var(--font-size-sm);
     color: var(--window-fg-color);
     line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
     opacity: 0.9;
 
     &:not(:last-child) {
@@ -94,6 +97,25 @@
     }
     > div a {
       color: var(--success-color);
+    }
+  }
+
+  &.dim {
+    background: var(--bg-elevated-1);
+    box-shadow: none;
+
+    > mat-icon,
+    > div strong {
+      color: var(--dim-color);
+    }
+
+    p,
+    ::ng-deep p {
+      color: var(--dim-color);
+    }
+
+    > div a {
+      color: var(--dim-color);
     }
   }
 

@@ -2,7 +2,7 @@
 
 This file provides guidance to AI coding agents (e.g. Antigravity, Claude Code, Gemini CLI, Cursor, and similar tools) when working with code in this repository.
 
-Rclone Manager welcomes AI-assisted contributions, but the expectation is that you, the human submitter, understand every line you propose and have compiled, linted, and tested it against real code — not just generated it. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+RClone Manager welcomes AI-assisted contributions, but the expectation is that you, the human submitter, understand every line you propose and have compiled, linted, and tested it against real code — not just generated it. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ---
 
@@ -66,6 +66,66 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
 8. **Automated Unit Testing & Spec Maintenance**
    - New utility functions, data transformers, flag parsers, state machines, and business services should always have corresponding unit test suites.
    - Ensure tests cover both happy paths and edge cases (e.g. empty strings, null values, invalid inputs, error handling).
+
+9. **Unique ID Generation & Non-Secure HTTP Compatibility (CRITICAL)**
+   - **DO NOT** use `crypto.randomUUID()` or Web Crypto APIs directly in frontend code. They are restricted to secure contexts (HTTPS/localhost) by modern browsers and are `undefined` over plain HTTP (e.g., remote IP headless web server access), causing `TypeError: crypto.randomUUID is not a function` and blank screens.
+   - **ALWAYS** use `generatePrefixedId(prefix)` from `src/app/shared/utils` for generating unique IDs, request tokens, temporary keys, or job groups (e.g., `generatePrefixedId('qr')`, `generatePrefixedId('picker')`, `generatePrefixedId('usr-tpl')`).
+
+10. **Event System & Reactive State Architecture (CRITICAL)**
+    - **Frontend Centralization & Strict Typing**:
+      - **ALWAYS** route frontend event subscriptions through the singleton `EventListenersService` (`src/app/services/infrastructure/system/event-listeners.service.ts`).
+      - **DO NOT** call `this.listenToEvent(...)` or import `@tauri-apps/api/event` directly in components or domain services. Bypassing `EventListenersService` causes duplicate Tauri IPC listeners and separate SSE pipelines.
+      - **ALWAYS** define event name constants and structured payload interfaces in `src/app/shared/types/events.ts` (re-exported from `@app/types`). Every method in `EventListenersService` must return a strongly-typed `Observable<T>`.
+    - **Backend Event Emission & Headless SSE Parity (Rust)**:
+      - All event strings **MUST** be declared as constants in `src-tauri/src/utils/types/events.rs` with docstrings identifying emitting sources and consuming listeners.
+      - Any event intended for frontend consumption across desktop and headless modes **MUST** be included in `SSE_FORWARD_EVENTS` in `src-tauri/src/utils/types/events.rs`.
+      - Internal backend listeners for system integration (tray re-render, power inhibition, engine restarts) **MUST** be registered inside `src-tauri/src/core/event_listener.rs`.
+
+11. **Drag & Drop / HTML5 Drag Prohibition in UI (CRITICAL)**
+    - **DO NOT** use the native HTML5 Drag and Drop API (`draggable="true"`, `(dragstart)`, `(dragover)`, `(drop)`, `event.dataTransfer`) for internal UI dragging interactions.
+    - Native HTML5 drag causes severe webview freezes, crashes, dropped payloads, or erratic behavior in Tauri (WebKitGTK on Linux and WebView2 on Windows) and does not support mobile touch gestures natively.
+    - **ALWAYS** implement internal Pointer Drag systems using pointer events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) with floating ghost elements and `document.elementFromPoint()` or bounding box hit-testing. Refer to `NautilusDragDropService` (`src/app/services/ui/nautilus-drag-drop.service.ts`) and `WorkflowDragDropService` (`src/app/services/flow/workflow-drag-drop.service.ts`) as reference implementations.
+    - Always enforce a pointer movement threshold (e.g. 6–8px) before initiating a drag so that regular `click` and touch tap actions continue to work seamlessly.
+
+12. **Dead Code & Compiler Warning Suppression Prohibition (CRITICAL)**
+    - **DO NOT** use `#[allow(dead_code)]`, `#[allow(unused)]`, or similar compiler warning suppression attributes to silence unused structs, methods, fields, functions, or imports in backend code.
+    - Every function, struct, field, or method introduced must be actively used or properly integrated.
+    - If an item is target- or feature-specific, use exact conditional compilation attributes (`#[cfg(feature = "...")]` or `#[cfg(not(feature = "..."))]`) instead of silencing warnings with `allow`.
+    - Unused code must be removed rather than suppressed. Backend code must compile cleanly with `-D warnings` across all target configurations (Desktop, Web Server, Mobile) without suppressing dead code.
+
+13. **Design System First, Global SCSS & Anti-Duplication Rule (CRITICAL)**
+    - **Never Reinvent Existing Classes (Single Canonical Class Rule)**: Before adding any new CSS class to a component's `.scss` file, AI agents **MUST** inspect `src/custom-theme.scss` and `src/app/styles/`. There is **exactly ONE** canonical global class for each UI primitive. You **MUST** reuse it instead of inventing a custom class or alias with duplicate styling:
+      - **Pills / Badges / Chips**: Always use `.app-pill` (with `.interactive`, `.is-selected`, and semantic color variants `.p-primary`, `.p-accent`, `.p-orange`, `.p-yellow`, `.p-purple`, `.p-warn`, `.p-dim`). **DO NOT** create custom `.filter-chip`, `.badge`, `.status-tag`, `.job-id-pill`, `.stat-pill`, or `.chip` classes.
+      - **Action / Icon Buttons**: Always use `.action-button` (standard 32x32px icon button). **DO NOT** create custom `.action-btn`, `.icon-btn`, `.tool-btn`, `.chip-delete-btn`, `.action-mini-btn`, or `.custom-icon-button` classes.
+      - **Text Truncation (Ellipsis)**: Always use the single canonical `.truncate` class. **DO NOT** re-declare `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` in component SCSS files.
+      - **Counter Badges**: Always use the single canonical `.count-badge` class. **DO NOT** create custom `.cat-count-badge`, `.log-count-badge`, or `.config-count-badge` classes.
+      - **Empty States**: Always use `.empty-state` (flex column, centered, with `mat-icon`, `span`, `p`). **DO NOT** create `.no-data`, `.empty-view`, `.profile-empty-state`, or component-specific empty-state clones.
+      - **Loaders / Overlays**: Always use `.loading-container` (inline spinner) or `.loading-overlay` (modal absolute overlay from `_shared-modal.scss`).
+      - **Context Menus**: Always use `.material-context-menu` and `.menu-item` (see Rule 5).
+      - **Scrollbar Concealing**: Always use `.hide-scrollbar`. **DO NOT** write custom `::-webkit-scrollbar { display: none; }` or `scrollbar-width: none` in components.
+      - **Detail Sections & Rows**: Always use `.detail-section`, `.section-title`, `.error-entry`, and `.card-row-item`.
+      - **Modal Scaffolding**: Standard modals should extend or include `src/app/styles/_shared-modal.scss` via `styleUrls: ['...', 'path/to/_shared-modal.scss']` and use standard `header`, `main`, `footer`, `.form-section`, and `.section-label`.
+    - **Global Inherited Resets Prohibition**:
+      - `html, body` globally enforces `user-select: none;` and `-webkit-user-drag: none;` across the entire application.
+      - **DO NOT** declare redundant `user-select: none;` or `-webkit-user-drag: none;` in component SCSS files.
+      - **ONLY** use `user-select: text;` or `user-select: all;` when explicitly opting-in to allow text selection (e.g. copyable IDs, tokens, paths, or interactive log outputs).
+    - **Design System Tokens & Strict Token Integrity (CRITICAL)**:
+      - Never hardcode raw pixel sizes, margins, paddings, or arbitrary hex colors (e.g. Bootstrap `#28a745`, `#ffc107`, `#17a2b8` or Tailwind `#3b82f6`, `#ef4444`).
+      - **DO NOT invent CSS variables or alias tokens**: Every semantic role maps to exactly ONE canonical variable (1-to-1 token mapping). Defining alias/duplicate variables (e.g. `--text-secondary`, `--text-muted`, `--color-danger`, `--bg-hover`, `--bg-selected`, `--bg-elevated-05`) is strictly prohibited.
+      - **DO NOT write fallbacks** into `var()` calls (e.g. `var(--accent-color, #3b82f6)`, `var(--dim-color, #a0a0a0)`, or `var(--bg-elevated, rgba(...))`). Global tokens in `src/custom-theme.scss` are guaranteed to exist at `:root`.
+      - Always use canonical CSS variables:
+        - Spacing: `var(--space-xxs)` through `var(--space-2xl)`
+        - Border Radius: `var(--radius-xxs)` through `var(--radius-lg)`
+        - Typography: `var(--font-size-xs)` through `var(--font-size-3xl)`, `var(--font-mono)`
+        - Transitions: `var(--transition-fast)`, `var(--transition-standard)`
+        - Elevated Backgrounds: `var(--bg-elevated)` (base 2%), and `var(--bg-elevated-1)` through `var(--bg-elevated-4)`
+        - Interactive States: `var(--hover-bg-color)`, `var(--selected-bg-color)`
+        - Semantic Colors: `var(--window-bg-color)`, `var(--window-fg-color)`, `var(--dim-color)` (for all muted/secondary text), `var(--accent-color)`, `var(--primary-color)`, `var(--warn-color)` (for all errors/danger), `var(--yellow)`, `var(--orange)`, `var(--purple)`, `var(--card-bg-color)`, `var(--border-color)`
+
+14. **Async Task Spawning Standard (CRITICAL)**
+    - **ALWAYS** use `crate::utils::spawn` (or `crate::utils::spawn_blocking`) and standard `tokio::task::JoinHandle` for asynchronous background task spawning across backend Rust code.
+    - **DO NOT** use raw `tokio::spawn` directly in production code: calling `tokio::spawn` outside of Tokio worker threads (e.g. inside `setup` hooks, GUI thread event listeners, or OS callbacks) panics with `"there is no reactor running"`. `crate::utils::spawn` dynamically registers the Tokio runtime context on the calling thread and returns a native `tokio::task::JoinHandle`.
+    - **DO NOT** use `tauri::async_runtime::spawn` or `tauri::async_runtime::JoinHandle`.
 
 ---
 
@@ -131,7 +191,7 @@ cd src-tauri && cargo clippy --features mobile --no-default-features -- -D warni
 cd src-tauri && cargo fmt -- --check
 
 # 5. Run backend unit tests
-cd src-tauri && cargo test --features desktop --no-default-features
+cd src-tauri && cargo test --features desktop --no-default-features --lib
 ```
 
 ### 3. Local Development
