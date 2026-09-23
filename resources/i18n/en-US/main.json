@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "save": "Save",
     "create": "Create",
     "show": "Show",
@@ -39,7 +40,11 @@
     "moreActions": "More Actions",
     "duplicate": "Duplicate",
     "clearAll": "Clear All",
-    "acknowledge": "Acknowledge"
+    "acknowledge": "Acknowledge",
+    "actions": "Actions",
+    "savedSuccessfully": "Saved successfully",
+    "deletedSuccessfully": "Deleted successfully",
+    "notConfigured": "Not Configured"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -61,7 +66,6 @@
     "bwTimetable": "Invalid bandwidth format",
     "fileMode": "Must be octal format (3-4 digits, each 0-7). Example: 755",
     "enum": "Must be one of: {{values}}",
-    "invalidPath": "Path must be absolute",
     "urlArray": "All URLs must be valid and start with http:// or https://",
     "bandwidth": "Invalid bandwidth format. Use: 10M, 1G, 100K or combinations",
     "passwordMismatch": "Passwords do not match",
@@ -329,6 +333,8 @@
       "backendFilterHint": "Monitor events only on specific backends.",
       "profileFilter": "Profile Filter",
       "profileFilterHint": "Monitor events only for specific profiles.",
+      "workflowFilter": "Workflow Filter",
+      "workflowFilterHint": "Filter alerts by specific workflows.",
       "autoAcknowledge": "Auto Acknowledge",
       "autoAcknowledgeHint": "Automatically mark alerts as acknowledged. Ideal for alerts that already trigger system notifications.",
       "actions": "Actions to Trigger",
@@ -345,11 +351,15 @@
       "engine": "Backend Infrastructure",
       "update": "Software Updates",
       "automation": "Automations",
-      "system": "System Events"
+      "system": "System Events",
+      "workflow": "Visual Workflows"
     },
     "action": {
       "basicInfo": "Basic Information",
       "configuration": "Configuration",
+      "channelKind": "Channel Type",
+      "whatsappProvider": "WhatsApp Provider",
+      "telegramMode": "Telegram Mode",
       "noActionsCreated": "No alert actions have been created yet.",
       "noHeaders": "No custom headers configured.",
       "kind": "Action Type",
@@ -407,7 +417,15 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Header Name",
-      "headerValue": "Value"
+      "headerValue": "Value",
+      "apikey": "API Key",
+      "password": "Password",
+      "username": "Username",
+      "subject": "Subject",
+      "mqttHost": "MQTT Host",
+      "mqttPort": "MQTT Port",
+      "mqttTopic": "MQTT Topic",
+      "addHeader": "Add Header"
     },
     "noRulesHint": "No alert rules configured yet. Create a rule to receive notifications.",
     "noActionsHint": "No alert actions configured yet. Create an action to define how alerts are delivered."
@@ -470,6 +488,10 @@
       "prevent_sleep": {
         "label": "Prevent System Sleep / Shutdown",
         "description": "Inhibit system sleep and OS shutdown while active transfers, mounts, or servers are running."
+      },
+      "keep_alive": {
+        "label": "Run in Background",
+        "description": "Keep RClone Manager, active transfers, and mounted remotes running in the background when minimized or dismissed."
       }
     },
     "core": {
@@ -624,6 +646,10 @@
       "auth": {
         "title": "Rclone Authentication Required",
         "subtitle": "Please check your credentials or configuration password"
+      },
+      "port": {
+        "title": "Port Already In Use",
+        "subtitle": "The configured port is occupied by another application"
       }
     }
   },
@@ -765,6 +791,13 @@
       "hide": "Hide search",
       "show": "Show search"
     },
+    "urlPreview": {
+      "host": "Host",
+      "destination": "Destination",
+      "openViewer": "Open in Viewer",
+      "openViewerTooltip": "Open full media preview",
+      "inferredFromUrl": "Inferred from URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Recommended",
@@ -782,7 +815,6 @@
         "invalid": "Invalid binary"
       },
       "errors": {
-        "invalidPath": "Please enter a valid absolute path",
         "required": "This field is required"
       },
       "modes": {
@@ -928,7 +960,8 @@
       },
       "errors": {
         "invalidValue": "Invalid value"
-      }
+      },
+      "showOptions": "Show options"
     },
     "serveCard": {
       "tooltips": {
@@ -1198,7 +1231,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "Passwords are already obscured — skip the obscuring step"
+          "description": "Passwords are already obscured - skip the obscuring step"
         },
         "nonInteractive": {
           "label": "Non-Interactive",
@@ -1476,10 +1509,7 @@
       "noFeatureInfo": "No feature information available.",
       "example": "Example",
       "readOnly": "Read Only",
-      "yes": "Yes",
-      "no": "No",
       "noMetadata": "No metadata specifications available.",
-      "close": "Close dialog",
       "unknown": "Unknown",
       "error": "Failed to load remote information.",
       "tabs": {
@@ -1496,6 +1526,7 @@
       "title": "Properties",
       "loading": "Loading basic info...",
       "location": "Location",
+      "targetId": "Target ID",
       "modified": "Modified",
       "size": "Size",
       "contentStats": "Content Stats",
@@ -1535,7 +1566,8 @@
       "generatedChecksums": "Generated Checksums",
       "calculateAnother": "Calculate Another",
       "bulkHashInstruction": "Select a hash type to calculate checksums for all files in this directory.",
-      "noHashesFound": "No hashes returned"
+      "noHashesFound": "No hashes returned",
+      "metadata": "Metadata"
     },
     "operations": {
       "title": "Operations",
@@ -1560,6 +1592,23 @@
         "copiedFiles": "Copied files",
         "syncedFiles": "Synced files",
         "processedFiles": "Processed files"
+      },
+      "running": "Running",
+      "filesCount": "{{count}} files",
+      "types": {
+        "copy": "Copy",
+        "copyurl": "Copy URL",
+        "move": "Move",
+        "rename": "Rename",
+        "delete": "Delete",
+        "cleanup": "Cleanup",
+        "rmdirs": "Remove Empty Dirs",
+        "sync": "Sync",
+        "bisync": "Bisync",
+        "check": "Check",
+        "upload": "Upload",
+        "archivecreate": "Archive",
+        "archiveextract": "Extract Archive"
       }
     },
     "fileViewer": {
@@ -1596,7 +1645,12 @@
       "openingNative": "Opening {{name}} in external viewer...",
       "errorOpenNative": "Failed to open file in external app",
       "showRawText": "Show Raw Text",
-      "showPreview": "Show Preview"
+      "showPreview": "Show Preview",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "resetZoom": "Reset Zoom",
+      "hexPreview": "Hex Preview",
+      "playVideo": "Play in Video Player"
     }
   },
   "dashboard": {
@@ -1677,9 +1731,9 @@
       "listed": "Listed",
       "transferStatistics": "{{op}} Statistics",
       "dryRun": "Dry Run",
-      "dryRunActive": "Dry run is active — no changes will be made",
+      "dryRunActive": "Dry run is active - no changes will be made",
       "resync": "Resync",
-      "resyncActive": "Resync is active — performing full resynchronization",
+      "resyncActive": "Resync is active - performing full resynchronization",
       "remoteSettings": "Remote Settings"
     },
     "generalDetail": {
@@ -1727,7 +1781,9 @@
       "exportConfig": "Export Configuration",
       "toggleBrowser": "Toggle File Browser",
       "openFlowOverlay": "Toggle Flow Workspace",
-      "closeDialog": "Close Dialog/Cancel Action"
+      "closeDialog": "Close Dialog/Cancel Action",
+      "saveWorkflow": "Save Workflow",
+      "deleteSelected": "Delete Selected Nodes/Edges"
     },
     "categories": {
       "global": "Global",
@@ -1736,7 +1792,8 @@
       "fileOperations": "File Operations",
       "fileBrowser": "File Browser",
       "fileBrowserNautilus": "File Browser (Nautilus)",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "flowWorkspace": "Flow Workspace"
     },
     "quitError": "Failed to quit application: {{error}}",
     "mountsRefreshSuccess": "Mounts refreshed successfully",
@@ -1749,8 +1806,49 @@
       "title": "Shutting Down",
       "message": "Please wait while the application shuts down safely...",
       "confirmTitle": "Active Tasks in Progress",
-      "confirmMessage": "Rclone Manager has active tasks running ({{jobs}} transfers, {{mounts}} mounts, {{serves}} serves). Are you sure you want to stop all active tasks and quit?",
+      "confirmMessage": "RClone Manager has active tasks running ({{jobs}} transfers, {{mounts}} mounts, {{serves}} serves). Are you sure you want to stop all active tasks and quit?",
       "stopAndQuit": "Stop & Quit"
+    }
+  },
+  "powerMenu": {
+    "title": "Power Options",
+    "executing": "Executing action...",
+    "activeOpsTitle": "Active Tasks in Progress",
+    "activeOpsCount": "{{jobs}} transfers, {{mounts}} mounts, {{serves}} serves running",
+    "actions": {
+      "shutdownApp": {
+        "title": "Shut Down App",
+        "desc": "Safely stops RClone Manager and background tasks"
+      },
+      "restartApp": {
+        "title": "Restart App",
+        "desc": "Restarts the application and web server"
+      },
+      "emergencyStop": {
+        "title": "Emergency Stop",
+        "desc": "Stops all active transfers and unmounts immediately"
+      },
+      "systemShutdown": {
+        "title": "Power Off System",
+        "desc": "Completely shuts down the host PC/Server"
+      },
+      "systemSleep": {
+        "title": "Suspend / Sleep",
+        "desc": "Puts the host machine to sleep"
+      },
+      "systemLock": {
+        "title": "Lock Session",
+        "desc": "Locks the current user session"
+      }
+    },
+    "status": {
+      "shuttingDown": "Application is shutting down...",
+      "restarting": "Application is restarting...",
+      "stoppingOperations": "Stopping all operations...",
+      "emergencyStopSuccess": "All active operations and mounts stopped",
+      "hostShuttingDown": "Operating system is powering off...",
+      "hostSleeping": "Putting system to sleep...",
+      "hostLocking": "Locking system session..."
     }
   },
   "modals": {
@@ -1774,7 +1872,8 @@
         "statistics": "Statistics",
         "paths": "Paths",
         "errors": "Errors",
-        "profile": "Profile"
+        "profile": "Profile",
+        "serverSideFlags": "Server-side & Flags"
       },
       "fields": {
         "type": "Job Type",
@@ -1851,6 +1950,7 @@
       "skippedRcloneUpdates": "Skipped Rclone Updates",
       "devTeam": "Development Team",
       "leadDeveloper": "Lead Developer",
+      "contributors": "Contributors",
       "acknowledgments": "Acknowledgments",
       "ackText": "This application is built with modern web technologies and relies on the excellent Rclone project for cloud storage management.",
       "noReleaseNotes": "No release notes available.",
@@ -1918,9 +2018,6 @@
       "scrollTop": "Scroll Top",
       "scrollBottom": "Scroll Bottom",
       "fetching": "Fetching logs...",
-      "aria": {
-        "terminalLogs": "Terminal logs"
-      },
       "remoteLogs": "Remote Logs: {{ name }}",
       "noLogsFound": "No logs found",
       "adjustFilters": "Try adjusting your filters",
@@ -1993,8 +2090,6 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
-      "includeSecrets": "Include secret keys",
-      "includeSecretsHint": "Include sensitive credentials in the backup. Encryption is required.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -2026,6 +2121,18 @@
         "alerts": {
           "label": "Alerts",
           "description": "Alert rules and actions configuration"
+        },
+        "workflows": {
+          "label": "Workflows",
+          "description": "Automated workflow rules and node graphs"
+        },
+        "templates": {
+          "label": "Templates",
+          "description": "Preset configuration templates"
+        },
+        "quickRuns": {
+          "label": "Quick Runs",
+          "description": "Configured quick run commands and shortcuts"
         }
       }
     },
@@ -2054,8 +2161,7 @@
         },
         "configPath": {
           "label": "Config Path",
-          "placeholder": "Leave empty to use default",
-          "description": "Specific path to rclone.conf (optional)"
+          "placeholder": "Leave empty to use default"
         }
       },
       "addBackend": "Add Backend",
@@ -2133,10 +2239,7 @@
         "decryptWarning": "This will decrypt your rclone configuration. Your credentials will be visible to anyone with access to your files.",
         "enableEncryption": "Enable Encryption",
         "protectCredentials": "Protect your credentials with a password",
-        "passwordChanged": "Password changed",
-        "passwordStored": "Password stored in keychain",
         "passwordStoredInKeyring": "Password stored in system keyring",
-        "passwordRemoved": "Password removed from keychain",
         "passwordsMismatch": "Passwords do not match"
       }
     },
@@ -2335,9 +2438,18 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Shortcut (Shared Item)",
+      "sharedItemTooltip": "Shared Item",
+      "onedriveRemoteTooltip": "External Shared Item",
+      "linkTooltip": "Link / Shortcut",
+      "shortcutBadge": "Shortcut",
+      "sharedBadge": "Shared"
+    },
     "sidebar": {
       "configureTitle": "Configure Sidebar Items",
-      "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar."
+      "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar.",
+      "toggleSearch": "Toggle search"
     },
     "shortcuts": {
       "title": "Nautilus Keyboard Shortcuts"
@@ -2353,7 +2465,8 @@
       "cloud": "Cloud",
       "fileSystem": "File System",
       "bookmarks": "Bookmarks",
-      "localDisk": "Local Disk"
+      "localDisk": "Local Disk",
+      "internalStorage": "Internal Storage"
     },
     "bookmarks": {
       "emptyHint": "No bookmarks"
@@ -2439,8 +2552,26 @@
         "newName": "New name",
         "counter": "Counter",
         "date": "Date",
+        "modDate": "Modified date",
         "extension": "Extension",
-        "duplicateOrInvalid": "Duplicate or invalid name"
+        "duplicateOrInvalid": "Duplicate or invalid name",
+        "invalidRegex": "Invalid regular expression: {{error}}",
+        "targetScope": "Apply to",
+        "targetScopeAll": "Files and folders",
+        "targetScopeFiles": "Files only",
+        "targetScopeFolders": "Folders only",
+        "caseTransform": "Letter case",
+        "caseNone": "No change",
+        "caseLower": "lowercase",
+        "caseUpper": "UPPERCASE",
+        "caseTitle": "Title Case",
+        "preserveExtension": "Keep extension",
+        "useRegex": "Regular expressions",
+        "prefix": "Prefix",
+        "suffix": "Suffix",
+        "statsChanged": "{{count}} to rename",
+        "statsUnchanged": "{{count}} unchanged",
+        "statsConflicts": "{{count}} conflict(s)"
       }
     },
     "errors": {
@@ -2513,7 +2644,10 @@
       "iconSize": "Icon Size",
       "showHidden": "Show Hidden Files",
       "toggleLayout": "Toggle Layout",
-      "viewOptions": "View Options"
+      "viewOptions": "View Options",
+      "showingItems": "Showing {{count}} of {{total}}",
+      "decreaseIconSize": "Decrease icon size",
+      "increaseIconSize": "Increase icon size"
     },
     "notifications": {
       "mkdirFailed": "Failed to create directory: {{path}}",
@@ -2537,6 +2671,16 @@
     "androidShare": {
       "uploadHere": "Upload {{count}} shared file(s) to this folder",
       "confirm": "Upload here"
+    },
+    "toolbar": {
+      "goBack": "Go back",
+      "goForward": "Go forward",
+      "pathOptions": "Path options"
+    },
+    "actions": {
+      "cancelLoading": "Cancel loading",
+      "star": "Add to starred",
+      "unstar": "Remove from starred"
     }
   },
   "home": {
@@ -2548,6 +2692,8 @@
     },
     "options": {
       "showInTray": "Show in Tray Menu",
+      "aboutRemote": "About Remote",
+      "emptyTrash": "Empty Trash",
       "viewLogs": "View Logs",
       "cloneRemote": "Clone Remote",
       "exportConfig": "Export Configuration",
@@ -2565,6 +2711,8 @@
       "savedProfilesTitle": "Saved Profiles ({{count}})",
       "quickRunsTitle": "Associated Quick Runs ({{count}})",
       "automationsTitle": "Scheduled Automations ({{count}})",
+      "workflowsTitle": "Associated Workflows ({{count}})",
+      "workflowsDesc": "These workflows reference this remote and will not be deleted, but may need to be updated after removal.",
       "types": {
         "mount": "Mount Point",
         "serve": "Serve"
@@ -2698,7 +2846,8 @@
       "fuseMissing": "FUSE (fuse3) is not installed on your system. Please install fuse3 to enable mounting.",
       "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
       "driveLetterInUse": "Selected drive letter is already in use by the system.",
-      "permissionDenied": "Permission denied while attempting to mount."
+      "permissionDenied": "Permission denied while attempting to mount.",
+      "deviceBusy": "Target mount point or device is busy. Close open files, file managers, or terminals accessing the directory and try again."
     },
     "operations": {
       "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
@@ -2755,7 +2904,6 @@
     "security": {
       "passwordEmpty": "Password cannot be empty",
       "noPasswordStored": "No password stored",
-      "passwordChangeUnavailable": "Password change is not available on this platform",
       "incorrectPassword": "Incorrect password for rclone configuration",
       "storeFailed": "Failed to store password: {{error}}",
       "encryptFailed": "Failed to encrypt configuration: {{error}}",
@@ -2813,6 +2961,7 @@
       "noPending": "There is no pending update",
       "invalidUrl": "Invalid URL: {{error}}",
       "github": "GitHub API error: {{error}}",
+      "githubRateLimit": "GitHub API rate limit exceeded. Please try again later.",
       "updateFailed": "Update failed: {{error}}",
       "updateUnavailable": "Update artifact is no longer available: {{error}}",
       "relaunchFailed": "Relaunch failed: {{error}}",
@@ -2932,7 +3081,7 @@
     "browse": "Browse",
     "browseInApp": "Browse (In App)",
     "jobsCount": "Jobs [{{active}}/{{total}}]",
-    "jobsNone": "Jobs [—]",
+    "jobsNone": "Jobs [-]",
     "mountCount": "Mount [{{active}}/{{total}}]",
     "syncCount": "Sync [{{active}}/{{total}}]",
     "copyCount": "Copy [{{active}}/{{total}}]",
@@ -2945,6 +3094,7 @@
     "archivecreateCount": "Archive [{{active}}/{{total}}]",
     "serveCount": "Serve [{{active}}/{{total}}]",
     "quickRunsCount": "Quick Runs [{{active}}/{{total}}]",
+    "workflowsCount": "Workflows [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Job",
     "tooltipTasks": "{{count}} Jobs",
@@ -2995,19 +3145,29 @@
       "engineConnectionFailed": "Engine Connection Error",
       "engineBinaryNotFound": "Rclone Not Found",
       "enginePasswordRequired": "Password Required",
-      "engineAuthFailed": "Engine Authentication Failed"
+      "engineAuthFailed": "Engine Authentication Failed",
+      "workflowStarted": "Workflow '{{name}}' Started",
+      "workflowCompleted": "Workflow '{{name}}' Completed",
+      "workflowFailed": "Workflow '{{name}}' Failed",
+      "workflowStopped": "Workflow '{{name}}' Stopped",
+      "unmountFailed": "Unmount Failed",
+      "serveStopFailed": "Stop Serve Failed"
     },
     "body": {
-      "mountSucceeded": "Successfully mounted {{remote}} profile '{{profile}}' from {{backend}} at {{mountPoint}}.",
-      "mountFailed": "Failed to mount {{remote}} profile '{{profile}}' from {{backend}}: {{error}}",
-      "unmountSucceeded": "Disconnected {{remote}} profile '{{profile}}' from {{backend}}.",
-      "jobStarted": "Started {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "jobCompleted": "Successfully completed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "jobFailed": "Failed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
-      "jobStopped": "Stopped {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "serveStarted": "Started serve for {{remote}} profile '{{profile}}' on {{backend}}.",
-      "serveFailed": "Failed to start serve for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
-      "serveStopped": "Stopped serve for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "mountSucceeded": "Successfully mounted {{remote}} from {{backend}} at {{mountPoint}}.",
+      "mountFailed": "Failed to mount {{remote}} from {{backend}}: {{error}}",
+      "unmountSucceeded": "Disconnected {{remote}} from {{backend}}.",
+      "jobStarted": "Started {{type}} for {{remote}} on {{backend}}.",
+      "jobCompleted": "Successfully completed {{type}} for {{remote}} on {{backend}}.",
+      "jobFailed": "Failed {{type}} for {{remote}} on {{backend}}: {{error}}",
+      "jobStopped": "Stopped {{type}} for {{remote}} on {{backend}}.",
+      "workflowStarted": "Workflow '{{name}}' started execution.",
+      "workflowCompleted": "Workflow '{{name}}' finished successfully in {{duration}}.",
+      "workflowFailed": "Workflow '{{name}}' failed: {{error}}",
+      "workflowStopped": "Workflow '{{name}}' was stopped.",
+      "serveStarted": "Started serve for {{remote}} on {{backend}}.",
+      "serveFailed": "Failed to start serve for {{remote}} on {{backend}}: {{error}}",
+      "serveStopped": "Stopped serve for {{remote}} on {{backend}}.",
       "allJobsStopped": "Successfully terminated all active jobs.",
       "allServesStopped": "Successfully closed all active servers.",
       "allUnmounted": "Successfully disconnected all remote mounts.",
@@ -3033,7 +3193,9 @@
       "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
       "enginePasswordRequired": "Password is required to access the configuration file.",
       "engineAuthFailed": "Failed to authenticate with rclone engine: {{error}}",
-      "powerInhibited": "Active operations are preventing system sleep."
+      "powerInhibited": "Active operations are preventing system sleep.",
+      "unmountFailed": "Failed to unmount {{remote}} from {{backend}}: {{error}}",
+      "serveStopFailed": "Failed to stop serve {{protocol}} for {{remote}} on {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3056,7 +3218,8 @@
       "passwordRequired": "Password Required",
       "systemIssue": "System Issue",
       "versionTooOld": "Rclone Outdated",
-      "authRequired": "Authentication Required"
+      "authRequired": "Authentication Required",
+      "portInUse": "Port Already In Use"
     },
     "messages": {
       "missingRclone": "The rclone binary could not be found. Please install it to continue.",
@@ -3067,7 +3230,9 @@
       "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
       "mountPluginStatusError": "Failed to check status",
-      "authRequired": "The backend rejected the connection due to an authentication failure."
+      "authRequired": "The backend rejected the connection due to an authentication failure.",
+      "remoteAuthRequired": "The remote backend rejected the connection due to an authentication failure. Please check your credentials.",
+      "portInUse": "Port {{port}} is already occupied by another application or connection. Choose a different port to continue."
     },
     "progress": {
       "installingRclone": "Installing Rclone...",
@@ -3084,7 +3249,20 @@
       "restoreBackup": "Restore Backup",
       "restartEngine": "Restart Engine",
       "submitPassword": "Unlock",
+      "changePort": "Apply Port & Restart",
+      "configureBackend": "Configure Backend",
       "repair": "Repair"
+    },
+    "portConfig": {
+      "portLabel": "Local Port",
+      "suggestPort": "Suggest Port",
+      "suggestPortTooltip": "Find next available TCP port",
+      "testPort": "Test Port",
+      "testPortTooltip": "Check if this port is currently available",
+      "portAvailable": "Port {{port}} is available",
+      "portOccupied": "Port {{port}} is in use",
+      "portOccupiedTooltip": "Selected port is currently occupied by another process",
+      "invalidPort": "Port must be between 1024 and 65535"
     },
     "details": {
       "issueLabel": "Issue",
@@ -3116,6 +3294,14 @@
       "rcloneAuth": {
         "issue": "Authentication rejected",
         "action": "Kill stale process and restart engine"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Remote authentication rejected",
+        "action": "Configure backend credentials in settings"
+      },
+      "rclonePort": {
+        "issue": "Port {{port}} in use",
+        "action": "Change port & restart engine"
       }
     },
     "tooltips": {
@@ -3129,7 +3315,6 @@
       "testBinaryFirst": "Please test the binary first"
     },
     "passwordErrors": {
-      "validateFailed": "Validation failed",
       "invalid": "Invalid password",
       "locked": "Account locked due to too many attempts",
       "generic": "Error: {{error}}"
@@ -3173,14 +3358,19 @@
       "new": "New Quick Run",
       "actions": {
         "start": "Start",
-        "stop": "Stop"
+        "stop": "Stop",
+        "createRemote": "Create Remote '{{remote}}'",
+        "changeRemote": "Change Remote"
       },
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
         "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled"
+        "autostart": "Auto-Start Enabled",
+        "missingRemote": "Remote Missing from Rclone"
       },
+      "missingRemoteTitle": "Remote Not Found in Rclone",
+      "missingRemoteDesc": "The remote '{{remote}}' associated with this Quick Run does not exist in Rclone, but its configuration is preserved.",
       "status": {
         "running": "Running"
       },
@@ -3209,17 +3399,442 @@
         "tabVfs": "VFS",
         "tabFilter": "Filter",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote"
+        "tabRuntimeRemote": "Runtime Remote",
+        "noProfiles": "No profiles available"
+      },
+      "errors": {
+        "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration",
+        "failedStop": "Failed to stop Quick Run \"{{name}}\": {{error}}",
+        "failedStart": "Failed to start Quick Run \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Quick Run \"{{name}}\" started successfully"
       }
     },
     "tabs": {
       "quickRun": "Quick Run",
       "workflow": "Workflow"
     },
-    "builder": {
-      "placeholderTitle": "Workflow Builder in Progress",
-      "placeholderMessage": "A visual canvas for multi-step rclone pipelines and conditional job chaining is coming soon.",
-      "viewRoadmap": "View Roadmap on GitHub"
+    "workflow": {
+      "untitled": "Untitled Workflow",
+      "savedWorkflows": "Saved Workflows",
+      "presetRecipes": "Preset Recipes",
+      "unsavedChanges": "Unsaved changes",
+      "saving": "Saving...",
+      "categories": {
+        "all": "All"
+      },
+      "category": {
+        "trigger": "Trigger",
+        "task": "Task",
+        "logic": "Logic",
+        "action": "Action"
+      },
+      "actions": {
+        "duplicate": "Duplicate Node",
+        "delete": "Delete Node",
+        "inspectJob": "Inspect Job",
+        "duplicateWorkflow": "Duplicate Workflow",
+        "deleteWorkflow": "Delete Workflow",
+        "exportWorkflow": "Export JSON"
+      },
+      "canvas": {
+        "navigation": "Canvas Navigation",
+        "toggleMinimap": "Toggle Minimap",
+        "enterFocusMode": "Focus Canvas (Hide Navigation)",
+        "exitFocusMode": "Exit Focus (Show Navigation)"
+      },
+      "toolbar": {
+        "selectWorkflow": "Select Workflow",
+        "newWorkflow": "New Workflow",
+        "run": "Run Workflow",
+        "stop": "Stop Workflow",
+        "presets": "Presets & Recipes",
+        "undo": "Undo",
+        "redo": "Redo",
+        "zoomOut": "Zoom Out",
+        "zoomIn": "Zoom In",
+        "resetZoom": "Reset Zoom",
+        "fitToView": "Fit to Screen",
+        "snapToGrid": "Snap to Grid",
+        "toggleLog": "Toggle Execution Log",
+        "toggleInspector": "Toggle Inspector",
+        "dryRun": "Dry Run",
+        "dryRunTooltip": "Simulate workflow execution without modifying files or executing real commands"
+      },
+      "palette": {
+        "title": "Node Library",
+        "searchPlaceholder": "Search nodes...",
+        "clickToAdd": "Click or drag to add to canvas",
+        "noResults": "No nodes match your search",
+        "hideSearch": "Hide search & filters",
+        "showSearch": "Show search & filters"
+      },
+      "inspector": {
+        "general": "General Settings",
+        "parameters": "Parameters & Options",
+        "nodeTitle": "Node Title",
+        "nodeSubtitle": "Subtitle / Description",
+        "subtitlePlaceholder": "e.g. Daily Documents Backup",
+        "cronExpression": "Cron Expression",
+        "invalidCron": "Invalid cron expression",
+        "cronDaily": "Daily at 02:00",
+        "watchFolder": "Watch Folder Path",
+        "debounceSeconds": "Debounce Delay (seconds)",
+        "remote": "Remote",
+        "localOrSelect": "Local / Select Remote",
+        "sourcePath": "Source Path (srcFs)",
+        "destinationPath": "Destination Path (dstFs)",
+        "mountPoint": "Mount Point",
+        "rcEndpoint": "RC Endpoint",
+        "rcParameters": "RC Parameters (JSON)",
+        "rcPresets": "Preset Endpoints",
+        "presetCategoryAll": "All",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Storage",
+        "presetCategoryCore": "Core",
+        "insertVariable": "Insert Node Output Variable",
+        "insertTokenBtn": "Insert Token",
+        "formatJson": "Format JSON",
+        "clearJson": "Clear",
+        "invalidJson": "Invalid JSON",
+        "templateJson": "Dynamic Template",
+        "noUpstreamNodesHint": "Add other nodes to your workflow to dynamically reference their outputs like {{nodes.id.field}}",
+        "delaySeconds": "Delay Duration (seconds)",
+        "conditionOperator": "Condition Operator",
+        "opEquals": "Equals (==)",
+        "opNotEquals": "Not Equals (!=)",
+        "opContains": "Contains",
+        "opTruthy": "Is Non-Empty / Truthy",
+        "leftValue": "Left Expression / Value",
+        "rightValue": "Right Comparison Value",
+        "conditionValuePlaceholder": "value or {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/path/to/file or {{nodes.id.path}}",
+        "targetNode": "Target Node",
+        "targetNodeField": "Output Field",
+        "targetNodePlaceholder": "Select target node",
+        "targetFieldPlaceholder": "Select output field",
+        "resolvedToken": "Resolved Token",
+        "alertTitle": "Alert Title",
+        "alertMessage": "Alert Message",
+        "severity": "Severity Level",
+        "severityInfo": "Informational",
+        "severityError": "Error / Alert",
+        "manualDesc": "Manual trigger starts the workflow on demand. No additional configuration required.",
+        "parallelForkDesc": "Splits execution into multiple concurrent branches.",
+        "joinDesc": "Waits for all incoming parallel branches to complete before proceeding.",
+        "jobEventProfile": "Target Profile / Job",
+        "jobEventPlaceholder": "Select a profile to monitor",
+        "targetMountNode": "Target Mount Node",
+        "targetMountNodePlaceholder": "Select Mount Node",
+        "targetServeNode": "Target Serve Node",
+        "targetServeNodePlaceholder": "Select Serve Node",
+        "unmountPlaceholder": "/mnt/remote or C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "openDetailed": "Detailed Settings",
+        "openDetailedTooltip": "Open full parameters and flag editor bottom sheet",
+        "activeConfig": "Active Configuration & Flags",
+        "noActiveConfig": "No extra flags or filters configured",
+        "removeFlag": "Remove parameter",
+        "addFlagsHint": "Click Detailed Settings to configure advanced Rclone flags, filters, and VFS options.",
+        "appStartDesc": "Trigger automatically on application startup with optional delay.",
+        "startupDelay": "Startup Delay (seconds)",
+        "delay0s": "Immediate (0s)",
+        "fileFilterPattern": "File Filter Pattern (glob)",
+        "eventState": "Event State Filter",
+        "eventStateAny": "Any Completion (Success or Failure)",
+        "eventStateSuccess": "Only on Success",
+        "eventStateFailed": "Only on Failure",
+        "optionalPath": "Optional Subfolder Path",
+        "scriptCommand": "Command / Script",
+        "scriptArguments": "Arguments (optional)",
+        "workingDir": "Working Directory (optional)",
+        "failOnError": "Fail on Error",
+        "selectQuickRun": "Select Quick Run Profile",
+        "quickRunPlaceholder": "Select a quick run...",
+        "stopStatus": "Termination Status",
+        "stopStatusSuccess": "Complete with Success",
+        "stopStatusFailed": "Halt with Error / Failure",
+        "stopMessage": "Stop Message / Reason",
+        "stopMessagePlaceholder": "Reason for halting workflow",
+        "powerAction": "Power Action",
+        "powerSleep": "Sleep / Suspend",
+        "powerShutdown": "Shutdown Computer",
+        "powerHibernate": "Hibernate",
+        "powerLock": "Lock Screen / Session",
+        "auditMessage": "Audit Log Message",
+        "severityWarn": "Warning",
+        "opNotContains": "Does Not Contain",
+        "opGreaterThan": "Greater Than (>)",
+        "opLessThan": "Less Than (<)",
+        "opIsEmpty": "Is Empty",
+        "opFileExists": "File/Path Exists",
+        "executionStatus": "Execution Status",
+        "liveActiveService": "Active Background Service",
+        "currentlyMounted": "Mounted at",
+        "currentlyServing": "Serving at",
+        "unmountNow": "Unmount",
+        "stopServeNow": "Stop Server",
+        "openInBrowser": "Open in Browser",
+        "serveProtocol": "Serve Protocol",
+        "serveAddress": "Serve Address / Port",
+        "modeTargetNode": "Target Node",
+        "serverId": "Server ID",
+        "modeCustom": "Custom",
+        "alertAction": "Alert Action / Channel",
+        "selectAlertAction": "Select an alert action...",
+        "noAlertActionsFound": "No saved alert actions found",
+        "openAlertsModal": "Configure Actions",
+        "templateVariables": "Template Variables",
+        "insertVariableHint": "Click to insert into message",
+        "joinMode": "Join Policy",
+        "joinModeAllSuccess": "All Branches (AND)",
+        "joinModeAllSuccessHint": "Proceeds only if all incoming parallel branches complete successfully.",
+        "joinModeAnySuccess": "At Least One (OR)",
+        "joinModeAnySuccessHint": "Proceeds as soon as all branches finish, if at least one branch was successful.",
+        "joinModeAlways": "Always Proceed",
+        "joinModeAlwaysHint": "Proceeds unconditionally once all incoming branches finish, even if they failed.",
+        "joinBranchesTitle": "Incoming Branches",
+        "joinAddBranch": "Add Branch",
+        "joinRemoveBranch": "Remove Branch",
+        "parallelBranchesTitle": "Outgoing Branches",
+        "parallelAddBranch": "Add Branch",
+        "parallelRemoveBranch": "Remove Branch",
+        "archiveFormat": "Archive Format",
+        "archivePrefix": "Internal Prefix (Optional)",
+        "downloadUrl": "Download URL",
+        "autoFilename": "Auto Determine Filename",
+        "jobDetailsTitle": "Job Details",
+        "inspectJobBtn": "Inspect Job Details",
+        "transfers": "Transfers",
+        "errors": "Errors",
+        "testRun": "Test Run",
+        "testRunRcHint": "Test this RC command with current parameters",
+        "testSuccess": "Test Succeeded",
+        "testFailed": "Test Failed",
+        "useAsSampleSchema": "Save as Output Schema",
+        "sampleOutputSchema": "Sample Output Schema",
+        "sampleOutputSchemaDesc": "JSON response schema to expose dynamic token fields in downstream cards",
+        "sampleOutputPlaceholder": "Paste sample JSON response here...",
+        "availableOutputKeys": "Discovered Variable Keys",
+        "upstreamOutputs": "Upstream Outputs & Variables",
+        "nodeOutput": "Node Execution Output",
+        "checkReport": "Check Difference Report",
+        "rawOutputJson": "Output Data (JSON)",
+        "conditionPresets": "Quick Condition Presets",
+        "condPresetHasDiff": "Has Differences",
+        "condPresetNoDiff": "No Differences",
+        "condPresetDiffCount": "Differences Found (>0)",
+        "condPresetHasErrors": "Has Errors",
+        "condPresetTransferred": "Transferred (>0)",
+        "condPresetScriptSuccess": "Script Success",
+        "notificationPresets": "Quick Message Presets",
+        "notifPresetCheckReport": "Check Report",
+        "notifPresetTransferSummary": "Transfer Summary",
+        "notifPresetFailureAlert": "Failure Alert",
+        "notifPresetHealthStatus": "Engine Health",
+        "opGreaterOrEqual": "Greater or Equal (>=)",
+        "opLessOrEqual": "Less or Equal (<=)",
+        "opStartsWith": "Starts With",
+        "opEndsWith": "Ends With",
+        "opArrayNotEmpty": "Array Has Items",
+        "opArrayIsEmpty": "Array Is Empty",
+        "preview": "Message Preview"
+      },
+      "liveStatus": {
+        "mounted": "Mounted",
+        "serving": "Serving"
+      },
+      "status": {
+        "running": "Running",
+        "success": "Completed",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "idle": "Idle"
+      },
+      "ports": {
+        "in": "In",
+        "out": "Out",
+        "start": "Start",
+        "trigger": "Trigger",
+        "onChange": "On Change",
+        "onFinish": "On Finish",
+        "success": "Success",
+        "failure": "Failure",
+        "true": "True",
+        "false": "False",
+        "afterDelay": "After Delay",
+        "onSchedule": "On Scheduled Time",
+        "branch1": "Branch 1",
+        "branch2": "Branch 2",
+        "in1": "In 1",
+        "in2": "In 2",
+        "done": "Done"
+      },
+      "nodes": {
+        "manualTrigger": "Manual Trigger",
+        "manualTriggerDesc": "Start workflow manually on demand",
+        "cronSchedule": "Cron Schedule",
+        "cronScheduleDesc": "Trigger on a recurring cron timetable",
+        "folderWatcher": "Folder Watcher",
+        "folderWatcherDesc": "Trigger when files in local directory change",
+        "jobEvent": "Job Finish Event",
+        "jobEventDesc": "Trigger when another profile or quick run finishes",
+        "rcCommand": "Rclone RC Command",
+        "rcCommandDesc": "Invoke arbitrary RC API endpoint",
+        "condition": "Condition Branch",
+        "conditionDesc": "Branch flow based on condition test",
+        "delay": "Delay Timer",
+        "delayDesc": "Pause execution for specified duration",
+        "scheduleWait": "Schedule Wait",
+        "scheduleWaitDesc": "Pause workflow execution until the scheduled cron time arrives",
+        "parallelFork": "Parallel Split",
+        "parallelForkDesc": "Execute multiple downstream branches concurrently",
+        "join": "Join Branches",
+        "joinDesc": "Wait for all parallel branches to finish",
+        "notification": "Send Notification",
+        "notificationDesc": "Send notification via WhatsApp, Telegram, Webhook, Email, MQTT, or Desktop",
+        "unmount": "Unmount Remote",
+        "unmountDesc": "Safely unmount active local filesystem",
+        "stopServe": "Stop Serve",
+        "stopServeDesc": "Stop active network serve instances for a remote",
+        "appStart": "On App Launch",
+        "appStartDesc": "Trigger automatically when RClone Manager starts",
+        "cleanup": "Cleanup Trash",
+        "cleanupDesc": "Empty remote trash or recycle bin",
+        "cryptcheck": "Cryptcheck",
+        "cryptcheckDesc": "Verify integrity of encrypted remote",
+        "execScript": "Execute Script",
+        "execScriptDesc": "Run local shell command or script",
+        "quickRun": "Quick Run",
+        "quickRunDesc": "Execute a saved Quick Run profile",
+        "stop": "Stop Workflow",
+        "stopDesc": "Halt workflow execution",
+        "systemPower": "System Power",
+        "systemPowerDesc": "Sleep, lock or shutdown host system",
+        "logAudit": "Audit Log",
+        "logAuditDesc": "Write entry to workflow execution log"
+      },
+      "logs": {
+        "title": "Execution Log",
+        "copy": "Copy Logs",
+        "clear": "Clear Logs",
+        "jumpToNode": "Click to focus node on canvas",
+        "empty": "No execution logs yet. Run a workflow to view step output.",
+        "copied": "Logs copied to clipboard",
+        "filterAll": "All",
+        "filterErrors": "Errors",
+        "filterWarnings": "Warnings",
+        "filterSuccess": "Success"
+      },
+      "tokens": {
+        "prevNode": "Previous Node",
+        "fields": {
+          "summary": "Summary",
+          "output": "Primary Output",
+          "stdout": "Standard Output",
+          "stderr": "Standard Error",
+          "exitCode": "Exit Code",
+          "success": "Success",
+          "status": "Status",
+          "error": "Error Message",
+          "report": "Markdown Report",
+          "hasDifferences": "Has Differences",
+          "differCount": "Differ Count",
+          "differ": "Differing Files List",
+          "missingOnDstCount": "Missing on Destination Count",
+          "missingOnDst": "Missing on Destination List",
+          "missingOnSrcCount": "Missing on Source Count",
+          "missingOnSrc": "Missing on Source List",
+          "matchCount": "Matched Files Count",
+          "jobId": "Job ID",
+          "bytes": "Bytes Transferred",
+          "bytesFormatted": "Formatted Bytes",
+          "totalBytes": "Total Bytes",
+          "transfers": "Transfers Count",
+          "totalTransfers": "Total Transfers",
+          "errors": "Errors Count",
+          "speedFormatted": "Speed",
+          "mountPoint": "Mount Point Path",
+          "remote": "Remote Name",
+          "addr": "Server Address",
+          "conditionMet": "Condition Met",
+          "branch": "Selected Branch",
+          "cronExpression": "Cron Expression",
+          "targetTime": "Target Time",
+          "waitedSeconds": "Waited Seconds",
+          "resumedAt": "Resumed At",
+          "command": "Command",
+          "result": "Command Result",
+          "json": "Formatted JSON"
+        }
+      },
+      "details": "Workflow Details",
+      "name": "Workflow Name",
+      "description": "Workflow Description",
+      "descriptionPlaceholder": "Describe the purpose of this workflow...",
+      "showInTray": "Show in system tray",
+      "deleteConfirm": "Are you sure you want to delete this workflow?",
+      "cleanDuplicates": "Clean Duplicates",
+      "cleanDuplicatesConfirm": "Are you sure you want to remove duplicate workflows?",
+      "stats": {
+        "title": "Overview",
+        "nodes": "Total Nodes",
+        "connections": "Connections",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "recipes": {
+        "driftCheckSync": {
+          "name": "Smart Drift Check & Conditional Sync",
+          "description": "Verifies differences with check; synchronizes only when drift is detected and notifies with volume details."
+        },
+        "integrityAudit": {
+          "name": "Data Integrity Audit & Drift Report",
+          "description": "Runs a scheduled integrity check; sends an alert with a formatted Markdown difference report if differences exist."
+        },
+        "safeSyncAlert": {
+          "name": "Safe Sync with Failure Alert",
+          "description": "Runs a sync operation, notifying with transfer volume on success or forwarding exact error details on failure."
+        },
+        "dailyBackup": {
+          "name": "Daily Backup & Notification",
+          "description": "Runs a scheduled daily sync at 02:00, notifying you on success or alert on failure."
+        },
+        "watchUpload": {
+          "name": "Folder Watcher & Auto Upload",
+          "description": "Monitors a local folder for changes and copies new/modified files to cloud storage."
+        },
+        "parallelMirror": {
+          "name": "Multi-Cloud Parallel Mirror",
+          "description": "Syncs data simultaneously to two different cloud providers, then verifies completion."
+        },
+        "mountOnDemand": {
+          "name": "Mount on Demand & Notify",
+          "description": "Mounts a remote storage path and notifies desktop when drive is ready."
+        },
+        "manualTrigger": "Manual",
+        "manualTriggerDesc": "Triggered manually on demand",
+        "vfsRefresh": {
+          "name": "VFS Cache Refresh Automation",
+          "description": "Sends a vfs/refresh Remote Control (RC) command to reload directory cache on mounted drives and notifies desktop."
+        }
+      },
+      "editor": {
+        "configureNode": "Configure Node: {{type}}",
+        "nodeSaved": "Workflow node settings updated"
+      },
+      "emptyState": {
+        "title": "Welcome to Workflow Builder",
+        "subtitle": "Create a new workflow or choose a template to automate your rclone operations."
+      }
+    },
+    "shortcuts": {
+      "title": "Flow Keyboard Shortcuts"
     }
   },
   "templates": {
@@ -3258,7 +3873,8 @@
     "deletedSuccess": "Template deleted successfully."
   },
   "navigation": {
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "files": "Files"
   },
   "provision": {
     "stages": {
@@ -3269,6 +3885,72 @@
       "completed": "Completed",
       "cancelled": "Operation cancelled",
       "error": "Error"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Off / Infinite (0s)",
+        "10s": "10 seconds",
+        "30s": "30 seconds",
+        "1m": "1 minute",
+        "5m": "5 minutes",
+        "10m": "10 minutes",
+        "30m": "30 minutes",
+        "1h": "1 hour",
+        "24h": "24 hours (1 day)",
+        "7d": "7 days",
+        "30d": "30 days",
+        "off": "Disabled (off)"
+      },
+      "sizeSuffix": {
+        "0": "Unlimited / Off (0)",
+        "512k": "512 KiB",
+        "1M": "1 MiB",
+        "8M": "8 MiB",
+        "16M": "16 MiB",
+        "32M": "32 MiB",
+        "64M": "64 MiB",
+        "128M": "128 MiB",
+        "256M": "256 MiB",
+        "512M": "512 MiB",
+        "1G": "1 GiB",
+        "10G": "10 GiB",
+        "100G": "100 GiB",
+        "1T": "1 TiB",
+        "off": "Unlimited / Off (off)"
+      },
+      "countSuffix": {
+        "0": "None (0)",
+        "100": "100 items",
+        "1k": "1,000 (1k)",
+        "10k": "10,000 (10k)",
+        "100k": "100,000 (100k)",
+        "1M": "1 Million (1M)",
+        "10M": "10 Million (10M)",
+        "off": "Unlimited / Disabled (off)"
+      },
+      "bwTimetable": {
+        "off": "Unlimited (off)",
+        "512k": "512 KiB/s",
+        "1M": "1 MiB/s",
+        "5M": "5 MiB/s",
+        "10M": "10 MiB/s",
+        "50M": "50 MiB/s",
+        "split": "10M upload, 50M download",
+        "schedule": "Time-table schedule"
+      },
+      "fileMode": {
+        "0644": "User read/write, Others read-only (0644)",
+        "0666": "Read/write everyone (0666)",
+        "0755": "User read/write/exec, Others read/exec (0755)",
+        "0777": "Full access everyone (0777)"
+      },
+      "tristate": {
+        "true": "Enabled (true)",
+        "false": "Disabled (false)",
+        "unset": "Unset"
+      }
     }
   }
 }
