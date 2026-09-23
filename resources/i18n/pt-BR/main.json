@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancelar",
+    "confirm": "Confirmar",
     "save": "Salvar",
     "create": "Criar",
     "show": "Mostrar",
@@ -39,7 +40,11 @@
     "moreActions": "Mais ações",
     "duplicate": "Duplicar",
     "clearAll": "Limpar tudo",
-    "acknowledge": "Reconhecer"
+    "acknowledge": "Reconhecer",
+    "actions": "Ações",
+    "savedSuccessfully": "Salvo com sucesso",
+    "deletedSuccessfully": "Excluído com sucesso",
+    "notConfigured": "Não configurado"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -61,7 +66,6 @@
     "bwTimetable": "Formato de banda larga inválido",
     "fileMode": "Deve ser formato octal (3-4 dígitos, cada um de 0 a 7). Exemplo: 755",
     "enum": "Deve ser uma das opções: {{values}}",
-    "invalidPath": "O caminho deve ser absoluta",
     "urlArray": "Todos os URLs devem ser válidos e começar com http:// ou https://",
     "bandwidth": "Formato de largura de banda inválido. Utilize: 10M, 1G, 100K ou combinações",
     "passwordMismatch": "As senhas não correspondem",
@@ -329,6 +333,8 @@
       "backendFilterHint": "Monitore eventos apenas em backends específicos.",
       "profileFilter": "Filtro de Perfil",
       "profileFilterHint": "Monitore apenas eventos para perfis específicos.",
+      "workflowFilter": "Filtro de fluxo de trabalho",
+      "workflowFilterHint": "Filtrar alertas por fluxos de trabalho específicos.",
       "autoAcknowledge": "Reconhecer Automático",
       "autoAcknowledgeHint": "Marcar automaticamente os alertas como reconhecidas. Ótimo para alertas que já acionam notificações do sistema.",
       "actions": "Ações para Despertar",
@@ -345,11 +351,15 @@
       "engine": "Infraestrutura de Backend",
       "update": "Atualizações do Software",
       "automation": "Automações",
-      "system": "Eventos do Sistema"
+      "system": "Eventos do Sistema",
+      "workflow": "Fluxos visuais"
     },
     "action": {
       "basicInfo": "Informações Básicas",
       "configuration": "Configuração",
+      "channelKind": "Tipo de canal",
+      "whatsappProvider": "Provedor WhatsApp",
+      "telegramMode": "Modo Telegram",
       "noActionsCreated": "Nenhum ação de alerta foi criada ainda.",
       "noHeaders": "Nenhuma configuração de cabeçalhos personalizados foi configurada.",
       "kind": "Tipo de Ação",
@@ -407,7 +417,15 @@
       "discord": "Discordo",
       "slack": "Slack",
       "headerKey": "Nome do Cabecalho",
-      "headerValue": "Valor"
+      "headerValue": "Valor",
+      "apikey": "Chave de API",
+      "password": "Senha",
+      "username": "Nome de usuário",
+      "subject": "Assunto",
+      "mqttHost": "Host MQTT",
+      "mqttPort": "Porta MQTT",
+      "mqttTopic": "Tópico MQTT",
+      "addHeader": "Adicionar cabeçalho"
     },
     "noRulesHint": "Nenhuma regra de alerta configurada ainda. Crie uma regra para receber notificações.",
     "noActionsHint": "Nenhuma ação de alerta configurada ainda. Crie uma ação para definir como os alertas são entregues."
@@ -470,6 +488,10 @@
       "prevent_sleep": {
         "label": "Evitar suspensão / desligamento do sistema",
         "description": "Inibe a suspensão do sistema e o desligamento do SO enquanto houver transferências, montagens ou servidores ativos."
+      },
+      "keep_alive": {
+        "label": "Executar em segundo plano",
+        "description": "Manter o RClone Manager, transferências ativas e remotos montados em execução em segundo plano ao minimizar ou fechar."
       }
     },
     "core": {
@@ -624,6 +646,10 @@
       "auth": {
         "title": "Autenticação do Rclone necessária",
         "subtitle": "Verifique suas credenciais ou senha de configuração"
+      },
+      "port": {
+        "title": "Porta já em uso",
+        "subtitle": "A porta configurada está ocupada por outro aplicativo"
       }
     }
   },
@@ -765,6 +791,13 @@
       "hide": "Esconder busca",
       "show": "Mostrar busca"
     },
+    "urlPreview": {
+      "host": "Host",
+      "destination": "Destino",
+      "openViewer": "Abrir no visualizador",
+      "openViewerTooltip": "Abrir pré-visualização completa de mídia",
+      "inferredFromUrl": "Inferido a partir da URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Recomendado",
@@ -782,7 +815,6 @@
         "invalid": "Binário inválido"
       },
       "errors": {
-        "invalidPath": "Por favor, insira um caminho absoluto válido",
         "required": "Este campo é obrigatório"
       },
       "modes": {
@@ -928,7 +960,8 @@
       },
       "errors": {
         "invalidValue": "Valor inválido"
-      }
+      },
+      "showOptions": "Mostrar opções"
     },
     "serveCard": {
       "tooltips": {
@@ -1198,7 +1231,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "As senhas já estão ocultadas — pule o passo de obscurecimento"
+          "description": "As senhas já estão ocultadas - pule o passo de obscurecimento"
         },
         "nonInteractive": {
           "label": "Não Interativo",
@@ -1476,10 +1509,7 @@
       "noFeatureInfo": "Sem informações disponíveis sobre características.",
       "example": "Exemplo",
       "readOnly": "Somente Leitura",
-      "yes": "Sim",
-      "no": "Não",
       "noMetadata": "Nenhuma especificação de metadados disponível.",
-      "close": "Fechar diálogo",
       "unknown": "Desconhecido",
       "error": "Falha ao carregar informações remotos.",
       "tabs": {
@@ -1496,6 +1526,7 @@
       "title": "Propriedades",
       "loading": "Carregando informações básicas...",
       "location": "Localização",
+      "targetId": "ID de destino",
       "modified": "Modificado",
       "size": "Tamanho",
       "contentStats": "Estatísticas de Conteúdo",
@@ -1535,7 +1566,8 @@
       "generatedChecksums": "Checksums Gerados",
       "calculateAnother": "Calcule outro",
       "bulkHashInstruction": "Selecione um tipo de hash para calcular os sumários em checksums para todos os arquivos nessa pasta.",
-      "noHashesFound": "Nenhum hash retornado"
+      "noHashesFound": "Nenhum hash retornado",
+      "metadata": "Metadados"
     },
     "operations": {
       "title": "Operações",
@@ -1560,6 +1592,23 @@
         "copiedFiles": "Arquivos copiados",
         "syncedFiles": "Arquivos sincronizados",
         "processedFiles": "Arquivos processados"
+      },
+      "running": "Em execução",
+      "filesCount": "{{count}} arquivos",
+      "types": {
+        "copy": "Copiar",
+        "copyurl": "Copiar URL",
+        "move": "Mover",
+        "rename": "Renomear",
+        "delete": "Excluir",
+        "cleanup": "Limpar",
+        "rmdirs": "Remover diretórios vazios",
+        "sync": "Sincronizar",
+        "bisync": "Sincronização bidirecional",
+        "check": "Verificar",
+        "upload": "Enviar",
+        "archivecreate": "Compactar",
+        "archiveextract": "Extrair arquivo"
       }
     },
     "fileViewer": {
@@ -1596,7 +1645,12 @@
       "openingNative": "Abrindo {{name}} no visualizador externo...",
       "errorOpenNative": "Falha ao abrir o arquivo no aplicativo externo",
       "showRawText": "Mostrar texto bruto",
-      "showPreview": "Mostrar pré-visualização"
+      "showPreview": "Mostrar pré-visualização",
+      "zoomIn": "Aumentar zoom",
+      "zoomOut": "Diminuir zoom",
+      "resetZoom": "Redefinir zoom",
+      "hexPreview": "Pré-visualização hexadecimal",
+      "playVideo": "Reproduzir no reprodutor de vídeo"
     }
   },
   "dashboard": {
@@ -1679,7 +1733,7 @@
       "dryRun": "Simulação (Dry Run)",
       "dryRunActive": "Tentativa em modo de simulação (dry-run) está ativa – não serão feitas alterações",
       "resync": "Resincronizar",
-      "resyncActive": "O Resync está ativo — realizando uma re-sincronização completa",
+      "resyncActive": "O Resync está ativo - realizando uma re-sincronização completa",
       "remoteSettings": "Configurações do remoto"
     },
     "generalDetail": {
@@ -1727,7 +1781,9 @@
       "exportConfig": "Exportar Configuração",
       "toggleBrowser": "Alternar Gerenciador de Arquivos",
       "openFlowOverlay": "Alternar espaço de trabalho Flow",
-      "closeDialog": "Fechar Diálogo/Ação de Cancelar"
+      "closeDialog": "Fechar Diálogo/Ação de Cancelar",
+      "saveWorkflow": "Salvar fluxo de trabalho",
+      "deleteSelected": "Excluir nós/arestas selecionados"
     },
     "categories": {
       "global": "Global",
@@ -1736,7 +1792,8 @@
       "fileOperations": "Operações de Arquivo",
       "fileBrowser": "Gerenciador de Arquivos",
       "fileBrowserNautilus": "Gerenciador de Arquivos (Nautilus)",
-      "navigation": "Navegação"
+      "navigation": "Navegação",
+      "flowWorkspace": "Espaço de trabalho do Flow"
     },
     "quitError": "Falha ao sair da aplicação: {{error}}",
     "mountsRefreshSuccess": "Montagens atualizadas com sucesso",
@@ -1749,8 +1806,49 @@
       "title": "Desligamento",
       "message": "Por favor, aguarde enquanto a aplicação é fechada com segurança...",
       "confirmTitle": "Tarefas ativas em andamento",
-      "confirmMessage": "O Rclone Manager possui tarefas ativas em andamento ({{jobs}} transferências, {{mounts}} montagens, {{serves}} servidores). Tem certeza de que deseja parar tudo e sair?",
+      "confirmMessage": "O RClone Manager possui tarefas ativas em andamento ({{jobs}} transferências, {{mounts}} montagens, {{serves}} servidores). Tem certeza de que deseja parar tudo e sair?",
       "stopAndQuit": "Parar e Sair"
+    }
+  },
+  "powerMenu": {
+    "title": "Opções de energia",
+    "executing": "Executando ação...",
+    "activeOpsTitle": "Tarefas ativas em andamento",
+    "activeOpsCount": "{{jobs}} transferências, {{mounts}} montagens, {{serves}} compartilhamentos em execução",
+    "actions": {
+      "shutdownApp": {
+        "title": "Fechar aplicativo",
+        "desc": "Encerra o RClone Manager e as tarefas em segundo plano com segurança"
+      },
+      "restartApp": {
+        "title": "Reiniciar aplicativo",
+        "desc": "Reinicia o aplicativo e o servidor web"
+      },
+      "emergencyStop": {
+        "title": "Parada de emergência",
+        "desc": "Interrompe imediatamente todas as transferências ativas e desmonta as unidades"
+      },
+      "systemShutdown": {
+        "title": "Desligar sistema",
+        "desc": "Desliga completamente o computador / servidor hospedeiro"
+      },
+      "systemSleep": {
+        "title": "Suspender / Dormir",
+        "desc": "Coloca a máquina hospedeira em suspensão"
+      },
+      "systemLock": {
+        "title": "Bloquear sessão",
+        "desc": "Bloqueia a sessão de usuário atual"
+      }
+    },
+    "status": {
+      "shuttingDown": "O aplicativo está sendo encerrado...",
+      "restarting": "O aplicativo está reiniciando...",
+      "stoppingOperations": "Interrompendo todas as operações...",
+      "emergencyStopSuccess": "Todas as operações ativas e montagens foram interrompidas",
+      "hostShuttingDown": "O sistema operacional está desligando...",
+      "hostSleeping": "Colocando o sistema em suspensão...",
+      "hostLocking": "Bloqueando a sessão do usuário..."
     }
   },
   "modals": {
@@ -1774,7 +1872,8 @@
         "statistics": "Estatísticas",
         "paths": "Caminhos",
         "errors": "Erros",
-        "profile": "Perfil"
+        "profile": "Perfil",
+        "serverSideFlags": "Lado do servidor e flags"
       },
       "fields": {
         "type": "Tipo de Tarefa",
@@ -1851,6 +1950,7 @@
       "skippedRcloneUpdates": "Atualizações do Rclone Ignoradas",
       "devTeam": "Equipe de Desenvolvimento",
       "leadDeveloper": "Desenvolvedor Sênior ou Líder de Desenvolvimento",
+      "contributors": "Colaboradores",
       "acknowledgments": "Reconhecidos",
       "ackText": "Essa aplicação é desenvolvida com tecnologias web modernas e depende do excelente projeto Rclone para o gerenciamento de armazenamento em nuvem.",
       "noReleaseNotes": "Nenhuma nota de lançamento disponível.",
@@ -1918,9 +2018,6 @@
       "scrollTop": "Ir para o topo da página",
       "scrollBottom": "Rolar para Baixo",
       "fetching": "Coletando logs...",
-      "aria": {
-        "terminalLogs": "Logs do terminal"
-      },
       "remoteLogs": "Logs Remotos: {{ name }}",
       "noLogsFound": "Nenhum log encontrado",
       "adjustFilters": "Tente ajustar os seus filtros",
@@ -1993,8 +2090,6 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
-      "includeSecrets": "Inclua chaves secretas",
-      "includeSecretsHint": "Inclua credenciais sensíveis no backup. É necessário criptografia.",
       "exportNow": "Exportar Agora",
       "exporting": "Exportação...",
       "fullBackup": "Backup Completo",
@@ -2026,6 +2121,18 @@
         "alerts": {
           "label": "Alertas",
           "description": "Configuração de regras e ações de alerta"
+        },
+        "workflows": {
+          "label": "Fluxos de trabalho",
+          "description": "Regras de automação e gráficos de nós"
+        },
+        "templates": {
+          "label": "Modelos",
+          "description": "Modelos de configuração pré-definidos"
+        },
+        "quickRuns": {
+          "label": "Execuções rápidas",
+          "description": "Comandos e atalhos de execução rápida"
         }
       }
     },
@@ -2054,8 +2161,7 @@
         },
         "configPath": {
           "label": "Caminho da Configuração",
-          "placeholder": "Deixar vazio para usar o padrão",
-          "description": "Caminho específico para rclone.conf (opcional)"
+          "placeholder": "Deixar vazio para usar o padrão"
         }
       },
       "addBackend": "Adicionar Backend",
@@ -2133,10 +2239,7 @@
         "decryptWarning": "Isso descriptografará sua configuração do Rclone. Suas credenciais estarão visíveis para qualquer pessoa com acesso aos seus arquivos.",
         "enableEncryption": "Habilitar Criptografia",
         "protectCredentials": "Proteja suas credenciais com uma senha",
-        "passwordChanged": "Senha alterada",
-        "passwordStored": "Senha armazenada no keychain",
         "passwordStoredInKeyring": "Senha armazenada no sistema de chaveiro",
-        "passwordRemoved": "Senha removida do keychain",
         "passwordsMismatch": "As senhas não correspondem"
       }
     },
@@ -2335,9 +2438,18 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Atalho (Item compartilhado)",
+      "sharedItemTooltip": "Item compartilhado",
+      "onedriveRemoteTooltip": "Item compartilhado externo",
+      "linkTooltip": "Link / Atalho",
+      "shortcutBadge": "Atalho",
+      "sharedBadge": "Compartilhado"
+    },
     "sidebar": {
       "configureTitle": "Configurar Itens da Barra de Navegação",
-      "configureDescription": "Arraste os itens para reorganizá-los ou clique no ícone de olho para esconder ou mostrar unidades e remotos de nuvem na barra lateral."
+      "configureDescription": "Arraste os itens para reorganizá-los ou clique no ícone de olho para esconder ou mostrar unidades e remotos de nuvem na barra lateral.",
+      "toggleSearch": "Alternar busca"
     },
     "shortcuts": {
       "title": "Atalhos de teclado do Nautilus"
@@ -2353,7 +2465,8 @@
       "cloud": "Nuvem",
       "fileSystem": "Sistema de Arquivos",
       "bookmarks": "Marcadores de página",
-      "localDisk": "Disco Local"
+      "localDisk": "Disco Local",
+      "internalStorage": "Armazenamento interno"
     },
     "bookmarks": {
       "emptyHint": "Sem marcas de página"
@@ -2439,8 +2552,26 @@
         "newName": "Novo nome",
         "counter": "Contador",
         "date": "Data",
+        "modDate": "Data de modificação",
         "extension": "Extensão",
-        "duplicateOrInvalid": "Nome duplicado ou inválido"
+        "duplicateOrInvalid": "Nome duplicado ou inválido",
+        "invalidRegex": "Expressão regular inválida: {{error}}",
+        "targetScope": "Aplicar a",
+        "targetScopeAll": "Arquivos e pastas",
+        "targetScopeFiles": "Apenas arquivos",
+        "targetScopeFolders": "Apenas pastas",
+        "caseTransform": "Maiúsculas/Minúsculas",
+        "caseNone": "Sem alteração",
+        "caseLower": "minúsculas",
+        "caseUpper": "MAIÚSCULAS",
+        "caseTitle": "Primeiras Maiúsculas",
+        "preserveExtension": "Manter extensão",
+        "useRegex": "Expressões regulares",
+        "prefix": "Prefixo",
+        "suffix": "Sufixo",
+        "statsChanged": "{{count}} para renomear",
+        "statsUnchanged": "{{count}} inalterados",
+        "statsConflicts": "{{count}} conflito(s)"
       }
     },
     "errors": {
@@ -2513,7 +2644,10 @@
       "iconSize": "Tamanho do Ícone",
       "showHidden": "Mostrar Arquivos Ocultos",
       "toggleLayout": "Alternar layout",
-      "viewOptions": "Opções de visualização"
+      "viewOptions": "Opções de visualização",
+      "showingItems": "Mostrando {{count}} de {{total}}",
+      "decreaseIconSize": "Diminuir tamanho do ícone",
+      "increaseIconSize": "Aumentar tamanho do ícone"
     },
     "notifications": {
       "mkdirFailed": "Falha ao criar diretório: {{path}}",
@@ -2537,6 +2671,16 @@
     "androidShare": {
       "uploadHere": "Enviar {{count}} arquivo(s) compartilhado(s) para esta pasta",
       "confirm": "Enviar aqui"
+    },
+    "toolbar": {
+      "goBack": "Voltar",
+      "goForward": "Avançar",
+      "pathOptions": "Opções de caminho"
+    },
+    "actions": {
+      "cancelLoading": "Cancelar carregamento",
+      "star": "Adicionar aos favoritos",
+      "unstar": "Remover dos favoritos"
     }
   },
   "home": {
@@ -2548,6 +2692,8 @@
     },
     "options": {
       "showInTray": "Mostrar no Menu de Bandeja",
+      "aboutRemote": "Sobre o remoto",
+      "emptyTrash": "Esvaziar lixeira",
       "viewLogs": "Ver Logs",
       "cloneRemote": "Clonar Remoto",
       "exportConfig": "Exportar Configuração",
@@ -2565,6 +2711,8 @@
       "savedProfilesTitle": "Perfis Salvos ({{count}})",
       "quickRunsTitle": "Quick Runs Associados ({{count}})",
       "automationsTitle": "Automações Agendadas ({{count}})",
+      "workflowsTitle": "Fluxos de trabalho associados ({{count}})",
+      "workflowsDesc": "Estes fluxos de trabalho fazem referência a este remoto e não serão excluídos, mas podem precisar ser atualizados após a remoção.",
       "types": {
         "mount": "Ponto de Montagem",
         "serve": "Serviço"
@@ -2698,7 +2846,8 @@
       "fuseMissing": "O FUSE (fuse3) não está instalado no sistema. Instale o fuse3 para ativar a montagem.",
       "macfuseMissing": "O macFUSE / FUSE-T não está instalado. Instale o macFUSE para ativar a montagem no macOS.",
       "driveLetterInUse": "A letra da unidade selecionada já está em uso pelo sistema.",
-      "permissionDenied": "Permissão negada ao tentar montar."
+      "permissionDenied": "Permissão negada ao tentar montar.",
+      "deviceBusy": "O ponto de montagem ou dispositivo de destino está ocupado. Feche os arquivos abertos, gerenciadores de arquivos ou terminais que estão acessando o diretório e tente novamente."
     },
     "operations": {
       "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'"
@@ -2755,7 +2904,6 @@
     "security": {
       "passwordEmpty": "A senha não pode estar vazia",
       "noPasswordStored": "Nenhuma senha armazenada",
-      "passwordChangeUnavailable": "A alteração de senha não está disponível nesse plataforma",
       "incorrectPassword": "Senha de acesso incorreta para configuração do rclone",
       "storeFailed": "Falha ao armazenar senha: {{error}}",
       "encryptFailed": "Falha ao criptografar a configuração: {{error}}",
@@ -2813,6 +2961,7 @@
       "noPending": "Não há atualizações pendentes",
       "invalidUrl": "Endereço URL inválido: {{error}}",
       "github": "Erro de API do GitHub: {{error}}",
+      "githubRateLimit": "Limite de requisições da API do GitHub excedido. Tente novamente mais tarde.",
       "updateFailed": "Atualização falhou: {{error}}",
       "updateUnavailable": "O artefato de atualização não está mais disponível: {{error}}",
       "relaunchFailed": "Reinício falhou: {{error}}",
@@ -2932,7 +3081,7 @@
     "browse": "Navegar",
     "browseInApp": "Navegar (Na Aplicação)",
     "jobsCount": "Tarefas [{{active}}/{{total}}]",
-    "jobsNone": "Tarefas [—]",
+    "jobsNone": "Tarefas [-]",
     "mountCount": "Montar [{{active}}/{{total}}]",
     "syncCount": "Sincronizar [{{active}}/{{total}}]",
     "copyCount": "Cópia [{{active}}/{{total}}]",
@@ -2945,6 +3094,7 @@
     "archivecreateCount": "Arquivo [{{active}}]/[{{total}}]",
     "serveCount": "Servir [{{active}}/{{total}}]",
     "quickRunsCount": "Execuções Rápidas [{{active}}/{{total}}]",
+    "workflowsCount": "Fluxos de Trabalho [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Tarefa",
     "tooltipTasks": "{{count}} Tarefas",
@@ -2995,19 +3145,29 @@
       "engineConnectionFailed": "Erro de Conexão do Motor",
       "engineBinaryNotFound": "Rclone Não Encontrado",
       "enginePasswordRequired": "Senha Requerida",
-      "engineAuthFailed": "Falha na Autenticação do Motor"
+      "engineAuthFailed": "Falha na Autenticação do Motor",
+      "workflowStarted": "Fluxo '{{name}}' iniciado",
+      "workflowCompleted": "Fluxo '{{name}}' concluído",
+      "workflowFailed": "Falha no fluxo '{{name}}'",
+      "workflowStopped": "Fluxo '{{name}}' parado",
+      "unmountFailed": "Falha na Desmontagem",
+      "serveStopFailed": "Falha ao Parar Servidor"
     },
     "body": {
-      "mountSucceeded": "Montado com sucesso o perfil {{remote}} '{{profile}}' de {{backend}} em {{mountPoint}}.",
-      "mountFailed": "Falha ao montar o perfil {{remote}} '{{profile}}' em {{backend}}: {{error}}",
-      "unmountSucceeded": "O perfil {{remote}} '{{profile}}' foi desconectado de {{backend}}.",
-      "jobStarted": "Iniciado {{type}} para o perfil {{remote}} '{{profile}}' em {{backend}}.",
-      "jobCompleted": "Concluído com sucesso a operação {{type}} para o perfil '{{remote}}' em {{profile}} no dia {{backend}}.",
-      "jobFailed": "Falha de {{type}} para o perfil {{remote}} '{{profile}}' em {{backend}}: {{error}}",
-      "jobStopped": "Parado {{type}} para o perfil {{remote}} '{{profile}}' em {{backend}}.",
-      "serveStarted": "Iniciou a execução do serviço para o perfil {{remote}} '{{profile}}' em {{backend}}.",
-      "serveFailed": "Falha ao iniciar o servidor para o perfil {{remote}} '{{profile}}' no {{backend}}: {{error}}",
-      "serveStopped": "A execução de serviço foi interrompida para o perfil {{remote}} '{{profile}}' em {{backend}}",
+      "mountSucceeded": "Montado com sucesso {{remote}} de {{backend}} em {{mountPoint}}.",
+      "mountFailed": "Falha ao montar {{remote}} em {{backend}}: {{error}}",
+      "unmountSucceeded": "{{remote}} desconectado do {{backend}}.",
+      "jobStarted": "Iniciado {{type}} para {{remote}} em {{backend}}.",
+      "jobCompleted": "Concluído com sucesso {{type}} para {{remote}} em {{backend}}.",
+      "jobFailed": "Falha de {{type}} para {{remote}} em {{backend}}: {{error}}",
+      "jobStopped": "Parado {{type}} para {{remote}} em {{backend}}.",
+      "workflowStarted": "O fluxo de trabalho '{{name}}' iniciou sua execução.",
+      "workflowCompleted": "O fluxo '{{name}}' foi concluído com sucesso em {{duration}}.",
+      "workflowFailed": "O fluxo '{{name}}' falhou: {{error}}",
+      "workflowStopped": "O fluxo '{{name}}' foi interrompido.",
+      "serveStarted": "Iniciou o servidor para {{remote}} em {{backend}}.",
+      "serveFailed": "Falha ao iniciar o servidor para {{remote}} no {{backend}}: {{error}}",
+      "serveStopped": "Serviço parado para {{remote}} no {{backend}}.",
       "allJobsStopped": "Todas as tarefas ativas foram finalizadas com sucesso.",
       "allServesStopped": "Fechado com sucesso todos os servidores ativos.",
       "allUnmounted": "Desconectado com sucesso de todas as montagens remotos.",
@@ -3033,7 +3193,9 @@
       "engineBinaryNotFound": "Não foi encontrado o binário Rclone, por favor verifique suas configurações.",
       "enginePasswordRequired": "É necessário inserir uma senha para acessar o arquivo de configuração.",
       "engineAuthFailed": "Falha na autenticação com o motor rclone: {{error}}",
-      "powerInhibited": "Operações ativas estão impedindo a suspensão do sistema."
+      "powerInhibited": "Operações ativas estão impedindo a suspensão do sistema.",
+      "unmountFailed": "Falha ao desmontar {{remote}} no {{backend}}: {{error}}",
+      "serveStopFailed": "Falha ao parar o servidor {{protocol}} para {{remote}} no {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3056,7 +3218,8 @@
       "passwordRequired": "É necessário senha",
       "systemIssue": "Problema no Sistema",
       "versionTooOld": "Rclone está desatualizado",
-      "authRequired": "Autenticação Necessária"
+      "authRequired": "Autenticação Necessária",
+      "portInUse": "Porta já em uso"
     },
     "messages": {
       "missingRclone": "O binário Rclone não foi encontrado. Por favor instale-o para continuar.",
@@ -3067,7 +3230,9 @@
       "versionTooOld": "Sua versão do rclone é mais antiga que {{required}}. Por favor atualize para continuar.",
       "defaultParams": "Um componente do sistema não está funcionando corretamente.",
       "mountPluginStatusError": "Falha ao verificar o status",
-      "authRequired": "O backend rejeitou a conexão devido a uma falha na autenticação."
+      "authRequired": "O backend rejeitou a conexão devido a uma falha na autenticação.",
+      "remoteAuthRequired": "O backend remoto rejeitou a conexão devido a uma falha de autenticação. Verifique suas credenciais.",
+      "portInUse": "A porta {{port}} já está ocupada por outro aplicativo ou conexão. Escolha uma porta diferente para continuar."
     },
     "progress": {
       "installingRclone": "Instalando o Rclone...",
@@ -3084,7 +3249,20 @@
       "restoreBackup": "Restaurar Backup",
       "restartEngine": "Reiniciar o Motor",
       "submitPassword": "Desbloquear",
+      "changePort": "Aplicar Porta & Reiniciar",
+      "configureBackend": "Configurar backend",
       "repair": "Reparar"
+    },
+    "portConfig": {
+      "portLabel": "Porta Local",
+      "suggestPort": "Sugerir Porta",
+      "suggestPortTooltip": "Encontrar próxima porta TCP disponível",
+      "testPort": "Testar Porta",
+      "testPortTooltip": "Verificar se esta porta está disponível",
+      "portAvailable": "Porta {{port}} está disponível",
+      "portOccupied": "Porta {{port}} está em uso",
+      "portOccupiedTooltip": "A porta selecionada está ocupada por outro processo",
+      "invalidPort": "A porta deve estar entre 1024 e 65535"
     },
     "details": {
       "issueLabel": "Problema",
@@ -3116,6 +3294,14 @@
       "rcloneAuth": {
         "issue": "Autenticação rejeitada",
         "action": "Mata o processo velho e reinicia o motor"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Autenticação remota rejeitada",
+        "action": "Configurar credenciais do backend nas configurações"
+      },
+      "rclonePort": {
+        "issue": "Porta {{port}} em uso",
+        "action": "Mudar porta e reiniciar motor"
       }
     },
     "tooltips": {
@@ -3129,7 +3315,6 @@
       "testBinaryFirst": "Por favor, teste o binário primeiro."
     },
     "passwordErrors": {
-      "validateFailed": "A validação falhou",
       "invalid": "Senha inválida",
       "locked": "Conteúdo bloqueado devido a muitas tentativas",
       "generic": "Erro: {{error}}"
@@ -3159,28 +3344,33 @@
     "cleared": "Dados Limpos"
   },
   "flow": {
-    "title": "Flow",
-    "search": "Pesquisar fluxos...",
-    "toggleSearch": "Alternar pesquisa",
+    "title": "Fluxo",
+    "search": "Buscar fluxos...",
+    "toggleSearch": "Alternar busca",
     "loading": "Carregando fluxos...",
-    "noResults": "Nenhum fluxo correspondente",
-    "toggleSidebar": "Alternar barra lateral do Flow",
+    "noResults": "Nenhum item de fluxo correspondente",
+    "toggleSidebar": "Alternar barra lateral de fluxos",
     "empty": {
-      "description": "Crie uma execução rápida ou fluxo de trabalho para começar com operações e pipelines rápidos."
+      "description": "Crie uma execução rápida ou um fluxo de trabalho para começar com operações e automações."
     },
     "quickRun": {
       "title": "Execuções Rápidas",
       "new": "Nova Execução Rápida",
       "actions": {
         "start": "Iniciar",
-        "stop": "Parar"
+        "stop": "Parar",
+        "createRemote": "Criar Remote '{{remote}}'",
+        "changeRemote": "Alterar Remote"
       },
       "badges": {
         "scheduled": "Tarefa Agendada",
         "watcher": "Monitor de Pastas Ativo",
         "watcherChangedOnly": "Monitor de Pastas Ativo (apenas subdiretórios)",
-        "autostart": "Início Automático Ativado"
+        "autostart": "Início Automático Ativado",
+        "missingRemote": "Remote Ausente no Rclone"
       },
+      "missingRemoteTitle": "Remote Não Encontrado no Rclone",
+      "missingRemoteDesc": "O remote '{{remote}}' associado a esta Execução Rápida não existe no Rclone, mas sua configuração foi preservada.",
       "status": {
         "running": "Em Execução"
       },
@@ -3191,7 +3381,7 @@
         "quickLaunch": "Início Rápido",
         "createFirst": "Crie sua primeira Execução Rápida para começar com operações ágeis e sem perfis.",
         "noRunsForRemote": "Nenhuma execução rápida configurada para {{remote}}.",
-        "createForRemote": "Criar execução rápida para {{remote}}"
+        "createForRemote": "Criar Execução Rápida para {{remote}}"
       },
       "detail": {
         "configuration": "Configuração"
@@ -3209,17 +3399,442 @@
         "tabVfs": "VFS",
         "tabFilter": "Filtro",
         "tabBackend": "Backend",
-        "tabRuntimeRemote": "Remote em Tempo de Execução"
+        "tabRuntimeRemote": "Remote em Tempo de Execução",
+        "noProfiles": "Nenhum perfil disponível"
+      },
+      "errors": {
+        "remoteNotFound": "O remote '{{remote}}' não existe na configuração do Rclone",
+        "failedStop": "Falha ao parar a Execução Rápida \"{{name}}\": {{error}}",
+        "failedStart": "Falha ao iniciar a Execução Rápida \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Execução Rápida \"{{name}}\" iniciada com sucesso"
       }
     },
     "tabs": {
-      "quickRun": "Execução rápida",
-      "workflow": "Fluxo de trabalho"
+      "quickRun": "Execução Rápida",
+      "workflow": "Fluxo de Trabalho"
     },
-    "builder": {
-      "placeholderTitle": "Criador de fluxo de trabalho em desenvolvimento",
-      "placeholderMessage": "Uma tela visual para pipelines do rclone com várias etapas estará disponível em breve.",
-      "viewRoadmap": "Ver roteiro no GitHub"
+    "workflow": {
+      "untitled": "Fluxo sem título",
+      "savedWorkflows": "Fluxos Salvos",
+      "presetRecipes": "Modelos Prontos",
+      "unsavedChanges": "Alterações não salvas",
+      "saving": "Salvando...",
+      "categories": {
+        "all": "Todos"
+      },
+      "category": {
+        "trigger": "Gatilho",
+        "task": "Tarefa",
+        "logic": "Lógica",
+        "action": "Ação"
+      },
+      "actions": {
+        "duplicate": "Duplicar Nó",
+        "delete": "Excluir Nó",
+        "inspectJob": "Inspecionar Tarefa",
+        "duplicateWorkflow": "Duplicar Fluxo",
+        "deleteWorkflow": "Excluir Fluxo",
+        "exportWorkflow": "Exportar JSON"
+      },
+      "canvas": {
+        "navigation": "Navegação da tela",
+        "toggleMinimap": "Alternar minimapa",
+        "enterFocusMode": "Focar na tela (Ocultar navegação)",
+        "exitFocusMode": "Sair do foco (Mostrar navegação)"
+      },
+      "toolbar": {
+        "selectWorkflow": "Selecionar Fluxo",
+        "newWorkflow": "Novo Fluxo",
+        "run": "Executar Fluxo",
+        "stop": "Parar Fluxo",
+        "presets": "Modelos e Receitas",
+        "undo": "Desfazer",
+        "redo": "Refazer",
+        "zoomOut": "Diminuir Zoom",
+        "zoomIn": "Aumentar Zoom",
+        "resetZoom": "Redefinir Zoom",
+        "fitToView": "Ajustar à Tela",
+        "snapToGrid": "Alinhar à Grade",
+        "toggleLog": "Registro de Execução",
+        "toggleInspector": "Alternar Inspetor",
+        "dryRun": "Simulação",
+        "dryRunTooltip": "Simular a execução do fluxo de trabalho sem modificar dados ou executar comandos reais"
+      },
+      "palette": {
+        "title": "Biblioteca de Nós",
+        "searchPlaceholder": "Buscar nós...",
+        "clickToAdd": "Clique ou arraste para adicionar ao painel",
+        "noResults": "Nenhum nó correspondente encontrado",
+        "hideSearch": "Ocultar busca e filtros",
+        "showSearch": "Mostrar busca e filtros"
+      },
+      "inspector": {
+        "general": "Configurações Gerais",
+        "parameters": "Parâmetros e Opções",
+        "nodeTitle": "Título do Nó",
+        "nodeSubtitle": "Subtítulo / Descrição",
+        "subtitlePlaceholder": "Ex: Backup diário de documentos",
+        "cronExpression": "Expressão Cron",
+        "invalidCron": "Expressão cron inválida",
+        "cronDaily": "Diariamente às 02:00",
+        "watchFolder": "Caminho da Pasta Monitorada",
+        "debounceSeconds": "Atraso de Estabilização (segundos)",
+        "remote": "Remoto",
+        "localOrSelect": "Local / Selecionar Remoto",
+        "sourcePath": "Caminho de Origem (srcFs)",
+        "destinationPath": "Caminho de Destino (dstFs)",
+        "mountPoint": "Ponto de montagem",
+        "rcEndpoint": "Ponto de Extremidade RC",
+        "rcParameters": "Parâmetros RC (JSON)",
+        "rcPresets": "Pontos de extremidade predefinidos",
+        "presetCategoryAll": "Todos",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Armazenamento",
+        "presetCategoryCore": "Núcleo",
+        "insertVariable": "Inserir variável de saída do nó",
+        "insertTokenBtn": "Inserir variável",
+        "formatJson": "Formatar JSON",
+        "clearJson": "Limpar",
+        "invalidJson": "JSON inválido",
+        "templateJson": "Modelo dinâmico",
+        "noUpstreamNodesHint": "Adicione outros nós ao seu fluxo para referenciar dinamicamente suas saídas como {{nodes.id.field}}",
+        "delaySeconds": "Duração do Atraso (segundos)",
+        "conditionOperator": "Operador de Condição",
+        "opEquals": "Igual a (==)",
+        "opNotEquals": "Diferente de (!=)",
+        "opContains": "Contém",
+        "opTruthy": "Não Vazio / Verdadeiro (Truthy)",
+        "leftValue": "Expressão / Valor Esquerdo",
+        "rightValue": "Valor de Comparação Direito",
+        "conditionValuePlaceholder": "valor ou {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/caminho/do/arquivo ou {{nodes.id.path}}",
+        "targetNode": "Nó de destino",
+        "targetNodeField": "Campo de saída",
+        "targetNodePlaceholder": "Selecionar nó de destino",
+        "targetFieldPlaceholder": "Selecionar campo de saída",
+        "resolvedToken": "Token resolvido",
+        "alertTitle": "Título do Alerta",
+        "alertMessage": "Mensagem do Alerta",
+        "severity": "Nível de Gravidade",
+        "severityInfo": "Informação",
+        "severityError": "Erro / Alerta",
+        "manualDesc": "O acionador manual inicia o fluxo sob demanda. Nenhuma configuração adicional necessária.",
+        "parallelForkDesc": "Divide a execução em múltiplos ramos paralelos simultâneos.",
+        "joinDesc": "Aguarda a conclusão de todos os ramos paralelos antes de prosseguir.",
+        "jobEventProfile": "Perfil / Tarefa de destino",
+        "jobEventPlaceholder": "Selecione um perfil para monitorar",
+        "targetMountNode": "Nó de montagem de destino",
+        "targetMountNodePlaceholder": "Selecione o nó de montagem",
+        "targetServeNode": "Nó de compartilhamento de destino",
+        "targetServeNodePlaceholder": "Selecione o nó de compartilhamento",
+        "unmountPlaceholder": "/mnt/remoto ou C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "openDetailed": "Configurações Detalhadas",
+        "openDetailedTooltip": "Abrir editor completo de parâmetros e opções",
+        "activeConfig": "Configuração Ativa e Opções",
+        "noActiveConfig": "Nenhuma opção ou filtro adicional configurado",
+        "removeFlag": "Remover parâmetro",
+        "addFlagsHint": "Clique em Configurações Detalhadas para configurar parâmetros avançados do Rclone, filtros e opções VFS.",
+        "appStartDesc": "Acionado automaticamente na inicialização do aplicativo com atraso opcional.",
+        "startupDelay": "Atraso na inicialização (segundos)",
+        "delay0s": "Imediato (0s)",
+        "fileFilterPattern": "Padrão de filtro de arquivos (glob)",
+        "eventState": "Filtro de estado do evento",
+        "eventStateAny": "Qualquer conclusão (sucesso ou falha)",
+        "eventStateSuccess": "Apenas em caso de sucesso",
+        "eventStateFailed": "Apenas em caso de falha",
+        "optionalPath": "Caminho de subpasta opcional",
+        "scriptCommand": "Comando / Caminho do script",
+        "scriptArguments": "Argumentos (opcional)",
+        "workingDir": "Diretório de trabalho (opcional)",
+        "failOnError": "Falhar em Caso de Erro",
+        "selectQuickRun": "Selecionar perfil de execução rápida",
+        "quickRunPlaceholder": "Selecione uma execução rápida...",
+        "stopStatus": "Estado de término",
+        "stopStatusSuccess": "Concluir com sucesso",
+        "stopStatusFailed": "Interromper com erro / falha",
+        "stopMessage": "Mensagem de parada / Motivo",
+        "stopMessagePlaceholder": "Motivo para interromper o fluxo de trabalho",
+        "powerAction": "Ação de energia",
+        "powerSleep": "Suspender / Dormir",
+        "powerShutdown": "Desligar computador",
+        "powerHibernate": "Hibernar",
+        "powerLock": "Bloquear tela / sessão",
+        "auditMessage": "Mensagem do registro de auditoria",
+        "severityWarn": "Aviso",
+        "opNotContains": "Não contém",
+        "opGreaterThan": "Maior que (>)",
+        "opLessThan": "Menor que (<)",
+        "opIsEmpty": "Está vazio",
+        "opFileExists": "Arquivo/caminho existe",
+        "executionStatus": "Status de Execução",
+        "liveActiveService": "Serviço ativo em segundo plano",
+        "currentlyMounted": "Montado em",
+        "currentlyServing": "Compartilhado em",
+        "unmountNow": "Desmontar",
+        "stopServeNow": "Parar servidor",
+        "openInBrowser": "Abrir no navegador",
+        "serveProtocol": "Protocolo de compartilhamento",
+        "serveAddress": "Endereço / Porta de compartilhamento",
+        "modeTargetNode": "Nó de destino",
+        "serverId": "ID de servidor",
+        "modeCustom": "Personalizado",
+        "alertAction": "Ação de alerta / Canal",
+        "selectAlertAction": "Selecione uma ação de alerta...",
+        "noAlertActionsFound": "Nenhuma ação de alerta salva encontrada",
+        "openAlertsModal": "Configurar ações",
+        "templateVariables": "Variáveis de modelo",
+        "insertVariableHint": "Clique para inserir na mensagem",
+        "joinMode": "Política de junção",
+        "joinModeAllSuccess": "Todos os ramos (AND)",
+        "joinModeAllSuccessHint": "Prossegue apenas se todos os ramos paralelos de entrada forem concluídos com sucesso.",
+        "joinModeAnySuccess": "Pelo menos um (OR)",
+        "joinModeAnySuccessHint": "Prossegue assim que todos os ramos terminarem, se pelo menos um teve sucesso.",
+        "joinModeAlways": "Sempre prosseguir",
+        "joinModeAlwaysHint": "Prossegue incondicionalmente quando todos os ramos terminarem, mesmo com falhas.",
+        "joinBranchesTitle": "Ramos de entrada",
+        "joinAddBranch": "Adicionar ramo",
+        "joinRemoveBranch": "Remover ramo",
+        "parallelBranchesTitle": "Ramos de saída",
+        "parallelAddBranch": "Adicionar ramo",
+        "parallelRemoveBranch": "Remover ramo",
+        "archiveFormat": "Formato do arquivo",
+        "archivePrefix": "Prefixo interno (opcional)",
+        "downloadUrl": "URL de download",
+        "autoFilename": "Determinar nome de arquivo automaticamente",
+        "jobDetailsTitle": "Detalhes da Tarefa",
+        "inspectJobBtn": "Inspecionar Detalhes da Tarefa",
+        "transfers": "Transferências",
+        "errors": "Erros",
+        "testRun": "Executar Teste",
+        "testRunRcHint": "Testar este comando RC com os parâmetros atuais",
+        "testSuccess": "Teste Bem-Sucedido",
+        "testFailed": "Falha no Teste",
+        "useAsSampleSchema": "Salvar como Esquema de Saída",
+        "sampleOutputSchema": "Esquema de Saída de Exemplo",
+        "sampleOutputSchemaDesc": "Esquema de resposta JSON para expor campos de variáveis dinâmicas em cartões posteriores",
+        "sampleOutputPlaceholder": "Cole a resposta JSON de exemplo aqui...",
+        "availableOutputKeys": "Chaves de Variáveis Detectadas",
+        "upstreamOutputs": "Saídas e Variáveis Upstream",
+        "nodeOutput": "Saída da Execução do Nó",
+        "checkReport": "Relatório de Diferenças de Verificação",
+        "rawOutputJson": "Dados de Saída (JSON)",
+        "conditionPresets": "Predefinições de condição rápida",
+        "condPresetHasDiff": "Possui diferenças",
+        "condPresetNoDiff": "Sem diferenças",
+        "condPresetDiffCount": "Diferenças encontradas (>0)",
+        "condPresetHasErrors": "Possui erros",
+        "condPresetTransferred": "Transferido (>0)",
+        "condPresetScriptSuccess": "Sucesso do script",
+        "notificationPresets": "Predefinições de mensagem rápida",
+        "notifPresetCheckReport": "Relatório de verificação",
+        "notifPresetTransferSummary": "Resumo de transferência",
+        "notifPresetFailureAlert": "Alerta de falha",
+        "notifPresetHealthStatus": "Saúde do motor",
+        "opGreaterOrEqual": "Maior ou Igual (>=)",
+        "opLessOrEqual": "Menor ou Igual (<=)",
+        "opStartsWith": "Começa Com",
+        "opEndsWith": "Termina Com",
+        "opArrayNotEmpty": "Lista Contém Itens",
+        "opArrayIsEmpty": "Lista Está Vazia",
+        "preview": "Prévia da Mensagem"
+      },
+      "liveStatus": {
+        "mounted": "Montado",
+        "serving": "Servindo"
+      },
+      "status": {
+        "running": "Executando",
+        "success": "Concluído",
+        "failed": "Falhou",
+        "skipped": "Ignorado",
+        "idle": "Ocioso"
+      },
+      "ports": {
+        "in": "Entrada",
+        "out": "Saída",
+        "start": "Iniciar",
+        "trigger": "Disparador",
+        "onChange": "Ao Mudar",
+        "onFinish": "Ao Concluir",
+        "success": "Sucesso",
+        "failure": "Falha",
+        "true": "Verdadeiro",
+        "false": "Falso",
+        "afterDelay": "Após Atraso",
+        "onSchedule": "No horário agendado",
+        "branch1": "Ramificação 1",
+        "branch2": "Ramificação 2",
+        "in1": "Entrada 1",
+        "in2": "Entrada 2",
+        "done": "Concluído"
+      },
+      "nodes": {
+        "manualTrigger": "Gatilho Manual",
+        "manualTriggerDesc": "Iniciar fluxo de trabalho sob demanda",
+        "cronSchedule": "Agendamento Cron",
+        "cronScheduleDesc": "Disparar conforme cronograma cron recorrente",
+        "folderWatcher": "Monitor de Pasta",
+        "folderWatcherDesc": "Disparar quando arquivos no diretório local forem alterados",
+        "jobEvent": "Evento de Conclusão de Tarefa",
+        "jobEventDesc": "Disparar quando outro perfil ou execução rápida for concluída",
+        "rcCommand": "Comando RC do Rclone",
+        "rcCommandDesc": "Invocar ponto de extremidade da API RC",
+        "condition": "Ramificação Condicional",
+        "conditionDesc": "Ramificar o fluxo com base em teste de condição",
+        "delay": "Temporizador de Atraso",
+        "delayDesc": "Pausar a execução por uma duração especificada",
+        "scheduleWait": "Aguardar horário",
+        "scheduleWaitDesc": "Pausa a execução do fluxo de trabalho até o horário cron agendado",
+        "parallelFork": "Divisão Paralela",
+        "parallelForkDesc": "Executar múltiplos fluxos simultaneamente",
+        "join": "Unir Ramificações",
+        "joinDesc": "Aguardar a conclusão de todas as ramificações paralelas",
+        "notification": "Notificação na Área de Trabalho",
+        "notificationDesc": "Exibir banner de notificação no sistema",
+        "unmount": "Desmontar Remoto",
+        "unmountDesc": "Desmontar com segurança o sistema de arquivos local ativo",
+        "stopServe": "Parar compartilhamento",
+        "stopServeDesc": "Interrompe instâncias ativas de compartilhamento de rede",
+        "appStart": "Ao iniciar o aplicativo",
+        "appStartDesc": "Acionado automaticamente quando o RClone Manager inicia",
+        "cleanup": "Esvaziar lixeira",
+        "cleanupDesc": "Esvazia a lixeira do armazenamento remoto",
+        "cryptcheck": "Verificação de criptografia",
+        "cryptcheckDesc": "Verifica a integridade do remoto criptografado",
+        "execScript": "Executar script",
+        "execScriptDesc": "Executa um comando de terminal ou script local",
+        "quickRun": "Execução rápida",
+        "quickRunDesc": "Executa um perfil de execução rápida salvo",
+        "stop": "Parar fluxo de trabalho",
+        "stopDesc": "Interrompe a execução do fluxo de trabalho",
+        "systemPower": "Gerenciamento de energia",
+        "systemPowerDesc": "Suspende, bloqueia ou desliga o sistema hospedeiro",
+        "logAudit": "Registro de auditoria",
+        "logAuditDesc": "Grava uma entrada no registro de execução do fluxo"
+      },
+      "logs": {
+        "title": "Registro de Execução",
+        "copy": "Copiar Registros",
+        "clear": "Limpar Registros",
+        "jumpToNode": "Clique para focar o nó no painel",
+        "empty": "Ainda não há registros. Execute um fluxo para ver o resultado.",
+        "copied": "Logs copiados para a área de transferência",
+        "filterAll": "Todos",
+        "filterErrors": "Erros",
+        "filterWarnings": "Avisos",
+        "filterSuccess": "Sucesso"
+      },
+      "tokens": {
+        "prevNode": "Nó Anterior",
+        "fields": {
+          "summary": "Resumo",
+          "output": "Saída principal",
+          "stdout": "Saída padrão",
+          "stderr": "Erro padrão",
+          "exitCode": "Código de saída",
+          "success": "Sucesso",
+          "status": "Status",
+          "error": "Mensagem de erro",
+          "report": "Relatório Markdown",
+          "hasDifferences": "Possui diferenças",
+          "differCount": "Contagem de arquivos divergentes",
+          "differ": "Lista de arquivos divergentes",
+          "missingOnDstCount": "Faltando no destino (contagem)",
+          "missingOnDst": "Lista de faltantes no destino",
+          "missingOnSrcCount": "Faltando na origem (contagem)",
+          "missingOnSrc": "Lista de faltantes na origem",
+          "matchCount": "Contagem de arquivos correspondentes",
+          "jobId": "ID do trabalho",
+          "bytes": "Bytes transferidos",
+          "bytesFormatted": "Bytes formatados",
+          "totalBytes": "Total de bytes",
+          "transfers": "Contagem de transferências",
+          "totalTransfers": "Total de transferências",
+          "errors": "Contagem de erros",
+          "speedFormatted": "Velocidade",
+          "mountPoint": "Caminho do ponto de montagem",
+          "remote": "Nome do remoto",
+          "addr": "Endereço do servidor",
+          "conditionMet": "Condição atendida",
+          "branch": "Ramificação selecionada",
+          "cronExpression": "Expressão Cron",
+          "targetTime": "Tempo alvo",
+          "waitedSeconds": "Segundos aguardados",
+          "resumedAt": "Retomado em",
+          "command": "Comando",
+          "result": "Resultado do comando",
+          "json": "JSON formatado"
+        }
+      },
+      "details": "Detalhes do Fluxo de Trabalho",
+      "name": "Nome do Fluxo",
+      "description": "Descrição do Fluxo",
+      "descriptionPlaceholder": "Descreva o propósito deste fluxo de trabalho...",
+      "showInTray": "Mostrar na bandeja do sistema",
+      "deleteConfirm": "Tem certeza de que deseja excluir este fluxo de trabalho?",
+      "cleanDuplicates": "Limpar Duplicados",
+      "cleanDuplicatesConfirm": "Tem certeza de que deseja remover os fluxos duplicados?",
+      "stats": {
+        "title": "Visão Geral",
+        "nodes": "Total de Nós",
+        "connections": "Conexões",
+        "created": "Criado",
+        "updated": "Atualizado"
+      },
+      "recipes": {
+        "driftCheckSync": {
+          "name": "Verificação Inteligente de Divergência e Sincronização Condicional",
+          "description": "Verifica diferenças com check; sincroniza apenas quando divergências são detectadas e notifica com detalhes de volume."
+        },
+        "integrityAudit": {
+          "name": "Auditoria de Integridade de Dados e Relatório de Divergência",
+          "description": "Executa verificação agendada de integridade; envia alerta com relatório Markdown caso existam diferenças."
+        },
+        "safeSyncAlert": {
+          "name": "Sincronização Segura com Alerta de Falha",
+          "description": "Executa sincronização, notificando o volume transferido em caso de sucesso ou o erro exato em falha."
+        },
+        "dailyBackup": {
+          "name": "Backup Diário e Notificação",
+          "description": "Executa sincronização diária agendada às 02:00, notificando o sucesso ou alertando sobre falhas."
+        },
+        "watchUpload": {
+          "name": "Monitor de Pasta e Envio Automático",
+          "description": "Monitora pasta local por alterações e copia arquivos novos/modificados para o armazenamento em nuvem."
+        },
+        "parallelMirror": {
+          "name": "Espelhamento Paralelo Multi-Nuvem",
+          "description": "Sincroniza dados simultaneamente para dois provedores de nuvem e verifica a conclusão."
+        },
+        "mountOnDemand": {
+          "name": "Montagem Sob Demanda e Notificação",
+          "description": "Monta um caminho remoto e notifica na área de trabalho quando a unidade estiver pronta."
+        },
+        "manualTrigger": "Manual",
+        "manualTriggerDesc": "Disparado manualmente sob demanda",
+        "vfsRefresh": {
+          "name": "Automação de Atualização de Cache VFS",
+          "description": "Envia comando RC vfs/refresh para recarregar o cache de diretórios em discos montados e notifica a área de trabalho."
+        }
+      },
+      "editor": {
+        "configureNode": "Configurar Nó: {{type}}",
+        "nodeSaved": "Configurações do nó de fluxo de trabalho atualizadas"
+      },
+      "emptyState": {
+        "title": "Bem-vindo ao Construtor de Fluxos",
+        "subtitle": "Crie um novo fluxo de trabalho ou escolha um modelo para automatizar suas operações do rclone."
+      }
+    },
+    "shortcuts": {
+      "title": "Atalhos de teclado do Flow"
     }
   },
   "templates": {
@@ -3258,7 +3873,8 @@
     "deletedSuccess": "Modelo excluído com sucesso."
   },
   "navigation": {
-    "dashboard": "Painel"
+    "dashboard": "Painel",
+    "files": "Arquivos"
   },
   "provision": {
     "stages": {
@@ -3269,6 +3885,72 @@
       "completed": "Concluído",
       "cancelled": "Operação cancelada",
       "error": "Erro"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Desativado / Infinito (0s)",
+        "10s": "10 segundos",
+        "30s": "30 segundos",
+        "1m": "1 minuto",
+        "5m": "5 minutos",
+        "10m": "10 minutos",
+        "30m": "30 minutos",
+        "1h": "1 hora",
+        "24h": "24 horas (1 dia)",
+        "7d": "7 dias",
+        "30d": "30 dias",
+        "off": "Desativado (off)"
+      },
+      "sizeSuffix": {
+        "0": "Ilimitado / Desativado (0)",
+        "512k": "512 KiB",
+        "1M": "1 MiB",
+        "8M": "8 MiB",
+        "16M": "16 MiB",
+        "32M": "32 MiB",
+        "64M": "64 MiB",
+        "128M": "128 MiB",
+        "256M": "256 MiB",
+        "512M": "512 MiB",
+        "1G": "1 GiB",
+        "10G": "10 GiB",
+        "100G": "100 GiB",
+        "1T": "1 TiB",
+        "off": "Ilimitado / Desativado (off)"
+      },
+      "countSuffix": {
+        "0": "Nenhum (0)",
+        "100": "100 itens",
+        "1k": "1.000 (1k)",
+        "10k": "10.000 (10k)",
+        "100k": "100.000 (100k)",
+        "1M": "1 Milhão (1M)",
+        "10M": "10 Milhões (10M)",
+        "off": "Ilimitado / Desativado (off)"
+      },
+      "bwTimetable": {
+        "off": "Ilimitado (off)",
+        "512k": "512 KiB/s",
+        "1M": "1 MiB/s",
+        "5M": "5 MiB/s",
+        "10M": "10 MiB/s",
+        "50M": "50 MiB/s",
+        "split": "10M upload, 50M download",
+        "schedule": "Horário programado"
+      },
+      "fileMode": {
+        "0644": "Usuário leitura/escrita, Outros somente leitura (0644)",
+        "0666": "Leitura/escrita para todos (0666)",
+        "0755": "Usuário leitura/escrita/exec, Outros leitura/exec (0755)",
+        "0777": "Acesso total para todos (0777)"
+      },
+      "tristate": {
+        "true": "Habilitado (true)",
+        "false": "Deshabilitado (false)",
+        "unset": "Não definido"
+      }
     }
   }
 }
