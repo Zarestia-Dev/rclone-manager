@@ -1,10 +1,10 @@
-name: "Publish to WinGet"
+name: 'Publish to WinGet'
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release tag (e.g. v0.3.2). Leave empty to use the latest release."
+        description: 'Release tag (e.g. v0.3.2). Leave empty to use the latest release.'
         required: false
         type: string
 
@@ -16,18 +16,26 @@ jobs:
         id: resolve
         shell: pwsh
         run: |
-          $inputVersion = "${{ inputs.version }}"
+          $inputVersion = "${{ inputs.version }}".Trim()
           if ($inputVersion) {
-            echo "VERSION=$inputVersion" >> $env:GITHUB_OUTPUT
+            if ($inputVersion.StartsWith('v')) {
+              $tag = $inputVersion
+            } else {
+              $tag = "v$inputVersion"
+            }
           } else {
             $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest"
-            echo "VERSION=$($release.tag_name)" >> $env:GITHUB_OUTPUT
+            $tag = $release.tag_name
           }
+          Write-Host "Resolved release tag: $tag"
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+          echo "VERSION=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Submit to WinGet
         uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: RClone-Manager.rclone-manager
           version: ${{ steps.resolve.outputs.VERSION }}
+          release-tag: ${{ steps.resolve.outputs.TAG }}
           installers-regex: '\.msi$'
           token: ${{ secrets.WINGET_PAT }}
