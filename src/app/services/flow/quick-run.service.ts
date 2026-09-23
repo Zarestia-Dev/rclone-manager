@@ -384,7 +384,13 @@ export class QuickRunService extends TauriBaseService {
       try {
         const result = await this.invokeWithNotification<OperationExecutionResult>(
           'start_quick_run',
-          { quickRunId: id }
+          { quickRunId: id },
+          {
+            successKey: 'flow.quickRun.success.started',
+            successParams: { name: qr?.name ?? id },
+            errorKey: 'flow.quickRun.errors.failedStart',
+            errorParams: { name: qr?.name ?? id },
+          }
         );
         this.patchInStore(id, { status: result?.status ?? 'running' });
         this.refreshOperationStates();

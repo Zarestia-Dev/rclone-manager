@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-export type AlertSeverity = 'info' | 'warning' | 'error' | 'success';
+export type AlertSeverity = 'info' | 'warning' | 'error' | 'success' | 'dim';
 
 @Component({
   selector: 'app-alert-banner',
@@ -33,6 +33,8 @@ export class AlertBannerComponent {
         return 'circle-xmark';
       case 'success':
         return 'check-circle';
+      case 'dim':
+        return 'circle-info';
       case 'warning':
       default:
         return 'warning';

@@ -119,11 +119,18 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
 pub async fn cancel_oauth(app: AppHandle) -> Result<(), String> {
     info!("Cancelling in-progress OAuth flow");
     let transport = app.state::<RcloneState>().transport.clone();
-    transport
-        .rpc(config::OAUTHSTOP, None)
-        .await
-        .map(|_| ())
-        .map_err(|e| format!("Failed to stop OAuth server: {e}"))
+    match transport.rpc(config::OAUTHSTOP, None).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("no oauth authentication is in progress") {
+                debug!("OAuth stop called when no OAuth flow was in progress; ignoring");
+                Ok(())
+            } else {
+                Err(format!("Failed to stop OAuth server: {err_str}"))
+            }
+        }
+    }
 }
 
 #[bridge]

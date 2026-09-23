@@ -27,6 +27,7 @@
         [placeholder]="field.placeholder || ''"
         [formControl]="getControl(field.key)"
         [type]="field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'"
+        cdkFocusInitial
       />
       @if (getControl(field.key).hasError('required')) {
         <mat-error>{{

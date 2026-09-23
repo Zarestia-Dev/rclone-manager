@@ -72,9 +72,25 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - 控制面板" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>控制面板 - 快速執行、掛載與遠端概覽一目了然</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - 工作流程編輯器" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>工作流程編輯器 - 在互動式節點畫布上設計與自動化多步驟雲端管線</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Nautilus 檔案管理器" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - 瀏覽、傳輸與管理所有遠端儲存空間中的檔案</sub>
+</p>
+
+<p align="center">
   <i>📖 想了解更多？請造訪 <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki 藝廊</a></b> 了解所有功能。</i>
 </p>
 

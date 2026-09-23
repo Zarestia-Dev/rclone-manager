@@ -72,9 +72,25 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - ダッシュボード" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>ダッシュボード - クイック実行、マウント、リモートの概要を一目で確認</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - ワークフロービルダー" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>ワークフロービルダー - インタラクティブなノードキャンバスでマルチステップのクラウドパイプラインを設計・自動化</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Nautilus ファイルマネージャー" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - すべてのリモート上のファイルを閲覧、転送、管理</sub>
+</p>
+
+<p align="center">
   <i>📖 より詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
 </p>
 

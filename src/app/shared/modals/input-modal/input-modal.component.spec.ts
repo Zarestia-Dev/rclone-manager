@@ -82,11 +82,6 @@ describe('InputModalComponent', () => {
       component.onCancel();
       expect(dialogRefSpy.close).toHaveBeenCalledWith(null);
     });
-
-    it('should close dialog with null on escape key', () => {
-      component.onEscapeKey();
-      expect(dialogRefSpy.close).toHaveBeenCalledWith(null);
-    });
   });
 
   describe('Initialization with multiple fields (copy URL)', () => {

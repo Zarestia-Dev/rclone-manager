@@ -1227,7 +1227,7 @@
         },
         "noObscure": {
           "label": "難読化なし (No Obscure)",
-          "description": "パスワードはすでに難読化されています — 難読化ステップをスキップします"
+          "description": "パスワードはすでに難読化されています - 難読化ステップをスキップします"
         },
         "nonInteractive": {
           "label": "非対話型 (Non-Interactive)",
@@ -1731,9 +1731,9 @@
       "listed": "一覧取得数",
       "transferStatistics": "{{op}} 統計情報",
       "dryRun": "テスト実行 (dryRun)",
-      "dryRunActive": "テスト実行が有効です — 変更は一切行われません",
+      "dryRunActive": "テスト実行が有効です - 変更は一切行われません",
       "resync": "再同期",
-      "resyncActive": "再同期が有効です — 完全な再同期を実行しています",
+      "resyncActive": "再同期が有効です - 完全な再同期を実行しています",
       "remoteSettings": "リモート設定"
     },
     "generalDetail": {
@@ -3040,7 +3040,7 @@
     "browse": "閲覧",
     "browseInApp": "閲覧 (アプリ内)",
     "jobsCount": "ジョブ [{{active}}/{{total}}]",
-    "jobsNone": "ジョブ [—]",
+    "jobsNone": "ジョブ [-]",
     "mountCount": "マウント [{{active}}/{{total}}]",
     "syncCount": "同期 [{{active}}/{{total}}]",
     "copyCount": "コピー [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "リモート「{{remote}}」はRclone設定に存在しません",
-        "failedStop": "クイック実行「{{name}}」の停止に失敗しました: {{error}}"
+        "failedStop": "クイック実行「{{name}}」の停止に失敗しました: {{error}}",
+        "failedStart": "クイック実行 \"{{name}}\" の開始に失敗しました: {{error}}"
+      },
+      "success": {
+        "started": "クイック実行 \"{{name}}\" が正常に開始されました"
       }
     },
     "tabs": {

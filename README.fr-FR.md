@@ -66,15 +66,31 @@
 
 ---
 
-## Capture d'écran
+## Captures d'écran
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="Interface graphique RClone Manager" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Tableau de bord" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Tableau de bord - Exécutions rapides, montages et aperçu des dépôts distants</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Éditeur de Workflows" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>Éditeur de Workflows - Concevez et automatisez des pipelines cloud multi-étapes sur un canevas interactif de nœuds</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Gestionnaire de fichiers Nautilus" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Parcourez, transférez et gérez vos fichiers à travers tous vos dépôts distants</sub>
+</p>
+
+<p align="center">
   <i>📖 Vous voulez en voir plus ? Découvrez la <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Galerie Wiki</a></b> pour toutes les fonctionnalités.</i>
 </p>
 

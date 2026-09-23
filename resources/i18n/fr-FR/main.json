@@ -705,7 +705,7 @@
       },
       "features": {
         "title": "Fonctionnalités avancées",
-        "content": "Synchronisez facilement vos fichiers, montez votre stockage cloud comme des disques locaux, gérez plusieurs dépôts distants et surveillez vos transferts — le tout depuis une interface élégante."
+        "content": "Synchronisez facilement vos fichiers, montez votre stockage cloud comme des disques locaux, gérez plusieurs dépôts distants et surveillez vos transferts - le tout depuis une interface élégante."
       },
       "installRclone": {
         "title": "Installer rclone",
@@ -1227,7 +1227,7 @@
         },
         "noObscure": {
           "label": "Non masquer",
-          "description": "Les mots de passe sont déjà masqués — sautez cette étape"
+          "description": "Les mots de passe sont déjà masqués - sautez cette étape"
         },
         "nonInteractive": {
           "label": "Mode non interactif",
@@ -1731,9 +1731,9 @@
       "listed": "Listé",
       "transferStatistics": "Statistiques {{op}}",
       "dryRun": "Simulation",
-      "dryRunActive": "La simulation est active — aucun changement ne sera effectué",
+      "dryRunActive": "La simulation est active - aucun changement ne sera effectué",
       "resync": "Resynchroniser",
-      "resyncActive": "Resynchronisation active — synchronisation complète en cours",
+      "resyncActive": "Resynchronisation active - synchronisation complète en cours",
       "remoteSettings": "Paramètres du distant"
     },
     "generalDetail": {
@@ -3040,7 +3040,7 @@
     "browse": "Parcourir",
     "browseInApp": "Parcourir (dans l'application)",
     "jobsCount": "Jobs [{{active}}/{{total}}]",
-    "jobsNone": "Jobs [—]",
+    "jobsNone": "Jobs [-]",
     "mountCount": "Montage [{{active}}/{{total}}]",
     "syncCount": "Synchronisation [{{active}}/{{total}}]",
     "copyCount": "Copie [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone",
-        "failedStop": "Échec de l'arrêt du Lancement Rapide \"{{name}}\" : {{error}}"
+        "failedStop": "Échec de l'arrêt du Lancement Rapide \"{{name}}\" : {{error}}",
+        "failedStart": "Échec du démarrage de Quick Run « {{name }} » : {{error}}"
+      },
+      "success": {
+        "started": "Quick Run « {{name }} » démarré avec succès"
       }
     },
     "tabs": {

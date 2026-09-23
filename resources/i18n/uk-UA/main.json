@@ -393,7 +393,7 @@
       "customGateway": "Власний шлюз",
       "messageTemplate": "Шаблон повідомлення",
       "messageTemplateHint": "Підтримує змінні Handlebars",
-      "telegram_info": "Токен бота можна отримати від @BotFather, а Chat ID — від @userinfobot.",
+      "telegram_info": "Токен бота можна отримати від @BotFather, а Chat ID - від @userinfobot.",
       "telegram_botless_info": "Режим без бота використовує CallMeBot (https://api.callmebot.com) для надсилання сповіщень Telegram прямо на ваше ім'я користувача без токена бота.",
       "whatsapp_callmebot_info": "Надсилає сповіщення WhatsApp через CallMeBot (https://api.callmebot.com). Введіть номер телефону (з кодом країни) та ключ API CallMeBot.",
       "whatsapp_gateway_info": "Надсилає сповіщення WhatsApp через ваш власний HTTP-шлюз.",
@@ -705,7 +705,7 @@
       },
       "features": {
         "title": "Потужні можливості",
-        "content": "Безперешкодно синхронізуйте файли, монтуйте хмарні сховища як локальні диски, керуйте кількома сховищами та стежте за операціями передавання — усе з одного зручного інтерфейсу."
+        "content": "Безперешкодно синхронізуйте файли, монтуйте хмарні сховища як локальні диски, керуйте кількома сховищами та стежте за операціями передавання - усе з одного зручного інтерфейсу."
       },
       "installRclone": {
         "title": "Встановлення Rclone",
@@ -934,7 +934,7 @@
     },
     "overviewHeader": {
       "manageBackends": "Керувати бекендами",
-      "backendSwitchAria": "Поточний режим: {{title}} — натисніть, щоб перемкнути бекенд"
+      "backendSwitchAria": "Поточний режим: {{title}} - натисніть, щоб перемкнути бекенд"
     },
     "settingControl": {
       "default": "Типово: {{value}}",
@@ -1227,7 +1227,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "Паролі вже приховано — пропустити крок приховування"
+          "description": "Паролі вже приховано - пропустити крок приховування"
         },
         "nonInteractive": {
           "label": "Non-Interactive",
@@ -1731,9 +1731,9 @@
       "listed": "Перелічено",
       "transferStatistics": "Статистика: {{op}}",
       "dryRun": "Пробний запуск",
-      "dryRunActive": "Пробний запуск активний — жодних змін не буде внесено",
+      "dryRunActive": "Пробний запуск активний - жодних змін не буде внесено",
       "resync": "Повторна синхронізація",
-      "resyncActive": "Повторна синхронізація активна — виконується повна ресинхронізація",
+      "resyncActive": "Повторна синхронізація активна - виконується повна ресинхронізація",
       "remoteSettings": "Налаштування сховища"
     },
     "generalDetail": {
@@ -2292,7 +2292,7 @@
         "cancel": "Скасувати",
         "noProfiles": "Профілі не налаштовано",
         "placeholder": "Оберіть профіль",
-        "inUseWarning": "Неможливо видалити профіль «{{name}}» — він використовується активними {{type}} ({{count}})",
+        "inUseWarning": "Неможливо видалити профіль «{{name}}» - він використовується активними {{type}} ({{count}})",
         "disabledReason": {
           "inUse": "Профіль використовується запущеною операцією {{operation}}. Спочатку зупиніть її."
         },
@@ -2335,7 +2335,7 @@
       },
       "pageTitle": {
         "home": "Flags Rclone",
-        "category": "{{page}} — {{category}}",
+        "category": "{{page}} - {{category}}",
         "backend": "Flags бекенду"
       },
       "notifications": {
@@ -2840,7 +2840,7 @@
       "configEncrypted": "Конфігурацію зашифровано, але пароль не надано",
       "unsupportedOS": "Непідтримувана ОС.",
       "binaryNotFound": "Виконуваний файл Rclone не знайдено.",
-      "versionTooOld": "Версія Rclone {{version}} застара. Мінімально потрібна версія — {{required}}. Оновіть rclone.",
+      "versionTooOld": "Версія Rclone {{version}} застара. Мінімально потрібна версія - {{required}}. Оновіть rclone.",
       "versionCheckFailed": "Не вдалося отримати поточну версію rclone: {{error}}",
       "restartFailed": "Не вдалося перезапустити рушій після оновлення: {{error}}",
       "selfupdateFailed": "rclone selfupdate --check завершився помилкою: {{error}}",
@@ -3040,7 +3040,7 @@
     "browse": "Огляд",
     "browseInApp": "Огляд (у застосунку)",
     "jobsCount": "Завдання [{{active}}/{{total}}]",
-    "jobsNone": "Завдання [—]",
+    "jobsNone": "Завдання [-]",
     "mountCount": "Монтування [{{active}}/{{total}}]",
     "syncCount": "Синхронізація [{{active}}/{{total}}]",
     "copyCount": "Копіювання [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "Підключення '{{remote}}' не існує в конфігурації Rclone",
-        "failedStop": "Не вдалося зупинити швидкий запуск \"{{name}}\": {{error}}"
+        "failedStop": "Не вдалося зупинити швидкий запуск \"{{name}}\": {{error}}",
+        "failedStart": "Не вдалося запустити швидкий запуск \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Швидкий запуск \"{{name}}\" успішно розпочато"
       }
     },
     "tabs": {
@@ -3912,7 +3916,7 @@
     "title": "Параметри живлення",
     "executing": "Виконання дії...",
     "activeOpsTitle": "Поточні активні завдання",
-    "activeOpsCount": "Виконується: передач — {{jobs}}, точок монтування — {{mounts}}, серверів — {{serves}}",
+    "activeOpsCount": "Виконується: передач - {{jobs}}, точок монтування - {{mounts}}, серверів - {{serves}}",
     "actions": {
       "shutdownApp": {
         "title": "Закрити програму",

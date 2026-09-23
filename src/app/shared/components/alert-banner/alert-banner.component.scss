@@ -100,6 +100,25 @@
     }
   }
 
+  &.dim {
+    background: var(--bg-elevated-1);
+    box-shadow: none;
+
+    > mat-icon,
+    > div strong {
+      color: var(--dim-color);
+    }
+
+    p,
+    ::ng-deep p {
+      color: var(--dim-color);
+    }
+
+    > div a {
+      color: var(--dim-color);
+    }
+  }
+
   @media (max-width: 600px) {
     padding: var(--space-sm);
     gap: var(--space-sm);

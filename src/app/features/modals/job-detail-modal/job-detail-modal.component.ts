@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, HostListener, computed } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { DecimalPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,7 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -34,6 +35,7 @@ import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-cli
     PathDisplayComponent,
     CopyToClipboardDirective,
   ],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -195,7 +197,6 @@ export class JobDetailModalComponent {
     return job.status === 'Running' ? job.group : null;
   });
 
-  @HostListener('keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

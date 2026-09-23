@@ -393,7 +393,7 @@
       "customGateway": "Собственный шлюз",
       "messageTemplate": "Шаблон сообщения",
       "messageTemplateHint": "Поддерживаются переменные Handlebars",
-      "telegram_info": "Токен бота можно получить у @BotFather, а ID чата — у @userinfobot.",
+      "telegram_info": "Токен бота можно получить у @BotFather, а ID чата - у @userinfobot.",
       "telegram_botless_info": "Режим без бота использует CallMeBot (https://api.callmebot.com) для отправки оповещений Telegram напрямую на ваше имя пользователя без создания токена бота.",
       "whatsapp_callmebot_info": "Отправляет оповещения WhatsApp через CallMeBot (https://api.callmebot.com). Введите номер телефона с кодом страны и ключ API CallMeBot.",
       "whatsapp_gateway_info": "Отправляет оповещения WhatsApp через ваш HTTP-шлюз.",
@@ -709,7 +709,7 @@
       },
       "installRclone": {
         "title": "Установка Rclone",
-        "content": "Rclone необходим для работы с облачными хранилищами. Выберите место установки или укажите существующий исполняемый файл — остальная настройка будет выполнена автоматически."
+        "content": "Rclone необходим для работы с облачными хранилищами. Выберите место установки или укажите существующий исполняемый файл - остальная настройка будет выполнена автоматически."
       },
       "installPlugin": {
         "title": "Установка компонента для подключения дисков",
@@ -934,7 +934,7 @@
     },
     "overviewHeader": {
       "manageBackends": "Управление бэкендами",
-      "backendSwitchAria": "Текущий режим: {{title}} — нажмите, чтобы сменить бэкенд"
+      "backendSwitchAria": "Текущий режим: {{title}} - нажмите, чтобы сменить бэкенд"
     },
     "settingControl": {
       "default": "По умолчанию: {{value}}",
@@ -1227,7 +1227,7 @@
         },
         "noObscure": {
           "label": "Не обфусцировать",
-          "description": "Пароли уже обфусцированы — пропустить этот шаг"
+          "description": "Пароли уже обфусцированы - пропустить этот шаг"
         },
         "nonInteractive": {
           "label": "Неинтерактивный режим",
@@ -1731,7 +1731,7 @@
       "listed": "Просмотрено",
       "transferStatistics": "Статистика {{op}}",
       "dryRun": "Пробный запуск",
-      "dryRunActive": "Активен пробный запуск — изменения не будут внесены",
+      "dryRunActive": "Активен пробный запуск - изменения не будут внесены",
       "resync": "Полная ресинхронизация",
       "resyncActive": "Выполняется полная повторная синхронизация",
       "remoteSettings": "Настройки хранилища"
@@ -2335,7 +2335,7 @@
       },
       "pageTitle": {
         "home": "Флаги Rclone",
-        "category": "{{page}} — {{category}}",
+        "category": "{{page}} - {{category}}",
         "backend": "Флаги бэкенда"
       },
       "notifications": {
@@ -3040,7 +3040,7 @@
     "browse": "Открыть файлы",
     "browseInApp": "Открыть в приложении",
     "jobsCount": "Задания [{{active}}/{{total}}]",
-    "jobsNone": "Задания [—]",
+    "jobsNone": "Задания [-]",
     "mountCount": "Диски [{{active}}/{{total}}]",
     "syncCount": "Синхронизация [{{active}}/{{total}}]",
     "copyCount": "Копирование [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "Подключение '{{remote}}' не существует в конфигурации Rclone",
-        "failedStop": "Не удалось остановить быстрый запуск \"{{name}}\": {{error}}"
+        "failedStop": "Не удалось остановить быстрый запуск \"{{name}}\": {{error}}",
+        "failedStart": "Не удалось запустить быстрый запуск \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Быстрый запуск \"{{name}}\" успешно запущен"
       }
     },
     "tabs": {
@@ -3912,7 +3916,7 @@
     "title": "Параметры питания",
     "executing": "Выполнение действия...",
     "activeOpsTitle": "Текущие активные задачи",
-    "activeOpsCount": "Выполняется: передач — {{jobs}}, точек монтирования — {{mounts}}, серверов — {{serves}}",
+    "activeOpsCount": "Выполняется: передач - {{jobs}}, точек монтирования - {{mounts}}, серверов - {{serves}}",
     "actions": {
       "shutdownApp": {
         "title": "Закрыть приложение",

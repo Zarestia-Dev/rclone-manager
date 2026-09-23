@@ -24,6 +24,7 @@ import { JobManagementService } from 'src/app/services/operations/job-management
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FsInfo, RemoteAboutData } from '@app/types';
+import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 export interface MetadataItem {
   Help?: string;
@@ -52,12 +53,10 @@ export interface MetadataGroup {
     FormatFileSizePipe,
     TranslatePipe,
   ],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(keydown.escape)': 'close()',
-  },
 })
 export class RemoteAboutModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);

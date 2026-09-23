@@ -1227,7 +1227,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "As senhas já estão ocultadas — pule o passo de obscurecimento"
+          "description": "As senhas já estão ocultadas - pule o passo de obscurecimento"
         },
         "nonInteractive": {
           "label": "Não Interativo",
@@ -1733,7 +1733,7 @@
       "dryRun": "Simulação (Dry Run)",
       "dryRunActive": "Tentativa em modo de simulação (dry-run) está ativa – não serão feitas alterações",
       "resync": "Resincronizar",
-      "resyncActive": "O Resync está ativo — realizando uma re-sincronização completa",
+      "resyncActive": "O Resync está ativo - realizando uma re-sincronização completa",
       "remoteSettings": "Configurações do remoto"
     },
     "generalDetail": {
@@ -3040,7 +3040,7 @@
     "browse": "Navegar",
     "browseInApp": "Navegar (Na Aplicação)",
     "jobsCount": "Tarefas [{{active}}/{{total}}]",
-    "jobsNone": "Tarefas [—]",
+    "jobsNone": "Tarefas [-]",
     "mountCount": "Montar [{{active}}/{{total}}]",
     "syncCount": "Sincronizar [{{active}}/{{total}}]",
     "copyCount": "Cópia [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "O remote '{{remote}}' não existe na configuração do Rclone",
-        "failedStop": "Falha ao parar a Execução Rápida \"{{name}}\": {{error}}"
+        "failedStop": "Falha ao parar a Execução Rápida \"{{name}}\": {{error}}",
+        "failedStart": "Falha ao iniciar a Execução Rápida \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Execução Rápida \"{{name}}\" iniciada com sucesso"
       }
     },
     "tabs": {

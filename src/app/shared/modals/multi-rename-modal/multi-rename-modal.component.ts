@@ -25,6 +25,7 @@ import { FileBrowserItem, ExplorerRoot, RenameItem } from '@app/types';
 import { PathService } from '../../../services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
 import { NotificationService } from '../../../services/ui/notification.service';
+import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 export interface MultiRenameData {
   items: FileBrowserItem[];
@@ -76,6 +77,7 @@ export interface MultiRenamePreviewItem {
     TranslatePipe,
   ],
   templateUrl: './multi-rename-modal.component.html',
+  hostDirectives: [EscapeCloseDirective],
   styleUrls: ['./multi-rename-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class MultiRenameModalComponent {

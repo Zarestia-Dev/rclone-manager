@@ -306,8 +306,7 @@
 
 // ─── Operation color token ────────────────────────────────────────────────────
 
-.profile-selector-container,
-.cron-human-readable {
+.profile-selector-container {
   --op-color: var(--primary-color);
 
   &.operation-bisync {
@@ -374,30 +373,36 @@
   gap: var(--space-xs);
 }
 
-// ─── Cron schedule ────────────────────────────────────────────────────────────
+// ─── Automation badges ────────────────────────────────────────────────────────
 
-.cron-human-readable {
+.automation-badges-row {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: color-mix(in srgb, var(--op-color) 8%, var(--sidebar-bg-color));
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--op-color) 30%, transparent);
-  border-radius: var(--radius-sm);
-  color: var(--op-color);
-  font-size: var(--font-size-md);
-  font-weight: 500;
+  gap: var(--space-xs);
 
-  .cron-icon {
-    color: var(--op-color);
-    flex-shrink: 0;
-  }
+  .app-pill {
+    max-width: 100%;
+    font-family: inherit;
 
-  .cron-schedule {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    &.disabled-automation {
+      opacity: 0.7;
+    }
+
+    .spin {
+      animation: spin 1s linear infinite;
+    }
+
+    .pill-divider {
+      opacity: 0.5;
+      margin: 0 var(--space-xxs);
+    }
+
+    .next-run-text {
+      font-weight: 500;
+      opacity: 0.9;
+    }
   }
 }
 

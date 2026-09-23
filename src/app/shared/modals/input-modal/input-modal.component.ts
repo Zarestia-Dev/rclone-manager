@@ -25,6 +25,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { UrlPreviewComponent } from '../../components/url-preview/url-preview.component';
+import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 export interface InputFieldConfig {
   key: string;
@@ -69,6 +70,7 @@ export interface InputModalData {
     UrlPreviewComponent,
   ],
   templateUrl: './input-modal.component.html',
+  hostDirectives: [EscapeCloseDirective],
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class InputModalComponent implements OnInit {
@@ -180,11 +182,6 @@ export class InputModalComponent implements OnInit {
     } catch {
       return null;
     }
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscapeKey(): void {
-    this.dialogRef.close(null);
   }
 
   @HostListener('document:keydown.enter')

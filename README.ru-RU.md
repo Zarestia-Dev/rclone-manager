@@ -66,15 +66,31 @@
 
 ---
 
-## Скриншот
+## Скриншоты
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="Интерфейс RClone Manager" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Панель управления" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Панель управления - Быстрые запуски, монтирования и обзор удалённых хранилищ</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Редактор рабочих процессов" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>Редактор рабочих процессов - Проектируйте и автоматизируйте многоэтапные облачные конвейеры на интерактивном холсте с нодами</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Файловый менеджер Nautilus" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Просматривайте, передавайте и управляйте файлами на всех удалённых хранилищах</sub>
+</p>
+
+<p align="center">
   <i>📖 Больше примеров интерфейса доступно в <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">галерее Wiki</a></b>.</i>
 </p>
 
@@ -93,7 +109,7 @@
 | **Flathub**         | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/apps/io.github.zarestia_dev.rclone-manager)    | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                         |
 | **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Последние выпуски: .deb, .rpm, .AppImage и переносимый tar.gz](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Руководство:** [Установка в Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) — устранение проблем с Flatpak, снимками и другими компонентами.
+> 📚 **Руководство:** [Установка в Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) - устранение проблем с Flatpak, снимками и другими компонентами.
 
 ### macOS
 
@@ -102,7 +118,7 @@
 | **Homebrew**        | [![Версия Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
 | **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                        | [Установщик DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           |
 
-> 📚 **Руководство:** [Установка в macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) — настройка macFUSE и устранение блокировок Gatekeeper.
+> 📚 **Руководство:** [Установка в macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) - настройка macFUSE и устранение блокировок Gatekeeper.
 
 ### Windows
 
@@ -113,7 +129,7 @@
 | **Scoop**           | [![Версия Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json)                   | `scoop bucket add extras && scoop install rclone-manager`                                        |
 | **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [Установщик или переносимый EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Руководство:** [Установка в Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) — требования WinFsp для монтирования и сведения о SmartScreen.
+> 📚 **Руководство:** [Установка в Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) - требования WinFsp для монтирования и сведения о SmartScreen.
 
 ### Android (Бета)
 

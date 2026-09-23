@@ -14,6 +14,7 @@ import { NotificationService } from '../../../services/ui/notification.service';
 import { AppLifecycleService } from '../../../services/infrastructure/system/app-lifecycle.service';
 import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
 import { SystemPowerAction } from '@app/types';
+import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 export interface PowerActionItem {
   id: string;
@@ -33,6 +34,7 @@ export interface PowerActionItem {
   selector: 'app-power-menu-modal',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule, TranslatePipe],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './power-menu-modal.component.html',
   styleUrls: ['./power-menu-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

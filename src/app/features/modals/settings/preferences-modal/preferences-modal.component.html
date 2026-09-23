@@ -394,6 +394,7 @@
       [attr.aria-label]="setting.meta?.metadata?.display_name"
       [placeholder]="(setting.meta?.metadata?.placeholder | translate) || ''"
       (blur)="onBlur(setting.category, setting.key)"
+      (keydown.enter)="onBlur(setting.category, setting.key)"
     />
     @if (setting.isInvalid) {
       <mat-error>{{ setting.validationMessage }}</mat-error>

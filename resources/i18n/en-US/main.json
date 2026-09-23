@@ -1231,7 +1231,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "Passwords are already obscured — skip the obscuring step"
+          "description": "Passwords are already obscured - skip the obscuring step"
         },
         "nonInteractive": {
           "label": "Non-Interactive",
@@ -1731,9 +1731,9 @@
       "listed": "Listed",
       "transferStatistics": "{{op}} Statistics",
       "dryRun": "Dry Run",
-      "dryRunActive": "Dry run is active — no changes will be made",
+      "dryRunActive": "Dry run is active - no changes will be made",
       "resync": "Resync",
-      "resyncActive": "Resync is active — performing full resynchronization",
+      "resyncActive": "Resync is active - performing full resynchronization",
       "remoteSettings": "Remote Settings"
     },
     "generalDetail": {
@@ -3081,7 +3081,7 @@
     "browse": "Browse",
     "browseInApp": "Browse (In App)",
     "jobsCount": "Jobs [{{active}}/{{total}}]",
-    "jobsNone": "Jobs [—]",
+    "jobsNone": "Jobs [-]",
     "mountCount": "Mount [{{active}}/{{total}}]",
     "syncCount": "Sync [{{active}}/{{total}}]",
     "copyCount": "Copy [{{active}}/{{total}}]",
@@ -3404,7 +3404,11 @@
       },
       "errors": {
         "remoteNotFound": "Remote '{{remote}}' does not exist in Rclone configuration",
-        "failedStop": "Failed to stop Quick Run \"{{name}}\": {{error}}"
+        "failedStop": "Failed to stop Quick Run \"{{name}}\": {{error}}",
+        "failedStart": "Failed to start Quick Run \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Quick Run \"{{name}}\" started successfully"
       }
     },
     "tabs": {

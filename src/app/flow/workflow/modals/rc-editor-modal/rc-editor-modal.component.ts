@@ -28,6 +28,7 @@ import {
   NodeVariableField,
 } from '../../utils/node-fields.util';
 import { RcPresetCategory, RcPresetItem, RC_PRESETS } from '../../constants/rc-presets.constant';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 export interface RcEditorModalData {
   node: WorkflowNode;
@@ -45,12 +46,10 @@ export interface RcEditorModalData {
     MatSelectModule,
     TranslatePipe,
   ],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './rc-editor-modal.component.html',
   styleUrls: ['./rc-editor-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(keydown.escape)': 'dismiss()',
-  },
 })
 export class RcEditorModalComponent {
   readonly dialogRef = inject(MatDialogRef<RcEditorModalComponent>);

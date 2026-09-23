@@ -150,6 +150,7 @@ export const BASE_ICONS: Record<string, string> = {
   code: 'assets/icons/general/code.svg',
   scissors: 'assets/icons/general/scissors.svg',
   folder_zip: 'assets/icons/general/folder_zip.svg',
+  'mobiledata-arrows': 'assets/icons/general/mobiledata-arrows.svg',
 
   // ------------------- Titlebar Icons -------------------
   expand: 'assets/icons/titlebar/expand.svg',

@@ -7,6 +7,8 @@ import {
   model,
   output,
   linkedSignal,
+  signal,
+  effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -61,6 +63,7 @@ import {
   Remote,
   createDefaultRemoteFeatures,
   findInFlightAction,
+  Automation,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -72,6 +75,7 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
@@ -142,6 +146,33 @@ export class AppDetailComponent {
   private readonly localStorage = inject(LocalStorageService);
   private readonly dialog = inject(MatDialog);
   private readonly modalService = inject(ModalService);
+  private readonly automationService = inject(AutomationService);
+
+  private readonly _cronNextRun = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      const cron = this.selectedCronSchedule()?.cronExpression;
+      if (!cron) {
+        this._cronNextRun.set(null);
+        return;
+      }
+      this.automationService
+        .validateCron(cron)
+        .then(res => {
+          if (res.isValid && res.nextRun) {
+            try {
+              this._cronNextRun.set(new Date(res.nextRun).toLocaleString());
+            } catch {
+              this._cronNextRun.set(res.nextRun);
+            }
+          } else {
+            this._cronNextRun.set(null);
+          }
+        })
+        .catch(() => this._cronNextRun.set(null));
+    });
+  }
 
   readonly isMissingRemote = computed<boolean>(() => {
     if (this.mode() !== 'quickRun') return false;
@@ -481,7 +512,7 @@ export class AppDetailComponent {
     }
     const configs = this.getProfileConfigMap<ProfileConfig>(this.currentOpType());
     const profile = this.selectedProfile();
-    return configs?.[profile]?.app;
+    return configs?.[profile]?.app ?? (configs ? Object.values(configs)[0]?.app : undefined);
   });
 
   readonly selectedCronSchedule = computed(() => {
@@ -517,6 +548,75 @@ export class AppDetailComponent {
       watchChangedOnly: app.watchChangedOnly ?? false,
     };
   });
+
+  readonly isAutoStartEnabled = computed(() => {
+    return !!this.currentAppConfig()?.autoStart;
+  });
+
+  readonly hasActiveAutomations = computed(() => {
+    return !!this.selectedCronSchedule() || !!this.selectedWatcher() || this.isAutoStartEnabled();
+  });
+
+  readonly matchingAutomation = computed<Automation | undefined>(() => {
+    if (this.mode() === 'quickRun') {
+      const qrId = this.quickRun()?.id;
+      return this.automationService.automations().find(a => qrId && a.id.includes(qrId));
+    }
+    const remote = this.selectedRemote()?.name;
+    const profile = this.selectedProfile();
+    const op = this.currentOpType();
+    return this.automationService
+      .automations()
+      .find(
+        a =>
+          a.remoteName === remote &&
+          (a.profileName === profile || a.profileName?.toLowerCase() === profile?.toLowerCase()) &&
+          a.automationType?.toLowerCase() === op?.toLowerCase()
+      );
+  });
+
+  readonly isAutomationDisabled = computed(() => {
+    return this.matchingAutomation()?.status === 'disabled';
+  });
+
+  readonly isAutomationStopping = computed(() => {
+    return this.matchingAutomation()?.status === 'stopping';
+  });
+
+  readonly isTogglingAutomation = signal<boolean>(false);
+
+  readonly nextRunFormatted = computed<string | null>(() => {
+    this._lang();
+    const auto = this.matchingAutomation();
+    if (auto?.status === 'disabled') {
+      return null;
+    }
+    if (auto?.status === 'stopping') {
+      return this.translate.instant('automation.nextRun.stopping');
+    }
+    if (auto?.nextRun) {
+      try {
+        return new Date(auto.nextRun).toLocaleString();
+      } catch {
+        return auto.nextRun;
+      }
+    }
+    return this._cronNextRun();
+  });
+
+  async onToggleAutomation(event?: Event): Promise<void> {
+    event?.stopPropagation();
+    const auto = this.matchingAutomation();
+    if (!auto || this.isAutomationStopping() || this.isTogglingAutomation()) return;
+    this.isTogglingAutomation.set(true);
+    try {
+      await this.automationService.toggleAutomation(auto.id);
+    } catch (error) {
+      console.error('Failed to toggle automation:', error);
+    } finally {
+      this.isTogglingAutomation.set(false);
+    }
+  }
 
   // --- Derived: Settings Sections ---
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {

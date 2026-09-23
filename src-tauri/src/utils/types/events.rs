@@ -48,7 +48,7 @@ pub const RCLONE_OAUTH_URL: &str = "rclone_oauth_url";
 /// - Handled by: `core::event_listener` (tray update), `RemoteFacadeService` (loadRemotes)
 pub const REMOTE_SETTINGS_CHANGED: &str = "remote_settings_changed";
 
-/// Emitted when global system settings (notifications, autostart, theme, bandwith, etc.) change.
+/// Emitted when global system settings (notifications, autostart, theme, bandwidth, etc.) change.
 /// - Emitted by: `core::settings::operations::core`
 /// - Handled by: `core::event_listener` (applies setting to OS/engine), `AppSettingsService`
 pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";

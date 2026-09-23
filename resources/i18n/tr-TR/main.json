@@ -1731,9 +1731,9 @@
       "listed": "Listelenenler",
       "transferStatistics": "{{op}} İstatistikleri",
       "dryRun": "Simülasyon",
-      "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak",
+      "dryRunActive": "Simülasyon etkin - hiçbir değişiklik yapılmayacak",
       "resync": "Yeniden Senkronize Et",
-      "resyncActive": "Yeniden senkronizasyon etkin — tam yeniden senkronizasyon gerçekleştiriliyor",
+      "resyncActive": "Yeniden senkronizasyon etkin - tam yeniden senkronizasyon gerçekleştiriliyor",
       "remoteSettings": "Uzak Bağlantı Ayarları"
     },
     "generalDetail": {
@@ -3081,7 +3081,7 @@
     "browse": "Gözat",
     "browseInApp": "Gözat (Uygulama İçi)",
     "jobsCount": "İşler [{{active}}/{{total}}]",
-    "jobsNone": "İşler [—]",
+    "jobsNone": "İşler [-]",
     "mountCount": "Bağla [{{active}}/{{total}}]",
     "syncCount": "Senkronize [{{active}}/{{total}}]",
     "copyCount": "Kopyala [{{active}}/{{total}}]",
@@ -3404,7 +3404,11 @@
       },
       "errors": {
         "remoteNotFound": "'{{remote}}' remote'u Rclone konfigürasyonunda mevcut değil",
-        "failedStop": "\"{{name}}\" Hızlı Çalıştırması durdurulamadı: {{error}}"
+        "failedStop": "\"{{name}}\" Hızlı Çalıştırması durdurulamadı: {{error}}",
+        "failedStart": "\"{{name}}\" Hızlı Çalıştırması başlatılamadı: {{error}}"
+      },
+      "success": {
+        "started": "\"{{name}}\" Hızlı Çalıştırması başarıyla başlatıldı"
       }
     },
     "tabs": {

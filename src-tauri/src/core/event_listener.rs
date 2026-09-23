@@ -294,16 +294,28 @@ fn handle_restrict_mode_change(enabled: bool) {
 fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
     debug!("Bandwidth limit changed to: {value}");
     let app = app.clone();
-    let limit = value
-        .as_str()
-        .map(String::from)
-        .or_else(|| value.as_u64().map(|n| n.to_string()));
+    let limit = parse_setting_bandwidth_limit(value);
 
     spawn(async move {
-        if let Err(e) = bandwidth_limit(app, limit).await {
+        if let Err(e) = bandwidth_limit(app, Some(limit)).await {
             error!("Failed to set bandwidth limit: {e:?}");
         }
     });
+}
+
+pub(crate) fn parse_setting_bandwidth_limit(value: &Value) -> String {
+    value
+        .as_str()
+        .map(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                "off".to_string()
+            } else {
+                trimmed.to_string()
+            }
+        })
+        .or_else(|| value.as_u64().map(|n| n.to_string()))
+        .unwrap_or_else(|| "off".to_string())
 }
 
 fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
@@ -430,4 +442,20 @@ pub fn setup_event_listener(app: &AppHandle) {
     });
 
     debug!("Event listeners set up");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_parse_setting_bandwidth_limit() {
+        assert_eq!(parse_setting_bandwidth_limit(&json!("")), "off");
+        assert_eq!(parse_setting_bandwidth_limit(&json!("   ")), "off");
+        assert_eq!(parse_setting_bandwidth_limit(&json!("off")), "off");
+        assert_eq!(parse_setting_bandwidth_limit(&json!(null)), "off");
+        assert_eq!(parse_setting_bandwidth_limit(&json!("10M")), "10M");
+        assert_eq!(parse_setting_bandwidth_limit(&json!(5000)), "5000");
+    }
 }

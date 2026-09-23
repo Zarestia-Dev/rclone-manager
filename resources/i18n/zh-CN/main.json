@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "远程存储 '{{remote}}' 在 Rclone 配置中不存在",
-        "failedStop": "停止快捷运行“{{name}}”失败：{{error}}"
+        "failedStop": "停止快捷运行“{{name}}”失败：{{error}}",
+        "failedStart": "启动快捷运行 \"{{name}}\" 失败: {{error}}"
+      },
+      "success": {
+        "started": "快捷运行 \"{{name}}\" 启动成功"
       }
     },
     "tabs": {

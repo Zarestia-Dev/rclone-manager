@@ -66,15 +66,31 @@
 
 ---
 
-## Ekran Görüntüsü
+## Ekran Görüntüleri
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="RClone Manager Masaüstü UI" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Kontrol Paneli" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Kontrol Paneli - Hızlı Görevler, Bağlantılar ve uzak depolama genel görünümü</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - İş Akışı Tasarımcısı" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>İş Akışı Tasarımcısı - Etkileşimli düğüm tabanlı tuval üzerinde çok adımlı bulut hatları tasarlayın ve otomatikleştirin</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Nautilus Dosya Yöneticisi" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Tüm uzak depolarınız arasında dosyalarınızı görüntüleyin, aktarın ve yönetin</sub>
+</p>
+
+<p align="center">
   <i>📖 Daha fazla görmek ister misiniz? Tüm özellikler için <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki Galeri</a></b> sayfasına göz atın.</i>
 </p>
 

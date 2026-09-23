@@ -7,6 +7,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { WorkflowNode } from '../../types/workflow.types';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { CronInputComponent } from '../../../../shared/remote-config/cron-input/cron-input.component';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { CronValidationResponse } from '@app/types';
 
 export interface CronEditorModalData {
@@ -16,12 +17,10 @@ export interface CronEditorModalData {
 @Component({
   selector: 'app-cron-editor-modal',
   imports: [CommonModule, MatButtonModule, MatIconModule, TranslatePipe, CronInputComponent],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './cron-editor-modal.component.html',
   styleUrl: '../../../../styles/_shared-modal.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(keydown.escape)': 'dismiss()',
-  },
 })
 export class CronEditorModalComponent {
   readonly dialogRef = inject(MatDialogRef<CronEditorModalComponent>);

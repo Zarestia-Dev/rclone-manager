@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ACTION_CONFIGS, PrimaryActionType } from '@app/types';
+import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 export interface ItemOrderVisibilityConfigItem<T = unknown> {
   id: string;
@@ -84,12 +85,10 @@ export function buildActionOrderItems(
 @Component({
   selector: 'app-item-order-visibility-modal',
   imports: [MatButtonModule, MatIconModule, DragDropModule, TranslatePipe],
+  hostDirectives: [EscapeCloseDirective],
   templateUrl: './item-order-visibility-modal.component.html',
   styleUrls: ['./item-order-visibility-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(keydown.escape)': 'onCancel()',
-  },
 })
 export class ItemOrderVisibilityModalComponent<T = unknown> {
   private readonly dialogRef = inject(MatDialogRef<ItemOrderVisibilityModalComponent<T>>);

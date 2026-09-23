@@ -62,18 +62,10 @@ header {
       max-width: 100%;
     }
 
-    .item-type-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-xs);
-      flex-wrap: wrap;
-
-      .item-type {
-        text-align: center;
-        font-size: var(--font-size-sm);
-        color: var(--dim-color);
-      }
+    .item-type {
+      text-align: center;
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
     }
   }
 }

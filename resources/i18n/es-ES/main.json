@@ -3040,7 +3040,7 @@
     "browse": "Explorar",
     "browseInApp": "Explorar (en la app)",
     "jobsCount": "Trabajos [{{active}}/{{total}}]",
-    "jobsNone": "Trabajos [—]",
+    "jobsNone": "Trabajos [-]",
     "mountCount": "Montaje [{{active}}/{{total}}]",
     "syncCount": "Sincronización [{{active}}/{{total}}]",
     "copyCount": "Copia [{{active}}/{{total}}]",
@@ -3363,7 +3363,11 @@
       },
       "errors": {
         "remoteNotFound": "El remoto '{{remote}}' no existe en la configuración de Rclone",
-        "failedStop": "Error al detener la Ejecución Rápida \"{{name}}\": {{error}}"
+        "failedStop": "Error al detener la Ejecución Rápida \"{{name}}\": {{error}}",
+        "failedStart": "Error al iniciar Quick Run \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Quick Run \"{{name}}\" se inició correctamente"
       }
     },
     "tabs": {

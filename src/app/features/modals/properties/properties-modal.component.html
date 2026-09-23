@@ -38,25 +38,23 @@
         <code class="item-name truncate" [title]="currentItem?.Name ?? displayLocation">
           {{ currentItem?.Name ?? displayLocation }}
         </code>
-        <div class="item-type-container">
-          <span class="item-type">
-            {{
-              currentItem?.MimeType ||
-                ((currentItem?.IsDir ?? true)
-                  ? ('fileBrowser.properties.directory' | translate)
-                  : ('fileBrowser.properties.file' | translate))
-            }}
+        <span class="item-type">
+          {{
+            currentItem?.MimeType ||
+              ((currentItem?.IsDir ?? true)
+                ? ('fileBrowser.properties.directory' | translate)
+                : ('fileBrowser.properties.file' | translate))
+          }}
+        </span>
+        @if (share.isShared || share.isShortcut) {
+          <span class="app-pill p-dim pill-sm">
+            <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
+            <span>{{
+              (share.isShortcut ? 'nautilus.shared.shortcutBadge' : 'nautilus.shared.sharedBadge')
+                | translate
+            }}</span>
           </span>
-          @if (share.isShared || share.isShortcut) {
-            <span class="app-pill p-dim pill-sm">
-              <mat-icon [svgIcon]="share.isShortcut ? 'link' : 'user'"></mat-icon>
-              <span>{{
-                (share.isShortcut ? 'nautilus.shared.shortcutBadge' : 'nautilus.shared.sharedBadge')
-                  | translate
-              }}</span>
-            </span>
-          }
-        </div>
+        }
       </div>
     </div>
 

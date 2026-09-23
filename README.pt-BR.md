@@ -66,15 +66,31 @@ O **RClone Manager** simplifica o gerenciamento e a sincronização de arquivos 
 
 ---
 
-## Captura de Tela
+## Capturas de Tela
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/dark-ui.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/desktop-ui.png">
-    <img alt="Interface Desktop do RClone Manager" src="assets/desktop-ui.png" width="90%">
+    <img alt="RClone Manager - Painel" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
+  <sub>Painel - Execuções rápidas, montagens e visão geral dos remotos</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Editor de Workflows" src="assets/workflow-builder.png" width="90%">
+  <br>
+  <sub>Editor de Workflows - Projete e automatize pipelines em nuvem com um canvas interativo baseado em nós</sub>
+</p>
+
+<p align="center">
+  <img alt="RClone Manager - Gerenciador de Arquivos Nautilus" src="assets/nautilus.png" width="90%">
+  <br>
+  <sub>Nautilus - Navegue, transfira e gerencie arquivos em todos os seus remotos</sub>
+</p>
+
+<p align="center">
   <i>📖 Quer ver mais? Confira a <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Galeria da Wiki</a></b> com todos os recursos.</i>
 </p>
 

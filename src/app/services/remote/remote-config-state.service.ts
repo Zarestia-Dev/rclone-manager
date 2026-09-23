@@ -216,8 +216,8 @@ export class RemoteConfigStateService {
 
   readonly remoteTypes = signal<RemoteType[]>([]);
   readonly existingRemotes = signal<string[]>([]);
-  readonly mountTypes = signal<string[]>([]);
-  readonly availableServeTypes = signal<string[]>([]);
+  readonly mountTypes = this.flagConfigService.mountTypes;
+  readonly availableServeTypes = this.flagConfigService.availableServeTypes;
   readonly selectedServeType = signal('http');
 
   readonly dynamicRemoteFields = signal<RcConfigOption[]>([]);
@@ -749,8 +749,6 @@ export class RemoteConfigStateService {
       this.remoteFacade.loadRemotes(),
       this.loadExistingRemotes(),
       this.loadRemoteTypes(),
-      this.loadMountTypes(),
-      this.loadServeTypes(),
     ]);
 
     await Promise.all([this.loadAllFlagFields(), this.loadServeFields()]);
@@ -807,23 +805,6 @@ export class RemoteConfigStateService {
     );
   }
 
-  private async loadMountTypes(): Promise<void> {
-    await this.safeLoad(
-      () => this.mountManagementService.getMountTypes(),
-      value => this.mountTypes.set(value)
-    );
-  }
-
-  private async loadServeTypes(): Promise<void> {
-    await this.safeLoad(
-      () => this.serveManagementService.getServeTypes(),
-      value => {
-        this.availableServeTypes.set(value);
-        if (value.length) this.selectedServeType.set(value[0]);
-      }
-    );
-  }
-
   private async safeLoad<T>(
     loader: () => Promise<T>,
     onSuccess: (value: T) => void
@@ -857,18 +838,6 @@ export class RemoteConfigStateService {
   private async loadAllFlagFields(): Promise<void> {
     const fields = await this.flagConfigService.loadAllFlagFields();
     this.dynamicFlagFields.set(fields);
-    const mOpt = fields.mount?.find(f => f.Name === 'mountType');
-    if (mOpt)
-      mOpt.Examples = this.mountTypes().map(t => ({
-        Value: t,
-        Help: this.translate.instant(`mount_type_${t}.title`) || t,
-      }));
-    const sOpt = fields.serve?.find(f => f.Name === 'type');
-    if (sOpt)
-      sOpt.Examples = this.availableServeTypes().map(t => ({
-        Value: t,
-        Help: this.translate.instant(`serve_type_${t}.title`) || t,
-      }));
     this.addDynamicFieldsToForm();
   }
 
@@ -879,12 +848,6 @@ export class RemoteConfigStateService {
       this._serveLoadToken,
       () => this.flagConfigService.loadServeFlagFields(t),
       fields => {
-        const opt = fields.find(f => f.Name === 'type');
-        if (opt)
-          opt.Examples = this.availableServeTypes().map(type => ({
-            Value: type,
-            Help: this.translate.instant(`serve_type_${type}.title`) || type,
-          }));
         this.dynamicServeFields.set(fields);
         this.rebuildServeOptionsGroup();
       },

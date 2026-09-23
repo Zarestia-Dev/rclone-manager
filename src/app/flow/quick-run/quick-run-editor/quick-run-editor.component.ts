@@ -74,8 +74,6 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
-import { MountManagementService } from 'src/app/services/operations/mount-management.service';
-import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import {
   syncResponsiveSidebar,
@@ -144,8 +142,6 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly pathInspectionService = inject(PathInspectionService);
   private readonly translate = inject(TranslateService);
   private readonly valueMapper = inject(RcloneValueMapperService);
-  private readonly mountManagementService = inject(MountManagementService);
-  private readonly serveManagementService = inject(ServeManagementService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly workflowStateService = inject(WorkflowStateService, { optional: true });
@@ -182,8 +178,8 @@ export class QuickRunEditorComponent implements OnInit {
       type: [''],
     })
   );
-  readonly mountTypes = signal<string[]>([]);
-  readonly availableServeTypes = signal<string[]>([]);
+  readonly mountTypes = this.flagConfigService.mountTypes;
+  readonly availableServeTypes = this.flagConfigService.availableServeTypes;
   readonly selectedServeType = signal('http');
   readonly dynamicServeFields = signal<RcConfigOption[]>([]);
   readonly isLoadingServeFields = signal(false);
@@ -282,8 +278,7 @@ export class QuickRunEditorComponent implements OnInit {
     effect(() => {
       const all = this.flagConfigService.allFlagFields();
       if (all) {
-        const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
-        this.dynamicFlagFields.set(decorated);
+        this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
         untracked(() => this.syncAllDynamicControls());
       }
     });
@@ -685,69 +680,6 @@ export class QuickRunEditorComponent implements OnInit {
     return dst != null ? String(dst) : '';
   }
 
-  private decorateFlagFields(
-    fields: Record<string, RcConfigOption[]>
-  ): Record<string, RcConfigOption[]> {
-    const cloned = structuredClone(fields);
-    const mOpt = cloned['mount']?.find(f => f.Name === 'mountType');
-    if (mOpt && this.mountTypes().length) {
-      mOpt.Examples = this.mountTypes().map(t => ({
-        Value: t,
-        Help: this.translate.instant(`mount_type_${t}.title`) || t,
-      }));
-    }
-    const sOpt = cloned['serve']?.find(f => f.Name === 'type');
-    if (sOpt && this.availableServeTypes().length) {
-      sOpt.Examples = this.availableServeTypes().map(t => ({
-        Value: t,
-        Help: this.translate.instant(`serve_type_${t}.title`) || t,
-      }));
-    }
-    return cloned;
-  }
-
-  private refreshDecoratedFlagFields(): void {
-    const all = this.flagConfigService.allFlagFields();
-    if (all) {
-      const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
-      this.dynamicFlagFields.set(decorated);
-    }
-  }
-
-  private async loadMountTypes(): Promise<void> {
-    try {
-      const types = await this.mountManagementService.getMountTypes();
-      this.mountTypes.set(types);
-      this.refreshDecoratedFlagFields();
-    } catch (err) {
-      console.warn('[QuickRunEditor] loadMountTypes failed:', err);
-    }
-  }
-
-  private async loadServeTypes(): Promise<void> {
-    try {
-      const types = await this.serveManagementService.getServeTypes();
-      this.availableServeTypes.set(types);
-      if (types.length && !this.selectedServeType()) {
-        this.selectedServeType.set(types[0]);
-      }
-      this.refreshDecoratedFlagFields();
-      const currentServe = this.dynamicServeFields();
-      if (currentServe.length) {
-        const opt = currentServe.find(f => f.Name === 'type');
-        if (opt) {
-          opt.Examples = types.map(t => ({
-            Value: t,
-            Help: this.translate.instant(`serve_type_${t}.title`) || t,
-          }));
-          this.dynamicServeFields.set([...currentServe]);
-        }
-      }
-    } catch (err) {
-      console.warn('[QuickRunEditor] loadServeTypes failed:', err);
-    }
-  }
-
   private async loadServeFields(): Promise<void> {
     const t = this.selectedServeType() || 'http';
     const token = ++this._serveLoadToken.token;
@@ -755,13 +687,6 @@ export class QuickRunEditorComponent implements OnInit {
     try {
       const fields = await this.flagConfigService.loadServeFlagFields(t);
       if (token !== this._serveLoadToken.token) return;
-      const opt = fields.find(f => f.Name === 'type');
-      if (opt && this.availableServeTypes().length) {
-        opt.Examples = this.availableServeTypes().map(type => ({
-          Value: type,
-          Help: this.translate.instant(`serve_type_${type}.title`) || type,
-        }));
-      }
       this.dynamicServeFields.set(fields);
       this.rebuildServeOptionsGroup();
     } catch (err) {
@@ -794,20 +719,12 @@ export class QuickRunEditorComponent implements OnInit {
   private async loadAllFlagFields(): Promise<void> {
     this.isLoadingFlags.set(true);
     try {
-      await Promise.all([this.loadMountTypes(), this.loadServeTypes()]);
-
-      let all = this.flagConfigService.allFlagFields();
-      if (!all) {
-        await this.flagConfigService.loadAllFlagFields();
-        all = this.flagConfigService.allFlagFields();
-      }
-      if (all) {
-        const decorated = this.decorateFlagFields(all as Record<string, RcConfigOption[]>);
-        this.dynamicFlagFields.set(decorated);
-        this.syncAllDynamicControls();
-      }
-
-      await this.loadServeFields();
+      const [all] = await Promise.all([
+        this.flagConfigService.loadAllFlagFields(),
+        this.loadServeFields(),
+      ]);
+      this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
+      this.syncAllDynamicControls();
     } catch (err) {
       console.warn('[QuickRunEditor] loadAllFlagFields failed:', err);
     } finally {
