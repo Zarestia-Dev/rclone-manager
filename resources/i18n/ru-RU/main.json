@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Отмена",
+    "confirm": "Подтвердить",
     "save": "Сохранить",
     "create": "Создать",
     "show": "Показать",
@@ -39,7 +40,11 @@
     "moreActions": "Другие действия",
     "duplicate": "Дублировать",
     "clearAll": "Очистить все",
-    "acknowledge": "Подтвердить"
+    "acknowledge": "Подтвердить",
+    "actions": "Действия",
+    "savedSuccessfully": "Успешно сохранено",
+    "deletedSuccessfully": "Успешно удалено",
+    "notConfigured": "Не настроено"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -61,7 +66,6 @@
     "bwTimetable": "Некорректный формат ограничения скорости",
     "fileMode": "Требуется восьмеричный формат (3–4 цифры от 0 до 7). Пример: 755",
     "enum": "Допустимые значения: {{values}}",
-    "invalidPath": "Путь должен быть абсолютным",
     "urlArray": "Все URL должны быть корректными и начинаться с http:// или https://",
     "bandwidth": "Некорректный формат скорости. Используйте: 10M, 1G, 100K или их сочетания",
     "passwordMismatch": "Пароли не совпадают",
@@ -329,6 +333,8 @@
       "backendFilterHint": "Отслеживать события только для выбранных бэкендов.",
       "profileFilter": "Фильтр профилей",
       "profileFilterHint": "Отслеживать события только для выбранных профилей.",
+      "workflowFilter": "Фильтр рабочих процессов",
+      "workflowFilterHint": "Фильтровать оповещения по определенным процессам.",
       "autoAcknowledge": "Автоматически отмечать просмотренными",
       "autoAcknowledgeHint": "Автоматически помечать оповещения как просмотренные. Подходит для оповещений, которые уже вызывают системные уведомления.",
       "actions": "Выполняемые действия",
@@ -345,11 +351,15 @@
       "engine": "Инфраструктура бэкенда",
       "update": "Обновления программы",
       "automation": "Автоматизации",
-      "system": "Системные события"
+      "system": "Системные события",
+      "workflow": "Визуальные процессы"
     },
     "action": {
       "basicInfo": "Основная информация",
       "configuration": "Конфигурация",
+      "channelKind": "Тип канала",
+      "whatsappProvider": "Провайдер WhatsApp",
+      "telegramMode": "Режим Telegram",
       "noActionsCreated": "Действия оповещений ещё не созданы.",
       "noHeaders": "Пользовательские заголовки не настроены.",
       "kind": "Тип действия",
@@ -386,7 +396,7 @@
       "customGateway": "Собственный шлюз",
       "messageTemplate": "Шаблон сообщения",
       "messageTemplateHint": "Поддерживаются переменные Handlebars",
-      "telegram_info": "Токен бота можно получить у @BotFather, а ID чата — у @userinfobot.",
+      "telegram_info": "Токен бота можно получить у @BotFather, а ID чата - у @userinfobot.",
       "telegram_botless_info": "Режим без бота использует CallMeBot (https://api.callmebot.com) для отправки оповещений Telegram напрямую на ваше имя пользователя без создания токена бота.",
       "whatsapp_callmebot_info": "Отправляет оповещения WhatsApp через CallMeBot (https://api.callmebot.com). Введите номер телефона с кодом страны и ключ API CallMeBot.",
       "whatsapp_gateway_info": "Отправляет оповещения WhatsApp через ваш HTTP-шлюз.",
@@ -407,7 +417,15 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Название заголовка",
-      "headerValue": "Значение"
+      "headerValue": "Значение",
+      "apikey": "API ключ",
+      "password": "Пароль",
+      "username": "Имя пользователя",
+      "subject": "Тема",
+      "mqttHost": "Хост MQTT",
+      "mqttPort": "Порт MQTT",
+      "mqttTopic": "Тема MQTT",
+      "addHeader": "Добавить заголовок"
     },
     "noRulesHint": "Правила оповещений еще не настроены. Создайте правило для получения уведомлений.",
     "noActionsHint": "Действия оповещений еще не настроены. Создайте действие для доставки оповещений."
@@ -470,6 +488,10 @@
       "prevent_sleep": {
         "label": "Предотвращать спящий режим / выключение системы",
         "description": "Запрещает переход системы в спящий режим и выключение ОС при активных передачах, монтированиях или серверах."
+      },
+      "keep_alive": {
+        "label": "Работа в фоновом режиме",
+        "description": "Поддерживать работу RClone Manager, активных передач и подключенных хранилищ в фоновом режиме при сворачивании или закрытии."
       }
     },
     "core": {
@@ -624,6 +646,10 @@
       "auth": {
         "title": "Требуется аутентификация Rclone",
         "subtitle": "Пожалуйста, проверьте учетные данные или пароль конфигурации"
+      },
+      "port": {
+        "title": "Порт уже используется",
+        "subtitle": "Настроенный порт занят другим приложением"
       }
     }
   },
@@ -683,7 +709,7 @@
       },
       "installRclone": {
         "title": "Установка Rclone",
-        "content": "Rclone необходим для работы с облачными хранилищами. Выберите место установки или укажите существующий исполняемый файл — остальная настройка будет выполнена автоматически."
+        "content": "Rclone необходим для работы с облачными хранилищами. Выберите место установки или укажите существующий исполняемый файл - остальная настройка будет выполнена автоматически."
       },
       "installPlugin": {
         "title": "Установка компонента для подключения дисков",
@@ -765,6 +791,13 @@
       "hide": "Скрыть поиск",
       "show": "Показать поиск"
     },
+    "urlPreview": {
+      "host": "Хост",
+      "destination": "Назначение",
+      "openViewer": "Открыть в просмотрщике",
+      "openViewerTooltip": "Открыть полный предпросмотр медиа",
+      "inferredFromUrl": "Извлечено из URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Рекомендуемый",
@@ -782,7 +815,6 @@
         "invalid": "Некорректный исполняемый файл"
       },
       "errors": {
-        "invalidPath": "Введите корректный абсолютный путь",
         "required": "Это поле обязательно"
       },
       "modes": {
@@ -902,7 +934,7 @@
     },
     "overviewHeader": {
       "manageBackends": "Управление бэкендами",
-      "backendSwitchAria": "Текущий режим: {{title}} — нажмите, чтобы сменить бэкенд"
+      "backendSwitchAria": "Текущий режим: {{title}} - нажмите, чтобы сменить бэкенд"
     },
     "settingControl": {
       "default": "По умолчанию: {{value}}",
@@ -928,7 +960,8 @@
       },
       "errors": {
         "invalidValue": "Некорректное значение"
-      }
+      },
+      "showOptions": "Показать варианты"
     },
     "serveCard": {
       "tooltips": {
@@ -1198,7 +1231,7 @@
         },
         "noObscure": {
           "label": "Не обфусцировать",
-          "description": "Пароли уже обфусцированы — пропустить этот шаг"
+          "description": "Пароли уже обфусцированы - пропустить этот шаг"
         },
         "nonInteractive": {
           "label": "Неинтерактивный режим",
@@ -1476,10 +1509,7 @@
       "noFeatureInfo": "Информация о возможностях недоступна.",
       "example": "Пример",
       "readOnly": "Только чтение",
-      "yes": "Да",
-      "no": "Нет",
       "noMetadata": "Спецификации метаданных недоступны.",
-      "close": "Закрыть окно",
       "unknown": "Неизвестно",
       "error": "Не удалось загрузить информацию о подключении.",
       "tabs": {
@@ -1496,7 +1526,8 @@
       "title": "Свойства",
       "loading": "Загрузка основной информации...",
       "location": "Расположение",
-      "modified": "Изменён",
+      "targetId": "Целевой ID",
+      "modified": "Изменено",
       "size": "Размер",
       "contentStats": "Содержимое",
       "calculating": "Расчёт размера папки...",
@@ -1535,7 +1566,8 @@
       "generatedChecksums": "Рассчитанные контрольные суммы",
       "calculateAnother": "Рассчитать другую",
       "bulkHashInstruction": "Выберите тип хеша, чтобы рассчитать контрольные суммы всех файлов в этой папке.",
-      "noHashesFound": "Контрольные суммы не получены"
+      "noHashesFound": "Контрольные суммы не получены",
+      "metadata": "Метаданные"
     },
     "operations": {
       "title": "Операции",
@@ -1560,6 +1592,23 @@
         "copiedFiles": "Скопировано файлов",
         "syncedFiles": "Синхронизировано файлов",
         "processedFiles": "Обработано файлов"
+      },
+      "running": "Выполняется",
+      "filesCount": "{{count}} файлов",
+      "types": {
+        "copy": "Копировать",
+        "copyurl": "Копировать URL",
+        "move": "Переместить",
+        "rename": "Переименовать",
+        "delete": "Удалить",
+        "cleanup": "Очистить",
+        "rmdirs": "Удалить пустые папки",
+        "sync": "Синхронизировать",
+        "bisync": "Двусторонняя синхронизация",
+        "check": "Проверить",
+        "upload": "Загрузить",
+        "archivecreate": "Создать архив",
+        "archiveextract": "Извлечь архив"
       }
     },
     "fileViewer": {
@@ -1596,7 +1645,12 @@
       "openingNative": "Открытие {{name}} во внешнем приложении...",
       "errorOpenNative": "Не удалось открыть файл во внешнем приложении",
       "showRawText": "Показать исходный текст",
-      "showPreview": "Показать предпросмотр"
+      "showPreview": "Показать предпросмотр",
+      "zoomIn": "Увеличить",
+      "zoomOut": "Уменьшить",
+      "resetZoom": "Сбросить масштаб",
+      "hexPreview": "Шестнадцатеричный просмотр",
+      "playVideo": "Воспроизвести в видеоплеере"
     }
   },
   "dashboard": {
@@ -1677,7 +1731,7 @@
       "listed": "Просмотрено",
       "transferStatistics": "Статистика {{op}}",
       "dryRun": "Пробный запуск",
-      "dryRunActive": "Активен пробный запуск — изменения не будут внесены",
+      "dryRunActive": "Активен пробный запуск - изменения не будут внесены",
       "resync": "Полная ресинхронизация",
       "resyncActive": "Выполняется полная повторная синхронизация",
       "remoteSettings": "Настройки хранилища"
@@ -1727,7 +1781,9 @@
       "exportConfig": "Экспортировать конфигурацию",
       "toggleBrowser": "Показать или скрыть файловый менеджер",
       "openFlowOverlay": "Переключить рабочую область Flow",
-      "closeDialog": "Закрыть окно или отменить действие"
+      "closeDialog": "Закрыть окно или отменить действие",
+      "saveWorkflow": "Сохранить рабочий процесс",
+      "deleteSelected": "Удалить выбранные узлы/ребра"
     },
     "categories": {
       "global": "Глобальные",
@@ -1736,7 +1792,8 @@
       "fileOperations": "Файловые операции",
       "fileBrowser": "Файловый менеджер",
       "fileBrowserNautilus": "Файловый менеджер Nautilus",
-      "navigation": "Навигация"
+      "navigation": "Навигация",
+      "flowWorkspace": "Рабочее пространство Flow"
     },
     "quitError": "Не удалось завершить работу приложения: {{error}}",
     "mountsRefreshSuccess": "Состояние подключённых дисков успешно обновлено",
@@ -1749,8 +1806,49 @@
       "title": "Завершение работы",
       "message": "Подождите, пока приложение безопасно завершит работу...",
       "confirmTitle": "Выполняются активные задачи",
-      "confirmMessage": "В Rclone Manager выполняются активные задачи (передачи: {{jobs}}, монтирования: {{mounts}}, сервера: {{serves}}). Вы уверены, что хотите остановить всё и выйти?",
+      "confirmMessage": "В RClone Manager выполняются активные задачи (передачи: {{jobs}}, монтирования: {{mounts}}, сервера: {{serves}}). Вы уверены, что хотите остановить всё и выйти?",
       "stopAndQuit": "Остановить и выйти"
+    }
+  },
+  "powerMenu": {
+    "title": "Параметры питания",
+    "executing": "Выполнение действия...",
+    "activeOpsTitle": "Текущие активные задачи",
+    "activeOpsCount": "Выполняется: передач - {{jobs}}, точек монтирования - {{mounts}}, серверов - {{serves}}",
+    "actions": {
+      "shutdownApp": {
+        "title": "Закрыть приложение",
+        "desc": "Безопасно останавливает RClone Manager и фоновые задачи"
+      },
+      "restartApp": {
+        "title": "Перезапустить приложение",
+        "desc": "Перезапускает приложение и веб-сервер"
+      },
+      "emergencyStop": {
+        "title": "Экстренная остановка",
+        "desc": "Немедленно останавливает все передачи и размонтирует диски"
+      },
+      "systemShutdown": {
+        "title": "Выключить систему",
+        "desc": "Полностью выключает хост-компьютер / сервер"
+      },
+      "systemSleep": {
+        "title": "Спящий режим",
+        "desc": "Переводит хост-систему в спящий режим"
+      },
+      "systemLock": {
+        "title": "Заблокировать сеанс",
+        "desc": "Блокирует текущий сеанс пользователя"
+      }
+    },
+    "status": {
+      "shuttingDown": "Приложение завершает работу...",
+      "restarting": "Приложение перезапускается...",
+      "stoppingOperations": "Остановка всех операций...",
+      "emergencyStopSuccess": "Все активные операции и монтирования остановлены",
+      "hostShuttingDown": "Операционная система выключается...",
+      "hostSleeping": "Перевод системы в спящий режим...",
+      "hostLocking": "Блокировка сеанса пользователя..."
     }
   },
   "modals": {
@@ -1774,7 +1872,8 @@
         "statistics": "Статистика",
         "paths": "Пути",
         "errors": "Ошибки",
-        "profile": "Профиль"
+        "profile": "Профиль",
+        "serverSideFlags": "На стороне сервера и флаги"
       },
       "fields": {
         "type": "Тип задания",
@@ -1851,6 +1950,7 @@
       "skippedRcloneUpdates": "Пропущенные обновления Rclone",
       "devTeam": "Команда разработки",
       "leadDeveloper": "Ведущий разработчик",
+      "contributors": "Участники разработки",
       "acknowledgments": "Благодарности",
       "ackText": "Приложение создано с использованием современных веб-технологий и опирается на проект Rclone для управления облачными хранилищами.",
       "noReleaseNotes": "Примечания к выпуску отсутствуют.",
@@ -1918,9 +2018,6 @@
       "scrollTop": "В начало",
       "scrollBottom": "В конец",
       "fetching": "Получение журналов...",
-      "aria": {
-        "terminalLogs": "Журналы терминала"
-      },
       "remoteLogs": "Журналы подключения: {{ name }}",
       "noLogsFound": "Журналы не найдены",
       "adjustFilters": "Попробуйте изменить фильтры",
@@ -1993,8 +2090,6 @@
       "passwordLabel": "Пароль шифрования",
       "passwordPlaceholder": "Введите пароль",
       "passwordHint": "Этот пароль потребуется для восстановления резервной копии.",
-      "includeSecrets": "Включить секретные ключи",
-      "includeSecretsHint": "Включить конфиденциальные учётные данные в резервную копию. Требуется шифрование.",
       "exportNow": "Экспортировать",
       "exporting": "Экспорт...",
       "fullBackup": "Полная резервная копия",
@@ -2026,6 +2121,18 @@
         "alerts": {
           "label": "Оповещения",
           "description": "Правила и действия оповещений"
+        },
+        "workflows": {
+          "label": "Рабочие процессы",
+          "description": "Правила автоматизации и графы узлов"
+        },
+        "templates": {
+          "label": "Шаблоны",
+          "description": "Шаблоны предустановленных настроек"
+        },
+        "quickRuns": {
+          "label": "Быстрые запуски",
+          "description": "Настроенные команды быстрого запуска и ярлыки"
         }
       }
     },
@@ -2054,8 +2161,7 @@
         },
         "configPath": {
           "label": "Путь к конфигурации",
-          "placeholder": "Оставьте пустым для стандартного пути",
-          "description": "Отдельный путь к rclone.conf (необязательно)"
+          "placeholder": "Оставьте пустым для стандартного пути"
         }
       },
       "addBackend": "Добавить бэкенд",
@@ -2133,10 +2239,7 @@
         "decryptWarning": "Конфигурация rclone будет расшифрована. Учётные данные сможет увидеть любой пользователь с доступом к файлам.",
         "enableEncryption": "Включить шифрование",
         "protectCredentials": "Защитить учётные данные паролем",
-        "passwordChanged": "Пароль изменён",
-        "passwordStored": "Пароль сохранён в системном хранилище",
         "passwordStoredInKeyring": "Пароль сохранён в системном хранилище ключей",
-        "passwordRemoved": "Пароль удалён из системного хранилища",
         "passwordsMismatch": "Пароли не совпадают"
       }
     },
@@ -2273,7 +2376,7 @@
       },
       "pageTitle": {
         "home": "Флаги Rclone",
-        "category": "{{page}} — {{category}}",
+        "category": "{{page}} - {{category}}",
         "backend": "Флаги бэкенда"
       },
       "notifications": {
@@ -2335,9 +2438,18 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Ярлык (общий элемент)",
+      "sharedItemTooltip": "Общий элемент",
+      "onedriveRemoteTooltip": "Внешний общий элемент",
+      "linkTooltip": "Ссылка / Ярлык",
+      "shortcutBadge": "Ярлык",
+      "sharedBadge": "Общий"
+    },
     "sidebar": {
       "configureTitle": "Настройка боковой панели",
-      "configureDescription": "Перетаскивайте элементы, чтобы изменить их порядок, и используйте значок глаза, чтобы скрывать или показывать диски и облачные подключения в боковой панели."
+      "configureDescription": "Перетаскивайте элементы, чтобы изменить их порядок, и используйте значок глаза, чтобы скрывать или показывать диски и облачные подключения в боковой панели.",
+      "toggleSearch": "Переключить поиск"
     },
     "shortcuts": {
       "title": "Сочетания клавиш Nautilus"
@@ -2353,7 +2465,8 @@
       "cloud": "Облачные",
       "fileSystem": "Файловая система",
       "bookmarks": "Закладки",
-      "localDisk": "Локальный диск"
+      "localDisk": "Локальный диск",
+      "internalStorage": "Внутренняя память"
     },
     "bookmarks": {
       "emptyHint": "Закладок нет"
@@ -2439,8 +2552,26 @@
         "newName": "Новое имя",
         "counter": "Счётчик",
         "date": "Дата",
+        "modDate": "Дата изменения",
         "extension": "Расширение",
-        "duplicateOrInvalid": "Дублирующееся или недопустимое имя"
+        "duplicateOrInvalid": "Дублирующееся или недопустимое имя",
+        "invalidRegex": "Недопустимое регулярное выражение: {{error}}",
+        "targetScope": "Применить к",
+        "targetScopeAll": "Файлы и папки",
+        "targetScopeFiles": "Только файлы",
+        "targetScopeFolders": "Только папки",
+        "caseTransform": "Регистр символов",
+        "caseNone": "Без изменений",
+        "caseLower": "строчные",
+        "caseUpper": "ПРОПИСНЫЕ",
+        "caseTitle": "Как в заголовке",
+        "preserveExtension": "Сохранять расширение",
+        "useRegex": "Регулярные выражения",
+        "prefix": "Префикс",
+        "suffix": "Суффикс",
+        "statsChanged": "{{count}} к переименованию",
+        "statsUnchanged": "{{count}} без изменений",
+        "statsConflicts": "{{count}} конфликт(ов)"
       }
     },
     "errors": {
@@ -2513,7 +2644,10 @@
       "iconSize": "Размер значков",
       "showHidden": "Показывать скрытые файлы",
       "toggleLayout": "Переключить макет",
-      "viewOptions": "Параметры просмотра"
+      "viewOptions": "Параметры просмотра",
+      "showingItems": "Показано {{count}} из {{total}}",
+      "decreaseIconSize": "Уменьшить размер значков",
+      "increaseIconSize": "Увеличить размер значков"
     },
     "notifications": {
       "mkdirFailed": "Не удалось создать папку: {{path}}",
@@ -2537,6 +2671,16 @@
     "androidShare": {
       "uploadHere": "Загрузить {{count}} общих файл(а/ов) в эту папку",
       "confirm": "Загрузить сюда"
+    },
+    "toolbar": {
+      "goBack": "Назад",
+      "goForward": "Вперед",
+      "pathOptions": "Параметры пути"
+    },
+    "actions": {
+      "cancelLoading": "Отменить загрузку",
+      "star": "Добавить в избранное",
+      "unstar": "Удалить из избранного"
     }
   },
   "home": {
@@ -2548,6 +2692,8 @@
     },
     "options": {
       "showInTray": "Показывать в меню трея",
+      "aboutRemote": "О хранилище",
+      "emptyTrash": "Очистить корзину",
       "viewLogs": "Открыть журналы",
       "cloneRemote": "Клонировать подключение",
       "exportConfig": "Экспортировать конфигурацию",
@@ -2565,6 +2711,8 @@
       "savedProfilesTitle": "Сохраненные профили ({{count}})",
       "quickRunsTitle": "Связанные Quick Run ({{count}})",
       "automationsTitle": "Запланированные автоматизации ({{count}})",
+      "workflowsTitle": "Связанные рабочие процессы ({{count}})",
+      "workflowsDesc": "Эти рабочие процессы используют это подключение и не будут удалены, но могут потребовать обновления после удаления.",
       "types": {
         "mount": "Точка монтирования",
         "serve": "Сервер"
@@ -2698,7 +2846,8 @@
       "fuseMissing": "Пакет FUSE (fuse3) не установлен в системе. Установите fuse3 для монтирования.",
       "macfuseMissing": "macFUSE / FUSE-T не установлен. Установите macFUSE для монтирования в macOS.",
       "driveLetterInUse": "Выбранная буква диска уже используется системой.",
-      "permissionDenied": "Отказано в доступе при попытке монтирования."
+      "permissionDenied": "Отказано в доступе при попытке монтирования.",
+      "deviceBusy": "Целевая точка монтирования или устройство занято. Закройте открытые файлы, файловые менеджеры или терминалы, использующие каталог, и повторите попытку."
     },
     "operations": {
       "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью"
@@ -2755,7 +2904,6 @@
     "security": {
       "passwordEmpty": "Пароль не может быть пустым",
       "noPasswordStored": "Сохранённый пароль отсутствует",
-      "passwordChangeUnavailable": "Изменение пароля недоступно на этой платформе",
       "incorrectPassword": "Неверный пароль конфигурации rclone",
       "storeFailed": "Не удалось сохранить пароль: {{error}}",
       "encryptFailed": "Не удалось зашифровать конфигурацию: {{error}}",
@@ -2813,6 +2961,7 @@
       "noPending": "Нет ожидающего обновления",
       "invalidUrl": "Некорректный URL: {{error}}",
       "github": "Ошибка API GitHub: {{error}}",
+      "githubRateLimit": "Превышен лимит запросов к API GitHub. Пожалуйста, повторите попытку позже.",
       "updateFailed": "Ошибка обновления: {{error}}",
       "updateUnavailable": "Файл обновления больше недоступен: {{error}}",
       "relaunchFailed": "Не удалось повторно запустить приложение: {{error}}",
@@ -2932,7 +3081,7 @@
     "browse": "Открыть файлы",
     "browseInApp": "Открыть в приложении",
     "jobsCount": "Задания [{{active}}/{{total}}]",
-    "jobsNone": "Задания [—]",
+    "jobsNone": "Задания [-]",
     "mountCount": "Диски [{{active}}/{{total}}]",
     "syncCount": "Синхронизация [{{active}}/{{total}}]",
     "copyCount": "Копирование [{{active}}/{{total}}]",
@@ -2945,6 +3094,7 @@
     "archivecreateCount": "Архивация [{{active}}/{{total}}]",
     "serveCount": "Серверы [{{active}}/{{total}}]",
     "quickRunsCount": "Быстрые запуски [{{active}}/{{total}}]",
+    "workflowsCount": "Рабочие процессы [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 задание",
     "tooltipTasks": "Заданий: {{count}}",
@@ -2995,19 +3145,29 @@
       "engineConnectionFailed": "Ошибка подключения к движку",
       "engineBinaryNotFound": "Rclone не найден",
       "enginePasswordRequired": "Требуется пароль",
-      "engineAuthFailed": "Ошибка аутентификации движка"
+      "engineAuthFailed": "Ошибка аутентификации движка",
+      "workflowStarted": "Процесс '{{name}}' запущен",
+      "workflowCompleted": "Процесс '{{name}}' завершен",
+      "workflowFailed": "Сбой процесса '{{name}}'",
+      "workflowStopped": "Процесс '{{name}}' остановлен",
+      "unmountFailed": "Ошибка размонтирования",
+      "serveStopFailed": "Ошибка остановки сервера"
     },
     "body": {
-      "mountSucceeded": "Подключение {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, успешно смонтировано в {{mountPoint}}.",
-      "mountFailed": "Не удалось смонтировать {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "unmountSucceeded": "Подключение {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, отключено.",
-      "jobStarted": "Запущено {{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}.",
-      "jobCompleted": "{{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, успешно завершено.",
-      "jobFailed": "Ошибка {{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "jobStopped": "{{type}} для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, остановлено.",
-      "serveStarted": "Сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, запущен.",
-      "serveFailed": "Не удалось запустить сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}: {{error}}",
-      "serveStopped": "Сервер для {{remote}}, профиль «{{profile}}», бэкенд {{backend}}, остановлен.",
+      "mountSucceeded": "Подключение {{remote}}, бэкенд {{backend}}, успешно смонтировано в {{mountPoint}}.",
+      "mountFailed": "Не удалось смонтировать {{remote}}, бэкенд {{backend}}: {{error}}",
+      "unmountSucceeded": "{{remote}} отключен от {{backend}}.",
+      "jobStarted": "Запущено {{type}} для {{remote}}, бэкенд {{backend}}.",
+      "jobCompleted": "{{type}} для {{remote}}, бэкенд {{backend}}, успешно завершено.",
+      "jobFailed": "Ошибка {{type}} для {{remote}}, бэкенд {{backend}}: {{error}}",
+      "jobStopped": "{{type}} для {{remote}}, бэкенд {{backend}}, остановлено.",
+      "workflowStarted": "Запущен рабочий процесс '{{name}}'.",
+      "workflowCompleted": "Процесс '{{name}}' успешно завершен за {{duration}}.",
+      "workflowFailed": "Процесс '{{name}}' завершился с ошибкой: {{error}}",
+      "workflowStopped": "Процесс '{{name}}' был остановлен.",
+      "serveStarted": "Сервер для {{remote}}, бэкенд {{backend}}, запущен.",
+      "serveFailed": "Не удалось запустить сервер для {{remote}}, бэкенд {{backend}}: {{error}}",
+      "serveStopped": "Сервер для {{remote}} остановлен на {{backend}}.",
       "allJobsStopped": "Все активные задания успешно остановлены.",
       "allServesStopped": "Все активные серверы успешно остановлены.",
       "allUnmounted": "Все удалённые диски успешно отключены.",
@@ -3033,7 +3193,9 @@
       "engineBinaryNotFound": "Исполняемый файл Rclone не найден. Проверьте настройки.",
       "enginePasswordRequired": "Для доступа к файлу конфигурации требуется пароль.",
       "engineAuthFailed": "Не удалось пройти аутентификацию в движке rclone: {{error}}",
-      "powerInhibited": "Активные операции предотвращают переход системы в спящий режим."
+      "powerInhibited": "Активные операции предотвращают переход системы в спящий режим.",
+      "unmountFailed": "Не удалось размонтировать {{remote}} на {{backend}}: {{error}}",
+      "serveStopFailed": "Не удалось остановить сервер {{protocol}} для {{remote}} на {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3056,7 +3218,8 @@
       "passwordRequired": "Требуется пароль",
       "systemIssue": "Системная проблема",
       "versionTooOld": "Rclone устарел",
-      "authRequired": "Требуется аутентификация"
+      "authRequired": "Требуется аутентификация",
+      "portInUse": "Порт уже используется"
     },
     "messages": {
       "missingRclone": "Исполняемый файл rclone не найден. Установите его, чтобы продолжить.",
@@ -3067,7 +3230,9 @@
       "versionTooOld": "Версия rclone ниже {{required}}. Обновите её, чтобы продолжить.",
       "defaultParams": "Один из системных компонентов работает неправильно.",
       "mountPluginStatusError": "Не удалось проверить состояние",
-      "authRequired": "Бэкенд отклонил подключение из-за ошибки аутентификации."
+      "authRequired": "Бэкенд отклонил подключение из-за ошибки аутентификации.",
+      "remoteAuthRequired": "Удаленный бэкенд отклонил подключение из-за ошибки аутентификации. Пожалуйста, проверьте учетные данные.",
+      "portInUse": "Порт {{port}} уже занят другим приложением или подключением. Выберите другой порт для продолжения."
     },
     "progress": {
       "installingRclone": "Установка Rclone...",
@@ -3084,7 +3249,20 @@
       "restoreBackup": "Восстановить резервную копию",
       "restartEngine": "Перезапустить движок",
       "submitPassword": "Разблокировать",
+      "changePort": "Применить порт и перезапустить",
+      "configureBackend": "Настроить бэкенд",
       "repair": "Исправить"
+    },
+    "portConfig": {
+      "portLabel": "Локальный порт",
+      "suggestPort": "Подобрать порт",
+      "suggestPortTooltip": "Найти следующий свободный TCP-порт",
+      "testPort": "Проверить порт",
+      "testPortTooltip": "Проверить, свободен ли этот порт",
+      "portAvailable": "Порт {{port}} свободен",
+      "portOccupied": "Порт {{port}} занят",
+      "portOccupiedTooltip": "Выбранный порт занят другим процессом",
+      "invalidPort": "Порт должен быть в диапазоне от 1024 до 65535"
     },
     "details": {
       "issueLabel": "Проблема",
@@ -3116,6 +3294,14 @@
       "rcloneAuth": {
         "issue": "Аутентификация отклонена",
         "action": "Завершить зависший процесс и перезапустить движок"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Удаленная аутентификация отклонена",
+        "action": "Настройте учетные данные бэкенда в настройках"
+      },
+      "rclonePort": {
+        "issue": "Порт {{port}} занят",
+        "action": "Сменить порт и перезапустить движок"
       }
     },
     "tooltips": {
@@ -3129,7 +3315,6 @@
       "testBinaryFirst": "Сначала проверьте исполняемый файл"
     },
     "passwordErrors": {
-      "validateFailed": "Проверка не пройдена",
       "invalid": "Неверный пароль",
       "locked": "Учётная запись заблокирована из-за большого числа попыток",
       "generic": "Ошибка: {{error}}"
@@ -3159,12 +3344,12 @@
     "cleared": "Данные очищены"
   },
   "flow": {
-    "title": "Flow",
-    "search": "Поиск по потокам...",
+    "title": "Потоки",
+    "search": "Поиск процессов...",
     "toggleSearch": "Переключить поиск",
-    "loading": "Загрузка потоков...",
-    "noResults": "Нет совпадающих потоков",
-    "toggleSidebar": "Переключить боковую панель Flow",
+    "loading": "Загрузка процессов...",
+    "noResults": "Совпадений не найдено",
+    "toggleSidebar": "Боковая панель процессов",
     "empty": {
       "description": "Создайте быстрый запуск или рабочий процесс для быстрых операций и конвейеров."
     },
@@ -3173,14 +3358,19 @@
       "new": "Новый быстрый запуск",
       "actions": {
         "start": "Запустить",
-        "stop": "Остановить"
+        "stop": "Остановить",
+        "createRemote": "Создать подключение '{{remote}}'",
+        "changeRemote": "Сменить подключение"
       },
       "badges": {
         "scheduled": "Запланированная задача",
         "watcher": "Отслеживание папки активно",
         "watcherChangedOnly": "Отслеживание папки активно (только подкаталоги)",
-        "autostart": "Автозапуск включен"
+        "autostart": "Автозапуск включен",
+        "missingRemote": "Подключение отсутствует в Rclone"
       },
+      "missingRemoteTitle": "Подключение не найдено в Rclone",
+      "missingRemoteDesc": "Подключение '{{remote}}', связанное с этим быстрым запуском, не существует в Rclone, но его конфигурация сохранена.",
       "status": {
         "running": "Выполняется"
       },
@@ -3209,17 +3399,442 @@
         "tabVfs": "VFS",
         "tabFilter": "Фильтр",
         "tabBackend": "Бэкенд",
-        "tabRuntimeRemote": "Динамический remote"
+        "tabRuntimeRemote": "Динамический remote",
+        "noProfiles": "Нет доступных профилей"
+      },
+      "errors": {
+        "remoteNotFound": "Подключение '{{remote}}' не существует в конфигурации Rclone",
+        "failedStop": "Не удалось остановить быстрый запуск \"{{name}}\": {{error}}",
+        "failedStart": "Не удалось запустить быстрый запуск \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Быстрый запуск \"{{name}}\" успешно запущен"
       }
     },
     "tabs": {
       "quickRun": "Быстрый запуск",
       "workflow": "Рабочий процесс"
     },
-    "builder": {
-      "placeholderTitle": "Конструктор рабочих процессов в разработке",
-      "placeholderMessage": "Визуальный холст для многошаговых конвейеров rclone скоро появится.",
-      "viewRoadmap": "Посмотреть план развития на GitHub"
+    "workflow": {
+      "untitled": "Безымянный процесс",
+      "savedWorkflows": "Сохраненные процессы",
+      "presetRecipes": "Готовые шаблоны",
+      "unsavedChanges": "Несохраненные изменения",
+      "saving": "Сохранение...",
+      "categories": {
+        "all": "Все"
+      },
+      "category": {
+        "trigger": "Триггер",
+        "task": "Задача",
+        "logic": "Логика",
+        "action": "Действие"
+      },
+      "actions": {
+        "duplicate": "Дублировать узел",
+        "delete": "Удалить узел",
+        "inspectJob": "Инспектировать задачу",
+        "duplicateWorkflow": "Дублировать процесс",
+        "deleteWorkflow": "Удалить процесс",
+        "exportWorkflow": "Экспорт JSON"
+      },
+      "canvas": {
+        "navigation": "Навигация по холсту",
+        "toggleMinimap": "Переключить миникарту",
+        "enterFocusMode": "Фокус на холсте (Скрыть навигацию)",
+        "exitFocusMode": "Выйти из фокуса (Показать навигацию)"
+      },
+      "toolbar": {
+        "selectWorkflow": "Выбрать процесс",
+        "newWorkflow": "Новый процесс",
+        "run": "Запустить процесс",
+        "stop": "Остановить процесс",
+        "presets": "Шаблоны и рецепты",
+        "undo": "Отменить",
+        "redo": "Повторить",
+        "zoomOut": "Уменьшить",
+        "zoomIn": "Увеличить",
+        "resetZoom": "Сбросить масштаб",
+        "fitToView": "По размеру экрана",
+        "snapToGrid": "Привязать к сетке",
+        "toggleLog": "Журнал выполнения",
+        "toggleInspector": "Инспектор",
+        "dryRun": "Тестовый запуск",
+        "dryRunTooltip": "Имитация выполнения рабочего процесса без изменения данных и выполнения реальных команд"
+      },
+      "palette": {
+        "title": "Библиотека узлов",
+        "searchPlaceholder": "Поиск узлов...",
+        "clickToAdd": "Нажмите или перетащите для добавления",
+        "noResults": "Узлы не найдены",
+        "hideSearch": "Скрыть поиск и фильтры",
+        "showSearch": "Показать поиск и фильтры"
+      },
+      "inspector": {
+        "general": "Общие настройки",
+        "parameters": "Параметры и опции",
+        "nodeTitle": "Название узла",
+        "nodeSubtitle": "Подзаголовок / Описание",
+        "subtitlePlaceholder": "Напр. Ежедневное резервное копирование",
+        "cronExpression": "Выражение Cron",
+        "invalidCron": "Недопустимое выражение cron",
+        "cronDaily": "Ежедневно в 02:00",
+        "watchFolder": "Путь к отслеживаемой папке",
+        "debounceSeconds": "Задержка стабилизации (сек)",
+        "remote": "Удаленный диск",
+        "localOrSelect": "Локальный / Выбрать диск",
+        "sourcePath": "Исходный путь (srcFs)",
+        "destinationPath": "Путь назначения (dstFs)",
+        "mountPoint": "Точка монтирования",
+        "rcEndpoint": "Эндпоинт RC",
+        "rcParameters": "Параметры RC (JSON)",
+        "rcPresets": "Готовые эндпоинты",
+        "presetCategoryAll": "Все",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Хранилище",
+        "presetCategoryCore": "Ядро",
+        "insertVariable": "Вставить выходную переменную узла",
+        "insertTokenBtn": "Вставить переменную",
+        "formatJson": "Форматировать JSON",
+        "clearJson": "Очистить",
+        "invalidJson": "Некорректный JSON",
+        "templateJson": "Динамический шаблон",
+        "noUpstreamNodesHint": "Добавьте другие узлы в рабочий процесс, чтобы динамически ссылаться на их вывод, как {{nodes.id.field}}",
+        "delaySeconds": "Длительность задержки (сек)",
+        "conditionOperator": "Оператор условия",
+        "opEquals": "Равно (==)",
+        "opNotEquals": "Не равно (!=)",
+        "opContains": "Содержит",
+        "opTruthy": "Не пусто / Истинно (Truthy)",
+        "leftValue": "Левое выражение / Значение",
+        "rightValue": "Правое сравниваемое значение",
+        "conditionValuePlaceholder": "значение или {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/путь/к/файлу или {{nodes.id.path}}",
+        "targetNode": "Целевой узел",
+        "targetNodeField": "Поле вывода",
+        "targetNodePlaceholder": "Выберите целевой узел",
+        "targetFieldPlaceholder": "Выберите поле вывода",
+        "resolvedToken": "Разрешенный токен",
+        "alertTitle": "Заголовок оповещения",
+        "alertMessage": "Текст оповещения",
+        "severity": "Уровень важности",
+        "severityInfo": "Информация",
+        "severityError": "Ошибка / Предупреждение",
+        "manualDesc": "Ручной запуск запускает процесс по запросу. Дополнительная настройка не требуется.",
+        "parallelForkDesc": "Разделяет выполнение на несколько параллельных ветвей.",
+        "joinDesc": "Ожидает завершения всех входящих параллельных ветвей перед продолжением.",
+        "jobEventProfile": "Целевой профиль / задача",
+        "jobEventPlaceholder": "Выберите профиль для отслеживания",
+        "targetMountNode": "Целевой узел монтирования",
+        "targetMountNodePlaceholder": "Выберите узел монтирования",
+        "targetServeNode": "Целевой узел сервера",
+        "targetServeNodePlaceholder": "Выберите узел сервера",
+        "unmountPlaceholder": "/mnt/remote или C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "openDetailed": "Подробные настройки",
+        "openDetailedTooltip": "Открыть панель расширенных параметров и флагов",
+        "activeConfig": "Активная конфигурация и флаги",
+        "noActiveConfig": "Дополнительные флаги или фильтры не настроены",
+        "removeFlag": "Удалить параметр",
+        "addFlagsHint": "Нажмите Подробные настройки для настройки расширенных флагов Rclone, фильтров и опций VFS.",
+        "appStartDesc": "Автоматический запуск при старте приложения с возможностью задержки.",
+        "startupDelay": "Задержка запуска (секунды)",
+        "delay0s": "Немедленно (0 с)",
+        "fileFilterPattern": "Шаблон фильтра файлов (glob)",
+        "eventState": "Фильтр состояния события",
+        "eventStateAny": "Любое завершение (успех или ошибка)",
+        "eventStateSuccess": "Только при успехе",
+        "eventStateFailed": "Только при ошибке",
+        "optionalPath": "Необязательный путь к подпапке",
+        "scriptCommand": "Команда / путь к скрипту",
+        "scriptArguments": "Аргументы (необязательно)",
+        "workingDir": "Рабочая директория (необязательно)",
+        "failOnError": "Останавливать при ошибке",
+        "selectQuickRun": "Выберите профиль быстрого запуска",
+        "quickRunPlaceholder": "Выберите быстрый запуск...",
+        "stopStatus": "Статус завершения",
+        "stopStatusSuccess": "Завершить успешно",
+        "stopStatusFailed": "Прервать с ошибкой",
+        "stopMessage": "Сообщение об остановке / причина",
+        "stopMessagePlaceholder": "Причина остановки рабочего процесса",
+        "powerAction": "Действие питания",
+        "powerSleep": "Спящий режим",
+        "powerShutdown": "Выключение компьютера",
+        "powerHibernate": "Гибернация",
+        "powerLock": "Блокировка экрана / сеанса",
+        "auditMessage": "Сообщение журнала аудита",
+        "severityWarn": "Предупреждение",
+        "opNotContains": "Не содержит",
+        "opGreaterThan": "Больше (>)",
+        "opLessThan": "Меньше (<)",
+        "opIsEmpty": "Пусто",
+        "opFileExists": "Файл/путь существует",
+        "executionStatus": "Статус выполнения",
+        "liveActiveService": "Активная фоновая служба",
+        "currentlyMounted": "Смонтировано в",
+        "currentlyServing": "Раздается по адресу",
+        "unmountNow": "Размонтировать",
+        "stopServeNow": "Остановить сервер",
+        "openInBrowser": "Открыть в браузере",
+        "serveProtocol": "Протокол раздачи",
+        "serveAddress": "Адрес / порт раздачи",
+        "modeTargetNode": "Целевой узел",
+        "serverId": "ID сервера",
+        "modeCustom": "Свой",
+        "alertAction": "Действие оповещения / Канал",
+        "selectAlertAction": "Выберите действие оповещения...",
+        "noAlertActionsFound": "Сохраненные действия оповещений не найдены",
+        "openAlertsModal": "Настроить действия",
+        "templateVariables": "Переменные шаблона",
+        "insertVariableHint": "Нажмите, чтобы вставить в сообщение",
+        "joinMode": "Политика объединения",
+        "joinModeAllSuccess": "Все ветви (AND)",
+        "joinModeAllSuccessHint": "Продолжает только при успешном завершении всех параллельных ветвей.",
+        "joinModeAnySuccess": "Хотя бы одна (OR)",
+        "joinModeAnySuccessHint": "Продолжает после завершения всех ветвей, если хотя бы одна была успешной.",
+        "joinModeAlways": "Всегда продолжать",
+        "joinModeAlwaysHint": "Безусловно продолжает после завершения всех ветвей, даже при наличии ошибок.",
+        "joinBranchesTitle": "Входящие ветви",
+        "joinAddBranch": "Добавить ветвь",
+        "joinRemoveBranch": "Удалить ветвь",
+        "parallelBranchesTitle": "Исходящие ветви",
+        "parallelAddBranch": "Добавить ветвь",
+        "parallelRemoveBranch": "Удалить ветвь",
+        "archiveFormat": "Формат архива",
+        "archivePrefix": "Внутренний префикс (необязательно)",
+        "downloadUrl": "URL для скачивания",
+        "autoFilename": "Автоматически определять имя файла",
+        "jobDetailsTitle": "Детали задачи",
+        "inspectJobBtn": "Инспектировать детали задачи",
+        "transfers": "Передачи",
+        "errors": "Ошибки",
+        "testRun": "Тестовый запуск",
+        "testRunRcHint": "Протестировать эту RC-команду с текущими параметрами",
+        "testSuccess": "Тест успешно выполнен",
+        "testFailed": "Тест завершился с ошибкой",
+        "useAsSampleSchema": "Сохранить как схему вывода",
+        "sampleOutputSchema": "Пример схемы вывода",
+        "sampleOutputSchemaDesc": "Схема JSON-ответа для предоставления полей динамических переменных в последующих карточках",
+        "sampleOutputPlaceholder": "Вставьте пример JSON-ответа сюда...",
+        "availableOutputKeys": "Обнаруженные ключи переменных",
+        "upstreamOutputs": "Выходные данные и переменные предыдущих шагов",
+        "nodeOutput": "Вывод выполнения узла",
+        "checkReport": "Отчёт о различиях (Check)",
+        "rawOutputJson": "Выходные данные (JSON)",
+        "conditionPresets": "Быстрые шаблоны условий",
+        "condPresetHasDiff": "Есть различия",
+        "condPresetNoDiff": "Нет различий",
+        "condPresetDiffCount": "Найдено различий (>0)",
+        "condPresetHasErrors": "Есть ошибки",
+        "condPresetTransferred": "Передано (>0)",
+        "condPresetScriptSuccess": "Скрипт успешен",
+        "notificationPresets": "Быстрые шаблоны сообщений",
+        "notifPresetCheckReport": "Отчет о проверке",
+        "notifPresetTransferSummary": "Сводка передачи",
+        "notifPresetFailureAlert": "Оповещение об ошибке",
+        "notifPresetHealthStatus": "Состояние движка",
+        "opGreaterOrEqual": "Больше или равно (>=)",
+        "opLessOrEqual": "Меньше или равно (<=)",
+        "opStartsWith": "Начинается с",
+        "opEndsWith": "Заканчивается на",
+        "opArrayNotEmpty": "Массив не пуст",
+        "opArrayIsEmpty": "Массив пуст",
+        "preview": "Предпросмотр сообщения"
+      },
+      "liveStatus": {
+        "mounted": "Смонтировано",
+        "serving": "Сервер запущен"
+      },
+      "status": {
+        "running": "Выполняется",
+        "success": "Завершено",
+        "failed": "Ошибка",
+        "skipped": "Пропущено",
+        "idle": "Ожидание"
+      },
+      "ports": {
+        "in": "Вход",
+        "out": "Выход",
+        "start": "Старт",
+        "trigger": "Триггер",
+        "onChange": "При изменении",
+        "onFinish": "При завершении",
+        "success": "Успех",
+        "failure": "Ошибка",
+        "true": "Истина",
+        "false": "Ложь",
+        "afterDelay": "После задержки",
+        "onSchedule": "В назначенное время",
+        "branch1": "Ветка 1",
+        "branch2": "Ветка 2",
+        "in1": "Вход 1",
+        "in2": "Вход 2",
+        "done": "Готово"
+      },
+      "nodes": {
+        "manualTrigger": "Ручной запуск",
+        "manualTriggerDesc": "Запуск процесса вручную по запросу",
+        "cronSchedule": "Расписание Cron",
+        "cronScheduleDesc": "Запуск по регулярному расписанию cron",
+        "folderWatcher": "Отслеживание папки",
+        "folderWatcherDesc": "Запуск при изменении файлов в локальной папке",
+        "jobEvent": "Событие завершения задачи",
+        "jobEventDesc": "Запуск при завершении другого профиля или быстрого запуска",
+        "rcCommand": "Команда Rclone RC",
+        "rcCommandDesc": "Вызов произвольного эндпоинта RC API",
+        "condition": "Ветвление по условию",
+        "conditionDesc": "Разделение потока на основе проверки условия",
+        "delay": "Таймер задержки",
+        "delayDesc": "Приостановка выполнения на заданное время",
+        "scheduleWait": "Ожидание расписания",
+        "scheduleWaitDesc": "Приостановить выполнение рабочего процесса до наступления времени cron",
+        "parallelFork": "Параллельное разделение",
+        "parallelForkDesc": "Одновременное параллельное выполнение нескольких веток",
+        "join": "Объединение веток",
+        "joinDesc": "Ожидание завершения всех параллельных веток",
+        "notification": "Уведомление на рабочем столе",
+        "notificationDesc": "Показать системное всплывающее уведомление",
+        "unmount": "Размонтировать диск",
+        "unmountDesc": "Безопасное размонтирование активной файловой системы",
+        "stopServe": "Остановить сервер",
+        "stopServeDesc": "Остановить активные сетевые службы для хранилища",
+        "appStart": "При запуске приложения",
+        "appStartDesc": "Автоматический запуск при старте RClone Manager",
+        "cleanup": "Очистка корзины",
+        "cleanupDesc": "Очистить корзину удаленного хранилища",
+        "cryptcheck": "Проверка шифрования",
+        "cryptcheckDesc": "Проверить целостность зашифрованного хранилища",
+        "execScript": "Выполнить скрипт",
+        "execScriptDesc": "Запустить локальную команду оболочки или скрипт",
+        "quickRun": "Быстрый запуск",
+        "quickRunDesc": "Запустить сохраненный профиль быстрого запуска",
+        "stop": "Остановить процесс",
+        "stopDesc": "Остановить выполнение рабочего процесса",
+        "systemPower": "Управление питанием",
+        "systemPowerDesc": "Спящий режим, блокировка или выключение системы",
+        "logAudit": "Журнал аудита",
+        "logAuditDesc": "Записать запись в журнал выполнения процесса"
+      },
+      "logs": {
+        "title": "Журнал выполнения",
+        "copy": "Скопировать журнал",
+        "clear": "Очистить журнал",
+        "jumpToNode": "Нажмите, чтобы выделить узел на холсте",
+        "empty": "Журнал выполнения пока пуст. Запустите рабочий процесс.",
+        "copied": "Журналы скопированы в буфер обмена",
+        "filterAll": "Все",
+        "filterErrors": "Ошибки",
+        "filterWarnings": "Предупреждения",
+        "filterSuccess": "Успешно"
+      },
+      "tokens": {
+        "prevNode": "Предыдущий узел",
+        "fields": {
+          "summary": "Сводка",
+          "output": "Основной вывод",
+          "stdout": "Стандартный вывод",
+          "stderr": "Стандартный вывод ошибок",
+          "exitCode": "Код завершения",
+          "success": "Успешно",
+          "status": "Статус",
+          "error": "Сообщение об ошибке",
+          "report": "Отчет Markdown",
+          "hasDifferences": "Есть различия",
+          "differCount": "Количество различий",
+          "differ": "Список различающихся файлов",
+          "missingOnDstCount": "Отсутствует в назначении (кол-во)",
+          "missingOnDst": "Список отсутствующих в назначении",
+          "missingOnSrcCount": "Отсутствует в источнике (кол-во)",
+          "missingOnSrc": "Список отсутствующих в источнике",
+          "matchCount": "Количество совпавших файлов",
+          "jobId": "ID задачи",
+          "bytes": "Передано байт",
+          "bytesFormatted": "Форматированные байты",
+          "totalBytes": "Всего байт",
+          "transfers": "Количество передач",
+          "totalTransfers": "Всего передач",
+          "errors": "Количество ошибок",
+          "speedFormatted": "Скорость",
+          "mountPoint": "Точка монтирования",
+          "remote": "Имя удаленного хранилища",
+          "addr": "Адрес сервера",
+          "conditionMet": "Условие выполнено",
+          "branch": "Выбранная ветвь",
+          "cronExpression": "Выражение Cron",
+          "targetTime": "Целевое время",
+          "waitedSeconds": "Время ожидания в секундах",
+          "resumedAt": "Возобновлено в",
+          "command": "Команда",
+          "result": "Результат команды",
+          "json": "Форматированный JSON"
+        }
+      },
+      "details": "Свойства процесса",
+      "name": "Название процесса",
+      "description": "Описание процесса",
+      "descriptionPlaceholder": "Опишите назначение этого рабочего процесса...",
+      "showInTray": "Показывать в системном трее",
+      "deleteConfirm": "Вы действительно хотите удалить этот процесс?",
+      "cleanDuplicates": "Очистить дубликаты",
+      "cleanDuplicatesConfirm": "Вы действительно хотите удалить повторяющиеся процессы?",
+      "stats": {
+        "title": "Обзор",
+        "nodes": "Всего узлов",
+        "connections": "Связи",
+        "created": "Создано",
+        "updated": "Обновлено"
+      },
+      "recipes": {
+        "driftCheckSync": {
+          "name": "Умная проверка расхождений и условная синхронизация",
+          "description": "Проверяет различия через check; синхронизирует только при обнаружении расхождений и уведомляет с объемом."
+        },
+        "integrityAudit": {
+          "name": "Аудит целостности данных и отчет о расхождениях",
+          "description": "Выполняет регулярную проверку целостности; отправляет отчет Markdown при наличии различий."
+        },
+        "safeSyncAlert": {
+          "name": "Безопасная синхронизация с оповещением об ошибке",
+          "description": "Выполняет синхронизацию, уведомляя об объеме при успехе или передавая детали ошибки при сбое."
+        },
+        "dailyBackup": {
+          "name": "Ежедневное резервное копирование и уведомление",
+          "description": "Запускает синхронизацию ежедневно в 02:00, уведомляя об успехе или сбое."
+        },
+        "watchUpload": {
+          "name": "Отслеживание папки и автозагрузка",
+          "description": "Отслеживает локальную папку и копирует новые/измененные файлы в облако."
+        },
+        "parallelMirror": {
+          "name": "Параллельное мультиоблачное зеркалирование",
+          "description": "Синхронизирует данные одновременно в два разных облака и проверяет завершение."
+        },
+        "mountOnDemand": {
+          "name": "Монтирование по требованию и уведомление",
+          "description": "Монтирует удаленное хранилище и уведомляет рабочий стол о готовности диска."
+        },
+        "manualTrigger": "Вручную",
+        "manualTriggerDesc": "Запускается вручную по требованию",
+        "vfsRefresh": {
+          "name": "Автоматизация обновления кэша VFS",
+          "description": "Отправляет RC-команду vfs/refresh для перезагрузки кэша каталогов на смонтированных дисках и уведомляет рабочий стол."
+        }
+      },
+      "editor": {
+        "configureNode": "Настройка узла: {{type}}",
+        "nodeSaved": "Настройки узла рабочего процесса обновлены"
+      },
+      "emptyState": {
+        "title": "Добро пожаловать в конструктор рабочих процессов",
+        "subtitle": "Создайте новый рабочий процесс или выберите готовый шаблон для автоматизации операций rclone."
+      }
+    },
+    "shortcuts": {
+      "title": "Горячие клавиши Flow"
     }
   },
   "templates": {
@@ -3258,7 +3873,8 @@
     "deletedSuccess": "Шаблон успешно удален."
   },
   "navigation": {
-    "dashboard": "Панель управления"
+    "dashboard": "Панель управления",
+    "files": "Файлы"
   },
   "provision": {
     "stages": {
@@ -3269,6 +3885,72 @@
       "completed": "Завершено",
       "cancelled": "Операция отменена",
       "error": "Ошибка"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Откл. / Бесконечно (0s)",
+        "10s": "10 секунд",
+        "30s": "30 секунд",
+        "1m": "1 минута",
+        "5m": "5 минут",
+        "10m": "10 минут",
+        "30m": "30 минут",
+        "1h": "1 час",
+        "24h": "24 часа (1 день)",
+        "7d": "7 дней",
+        "30d": "30 дней",
+        "off": "Отключено (off)"
+      },
+      "sizeSuffix": {
+        "0": "Без ограничений / Откл. (0)",
+        "512k": "512 КиБ",
+        "1M": "1 МиБ",
+        "8M": "8 МиБ",
+        "16M": "16 МиБ",
+        "32M": "32 МиБ",
+        "64M": "64 МиБ",
+        "128M": "128 МиБ",
+        "256M": "256 МиБ",
+        "512M": "512 МиБ",
+        "1G": "1 ГиБ",
+        "10G": "10 ГиБ",
+        "100G": "100 ГиБ",
+        "1T": "1 ТиБ",
+        "off": "Без ограничений / Откл. (off)"
+      },
+      "countSuffix": {
+        "0": "Нет (0)",
+        "100": "100 элементов",
+        "1k": "1 000 (1k)",
+        "10k": "10 000 (10k)",
+        "100k": "100 000 (100k)",
+        "1M": "1 миллион (1M)",
+        "10M": "10 миллионов (10M)",
+        "off": "Без ограничений / Откл. (off)"
+      },
+      "bwTimetable": {
+        "off": "Без ограничений (off)",
+        "512k": "512 КиБ/с",
+        "1M": "1 МиБ/с",
+        "5M": "5 МиБ/с",
+        "10M": "10 МиБ/с",
+        "50M": "50 МиБ/с",
+        "split": "10M выгрузка, 50M загрузка",
+        "schedule": "Расписание по времени"
+      },
+      "fileMode": {
+        "0644": "Владелец чтение/запись, Другие только чтение (0644)",
+        "0666": "Чтение/запись для всех (0666)",
+        "0755": "Владелец чтение/запись/исп, Другие чтение/исп (0755)",
+        "0777": "Полный доступ для всех (0777)"
+      },
+      "tristate": {
+        "true": "Включено (true)",
+        "false": "Отключено (false)",
+        "unset": "Не задано"
+      }
     }
   }
 }
