@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Скасувати",
+    "confirm": "Підтвердити",
     "save": "Зберегти",
     "create": "Створити",
     "show": "Показати",
@@ -39,7 +40,11 @@
     "moreActions": "Інші дії",
     "duplicate": "Дублювати",
     "clearAll": "Очистити все",
-    "acknowledge": "Підтвердити"
+    "acknowledge": "Підтвердити",
+    "actions": "Дії",
+    "savedSuccessfully": "Успішно збережено",
+    "deletedSuccessfully": "Успішно видалено",
+    "notConfigured": "Не налаштовано"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -61,7 +66,6 @@
     "bwTimetable": "Невірний формат пропускної здатності",
     "fileMode": "Має бути вісімковий формат (3–4 цифри, кожна 0–7). Приклад: 755",
     "enum": "Має бути одне з: {{values}}",
-    "invalidPath": "Шлях має бути абсолютним",
     "urlArray": "Усі URL мають бути коректними та починатися з http:// або https://",
     "bandwidth": "Невірний формат пропускної здатності. Приклад: 10M, 1G, 100K або комбінації",
     "passwordMismatch": "Паролі не збігаються",
@@ -329,6 +333,8 @@
       "backendFilterHint": "Стежити за подіями лише на певних бекендах.",
       "profileFilter": "Фільтр за профілем",
       "profileFilterHint": "Стежити за подіями лише для певних профілів.",
+      "workflowFilter": "Фільтр робочих процесів",
+      "workflowFilterHint": "Фільтрувати сповіщення за певними процесами.",
       "autoAcknowledge": "Автопідтвердження",
       "autoAcknowledgeHint": "Автоматично позначати сповіщення як підтверджені. Ідеально для сповіщень, які вже викликають системні повідомлення.",
       "actions": "Дії для запуску",
@@ -345,11 +351,15 @@
       "engine": "Інфраструктура бекенду",
       "update": "Оновлення ПЗ",
       "automation": "Автоматизації",
-      "system": "Системні події"
+      "system": "Системні події",
+      "workflow": "Візуальні процеси"
     },
     "action": {
       "basicInfo": "Основна інформація",
       "configuration": "Конфігурація",
+      "channelKind": "Тип каналу",
+      "whatsappProvider": "Провайдер WhatsApp",
+      "telegramMode": "Режим Telegram",
       "noActionsCreated": "Ще не створено жодної дії сповіщення.",
       "noHeaders": "Власні заголовки не налаштовано.",
       "kind": "Тип дії",
@@ -386,7 +396,7 @@
       "customGateway": "Власний шлюз",
       "messageTemplate": "Шаблон повідомлення",
       "messageTemplateHint": "Підтримує змінні Handlebars",
-      "telegram_info": "Токен бота можна отримати від @BotFather, а Chat ID — від @userinfobot.",
+      "telegram_info": "Токен бота можна отримати від @BotFather, а Chat ID - від @userinfobot.",
       "telegram_botless_info": "Режим без бота використовує CallMeBot (https://api.callmebot.com) для надсилання сповіщень Telegram прямо на ваше ім'я користувача без токена бота.",
       "whatsapp_callmebot_info": "Надсилає сповіщення WhatsApp через CallMeBot (https://api.callmebot.com). Введіть номер телефону (з кодом країни) та ключ API CallMeBot.",
       "whatsapp_gateway_info": "Надсилає сповіщення WhatsApp через ваш власний HTTP-шлюз.",
@@ -407,7 +417,15 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Назва заголовка",
-      "headerValue": "Значення"
+      "headerValue": "Значення",
+      "apikey": "API ключ",
+      "password": "Пароль",
+      "username": "Ім'я користувача",
+      "subject": "Тема",
+      "mqttHost": "Хост MQTT",
+      "mqttPort": "Порт MQTT",
+      "mqttTopic": "Тема MQTT",
+      "addHeader": "Додати заголовок"
     },
     "noRulesHint": "Правила сповіщень ще не налаштовані. Створіть правило для отримання сповіщень.",
     "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень."
@@ -470,6 +488,10 @@
       "prevent_sleep": {
         "label": "Запобігати сплячому режиму / вимкненню системи",
         "description": "Забороняє перехід системи в сплячий режим та вимкнення ОС під час активних передач, монтувань або серверів."
+      },
+      "keep_alive": {
+        "label": "Робота у фоновому режимі",
+        "description": "Підтримувати роботу RClone Manager, активних передач і змонтованих сховищ у фоновому режимі при згортанні або закритті."
       }
     },
     "core": {
@@ -624,6 +646,10 @@
       "auth": {
         "title": "Потрібна автентифікація Rclone",
         "subtitle": "Будь ласка, перевірте облікові дані або пароль конфігурації"
+      },
+      "port": {
+        "title": "Порт вже використовується",
+        "subtitle": "Налаштований порт зайнятий іншою програмою"
       }
     }
   },
@@ -679,7 +705,7 @@
       },
       "features": {
         "title": "Потужні можливості",
-        "content": "Безперешкодно синхронізуйте файли, монтуйте хмарні сховища як локальні диски, керуйте кількома сховищами та стежте за операціями передавання — усе з одного зручного інтерфейсу."
+        "content": "Безперешкодно синхронізуйте файли, монтуйте хмарні сховища як локальні диски, керуйте кількома сховищами та стежте за операціями передавання - усе з одного зручного інтерфейсу."
       },
       "installRclone": {
         "title": "Встановлення Rclone",
@@ -765,6 +791,13 @@
       "hide": "Приховати пошук",
       "show": "Показати пошук"
     },
+    "urlPreview": {
+      "host": "Хост",
+      "destination": "Призначення",
+      "openViewer": "Відкрити у переглядачі",
+      "openViewerTooltip": "Відкрити повний попередній перегляд медіа",
+      "inferredFromUrl": "Визначено з URL"
+    },
     "installationOptions": {
       "tabs": {
         "quickFix": "Рекомендовано",
@@ -782,7 +815,6 @@
         "invalid": "Недійсний виконуваний файл"
       },
       "errors": {
-        "invalidPath": "Введіть коректний абсолютний шлях",
         "required": "Це поле обовʼязкове"
       },
       "modes": {
@@ -902,7 +934,7 @@
     },
     "overviewHeader": {
       "manageBackends": "Керувати бекендами",
-      "backendSwitchAria": "Поточний режим: {{title}} — натисніть, щоб перемкнути бекенд"
+      "backendSwitchAria": "Поточний режим: {{title}} - натисніть, щоб перемкнути бекенд"
     },
     "settingControl": {
       "default": "Типово: {{value}}",
@@ -928,7 +960,8 @@
       },
       "errors": {
         "invalidValue": "Невірне значення"
-      }
+      },
+      "showOptions": "Показати варіанти"
     },
     "serveCard": {
       "tooltips": {
@@ -1198,7 +1231,7 @@
         },
         "noObscure": {
           "label": "No Obscure",
-          "description": "Паролі вже приховано — пропустити крок приховування"
+          "description": "Паролі вже приховано - пропустити крок приховування"
         },
         "nonInteractive": {
           "label": "Non-Interactive",
@@ -1476,10 +1509,7 @@
       "noFeatureInfo": "Інформація про можливості відсутня.",
       "example": "Приклад",
       "readOnly": "Лише для читання",
-      "yes": "Так",
-      "no": "Ні",
       "noMetadata": "Специфікації метаданих відсутні.",
-      "close": "Закрити вікно",
       "unknown": "Невідомо",
       "error": "Не вдалося завантажити інформацію про сховище.",
       "tabs": {
@@ -1496,6 +1526,7 @@
       "title": "Властивості",
       "loading": "Завантаження основних відомостей...",
       "location": "Розташування",
+      "targetId": "Цільовий ID",
       "modified": "Змінено",
       "size": "Розмір",
       "contentStats": "Статистика вмісту",
@@ -1535,7 +1566,8 @@
       "generatedChecksums": "Згенеровані контрольні суми",
       "calculateAnother": "Обчислити іншу",
       "bulkHashInstruction": "Виберіть тип хешу, щоб обчислити контрольні суми для всіх файлів у цьому каталозі.",
-      "noHashesFound": "Хешів не повернуто"
+      "noHashesFound": "Хешів не повернуто",
+      "metadata": "Метадані"
     },
     "operations": {
       "title": "Операції",
@@ -1560,6 +1592,23 @@
         "copiedFiles": "Скопійовані файли",
         "syncedFiles": "Синхронізовані файли",
         "processedFiles": "Оброблені файли"
+      },
+      "running": "Виконується",
+      "filesCount": "{{count}} файлів",
+      "types": {
+        "copy": "Копіювати",
+        "copyurl": "Копіювати URL",
+        "move": "Перемістити",
+        "rename": "Перейменувати",
+        "delete": "Видалити",
+        "cleanup": "Очистити",
+        "rmdirs": "Видалити порожні папки",
+        "sync": "Синхронізувати",
+        "bisync": "Двостороння синхронізація",
+        "check": "Перевірити",
+        "upload": "Завантажити",
+        "archivecreate": "Архівувати",
+        "archiveextract": "Видобути архів"
       }
     },
     "fileViewer": {
@@ -1596,7 +1645,12 @@
       "openingNative": "Відкриття {{name}} у зовнішньому додатку...",
       "errorOpenNative": "Не вдалося відкрити файл у зовнішньому додатку",
       "showRawText": "Показати вихідний текст",
-      "showPreview": "Показати попередній перегляд"
+      "showPreview": "Показати попередній перегляд",
+      "zoomIn": "Наблизити",
+      "zoomOut": "Віддалити",
+      "resetZoom": "Скинути масштаб",
+      "hexPreview": "Шістнадцятковий перегляд",
+      "playVideo": "Відтворити у відеоплеєрі"
     }
   },
   "dashboard": {
@@ -1677,9 +1731,9 @@
       "listed": "Перелічено",
       "transferStatistics": "Статистика: {{op}}",
       "dryRun": "Пробний запуск",
-      "dryRunActive": "Пробний запуск активний — жодних змін не буде внесено",
+      "dryRunActive": "Пробний запуск активний - жодних змін не буде внесено",
       "resync": "Повторна синхронізація",
-      "resyncActive": "Повторна синхронізація активна — виконується повна ресинхронізація",
+      "resyncActive": "Повторна синхронізація активна - виконується повна ресинхронізація",
       "remoteSettings": "Налаштування сховища"
     },
     "generalDetail": {
@@ -1727,7 +1781,9 @@
       "exportConfig": "Експортувати конфігурацію",
       "toggleBrowser": "Перемкнути файловий браузер",
       "openFlowOverlay": "Перемкнути робочу область Flow",
-      "closeDialog": "Закрити вікно / скасувати дію"
+      "closeDialog": "Закрити вікно / скасувати дію",
+      "saveWorkflow": "Зберегти робочий процес",
+      "deleteSelected": "Видалити вибрані вузли/ребра"
     },
     "categories": {
       "global": "Глобальні",
@@ -1736,7 +1792,8 @@
       "fileOperations": "Операції з файлами",
       "fileBrowser": "Файловий браузер",
       "fileBrowserNautilus": "Файловий браузер (Nautilus)",
-      "navigation": "Навігація"
+      "navigation": "Навігація",
+      "flowWorkspace": "Робочий простір Flow"
     },
     "quitError": "Не вдалося вийти із застосунку: {{error}}",
     "mountsRefreshSuccess": "Монтування успішно оновлено",
@@ -1749,8 +1806,49 @@
       "title": "Завершення роботи",
       "message": "Зачекайте, поки застосунок безпечно завершить роботу...",
       "confirmTitle": "Виконуються активні завдання",
-      "confirmMessage": "У Rclone Manager виконуються активні завдання (передачі: {{jobs}}, монтування: {{mounts}}, сервери: {{serves}}). Ви впевнені, що хочете зупинити все та вийти?",
+      "confirmMessage": "У RClone Manager виконуються активні завдання (передачі: {{jobs}}, монтування: {{mounts}}, сервери: {{serves}}). Ви впевнені, що хочете зупинити все та вийти?",
       "stopAndQuit": "Зупинити та вийти"
+    }
+  },
+  "powerMenu": {
+    "title": "Параметри живлення",
+    "executing": "Виконання дії...",
+    "activeOpsTitle": "Поточні активні завдання",
+    "activeOpsCount": "Виконується: передач - {{jobs}}, точок монтування - {{mounts}}, серверів - {{serves}}",
+    "actions": {
+      "shutdownApp": {
+        "title": "Закрити програму",
+        "desc": "Безпечно зупиняє RClone Manager та фонові завдання"
+      },
+      "restartApp": {
+        "title": "Перезапустити програму",
+        "desc": "Перезапускає програму та веб-сервер"
+      },
+      "emergencyStop": {
+        "title": "Екстрена зупинка",
+        "desc": "Негайно зупиняє всі передачі та розмонтовує диски"
+      },
+      "systemShutdown": {
+        "title": "Вимкнути систему",
+        "desc": "Повністю вимикає хост-комп'ютер / сервер"
+      },
+      "systemSleep": {
+        "title": "Сплячий режим",
+        "desc": "Переводить хост-систему в сплячий режим"
+      },
+      "systemLock": {
+        "title": "Заблокувати сеанс",
+        "desc": "Блокує поточний сеанс користувача"
+      }
+    },
+    "status": {
+      "shuttingDown": "Програма завершує роботу...",
+      "restarting": "Програма перезапускається...",
+      "stoppingOperations": "Зупинка всіх операцій...",
+      "emergencyStopSuccess": "Усі активні операції та монтування зупинено",
+      "hostShuttingDown": "Операційна система вимикається...",
+      "hostSleeping": "Переведення системи в сплячий режим...",
+      "hostLocking": "Блокування сеансу користувача..."
     }
   },
   "modals": {
@@ -1774,7 +1872,8 @@
         "statistics": "Статистика",
         "paths": "Шляхи",
         "errors": "Помилки",
-        "profile": "Профіль"
+        "profile": "Профіль",
+        "serverSideFlags": "На стороні сервера та прапори"
       },
       "fields": {
         "type": "Тип завдання",
@@ -1851,6 +1950,7 @@
       "skippedRcloneUpdates": "Пропущені оновлення Rclone",
       "devTeam": "Команда розробки",
       "leadDeveloper": "Провідний розробник",
+      "contributors": "Учасники розробки",
       "acknowledgments": "Подяки",
       "ackText": "Цей застосунок створено за допомогою сучасних вебтехнологій і він спирається на чудовий проєкт Rclone для керування хмарними сховищами.",
       "noReleaseNotes": "Примітки до випуску відсутні.",
@@ -1918,9 +2018,6 @@
       "scrollTop": "Прокрутити вгору",
       "scrollBottom": "Прокрутити вниз",
       "fetching": "Отримання журналів...",
-      "aria": {
-        "terminalLogs": "Журнали термінала"
-      },
       "remoteLogs": "Журнали сховища: {{ name }}",
       "noLogsFound": "Журналів не знайдено",
       "adjustFilters": "Спробуйте змінити фільтри",
@@ -1993,8 +2090,6 @@
       "passwordLabel": "Пароль шифрування",
       "passwordPlaceholder": "Введіть пароль",
       "passwordHint": "Цей пароль знадобиться для відновлення резервної копії.",
-      "includeSecrets": "Включити секретні ключі",
-      "includeSecretsHint": "Включити чутливі облікові дані до резервної копії. Потрібне шифрування.",
       "exportNow": "Експортувати зараз",
       "exporting": "Експортування...",
       "fullBackup": "Повна резервна копія",
@@ -2026,6 +2121,18 @@
         "alerts": {
           "label": "Сповіщення",
           "description": "Конфігурація правил і дій сповіщень"
+        },
+        "workflows": {
+          "label": "Робочі процеси",
+          "description": "Правила автоматизації та графи вузлів"
+        },
+        "templates": {
+          "label": "Шаблони",
+          "description": "Шаблони попередньо встановлених налаштувань"
+        },
+        "quickRuns": {
+          "label": "Швидкі запуски",
+          "description": "Налаштовані команди швидкого запуску та ярлики"
         }
       }
     },
@@ -2054,8 +2161,7 @@
         },
         "configPath": {
           "label": "Шлях до конфігурації",
-          "placeholder": "Залиште порожнім для типового",
-          "description": "Конкретний шлях до rclone.conf (необовʼязково)"
+          "placeholder": "Залиште порожнім для типового"
         }
       },
       "addBackend": "Додати бекенд",
@@ -2133,10 +2239,7 @@
         "decryptWarning": "Це розшифрує вашу конфігурацію rclone. Ваші облікові дані будуть видимі для будь-кого, хто має доступ до ваших файлів.",
         "enableEncryption": "Увімкнути шифрування",
         "protectCredentials": "Захистіть свої облікові дані паролем",
-        "passwordChanged": "Пароль змінено",
-        "passwordStored": "Пароль збережено у сховищі ключів",
         "passwordStoredInKeyring": "Пароль збережено у системному сховищі ключів",
-        "passwordRemoved": "Пароль вилучено зі сховища ключів",
         "passwordsMismatch": "Паролі не збігаються"
       }
     },
@@ -2230,7 +2333,7 @@
         "cancel": "Скасувати",
         "noProfiles": "Профілі не налаштовано",
         "placeholder": "Оберіть профіль",
-        "inUseWarning": "Неможливо видалити профіль «{{name}}» — він використовується активними {{type}} ({{count}})",
+        "inUseWarning": "Неможливо видалити профіль «{{name}}» - він використовується активними {{type}} ({{count}})",
         "disabledReason": {
           "inUse": "Профіль використовується запущеною операцією {{operation}}. Спочатку зупиніть її."
         },
@@ -2273,7 +2376,7 @@
       },
       "pageTitle": {
         "home": "Flags Rclone",
-        "category": "{{page}} — {{category}}",
+        "category": "{{page}} - {{category}}",
         "backend": "Flags бекенду"
       },
       "notifications": {
@@ -2335,9 +2438,18 @@
     }
   },
   "nautilus": {
+    "shared": {
+      "shortcutTooltip": "Ярлик (спільний елемент)",
+      "sharedItemTooltip": "Спільний елемент",
+      "onedriveRemoteTooltip": "Зовнішній спільний елемент",
+      "linkTooltip": "Посилання / Ярлик",
+      "shortcutBadge": "Ярлик",
+      "sharedBadge": "Спільний"
+    },
     "sidebar": {
       "configureTitle": "Налаштувати елементи бічної панелі",
-      "configureDescription": "Перетягуйте елементи для зміни їх порядку або використовуйте значок пильного ока, щоб приховати або показати диски та хмарні підключення."
+      "configureDescription": "Перетягуйте елементи для зміни їх порядку або використовуйте значок пильного ока, щоб приховати або показати диски та хмарні підключення.",
+      "toggleSearch": "Перемкнути пошук"
     },
     "shortcuts": {
       "title": "Комбінації клавіш Nautilus"
@@ -2353,7 +2465,8 @@
       "cloud": "Хмара",
       "fileSystem": "Файлова система",
       "bookmarks": "Закладки",
-      "localDisk": "Локальний диск"
+      "localDisk": "Локальний диск",
+      "internalStorage": "Внутрішня пам'ять"
     },
     "bookmarks": {
       "emptyHint": "Немає закладок"
@@ -2439,8 +2552,26 @@
         "newName": "Нова назва",
         "counter": "Лічильник",
         "date": "Дата",
+        "modDate": "Дата зміни",
         "extension": "Розширення",
-        "duplicateOrInvalid": "Дубльоване або недійсне ім'я"
+        "duplicateOrInvalid": "Дубльоване або недійсне ім'я",
+        "invalidRegex": "Недійсний регулярний вираз: {{error}}",
+        "targetScope": "Застосувати до",
+        "targetScopeAll": "Файли та папки",
+        "targetScopeFiles": "Тільки файли",
+        "targetScopeFolders": "Тільки папки",
+        "caseTransform": "Регістр символів",
+        "caseNone": "Без змін",
+        "caseLower": "малі літери",
+        "caseUpper": "ВЕЛИКІ ЛІТЕРИ",
+        "caseTitle": "Як у заголовку",
+        "preserveExtension": "Зберігати розширення",
+        "useRegex": "Регулярні вирази",
+        "prefix": "Префікс",
+        "suffix": "Суфікс",
+        "statsChanged": "{{count}} для перейменування",
+        "statsUnchanged": "{{count}} без змін",
+        "statsConflicts": "{{count}} конфлікт(ів)"
       }
     },
     "errors": {
@@ -2513,7 +2644,10 @@
       "iconSize": "Розмір значків",
       "showHidden": "Показувати приховані файли",
       "toggleLayout": "Перемкнути макет",
-      "viewOptions": "Параметри перегляду"
+      "viewOptions": "Параметри перегляду",
+      "showingItems": "Показано {{count}} з {{total}}",
+      "decreaseIconSize": "Зменшити розмір значків",
+      "increaseIconSize": "Збільшити розмір значків"
     },
     "notifications": {
       "mkdirFailed": "Не вдалося створити каталог: {{path}}",
@@ -2537,6 +2671,16 @@
     "androidShare": {
       "uploadHere": "Завантажити {{count}} спільних файл(ів) до цієї папки",
       "confirm": "Завантажити сюди"
+    },
+    "toolbar": {
+      "goBack": "Назад",
+      "goForward": "Вперед",
+      "pathOptions": "Параметри шляху"
+    },
+    "actions": {
+      "cancelLoading": "Скасувати завантаження",
+      "star": "Додати до обраного",
+      "unstar": "Видалити з обраного"
     }
   },
   "home": {
@@ -2548,6 +2692,8 @@
     },
     "options": {
       "showInTray": "Показувати в меню трея",
+      "aboutRemote": "Про сховище",
+      "emptyTrash": "Очистити кошик",
       "viewLogs": "Переглянути журнали",
       "cloneRemote": "Клонувати сховище",
       "exportConfig": "Експортувати конфігурацію",
@@ -2565,6 +2711,8 @@
       "savedProfilesTitle": "Збережені профілі ({{count}})",
       "quickRunsTitle": "Пов'язані Quick Run ({{count}})",
       "automationsTitle": "Заплановані автоматизації ({{count}})",
+      "workflowsTitle": "Пов'язані робочі процеси ({{count}})",
+      "workflowsDesc": "Ці робочі процеси посилаються на це сховище і не будуть видалені, але можуть потребувати оновлення після видалення.",
       "types": {
         "mount": "Точка монтування",
         "serve": "Сервер"
@@ -2698,7 +2846,8 @@
       "fuseMissing": "Пакет FUSE (fuse3) не встановлено в системі. Встановіть fuse3 для монтування.",
       "macfuseMissing": "macFUSE / FUSE-T не встановлено. Встановіть macFUSE для монтування в macOS.",
       "driveLetterInUse": "Вибрана літера диска вже використовується системою.",
-      "permissionDenied": "Відмовлено в доступі під час спроби монтування."
+      "permissionDenied": "Відмовлено в доступі під час спроби монтування.",
+      "deviceBusy": "Цільова точка монтування або пристрій зайнятий. Закрийте відкриті файли, файлові менеджери або термінали, що використовують каталог, і повторіть спробу."
     },
     "operations": {
       "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»"
@@ -2733,7 +2882,7 @@
       "configEncrypted": "Конфігурацію зашифровано, але пароль не надано",
       "unsupportedOS": "Непідтримувана ОС.",
       "binaryNotFound": "Виконуваний файл Rclone не знайдено.",
-      "versionTooOld": "Версія Rclone {{version}} застара. Мінімально потрібна версія — {{required}}. Оновіть rclone.",
+      "versionTooOld": "Версія Rclone {{version}} застара. Мінімально потрібна версія - {{required}}. Оновіть rclone.",
       "versionCheckFailed": "Не вдалося отримати поточну версію rclone: {{error}}",
       "restartFailed": "Не вдалося перезапустити рушій після оновлення: {{error}}",
       "selfupdateFailed": "rclone selfupdate --check завершився помилкою: {{error}}",
@@ -2755,7 +2904,6 @@
     "security": {
       "passwordEmpty": "Пароль не може бути порожнім",
       "noPasswordStored": "Пароль не збережено",
-      "passwordChangeUnavailable": "Зміна пароля недоступна на цій платформі",
       "incorrectPassword": "Невірний пароль для конфігурації rclone",
       "storeFailed": "Не вдалося зберегти пароль: {{error}}",
       "encryptFailed": "Не вдалося зашифрувати конфігурацію: {{error}}",
@@ -2813,6 +2961,7 @@
       "noPending": "Немає оновлень в очікуванні",
       "invalidUrl": "Невірний URL: {{error}}",
       "github": "Помилка GitHub API: {{error}}",
+      "githubRateLimit": "Перевищено ліміт запитів до API GitHub. Спробуйте пізніше.",
       "updateFailed": "Не вдалося оновити: {{error}}",
       "updateUnavailable": "Артефакт оновлення більше недоступний: {{error}}",
       "relaunchFailed": "Не вдалося перезапустити: {{error}}",
@@ -2932,7 +3081,7 @@
     "browse": "Огляд",
     "browseInApp": "Огляд (у застосунку)",
     "jobsCount": "Завдання [{{active}}/{{total}}]",
-    "jobsNone": "Завдання [—]",
+    "jobsNone": "Завдання [-]",
     "mountCount": "Монтування [{{active}}/{{total}}]",
     "syncCount": "Синхронізація [{{active}}/{{total}}]",
     "copyCount": "Копіювання [{{active}}/{{total}}]",
@@ -2945,6 +3094,7 @@
     "archivecreateCount": "Архівувати [{{active}}/{{total}}]",
     "serveCount": "Роздача [{{active}}/{{total}}]",
     "quickRunsCount": "Швидкі запуски [{{active}}/{{total}}]",
+    "workflowsCount": "Робочі процеси [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 завдання",
     "tooltipTasks": "Завдань: {{count}}",
@@ -2995,19 +3145,29 @@
       "engineConnectionFailed": "Помилка зʼєднання з рушієм",
       "engineBinaryNotFound": "Rclone не знайдено",
       "enginePasswordRequired": "Потрібен пароль",
-      "engineAuthFailed": "Помилка автентифікації двигуна"
+      "engineAuthFailed": "Помилка автентифікації двигуна",
+      "workflowStarted": "Процес '{{name}}' запущено",
+      "workflowCompleted": "Процес '{{name}}' завершено",
+      "workflowFailed": "Збій процесу '{{name}}'",
+      "workflowStopped": "Процес '{{name}}' зупинено",
+      "unmountFailed": "Помилка розмонтування",
+      "serveStopFailed": "Помилка зупинки сервера"
     },
     "body": {
-      "mountSucceeded": "Успішно змонтовано {{remote}}, профіль «{{profile}}» з {{backend}} у {{mountPoint}}.",
-      "mountFailed": "Не вдалося змонтувати {{remote}}, профіль «{{profile}}» з {{backend}}: {{error}}",
-      "unmountSucceeded": "Відключено {{remote}}, профіль «{{profile}}» з {{backend}}.",
-      "jobStarted": "Розпочато {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "jobCompleted": "Успішно завершено {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "jobFailed": "Не вдалося виконати {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}: {{error}}",
-      "jobStopped": "Зупинено {{type}} для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "serveStarted": "Розпочато надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}.",
-      "serveFailed": "Не вдалося розпочати надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}: {{error}}",
-      "serveStopped": "Зупинено надання доступу для {{remote}}, профіль «{{profile}}» на {{backend}}.",
+      "mountSucceeded": "Успішно змонтовано {{remote}} з {{backend}} у {{mountPoint}}.",
+      "mountFailed": "Не вдалося змонтувати {{remote}} з {{backend}}: {{error}}",
+      "unmountSucceeded": "{{remote}} відключено від {{backend}}.",
+      "jobStarted": "Розпочато {{type}} для {{remote}} на {{backend}}.",
+      "jobCompleted": "Успішно завершено {{type}} для {{remote}} на {{backend}}.",
+      "jobFailed": "Не вдалося виконати {{type}} для {{remote}} на {{backend}}: {{error}}",
+      "jobStopped": "Зупинено {{type}} для {{remote}} на {{backend}}.",
+      "workflowStarted": "Запущено робочий процес '{{name}}'.",
+      "workflowCompleted": "Процес '{{name}}' успішно завершено за {{duration}}.",
+      "workflowFailed": "Процес '{{name}}' завершився з помилкою: {{error}}",
+      "workflowStopped": "Процес '{{name}}' було зупинено.",
+      "serveStarted": "Розпочато надання доступу для {{remote}} на {{backend}}.",
+      "serveFailed": "Не вдалося розпочати надання доступу для {{remote}} на {{backend}}: {{error}}",
+      "serveStopped": "Сервер для {{remote}} зупинено на {{backend}}.",
       "allJobsStopped": "Успішно завершено всі активні завдання.",
       "allServesStopped": "Успішно закрито всі активні сервери.",
       "allUnmounted": "Успішно відключено всі монтування сховищ.",
@@ -3033,7 +3193,9 @@
       "engineBinaryNotFound": "Виконуваний файл Rclone не знайдено, перевірте налаштування.",
       "enginePasswordRequired": "Для доступу до файлу конфігурації потрібен пароль.",
       "engineAuthFailed": "Не вдалося автентифікуватися в двигуні rclone: {{error}}",
-      "powerInhibited": "Активні операції запобігають переходу системи в режим сну."
+      "powerInhibited": "Активні операції запобігають переходу системи в режим сну.",
+      "unmountFailed": "Не вдалося розмонтувати {{remote}} на {{backend}}: {{error}}",
+      "serveStopFailed": "Не вдалося зупинити сервер {{protocol}} для {{remote}} на {{backend}}: {{error}}"
     }
   },
   "repairSheet": {
@@ -3056,7 +3218,8 @@
       "passwordRequired": "Потрібен пароль",
       "systemIssue": "Проблема системи",
       "versionTooOld": "Rclone застарів",
-      "authRequired": "Потрібна автентифікація"
+      "authRequired": "Потрібна автентифікація",
+      "portInUse": "Порт вже використовується"
     },
     "messages": {
       "missingRclone": "Не вдалося знайти виконуваний файл rclone. Встановіть його, щоб продовжити.",
@@ -3067,7 +3230,9 @@
       "versionTooOld": "Ваша версія rclone старіша за {{required}}. Оновіть її, щоб продовжити.",
       "defaultParams": "Системний компонент працює некоректно.",
       "mountPluginStatusError": "Не вдалося перевірити стан",
-      "authRequired": "Сервер відхилив підключення через помилку автентифікації."
+      "authRequired": "Сервер відхилив підключення через помилку автентифікації.",
+      "remoteAuthRequired": "Віддалений бекенд відхилив з'єднання через помилку автентифікації. Будь ласка, перевірте облікові дані.",
+      "portInUse": "Порт {{port}} вже зайнятий іншою програмою або з'єднанням. Виберіть інший порт, щоб продовжити."
     },
     "progress": {
       "installingRclone": "Встановлення Rclone...",
@@ -3084,7 +3249,20 @@
       "restoreBackup": "Відновити з копії",
       "restartEngine": "Перезапустити рушій",
       "submitPassword": "Розблокувати",
+      "changePort": "Застосувати порт і перезапустити",
+      "configureBackend": "Налаштувати бекенд",
       "repair": "Виправити"
+    },
+    "portConfig": {
+      "portLabel": "Локальний порт",
+      "suggestPort": "Підібрати порт",
+      "suggestPortTooltip": "Знайти наступний вільний TCP-порт",
+      "testPort": "Перевірити порт",
+      "testPortTooltip": "Перевірити, чи вільний цей порт",
+      "portAvailable": "Порт {{port}} вільний",
+      "portOccupied": "Порт {{port}} зайнятий",
+      "portOccupiedTooltip": "Вибраний порт зайнятий іншим процесом",
+      "invalidPort": "Порт має бути в діапазоні від 1024 до 65535"
     },
     "details": {
       "issueLabel": "Проблема",
@@ -3116,6 +3294,14 @@
       "rcloneAuth": {
         "issue": "Автентифікацію відхилено",
         "action": "Завершити застарілий процес та перезапустити рушій"
+      },
+      "rcloneAuthRemote": {
+        "issue": "Віддалену автентифікацію відхилено",
+        "action": "Налаштуйте облікові дані бекенда в налаштуваннях"
+      },
+      "rclonePort": {
+        "issue": "Порт {{port}} використовується",
+        "action": "Змінити порт та перезапустити рушій"
       }
     },
     "tooltips": {
@@ -3129,7 +3315,6 @@
       "testBinaryFirst": "Спочатку перевірте виконуваний файл"
     },
     "passwordErrors": {
-      "validateFailed": "Перевірку не пройдено",
       "invalid": "Невірний пароль",
       "locked": "Обліковий запис заблоковано через надто багато спроб",
       "generic": "Помилка: {{error}}"
@@ -3159,28 +3344,33 @@
     "cleared": "Дані очищено"
   },
   "flow": {
-    "title": "Flow",
+    "title": "Потоки",
     "search": "Пошук потоків...",
     "toggleSearch": "Перемкнути пошук",
     "loading": "Завантаження потоків...",
-    "noResults": "Немає відповідних потоків",
-    "toggleSidebar": "Перемкнути бічну панель Flow",
+    "noResults": "Збігів не знайдено",
+    "toggleSidebar": "Бічна панель потоків",
     "empty": {
-      "description": "Створіть швидкий запуск або робочий процес для швидких операцій та конвеєрів."
+      "description": "Створіть швидкий запуск або робочий процес для швидких операцій та автоматизацій."
     },
     "quickRun": {
       "title": "Швидкі запуски",
       "new": "Новий швидкий запуск",
       "actions": {
         "start": "Запустити",
-        "stop": "Зупинити"
+        "stop": "Зупинити",
+        "createRemote": "Створити підключення '{{remote}}'",
+        "changeRemote": "Змінити підключення"
       },
       "badges": {
         "scheduled": "Заплановане завдання",
         "watcher": "Відстеження папки активне",
         "watcherChangedOnly": "Відстеження папки активне (лише підкаталоги)",
-        "autostart": "Автозапуск увімкнено"
+        "autostart": "Автозапуск увімкнено",
+        "missingRemote": "Підключення відсутнє в Rclone"
       },
+      "missingRemoteTitle": "Підключення не знайдено в Rclone",
+      "missingRemoteDesc": "Підключення '{{remote}}', пов'язане з цим швидким запуском, не існує в Rclone, але його конфігурацію збережено.",
       "status": {
         "running": "Виконується"
       },
@@ -3209,17 +3399,442 @@
         "tabVfs": "VFS",
         "tabFilter": "Фільтр",
         "tabBackend": "Бекенд",
-        "tabRuntimeRemote": "Динамічний remote"
+        "tabRuntimeRemote": "Динамічний remote",
+        "noProfiles": "Немає доступних профілів"
+      },
+      "errors": {
+        "remoteNotFound": "Підключення '{{remote}}' не існує в конфігурації Rclone",
+        "failedStop": "Не вдалося зупинити швидкий запуск \"{{name}}\": {{error}}",
+        "failedStart": "Не вдалося запустити швидкий запуск \"{{name}}\": {{error}}"
+      },
+      "success": {
+        "started": "Швидкий запуск \"{{name}}\" успішно розпочато"
       }
     },
     "tabs": {
       "quickRun": "Швидкий запуск",
       "workflow": "Робочий процес"
     },
-    "builder": {
-      "placeholderTitle": "Конструктор робочих процесів у розробці",
-      "placeholderMessage": "Візуальне полотно для багатоетапних конвеєрів rclone незабаром з'явиться.",
-      "viewRoadmap": "Переглянути план розвитку на GitHub"
+    "workflow": {
+      "untitled": "Процес без назви",
+      "savedWorkflows": "Збережені процеси",
+      "presetRecipes": "Готові шаблони",
+      "unsavedChanges": "Незбережені зміни",
+      "saving": "Збереження...",
+      "categories": {
+        "all": "Всі"
+      },
+      "category": {
+        "trigger": "Тригер",
+        "task": "Завдання",
+        "logic": "Логіка",
+        "action": "Дія"
+      },
+      "actions": {
+        "duplicate": "Дублювати вузол",
+        "delete": "Видалити вузол",
+        "inspectJob": "Інспектувати завдання",
+        "duplicateWorkflow": "Дублювати процес",
+        "deleteWorkflow": "Видалити процес",
+        "exportWorkflow": "Експорт JSON"
+      },
+      "canvas": {
+        "navigation": "Навігація по полотну",
+        "toggleMinimap": "Перемкнути мінікарту",
+        "enterFocusMode": "Фокус на полотні (Сховати навігацію)",
+        "exitFocusMode": "Вийти з фокусу (Показати навігацію)"
+      },
+      "toolbar": {
+        "selectWorkflow": "Вибрати процес",
+        "newWorkflow": "Новий процес",
+        "run": "Запустити процес",
+        "stop": "Зупинити процес",
+        "presets": "Шаблони та рецепти",
+        "undo": "Скасувати",
+        "redo": "Повторити",
+        "zoomOut": "Зменшити",
+        "zoomIn": "Збільшити",
+        "resetZoom": "Скинути масштаб",
+        "fitToView": "За розміром екрана",
+        "snapToGrid": "Прив’язати до сітки",
+        "toggleLog": "Журнал виконання",
+        "toggleInspector": "Інспектор",
+        "dryRun": "Тестовий запуск",
+        "dryRunTooltip": "Імітація виконання робочого процесу без зміни даних та виконання реальних команд"
+      },
+      "palette": {
+        "title": "Бібліотека вузлів",
+        "searchPlaceholder": "Пошук вузлів...",
+        "clickToAdd": "Натисніть або перетягніть для додавання",
+        "noResults": "Вузлів не знайдено",
+        "hideSearch": "Приховати пошук і фільтри",
+        "showSearch": "Показати пошук і фільтри"
+      },
+      "inspector": {
+        "general": "Загальні налаштування",
+        "parameters": "Параметри та опції",
+        "nodeTitle": "Назва вузла",
+        "nodeSubtitle": "Підзаголовок / Опис",
+        "subtitlePlaceholder": "Напр. Щоденне резервне копіювання",
+        "cronExpression": "Вираз Cron",
+        "invalidCron": "Некоректний вираз cron",
+        "cronDaily": "Щодня о 02:00",
+        "watchFolder": "Шлях до відстежуваної папки",
+        "debounceSeconds": "Затримка стабілізації (сек)",
+        "remote": "Віддалений диск",
+        "localOrSelect": "Локальний / Вибрати диск",
+        "sourcePath": "Вихідний шлях (srcFs)",
+        "destinationPath": "Шлях призначення (dstFs)",
+        "mountPoint": "Точка монтування",
+        "rcEndpoint": "Ендпоінт RC",
+        "rcParameters": "Параметри RC (JSON)",
+        "rcPresets": "Готові ендпоінти",
+        "presetCategoryAll": "Всі",
+        "presetCategoryVfs": "VFS",
+        "presetCategoryOps": "Сховище",
+        "presetCategoryCore": "Ядро",
+        "insertVariable": "Вставити вихідну змінну вузла",
+        "insertTokenBtn": "Вставити змінну",
+        "formatJson": "Форматувати JSON",
+        "clearJson": "Очистити",
+        "invalidJson": "Некоректний JSON",
+        "templateJson": "Динамічний шаблон",
+        "noUpstreamNodesHint": "Додайте інші вузли до робочого процесу, щоб динамічно посилатися на їхній вивід, як {{nodes.id.field}}",
+        "delaySeconds": "Тривалість затримки (сек)",
+        "conditionOperator": "Оператор умови",
+        "opEquals": "Дорівнює (==)",
+        "opNotEquals": "Не дорівнює (!=)",
+        "opContains": "Містить",
+        "opTruthy": "Не порожньо / Істина (Truthy)",
+        "leftValue": "Лівий вираз / Значення",
+        "rightValue": "Праве значення порівняння",
+        "conditionValuePlaceholder": "значення або {{nodes.id.field}}",
+        "conditionFilePathPlaceholder": "/шлях/до/файлу або {{nodes.id.path}}",
+        "targetNode": "Цільовий вузол",
+        "targetNodeField": "Поле виводу",
+        "targetNodePlaceholder": "Виберіть цільовий вузол",
+        "targetFieldPlaceholder": "Виберіть поле виводу",
+        "resolvedToken": "Розпізнаний токен",
+        "alertTitle": "Заголовок сповіщення",
+        "alertMessage": "Текст сповіщення",
+        "severity": "Рівень важливості",
+        "severityInfo": "Інформація",
+        "severityError": "Помилка / Попередження",
+        "manualDesc": "Ручний запуск запускає процес на вимогу. Додаткове налаштування не потрібне.",
+        "parallelForkDesc": "Розділяє виконання на кілька паралельних гілок.",
+        "joinDesc": "Очікує завершення всіх вхідних паралельних гілок перед продовженням.",
+        "jobEventProfile": "Цільовий профіль / завдання",
+        "jobEventPlaceholder": "Оберіть профіль для відстеження",
+        "targetMountNode": "Цільовий вузол монтування",
+        "targetMountNodePlaceholder": "Оберіть вузол монтування",
+        "targetServeNode": "Цільовий вузол сервера",
+        "targetServeNodePlaceholder": "Оберіть вузол сервера",
+        "unmountPlaceholder": "/mnt/remote або C:\\Mount",
+        "delayPreset5s": "5s",
+        "delayPreset15s": "15s",
+        "delayPreset30s": "30s",
+        "delayPreset1m": "1m",
+        "delayPreset5m": "5m",
+        "openDetailed": "Детальні налаштування",
+        "openDetailedTooltip": "Відкрити панель розширених параметрів і прапорців",
+        "activeConfig": "Активна конфігурація та прапорці",
+        "noActiveConfig": "Додаткових прапорців або фільтрів не налаштовано",
+        "removeFlag": "Видалити параметр",
+        "addFlagsHint": "Натисніть Детальні налаштування, щоб налаштувати розширені прапорці Rclone, фільтри та опції VFS.",
+        "appStartDesc": "Автоматичний запуск при старті програми з можливості затримки.",
+        "startupDelay": "Затримка запуску (секунди)",
+        "delay0s": "Негайно (0 с)",
+        "fileFilterPattern": "Шаблон фільтра файлів (glob)",
+        "eventState": "Фільтр стану події",
+        "eventStateAny": "Будь-яке завершення (успіх або помилка)",
+        "eventStateSuccess": "Лише при успіху",
+        "eventStateFailed": "Лише при помилці",
+        "optionalPath": "Необов'язковий шлях до підпапки",
+        "scriptCommand": "Команда / шлях до скрипта",
+        "scriptArguments": "Аргументи (необов'язково)",
+        "workingDir": "Робоча директорія (необов'язково)",
+        "failOnError": "Зупиняти при помилці",
+        "selectQuickRun": "Оберіть профіль швидкого запуску",
+        "quickRunPlaceholder": "Оберіть швидкий запуск...",
+        "stopStatus": "Статус завершення",
+        "stopStatusSuccess": "Завершити успішно",
+        "stopStatusFailed": "Перервати з помилкою",
+        "stopMessage": "Повідомлення про зупинку / причина",
+        "stopMessagePlaceholder": "Причина зупинки робочого процесу",
+        "powerAction": "Дія живлення",
+        "powerSleep": "Сплячий режим",
+        "powerShutdown": "Вимкнення комп'ютера",
+        "powerHibernate": "Гібернація",
+        "powerLock": "Блокування екрана / сеансу",
+        "auditMessage": "Повідомлення журналу аудиту",
+        "severityWarn": "Попередження",
+        "opNotContains": "Не містить",
+        "opGreaterThan": "Більше (>)",
+        "opLessThan": "Менше (<)",
+        "opIsEmpty": "Порожньо",
+        "opFileExists": "Файл/шлях існує",
+        "executionStatus": "Стан виконання",
+        "liveActiveService": "Активна фонова служба",
+        "currentlyMounted": "Змонтовано в",
+        "currentlyServing": "Роздається за адресою",
+        "unmountNow": "Розмонтувати",
+        "stopServeNow": "Зупинити сервер",
+        "openInBrowser": "Відкрити в браузері",
+        "serveProtocol": "Протокол роздачі",
+        "serveAddress": "Адреса / порт роздачі",
+        "modeTargetNode": "Цільовий вузол",
+        "serverId": "ID сервера",
+        "modeCustom": "Власний",
+        "alertAction": "Дія сповіщення / Канал",
+        "selectAlertAction": "Виберіть дію сповіщення...",
+        "noAlertActionsFound": "Збережених дій сповіщень не знайдено",
+        "openAlertsModal": "Налаштувати дії",
+        "templateVariables": "Змінні шаблону",
+        "insertVariableHint": "Натисніть, щоб вставити в повідомлення",
+        "joinMode": "Політика об'єднання",
+        "joinModeAllSuccess": "Усі гілки (AND)",
+        "joinModeAllSuccessHint": "Продовжує лише за успішного завершення всіх паралельних гілок.",
+        "joinModeAnySuccess": "Принаймні одна (OR)",
+        "joinModeAnySuccessHint": "Продовжує після завершення всіх гілок, якщо хоча б одна була успішною.",
+        "joinModeAlways": "Завжди продовжувати",
+        "joinModeAlwaysHint": "Безумовно продовжує після завершення всіх гілок, навіть за наявності помилок.",
+        "joinBranchesTitle": "Вхідні гілки",
+        "joinAddBranch": "Додати гілку",
+        "joinRemoveBranch": "Видалити гілку",
+        "parallelBranchesTitle": "Вихідні гілки",
+        "parallelAddBranch": "Додати гілку",
+        "parallelRemoveBranch": "Видалити гілку",
+        "archiveFormat": "Формат архіву",
+        "archivePrefix": "Внутрішній префікс (необов'язково)",
+        "downloadUrl": "URL для завантаження",
+        "autoFilename": "Автоматично визначати ім'я файлу",
+        "jobDetailsTitle": "Деталі завдання",
+        "inspectJobBtn": "Інспектувати деталі завдання",
+        "transfers": "Передачі",
+        "errors": "Помилки",
+        "testRun": "Тестовий запуск",
+        "testRunRcHint": "Протестувати цю RC-команду з поточними параметрами",
+        "testSuccess": "Тест успішно пройдено",
+        "testFailed": "Тест завершився помилкою",
+        "useAsSampleSchema": "Зберегти як схему виводу",
+        "sampleOutputSchema": "Зразок схеми виводу",
+        "sampleOutputSchemaDesc": "Схема JSON-відповіді для надання динамічних полів змінних у наступних картках",
+        "sampleOutputPlaceholder": "Вставте зразок JSON-відповіді сюди...",
+        "availableOutputKeys": "Виявлені ключі змінних",
+        "upstreamOutputs": "Вихідні дані та змінні попередніх кроків",
+        "nodeOutput": "Вивід виконання вузла",
+        "checkReport": "Звіт про розбіжності (Check)",
+        "rawOutputJson": "Вихідні дані (JSON)",
+        "conditionPresets": "Швидкі шаблони умов",
+        "condPresetHasDiff": "Є відмінності",
+        "condPresetNoDiff": "Немає відмінностей",
+        "condPresetDiffCount": "Знайдено відмінностей (>0)",
+        "condPresetHasErrors": "Є помилки",
+        "condPresetTransferred": "Передано (>0)",
+        "condPresetScriptSuccess": "Скрипт успішний",
+        "notificationPresets": "Швидкі шаблони повідомлень",
+        "notifPresetCheckReport": "Звіт про перевірку",
+        "notifPresetTransferSummary": "Підсумок передачі",
+        "notifPresetFailureAlert": "Сповіщення про збій",
+        "notifPresetHealthStatus": "Стан рушія",
+        "opGreaterOrEqual": "Більше або дорівнює (>=)",
+        "opLessOrEqual": "Менше або дорівнює (<=)",
+        "opStartsWith": "Починається з",
+        "opEndsWith": "Закінчується на",
+        "opArrayNotEmpty": "Масив не порожній",
+        "opArrayIsEmpty": "Масив порожній",
+        "preview": "Попередній перегляд повідомлення"
+      },
+      "liveStatus": {
+        "mounted": "Змонтовано",
+        "serving": "Надання доступу"
+      },
+      "status": {
+        "running": "Виконується",
+        "success": "Завершено",
+        "failed": "Помилка",
+        "skipped": "Пропущено",
+        "idle": "Очікування"
+      },
+      "ports": {
+        "in": "Вхід",
+        "out": "Вихід",
+        "start": "Старт",
+        "trigger": "Тригер",
+        "onChange": "При зміні",
+        "onFinish": "При завершенні",
+        "success": "Успіх",
+        "failure": "Помилка",
+        "true": "Істина",
+        "false": "Хибність",
+        "afterDelay": "Після затримки",
+        "onSchedule": "У призначений час",
+        "branch1": "Гілка 1",
+        "branch2": "Гілка 2",
+        "in1": "Вхід 1",
+        "in2": "Вхід 2",
+        "done": "Готово"
+      },
+      "nodes": {
+        "manualTrigger": "Ручний запуск",
+        "manualTriggerDesc": "Запуск процесу вручну за запитом",
+        "cronSchedule": "Розклад Cron",
+        "cronScheduleDesc": "Запуск за регулярним розкладом cron",
+        "folderWatcher": "Відстеження папки",
+        "folderWatcherDesc": "Запуск при зміні файлів у локальній папці",
+        "jobEvent": "Подія завершення завдання",
+        "jobEventDesc": "Запуск після завершення іншого профілю або швидкого запуску",
+        "rcCommand": "Команда Rclone RC",
+        "rcCommandDesc": "Виклик довільного ендпоінту RC API",
+        "condition": "Розгалуження за умовою",
+        "conditionDesc": "Розділення потоку на основі перевірки умови",
+        "delay": "Таймер затримки",
+        "delayDesc": "Призупинення виконання на заданий час",
+        "scheduleWait": "Очікування розкладу",
+        "scheduleWaitDesc": "Призупинити виконання робочого процесу до настання часу cron",
+        "parallelFork": "Паралельний поділ",
+        "parallelForkDesc": "Одночасне паралельне виконання кількох гілок",
+        "join": "Об’єднання гілок",
+        "joinDesc": "Очікування завершення всіх паралельних гілок",
+        "notification": "Сповіщення на стільниці",
+        "notificationDesc": "Показати системне спливаюче сповіщення",
+        "unmount": "Розмонтувати диск",
+        "unmountDesc": "Безпечне розмонтування активної файлової системи",
+        "stopServe": "Зупинити сервер",
+        "stopServeDesc": "Зупинити активні мережеві служби для сховища",
+        "appStart": "При запуску програми",
+        "appStartDesc": "Автоматичний запуск при старті RClone Manager",
+        "cleanup": "Очищення кошика",
+        "cleanupDesc": "Очистити кошик віддаленого сховища",
+        "cryptcheck": "Перевірка шифрування",
+        "cryptcheckDesc": "Перевірити цілісність зашифрованого сховища",
+        "execScript": "Виконати скрипт",
+        "execScriptDesc": "Запустити локальну команду оболонки або скрипт",
+        "quickRun": "Швидкий запуск",
+        "quickRunDesc": "Запустити збережений профіль швидкого запуску",
+        "stop": "Зупинити процес",
+        "stopDesc": "Зупинити виконання робочого процесу",
+        "systemPower": "Керування живленням",
+        "systemPowerDesc": "Сплячий режим, блокування або вимкнення системи",
+        "logAudit": "Журнал аудиту",
+        "logAuditDesc": "Записати запис у журнал виконання процесу"
+      },
+      "logs": {
+        "title": "Журнал виконання",
+        "copy": "Скопіювати журнал",
+        "clear": "Очистити журнал",
+        "jumpToNode": "Натисніть, щоб виділити вузол на полотні",
+        "empty": "Журнал виконання поки порожній. Запустіть робочий процес.",
+        "copied": "Журнали скопійовано в буфер обміну",
+        "filterAll": "Всі",
+        "filterErrors": "Помилки",
+        "filterWarnings": "Попередження",
+        "filterSuccess": "Успішно"
+      },
+      "tokens": {
+        "prevNode": "Попередній вузол",
+        "fields": {
+          "summary": "Підсумок",
+          "output": "Основний вивід",
+          "stdout": "Стандартний вивід",
+          "stderr": "Стандартний вивід помилок",
+          "exitCode": "Код завершення",
+          "success": "Успішно",
+          "status": "Статус",
+          "error": "Повідомлення про помилку",
+          "report": "Звіт Markdown",
+          "hasDifferences": "Є відмінності",
+          "differCount": "Кількість відмінностей",
+          "differ": "Список відмінних файлів",
+          "missingOnDstCount": "Відсутнє в призначенні (кількість)",
+          "missingOnDst": "Список відсутніх у призначенні",
+          "missingOnSrcCount": "Відсутнє в джерелі (кількість)",
+          "missingOnSrc": "Список відсутніх у джерелі",
+          "matchCount": "Кількість збігів файлів",
+          "jobId": "ID завдання",
+          "bytes": "Передано байтів",
+          "bytesFormatted": "Форматовані байти",
+          "totalBytes": "Всього байтів",
+          "transfers": "Кількість передач",
+          "totalTransfers": "Всього передач",
+          "errors": "Кількість помилок",
+          "speedFormatted": "Швидкість",
+          "mountPoint": "Точка монтування",
+          "remote": "Назва віддаленого сховища",
+          "addr": "Адреса сервера",
+          "conditionMet": "Умову виконано",
+          "branch": "Вибрана гілка",
+          "cronExpression": "Вираз Cron",
+          "targetTime": "Цільовий час",
+          "waitedSeconds": "Час очікування в секундах",
+          "resumedAt": "Відновлено о",
+          "command": "Команда",
+          "result": "Результат команди",
+          "json": "Форматований JSON"
+        }
+      },
+      "details": "Властивості процесу",
+      "name": "Назва процесу",
+      "description": "Опис процесу",
+      "descriptionPlaceholder": "Опишіть призначення цього робочого процесу...",
+      "showInTray": "Показувати в системному треї",
+      "deleteConfirm": "Ви дійсно хочете видалити цей процес?",
+      "cleanDuplicates": "Очистити дублікати",
+      "cleanDuplicatesConfirm": "Ви дійсно хочете видалити повторювані процеси?",
+      "stats": {
+        "title": "Огляд",
+        "nodes": "Всього вузлів",
+        "connections": "Зв'язки",
+        "created": "Створено",
+        "updated": "Оновлено"
+      },
+      "recipes": {
+        "driftCheckSync": {
+          "name": "Розумна перевірка розбіжностей та умовна синхронізація",
+          "description": "Перевіряє відмінності через check; синхронізує лише при виявленні розбіжностей і сповіщає про обсяг."
+        },
+        "integrityAudit": {
+          "name": "Аудит цілісності даних та звіт про розбіжності",
+          "description": "Виконує регулярну перевірку цілісності; надсилає звіт Markdown у разі наявності розбіжностей."
+        },
+        "safeSyncAlert": {
+          "name": "Безпечна синхронізація зі сповіщенням про помилку",
+          "description": "Виконує синхронізацію, сповіщаючи про переданий обсяг при успіху або передаючи деталі помилки при збої."
+        },
+        "dailyBackup": {
+          "name": "Щоденне резервне копіювання та сповіщення",
+          "description": "Запускає синхронізацію щодня о 02:00, сповіщаючи про успіх або збій."
+        },
+        "watchUpload": {
+          "name": "Відстеження папки та автозавантаження",
+          "description": "Відстежує локальну папку та копіює нові/змінені файли до хмари."
+        },
+        "parallelMirror": {
+          "name": "Паралельне мультихмарне дзеркалювання",
+          "description": "Синхронізує дані одночасно до двох різних хмар і перевіряє завершення."
+        },
+        "mountOnDemand": {
+          "name": "Монтування на вимогу та сповіщення",
+          "description": "Монтує віддалене сховище та сповіщає стільницю про готовність диска."
+        },
+        "manualTrigger": "Вручну",
+        "manualTriggerDesc": "Запускається вручну на вимогу",
+        "vfsRefresh": {
+          "name": "Автоматизація оновлення кешу VFS",
+          "description": "Надсилає RC-команду vfs/refresh для перезавантаження кешу каталогів на змонтованих дисках та сповіщає стільницю."
+        }
+      },
+      "editor": {
+        "configureNode": "Налаштування вузла: {{type}}",
+        "nodeSaved": "Параметри вузла робочого процесу оновлено"
+      },
+      "emptyState": {
+        "title": "Ласкаво просимо до конструктора робочих процесів",
+        "subtitle": "Створіть новий робочий процес або виберіть готовий шаблон для автоматизації операцій rclone."
+      }
+    },
+    "shortcuts": {
+      "title": "Гарячі клавіші Flow"
     }
   },
   "templates": {
@@ -3258,7 +3873,8 @@
     "deletedSuccess": "Шаблон успішно видалено."
   },
   "navigation": {
-    "dashboard": "Панель керування"
+    "dashboard": "Панель керування",
+    "files": "Файли"
   },
   "provision": {
     "stages": {
@@ -3269,6 +3885,72 @@
       "completed": "Завершено",
       "cancelled": "Операцію скасовано",
       "error": "Помилка"
+    }
+  },
+  "rcloneExamples": {
+    "types": {
+      "duration": {
+        "0s": "Вимкнено / Нескінченно (0s)",
+        "10s": "10 секунд",
+        "30s": "30 секунд",
+        "1m": "1 хвилина",
+        "5m": "5 хвилин",
+        "10m": "10 хвилин",
+        "30m": "30 хвилин",
+        "1h": "1 година",
+        "24h": "24 години (1 день)",
+        "7d": "7 днів",
+        "30d": "30 днів",
+        "off": "Вимкнено (off)"
+      },
+      "sizeSuffix": {
+        "0": "Без обмежень / Вимкнено (0)",
+        "512k": "512 КіБ",
+        "1M": "1 МіБ",
+        "8M": "8 МіБ",
+        "16M": "16 МіБ",
+        "32M": "32 МіБ",
+        "64M": "64 МіБ",
+        "128M": "128 МіБ",
+        "256M": "256 МіБ",
+        "512M": "512 МіБ",
+        "1G": "1 ГіБ",
+        "10G": "10 ГіБ",
+        "100G": "100 ГіБ",
+        "1T": "1 ТіБ",
+        "off": "Без обмежень / Вимкнено (off)"
+      },
+      "countSuffix": {
+        "0": "Немає (0)",
+        "100": "100 елементів",
+        "1k": "1 000 (1k)",
+        "10k": "10 000 (10k)",
+        "100k": "100 000 (100k)",
+        "1M": "1 мільйон (1M)",
+        "10M": "10 мільйонів (10M)",
+        "off": "Без обмежень / Вимкнено (off)"
+      },
+      "bwTimetable": {
+        "off": "Без обмежень (off)",
+        "512k": "512 КіБ/с",
+        "1M": "1 МіБ/с",
+        "5M": "5 МіБ/с",
+        "10M": "10 МіБ/с",
+        "50M": "50 МіБ/с",
+        "split": "10M вивантаження, 50M завантаження",
+        "schedule": "Розклад за часом"
+      },
+      "fileMode": {
+        "0644": "Власник читання/запис, Інші лише читання (0644)",
+        "0666": "Читання/запис для всіх (0666)",
+        "0755": "Власник читання/запис/вик, Інші читання/вик (0755)",
+        "0777": "Повний доступ для всіх (0777)"
+      },
+      "tristate": {
+        "true": "Увімкнено (true)",
+        "false": "Вимкнено (false)",
+        "unset": "Не встановлено"
+      }
     }
   }
 }
