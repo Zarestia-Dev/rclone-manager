@@ -486,8 +486,8 @@
         "description": "İletişim kutularını (modalleri) ayrı işletim sistemi pencerelerinde açar."
       },
       "prevent_sleep": {
-        "label": "Sistem Uyku / Kapanmasını Engelle",
-        "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistem uykusunu ve kapanmasını engeller."
+        "label": "Sistem Uykusunu Engelle",
+        "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistemin otomatik uykuya geçmesini engeller."
       },
       "keep_alive": {
         "label": "Arka Planda Çalıştır",
