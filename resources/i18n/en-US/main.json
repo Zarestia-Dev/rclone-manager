@@ -486,8 +486,8 @@
         "description": "Open dialog boxes (modals) in separate native OS windows."
       },
       "prevent_sleep": {
-        "label": "Prevent System Sleep / Shutdown",
-        "description": "Inhibit system sleep and OS shutdown while active transfers, mounts, or servers are running."
+        "label": "Prevent System Sleep",
+        "description": "Prevent automatic system sleep while active transfers, mounts, or servers are running."
       },
       "keep_alive": {
         "label": "Run in Background",

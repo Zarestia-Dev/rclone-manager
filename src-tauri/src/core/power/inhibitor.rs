@@ -56,7 +56,7 @@ impl PowerInhibitorState {
             return;
         }
 
-        info!("🔒 Acquiring system OS power/shutdown inhibitor lock: {reason}");
+        info!("🔒 Acquiring system OS power inhibitor lock: {reason}");
         self.acquire_platform(_app, reason).await;
     }
 
@@ -69,7 +69,7 @@ impl PowerInhibitorState {
             return;
         }
 
-        info!("🔓 Releasing system OS power/shutdown inhibitor lock...");
+        info!("🔓 Releasing system OS power inhibitor lock...");
         self.release_platform().await;
     }
 

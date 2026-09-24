@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [v0.3.3] - 2026-09-23
 
 ### Added
 - **Workflow Engine & Visual Canvas UI**:
@@ -69,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Obsolete Path Validation Service**: Removed deprecated `PathValidationService` in favor of centralized path resolution utilities and backend validation. Fixes #288
 
 ### Fixed
-- **Cross-Platform Power Inhibitor Architecture & Linux Shutdown Deadlock**: Redesigned power inhibitor handling across all platforms to prevent automatic idle sleep during active operations while ensuring clean system behavior:
+- **Cross-Platform Power Inhibitor Architecture & Linux Shutdown Deadlock**: Redesigned power inhibitor handling across all platforms to prevent automatic idle sleep during active operations while ensuring clean system shutdown:
   - **Linux**: Switched to unprivileged idle-sleep inhibition (`what = "idle"`), allowing passwordless manual sleep and laptop lid-close sleep without Polkit prompts. Added a D-Bus `PrepareForShutdown` listener to cleanly unmount remotes and stop active jobs before power-off, resolving black-screen hangs on KDE Plasma 6 and systemd. Fixes #296
   - **Windows**: Prevents automatic idle sleep (`ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED`) while preserving the native OS warning screen (`ShutdownBlockReasonCreate`) when shutting down with active operations.
   - **macOS**: Prevents automatic idle sleep (`IdleSystemSleepDisabled`) while respecting manual sleep and lid closure.

@@ -22,15 +22,18 @@
     </p>
     <p>Key features:</p>
     <ul>
-      <li>Built-in file manager: browse, copy, move, rename, delete, and preview files on remote storage</li>
-      <li>Preview support for images, videos, PDFs, audio, text, Markdown, and code files with syntax highlighting</li>
-      <li>Mount remote storage as a local drive</li>
-      <li>Schedule sync, copy, move, and bisync operations using cron expressions</li>
+      <li>Visual workflow builder: design multi-step automations with an interactive node-based canvas, triggers, logic, and notifications</li>
+      <li>Quick Runs &amp; Flow automation hub: one-click operation execution, CLI command import, and reusable templates</li>
+      <li>Built-in file manager (Nautilus): browse, copy, move, rename, delete, archive, and preview remote files</li>
+      <li>Rich media preview: support for images, videos, audio, PDFs, Markdown, and code with syntax highlighting</li>
+      <li>Mount cloud storage as a local drive with VFS cache controls</li>
+      <li>Automations: schedule operations using cron expressions or trigger transfers with real-time file system watchers</li>
       <li>Serve remote storage over HTTP or WebDAV</li>
-      <li>System tray integration for monitoring active transfers and jobs</li>
-      <li>Dark and light mode</li>
-      <li>Encrypted configuration storage and backup/restore support</li>
-      <li>Multiple remote backends and per-operation profiles</li>
+      <li>Power management: prevents automatic system sleep while active transfers, mounts, or servers are running</li>
+      <li>System tray integration and customizable keyboard shortcuts for quick control</li>
+      <li>Theme support: dark and light modes with automatic system theme synchronization</li>
+      <li>Encrypted configuration storage with full backup and restore support</li>
+      <li>Multi-backend management with customizable per-operation profiles</li>
     </ul>
     <p>
       Troubleshooting: If you encounter an "Invalid binary" error during setup, it is likely caused by an outdated system rclone binary. Go to Settings → Core, clear the rclone binary path, and click Save &amp; Reset Engine. When prompted, let the app download and install the latest rclone version automatically.
@@ -64,39 +67,83 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/desktop-ui.png</image>
       <caption>Dashboard with connected cloud remotes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/general-home.png</image>
-      <caption>Overview of connected cloud services</caption>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/workflow-builder.png</image>
+      <caption>Visual workflow builder and automation canvas</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/general-remote.png</image>
-      <caption>Add and configure cloud storage providers</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/serve-control.png</image>
-      <caption>Serve storage over HTTP or WebDAV</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/job-watcher.png</image>
-      <caption>Monitor active and scheduled operations</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/mount-control.png</image>
-      <caption>Mount cloud storage as a local drive</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/nautilus.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/nautilus.png</image>
       <caption>Browse and manage remote files</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/file-viewer.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/general-home.png</image>
+      <caption>Overview of connected cloud services</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/general-remote.png</image>
+      <caption>Add and configure cloud storage providers</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/serve-control.png</image>
+      <caption>Serve storage over HTTP or WebDAV</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/job-watcher.png</image>
+      <caption>Monitor active and scheduled operations</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/mount-control.png</image>
+      <caption>Mount cloud storage as a local drive</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/file-viewer.png</image>
       <caption>Preview images, PDFs, and text files</caption>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.3" date="2026-09-23">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Workflow Engine &amp; Visual Canvas UI: Introduced an interactive node-based canvas for automation, an in-process native Rust execution engine, comprehensive triggers, tasks, and logic nodes, pre-built recipes, and live execution logging.</li>
+          <li>Centralized Keyboard Shortcut Management System: Unified keyboard shortcut handling, contextual key bindings for global navigation, and visual shortcut viewer modal.</li>
+          <li>Power Management &amp; Fast Actions Modal: Added a quick power and lifecycle management modal (accessible via long-press on About) for safe app termination, relaunch, emergency stop, and host power actions.</li>
+          <li>Rclone Port Collision Detection &amp; Auto-Repair Flow: Automatic occupied TCP port detection before spawning local Rclone engines, with instant suggestion of available ports and one-click apply &amp; restart.</li>
+          <li>Smart Remote vs. Local Authentication Error Handling: Differentiated rclone_auth repair flow guiding users directly to backend settings for remote backends.</li>
+          <li>URL Preview Component &amp; Utilities: Real-time URL inspection, domain and protocol extraction, and destination path previewing across download and transfer dialogs.</li>
+          <li>Binary File Inspector &amp; MIME Sniffing: In-depth file header inspection, MIME signature detection, and hex/byte dumps for unknown files in Nautilus file browser.</li>
+          <li>Missing Remote Detection &amp; UI Alerts for Quick Runs: Automated detection and warning badges for unconfigured remotes referenced by Quick Run configurations.</li>
+          <li>System Theme Event Synchronization: Real-time native OS theme change listeners forwarding theme transition events for instant dark/light mode switching.</li>
+          <li>Linux NVIDIA WebKit Environment Auto-Configuration: Automatically configures WebKitGTK rendering environment variables at startup when an NVIDIA GPU is detected.</li>
+          <li>Graceful Unix SIGTERM Shutdown Handling: Added unified SIGTERM and SIGINT signal listeners on Unix systems to trigger a clean shutdown sequence before exit.</li>
+          <li>New Traditional Chinese language translations.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Decoupled Async Runtime from UI Framework: Migrated to an application-owned Tokio runtime for background tasks, improving stability.</li>
+          <li>Export Modal UI Overhaul: Redesigned with a Libadwaita-inspired selection list, item counters, and category-level selection controls.</li>
+          <li>Multi-Rename Modal Enhancements: Upgraded with multi-pattern search &amp; replace, prefix/suffix additions, automatic sequence numbering, and live preview table.</li>
+          <li>Dedicated Contributors section in the About modal under Credits.</li>
+          <li>Polished responsive layouts and type safety across jobs overview, logs, and core dialogs.</li>
+        </ul>
+        <p>Removed</p>
+        <ul>
+          <li>Removed deprecated PathValidationService in favor of centralized path resolution utilities and backend validation.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Resolved Linux shutdown deadlock and improved power inhibitor handling across all platforms: switched to idle-sleep inhibition to prevent automatic system sleep during active operations while ensuring clean shutdown.</li>
+          <li>Fixed Tray Quit action window restoration when active transfers or mounts are running with window destruction enabled.</li>
+          <li>Fixed blank page in Nautilus &amp; UI when accessing over non-secure HTTP / remote IP addresses by replacing direct crypto.randomUUID calls with generatePrefixedId.</li>
+          <li>Corrected preset flag definitions for macOS mounts (noappledouble, noapplexattr) and S3 backend (use_server_modtime).</li>
+          <li>Fixed Docker FUSE mount failures with --allow-other and non-root PUID/PGID by enabling user_allow_other in /etc/fuse.conf.</li>
+          <li>Various bug fixes and stability improvements.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-08-24">
       <description>
         <p>Added</p>

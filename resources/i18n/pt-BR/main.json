@@ -486,8 +486,8 @@
         "description": "Abrir janelas de diálogo (modais) em janelas nativas do sistema operacional separadas."
       },
       "prevent_sleep": {
-        "label": "Evitar suspensão / desligamento do sistema",
-        "description": "Inibe a suspensão do sistema e o desligamento do SO enquanto houver transferências, montagens ou servidores ativos."
+        "label": "Evitar suspensão do sistema",
+        "description": "Evita a suspensão automática do sistema enquanto houver transferências, montagens ou servidores ativos."
       },
       "keep_alive": {
         "label": "Executar em segundo plano",

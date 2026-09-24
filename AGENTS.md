@@ -194,7 +194,18 @@ cd src-tauri && cargo fmt -- --check
 cd src-tauri && cargo test --features desktop --no-default-features --lib
 ```
 
-### 3. Local Development
+### 3. Packaging & Linux Metadata Validation
+
+Validate Flatpak AppStream metadata **only if `src-tauri/linux/flatpak.metainfo.xml` was edited and running on Linux** with `appstreamcli` available; otherwise skip.
+
+```bash
+# Validate Flatpak AppStream metainfo (runs only on Linux when flatpak.metainfo.xml is modified, skips otherwise)
+if [ "$(uname)" = "Linux" ] && command -v appstreamcli &>/dev/null; then
+  git diff --name-only HEAD | grep -q "flatpak.metainfo.xml" && appstreamcli validate src-tauri/linux/flatpak.metainfo.xml || true
+fi
+```
+
+### 4. Local Development
 
 ```bash
 # Launch Tauri dev server
@@ -213,3 +224,4 @@ npm run dev:headless
 - `npm run sync:providers`: Sync rclone provider configurations.
 - `npm run sync:flags`: Sync rclone CLI flag definitions.
 - `npm run audit:i18n`: Verify missing translation keys.
+- `appstreamcli validate src-tauri/linux/flatpak.metainfo.xml`: Validate Flatpak AppStream metadata (Linux only, when metadata is modified).

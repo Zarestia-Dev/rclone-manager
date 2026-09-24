@@ -484,8 +484,8 @@
         "description": "Ouvre des boîtes de dialogue (modals) dans des fenêtres distinctes de l'OS natif."
       },
       "prevent_sleep": {
-        "label": "Empêcher la mise en veille / l'extinction du système",
-        "description": "Empêche la mise en veille et l'arrêt du système pendant que des transferts, des montages ou des serveurs sont actifs."
+        "label": "Empêcher la mise en veille du système",
+        "description": "Empêche la mise en veille automatique du système pendant que des transferts, des montages ou des serveurs sont actifs."
       },
       "keep_alive": {
         "label": "Exécuter en arrière-plan",

@@ -100,7 +100,7 @@ jobs:
             echo "=========================================="
 
             rm -rf src-tauri/gen/android/app/build/outputs/apk/
-            npm run tauri android build -- --target "$target" --features mobile -- --no-default-features
+            RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384" npm run tauri android build -- --target "$target" --features mobile -- --no-default-features
 
             apk_path=$(find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | head -n 1)
             if [ -f "$apk_path" ]; then

@@ -80,6 +80,7 @@ fn main() {
             if target_os == "android" {
                 println!("cargo:rustc-link-lib=dylib=log");
                 println!("cargo:rustc-link-lib=dylib=dl");
+                println!("cargo:rustc-cdylib-link-arg=-Wl,-z,max-page-size=16384");
 
                 // Copy the librclone.so library to jniLibs for the Android packaging
                 let abi = match target.as_str() {
@@ -401,7 +402,7 @@ fn build_librclone(target: &str, out_a_path: &str) -> Result<(), String> {
     }
 
     if goos == "android" {
-        cmd.env("CGO_LDFLAGS", "-lm -llog -ldl");
+        cmd.env("CGO_LDFLAGS", "-lm -llog -ldl -Wl,-z,max-page-size=16384");
     }
 
     println!("cargo:warning=Running go build for librclone (GOOS={goos} GOARCH={goarch})...");
