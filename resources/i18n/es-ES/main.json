@@ -486,8 +486,8 @@
         "description": "Abre cuadros de diálogo (modales) en ventanas nativas independientes del sistema operativo."
       },
       "prevent_sleep": {
-        "label": "Evitar suspensión / apagado del sistema",
-        "description": "Inhibe la suspensión del sistema y el apagado del SO mientras haya transferencias, montajes o servidores activos."
+        "label": "Evitar suspensión del sistema",
+        "description": "Evita la suspensión automática del sistema mientras haya transferencias, montajes o servidores activos."
       },
       "keep_alive": {
         "label": "Ejecutar en segundo plano",
