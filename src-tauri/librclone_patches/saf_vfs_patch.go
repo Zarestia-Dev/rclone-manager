@@ -19,6 +19,7 @@ import (
 	"unsafe"
 
 	_ "github.com/rclone/rclone/backend/all"
+	"github.com/rclone/rclone/cmd/bisync"
 	"github.com/rclone/rclone/fs"
 	"github.com/rclone/rclone/fs/config"
 	"github.com/rclone/rclone/fs/fspath"
@@ -51,6 +52,10 @@ func ensureWritableCacheDir() {
 		} else if tmpDir := os.Getenv("TMPDIR"); tmpDir != "" {
 			_ = config.SetCacheDir(filepath.Join(tmpDir, "rclone"))
 		}
+	}
+	activeCache := config.GetCacheDir()
+	if activeCache != "" && !strings.HasPrefix(activeCache, "/data/local/tmp") {
+		bisync.DefaultWorkdir = filepath.Join(activeCache, "bisync")
 	}
 }
 
@@ -180,12 +185,36 @@ func rcSetCacheDir(ctx context.Context, in rc.Params) (out rc.Params, err error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set cache dir: %w", err)
 	}
+	bisync.DefaultWorkdir = filepath.Join(cachePath, "bisync")
 	return rc.Params{"success": true, "cache_dir": config.GetCacheDir()}, nil
+}
+
+func wrapBisyncEndpoint() {
+	originalBisync := rc.Calls.Get("sync/bisync")
+	if originalBisync != nil {
+		origFn := originalBisync.Fn
+		rc.Add(rc.Call{
+			Path:  "sync/bisync",
+			Title: originalBisync.Title,
+			Help:  originalBisync.Help,
+			Fn: func(ctx context.Context, in rc.Params) (rc.Params, error) {
+				ensureWritableCacheDir()
+				if workdir, _ := in.GetString("workdir"); workdir == "" || strings.HasPrefix(workdir, "/data/local/tmp") {
+					cache := config.GetCacheDir()
+					if cache != "" && !strings.HasPrefix(cache, "/data/local/tmp") {
+						in["workdir"] = filepath.Join(cache, "bisync")
+					}
+				}
+				return origFn(ctx, in)
+			},
+		})
+	}
 }
 
 func init() {
 	initAndroidTrustStore()
 	ensureWritableCacheDir()
+	wrapBisyncEndpoint()
 
 	go startHandleSweeper()
 

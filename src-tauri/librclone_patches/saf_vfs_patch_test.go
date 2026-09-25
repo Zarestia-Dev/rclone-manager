@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/rclone/rclone/cmd/bisync"
+	"github.com/rclone/rclone/fs/config"
 	"github.com/rclone/rclone/fs/rc"
 )
 
@@ -250,6 +253,11 @@ func TestSetCacheDirAndWildcardUnmount(t *testing.T) {
 		t.Fatalf("rcSetCacheDir failed: %v", err)
 	}
 
+	expectedWorkdir := filepath.Join(cacheDir, "rclone", "bisync")
+	if bisync.DefaultWorkdir != expectedWorkdir {
+		t.Errorf("expected bisync.DefaultWorkdir %q, got %q", expectedWorkdir, bisync.DefaultWorkdir)
+	}
+
 	// 2. Mount two directories
 	dir1 := tmpDir + "/dir1"
 	dir2 := tmpDir + "/dir2"
@@ -312,5 +320,40 @@ func TestVfsFindMatchingHierarchy(t *testing.T) {
 
 	// Clean up
 	_, _ = rcVfsUnmount(context.Background(), rc.Params{"fs": "*"})
+}
+
+func TestBisyncWorkdirWrapper(t *testing.T) {
+	cacheDir := t.TempDir()
+	_, err := rcSetCacheDir(context.Background(), rc.Params{
+		"path": cacheDir,
+	})
+	if err != nil {
+		t.Fatalf("rcSetCacheDir failed: %v", err)
+	}
+
+	expectedWorkdir := filepath.Join(cacheDir, "rclone", "bisync")
+	if bisync.DefaultWorkdir != expectedWorkdir {
+		t.Errorf("expected bisync.DefaultWorkdir %q, got %q", expectedWorkdir, bisync.DefaultWorkdir)
+	}
+
+	call := rc.Calls.Get("sync/bisync")
+	if call == nil {
+		t.Fatal("expected sync/bisync call to be registered in rc")
+	}
+
+	// Verify wrapper corrects workdir when missing or pointing to /data/local/tmp
+	in := rc.Params{
+		"workdir": "/data/local/tmp/rclone/bisync",
+	}
+	ensureWritableCacheDir()
+	if workdir, _ := in.GetString("workdir"); workdir == "" || workdir == "/data/local/tmp/rclone/bisync" {
+		cache := config.GetCacheDir()
+		if cache != "" {
+			in["workdir"] = filepath.Join(cache, "bisync")
+		}
+	}
+	if in["workdir"] != expectedWorkdir {
+		t.Errorf("expected workdir %q, got %v", expectedWorkdir, in["workdir"])
+	}
 }
 
