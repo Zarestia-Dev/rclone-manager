@@ -249,14 +249,18 @@ pub fn is_updater_enabled() -> bool {
 /// `WEBKIT_DISABLE_COMPOSITING_MODE` are set to prevent blank windows and
 /// "Error 71" protocol errors.
 ///
-/// **Wayland + NVIDIA 515+**: Both quirks are skipped. Modern drivers support
-/// DMABuf natively; disabling compositing forces software rendering and causes
-/// severe animation lag.
+/// **Wayland + strict compositor (KWin/Plasma, Hyprland)**:
+/// `WEBKIT_DISABLE_COMPOSITING_MODE` is set. These compositors strictly enforce
+/// the explicit-sync protocol rule, and NVIDIA's `egl-wayland2` + GTK shared-memory
+/// buffer path fails to set an acquire point, so the compositor drops the
+/// connection (Error 71). Forcing software rendering sidesteps that path.
 ///
-/// **Wayland + NVIDIA < 515**: Only `WEBKIT_DISABLE_DMABUF_RENDERER` is set.
-/// Older drivers do not reliably support DMABuf on Wayland, so the renderer is
-/// disabled to prevent flickering or corruption. `WEBKIT_DISABLE_COMPOSITING_MODE`
-/// is intentionally left unset to avoid software-rendering fallback.
+/// **Wayland + tolerant compositor (niri, etc.)**: No compositing quirk. Modern
+/// drivers support DMABuf natively and these compositors accept the explicit-sync
+/// path, so disabling compositing would only cause software-rendering lag.
+///
+/// **Wayland + NVIDIA < 515**: `WEBKIT_DISABLE_DMABUF_RENDERER` is additionally
+/// set, as older drivers do not reliably support DMABuf on Wayland.
 #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
 // Sound: invoked from main() single-threaded, before the async runtime spawns threads.
 #[allow(clippy::disallowed_methods)]
@@ -270,9 +274,18 @@ pub fn apply_linux_graphics_quirks() {
     // Sound: runs single-threaded in main before the runtime spawns any threads.
     unsafe {
         if wayland {
-            // On Wayland, WEBKIT_DISABLE_COMPOSITING_MODE forces software rendering —
-            // never set it. Only disable DMABuf if the driver is too old to support it
-            // natively (< 515).
+            // Strict compositors (KWin/Plasma, Hyprland) enforce the explicit-sync
+            // protocol rule: NVIDIA's egl-wayland2 arms explicit sync on the EGL
+            // surface, but GTK attaches a shared-memory buffer with no acquire
+            // point, so the compositor drops the connection (Error 71). Forcing
+            // software rendering sidesteps the EGL explicit-sync path entirely.
+            if is_strict_wayland_compositor()
+                && std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err()
+            {
+                std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+            }
+
+            // Older drivers do not reliably support DMABuf on Wayland.
             let old_driver = nvidia_driver_version().map(|v| v < 515).unwrap_or(false);
             if old_driver && std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
                 std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
@@ -298,6 +311,29 @@ pub fn apply_linux_graphics_quirks() {
 fn is_wayland_session() -> bool {
     std::env::var("XDG_SESSION_TYPE").is_ok_and(|v| v.eq_ignore_ascii_case("wayland"))
         || std::env::var("WAYLAND_DISPLAY").is_ok()
+}
+
+/// Returns true when running on a Wayland compositor that strictly enforces the
+/// explicit-sync protocol rule (KWin/Plasma, Hyprland).
+///
+/// These compositors reject surfaces that use explicit sync without setting an
+/// acquire point. NVIDIA's `egl-wayland2` implementation arms explicit sync on
+/// the EGL surface, but GTK then attaches a shared-memory buffer with no acquire
+/// point, causing the compositor to drop the connection (Error 71).
+///
+/// Detection relies on `XDG_CURRENT_DESKTOP` and `XDG_SESSION_DESKTOP`, which the
+/// desktop environment sets in the user session environment.
+#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+fn is_strict_wayland_compositor() -> bool {
+    ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
+        .iter()
+        .filter_map(|key| std::env::var(key).ok())
+        .any(|value| {
+            value.split(':').any(|entry| {
+                let entry = entry.trim().to_ascii_lowercase();
+                entry == "kde" || entry == "plasma" || entry == "hyprland"
+            })
+        })
 }
 
 /// Returns the major version number of the loaded NVIDIA driver, parsed from
@@ -336,7 +372,105 @@ fn nvidia_proprietary_driver_loaded() -> bool {
 
 #[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
 mod graphics_quirks_tests {
-    use super::is_wayland_session;
+    use super::{is_strict_wayland_compositor, is_wayland_session};
+
+    #[test]
+    fn strict_compositor_detected_for_kde() {
+        let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
+        let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
+        unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
+        unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
+
+        unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "KDE") };
+        assert!(
+            is_strict_wayland_compositor(),
+            "KDE should be detected as a strict compositor"
+        );
+
+        unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "plasma") };
+        assert!(
+            is_strict_wayland_compositor(),
+            "plasma (via XDG_SESSION_DESKTOP) should be detected"
+        );
+
+        // Restore.
+        match prev_current {
+            Some(v) => unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") },
+        }
+        match prev_session {
+            Some(v) => unsafe { std::env::set_var("XDG_SESSION_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") },
+        }
+    }
+
+    #[test]
+    fn strict_compositor_detected_for_hyprland() {
+        let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
+        let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
+        unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
+        unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
+
+        unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "Hyprland") };
+        assert!(
+            is_strict_wayland_compositor(),
+            "Hyprland should be detected as a strict compositor"
+        );
+
+        // Restore.
+        match prev_current {
+            Some(v) => unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") },
+        }
+        match prev_session {
+            Some(v) => unsafe { std::env::set_var("XDG_SESSION_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") },
+        }
+    }
+
+    #[test]
+    fn tolerant_compositor_not_detected_as_strict() {
+        let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
+        let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
+        unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
+        unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
+
+        unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "GNOME") };
+        unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "ubuntu") };
+        assert!(
+            !is_strict_wayland_compositor(),
+            "GNOME/Ubuntu should not be detected as strict"
+        );
+
+        // Restore.
+        match prev_current {
+            Some(v) => unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") },
+        }
+        match prev_session {
+            Some(v) => unsafe { std::env::set_var("XDG_SESSION_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") },
+        }
+    }
+
+    #[test]
+    fn strict_compositor_handles_colon_separated_desktops() {
+        let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
+        unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
+
+        unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "GNOME:KDE") };
+        assert!(
+            is_strict_wayland_compositor(),
+            "KDE in a colon-separated list should be detected"
+        );
+
+        // Restore.
+        match prev_current {
+            Some(v) => unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", v) },
+            None => unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") },
+        }
+        unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
+    }
 
     #[test]
     fn wayland_detected_via_xdg_session_type() {
