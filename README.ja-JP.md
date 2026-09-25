@@ -62,6 +62,7 @@
 - 🚀 **クイックラン (Quick Runs):** 状態をリアルタイム表示するカードグリッドから、ワンクリックでクラウド操作やカスタム CLI フラグプリセットを実行できます。
 - ⚙️ **マウント & 公開:** 簡単なマウント操作と公開（WebDAV、SFTP、HTTP、FTP）の管理が行えます。
 - 🔄 **ジョブウォッチャー:** 転送のリアルタイムモニタリングと帯域幅制御が可能です。
+- 📱 **Android SAF & DocumentsProvider:** Storage Access Framework (SAF) とプロセス内 VFS マウントブリッジにより、root 権限や FUSE なしでシステムファイルピッカーからクラウドストレージにネイティブアクセスできます。
 - 🌐 **ヘッドレスモード:** VPS や NAS 上で Web サーバーとして実行したい場合は [RClone Manager Headless](headless/README.md) をご覧ください！
 
 ---
@@ -137,7 +138,9 @@
 | :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
 | **直接ダウンロード** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK ダウンロード (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **ガイド:** [Wiki: Android サポート (ベータ)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go エンジン / librclone の詳細と設定)
+> 📱 **Storage Access Framework (SAF):** ネイティブな `DocumentsProvider` (`RcloneDocumentsProvider`) 連携とインプロセス VFS マウントブリッジを搭載し、root 権限や `/dev/fuse` なしで Android システムファイルピッカーや外部アプリにクラウドストレージを直接公開します。
+>
+> 📚 **ガイド:** [Wiki: Android サポート (ベータ)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go エンジン / librclone の詳細、SAF プロバイダーと設定)
 
 > 🛠️ **システム要件:** ドライブをマウントするには WinFsp (Windows)、macFUSE (macOS)、または FUSE3 (Linux) が必要です。Rclone 自体は未導入の場合に自動ダウンロードされます。[Wiki: システム要件](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies) を参照してください。
 

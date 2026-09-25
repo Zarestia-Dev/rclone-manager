@@ -62,6 +62,7 @@
 - 🚀 **快速執行 (Quick Runs):** 從狀態感知的卡片網格中一鍵觸發雲端操作與自訂 CLI 參數預設。
 - ⚙️ **掛載與伺服:** 簡易的掛載控制與伺服協定管理（WebDAV、SFTP、HTTP、FTP）。
 - 🔄 **工作監視器:** 即時傳輸監控與頻寬控制。
+- 📱 **Android SAF 與 DocumentsProvider:** 透過儲存空間存取架構 (SAF) 與內建 VFS 掛載橋，無需 Root 或 FUSE 即可在系統檔案選擇器中原生存取雲端遠端儲存。
 - 🌐 **無周邊（Headless）模式:** 存取 [RClone Manager Headless](headless/README.md) 在 VPS/NAS 上作為 Web 伺服器執行！
 
 ---
@@ -137,7 +138,9 @@
 | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
 | **直接下載** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK 下載 (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **指南:** [Wiki: Android 支援 (測試版)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go 引擎 / librclone 詳細資訊與設定)
+> 📱 **儲存空間存取架構 (SAF):** 提供原生 `DocumentsProvider` (`RcloneDocumentsProvider`) 整合與程序內 VFS 掛載橋，無需 Root 或 `/dev/fuse` 即可將已掛載的雲端儲存直接公開給 Android 系統檔案選擇器與外部應用程式。
+>
+> 📚 **指南:** [Wiki: Android 支援 (測試版)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go 引擎 / librclone 詳細資訊、SAF 提供程式與設定)
 
 > 🛠️ **系統需求:** 掛載磁碟機需要 WinFsp (Windows)、macFUSE (macOS) 或 FUSE3 (Linux)。如果缺失，Rclone 本身會自動下載。請參閱 [Wiki: 系統需求](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies)。
 

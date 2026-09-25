@@ -62,6 +62,7 @@
 - 🚀 **Quick Runs:** Trigger one-click cloud operations and custom CLI flag presets directly from a status-aware card grid.
 - ⚙️ **Mount & Serve:** Easy mount controls and serve management (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Job Watcher:** Real-time transfer monitoring and bandwidth control.
+- 📱 **Android SAF & DocumentsProvider:** Access cloud remotes natively in system file pickers via Storage Access Framework and in-process VFS mount bridge without root.
 - 🌐 **Headless Mode:** Check out [RClone Manager Headless](headless/README.md) to run as a web server on VPS/NAS!
 
 ---
@@ -137,7 +138,9 @@ Install RClone Manager using your preferred package manager, or download standal
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
 | **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK Downloads (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Guide:** [Wiki: Android Support (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go engine / librclone details & setup)
+> 📱 **Storage Access Framework (SAF):** Features native `DocumentsProvider` (`RcloneDocumentsProvider`) integration and an in-process VFS mount bridge, exposing mounted cloud remotes directly to Android system file pickers and external apps without requiring root or `/dev/fuse`.
+>
+> 📚 **Guide:** [Wiki: Android Support (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go engine / librclone details, SAF provider & setup)
 
 > 🛠️ **System Requirements:** Mounting drives requires WinFsp (Windows), macFUSE (macOS), or FUSE3 (Linux). Rclone itself is downloaded automatically if missing. See [Wiki: System Requirements](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

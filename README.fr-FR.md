@@ -62,6 +62,7 @@
 - 🚀 **Exécutions rapides (Quick Runs):** Déclenchez des opérations cloud en un clic et gérez des préconfigurations d'arguments CLI depuis une grille de cartes interactive.
 - ⚙️ **Montage & Diffusion:** Contrôles de montage simples et gestion des serveurs de diffusion (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Suivi des tâches:** Surveillance des transferts en temps réel et contrôle de la bande passante.
+- 📱 **Android SAF & DocumentsProvider :** Accédez nativement à vos stockages cloud distants dans les sélecteurs de fichiers système via le Storage Access Framework et un pont de montage VFS intégré, sans root ni FUSE.
 - 🌐 **Mode Headless (Sans tête):** Consultez [RClone Manager Headless](headless/README.md) pour l'exécuter en tant que serveur web sur VPS/NAS !
 
 ---
@@ -137,7 +138,9 @@ Installez RClone Manager à l'aide de votre gestionnaire de paquets préféré, 
 | :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
 | **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Téléchargements APK (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Guide :** [Wiki : Support Android (Bêta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Détails du moteur Go / librclone et configuration)
+> 📱 **Storage Access Framework (SAF) :** Intègre un `DocumentsProvider` natif (`RcloneDocumentsProvider`) et un pont de montage VFS in-process, permettant d'exposer les partages cloud distants directement aux sélecteurs de fichiers d'Android et aux applications externes sans nécessiter de root ou de `/dev/fuse`.
+>
+> 📚 **Guide :** [Wiki : Support Android (Bêta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Détails du moteur Go / librclone, fournisseur SAF et configuration)
 
 > 🛠️ **Configuration système requise:** Le montage de disques requiert WinFsp (Windows), macFUSE (macOS) ou FUSE3 (Linux). Rclone lui-même est téléchargé automatiquement s'il est manquant. Voir [Wiki: Configuration système requise](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 
