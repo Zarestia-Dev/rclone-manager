@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { Signal, signal } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
 import { QuickRunEditorComponent } from './quick-run-editor.component';
@@ -93,6 +93,8 @@ describe('QuickRunEditorComponent', () => {
   let mountServiceMock: { getMountTypes: ReturnType<typeof vi.fn> };
   let serveServiceMock: { getServeTypes: ReturnType<typeof vi.fn> };
   let flagConfigServiceMock: {
+    mountTypes: Signal<string[]>;
+    availableServeTypes: Signal<string[]>;
     allFlagFields: ReturnType<typeof vi.fn>;
     loadAllFlagFields: ReturnType<typeof vi.fn>;
     loadServeFlagFields: ReturnType<typeof vi.fn>;
@@ -108,6 +110,8 @@ describe('QuickRunEditorComponent', () => {
     };
 
     flagConfigServiceMock = {
+      mountTypes: signal(['mount', 'cmount', 'saf']),
+      availableServeTypes: signal(['http', 'webdav', 'ftp', 'sftp']),
       allFlagFields: vi.fn().mockImplementation(() => allFlagFieldsSignal()),
       loadAllFlagFields: vi.fn().mockResolvedValue(allFlagsMock),
       loadServeFlagFields: vi.fn().mockImplementation((type: string) => {
@@ -191,32 +195,16 @@ describe('QuickRunEditorComponent', () => {
     expect(serveOpts?.get('type')?.value).toBe('http');
   });
 
-  it('should load mountTypes and decorate Examples on mountType option', async () => {
+  it('should expose mountTypes from flagConfigService', async () => {
     await fixture.whenStable();
 
-    expect(mountServiceMock.getMountTypes).toHaveBeenCalled();
     expect(component.mountTypes()).toEqual(['mount', 'cmount', 'saf']);
-
-    const mountFields = component.getFlagFields('mount');
-    const mountTypeOpt = mountFields.find(f => f.Name === 'mountType');
-
-    expect(mountTypeOpt).toBeDefined();
-    expect(mountTypeOpt?.Examples).toBeDefined();
-    expect(mountTypeOpt?.Examples?.map(e => e.Value)).toEqual(['mount', 'cmount', 'saf']);
   });
 
-  it('should load serveTypes and decorate Examples on type option', async () => {
+  it('should expose availableServeTypes from flagConfigService', async () => {
     await fixture.whenStable();
 
-    expect(serveServiceMock.getServeTypes).toHaveBeenCalled();
     expect(component.availableServeTypes()).toEqual(['http', 'webdav', 'ftp', 'sftp']);
-
-    const serveFields = component.getFlagFields('serve');
-    const typeOpt = serveFields.find(f => f.Name === 'type');
-
-    expect(typeOpt).toBeDefined();
-    expect(typeOpt?.Examples).toBeDefined();
-    expect(typeOpt?.Examples?.map(e => e.Value)).toEqual(['http', 'webdav', 'ftp', 'sftp']);
   });
 
   it('should dynamically update serve fields and options when serve type changes', async () => {

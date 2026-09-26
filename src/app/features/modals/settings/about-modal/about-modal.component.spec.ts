@@ -36,6 +36,7 @@ describe('AboutModalComponent', () => {
       isChecking: signal(false),
       buildType: signal('deb'),
       isUpdaterEnabled: signal(true),
+      canAutoInstall: signal(true),
     };
 
     const mockRcloneUpdateService = {

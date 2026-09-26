@@ -36,11 +36,13 @@ export class AppUpdaterService extends TauriBaseService {
   private readonly _isUpdaterEnabled = signal<boolean>(true);
   private readonly _buildType = signal<string | null>(null);
   private readonly _updateState = signal<UpdateInfo | null>(null);
+  private readonly _canAutoInstall = signal<boolean>(true);
   private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
   private readonly _isChecking = signal<boolean>(false);
 
   // Public readonly surface (Derived to prevent state tears)
   public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
+  public readonly canAutoInstall = this._canAutoInstall.asReadonly();
   public readonly buildType = this._buildType.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
@@ -242,13 +244,15 @@ export class AppUpdaterService extends TauriBaseService {
 
   async initialize(): Promise<void> {
     try {
-      const enabled = await this.invokeCommand<boolean>('is_updater_enabled');
-      this._isUpdaterEnabled.set(enabled);
-      if (!enabled) {
-        return;
-      }
       await this.settings.initialize();
-      this._buildType.set(await this.invokeCommand<string>('get_build_type'));
+      this._buildType.set(await this.invokeCommand<string | null>('get_build_type'));
+
+      try {
+        const canAuto = await this.invokeCommand<boolean>('can_auto_install');
+        this._canAutoInstall.set(canAuto);
+      } catch {
+        this._canAutoInstall.set(false);
+      }
 
       // Sync status from backend on init (even if autoCheck is disabled) to pick
       // up any updates found by the backend startup check. Always silent here.

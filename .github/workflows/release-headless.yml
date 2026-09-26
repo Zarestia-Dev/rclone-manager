@@ -87,6 +87,6 @@ jobs:
           prerelease: false
           args: >-
             --config src-tauri/tauri.conf.headless.json
-            --features web-server,tray
+            --features web-server,tray,updater
             ${{ matrix.args }}
             -- --no-default-features

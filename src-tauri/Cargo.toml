@@ -101,8 +101,8 @@ windows = { version = "0.62", features = ["Networking_Connectivity"] }
 winreg = "0.56"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-autostart = "2"
-tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
@@ -110,8 +110,10 @@ tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = tr
 updater = ["dep:tauri-plugin-updater"]
 tauri-plugin-notification = ["dep:tauri-plugin-notification"]
 tauri-plugin-deep-link = ["dep:tauri-plugin-deep-link"]
+tauri-plugin-autostart = ["dep:tauri-plugin-autostart"]
+tauri-plugin-single-instance = ["dep:tauri-plugin-single-instance"]
 
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "updater"]
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
 
 # Container
 container = ["web-server"]
@@ -121,6 +123,8 @@ shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "
 # For GUI features
 desktop = [
     "tauri-plugin-window-state",
+    "tauri-plugin-autostart",
+    "tauri-plugin-single-instance",
     "tauri/devtools",
     "updater",
     "shared-tauri",
@@ -130,7 +134,13 @@ desktop = [
     "dep:objc2",
     "dep:objc2-foundation",
 ]
-tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
+tray = [
+    "tauri/tray-icon",
+    "tauri/image-png",
+    "tauri-plugin-opener",
+    "tauri-plugin-autostart",
+    "tauri-plugin-single-instance",
+]
 default = ["desktop", "tray"]
 
 # Managed by package managers or not compatible with updater

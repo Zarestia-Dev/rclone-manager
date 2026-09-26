@@ -1,26 +1,33 @@
-use crate::core::{bridge, lifecycle::shutdown::handle_shutdown, settings::AppSettingsManager};
+#[cfg(feature = "updater")]
+use crate::core::lifecycle::shutdown::handle_shutdown;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::utils::github_client::{OWNER, REPO};
+#[cfg(feature = "updater")]
+use crate::utils::types::updater::{DownloadState, DownloadStatus, UpdaterError as Error};
 use crate::utils::types::{
     events::APP_EVENT,
-    updater::{
-        AppUpdaterState, DownloadState, DownloadStatus, Result, UpdateInfo, UpdateMetadata,
-        UpdateState, UpdaterError as Error,
-    },
+    updater::{AppUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateState},
 };
 use crate::utils::{
     app::notification::{NotificationEvent, UpdateStage, notify},
     github_client,
 };
-use log::{debug, info, warn};
+use log::info;
+#[cfg(feature = "updater")]
+use log::warn;
 use tauri::{AppHandle, Manager};
+#[cfg(feature = "updater")]
 use tauri_plugin_updater::UpdaterExt;
 
+#[cfg(feature = "updater")]
 fn emit_progress(status: DownloadStatus) {
     crate::core::bridge::emit(
         APP_EVENT,
         serde_json::json!({ "status": "download_progress", "data": status }),
     );
 }
+
+pub use crate::utils::version::{clean_app_version, is_version_newer};
 
 #[bridge]
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
@@ -52,7 +59,10 @@ async fn fetch_update_inner(
                 }));
             }
             data.state = UpdateState::Idle;
-            data.pending_action = None;
+            #[cfg(feature = "updater")]
+            {
+                data.pending_action = None;
+            }
             data.signature = None;
             data.last_metadata = None;
         }
@@ -90,6 +100,85 @@ async fn fetch_update_inner(
         return Ok(None);
     };
 
+    let current_version_str = app.package_info().version.to_string();
+    let release_version_str = clean_app_version(&release.tag_name);
+
+    let is_newer = is_version_newer(&current_version_str, release_version_str);
+    if !is_newer {
+        info!("App is up to date (current: {current_version_str}, latest: {release_version_str})");
+        updater_state.data.lock().state = UpdateState::Idle;
+        return Ok(None);
+    }
+
+    info!("Newer version found: {release_version_str} (current: {current_version_str})");
+
+    let update_metadata = UpdateMetadata {
+        version: release_version_str.to_string(),
+        current_version: current_version_str,
+        release_tag: Some(release.tag_name.clone()),
+        release_notes: release.body.clone(),
+        release_date: release.published_at.clone(),
+        release_url: Some(release.html_url.clone()),
+        update_available: true,
+        channel: Some(channel.to_string()),
+    };
+
+    #[cfg(feature = "updater")]
+    let (pending_action, update_metadata) = if crate::utils::app::platform::can_auto_install() {
+        let mut meta = update_metadata;
+        let action = check_native_updater(app, &release, &mut meta).await;
+        (action, meta)
+    } else {
+        (None, update_metadata)
+    };
+
+    let update_info = UpdateInfo {
+        metadata: update_metadata.clone(),
+        status: UpdateState::Available,
+    };
+
+    crate::core::bridge::emit(
+        APP_EVENT,
+        serde_json::json!({ "status": "update_found", "data": &update_info }),
+    );
+
+    let is_skipped = app
+        .try_state::<AppSettingsManager>()
+        .and_then(|m| m.get_all().ok())
+        .is_some_and(|c| {
+            c.runtime
+                .app_skipped_updates
+                .contains(&update_info.metadata.version)
+        });
+
+    if !is_skipped {
+        notify(
+            app,
+            NotificationEvent::AppUpdate(UpdateStage::Available {
+                version: update_info.metadata.version.clone(),
+            }),
+        );
+    }
+
+    {
+        let mut data = updater_state.data.lock();
+        data.state = UpdateState::Available;
+        data.last_metadata = Some(update_metadata);
+        #[cfg(feature = "updater")]
+        {
+            data.pending_action = pending_action;
+        }
+    }
+
+    Ok(Some(update_info))
+}
+
+#[cfg(feature = "updater")]
+async fn check_native_updater(
+    app: &AppHandle,
+    release: &github_client::Release,
+    metadata: &mut UpdateMetadata,
+) -> Option<tauri_plugin_updater::Update> {
     let json_url = release
         .assets
         .iter()
@@ -109,10 +198,11 @@ async fn fetch_update_inner(
 
     info!("Using update manifest: {json_url}");
 
+    let endpoint = json_url.parse().ok()?;
     let app_exit = app.clone();
-    let check_result = app
-        .updater_builder()
-        .endpoints(vec![json_url.parse()?])?
+    let updater_builder = app.updater_builder().endpoints(vec![endpoint]).ok()?;
+
+    let check_result = updater_builder
         .version_comparator(|curr, upd| upd.version != curr)
         .on_before_exit(move || {
             let app = app_exit.clone();
@@ -121,74 +211,25 @@ async fn fetch_update_inner(
                 handle_shutdown(app).await;
             });
         })
-        .build()?
+        .build()
+        .ok()?
         .check()
-        .await?;
+        .await
+        .ok()?;
 
-    let (update, update_metadata) = match check_result {
-        Some(mut u) => {
-            adjust_download_url(&mut u, &release.tag_name);
-            let metadata = UpdateMetadata {
-                version: u.version.clone(),
-                current_version: u.current_version.clone(),
-                release_tag: Some(release.tag_name),
-                release_notes: release.body,
-                release_date: release.published_at,
-                release_url: Some(release.html_url),
-                update_available: true,
-                channel: Some(channel.to_string()),
-            };
-            (Some(u), Some(metadata))
-        }
-        None => (None, None),
-    };
-
-    let update_info = update_metadata.as_ref().map(|m| UpdateInfo {
-        metadata: m.clone(),
-        status: UpdateState::Available,
-    });
-
-    if let Some(ref info) = update_info {
-        crate::core::bridge::emit(
-            APP_EVENT,
-            serde_json::json!({ "status": "update_found", "data": info }),
-        );
-
-        let is_skipped = app
-            .try_state::<AppSettingsManager>()
-            .and_then(|m| m.get_all().ok())
-            .is_some_and(|c| {
-                c.runtime
-                    .app_skipped_updates
-                    .contains(&info.metadata.version)
-            });
-
-        if !is_skipped {
-            notify(
-                app,
-                NotificationEvent::AppUpdate(UpdateStage::Available {
-                    version: info.metadata.version.clone(),
-                }),
-            );
-        }
+    if let Some(mut u) = check_result {
+        adjust_download_url(&mut u, &release.tag_name);
+        metadata.version = u.version.clone();
+        metadata.current_version = u.current_version.clone();
+        Some(u)
+    } else {
+        None
     }
-
-    {
-        let mut data = updater_state.data.lock();
-        data.state = if update_metadata.is_some() {
-            UpdateState::Available
-        } else {
-            UpdateState::Idle
-        };
-        data.last_metadata = update_metadata;
-        data.pending_action = update;
-    }
-
-    Ok(update_info)
 }
 
 // Rewrites the download URL to use the release tag path instead of the generic
 // version path that the manifest may have generated (e.g. /download/beta-1/ vs /download/v1.2.3/).
+#[cfg(feature = "updater")]
 fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
     let version_seg = format!("/download/v{}/", update.version);
     let tag_seg = format!("/download/{tag}/");
@@ -198,7 +239,7 @@ fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
         && !url_str.contains(&tag_seg)
         && let Ok(parsed) = url_str.replace(&version_seg, &tag_seg).parse()
     {
-        debug!("Adjusted update URL: {} -> {}", update.download_url, parsed);
+        log::debug!("Adjusted update URL: {} -> {}", update.download_url, parsed);
         update.download_url = parsed;
     }
 }
@@ -231,13 +272,21 @@ fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bo
         return false;
     }
 
+    let is_pre = release.prerelease
+        || tag.contains("beta")
+        || tag.contains("alpha")
+        || tag.contains("rc")
+        || tag.contains("dev")
+        || tag.contains("preview");
+
     match channel {
-        "stable" => !release.prerelease && !tag.contains("beta"),
-        "beta" => release.prerelease || tag.contains("beta"),
-        _ => !release.prerelease && !tag.contains("beta"),
+        "stable" => !is_pre,
+        "beta" => true,
+        _ => !is_pre,
     }
 }
 
+#[cfg(feature = "updater")]
 #[bridge]
 pub async fn install_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
@@ -357,6 +406,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "updater")]
 #[bridge]
 pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
@@ -380,6 +430,7 @@ pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "updater")]
 #[bridge]
 pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();

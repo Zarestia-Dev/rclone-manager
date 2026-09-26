@@ -127,6 +127,11 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** use raw `tokio::spawn` directly in production code: calling `tokio::spawn` outside of Tokio worker threads (e.g. inside `setup` hooks, GUI thread event listeners, or OS callbacks) panics with `"there is no reactor running"`. `crate::utils::spawn` dynamically registers the Tokio runtime context on the calling thread and returns a native `tokio::task::JoinHandle`.
     - **DO NOT** use `tauri::async_runtime::spawn` or `tauri::async_runtime::JoinHandle`.
 
+15. **Zero-Dependency Semantic Version Comparison (Rust)**
+    - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
+    - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) in `src-tauri/src/utils/version.rs` (re-exported in `crate::utils::app::updater`).
+    - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))

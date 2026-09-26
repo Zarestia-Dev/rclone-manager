@@ -4,7 +4,10 @@ use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
-#[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
+#[cfg(all(
+    feature = "tauri-plugin-autostart",
+    not(all(target_os = "linux", feature = "flatpak"))
+))]
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::utils::spawn;
@@ -139,7 +142,10 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
                     handle_autostart_change(startup);
                 }
             }
-            #[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
+            #[cfg(all(
+                feature = "tauri-plugin-autostart",
+                not(all(target_os = "linux", feature = "flatpak"))
+            ))]
             ("general", "start_on_startup") => {
                 if let Some(startup) = change.value.as_bool() {
                     handle_autostart_change(app, startup);
@@ -275,7 +281,10 @@ fn handle_autostart_change(enabled: bool) {
     });
 }
 
-#[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
+#[cfg(all(
+    feature = "tauri-plugin-autostart",
+    not(all(target_os = "linux", feature = "flatpak"))
+))]
 fn handle_autostart_change(app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
     let autostart = app.autolaunch();

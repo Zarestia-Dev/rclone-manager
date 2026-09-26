@@ -284,18 +284,15 @@ pub struct RuntimeSettings {
         label = "settings.runtime.app_auto_check_updates.label",
         description = "settings.runtime.app_auto_check_updates.description"
     )]
-    #[cfg(feature = "updater")]
     pub app_auto_check_updates: bool,
 
     #[setting(
         label = "settings.runtime.app_skipped_updates.label",
         description = "settings.runtime.app_skipped_updates.description"
     )]
-    #[cfg(feature = "updater")]
     pub app_skipped_updates: Vec<String>,
 
     #[setting(label = "settings.runtime.app_update_channel.label", options(("stable", "settings.runtime.app_update_channel.options.stable"), ("beta", "settings.runtime.app_update_channel.options.beta")))]
-    #[cfg(feature = "updater")]
     pub app_update_channel: String,
 
     #[setting(
@@ -350,11 +347,8 @@ impl Default for RuntimeSettings {
     fn default() -> Self {
         Self {
             theme: "system".to_string(),
-            #[cfg(feature = "updater")]
             app_auto_check_updates: true,
-            #[cfg(feature = "updater")]
             app_skipped_updates: vec![],
-            #[cfg(feature = "updater")]
             app_update_channel: "stable".to_string(),
             #[cfg(not(feature = "librclone"))]
             rclone_auto_check_updates: true,

@@ -101,25 +101,23 @@ pub enum UpdateState {
 }
 
 /// Tracks the in-flight app self-update download and its staged payload.
-#[cfg(feature = "updater")]
 pub struct AppUpdaterState {
     pub data: Mutex<AppUpdaterData>,
 }
 
-#[cfg(feature = "updater")]
 #[derive(Default)]
 pub struct AppUpdaterData {
     pub state: UpdateState,
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub failure_message: Option<String>,
+    #[cfg(feature = "updater")]
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
     pub download_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
-#[cfg(feature = "updater")]
 impl Default for AppUpdaterState {
     fn default() -> Self {
         Self {

@@ -460,33 +460,51 @@ export class AboutModalComponent implements OnInit {
   readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
     const buildType = this.buildType();
-    if (!buildType) return null;
+    const canAutoInstall = this.appUpdaterService.canAutoInstall();
 
-    switch (buildType) {
-      case 'flatpak':
-        return {
-          command: 'flatpak update io.github.zarestia_dev.rclone-manager',
-          links: [
-            {
-              label: 'modals.about.openFlathub',
-              url: 'https://flathub.org/apps/io.github.zarestia_dev.rclone-manager',
-              primary: true,
-            },
-          ],
-        };
-      case 'portable':
-        return {
-          command: undefined,
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      case 'container':
-        return {
-          command: 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest',
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      default:
-        return null;
+    if (buildType) {
+      switch (buildType) {
+        case 'flatpak':
+          return {
+            command: 'flatpak update io.github.zarestia_dev.rclone-manager',
+            links: [
+              {
+                label: 'modals.about.openFlathub',
+                url: 'https://flathub.org/apps/io.github.zarestia_dev.rclone-manager',
+                primary: true,
+              },
+            ],
+          };
+        case 'portable':
+          return {
+            command: undefined,
+            links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+          };
+        case 'container':
+          return {
+            command: 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest',
+            links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+          };
+      }
     }
+
+    if (!canAutoInstall) {
+      const update = this.appUpdateAvailable();
+      return {
+        command: undefined,
+        links: [
+          {
+            label: 'modals.about.viewOnGithub',
+            url:
+              update?.releaseUrl ||
+              'https://github.com/Zarestia-Dev/rclone-manager/releases/latest',
+            primary: true,
+          },
+        ],
+      };
+    }
+
+    return null;
   });
 
   async quitRcloneEngine(): Promise<void> {

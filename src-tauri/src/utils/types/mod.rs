@@ -10,5 +10,4 @@ pub mod rclone;
 pub mod remotes;
 pub mod state;
 
-#[cfg(any(feature = "updater", not(feature = "librclone")))]
 pub mod updater;

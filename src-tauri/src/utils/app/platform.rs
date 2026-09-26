@@ -234,8 +234,8 @@ pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
 
 #[bridge]
 #[must_use]
-pub fn is_updater_enabled() -> bool {
-    cfg!(feature = "updater")
+pub fn can_auto_install() -> bool {
+    cfg!(feature = "updater") && get_build_type().is_none()
 }
 
 /// Applies WebKitGTK environment workarounds for known Linux NVIDIA rendering

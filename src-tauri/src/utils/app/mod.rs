@@ -9,7 +9,6 @@ pub mod builder;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod send_to;
 
-#[cfg(feature = "updater")]
 pub mod updater;
 
 #[cfg(not(feature = "web-server"))]

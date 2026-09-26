@@ -90,7 +90,7 @@ pub fn run() {
         builder = crate::utils::app::protocol::register_protocols(builder);
     }
 
-    #[cfg(desktop)]
+    #[cfg(feature = "tauri-plugin-single-instance")]
     {
         let si_builder = tauri_plugin_single_instance::Builder::new();
 
@@ -128,7 +128,7 @@ pub fn run() {
                             return;
                     }
 
-                    #[cfg(feature = "web-server")]
+                    #[cfg(all(feature = "web-server", feature = "tray"))]
                     log::info!("Another instance attempted to run with args: {argv:?}");
 
                     #[cfg(not(feature = "web-server"))]
@@ -220,7 +220,7 @@ pub fn run() {
         });
     }
 
-    #[cfg(all(desktop, not(feature = "flatpak")))]
+    #[cfg(all(feature = "tauri-plugin-autostart", not(feature = "flatpak")))]
     {
         builder = builder.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -381,9 +381,8 @@ fn setup_app(
     app.manage(crate::core::automation::watcher::WatcherManager::new());
     app.manage(core::alerts::dispatch::DispatchContext::new());
 
-    #[cfg(feature = "updater")]
     app.manage(utils::types::updater::AppUpdaterState::default());
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     app.manage(utils::types::updater::RcloneUpdaterState::default());
     app.manage(utils::types::provision::ProvisionState::default());
 
