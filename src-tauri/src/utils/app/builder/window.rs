@@ -1,69 +1,7 @@
-#[cfg(feature = "tray")]
-pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
-    let app_clone = app.clone();
-    use crate::core::settings::AppSettingsManager;
-    use crate::core::tray::TraySnapshot;
-    use crate::core::tray::menu::{MenuPlan, create_tray_menu_from_plan};
-    use tauri::Manager;
-
-    let snapshot = TraySnapshot::fetch(&app_clone).await?;
-
-    // Build plan off main thread
-    let (plan, icon_theme) = {
-        let settings_manager = app_clone.state::<AppSettingsManager>();
-        let settings = settings_manager
-            .get_all()
-            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
-        let max_tray_items = settings.core.max_tray_items;
-        let icon_theme = settings.general.tray_icon_theme;
-        (MenuPlan::build(&snapshot, max_tray_items), icon_theme)
-    };
-
-    let icon_kind = crate::core::tray::icon::TrayIconKind::resolve(false, &icon_theme);
-    let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
-    let icon = icon_kind.to_image();
-
-    if let Some(state) = app.try_state::<crate::core::tray::TrayMenuState>() {
-        let mut cache = state.cache.lock().unwrap();
-        cache.plan = Some(plan.clone());
-        cache.tooltip = Some(crate::t!("tray.tooltipDefault"));
-        cache.icon = Some(icon_kind);
-    }
-
-    app.run_on_main_thread(move || {
-        #[allow(unused_mut)]
-        let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
-            .icon(icon)
-            .tooltip(crate::t!("tray.tooltipDefault"))
-            .menu(&tray_menu);
-
-        #[cfg(not(feature = "web-server"))]
-        {
-            tray = tray.on_tray_icon_event(move |tray, event| {
-                if let tauri::tray::TrayIconEvent::DoubleClick {
-                    button: tauri::tray::MouseButton::Left,
-                    ..
-                } = event
-                {
-                    crate::core::tray::actions::show_main_window(tray.app_handle().clone());
-                }
-            });
-        }
-
-        if let Err(e) = tray.build(&app_clone) {
-            log::error!("Failed to build tray icon: {e}");
-        }
-    })?;
-
-    Ok(())
-}
-
-#[cfg(not(feature = "web-server"))]
 fn apply_platform_config(
     builder: tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle>,
 ) -> tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle> {
-    #[allow(unused_mut)]
-    let mut b = builder
+    let b = builder
         .inner_size(800.0, 630.0)
         .resizable(true)
         .center()
@@ -72,32 +10,23 @@ fn apply_platform_config(
         .min_inner_size(362.0, 240.0);
 
     #[cfg(target_os = "macos")]
-    {
-        b = b.title_bar_style(tauri::TitleBarStyle::Visible);
-    }
+    let b = b.title_bar_style(tauri::TitleBarStyle::Visible);
 
     #[cfg(target_os = "windows")]
-    {
-        use tauri::webview::ScrollBarStyle;
-        b = b.scroll_bar_style(ScrollBarStyle::FluentOverlay);
-    }
+    let b = b.scroll_bar_style(tauri::webview::ScrollBarStyle::FluentOverlay);
 
     #[cfg(not(target_os = "macos"))]
-    {
-        b = b.decorations(false).transparent(true);
-    }
+    let b = b.decorations(false).transparent(true);
 
     b
 }
 
-#[cfg(not(feature = "web-server"))]
 pub fn focus_window(window: &tauri::WebviewWindow) {
     let _ = window.show();
     let _ = window.unminimize();
     let _ = window.set_focus();
 }
 
-#[cfg(not(feature = "web-server"))]
 pub fn present_main_window(app: &tauri::AppHandle) {
     use tauri::Manager;
     if let Some(window) = app.get_webview_window("main") {
@@ -109,7 +38,6 @@ pub fn present_main_window(app: &tauri::AppHandle) {
     }
 }
 
-#[cfg(not(feature = "web-server"))]
 pub fn create_app_window(app_handle: tauri::AppHandle) {
     let builder =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
@@ -137,10 +65,8 @@ pub struct WindowOptions {
     pub path: Option<String>,
 }
 
-#[cfg(not(feature = "web-server"))]
 use crate::core::bridge;
 
-#[cfg(not(feature = "web-server"))]
 #[bridge]
 pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {

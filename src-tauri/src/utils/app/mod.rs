@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod notification;
 pub mod platform;
+#[cfg(not(feature = "web-server"))]
 pub mod ui;
 
 #[cfg(desktop)]

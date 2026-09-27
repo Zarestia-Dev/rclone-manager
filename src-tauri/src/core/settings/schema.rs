@@ -72,7 +72,10 @@ pub struct GeneralSettings {
         label = "settings.general.start_on_startup.label",
         description = "settings.general.start_on_startup.description"
     )]
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    #[cfg(all(
+        any(feature = "tauri-plugin-autostart", feature = "flatpak"),
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     pub start_on_startup: bool,
 
     #[setting(
@@ -99,7 +102,10 @@ pub struct GeneralSettings {
         label = "settings.general.prevent_sleep.label",
         description = "settings.general.prevent_sleep.description"
     )]
-    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     pub prevent_sleep: bool,
 
     #[setting(
@@ -127,11 +133,17 @@ impl Default for GeneralSettings {
             tray_icon_theme: "color".to_string(),
             #[cfg(feature = "tauri-plugin-notification")]
             notifications: true,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            #[cfg(all(
+                any(feature = "tauri-plugin-autostart", feature = "flatpak"),
+                not(any(target_os = "android", target_os = "ios"))
+            ))]
             start_on_startup: false,
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
-            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            #[cfg(all(
+                feature = "desktop",
+                not(any(target_os = "android", target_os = "ios"))
+            ))]
             prevent_sleep: true,
             #[cfg(target_os = "android")]
             keep_alive: true,
@@ -431,5 +443,37 @@ impl Default for UserPresetTemplate {
             description: None,
             values: Value::Object(Default::default()),
         }
+    }
+}
+
+#[cfg(test)]
+mod feature_tests {
+    use super::GeneralSettings;
+
+    #[test]
+    fn settings_expose_only_enabled_integrations() {
+        let settings = serde_json::to_value(GeneralSettings::default()).unwrap();
+        assert_eq!(
+            settings.get("notifications").is_some(),
+            cfg!(feature = "tauri-plugin-notification")
+        );
+        assert_eq!(
+            settings.get("tray_enabled").is_some(),
+            cfg!(feature = "tray")
+        );
+        assert_eq!(
+            settings.get("prevent_sleep").is_some(),
+            cfg!(all(
+                feature = "desktop",
+                not(any(target_os = "android", target_os = "ios"))
+            ))
+        );
+        assert_eq!(
+            settings.get("start_on_startup").is_some(),
+            cfg!(all(
+                any(feature = "tauri-plugin-autostart", feature = "flatpak"),
+                not(any(target_os = "android", target_os = "ios"))
+            ))
+        );
     }
 }

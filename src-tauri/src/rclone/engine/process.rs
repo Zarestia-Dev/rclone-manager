@@ -37,7 +37,6 @@ impl RcApiEngine {
         match engine_cmd.spawn() {
             Ok(child) => {
                 info!("Rclone process spawned");
-                #[cfg(not(feature = "librclone"))]
                 if matches!(
                     self.phase,
                     crate::utils::types::state::EnginePhase::FailedPath

@@ -44,7 +44,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
 
 /// Initializes Rclone API and OAuth state (does not start engine)
 async fn init_rclone_state(app_handle: &AppHandle) -> Result<(), String> {
-    // Hidden dependency: These states must be managed in lib.rs before this is called
+    // Hidden dependency: These states must be managed in app/setup.rs before this is called
     let backend_manager = app_handle.try_state::<BackendManager>().ok_or_else(|| {
         "BackendManager not found in managed state. Ensure it is managed before initialization."
             .to_string()
@@ -72,7 +72,7 @@ async fn init_rclone_state(app_handle: &AppHandle) -> Result<(), String> {
 async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
     use crate::utils::types::state::EngineState;
 
-    // Hidden dependency: EngineState must be managed in lib.rs before this is called
+    // Hidden dependency: EngineState must be managed in app/setup.rs before this is called
     let engine_state = app_handle.try_state::<EngineState>().ok_or_else(|| {
         "EngineState not found in managed state. Ensure it is managed before initialization."
             .to_string()

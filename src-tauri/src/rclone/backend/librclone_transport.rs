@@ -1,5 +1,3 @@
-#![cfg(feature = "librclone")]
-
 use crate::utils::context::{AppHandle, Manager};
 use async_trait::async_trait;
 use serde_json::{Map, Value};

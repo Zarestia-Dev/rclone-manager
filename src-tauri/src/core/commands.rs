@@ -322,7 +322,7 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(all(not(feature = "web-server"), not(target_os = "android"), not(target_os = "ios")))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
             #[cfg(all(desktop, not(feature = "web-server")))]
-            (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
+            (new_window, $crate::utils::app::builder::window::new_window, [opts: $crate::utils::app::builder::window::WindowOptions]);
         }
     }
 }

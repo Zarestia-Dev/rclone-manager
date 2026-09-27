@@ -1,5 +1,3 @@
-#![cfg(all(desktop, feature = "tray"))]
-
 pub mod actions;
 pub mod core;
 pub mod icon;

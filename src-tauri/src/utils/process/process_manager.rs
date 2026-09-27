@@ -3,7 +3,7 @@ use log::{info, warn};
 use crate::core::bridge;
 
 #[cfg(unix)]
-use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
+use libc::{EPERM, ESRCH, SIGKILL, kill};
 #[cfg(windows)]
 use windows_sys::Win32::{
     Foundation::{CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER},

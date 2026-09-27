@@ -1,4 +1,3 @@
-#![cfg(not(feature = "web-server"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::core::bridge;

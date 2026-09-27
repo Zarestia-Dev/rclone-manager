@@ -316,9 +316,9 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
     let remote_name_owned = remote_name.map(std::string::ToString::to_string);
     let app_clone = app.clone();
     spawn(async move {
-        crate::utils::app::builder::new_window(
+        crate::utils::app::builder::window::new_window(
             app_clone,
-            crate::utils::app::builder::WindowOptions {
+            crate::utils::app::builder::window::WindowOptions {
                 label,
                 url,
                 title: "RClone Nautilus".to_string(),

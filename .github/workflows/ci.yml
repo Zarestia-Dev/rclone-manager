@@ -1,109 +1,107 @@
-name: CI (Lint & Compile Check)
+name: CI
 
 on:
   push:
     branches: [master, dev]
   pull_request:
     branches: [master, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npx --no-install eslint "**/*.{ts,html}"
+      - name: Formatting
+        run: npx --no-install prettier --check "**/*.{ts,html,scss,json}" ".github/workflows/ci.yml" ".github/workflows/security.yml" ".github/dependabot.yml"
+      - name: Build without warnings
+        shell: bash
+        run: |
+          npm run build 2>&1 | tee build.log
+          if grep -qiE '(^|[^[:alpha:]])warning([^[:alpha:]]|$)' build.log; then
+            echo "::error::Frontend build emitted warnings"
+            exit 1
+          fi
+      - run: npm run test:ci
+
   validate:
     name: Check on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: src-tauri
+        shell: bash
     env:
-      # Skip the rclone/Go build + link check in CI. The build.rs will emit
-      # cargo:warning=... instead of panicking when Go or the rclone source
-      # tree isn't available. Clippy still type-checks the FFI module — it
-      # just doesn't actually link librclone.a. Release builds (which DO
-      # need rclone) should run in a separate workflow with Go + rclone
-      # checked out, NOT set this env var.
+      # Type-check mobile FFI without building the external Go archive.
       LIBRCLONE_SKIP_LINK_CHECK: '1'
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
-      # 1. Setup Node.js with caching (Only on Linux for Angular lints)
-      - name: Setup Node
-        if: matrix.os == 'ubuntu-22.04'
-        uses: actions/setup-node@v7
+      - uses: actions/checkout@v7
         with:
-          node-version: lts/*
-          cache: 'npm'
-
-      # 2. Setup Rust stable
-      - name: Setup Rust Stable
-        uses: dtolnay/rust-toolchain@stable
-
-      # 3. Cache Rust compiler targets (per-OS)
-      - name: Rust Cache
-        uses: swatinem/rust-cache@v2
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-
-      # 4. Install OS-specific system libraries (Linux only)
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Install Linux libraries
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential curl wget file \
-            libgtk-3-dev libxdo-dev libssl-dev \
-            libappindicator3-dev librsvg2-dev patchelf xdg-utils
-
-          mkdir -p /tmp/ubuntu-packages
-          cd /tmp/ubuntu-packages
-
-          wget https://launchpadlibrarian.net/723972773/libwebkit2gtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/723972761/libwebkit2gtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/723972770/libjavascriptcoregtk-4.1-0_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/723972746/libjavascriptcoregtk-4.1-dev_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/723972735/gir1.2-javascriptcoregtk-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/723972739/gir1.2-webkit2-4.1_2.44.0-0ubuntu0.22.04.1_amd64.deb
-          wget https://launchpadlibrarian.net/606433947/libicu70_70.1-2ubuntu1_amd64.deb
-          wget https://launchpadlibrarian.net/606433941/libicu-dev_70.1-2ubuntu1_amd64.deb
-          wget https://launchpadlibrarian.net/606433945/icu-devtools_70.1-2ubuntu1_amd64.deb
-          wget https://launchpadlibrarian.net/595623693/libjpeg8_8c-2ubuntu10_amd64.deb
-          wget https://launchpadlibrarian.net/587202140/libjpeg-turbo8_2.1.2-0ubuntu1_amd64.deb
-          wget https://launchpadlibrarian.net/592959859/xdg-desktop-portal-gtk_1.14.0-1build1_amd64.deb
-
-          sudo apt-get install -y /tmp/ubuntu-packages/*.deb
-
-      # 5. Clean Install npm dependencies (Only on Linux for Angular lints)
-      - name: Install Node Dependencies
-        if: matrix.os == 'ubuntu-22.04'
-        run: npm ci
-
-      # 6. Run frontend lints (Only on Linux to avoid duplicate work)
-      - name: Run Lints (Angular)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          npx eslint "**/*.{ts,html}"
-          npx prettier --check "**/*.{ts,html,scss,json}"
-
-      # 7. Check if Rust backend compiles (Desktop, Web Server, Mobile feature targets)
-      - name: Run Clippy (Desktop)
-        run: cargo clippy --features desktop --no-default-features -- -D warnings
-        working-directory: src-tauri
-
-      - name: Run Clippy (Web Server)
-        shell: bash
-        run: |
-          mkdir -p ../dist/rclone-manager/browser
-          TAURI_CONFIG=$(cat ./tauri.conf.headless.json) cargo clippy --features web-server --no-default-features -- -D warnings
-        working-directory: src-tauri
-
-      - name: Run Clippy (Mobile)
-        if: matrix.os == 'ubuntu-22.04'
-        run: cargo clippy --features mobile --no-default-features -- -D warnings
-        working-directory: src-tauri
-
-      # 8. Check Rust Formatting (Only on Linux to avoid CRLF differences)
-      - name: Check Formatting (Rust)
-        if: matrix.os == 'ubuntu-22.04'
+          sudo apt-get install -y --no-install-recommends             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev             librsvg2-dev libxdo-dev libssl-dev patchelf
+      - name: Prepare frontend asset directory for type checks
+        run: mkdir -p ../dist/rclone-manager/browser
+      - name: Rust formatting
+        if: runner.os == 'Linux'
         run: cargo fmt -- --check
-        working-directory: src-tauri
+      - name: Desktop and Portable
+        run: |
+          for features in desktop desktop,tray portable; do
+            cargo clippy --locked --no-default-features --features "$features" -- -D warnings
+          done
+      - name: Pure web server
+        run: cargo clippy --locked --no-default-features --features web-server -- -D warnings
+      - name: Web server with tray and updater
+        run: |
+          export TAURI_CONFIG="$(cat tauri.conf.headless.json)"
+          cargo clippy --locked --no-default-features --features web-server,tray,updater -- -D warnings
+      - name: Linux and mobile variants
+        if: runner.os == 'Linux'
+        run: |
+          for features in flatpak mobile; do
+            cargo clippy --locked --no-default-features --features "$features" -- -D warnings
+          done
+      - name: Server unit tests
+        if: runner.os == 'Linux'
+        run: cargo test --locked --no-default-features --features web-server --lib
+      - name: Native unit tests
+        if: runner.os == 'Linux'
+        run: |
+          # Graphics tests mutate process environment variables.
+          for features in desktop desktop,tray,tauri-test; do
+            cargo test --locked --no-default-features --features "$features" --lib -- --test-threads=1
+          done

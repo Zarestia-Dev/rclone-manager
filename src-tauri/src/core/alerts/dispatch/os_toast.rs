@@ -4,7 +4,7 @@ use crate::utils::context::AppHandle;
 pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
     let title = ctx.title.clone();
     let body = ctx.body.clone();
-    #[cfg(all(target_os = "linux", feature = "desktop"))]
+    #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
             notify_rust::Notification::new()
@@ -17,7 +17,7 @@ pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
         .join()
         .map_err(|_| "OS toast thread panicked".to_string())?
     }
-    #[cfg(not(all(target_os = "linux", feature = "desktop")))]
+    #[cfg(not(target_os = "linux"))]
     {
         use tauri_plugin_notification::NotificationExt;
         let app_clone = _app.clone();

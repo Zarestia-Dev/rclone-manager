@@ -33,8 +33,6 @@
 //! `src-tauri/librclone/<target-triple>/librclone.a`. The `build.rs` script
 //! links it. See `scripts/build-librclone.sh` for how to produce the archive.
 
-#![cfg(feature = "librclone")]
-
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::sync::atomic::{AtomicBool, Ordering};
