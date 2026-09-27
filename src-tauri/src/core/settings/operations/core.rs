@@ -1,9 +1,9 @@
 //! Core settings operations using rcman
 
 use crate::core::{bridge, settings::AppSettingsManager};
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 

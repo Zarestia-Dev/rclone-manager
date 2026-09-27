@@ -1,8 +1,8 @@
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use crate::utils::context::{AppHandle, Manager};
 use log::{info, warn};
-use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::core::settings::AppSettingsManager;

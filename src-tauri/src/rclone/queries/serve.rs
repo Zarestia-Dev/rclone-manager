@@ -25,7 +25,7 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 
 /// Get all supported serve types from rclone
 #[bridge]
-pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+pub async fn get_serve_types(app: crate::utils::context::AppHandle) -> Result<Vec<String>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::TYPES, None)
         .await
@@ -46,7 +46,9 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 }
 
 #[bridge]
-pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
+pub async fn list_serves(
+    app: crate::utils::context::AppHandle,
+) -> Result<Vec<ServeInstance>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::LIST, None)
         .await

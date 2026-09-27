@@ -7,12 +7,11 @@ pub use state::*;
 
 use std::{collections::HashSet, sync::Arc};
 
+use crate::utils::context::{AppHandle, Manager};
 use axum::{Router, http::Method, routing::get};
 use axum_server::tls_rustls::RustlsConfig;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use log::info;
-use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
@@ -87,13 +86,12 @@ async fn serve(
 }
 
 fn find_static_dir(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
-    let resource_path = app_handle
-        .path()
-        .resolve("browser", BaseDirectory::Resource);
+    let path = app_handle
+        .state::<crate::core::paths::AppPaths>()
+        .resource_dir
+        .join("browser");
 
-    if let Ok(path) = resource_path
-        && path.exists()
-    {
+    if path.exists() {
         return Some(path);
     }
 

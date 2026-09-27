@@ -3,13 +3,13 @@
 use std::io::SeekFrom;
 use std::path::PathBuf;
 
+use crate::utils::context::Manager;
 use axum::{
     extract::{Query, State},
     http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use serde::Deserialize;
-use tauri::Manager;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;

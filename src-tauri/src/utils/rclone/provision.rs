@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use crate::utils::context::Manager;
 use log::{error, info};
-use tauri::Manager;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -23,7 +23,7 @@ use super::{
 
 #[bridge]
 pub async fn provision_rclone(
-    app_handle: tauri::AppHandle,
+    app_handle: crate::utils::context::AppHandle,
     path: Option<String>,
 ) -> Result<String, String> {
     let os = std::env::consts::OS;
@@ -199,7 +199,9 @@ pub async fn provision_rclone(
 }
 
 #[bridge]
-pub async fn cancel_provision_rclone(app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn cancel_provision_rclone(
+    app_handle: crate::utils::context::AppHandle,
+) -> Result<(), String> {
     let provision_state = app_handle.state::<ProvisionState>();
     if provision_state.cancel_rclone() {
         info!("Cancelling rclone provisioning download");
@@ -208,7 +210,9 @@ pub async fn cancel_provision_rclone(app_handle: tauri::AppHandle) -> Result<(),
 }
 
 #[bridge]
-pub fn get_provision_status(app_handle: tauri::AppHandle) -> Result<ProvisionStatus, String> {
+pub fn get_provision_status(
+    app_handle: crate::utils::context::AppHandle,
+) -> Result<ProvisionStatus, String> {
     let provision_state = app_handle.state::<ProvisionState>();
     Ok(provision_state.get_status())
 }

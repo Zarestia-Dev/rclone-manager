@@ -7,9 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, info, warn};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 use crate::core::check_binaries::read_rclone_binary;

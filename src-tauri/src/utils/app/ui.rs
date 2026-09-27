@@ -27,7 +27,7 @@ pub async fn set_theme(
 
     #[cfg(feature = "tray")]
     {
-        use tauri::Manager;
+        use crate::utils::context::Manager;
         let app = window.app_handle().clone();
         crate::utils::spawn(async move {
             if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {

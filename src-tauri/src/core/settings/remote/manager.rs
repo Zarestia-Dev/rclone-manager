@@ -5,10 +5,10 @@
 //! `config/remotes/{remoteName}.json`.
 
 use crate::core::{bridge, settings::AppSettingsManager};
+use crate::utils::context::{AppHandle, Manager};
 use log::{info, warn};
 use serde::Deserialize;
 use serde_json::Value;
-use tauri::{AppHandle, Manager};
 
 use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHANGED};

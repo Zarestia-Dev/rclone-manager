@@ -4,6 +4,7 @@
 //! to automatically start any profiles that are configured with autoStart: true
 
 use crate::core::settings::AppSettingsManager;
+use crate::utils::context::{AppHandle, Manager};
 use crate::{
     rclone::commands::{
         mount::mount_remote_profile, serve::start_serve_profile, sync::start_profile_batch,
@@ -15,7 +16,6 @@ use crate::{
 };
 use log::{info, warn};
 use std::collections::HashMap;
-use tauri::{AppHandle, Manager};
 
 /// Auto-start all profiles that have autoStart: true
 /// This is called during app initialization.

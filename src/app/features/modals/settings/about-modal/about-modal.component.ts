@@ -460,7 +460,7 @@ export class AboutModalComponent implements OnInit {
   readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
     const buildType = this.buildType();
-    const canAutoInstall = this.appUpdaterService.canAutoInstall();
+    if (this.appUpdaterService.canAutoInstall()) return null;
 
     if (buildType) {
       switch (buildType) {
@@ -488,23 +488,18 @@ export class AboutModalComponent implements OnInit {
       }
     }
 
-    if (!canAutoInstall) {
-      const update = this.appUpdateAvailable();
-      return {
-        command: undefined,
-        links: [
-          {
-            label: 'modals.about.viewOnGithub',
-            url:
-              update?.releaseUrl ||
-              'https://github.com/Zarestia-Dev/rclone-manager/releases/latest',
-            primary: true,
-          },
-        ],
-      };
-    }
-
-    return null;
+    const update = this.appUpdateAvailable();
+    return {
+      command: undefined,
+      links: [
+        {
+          label: 'modals.about.viewOnGithub',
+          url:
+            update?.releaseUrl || 'https://github.com/Zarestia-Dev/rclone-manager/releases/latest',
+          primary: true,
+        },
+      ],
+    };
   });
 
   async quitRcloneEngine(): Promise<void> {

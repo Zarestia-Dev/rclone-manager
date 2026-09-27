@@ -1,5 +1,5 @@
 #![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
+    all(not(debug_assertions), target_os = "windows", feature = "native-tauri"),
     windows_subsystem = "windows"
 )]
 fn main() {
@@ -12,6 +12,7 @@ fn main() {
     rclone_manager_lib::utils::init_runtime_handle(runtime.handle().clone());
     let _guard = runtime.enter();
 
+    #[cfg(feature = "native-tauri")]
     tauri::async_runtime::set(runtime.handle().clone());
 
     rclone_manager_lib::run();

@@ -2,13 +2,13 @@
 
 use std::path::Path;
 
+use crate::utils::context::Manager;
 use axum::{
     extract::{Query, State},
     http::{StatusCode, header},
     response::IntoResponse,
 };
 use serde::Deserialize;
-use tauri::Manager;
 use tokio::io::AsyncReadExt;
 
 use crate::server::state::{AppError, WebServerState};

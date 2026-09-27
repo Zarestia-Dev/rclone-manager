@@ -1,8 +1,8 @@
+use crate::utils::context::{AppHandle, Manager};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
@@ -999,7 +999,7 @@ pub async fn submit_batch_job(
 
 #[bridge]
 pub async fn register_preparing_job(
-    app: tauri::AppHandle,
+    app: crate::utils::context::AppHandle,
     jobid: u64,
     remote: String,
     destination: String,
@@ -1037,7 +1037,7 @@ pub async fn register_preparing_job(
 
 #[bridge]
 pub async fn update_job_stats(
-    app: tauri::AppHandle,
+    app: crate::utils::context::AppHandle,
     jobid: u64,
     stats: Value,
 ) -> Result<(), String> {

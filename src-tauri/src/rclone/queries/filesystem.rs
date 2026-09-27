@@ -2,11 +2,11 @@ use std::collections::{HashMap, HashSet};
 #[cfg(target_os = "linux")]
 use std::process::Command;
 
+use crate::utils::context::{AppHandle, Manager};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sysinfo::Disks;
-use tauri::{AppHandle, Manager};
 
 use crate::utils::{
     json_helpers::normalize_windows_path,

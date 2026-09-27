@@ -1,9 +1,9 @@
 use std::sync::OnceLock;
 
+use crate::utils::context::{AppHandle, Manager};
 use chrono::{Duration, Utc};
 use futures::future::join_all;
 use log::{debug, error, warn};
-use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -81,10 +81,11 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
     let origin = event.alert_origin();
 
     let manager = match app.try_state::<AppSettingsManager>() {
-        Some(m) => m.inner(),
+        Some(m) => m,
         None => return,
     };
 
+    let manager = manager.inner();
     let alert_cache = app.state::<cache::AlertRuleCache>();
     let rules = alert_cache.get_rules().await;
     let enabled_rules: Vec<_> = rules.into_iter().filter(|r| r.enabled).collect();

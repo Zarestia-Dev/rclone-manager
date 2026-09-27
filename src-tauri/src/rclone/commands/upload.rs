@@ -1,11 +1,11 @@
 //! Custom upload commands for streaming and batch processing to rclone remotes.
 
+use crate::utils::context::{AppHandle, Manager};
 use futures::StreamExt;
 use log::debug;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::bridge,

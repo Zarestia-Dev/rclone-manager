@@ -6,12 +6,28 @@ pub const APP_ID_DEV: &str = "io.github.zarestia_dev.rclone-manager-dev";
 #[bridge]
 #[must_use]
 pub fn get_build_type() -> Option<&'static str> {
-    if cfg!(feature = "flatpak") {
+    // Keep the existing command/wire values for frontend compatibility. This is
+    // installation metadata, independent of the web-server runtime feature.
+    installation_type(
+        cfg!(feature = "flatpak"),
+        cfg!(feature = "portable"),
+        std::env::var("RCLONE_MANAGER_INSTALLATION_TYPE")
+            .ok()
+            .as_deref(),
+    )
+}
+
+fn installation_type(
+    flatpak: bool,
+    portable: bool,
+    deployment: Option<&str>,
+) -> Option<&'static str> {
+    if flatpak {
         Some("flatpak")
-    } else if cfg!(feature = "container") {
-        Some("container")
-    } else if cfg!(feature = "portable") {
+    } else if portable {
         Some("portable")
+    } else if deployment.is_some_and(|value| value.trim().eq_ignore_ascii_case("docker")) {
+        Some("container")
     } else {
         None
     }
@@ -47,9 +63,9 @@ pub fn check_pending_app_exit() -> Option<ActiveOperationsSummary> {
 }
 
 pub async fn get_active_operations_summary(
-    app: tauri::AppHandle,
+    app: crate::utils::context::AppHandle,
 ) -> Result<ActiveOperationsSummary, String> {
-    use tauri::Manager;
+    use crate::utils::context::Manager;
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
 
     let active_jobs = backend_manager.job_cache.get_active_jobs().await;
@@ -72,13 +88,13 @@ pub async fn get_active_operations_summary(
 }
 
 #[bridge]
-pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn request_app_exit(app: crate::utils::context::AppHandle) -> Result<(), String> {
     #[cfg(all(
         desktop,
         not(feature = "web-server"),
         not(any(target_os = "android", target_os = "ios"))
     ))]
-    use tauri::Manager;
+    use crate::utils::context::Manager;
 
     let summary = get_active_operations_summary(app.clone()).await?;
 
@@ -104,10 +120,30 @@ pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[bridge]
-pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn relaunch_app(app: crate::utils::context::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;
     handle_shutdown(app.clone()).await;
+    #[cfg(feature = "native-tauri")]
     app.restart();
+    #[cfg(not(feature = "native-tauri"))]
+    {
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let mut command = std::process::Command::new(executable);
+        command.args(std::env::args_os().skip(1));
+        #[cfg(unix)]
+        {
+            // Replace the process so containers keep their PID and listening sockets
+            // close before the new server starts binding its ports.
+            use std::os::unix::process::CommandExt;
+            Err(command.exec().to_string())
+        }
+        #[cfg(not(unix))]
+        {
+            command.spawn().map_err(|error| error.to_string())?;
+            app.exit(0);
+            Ok(())
+        }
+    }
 }
 
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
@@ -215,9 +251,9 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
 //     }
 // }
 
-#[cfg(target_os = "macos")]
-pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
-    use tauri::Manager;
+#[cfg(all(target_os = "macos", feature = "native-tauri"))]
+pub fn update_macos_dock_visibility(app_handle: &crate::utils::context::AppHandle) {
+    use crate::utils::context::Manager;
     let has_visible_windows = app_handle
         .webview_windows()
         .values()
@@ -527,5 +563,45 @@ mod graphics_quirks_tests {
             Some(v) => unsafe { std::env::set_var("XDG_SESSION_TYPE", v) },
             None => unsafe { std::env::remove_var("XDG_SESSION_TYPE") },
         }
+    }
+}
+
+#[cfg(test)]
+mod installation_tests {
+    use super::installation_type;
+
+    #[test]
+    fn docker_is_explicit_deployment_metadata() {
+        assert_eq!(
+            installation_type(false, false, Some("docker")),
+            Some("container")
+        );
+        assert_eq!(
+            installation_type(false, false, Some(" Docker ")),
+            Some("container")
+        );
+        for value in [
+            None,
+            Some(""),
+            Some("  "),
+            Some("web-server"),
+            Some("unknown"),
+        ] {
+            assert_eq!(installation_type(false, false, value), None);
+        }
+    }
+
+    #[test]
+    fn packaging_features_take_precedence() {
+        assert_eq!(
+            installation_type(true, true, Some("docker")),
+            Some("flatpak")
+        );
+        assert_eq!(
+            installation_type(false, true, Some("docker")),
+            Some("portable")
+        );
+        assert_eq!(installation_type(true, false, None), Some("flatpak"));
+        assert_eq!(installation_type(false, true, None), Some("portable"));
     }
 }

@@ -123,10 +123,10 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn run_install(
-    app_handle: &tauri::AppHandle,
+    app_handle: &crate::utils::context::AppHandle,
     info: MountPluginInfo,
 ) -> Result<String, String> {
-    use tauri::Manager;
+    use crate::utils::context::Manager;
     use tokio_util::sync::CancellationToken;
 
     let cancel_token = CancellationToken::new();
@@ -201,19 +201,25 @@ async fn run_install(
 
 #[cfg(target_os = "macos")]
 #[bridge]
-pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn install_mount_plugin(
+    app_handle: crate::utils::context::AppHandle,
+) -> Result<String, String> {
     run_install(&app_handle, get_latest_fuse_t_url().await?).await
 }
 
 #[cfg(target_os = "windows")]
 #[bridge]
-pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn install_mount_plugin(
+    app_handle: crate::utils::context::AppHandle,
+) -> Result<String, String> {
     run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[bridge]
-pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn install_mount_plugin(
+    _app_handle: crate::utils::context::AppHandle,
+) -> Result<String, String> {
     Err(crate::localized_error!(
         "backendErrors.rclone.unsupportedPlatform"
     ))
@@ -221,8 +227,10 @@ pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<Strin
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 #[bridge]
-pub async fn cancel_mount_plugin_install(app_handle: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
+pub async fn cancel_mount_plugin_install(
+    app_handle: crate::utils::context::AppHandle,
+) -> Result<(), String> {
+    use crate::utils::context::Manager;
     let provision_state = app_handle.state::<ProvisionState>();
     if provision_state.cancel_mount_plugin() {
         log::info!("Cancelling mount plugin download");
@@ -232,7 +240,9 @@ pub async fn cancel_mount_plugin_install(app_handle: tauri::AppHandle) -> Result
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[bridge]
-pub async fn cancel_mount_plugin_install(_app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn cancel_mount_plugin_install(
+    _app_handle: crate::utils::context::AppHandle,
+) -> Result<(), String> {
     Ok(())
 }
 

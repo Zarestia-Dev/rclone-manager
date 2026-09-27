@@ -724,7 +724,7 @@ impl NotificationEvent {
 
 // Public API
 
-pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
+pub fn notify(app: &crate::utils::context::AppHandle, event: NotificationEvent) {
     let RenderedContent { title, body, level } = event.render();
 
     emit_log(level, &title, &body);

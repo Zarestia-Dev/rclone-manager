@@ -4836,6 +4836,7 @@ dependencies = [
  "chrono",
  "clap",
  "croner 4.0.0",
+ "dirs 6.0.0",
  "futures",
  "futures-lite",
  "handlebars",

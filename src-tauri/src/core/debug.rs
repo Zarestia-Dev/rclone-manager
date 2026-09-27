@@ -2,8 +2,8 @@
 //!
 //! These commands are available via both desktop and headless modes.
 
+use crate::utils::context::AppHandle;
 use serde::Serialize;
-use tauri::AppHandle;
 
 use crate::core::{bridge, paths::AppPaths};
 
@@ -33,7 +33,7 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
         "desktop"
     };
 
-    let app_version = app.package_info().version.to_string();
+    let app_version = env!("CARGO_PKG_VERSION").to_string();
 
     Ok(DebugInfo {
         logs_dir: paths.logs_dir.to_string_lossy().to_string(),

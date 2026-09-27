@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { AboutModalComponent } from './about-modal.component';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
@@ -18,7 +18,12 @@ describe('AboutModalComponent', () => {
   let component: AboutModalComponent;
   let dialogRefSpy: { close: ReturnType<typeof vi.fn> };
 
+  let buildType: WritableSignal<string | null>;
+  let canAutoInstall: WritableSignal<boolean>;
+
   beforeEach(async () => {
+    buildType = signal<string | null>(null);
+    canAutoInstall = signal(true);
     dialogRefSpy = { close: vi.fn() };
 
     const mockSystemInfoService = {
@@ -34,9 +39,9 @@ describe('AboutModalComponent', () => {
       readyToRestart: signal(false),
       downloadStatus: signal(null),
       isChecking: signal(false),
-      buildType: signal('deb'),
+      buildType,
       isUpdaterEnabled: signal(true),
-      canAutoInstall: signal(true),
+      canAutoInstall,
     };
 
     const mockRcloneUpdateService = {
@@ -105,6 +110,48 @@ describe('AboutModalComponent', () => {
     fixture = TestBed.createComponent(AboutModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it.each(['flatpak', 'portable', 'container', null])(
+    'uses the installation capability rather than the %s label for automatic updates',
+    type => {
+      buildType.set(type);
+      canAutoInstall.set(true);
+      expect(component.updateInstructions()).toBeNull();
+    }
+  );
+
+  it.each([
+    ['flatpak', 'flatpak update io.github.zarestia_dev.rclone-manager'],
+    ['container', 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest'],
+  ])('provides installation-specific manual instructions for %s', (type, command) => {
+    buildType.set(type);
+    canAutoInstall.set(false);
+    expect(component.updateInstructions()?.command).toBe(command);
+  });
+
+  it('provides the download page for portable installations', () => {
+    buildType.set('portable');
+    canAutoInstall.set(false);
+    expect(component.updateInstructions()?.links[0].label).toBe('modals.about.downloadPage');
+  });
+
+  it.each([null, '', 'unknown'])('provides generic manual instructions for %s', type => {
+    buildType.set(type);
+    canAutoInstall.set(false);
+    expect(component.updateInstructions()?.command).toBeUndefined();
+    expect(component.updateInstructions()?.links[0].label).toBe('modals.about.viewOnGithub');
+  });
+
+  it('shows Docker as installation information only when supplied by the backend', () => {
+    buildType.set('container');
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.platform-badge')?.textContent
+    ).toContain('Docker');
+    buildType.set(null);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.platform-badge')).toBeNull();
   });
 
   it('should initialize successfully', () => {

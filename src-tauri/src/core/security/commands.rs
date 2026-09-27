@@ -1,5 +1,5 @@
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, error, info, warn};
-use tauri::{AppHandle, Manager};
 
 use crate::core::bridge;
 #[cfg(not(feature = "librclone"))]

@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::utils::context::{AppHandle, Manager};
 use chrono::Utc;
 use log::LevelFilter;
 use once_cell::sync::OnceCell;
 use serde_json::Value;
-use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc;
 
 use crate::utils::types::logs::{LogCache, LogEntry, LogLevel};

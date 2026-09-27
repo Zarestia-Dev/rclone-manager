@@ -162,7 +162,7 @@ fn build_tooltip(snapshot: &TraySnapshot) -> String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "tauri-test"))]
 mod tests {
     use super::*;
     use tauri::test::mock_builder;

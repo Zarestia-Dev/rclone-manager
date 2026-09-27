@@ -4,11 +4,11 @@
 //! (config, cache, logs) across the entire codebase. Supports both
 //! standard and portable mode.
 
+use crate::utils::context::AppHandle;
 #[cfg(feature = "portable")]
 use log::info;
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::AppHandle;
 
 // Portable Mode Helpers
 
@@ -65,9 +65,9 @@ impl AppPaths {
     /// Create `AppPaths` for standard mode
     ///
     /// Uses system directories via Tauri's path resolver.
-    #[cfg(not(feature = "portable"))]
+    #[cfg(all(not(feature = "portable"), feature = "native-tauri"))]
     pub fn from_app_handle(app: &AppHandle) -> Result<Self, String> {
-        use tauri::Manager;
+        use crate::utils::context::Manager;
         let cli_args = app.state::<crate::core::cli::CliArgs>();
 
         // Get cache directory (CLI > ENV > DEFAULT)
@@ -130,6 +130,52 @@ impl AppPaths {
         })
     }
 
+    #[cfg(not(feature = "native-tauri"))]
+    pub fn from_app_handle(app: &AppHandle) -> Result<Self, String> {
+        use crate::utils::context::Manager;
+        let args = app.state::<crate::core::cli::CliArgs>();
+        let config_dir = args
+            .general
+            .data_dir
+            .clone()
+            .or_else(|| std::env::var_os("RCLONE_MANAGER_DATA_DIR").map(PathBuf::from))
+            .or_else(|| dirs::data_dir().map(|base| base.join("com.rclone.manager.headless")))
+            .ok_or("Cannot resolve application data directory; specify --data-dir")?;
+        let cache_dir = args
+            .general
+            .cache_dir
+            .clone()
+            .or_else(|| std::env::var_os("RCLONE_MANAGER_CACHE_DIR").map(PathBuf::from))
+            .or_else(|| dirs::cache_dir().map(|base| base.join("com.rclone.manager.headless")))
+            .ok_or("Cannot resolve application cache directory; specify --cache-dir")?;
+        let logs_dir = args
+            .general
+            .logs_dir
+            .clone()
+            .or_else(|| std::env::var_os("RCLONE_MANAGER_LOG_DIR").map(PathBuf::from))
+            .unwrap_or_else(|| cache_dir.join("logs"));
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let exe_dir = executable
+            .parent()
+            .ok_or("Executable has no parent directory")?;
+        let resource_dir = [
+            exe_dir.to_path_buf(),
+            exe_dir.join("../Resources"),
+            PathBuf::from("/usr/lib/RClone Manager Headless"),
+            PathBuf::from("/usr/lib/rclone-manager-headless"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources"),
+        ]
+        .into_iter()
+        .find(|path| path.join("i18n").is_dir())
+        .unwrap_or_else(|| exe_dir.to_path_buf());
+        Ok(Self {
+            config_dir,
+            cache_dir,
+            logs_dir,
+            resource_dir,
+        })
+    }
+
     /// Setup application paths and ensure directories exist
     ///
     /// This is the main entry point for initializing paths during app startup.
@@ -178,5 +224,58 @@ impl AppPaths {
     /// Get the path to the bundled OAuth template
     pub fn oauth_template_path(&self) -> PathBuf {
         self.resource_dir.join("oauth-template.html")
+    }
+}
+
+#[cfg(all(test, not(feature = "native-tauri")))]
+mod tests {
+    use super::*;
+    use crate::{core::cli::CliArgs, utils::context::Manager};
+    use clap::Parser;
+
+    #[test]
+    fn headless_paths_respect_cli_overrides_and_create_directories() {
+        let temp = tempfile::tempdir().unwrap();
+        let data = temp.path().join("data with spaces");
+        let cache = temp.path().join("cache");
+        let logs = temp.path().join("logs");
+        let args = CliArgs::try_parse_from([
+            "server",
+            "--data-dir",
+            data.to_str().unwrap(),
+            "--cache-dir",
+            cache.to_str().unwrap(),
+            "--logs-dir",
+            logs.to_str().unwrap(),
+        ])
+        .unwrap();
+        let app = AppHandle::default();
+        app.manage(args);
+        let paths = AppPaths::setup(&app).unwrap();
+        assert_eq!(paths.config_dir, data);
+        assert_eq!(paths.cache_dir, cache);
+        assert_eq!(paths.logs_dir, logs);
+        assert!(data.is_dir());
+        assert!(paths.get_app_log_dir().is_dir());
+        assert!(paths.get_rclone_log_dir().is_dir());
+    }
+
+    #[test]
+    fn directory_creation_errors_are_reported() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("file");
+        std::fs::write(&file, "occupied").unwrap();
+        let paths = AppPaths {
+            config_dir: file,
+            cache_dir: temp.path().join("cache"),
+            logs_dir: temp.path().join("logs"),
+            resource_dir: temp.path().to_path_buf(),
+        };
+        assert!(
+            paths
+                .ensure_dirs()
+                .unwrap_err()
+                .contains("Failed to create config directory")
+        );
     }
 }

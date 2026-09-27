@@ -1,6 +1,7 @@
 #[cfg(feature = "updater")]
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::core::{bridge, settings::AppSettingsManager};
+use crate::utils::context::{AppHandle, Manager};
 use crate::utils::github_client::{OWNER, REPO};
 #[cfg(feature = "updater")]
 use crate::utils::types::updater::{DownloadState, DownloadStatus, UpdaterError as Error};
@@ -15,7 +16,6 @@ use crate::utils::{
 use log::info;
 #[cfg(feature = "updater")]
 use log::warn;
-use tauri::{AppHandle, Manager};
 #[cfg(feature = "updater")]
 use tauri_plugin_updater::UpdaterExt;
 
@@ -71,7 +71,7 @@ async fn fetch_update_inner(
             return Ok(Some(UpdateInfo {
                 metadata: UpdateMetadata {
                     version: String::new(),
-                    current_version: app.package_info().version.to_string(),
+                    current_version: env!("CARGO_PKG_VERSION").to_string(),
                     update_available: true,
                     channel: Some(channel.to_string()),
                     ..Default::default()
@@ -100,7 +100,7 @@ async fn fetch_update_inner(
         return Ok(None);
     };
 
-    let current_version_str = app.package_info().version.to_string();
+    let current_version_str = env!("CARGO_PKG_VERSION").to_string();
     let release_version_str = clean_app_version(&release.tag_name);
 
     let is_newer = is_version_newer(&current_version_str, release_version_str);

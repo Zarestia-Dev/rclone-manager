@@ -1,3 +1,4 @@
+use crate::utils::context::AppHandle;
 use axum::{
     extract::State,
     http::{
@@ -10,7 +11,6 @@ use axum::{
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
-use tauri::AppHandle;
 use tokio::sync::RwLock;
 
 use crate::core::bridge::EventBridge;

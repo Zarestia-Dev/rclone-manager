@@ -1,6 +1,6 @@
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -512,7 +512,7 @@ pub fn is_local_path(path: &str) -> bool {
 }
 
 #[bridge]
-pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
+pub async fn get_cached_remotes(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -521,7 +521,7 @@ pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Str
 }
 
 #[bridge]
-pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+pub async fn get_configs(app: AppHandle) -> Result<serde_json::Value, String> {
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -531,8 +531,8 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
 
 /// Get all remote settings from rcman sub-settings (including orphaned remotes)
 #[bridge]
-pub async fn get_settings<R: Runtime>(
-    app: AppHandle<R>,
+pub async fn get_settings(
+    app: AppHandle,
 ) -> Result<std::collections::HashMap<String, crate::utils::types::remotes::RemoteSettings>, String>
 {
     let manager = app.state::<AppSettingsManager>();
@@ -542,9 +542,7 @@ pub async fn get_settings<R: Runtime>(
 }
 
 #[bridge]
-pub async fn get_cached_mounted_remotes<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Vec<MountedRemote>, String> {
+pub async fn get_cached_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -553,9 +551,7 @@ pub async fn get_cached_mounted_remotes<R: Runtime>(
 }
 
 #[bridge]
-pub async fn get_cached_serves<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Vec<ServeInstance>, String> {
+pub async fn get_cached_serves(app: AppHandle) -> Result<Vec<ServeInstance>, String> {
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -565,8 +561,8 @@ pub async fn get_cached_serves<R: Runtime>(
 
 /// Rename a profile in all cached mounts
 #[bridge]
-pub async fn rename_mount_profile_in_cache<R: Runtime>(
-    app: AppHandle<R>,
+pub async fn rename_mount_profile_in_cache(
+    app: AppHandle,
     remote_name: String,
     old_name: String,
     new_name: String,
@@ -586,8 +582,8 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
 
 /// Rename a profile in all cached serves
 #[bridge]
-pub async fn rename_serve_profile_in_cache<R: Runtime>(
-    app: AppHandle<R>,
+pub async fn rename_serve_profile_in_cache(
+    app: AppHandle,
     remote_name: String,
     old_name: String,
     new_name: String,

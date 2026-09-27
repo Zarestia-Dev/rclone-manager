@@ -16,11 +16,11 @@ name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2", features = [], optional = true }
 
 [dependencies]
 bridge-macro = { path = "crates/bridge-macro" }
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = [], optional = true }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -51,6 +51,7 @@ rustls-native-certs = "0.8"
 rustls = { version = "0.23", features = ["ring"] }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
 sys-locale = "0.3"
+dirs = "6"
 
 
 tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
@@ -107,7 +108,10 @@ tauri-plugin-window-state = { version = "2", optional = true, default-features =
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
-updater = ["dep:tauri-plugin-updater"]
+native-tauri = ["dep:tauri", "dep:tauri-build"]
+# Opt-in mock runtime without pulling Tauri into server tests.
+tauri-test = ["native-tauri", "tauri/test"]
+updater = ["native-tauri", "dep:tauri-plugin-updater"]
 tauri-plugin-notification = ["dep:tauri-plugin-notification"]
 tauri-plugin-deep-link = ["dep:tauri-plugin-deep-link"]
 tauri-plugin-autostart = ["dep:tauri-plugin-autostart"]
@@ -115,10 +119,7 @@ tauri-plugin-single-instance = ["dep:tauri-plugin-single-instance"]
 
 web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
 
-# Container
-container = ["web-server"]
-
-shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
+shared-tauri = ["native-tauri", "tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
 desktop = [
@@ -135,6 +136,7 @@ desktop = [
     "dep:objc2-foundation",
 ]
 tray = [
+    "native-tauri",
     "tauri/tray-icon",
     "tauri/image-png",
     "tauri-plugin-opener",
@@ -150,7 +152,3 @@ flatpak = ["desktop", "tray"]
 # In-process rclone via librclone FFI (mobile target).
 librclone = []
 mobile = ["librclone", "shared-tauri"]
-
-
-[dev-dependencies]
-tauri = { version = "2", features = ["test"] }

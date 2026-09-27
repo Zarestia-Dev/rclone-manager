@@ -1,8 +1,8 @@
+use crate::utils::context::{AppHandle, Manager};
 use futures::future::join_all;
 use log::{error, info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{
@@ -415,7 +415,10 @@ pub async fn update_remote(
 }
 
 #[bridge]
-pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
+pub async fn delete_remote(
+    app: crate::utils::context::AppHandle,
+    name: String,
+) -> Result<(), String> {
     let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");
 

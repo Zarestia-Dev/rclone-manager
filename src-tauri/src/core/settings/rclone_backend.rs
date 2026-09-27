@@ -1,9 +1,9 @@
 //! `RClone` Backend Settings Manager (using rcman sub-settings single-file mode)
 
 use crate::core::{bridge, settings::AppSettingsManager};
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 use crate::rclone::engine::lifecycle::restart_for_config_change;
 

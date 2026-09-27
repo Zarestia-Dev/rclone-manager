@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use crate::core::{bridge, settings::AppSettingsManager};
 use crate::utils::constants::SUB_TEMPLATES;
+use crate::utils::context::{AppHandle, Manager};
 use log::info;
-use tauri::{AppHandle, Manager};
 
 /// List all saved user preset templates as a dictionary map (id -> payload)
 #[bridge]

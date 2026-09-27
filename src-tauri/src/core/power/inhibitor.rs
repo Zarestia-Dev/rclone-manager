@@ -1,6 +1,6 @@
+use crate::utils::context::{AppHandle, Manager};
 use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Manager};
 
 #[cfg(target_os = "macos")]
 struct MacosActivityToken(

@@ -3,7 +3,7 @@
 //! Exposes rcman's dynamic export categories to the frontend.
 
 use crate::core::{bridge, settings::AppSettingsManager};
-use tauri::{AppHandle, Manager};
+use crate::utils::context::{AppHandle, Manager};
 
 /// Response type for export categories
 #[derive(serde::Serialize)]

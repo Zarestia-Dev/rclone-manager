@@ -1,7 +1,7 @@
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, error, info};
-use tauri::{AppHandle, Manager};
 
 /// Phase 1: Bootstrap - Initializes basic state, event listeners, and environment
 pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {

@@ -8,17 +8,17 @@ use crate::core::lifecycle::startup::handle_startup;
 use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
+use crate::utils::context::{AppHandle, Manager};
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 #[cfg(feature = "tray")]
 use crate::core::tray::core::update_tray_menu;
 
 /// Handles async startup tasks using a phased approach
-pub async fn initialization(app_handle: tauri::AppHandle) {
+pub async fn initialization(app_handle: crate::utils::context::AppHandle) {
     debug!("Starting async startup tasks");
 
     if let Err(e) = async_core_setup(&app_handle).await {
@@ -162,7 +162,7 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
 
 const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
-async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
+async fn check_active_backend_connectivity(app_handle: &crate::utils::context::AppHandle) {
     let backend_manager = app_handle.state::<BackendManager>();
 
     let active_name = backend_manager.get_active_name().await;

@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::utils::context::{AppHandle, Manager};
 use log::info;
 use serde_json::Value;
-use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 
 use super::job_resolver::{link_resolving_jobs, sanitize_finished_stats};

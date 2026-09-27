@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use crate::utils::context::{AppHandle, Manager};
 use log::{debug, warn};
-use tauri::{AppHandle, Manager};
 
 use crate::rclone::queries::{get_mounted_remotes, list_serves};
 use crate::utils::types::remotes::RemoteCache;

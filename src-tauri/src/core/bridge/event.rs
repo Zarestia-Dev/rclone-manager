@@ -25,7 +25,7 @@ static GLOBAL_EVENT_BRIDGE: OnceCell<Arc<EventBridge>> = OnceCell::new();
 pub struct EventBridge {
     tx: broadcast::Sender<BridgeEvent>,
     #[cfg(any(not(feature = "web-server"), feature = "tray"))]
-    app_handle: Arc<RwLock<Option<tauri::AppHandle>>>,
+    app_handle: Arc<RwLock<Option<crate::utils::context::AppHandle>>>,
 }
 
 impl EventBridge {
@@ -41,13 +41,13 @@ impl EventBridge {
 
     /// Associates the desktop Tauri `AppHandle` with this bridge.
     #[cfg(any(not(feature = "web-server"), feature = "tray"))]
-    pub fn set_app_handle(&self, app_handle: tauri::AppHandle) {
+    pub fn set_app_handle(&self, app_handle: crate::utils::context::AppHandle) {
         *self.app_handle.write() = Some(app_handle);
     }
 
     /// Returns the associated desktop Tauri `AppHandle` if available.
     #[cfg(feature = "tray")]
-    pub fn get_app_handle(&self) -> Option<tauri::AppHandle> {
+    pub fn get_app_handle(&self) -> Option<crate::utils::context::AppHandle> {
         self.app_handle.read().clone()
     }
 
@@ -105,7 +105,7 @@ pub fn subscribe() -> Option<broadcast::Receiver<BridgeEvent>> {
 
 /// Returns the associated desktop Tauri `AppHandle` if available.
 #[cfg(feature = "tray")]
-pub fn get_app_handle() -> Option<tauri::AppHandle> {
+pub fn get_app_handle() -> Option<crate::utils::context::AppHandle> {
     GLOBAL_EVENT_BRIDGE.get().and_then(|b| b.get_app_handle())
 }
 

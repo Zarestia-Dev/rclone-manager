@@ -3,6 +3,7 @@ use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::cache::is_local_path;
+use crate::utils::context::{AppHandle, Manager};
 use crate::utils::json_helpers::build_full_path;
 use crate::utils::types::automation::{Automation, AutomationStatus};
 use crate::utils::types::remotes::OperationType;
@@ -11,7 +12,6 @@ use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 
 pub struct WatchSession {

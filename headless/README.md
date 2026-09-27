@@ -29,7 +29,11 @@
 This is a **headless desktop application**, not a native web server. It uses **Xvfb** (Virtual Framebuffer) to run the GUI in the background and streams the interface to your browser.
 
 - **Docker:** Handles all dependencies automatically (Recommended).
-- **Binary:** Requires `xvfb`, `gtk3`, and `webkit2gtk` installed on your system.
+- **Pure server binary:** Build with `cargo build --release --manifest-path src-tauri/Cargo.toml --no-default-features --features web-server`. It runs on Tokio without Tauri, GTK, WebKit, or Xvfb. Place `browser/` and `i18n/` beside the executable when distributing it.
+- **Server with tray/updater:** The existing `npm run build:headless` build enables `web-server,tray,updater` and retains Tauri and its native dependencies.
+- **Container:** Builds the pure server directly with Cargo; no display server is required. The Docker image sets `RCLONE_MANAGER_INSTALLATION_TYPE=docker` at runtime so About shows the installation type and Docker update instructions. A standalone web server leaves this unset and uses generic manual update instructions; web-server mode alone does not imply Docker.
+
+Run pure server tests with `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features web-server --lib`. Native tray mock tests opt into `--features desktop,tray,tauri-test`.
 
 ---
 

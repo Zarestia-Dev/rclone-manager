@@ -24,21 +24,18 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Build (frontend + backend via Tauri)
+# Stage 1: Build (frontend + backend via Cargo)
 # -----------------------------------------------------------------------------
 FROM node:bookworm AS builder
 
-# Install Rust toolchain and native build dependencies required by Tauri/GTK
+# Install Rust toolchain and native build dependencies required by the server
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
         fuse3 \
         libdbus-1-dev \
-        libgtk-3-dev \
-        libjavascriptcoregtk-4.1-dev \
-        libsoup-3.0-dev \
+        libclang-dev \
         libssl-dev \
-        libwebkit2gtk-4.1-dev \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -54,12 +51,8 @@ RUN npm ci
 
 # Copy project source and build headless binary
 COPY . .
-RUN rm -rf src-tauri/capabilities || true
-RUN npm run tauri build -- \
-    --config src-tauri/tauri.conf.headless.json \
-    --config '{"bundle":{"createUpdaterArtifacts":false}}' \
-    --features container \
-    --no-bundle -- --no-default-features
+RUN npm run build && cargo build --manifest-path src-tauri/Cargo.toml \
+    --release --no-default-features --features web-server
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -73,19 +66,15 @@ LABEL maintainer="Zarestia-Dev" \
 
 # Install runtime dependencies
 # Note: 'setpriv' (util-linux) is used for privilege dropping in the entrypoint
-# Note: 'xvfb' and 'dbus-x11' trick Tauri into running without a physical display
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        dbus-x11 \
+        libdbus-1-3 \
         fuse3 \
         gosu \
-        libgtk-3-0 \
-        libwebkit2gtk-4.1-0 \
         openssl \
         unzip \
         util-linux \
-        xvfb \
     && rm -rf /var/lib/apt/lists/* \
     && (sed -i 's/#\s*user_allow_other/user_allow_other/' /etc/fuse.conf 2>/dev/null || true)
 
@@ -110,10 +99,10 @@ RUN mkdir -p \
 WORKDIR /app
 
 # Copy the built backend binary
-COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
+COPY --from=builder /app/src-tauri/target/release/rclone-manager /usr/local/bin/rclone-manager-headless
 
 # Copy the built frontend assets
-# The destination path is critical: it must exactly match the `productName` defined in tauri.conf.headless.json
+# Keep the installed resource directory shared with native headless packages.
 COPY --from=builder \
     ["/app/dist/rclone-manager/browser", "/usr/lib/RClone Manager Headless/browser/"]
 COPY --from=builder \
@@ -140,12 +129,12 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # /config: User's rclone.conf configuration file
 VOLUME ["/data", "/config"]
 
-# Environment variables needed by Tauri/GTK and rclone
-ENV DISPLAY=:99 \
-    HOME=/home/rclone-manager \
+# Environment variables for application storage and rclone
+ENV HOME=/home/rclone-manager \
     XDG_DATA_HOME=/home/rclone-manager/.local/share \
     XDG_CONFIG_HOME=/home/rclone-manager/.config \
     RCLONE_CONFIG=/config/rclone.conf \
+    RCLONE_MANAGER_INSTALLATION_TYPE=docker \
     RCLONE_MANAGER_DATA_DIR=/data \
     RCLONE_MANAGER_LOG_DIR=/data/logs \
     RCLONE_MANAGER_CACHE_DIR=/data/cache

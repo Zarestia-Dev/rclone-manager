@@ -389,7 +389,7 @@ macro_rules! call_internal_complex {
 macro_rules! axum_bridge_gen {
     ($( $(#[$meta:meta])? ($name:ident, $path:path, [$($arg:ident : $typ:ty),*] $(, [$($tag:ident),*])?) );* $(;)?) => {
         pub async fn bridge_dispatch(
-            app: &tauri::AppHandle,
+            app: &crate::utils::context::AppHandle,
             command: &str,
             payload: serde_json::Value
         ) -> Result<serde_json::Value, String> {

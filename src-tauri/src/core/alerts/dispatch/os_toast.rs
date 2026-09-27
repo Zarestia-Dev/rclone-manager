@@ -1,5 +1,5 @@
 use crate::core::alerts::template::TemplateContext;
-use tauri::AppHandle;
+use crate::utils::context::AppHandle;
 
 pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
     let title = ctx.title.clone();

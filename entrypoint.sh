@@ -96,18 +96,6 @@ RCLONE_DIR=$(dirname "$RCLONE_BIN")
 export PATH="${RCLONE_DIR}:${PATH}"
 
 # =============================================================================
-# 4. Virtual Display Initialization
-# =============================================================================
-# Tauri heavily relies on GTK. Since we are in a headless environment container,
-# we simulate a display environment using Xvfb (X virtual framebuffer) and dbus.
-mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
-rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
-Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &
-sleep 1
-export $(dbus-launch)
-export DISPLAY=:99
-
-# =============================================================================
 # 6. Command Argument Assembly
 # =============================================================================
 # Convert passed environment variables into the explicit CLI arg strings required

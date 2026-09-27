@@ -7,8 +7,8 @@ mod server;
 
 use std::sync::{Arc, atomic::AtomicBool};
 
+use crate::utils::context::Manager;
 use clap::Parser;
-use tauri::Manager;
 #[cfg(not(feature = "web-server"))]
 use tauri::WindowEvent;
 
@@ -64,6 +64,7 @@ fn build_send_to_params(
     }
 }
 
+#[cfg(feature = "native-tauri")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
@@ -103,7 +104,7 @@ pub fn run() {
 
         builder = builder.plugin(
             si_builder
-                .callback(|app: &tauri::AppHandle, argv, cwd| {
+                .callback(|app: &crate::utils::context::AppHandle, argv, cwd| {
                     if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&argv) && let Some(remote) = cli_args.general.send_to_remote {
                             let path = cli_args.general.send_to_path;
                             let sources = cli_args.general.send_to_sources;
@@ -306,11 +307,19 @@ pub fn run() {
     }
 }
 
+#[cfg(feature = "native-tauri")]
 fn setup_app(
     app: &mut tauri::App,
     cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let app_handle = app.handle();
+    setup_context(app.handle(), cli_args)
+}
+
+fn setup_context(
+    app: &crate::utils::context::AppHandle,
+    cli_args: crate::core::cli::CliArgs,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app_handle = app;
 
     let event_bridge = Arc::new(crate::core::bridge::EventBridge::new(1000));
     crate::core::bridge::init_event_bridge(event_bridge.clone());
@@ -338,8 +347,7 @@ fn setup_app(
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         log::debug!("Creating main window on mobile");
-        tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
-            .build()?;
+        tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default()).build()?;
     }
 
     let rcman_manager =
@@ -428,7 +436,7 @@ fn setup_app(
     {
         use crate::server::start_web_server;
 
-        let web_handle = app.handle().clone();
+        let web_handle = app.clone();
         let args = cli_args.clone();
         let bridge = event_bridge.clone();
 
@@ -471,11 +479,11 @@ fn setup_app(
     #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
     if !cli_args.general.tray && cli_args.general.send_to_remote.is_none() {
         log::debug!("Creating main window");
-        utils::app::builder::create_app_window(app.handle().clone());
+        utils::app::builder::create_app_window(app.clone());
     }
 
     if cli_args.general.send_to_remote.is_some() {
-        let app_handle_clone = app.handle().clone();
+        let app_handle_clone = app.clone();
         crate::utils::spawn(async move {
             let mut engine_ready = false;
             for _ in 0..100 {
@@ -519,21 +527,21 @@ fn setup_app(
         });
     }
 
-    #[cfg(target_os = "macos")]
-    crate::utils::app::platform::update_macos_dock_visibility(app.handle());
+    #[cfg(all(target_os = "macos", feature = "native-tauri"))]
+    crate::utils::app::platform::update_macos_dock_visibility(app);
 
     Ok(())
 }
 
 #[cfg(all(desktop, feature = "tray"))]
-fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
+fn handle_tray_menu_event(app: &crate::utils::context::AppHandle, event: &tauri::menu::MenuEvent) {
     if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
         dispatch_tray_action(app, action);
     }
 }
 
 #[cfg(all(desktop, feature = "tray"))]
-fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+fn dispatch_tray_action(app: &crate::utils::context::AppHandle, action: TrayAction) {
     use crate::utils::types::remotes::OperationType;
 
     #[cfg(feature = "web-server")]
@@ -656,7 +664,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
 }
 
 #[cfg(all(feature = "web-server", feature = "tray"))]
-fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
+fn web_ui_url(app: &crate::utils::context::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();
     let host = if args.headless.host == "0.0.0.0" {
         "127.0.0.1"
@@ -669,4 +677,21 @@ fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
         "http"
     };
     format!("{scheme}://{host}:{}{path}", args.headless.port)
+}
+
+#[cfg(not(feature = "native-tauri"))]
+pub fn run() {
+    let cli_args = core::cli::CliArgs::parse();
+    if let Err(error) = cli_args.validate() {
+        eprintln!("Invalid CLI arguments: {error}");
+        std::process::exit(1);
+    }
+    let app = utils::context::AppHandle::default();
+    app.manage(cli_args.clone());
+    if let Err(error) = setup_context(&app, cli_args) {
+        eprintln!("Failed to initialize application: {error}");
+        std::process::exit(1);
+    }
+    let code = utils::block_on(app.wait_for_exit());
+    std::process::exit(code);
 }
