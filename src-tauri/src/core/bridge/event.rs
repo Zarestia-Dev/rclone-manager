@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
-use once_cell::sync::OnceCell;
 #[cfg(any(not(feature = "web-server"), feature = "tray"))]
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 use tokio::sync::broadcast;
 
 /// Represents an event payload distributed through the bridge
@@ -19,7 +19,7 @@ pub struct BridgeEvent {
     pub payload: serde_json::Value,
 }
 
-static GLOBAL_EVENT_BRIDGE: OnceCell<Arc<EventBridge>> = OnceCell::new();
+static GLOBAL_EVENT_BRIDGE: OnceLock<Arc<EventBridge>> = OnceLock::new();
 
 /// Manages event subscriptions and distribution across desktop IPC and web-server SSE.
 pub struct EventBridge {

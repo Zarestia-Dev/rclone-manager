@@ -144,17 +144,17 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     if let Some(state) = app_handle.try_state::<crate::utils::types::updater::AppUpdaterState>() {
         let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
             let mut d = state.data.lock();
-            if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
+            if let Some(update) = d.take_staged_update() {
                 d.state = crate::utils::types::updater::UpdateState::Idle;
-                Some((u, s))
+                Some(update)
             } else {
                 None
             }
         };
 
-        if let Some((update, sig)) = staged {
+        if let Some((update, payload)) = staged {
             info!("Applying staged app update...");
-            if let Err(e) = update.install(sig) {
+            if let Err(e) = update.install(payload) {
                 error!("Failed to apply app update: {e}");
             }
         }

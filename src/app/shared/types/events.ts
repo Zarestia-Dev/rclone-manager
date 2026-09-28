@@ -27,6 +27,11 @@ export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+export const UPDATER_STATE_CHANGED = 'updater_state_changed' as const;
+
+export interface UpdaterStateChanged {
+  target: 'app' | 'rclone';
+}
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
 export const FILE_DOWNLOAD_PROGRESS = 'file_download_progress' as const;

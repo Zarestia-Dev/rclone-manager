@@ -117,7 +117,7 @@ impl PowerInhibitorState {
                             if let Ok(mut shutdown_stream) =
                                 proxy.receive_signal("PrepareForShutdown").await
                             {
-                                use futures_lite::stream::StreamExt;
+                                use futures::StreamExt;
                                 while let Some(signal) = shutdown_stream.next().await {
                                     if let Ok(true) = signal.body().deserialize::<bool>() {
                                         info!(

@@ -444,7 +444,7 @@ pub fn monitor_theme_changes() {
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 async fn run_linux_portal_watcher() {
-    use futures_lite::stream::StreamExt;
+    use futures::StreamExt;
     use zbus::Connection;
 
     let connection = match Connection::session().await {

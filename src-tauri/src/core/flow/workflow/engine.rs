@@ -49,9 +49,9 @@ struct ActiveWorkflowState {
     active_job_ids: Arc<RwLock<HashSet<u64>>>,
 }
 
-static ACTIVE_WORKFLOW_EXECUTIONS: once_cell::sync::Lazy<
+static ACTIVE_WORKFLOW_EXECUTIONS: std::sync::LazyLock<
     RwLock<HashMap<String, ActiveWorkflowState>>,
-> = once_cell::sync::Lazy::new(|| RwLock::new(HashMap::new()));
+> = std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// Returns a set of all currently active (running) workflow IDs.
 #[cfg(feature = "tray")]
@@ -2688,8 +2688,8 @@ pub async fn execute_workflow(
 
 // ── Job Event Trigger Support ───────────────────────────────────────────────
 
-static TRIGGERED_JOB_FINISH_EVENTS: once_cell::sync::Lazy<parking_lot::RwLock<HashSet<u64>>> =
-    once_cell::sync::Lazy::new(|| parking_lot::RwLock::new(HashSet::new()));
+static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<parking_lot::RwLock<HashSet<u64>>> =
+    std::sync::LazyLock::new(|| parking_lot::RwLock::new(HashSet::new()));
 
 /// Helper function that checks whether a `job_event` node configuration matches a finished job.
 #[must_use]

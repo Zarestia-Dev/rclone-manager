@@ -102,6 +102,7 @@ export interface UpdateInfo {
   currentVersion: string;
   updateAvailable: boolean;
   status: BackendUpdateStatus;
+  download?: DownloadStatus;
   releaseTag?: string;
   releaseNotes?: string;
   releaseDate?: string;

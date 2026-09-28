@@ -1,6 +1,4 @@
-//! # Rclone Updater Module
-//!
-//! Handles rclone binary updates with intelligent strategy selection:
+//! Rclone binary updates:
 //!
 //! - **In-Place**: Updates rclone directly when write permissions allow
 //! - **Download-to-Local**: Downloads to app data directory when in-place isn't possible
@@ -20,12 +18,19 @@ use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
 use crate::utils::rclone::endpoints::core;
 use crate::utils::rclone::util::RCLONE_EXECUTABLE;
-use crate::utils::types::events::{APP_EVENT, EngineStatus, RCLONE_ENGINE_STATUS_CHANGED};
+use crate::utils::types::events::{
+    APP_EVENT, EngineStatus, RCLONE_ENGINE_STATUS_CHANGED, UPDATER_STATE_CHANGED,
+    UpdaterStateChanged,
+};
 use crate::utils::types::state::RcloneState;
 use crate::utils::types::updater::{
     RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateResult, UpdateState,
     UpdaterError as Error,
 };
+
+fn emit_state_changed() {
+    crate::core::bridge::emit(UPDATER_STATE_CHANGED, UpdaterStateChanged::Rclone);
+}
 
 struct RcloneVersionInfo {
     current: String,
@@ -42,15 +47,15 @@ impl RcloneVersionInfo {
         };
 
         for line in output.lines() {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() < 2 {
+            let mut parts = line.split_whitespace();
+            let (Some(label), Some(version)) = (parts.next(), parts.next()) else {
                 continue;
-            }
+            };
 
-            match parts[0] {
-                "yours:" => info.current = parts[1].to_string(),
-                "latest:" => info.stable = parts[1].to_string(),
-                "beta:" => info.beta = parts[1].to_string(),
+            match label {
+                "yours:" => info.current = version.to_string(),
+                "latest:" => info.stable = version.to_string(),
+                "beta:" => info.beta = version.to_string(),
                 _ => {}
             }
         }
@@ -104,9 +109,24 @@ pub async fn check_rclone_update(
     app_handle: AppHandle,
     channel: Option<String>,
 ) -> Result<UpdateInfo> {
-    let result_meta = perform_check_rclone_update(app_handle.clone(), channel).await?;
+    let state = app_handle.state::<RcloneUpdaterState>();
+    let _operation = state.operation.lock().await;
+    let result = perform_check_rclone_update(app_handle.clone(), channel).await;
+    if result.is_err() {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut data = state.data.lock();
+        if data.state == UpdateState::Checking {
+            data.state = if data.pending_update.is_some() {
+                UpdateState::Available
+            } else {
+                UpdateState::Idle
+            };
+        }
+    }
+    emit_state_changed();
+    let result_meta = result?;
 
-    if result_meta.metadata.update_available {
+    if result_meta.metadata.update_available && result_meta.status == UpdateState::Available {
         crate::core::bridge::emit(
             APP_EVENT,
             json!({ "status": "rclone_update_found", "data": &result_meta }),
@@ -134,29 +154,34 @@ pub async fn check_rclone_update(
     Ok(result_meta)
 }
 
-pub async fn perform_check_rclone_update(
+async fn perform_check_rclone_update(
     app_handle: AppHandle,
     channel: Option<String>,
 ) -> Result<UpdateInfo> {
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut data = state.data.lock();
+        if matches!(
+            data.state,
+            UpdateState::Downloading | UpdateState::ReadyToRestart | UpdateState::Checking
+        ) {
+            return Ok(UpdateInfo {
+                metadata: data.pending_update.clone().unwrap_or_default(),
+                status: data.state,
+                download: None,
+            });
+        }
+        data.state = UpdateState::Checking;
+    }
     let current_version = get_cached_rclone_version(&app_handle)
         .await
         .unwrap_or_else(|| "unknown".to_string());
-
     let channel: UpdateChannel = channel.into();
-
-    {
-        let state = app_handle.state::<RcloneUpdaterState>();
-        let mut d = state.data.lock();
-        d.state = UpdateState::Checking;
-        d.pending_update = None;
-    }
 
     let (update_available, latest_version) = check_rclone_selfupdate(&app_handle, &channel).await?;
 
     let (release_notes, release_date, release_url) = if update_available {
-        fetch_rclone_release_info(&latest_version, &channel)
-            .await
-            .unwrap_or((None, None, None))
+        fetch_rclone_release_info(&latest_version, &channel).await
     } else {
         (None, None, None)
     };
@@ -172,80 +197,58 @@ pub async fn perform_check_rclone_update(
         ..Default::default()
     };
 
-    {
-        let state = app_handle.state::<RcloneUpdaterState>();
-        let mut d = state.data.lock();
-        d.state = UpdateState::Idle;
-        if update_available {
-            d.pending_update = Some(metadata.clone());
-        }
-    }
-
-    let status = if metadata.update_available {
+    let status = if update_available {
         UpdateState::Available
     } else {
         UpdateState::Idle
     };
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut data = state.data.lock();
+        data.state = status;
+        data.pending_update = update_available.then(|| metadata.clone());
+    }
 
-    Ok(UpdateInfo { metadata, status })
+    Ok(UpdateInfo {
+        metadata,
+        status,
+        download: None,
+    })
 }
 
 #[bridge]
 pub async fn get_rclone_update_info(app_handle: AppHandle) -> Result<Option<UpdateInfo>> {
-    let pending_new = find_pending_new_binary(&app_handle);
-    let has_pending_new = pending_new.is_some();
     let updater_state = app_handle.state::<RcloneUpdaterState>();
-    let (state, pending_metadata) = {
-        let d = updater_state.data.lock();
-        (d.state, d.pending_update.clone())
-    };
-
-    if pending_metadata.is_none() && !has_pending_new {
-        return Ok(None);
+    {
+        let data = updater_state.data.lock();
+        if data.pending_update.is_some() || data.state != UpdateState::Idle {
+            return Ok(data.info());
+        }
     }
 
-    let status = if has_pending_new || state == UpdateState::ReadyToRestart {
-        UpdateState::ReadyToRestart
-    } else if state == UpdateState::Downloading {
-        UpdateState::Downloading
-    } else if pending_metadata
-        .as_ref()
-        .is_some_and(|m| m.update_available)
-    {
-        UpdateState::Available
-    } else {
-        UpdateState::Idle
+    let Ok(_operation) = updater_state.operation.try_lock() else {
+        return Ok(updater_state.data.lock().info());
     };
-
-    let mut metadata = if let Some(m) = pending_metadata {
-        m
-    } else {
-        let current_version = get_cached_rclone_version(&app_handle)
-            .await
-            .unwrap_or_else(|| "unknown".to_string());
-
-        let version = if let Some((_, new_path)) = &pending_new {
-            get_binary_version(new_path)
-                .await
-                .unwrap_or_else(|| "unknown".to_string())
-        } else {
-            "unknown".to_string()
-        };
-
-        UpdateMetadata {
+    let Some((_, new_path)) = find_pending_new_binary(&app_handle) else {
+        return Ok(None);
+    };
+    let Some(version) = get_binary_version(&new_path).await else {
+        return Ok(None);
+    };
+    let current_version = get_cached_rclone_version(&app_handle)
+        .await
+        .unwrap_or_else(|| "unknown".into());
+    let mut data = updater_state.data.lock();
+    if data.state == UpdateState::Idle && data.pending_update.is_none() {
+        data.state = UpdateState::ReadyToRestart;
+        data.pending_update = Some(UpdateMetadata {
             current_version,
             version,
             update_available: false,
-            channel: Some("stable".into()),
             ..Default::default()
-        }
-    };
-
-    if status == UpdateState::ReadyToRestart {
-        metadata.update_available = false;
+        });
     }
-
-    Ok(Some(UpdateInfo { metadata, status }))
+    Ok(data.info())
 }
 
 fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)> {
@@ -263,6 +266,29 @@ fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)>
 
 #[bridge]
 pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Result<UpdateResult> {
+    let state = app_handle.state::<RcloneUpdaterState>();
+    let _operation = state.operation.lock().await;
+    let result = update_rclone_inner(app_handle.clone(), channel).await;
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut data = state.data.lock();
+        data.state = if result.as_ref().is_ok_and(|result| result.success) {
+            UpdateState::ReadyToRestart
+        } else if data.pending_update.is_some() {
+            UpdateState::Available
+        } else {
+            UpdateState::Idle
+        };
+        data.cancel_token = None;
+    }
+    emit_state_changed();
+    result
+}
+
+async fn update_rclone_inner(
+    app_handle: AppHandle,
+    channel: Option<String>,
+) -> Result<UpdateResult> {
     debug!("Starting rclone download/update process");
 
     let channel_enum: UpdateChannel = channel.clone().into();
@@ -270,6 +296,15 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let cached_update = {
         let d = updater_state.data.lock();
+        if matches!(
+            d.state,
+            UpdateState::Downloading | UpdateState::ReadyToRestart
+        ) {
+            return Ok(UpdateResult {
+                success: true,
+                ..Default::default()
+            });
+        }
         d.pending_update.clone()
     };
 
@@ -281,6 +316,7 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
             UpdateInfo {
                 metadata,
                 status: UpdateState::Available,
+                download: None,
             }
         }
         _ => perform_check_rclone_update(app_handle.clone(), channel).await?,
@@ -300,9 +336,12 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
     let cancel_token = tokio_util::sync::CancellationToken::new();
     {
         let state = app_handle.state::<RcloneUpdaterState>();
-        state.data.lock().cancel_token = Some(cancel_token.clone());
+        let mut data = state.data.lock();
+        data.cancel_token = Some(cancel_token.clone());
+        data.state = UpdateState::Downloading;
     }
 
+    emit_state_changed();
     {
         let backend_manager = app_handle.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
@@ -322,9 +361,14 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
             )
             .await;
 
-            {
-                let state = app_handle.state::<RcloneUpdaterState>();
-                state.data.lock().cancel_token = None;
+            if cancel_token.is_cancelled() {
+                return Ok(UpdateResult {
+                    success: false,
+                    message: Some("Download cancelled by user".to_string()),
+                    channel: Some(channel_enum.to_string()),
+                    manual: false,
+                    ..Default::default()
+                });
             }
 
             return match result {
@@ -375,31 +419,34 @@ pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Re
     let target_path = resolve_update_target_path(&current_path, &app_handle)?;
     let new_path = PathBuf::from(format!("{}.new", target_path.display()));
 
-    {
-        let state = app_handle.state::<RcloneUpdaterState>();
-        state.data.lock().state = UpdateState::Downloading;
-    }
-    info!("Downloading update to: {new_path:?}");
-    let update_result =
-        perform_rclone_selfupdate(&app_handle, Some(&new_path), channel_enum, cancel_token).await;
+    // Only completed downloads receive the `.new` name used by startup/shutdown recovery.
+    let download_dir = tempfile::Builder::new()
+        .prefix(".rclone-update-")
+        .tempdir_in(target_path.parent().ok_or(Error::BinaryNotFound)?)?;
+    let download_path = download_dir.path().join(RCLONE_EXECUTABLE);
+    info!("Downloading update to: {download_path:?}");
+    let update_result = perform_rclone_selfupdate(
+        &app_handle,
+        Some(&download_path),
+        channel_enum.clone(),
+        cancel_token.clone(),
+    )
+    .await;
 
-    {
-        let state = app_handle.state::<RcloneUpdaterState>();
-        let mut data = state.data.lock();
-        data.cancel_token = None;
-        match &update_result {
-            Ok(res) if res.success => {
-                data.state = UpdateState::ReadyToRestart;
-            }
-            _ => {
-                data.state = UpdateState::Idle;
-            }
-        }
+    if cancel_token.is_cancelled() {
+        return Ok(UpdateResult {
+            success: false,
+            message: Some("Download cancelled by user".to_string()),
+            channel: Some(channel_enum.to_string()),
+            manual: false,
+            ..Default::default()
+        });
     }
 
     match &update_result {
         Ok(res) => {
             if res.success {
+                std::fs::rename(&download_path, &new_path)?;
                 notify(
                     &app_handle,
                     NotificationEvent::RcloneUpdate(UpdateStage::Downloaded {
@@ -427,19 +474,15 @@ pub async fn cancel_rclone_update(app_handle: AppHandle) -> Result<()> {
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let mut data = updater_state.data.lock();
 
-    if data.state == UpdateState::Downloading {
-        if let Some(token) = data.cancel_token.take() {
-            info!("Cancelling rclone update download");
-            token.cancel();
-        }
-
-        data.state = if data.pending_update.is_some() {
-            UpdateState::Available
-        } else {
-            UpdateState::Idle
-        };
+    if data.state == UpdateState::Downloading
+        && let Some(token) = data.cancel_token.take()
+    {
+        info!("Cancelling rclone update download");
+        token.cancel();
     }
 
+    drop(data);
+    emit_state_changed();
     Ok(())
 }
 
@@ -486,11 +529,24 @@ pub async fn activate_pending_rclone_update(
     resume: bool,
 ) -> Result<String> {
     debug!("Activating rclone update (native binary swap)");
+    let updater = app_handle.state::<RcloneUpdaterState>();
+    let _operation = updater
+        .operation
+        .try_lock()
+        .map_err(|_| Error::NoPendingUpdate)?;
+    if app_handle.state::<RcloneUpdaterState>().data.lock().state == UpdateState::Downloading {
+        return Err(Error::NoPendingUpdate);
+    }
     let (current_path, new_path) = if let Some(paths) = find_pending_new_binary(app_handle) {
         paths
     } else {
         let state = app_handle.state::<RcloneUpdaterState>();
-        state.data.lock().pending_update = None;
+        {
+            let mut data = state.data.lock();
+            data.pending_update = None;
+            data.state = UpdateState::Idle;
+        }
+        emit_state_changed();
         return Err(Error::BinaryNotFound);
     };
 
@@ -550,6 +606,7 @@ pub async fn activate_pending_rclone_update(
         d.pending_update.take()
     };
 
+    emit_state_changed();
     if let Some(metadata) = meta {
         Ok(metadata.version)
     } else {
@@ -615,6 +672,9 @@ async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
 /// This checks both the in-memory state and the filesystem for `.new` binaries.
 /// Should be called during shutdown, restart, and startup.
 pub async fn apply_rclone_update_if_staged(app_handle: &AppHandle) -> Result<bool> {
+    if app_handle.state::<RcloneUpdaterState>().data.lock().state == UpdateState::Downloading {
+        return Ok(false);
+    }
     if find_pending_new_binary(app_handle).is_some() {
         info!("Applying staged rclone update...");
         activate_pending_rclone_update(app_handle, false).await?;
@@ -742,33 +802,33 @@ async fn check_rclone_selfupdate(
     Ok((update_available, target_version))
 }
 
-pub async fn fetch_rclone_release_info(
+async fn fetch_rclone_release_info(
     version: &str,
     channel: &UpdateChannel,
-) -> std::result::Result<(Option<String>, Option<String>, Option<String>), github_client::Error> {
+) -> (Option<String>, Option<String>, Option<String>) {
     let tag = format!("v{}", clean_version(version));
 
     let release = match github_client::get_release_by_tag("rclone", "rclone", &tag).await {
         Ok(r) => r,
         Err(e) => {
             log::warn!("Failed to fetch GitHub release for tag {tag}: {e}");
-            return Ok((None, None, None));
+            return (None, None, None);
         }
     };
 
     if *channel == UpdateChannel::Beta {
-        return Ok((release.body, release.published_at, Some(release.html_url)));
+        return (release.body, release.published_at, Some(release.html_url));
     }
 
     match fetch_stable_changelog(version, &release.html_url).await {
-        Ok(changelog) => Ok((
+        Ok(changelog) => (
             Some(changelog),
             release.published_at,
             Some(release.html_url),
-        )),
+        ),
         Err(e) => {
             log::warn!("Failed to fetch stable changelog, using release body: {e}");
-            Ok((release.body, release.published_at, Some(release.html_url)))
+            (release.body, release.published_at, Some(release.html_url))
         }
     }
 }
@@ -779,22 +839,25 @@ async fn fetch_stable_changelog(
 ) -> std::result::Result<String, github_client::Error> {
     let tag = format!("v{}", clean_version(version));
 
-    match github_client::get_raw_file_content("rclone", "rclone", &tag, "docs/content/changelog.md")
-        .await
-    {
-        Ok(content) => Ok(
-            extract_version_changelog(&content, version).unwrap_or_else(|| {
-                log::warn!("Could not parse changelog.md, falling back to release URL.");
-                format!("## Rclone {version}\n\n[View full changelog]({release_url})")
-            }),
-        ),
-        Err(e) => Err(e),
-    }
+    let content =
+        github_client::get_raw_file_content("rclone", "rclone", &tag, "docs/content/changelog.md")
+            .await?;
+    Ok(
+        extract_version_changelog(&content, version).unwrap_or_else(|| {
+            log::warn!("Could not parse changelog.md, falling back to release URL.");
+            format!("## Rclone {version}\n\n[View full changelog]({release_url})")
+        }),
+    )
 }
 
 fn extract_version_changelog(changelog: &str, version: &str) -> Option<String> {
     let header = format!("## v{}", clean_version(version));
-    let start = changelog.find(&header)?;
+    let start = changelog.match_indices(&header).find_map(|(offset, _)| {
+        let at_line_start = offset == 0 || changelog.as_bytes()[offset - 1] == b'\n';
+        let suffix = &changelog[offset + header.len()..];
+        (at_line_start && (suffix.is_empty() || suffix.starts_with(char::is_whitespace)))
+            .then_some(offset)
+    })?;
     let after_header = &changelog[start..];
     let end = after_header[header.len()..]
         .find("\n## ")
@@ -863,6 +926,131 @@ async fn perform_rclone_selfupdate(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(feature = "native-tauri"))]
+    #[tokio::test]
+    async fn active_updates_are_read_without_probing_a_partial_binary() {
+        let app = AppHandle::default();
+        app.manage(RcloneUpdaterState::default());
+        for status in [UpdateState::Downloading, UpdateState::ReadyToRestart] {
+            {
+                let state = app.state::<RcloneUpdaterState>();
+                let mut data = state.data.lock();
+                data.state = status;
+                data.pending_update = Some(UpdateMetadata {
+                    version: "1.2.0".into(),
+                    update_available: true,
+                    channel: Some("stable".into()),
+                    ..Default::default()
+                });
+            }
+            let snapshot = get_rclone_update_info(app.clone()).await.unwrap().unwrap();
+            assert_eq!(snapshot.status, status);
+            let checked = perform_check_rclone_update(app.clone(), Some("beta".into()))
+                .await
+                .unwrap();
+            assert_eq!(checked.status, status);
+            assert_eq!(checked.metadata.channel.as_deref(), Some("stable"));
+            assert_eq!(checked.metadata.version, "1.2.0");
+        }
+    }
+
+    #[test]
+    fn version_output_accepts_whitespace_and_ignores_unrelated_lines() {
+        let info = RcloneVersionInfo::parse(
+            "rclone version\n  yours:\tv1.2.0 (installed)\nlatest: v1.3.0\nbeta: v1.4.0-beta.1\n",
+        )
+        .unwrap();
+        assert_eq!(info.current, "v1.2.0");
+        assert_eq!(info.stable, "v1.3.0");
+        assert_eq!(info.beta, "v1.4.0-beta.1");
+    }
+
+    #[test]
+    fn version_output_requires_current_and_stable_but_not_beta() {
+        for output in ["", "yours:", "yours: v1.2.0", "latest: v1.3.0", "garbage ☃"] {
+            assert!(RcloneVersionInfo::parse(output).is_err(), "{output}");
+        }
+        assert!(
+            RcloneVersionInfo::parse("yours: v1.2.0\nlatest: v1.3.0")
+                .unwrap()
+                .beta
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn changelog_requires_an_exact_version_heading() {
+        let changelog = "Text mentions ## v1.2.0\n## v1.2.01 - wrong\nwrong\n## v1.2.0-beta.1\nprerelease\n## v1.2.0 - correct\ncorrect notes\n## v1.1.0\nold";
+        assert_eq!(
+            extract_version_changelog(changelog, "1.2.0").as_deref(),
+            Some("## v1.2.0 - correct\ncorrect notes")
+        );
+        assert!(extract_version_changelog("## v1.2.01\nwrong", "1.2.0").is_none());
+        assert_eq!(
+            extract_version_changelog("## v1.2.0", "1.2.0").as_deref(),
+            Some("## v1.2.0")
+        );
+    }
+
+    #[cfg(not(feature = "native-tauri"))]
+    #[tokio::test]
+    async fn checks_wait_for_an_active_operation_and_preserve_its_result() {
+        let app = AppHandle::default();
+        app.manage(RcloneUpdaterState::default());
+        let state = app.state::<RcloneUpdaterState>();
+        let operation = state.operation.lock().await;
+        let mut check = std::pin::pin!(check_rclone_update(app.clone(), Some("beta".into())));
+        assert!(futures::poll!(check.as_mut()).is_pending());
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::ReadyToRestart;
+            data.pending_update = Some(UpdateMetadata {
+                version: "1.2.0".into(),
+                channel: Some("stable".into()),
+                ..Default::default()
+            });
+        }
+        drop(operation);
+        let result = check.await.unwrap();
+        assert_eq!(result.status, UpdateState::ReadyToRestart);
+        assert_eq!(result.metadata.channel.as_deref(), Some("stable"));
+    }
+
+    #[cfg(not(feature = "native-tauri"))]
+    #[tokio::test]
+    async fn cancellation_leaves_state_owned_by_the_download_worker() {
+        let app = AppHandle::default();
+        app.manage(RcloneUpdaterState::default());
+        let state = app.state::<RcloneUpdaterState>();
+        let token = tokio_util::sync::CancellationToken::new();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::Downloading;
+            data.cancel_token = Some(token.clone());
+        }
+        cancel_rclone_update(app.clone()).await.unwrap();
+        assert!(token.is_cancelled());
+        assert_eq!(state.data.lock().state, UpdateState::Downloading);
+        assert!(matches!(
+            activate_pending_rclone_update(&app, false).await,
+            Err(Error::NoPendingUpdate)
+        ));
+    }
+
+    #[cfg(not(feature = "native-tauri"))]
+    #[tokio::test]
+    async fn status_reads_and_activation_do_not_probe_files_during_an_operation() {
+        let app = AppHandle::default();
+        app.manage(RcloneUpdaterState::default());
+        let state = app.state::<RcloneUpdaterState>();
+        let _operation = state.operation.lock().await;
+        assert!(get_rclone_update_info(app.clone()).await.unwrap().is_none());
+        assert!(matches!(
+            activate_pending_rclone_update(&app, false).await,
+            Err(Error::NoPendingUpdate)
+        ));
+    }
 
     #[test]
     fn test_clean_version_removes_v_prefix() {

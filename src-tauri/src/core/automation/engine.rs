@@ -425,19 +425,20 @@ pub async fn execute_automation(
             Some(crate::utils::types::origin::Origin::QuickRun) => {
                 let qr_id = &automation.id;
                 info!("Executing quick run automation: {qr_id}");
-                let res = crate::core::flow::quick_run::commands::start_quick_run(
+                crate::core::flow::quick_run::commands::start_quick_run(
                     app_handle.clone(),
                     qr_id.to_string(),
                     None,
                     None,
                 )
-                .await?;
-
-                let job_handle = res
-                    .job_id
-                    .map(|id| id.to_string())
-                    .unwrap_or_else(|| res.execute_id);
-                Ok(AutomationExecutionOutcome::Running(job_handle))
+                .await
+                .map(|res| {
+                    let job_handle = res
+                        .job_id
+                        .map(|id| id.to_string())
+                        .unwrap_or_else(|| res.execute_id);
+                    AutomationExecutionOutcome::Running(job_handle)
+                })
             }
             Some(crate::utils::types::origin::Origin::Flow) => {
                 let wf_id = &automation.id;
@@ -450,20 +451,21 @@ pub async fn execute_automation(
                     .await;
 
                 // execute_workflow emits its own dedicated NotificationEvent::Workflow events
-                let exec_res = crate::core::flow::workflow::commands::execute_workflow(
+                crate::core::flow::workflow::commands::execute_workflow(
                     app_handle.clone(),
                     wf_id.to_string(),
                     None,
                 )
-                .await?;
-
-                if exec_res.success {
-                    Ok(AutomationExecutionOutcome::Success)
-                } else {
-                    Err(exec_res
-                        .error
-                        .unwrap_or_else(|| "Workflow execution failed".to_string()))
-                }
+                .await
+                .and_then(|exec_res| {
+                    if exec_res.success {
+                        Ok(AutomationExecutionOutcome::Success)
+                    } else {
+                        Err(exec_res
+                            .error
+                            .unwrap_or_else(|| "Workflow execution failed".to_string()))
+                    }
+                })
             }
             _ => {
                 let mut params = automation.args.params.clone();
@@ -471,8 +473,9 @@ pub async fn execute_automation(
                 params.scoped_targets = scoped_targets;
 
                 let transfer_type = automation.automation_type;
-                let job_id = start_profile_batch(app_handle.clone(), transfer_type, params).await?;
-                Ok(AutomationExecutionOutcome::Running(job_id))
+                start_profile_batch(app_handle.clone(), transfer_type, params)
+                    .await
+                    .map(AutomationExecutionOutcome::Running)
             }
         };
 
@@ -513,7 +516,8 @@ pub async fn execute_automation(
                     t.mark_failure(e.clone());
                     t.next_run = next_run;
                 })
-                .await?;
+                .await
+                .ok();
             Err(e)
         }
     }

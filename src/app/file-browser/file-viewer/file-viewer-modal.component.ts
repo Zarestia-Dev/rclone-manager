@@ -581,6 +581,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
     this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
+    if (this.editorView) {
+      this.editorView.destroy();
+      this.editorView = null;
+    }
     this.lastRenderedText = null;
     this.detectedSignature.set(null);
     this.hexDumpRows.set([]);
@@ -804,6 +808,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   onLoadError(event?: Event): void {
+    // Ignore events when URL is not set or component is actively resetting/transitioning
+    if (!this.currentUrl() || this.currentFileType() === 'loading') {
+      return;
+    }
+
+    const mediaError = (event?.target as HTMLMediaElement)?.error;
+
+    // MEDIA_ERR_ABORTED (1): Playback was aborted by the user / navigation, not an error
+    if (mediaError?.code === 1) {
+      return;
+    }
+
     this.isLoading.set(false);
     this.currentFileType.set('error');
 
@@ -812,7 +828,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
 
-    const mediaError = (event?.target as HTMLMediaElement)?.error;
     console.error(
       'Failed to load file:',
       this.fileName(),

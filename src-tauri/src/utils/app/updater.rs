@@ -4,9 +4,9 @@ use crate::core::{bridge, settings::AppSettingsManager};
 use crate::utils::context::{AppHandle, Manager};
 use crate::utils::github_client::{OWNER, REPO};
 #[cfg(feature = "updater")]
-use crate::utils::types::updater::{DownloadState, DownloadStatus, UpdaterError as Error};
+use crate::utils::types::updater::{DownloadStatus, UpdaterError as Error};
 use crate::utils::types::{
-    events::APP_EVENT,
+    events::{APP_EVENT, UPDATER_STATE_CHANGED, UpdaterStateChanged},
     updater::{AppUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateState},
 };
 use crate::utils::{
@@ -27,6 +27,10 @@ fn emit_progress(status: DownloadStatus) {
     );
 }
 
+fn emit_state_changed() {
+    crate::core::bridge::emit(UPDATER_STATE_CHANGED, UpdaterStateChanged::App);
+}
+
 pub use crate::utils::version::{clean_app_version, is_version_newer};
 
 #[bridge]
@@ -39,6 +43,7 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
             data.state = UpdateState::Idle;
         }
     }
+    emit_state_changed();
     result
 }
 
@@ -49,35 +54,11 @@ async fn fetch_update_inner(
 ) -> Result<Option<UpdateInfo>> {
     {
         let mut data = updater_state.data.lock();
-        if data.state == UpdateState::ReadyToRestart {
-            if let Some(ref m) = data.last_metadata
-                && m.channel.as_deref() == Some(channel)
-            {
-                return Ok(Some(UpdateInfo {
-                    metadata: m.clone(),
-                    status: UpdateState::ReadyToRestart,
-                }));
-            }
-            data.state = UpdateState::Idle;
-            #[cfg(feature = "updater")]
-            {
-                data.pending_action = None;
-            }
-            data.signature = None;
-            data.last_metadata = None;
-        }
-
-        if data.state == UpdateState::Downloading {
-            return Ok(Some(UpdateInfo {
-                metadata: UpdateMetadata {
-                    version: String::new(),
-                    current_version: env!("CARGO_PKG_VERSION").to_string(),
-                    update_available: true,
-                    channel: Some(channel.to_string()),
-                    ..Default::default()
-                },
-                status: UpdateState::Downloading,
-            }));
+        if matches!(
+            data.state,
+            UpdateState::Downloading | UpdateState::ReadyToRestart | UpdateState::Checking
+        ) {
+            return Ok(data.info());
         }
 
         data.state = UpdateState::Checking;
@@ -85,6 +66,11 @@ async fn fetch_update_inner(
         data.total_bytes = 0;
         data.failure_message = None;
         data.last_metadata = None;
+        data.downloaded_payload = None;
+        #[cfg(feature = "updater")]
+        {
+            data.pending_action = None;
+        }
     }
 
     info!("Checking for app updates on channel: {channel}");
@@ -135,8 +121,18 @@ async fn fetch_update_inner(
     let update_info = UpdateInfo {
         metadata: update_metadata.clone(),
         status: UpdateState::Available,
+        download: None,
     };
 
+    {
+        let mut data = updater_state.data.lock();
+        data.state = UpdateState::Available;
+        data.last_metadata = Some(update_metadata);
+        #[cfg(feature = "updater")]
+        {
+            data.pending_action = pending_action;
+        }
+    }
     crate::core::bridge::emit(
         APP_EVENT,
         serde_json::json!({ "status": "update_found", "data": &update_info }),
@@ -158,16 +154,6 @@ async fn fetch_update_inner(
                 version: update_info.metadata.version.clone(),
             }),
         );
-    }
-
-    {
-        let mut data = updater_state.data.lock();
-        data.state = UpdateState::Available;
-        data.last_metadata = Some(update_metadata);
-        #[cfg(feature = "updater")]
-        {
-            data.pending_action = pending_action;
-        }
     }
 
     Ok(Some(update_info))
@@ -248,15 +234,7 @@ fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
 pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
     let state = app.state::<AppUpdaterState>();
     let data = state.data.lock();
-    Ok(data.last_metadata.as_ref().map(|metadata| UpdateInfo {
-        metadata: metadata.clone(),
-        status: match data.state {
-            UpdateState::Downloading => UpdateState::Downloading,
-            UpdateState::ReadyToRestart => UpdateState::ReadyToRestart,
-            _ if metadata.update_available => UpdateState::Available,
-            _ => UpdateState::Idle,
-        },
-    }))
+    Ok(data.info())
 }
 
 fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bool {
@@ -290,22 +268,24 @@ fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bo
 #[bridge]
 pub async fn install_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
+    let _operation = updater_state.operation.lock().await;
 
     let update = {
-        let data = updater_state.data.lock();
-        if data.state == UpdateState::Downloading {
+        let mut data = updater_state.data.lock();
+        if matches!(
+            data.state,
+            UpdateState::Downloading | UpdateState::ReadyToRestart
+        ) {
             return Ok(());
         }
-        data.pending_action.clone().ok_or(Error::NoPendingUpdate)?
-    };
-
-    {
-        let mut data = updater_state.data.lock();
+        let update = data.pending_action.clone().ok_or(Error::NoPendingUpdate)?;
         data.state = UpdateState::Downloading;
         data.downloaded_bytes = 0;
         data.total_bytes = 0;
         data.failure_message = None;
-    }
+        update
+    };
+    emit_state_changed();
 
     info!("Downloading app update from: {}", update.download_url);
     notify(
@@ -316,7 +296,6 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     );
 
     let app_clone = app.clone();
-    let update_clone = update.clone();
 
     let handle = crate::utils::spawn(async move {
         let progress_app = app_clone.clone();
@@ -326,27 +305,22 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
             .download(
                 move |chunk_length, content_length| {
                     let st = progress_app.state::<AppUpdaterState>();
-                    let (downloaded, total) = {
+                    let now = std::time::Instant::now();
+                    let progress = {
                         let mut data = st.data.lock();
                         data.downloaded_bytes += chunk_length as u64;
                         if let Some(t) = content_length {
                             data.total_bytes = t;
                         }
-                        (data.downloaded_bytes, data.total_bytes)
+                        if now.duration_since(last_emit).as_millis() >= 200 {
+                            data.download_status()
+                        } else {
+                            None
+                        }
                     };
 
-                    let now = std::time::Instant::now();
-                    if now.duration_since(last_emit).as_millis() >= 200 {
-                        emit_progress(DownloadStatus {
-                            downloaded_bytes: downloaded,
-                            total_bytes: total,
-                            percentage: if total > 0 {
-                                (downloaded as f64 / total as f64) * 100.0
-                            } else {
-                                0.0
-                            },
-                            state: DownloadState::InProgress,
-                        });
+                    if let Some(progress) = progress {
+                        emit_progress(progress);
                         last_emit = now;
                     }
                 },
@@ -356,35 +330,32 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 
         let st = app_clone.state::<AppUpdaterState>();
         match res {
-            Ok(signature) => {
-                let (downloaded, total) = {
+            Ok(downloaded_payload) => {
+                let progress = {
                     let mut data = st.data.lock();
                     data.state = UpdateState::ReadyToRestart;
-                    data.signature = Some(signature);
-                    data.pending_action = Some(update_clone.clone());
-                    (data.downloaded_bytes, data.total_bytes)
+                    data.downloaded_payload = Some(downloaded_payload);
+                    data.download_status()
                 };
                 notify(
                     &app_clone,
                     NotificationEvent::AppUpdate(UpdateStage::Downloaded {
-                        version: update_clone.version.clone(),
+                        version: update.version.clone(),
                     }),
                 );
-                emit_progress(DownloadStatus {
-                    downloaded_bytes: downloaded,
-                    total_bytes: total,
-                    percentage: 100.0,
-                    state: DownloadState::Complete,
-                });
+                if let Some(progress) = progress {
+                    emit_progress(progress);
+                }
             }
             Err(e) => {
                 warn!("App update download failed: {e}");
-                let (downloaded, total) = {
+                let failure =
+                    crate::localized_error!("backendErrors.updater.updateFailed", "error" => e);
+                let progress = {
                     let mut data = st.data.lock();
                     data.state = UpdateState::Available;
-                    data.failure_message = Some(e.to_string());
-                    data.pending_action = Some(update_clone.clone());
-                    (data.downloaded_bytes, data.total_bytes)
+                    data.failure_message = Some(failure);
+                    data.download_status()
                 };
                 notify(
                     &app_clone,
@@ -392,14 +363,12 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
                         error: e.to_string(),
                     }),
                 );
-                emit_progress(DownloadStatus {
-                    downloaded_bytes: downloaded,
-                    total_bytes: total,
-                    percentage: 0.0,
-                    state: DownloadState::Failed(e.to_string()),
-                });
+                if let Some(progress) = progress {
+                    emit_progress(progress);
+                }
             }
         }
+        emit_state_changed();
     });
 
     updater_state.data.lock().download_handle = Some(handle);
@@ -410,23 +379,9 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 #[bridge]
 pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
-    let mut data = updater_state.data.lock();
+    updater_state.cancel_download().await;
 
-    if data.state == UpdateState::Downloading {
-        if let Some(handle) = data.download_handle.take() {
-            info!("Cancelling app update download");
-            handle.abort();
-        }
-        data.state = if data.last_metadata.is_some() {
-            UpdateState::Available
-        } else {
-            UpdateState::Idle
-        };
-        data.downloaded_bytes = 0;
-        data.total_bytes = 0;
-        data.failure_message = Some("Download cancelled by user".to_string());
-    }
-
+    emit_state_changed();
     Ok(())
 }
 
@@ -435,28 +390,26 @@ pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
 pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     let updater_state = app.state::<AppUpdaterState>();
 
-    let (update, signature) = {
+    let (update, downloaded_payload) = {
         let mut data = updater_state.data.lock();
-        match (data.pending_action.take(), data.signature.take()) {
-            (Some(u), Some(s)) => (u, s),
-            _ => return Err(Error::NoPendingUpdate),
-        }
+        data.take_staged_update().ok_or(Error::NoPendingUpdate)?
     };
 
-    info!("Applying app update in background thread...");
+    info!("Applying app update in background blocking task...");
 
-    // install() triggers on_before_exit which calls block_on — that panics on a Tokio
-    // worker thread. A native OS thread has no active runtime, so block_on works fine.
-    std::thread::spawn(move || {
+    crate::utils::spawn_blocking(move || {
         #[cfg(not(target_os = "windows"))]
         let version = update.version.clone();
 
-        if let Err(e) = update.install(signature) {
+        if let Err(e) = update.install(downloaded_payload) {
             log::error!("Failed to install update: {e}");
             let state = app.state::<AppUpdaterState>();
             let mut data = state.data.lock();
             data.state = UpdateState::Available;
             data.pending_action = Some(update);
+            drop(data);
+            emit_state_changed();
+            return;
         }
 
         #[cfg(not(target_os = "windows"))]
@@ -473,4 +426,37 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(all(test, not(feature = "native-tauri")))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn checks_preserve_active_downloads_and_staged_updates_across_channels() {
+        let app = AppHandle::default();
+        let state = AppUpdaterState::default();
+        for status in [UpdateState::Downloading, UpdateState::ReadyToRestart] {
+            {
+                let mut data = state.data.lock();
+                data.state = status;
+                data.last_metadata = Some(UpdateMetadata {
+                    version: "1.2.0".into(),
+                    channel: Some("stable".into()),
+                    update_available: true,
+                    ..Default::default()
+                });
+                data.downloaded_bytes = 42;
+                data.total_bytes = 100;
+            }
+            let info = fetch_update_inner(&app, "beta", &state)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(info.status, status);
+            assert_eq!(info.metadata.channel.as_deref(), Some("stable"));
+            assert_eq!(info.metadata.version, "1.2.0");
+            assert_eq!(info.download.unwrap().downloaded_bytes, 42);
+        }
+    }
 }

@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use handlebars::Handlebars;
 use log::warn;
-use once_cell::sync::Lazy;
 use serde::Serialize;
 use serde_json::Value;
+use std::sync::LazyLock;
 
-static HBS: Lazy<Handlebars<'static>> = Lazy::new(|| {
+static HBS: LazyLock<Handlebars<'static>> = LazyLock::new(|| {
     let mut hbs = Handlebars::new();
     hbs.set_strict_mode(false);
     hbs

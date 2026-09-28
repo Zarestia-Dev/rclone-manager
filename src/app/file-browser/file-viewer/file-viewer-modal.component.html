@@ -229,14 +229,21 @@
           </button>
         </div>
       } @else {
-        <video
-          [src]="currentUrl()"
-          controls
-          class="preview-content"
-          (loadeddata)="onLoadComplete()"
-          (error)="onLoadError($event)"
-          [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
-        ></video>
+        @if (currentUrl()) {
+          <video
+            [src]="currentUrl()"
+            controls
+            preload="metadata"
+            class="preview-content"
+            (loadeddata)="onLoadComplete()"
+            (canplay)="onLoadComplete()"
+            (loadedmetadata)="onLoadComplete()"
+            (error)="onLoadError($event)"
+            [attr.aria-label]="
+              'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }
+            "
+          ></video>
+        }
       }
     }
     @case ('audio') {
@@ -245,7 +252,7 @@
           @if (isLoadingCover()) {
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           } @else if (coverImage()) {
-            <img [src]="coverImage()" [alt]="fileName()" />
+            <img [src]="coverImage()" [alt]="fileName()" (error)="coverImage.set(null)" />
           } @else {
             <mat-icon
               [svgIcon]="iconService.getIconForFileType('audio')"
@@ -253,13 +260,20 @@
             ></mat-icon>
           }
         </div>
-        <audio
-          [src]="currentUrl()"
-          controls
-          (loadeddata)="onLoadComplete()"
-          (error)="onLoadError($event)"
-          [attr.aria-label]="'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }"
-        ></audio>
+        @if (currentUrl()) {
+          <audio
+            [src]="currentUrl()"
+            controls
+            preload="metadata"
+            (loadeddata)="onLoadComplete()"
+            (canplay)="onLoadComplete()"
+            (loadedmetadata)="onLoadComplete()"
+            (error)="onLoadError($event)"
+            [attr.aria-label]="
+              'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }
+            "
+          ></audio>
+        }
       </div>
     }
     @case ('pdf') {
@@ -289,13 +303,7 @@
           </button>
         </div>
       } @else if (safePdfUrl()) {
-        <object
-          [data]="safePdfUrl()"
-          type="application/pdf"
-          class="pdf-viewer"
-          (load)="onLoadComplete()"
-          (error)="onLoadError()"
-        >
+        <object [data]="safePdfUrl()" type="application/pdf" class="pdf-viewer">
           <div class="unsupported-container">
             <div class="icon-wrapper">
               <mat-icon svgIcon="application-pdf" aria-hidden="true"></mat-icon>

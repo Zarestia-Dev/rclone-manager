@@ -153,8 +153,7 @@ impl RotatingFileWriter {
 }
 
 /// Global rotating file writer wrapped in a Mutex for thread safety
-static FILE_WRITER: once_cell::sync::OnceCell<Mutex<RotatingFileWriter>> =
-    once_cell::sync::OnceCell::new();
+static FILE_WRITER: std::sync::OnceLock<Mutex<RotatingFileWriter>> = std::sync::OnceLock::new();
 
 /// Initialize the file writer with a log directory
 pub fn init_file_writer(log_dir: &Path) -> io::Result<()> {

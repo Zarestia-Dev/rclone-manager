@@ -48,9 +48,9 @@ pub struct ActiveOperationsSummary {
     pub active_serves_count: usize,
 }
 
-static PENDING_APP_EXIT_SUMMARY: once_cell::sync::Lazy<
+static PENDING_APP_EXIT_SUMMARY: std::sync::LazyLock<
     parking_lot::Mutex<Option<ActiveOperationsSummary>>,
-> = once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(None));
+> = std::sync::LazyLock::new(|| parking_lot::Mutex::new(None));
 
 pub fn set_pending_app_exit_summary(summary: ActiveOperationsSummary) {
     *PENDING_APP_EXIT_SUMMARY.lock() = Some(summary);

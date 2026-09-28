@@ -154,7 +154,7 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-use {futures_lite::stream::StreamExt, zbus::Connection};
+use {futures::StreamExt, zbus::Connection};
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 pub async fn monitor_network_changes() {

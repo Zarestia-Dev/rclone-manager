@@ -311,7 +311,13 @@
                       }
                     </button>
                     @if (appDownloadInProgress()) {
-                      <button matButton="outlined" color="warn" (click)="cancelAppUpdate()">
+                      <button
+                        matButton="outlined"
+                        color="warn"
+                        (click)="cancelAppUpdate()"
+                        [disabled]="appIsCancelling()"
+                      >
+                        <mat-icon [svgIcon]="appIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
                         {{ 'common.cancel' | translate }}
                       </button>
                     } @else {
@@ -582,7 +588,13 @@
                     }
                   </button>
                   @if (rcloneUpdateInProgress()) {
-                    <button matButton="text" color="warn" (click)="cancelRcloneUpdate()">
+                    <button
+                      matButton="text"
+                      color="warn"
+                      (click)="cancelRcloneUpdate()"
+                      [disabled]="rcloneIsCancelling()"
+                    >
+                      <mat-icon [svgIcon]="rcloneIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {

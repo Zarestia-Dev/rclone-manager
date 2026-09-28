@@ -104,6 +104,8 @@ export class AppComponent implements OnInit {
     try {
       await this.appSettingsService.loadSettings();
       await this.appSettingsService.applySavedLanguage();
+      void this.appUpdaterService.initialize();
+      void this.rcloneUpdateService.initialize();
       this.nautilusService.initializeFromUrl();
 
       if (this.modalService.isDialogStandalone()) {
@@ -114,8 +116,6 @@ export class AppComponent implements OnInit {
         !this.mainUiOverlayService.isStandaloneWindow()
       ) {
         this.backendService.runStartupChecks();
-        void this.appUpdaterService.initialize();
-        void this.rcloneUpdateService.initialize();
         await this.applyDefaultView();
       }
     } catch (error) {

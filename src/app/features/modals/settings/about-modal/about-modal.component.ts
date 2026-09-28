@@ -5,6 +5,7 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
+  SecurityContext,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -107,6 +108,7 @@ export class AboutModalComponent implements OnInit {
   readonly appReadyToRestart = this.appUpdaterService.readyToRestart;
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
   readonly appIsChecking = this.appUpdaterService.isChecking;
+  readonly appIsCancelling = this.appUpdaterService.isCancelling;
 
   readonly appUpdateReleaseChannel = computed(() => {
     const tag = this.appUpdateAvailable()?.releaseTag;
@@ -134,6 +136,7 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneHasUpdates = this.rcloneUpdateService.hasUpdates;
   readonly rcloneUpdateInProgress = this.rcloneUpdateService.downloading;
   readonly rcloneIsChecking = this.rcloneUpdateService.isChecking;
+  readonly rcloneIsCancelling = this.rcloneUpdateService.isCancelling;
   readonly rcloneReadyToRestart = this.rcloneUpdateService.readyToRestart;
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
@@ -614,7 +617,8 @@ export class AboutModalComponent implements OnInit {
         `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
       );
     }
-    const html = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    const rawHtml = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
+    const sanitizedHtml = this.sanitizer.sanitize(SecurityContext.HTML, rawHtml) ?? '';
+    return this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml);
   }
 }

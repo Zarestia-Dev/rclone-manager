@@ -6,14 +6,14 @@
 //! - API calls use `https://api.github.com`
 //! - Raw content calls use `https://raw.githubusercontent.com`
 
-use once_cell::sync::Lazy;
 use reqwest::header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT};
 use serde::Deserialize;
+use std::sync::LazyLock;
 
 pub const OWNER: &str = "Zarestia-Dev";
 pub const REPO: &str = "rclone-manager";
 
-static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+static GITHUB_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     let mut headers = HeaderMap::new();
 
     // Set a custom User-Agent for organizational identification

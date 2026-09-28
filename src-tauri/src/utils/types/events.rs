@@ -130,6 +130,16 @@ pub const ALERT_FIRED: &str = "alert_fired";
 
 pub const APP_EVENT: &str = "app_event";
 
+/// Emitted by app/rclone updaters after state changes; consumed by frontend update services.
+pub const UPDATER_STATE_CHANGED: &str = "updater_state_changed";
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "target", rename_all = "camelCase")]
+pub enum UpdaterStateChanged {
+    App,
+    Rclone,
+}
+
 #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
 pub const APP_EXIT_REQUESTED: &str = "app_exit_requested";
 
@@ -177,6 +187,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     WORKFLOW_EXECUTION_STATE_CHANGED,
     APP_EVENT,
     BROWSE,
+    UPDATER_STATE_CHANGED,
     ALERT_FIRED,
     SYSTEM_STATUS,
     FILE_DOWNLOAD_PROGRESS,

@@ -4,10 +4,10 @@
 //! 1. Macros to create localized error/success messages for frontend translation
 //! 2. Runtime translation resolver for tray menu and notifications (dynamically loaded)
 
-use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use std::sync::RwLock;
 
 /// Directory where backend translation files are stored (relative to executable)
@@ -15,7 +15,7 @@ const I18N_DIR: &str = "i18n";
 pub const DEFAULT_LANG: &str = "en-US";
 
 /// Global translations state
-static TRANSLATIONS: Lazy<Translations> = Lazy::new(Translations::new);
+static TRANSLATIONS: LazyLock<Translations> = LazyLock::new(Translations::new);
 
 struct Translations {
     current_lang: RwLock<String>,

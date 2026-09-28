@@ -448,4 +448,68 @@ describe('FileViewerModalComponent', () => {
       expect(component.isLoading()).toBe(false);
     });
   });
+
+  describe('onLoadError and Lifecycle Handling', () => {
+    it('should ignore error events if currentUrl is empty', () => {
+      component.currentUrl.set('');
+      component.currentFileType.set('video');
+
+      component.onLoadError();
+
+      expect(component.currentFileType()).toBe('video');
+    });
+
+    it('should ignore error events if currentFileType is loading', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('loading');
+
+      component.onLoadError();
+
+      expect(component.currentFileType()).toBe('loading');
+    });
+
+    it('should ignore error events when media error code is MEDIA_ERR_ABORTED (1)', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('video');
+
+      const abortEvent = {
+        target: {
+          error: { code: 1, message: 'aborted' },
+        },
+      } as unknown as Event;
+
+      component.onLoadError(abortEvent);
+
+      expect(component.currentFileType()).toBe('video');
+    });
+
+    it('should transition to error state when a legitimate media error occurs', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('video');
+
+      const mediaErrorEvent = {
+        target: {
+          error: { code: 4, message: 'format not supported' },
+        },
+      } as unknown as Event;
+
+      component.onLoadError(mediaErrorEvent);
+
+      expect(component.currentFileType()).toBe('error');
+      expect(component.isLoading()).toBe(false);
+      expect(component.errorMessage()).toBeTruthy();
+    });
+
+    it('should destroy editorView on updateData if one exists', async () => {
+      const mockDestroy = vi.fn();
+      (component as unknown as { editorView: { destroy: () => void } | null }).editorView = {
+        destroy: mockDestroy,
+      };
+
+      await component.updateData();
+
+      expect(mockDestroy).toHaveBeenCalled();
+      expect((component as unknown as { editorView: unknown }).editorView).toBeNull();
+    });
+  });
 });

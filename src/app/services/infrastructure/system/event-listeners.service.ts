@@ -8,6 +8,8 @@ import {
   JOB_STATS_UPDATED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
+  UPDATER_STATE_CHANGED,
+  UpdaterStateChanged,
   APP_EXIT_REQUESTED,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
@@ -141,6 +143,10 @@ export class EventListenersService extends TauriBaseService {
         }
       })
     );
+  }
+
+  listenToUpdaterStateChanged(): Observable<UpdaterStateChanged> {
+    return this.listenToEvent<UpdaterStateChanged>(UPDATER_STATE_CHANGED);
   }
 
   listenToAppUpdateFound(): Observable<UpdateInfo> {

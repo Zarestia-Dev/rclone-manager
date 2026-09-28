@@ -3,8 +3,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::utils::context::{AppHandle, Manager};
 use chrono::Utc;
 use log::LevelFilter;
-use once_cell::sync::OnceCell;
 use serde_json::Value;
+use std::sync::OnceLock;
 use tokio::sync::mpsc;
 
 use crate::utils::types::logs::{LogCache, LogEntry, LogLevel};
@@ -13,7 +13,7 @@ use super::file_writer::write_to_file;
 
 pub struct DynamicLogger;
 
-static LOG_SENDER: OnceCell<mpsc::Sender<LogEntry>> = OnceCell::new();
+static LOG_SENDER: OnceLock<mpsc::Sender<LogEntry>> = OnceLock::new();
 
 static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
 
