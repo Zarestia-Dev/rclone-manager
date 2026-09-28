@@ -21,6 +21,7 @@ describe('NavigationDispatcherService', () => {
   let service: NavigationDispatcherService;
   let mockUiStateService: {
     setMainView: ReturnType<typeof vi.fn>;
+    setFlowSubMode: ReturnType<typeof vi.fn>;
     setTab: ReturnType<typeof vi.fn>;
     setSelectedRemote: ReturnType<typeof vi.fn>;
   };
@@ -35,9 +36,6 @@ describe('NavigationDispatcherService', () => {
   };
   let mockWorkflowStateService: {
     loadWorkflow: ReturnType<typeof vi.fn>;
-    requestedSubMode: {
-      set: ReturnType<typeof vi.fn>;
-    };
   };
 
   const mockRemote = {
@@ -67,6 +65,7 @@ describe('NavigationDispatcherService', () => {
   beforeEach((): void => {
     mockUiStateService = {
       setMainView: vi.fn(),
+      setFlowSubMode: vi.fn(),
       setTab: vi.fn(),
       setSelectedRemote: vi.fn(),
     };
@@ -85,9 +84,6 @@ describe('NavigationDispatcherService', () => {
     };
     mockWorkflowStateService = {
       loadWorkflow: vi.fn(),
-      requestedSubMode: {
-        set: vi.fn(),
-      },
     };
 
     TestBed.configureTestingModule({
@@ -128,7 +124,7 @@ describe('NavigationDispatcherService', () => {
       service.navigateToJob(job);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
-      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
 
@@ -150,6 +146,7 @@ describe('NavigationDispatcherService', () => {
       service.navigateToJob(job);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
@@ -259,6 +256,7 @@ describe('NavigationDispatcherService', () => {
       service.navigateToAutomation(automation);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
@@ -279,17 +277,17 @@ describe('NavigationDispatcherService', () => {
       service.navigateToAutomation(automation);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
-      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
   });
 
   describe('navigateToQuickRun', () => {
-    it('should set main view to flow, set requestedSubMode to quick_run, and select quick run', (): void => {
+    it('should set main view to flow, set flow sub-mode to quick_run, and select quick run', (): void => {
       service.navigateToQuickRun('qr-1');
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
-      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
   });
@@ -307,7 +305,7 @@ describe('NavigationDispatcherService', () => {
       service.navigateToServe(serve);
 
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
-      expect(mockWorkflowStateService.requestedSubMode.set).toHaveBeenCalledWith('quick_run');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
       expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
     });
   });

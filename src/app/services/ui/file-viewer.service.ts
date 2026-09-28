@@ -6,11 +6,10 @@ import { platform } from '@tauri-apps/plugin-os';
 import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
 import { PathService } from '../infrastructure/platform/path.service';
-import { PathNavigationService } from '../infrastructure/platform/path-navigation.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
-import { extractFilenameFromUrl } from 'src/app/shared/utils/url.utils';
+import { encodeUrlPath, extractFilenameFromUrl } from 'src/app/shared/utils/url.utils';
 
 @Injectable({
   providedIn: 'root',
@@ -18,7 +17,6 @@ import { extractFilenameFromUrl } from 'src/app/shared/utils/url.utils';
 export class FileViewerService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private readonly pathService = inject(PathService);
-  private readonly pathNavigationService = inject(PathNavigationService);
 
   private readonly _isViewerOpen = signal<boolean>(false);
   public readonly isViewerOpen = this._isViewerOpen.asReadonly();
@@ -193,7 +191,7 @@ export class FileViewerService extends TauriBaseService {
       // percent-encoded segments) regardless of the underlying filesystem's
       // native separator. The leading-slash sniff is URL-routing logic
       // (absolute vs relative), not an OS inference.
-      const encodedSegments = this.pathNavigationService.encodePath(fullPath);
+      const encodedSegments = encodeUrlPath(fullPath);
 
       if (this.supportsCustomUrlScheme()) {
         const pathWithSlash = encodedSegments.startsWith('/')
@@ -209,7 +207,7 @@ export class FileViewerService extends TauriBaseService {
     }
 
     const rName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
-    const encodedPath = this.pathNavigationService.encodePath(path);
+    const encodedPath = encodeUrlPath(path);
 
     if (!this.isTauri) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(

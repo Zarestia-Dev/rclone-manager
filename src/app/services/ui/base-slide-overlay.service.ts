@@ -12,7 +12,6 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
 
   protected overlayRef: OverlayRef | null = null;
   protected componentRef: ComponentRef<T> | null = null;
-  private isOpening = false;
 
   protected readonly _isOpen = signal<boolean>(false);
   readonly isOpen = this._isOpen.asReadonly();
@@ -30,8 +29,7 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
   }
 
   async openOverlay(): Promise<void> {
-    if (this.overlayRef || this.isOpening) return;
-    this.isOpening = true;
+    if (this.overlayRef) return;
     this._isOpen.set(true);
 
     const overlayRef = this.overlay.create({
@@ -41,8 +39,10 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
+    this.overlayRef = overlayRef;
     try {
       const componentType = await this.loadComponent();
+      if (this.overlayRef !== overlayRef) return;
       const componentRef = overlayRef.attach(new ComponentPortal(componentType));
 
       const host = componentRef.location.nativeElement as HTMLElement;
@@ -55,10 +55,15 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
         .pipe(take(1))
         .subscribe(() => this.closeOverlay());
 
-      this.overlayRef = overlayRef;
       this.componentRef = componentRef;
-    } finally {
-      this.isOpening = false;
+    } catch (error) {
+      overlayRef.dispose();
+      if (this.overlayRef === overlayRef) {
+        this.overlayRef = null;
+        this.componentRef = null;
+        this._isOpen.set(false);
+      }
+      throw error;
     }
   }
 

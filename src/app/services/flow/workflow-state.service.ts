@@ -1,5 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { FlowSubMode } from '@app/types';
 import {
   CanvasViewport,
   WorkflowDefinition,
@@ -82,7 +81,6 @@ export class WorkflowStateService {
   readonly selectedNodeIds = signal<Set<string>>(new Set());
   readonly selectedEdgeIds = signal<Set<string>>(new Set());
   readonly snapToGrid = signal<boolean>(true);
-  readonly requestedSubMode = signal<FlowSubMode | null>(null);
 
   /** Whether a mobile drawer (palette, inspector, or log) is currently open in overlay mode */
   readonly isWorkspaceDrawerOpen = signal<boolean>(false);

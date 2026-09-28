@@ -8,6 +8,8 @@ import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
 
 export interface KeyboardCallbacks {
   navigateTo: (item: FileBrowserItem) => void;
+  goBack: () => void;
+  goForward: () => void;
   getSelectedItems: () => FileBrowserItem[];
   setContextItem: (item: FileBrowserItem | null) => void;
   openInNewTab: () => void;
@@ -136,15 +138,15 @@ export class NautilusKeyboardDirective {
       return true;
     }
 
-    if (matchesShortcut('Alt + Left', event) && this.tabSvc.canGoBack()) {
+    if (matchesShortcut('Alt + Left', event)) {
       event.preventDefault();
-      this.tabSvc.goBack();
+      this.callbacks.goBack();
       return true;
     }
 
-    if (matchesShortcut('Alt + Right', event) && this.tabSvc.canGoForward()) {
+    if (matchesShortcut('Alt + Right', event)) {
       event.preventDefault();
-      this.tabSvc.goForward();
+      this.callbacks.goForward();
       return true;
     }
 

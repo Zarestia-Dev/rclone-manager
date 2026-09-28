@@ -48,7 +48,11 @@ describe('AppMenuComponent', () => {
         { provide: BackupRestoreUiService, useValue: { launchRestoreFlow: vi.fn() } },
         {
           provide: NautilusService,
-          useValue: { isStandaloneWindow: vi.fn().mockReturnValue(false) },
+          useValue: {
+            isStandaloneWindow: vi.fn().mockReturnValue(false),
+            openBrowserOverlay: vi.fn().mockResolvedValue(undefined),
+            closeBrowserOverlay: vi.fn(),
+          },
         },
         {
           provide: WindowService,
@@ -75,7 +79,8 @@ describe('AppMenuComponent', () => {
           provide: UiStateService,
           useValue: {
             activeWorkspace: signal('main_menu'),
-            baseWorkspace: signal('main_menu'),
+            defaultView: signal('main_menu'),
+            setMainView: vi.fn(),
           },
         },
         {
@@ -86,11 +91,19 @@ describe('AppMenuComponent', () => {
         },
         {
           provide: FlowOverlayService,
-          useValue: { isFlowOverlayOpen: vi.fn().mockReturnValue(false) },
+          useValue: {
+            isFlowOverlayOpen: vi.fn().mockReturnValue(false),
+            openFlowOverlay: vi.fn().mockResolvedValue(undefined),
+            closeFlowOverlay: vi.fn(),
+          },
         },
         {
           provide: MainUiOverlayService,
-          useValue: { isMainUiOverlayOpen: vi.fn().mockReturnValue(false) },
+          useValue: {
+            isMainUiOverlayOpen: vi.fn().mockReturnValue(false),
+            openMainUiOverlay: vi.fn().mockResolvedValue(undefined),
+            closeMainUiOverlay: vi.fn(),
+          },
         },
       ],
     }).compileComponents();
@@ -120,5 +133,20 @@ describe('AppMenuComponent', () => {
 
     component.onAboutClicked();
     expect(modalServiceSpy.openAbout).not.toHaveBeenCalled();
+  });
+  it('keeps the old workspace visible until the requested overlay finishes loading', async () => {
+    let finish!: () => void;
+    const loading = new Promise<void>(resolve => {
+      finish = resolve;
+    });
+    const flow = TestBed.inject(FlowOverlayService);
+    const nautilus = TestBed.inject(NautilusService);
+    vi.spyOn(flow, 'openFlowOverlay').mockReturnValue(loading);
+    const opening = component.openWorkspace('flow');
+    expect(nautilus.closeBrowserOverlay).not.toHaveBeenCalled();
+    finish();
+    await opening;
+    expect(nautilus.closeBrowserOverlay).toHaveBeenCalledOnce();
+    expect(flow.closeFlowOverlay).not.toHaveBeenCalled();
   });
 });

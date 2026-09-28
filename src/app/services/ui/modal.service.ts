@@ -1,3 +1,5 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationHistoryService } from './navigation-history.service';
 import { Injectable, inject, Injector, signal, Type } from '@angular/core';
 import {
   MatDialog,
@@ -5,7 +7,7 @@ import {
   MatDialogRef,
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
-import { Subject, Observable, from, switchMap } from 'rxjs';
+import { Subject, Observable, from, switchMap, take } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -138,6 +140,7 @@ export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
   private readonly dialog = inject(MatDialog);
+  private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
 
@@ -152,25 +155,10 @@ export class ModalService extends TauriBaseService {
 
   constructor() {
     super();
-    if (!isMobile()) return;
-
-    window.addEventListener('popstate', () => {
-      if (this.dialog.openDialogs.length > 0) {
-        const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
-        topmostDialog.close();
-
-        topmostDialog.afterClosed().subscribe(() => {
-          if (this.dialog.openDialogs.length > 0) {
-            window.history.pushState({ modal: true }, '');
-          }
-        });
-      }
-    });
-
-    this.dialog.afterOpened.subscribe(dialogRef => {
-      if (this.dialog.openDialogs.length === 1) {
-        window.history.pushState({ modal: true }, '');
-      }
+    this.dialog.afterOpened.pipe(takeUntilDestroyed()).subscribe(dialogRef => {
+      const release = this.navigationHistory.openLayer(() => dialogRef.close());
+      dialogRef.beforeClosed().pipe(take(1)).subscribe(release);
+      if (!isMobile()) return;
 
       const originalClose = dialogRef.close.bind(dialogRef);
       dialogRef.close = (dialogResult?: unknown): void => {
@@ -193,12 +181,6 @@ export class ModalService extends TauriBaseService {
           originalClose(dialogResult);
         }
       };
-    });
-
-    this.dialog.afterAllClosed.subscribe(() => {
-      if (window.history.state?.modal) {
-        window.history.back();
-      }
     });
   }
 

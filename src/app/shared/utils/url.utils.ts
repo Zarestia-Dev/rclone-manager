@@ -183,3 +183,8 @@ export function buildDestinationPreview(
   const separator = base.includes('\\') && !base.includes('/') ? '\\' : '/';
   return `${base}${separator}${filename}`;
 }
+
+/** Encode canonical slash-separated paths without changing file names or empty segments. */
+export function encodeUrlPath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/');
+}

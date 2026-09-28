@@ -103,12 +103,7 @@ export class AppMenuComponent {
 
   readonly baseWorkspace = this.uiStateService.defaultView;
 
-  readonly activeWorkspace = computed((): MainView => {
-    if (this.nautilusService.isBrowserOverlayOpen()) return 'nautilus';
-    if (this.flowOverlayService.isFlowOverlayOpen()) return 'flow';
-    if (this.mainUiOverlayService.isMainUiOverlayOpen()) return 'main_menu';
-    return this.uiStateService.selectedMainView();
-  });
+  readonly activeWorkspace = this.uiStateService.activeWorkspace;
 
   goBackToBaseWorkspace(): void {
     this.nautilusService.closeBrowserOverlay();
@@ -117,37 +112,20 @@ export class AppMenuComponent {
     this.uiStateService.setMainView(this.baseWorkspace());
   }
 
-  openWorkspace(target: MainView): void {
+  async openWorkspace(target: MainView): Promise<void> {
     if (target === this.baseWorkspace()) {
       this.goBackToBaseWorkspace();
       return;
     }
 
-    if (target === 'nautilus') {
-      this.flowOverlayService.closeFlowOverlay();
-      this.mainUiOverlayService.closeMainUiOverlay();
-      if (this.baseWorkspace() === 'nautilus') {
-        this.uiStateService.setMainView('nautilus');
-      } else {
-        void this.nautilusService.openBrowserOverlay(null, null);
-      }
-    } else if (target === 'flow') {
-      this.nautilusService.closeBrowserOverlay();
-      this.mainUiOverlayService.closeMainUiOverlay();
-      if (this.baseWorkspace() === 'flow') {
-        this.uiStateService.setMainView('flow');
-      } else {
-        void this.flowOverlayService.openFlowOverlay();
-      }
-    } else if (target === 'main_menu') {
-      this.nautilusService.closeBrowserOverlay();
-      this.flowOverlayService.closeFlowOverlay();
-      if (this.baseWorkspace() === 'main_menu') {
-        this.uiStateService.setMainView('main_menu');
-      } else {
-        void this.mainUiOverlayService.openMainUiOverlay();
-      }
-    }
+    // Keep the current workspace visible until the target has finished loading.
+    if (target === 'nautilus') await this.nautilusService.openBrowserOverlay(null, null);
+    else if (target === 'flow') await this.flowOverlayService.openFlowOverlay();
+    else await this.mainUiOverlayService.openMainUiOverlay();
+
+    if (target !== 'nautilus') this.nautilusService.closeBrowserOverlay();
+    if (target !== 'flow') this.flowOverlayService.closeFlowOverlay();
+    if (target !== 'main_menu') this.mainUiOverlayService.closeMainUiOverlay();
   }
 
   openPreferencesModal(): void {

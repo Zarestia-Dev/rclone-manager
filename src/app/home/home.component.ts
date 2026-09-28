@@ -128,10 +128,10 @@ export class HomeComponent {
       view: 'main_menu',
       isOver: this.isSidebarOver,
       isOpen: this.isSidebarOpen,
+      close: () => this.setSidebarOpen(false),
     });
 
     this.destroyRef.onDestroy(() => {
-      this.uiStateService.resetSelectedRemote();
       this.uiStateService.unregisterMobileSidebar('main_menu');
     });
   }

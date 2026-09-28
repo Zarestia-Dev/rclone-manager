@@ -1,3 +1,4 @@
+import { AppNavigationService } from './services/ui/app-navigation.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -65,6 +66,8 @@ export class AppComponent implements OnInit {
   private readonly androidShareService = inject(AndroidShareService);
   private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
 
+  private readonly navigation = inject(AppNavigationService);
+
   readonly selectedMainView = this.uiStateService.selectedMainView;
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
 
@@ -87,7 +90,6 @@ export class AppComponent implements OnInit {
       flowOverlay: this.flowOverlayService.isFlowOverlayOpen,
       nautilusOverlay: this.nautilusService.isBrowserOverlayOpen,
     });
-
     this.setupDefaultViewListener();
   }
 
@@ -102,7 +104,7 @@ export class AppComponent implements OnInit {
     try {
       await this.appSettingsService.loadSettings();
       await this.appSettingsService.applySavedLanguage();
-      this.nautilusService.openFromBrowseQueryParam();
+      this.nautilusService.initializeFromUrl();
 
       if (this.modalService.isDialogStandalone()) {
         await this.modalService.resolveDialogWindow();
@@ -119,6 +121,16 @@ export class AppComponent implements OnInit {
     } catch (error) {
       console.error('App initialization failed:', error);
     } finally {
+      if (!this.modalService.isDialogStandalone()) {
+        const standalone = this.nautilusService.isStandaloneWindow()
+          ? 'nautilus'
+          : this.flowOverlayService.isStandaloneWindow()
+            ? 'flow'
+            : this.mainUiOverlayService.isStandaloneWindow()
+              ? 'main_menu'
+              : null;
+        this.navigation.initialize(standalone);
+      }
       this.initializing.set(false);
     }
   }
@@ -149,9 +161,6 @@ export class AppComponent implements OnInit {
         const view = String(setting.value) as MainView;
         if (view !== 'nautilus' && view !== 'flow' && view !== 'main_menu') return;
 
-        this.nautilusService.closeBrowserOverlay();
-        this.flowOverlayService.closeFlowOverlay();
-        this.mainUiOverlayService.closeMainUiOverlay();
         this.uiStateService.setDefaultView(view);
       });
   }

@@ -1,3 +1,4 @@
+import type { NautilusNavigation } from './navigation-history.service';
 import { inject, Injectable, signal, computed, DestroyRef, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
@@ -100,6 +101,7 @@ export class NautilusTabService {
   readonly selectedItemsRight = signal<Set<string>>(new Set());
 
   private interfaceTabCounter = 0;
+  private navigationGeneration = 0;
   readonly tabs = signal<Tab[]>([]);
   readonly activeTabIndex = signal(0);
   readonly activePaneIndex = signal<0 | 1>(0);
@@ -450,6 +452,10 @@ export class NautilusTabService {
   }
 
   createTab(remote: ExplorerRoot | null, path = ''): void {
+    this.interfaceTabCounter = Math.max(
+      this.interfaceTabCounter,
+      ...this.tabs().map(tab => tab.id)
+    );
     const id = ++this.interfaceTabCounter;
     const displaySeg = this.pathService.getDisplaySegment(remote, path);
     const title = displaySeg
@@ -503,6 +509,7 @@ export class NautilusTabService {
   }
 
   switchTab(i: number): void {
+    this.navigationGeneration++;
     const list = this.tabs();
     if (i < 0 || i >= list.length) return;
     this.activeTabIndex.set(i);
@@ -592,8 +599,83 @@ export class NautilusTabService {
   }
 
   switchPane(index: 0 | 1): void {
+    this.navigationGeneration++;
     if (!this.isSplitEnabled() && index === 1) return;
     this.activePaneIndex.set(index);
+  }
+
+  navigationSnapshot(): NautilusNavigation | null {
+    const tab = this.tabs()[this.activeTabIndex()];
+    const pane = this.activePaneIndex() === 0 ? tab?.left : tab?.right;
+    if (!tab || !pane) return null;
+    return {
+      tab: tab.id,
+      pane: this.activePaneIndex(),
+      remote: pane.remote?.name ?? null,
+      path: pane.path,
+    };
+  }
+
+  restoreNavigation(location: NautilusNavigation): void {
+    let index = this.tabs().findIndex(tab => tab.id === location.tab);
+    const remote =
+      location.remote === null ? null : this.nautilusService.lookupRemoteByName(location.remote);
+    const path = location.remote !== null && !remote ? '' : location.path;
+    if (index < 0) {
+      // After a reload the initial tab may already represent this URL, with a fresh ID.
+      const current = this.navigationSnapshot();
+      if (
+        this.tabs().length === 1 &&
+        current?.remote === (remote?.name ?? null) &&
+        current?.path === path
+      ) {
+        index = 0;
+        this.tabs.update(tabs =>
+          tabs.map((tab, i) => (i === index ? { ...tab, id: location.tab } : tab))
+        );
+      } else {
+        this.createTab(remote, path);
+        index = this.activeTabIndex();
+        this.tabs.update(tabs =>
+          tabs.map((tab, i) => (i === index ? { ...tab, id: location.tab } : tab))
+        );
+      }
+    }
+    this.interfaceTabCounter = Math.max(
+      this.interfaceTabCounter,
+      ...this.tabs().map(tab => tab.id)
+    );
+    if (location.pane === 1 && !this.tabs()[index].right) {
+      this.tabs.update(tabs =>
+        tabs.map((tab, i) =>
+          i === index ? { ...tab, right: this.createPaneState(remote, path) } : tab
+        )
+      );
+    }
+    this.switchTab(index);
+    this.switchPane(location.pane);
+    this.tabs.update(tabs =>
+      tabs.map((tab, i) => {
+        if (i !== index) return tab;
+        const key = location.pane === 0 ? 'left' : 'right';
+        const pane = tab[key];
+        if (!pane) return tab;
+        const historyIndex = pane.history.findIndex(
+          entry => entry.remote?.name === remote?.name && entry.path === path
+        );
+        const matches = historyIndex >= 0;
+        return {
+          ...tab,
+          [key]: {
+            ...pane,
+            history: matches ? pane.history : [{ remote, path }],
+            historyIndex: matches ? historyIndex : 0,
+          },
+        };
+      })
+    );
+    // History contains directory locations; restoration must not await a new stat request.
+    this.executeNavigate(remote, path, false);
   }
 
   traverseHistory(direction: 1 | -1): void {
@@ -630,6 +712,14 @@ export class NautilusTabService {
   }
 
   async navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
+    const generation = ++this.navigationGeneration;
+    const tabId = this.tabs()[this.activeTabIndex()]?.id;
+    const paneIndex = this.activePaneIndex();
+    const isCurrent = (): boolean =>
+      !this.destroyRef.destroyed &&
+      generation === this.navigationGeneration &&
+      this.tabs()[this.activeTabIndex()]?.id === tabId &&
+      this.activePaneIndex() === paneIndex;
     if (this.pendingPreviewFilePath() !== path) {
       this.pendingPreviewFilePath.set(null);
     }
@@ -640,6 +730,7 @@ export class NautilusTabService {
           ? remote.name
           : this.pathService.normalizeRemoteForRclone(remote.name);
         const stat = await this.remoteOps.getStat(fsName, path);
+        if (!isCurrent()) return;
         if (stat && stat.item && !stat.item.IsDir) {
           const parentPath = this.pathService.getParentPath(path);
           this.pendingPreviewFilePath.set(path);
@@ -651,10 +742,11 @@ export class NautilusTabService {
       }
     }
 
-    this.executeNavigate(remote, path, newHistory);
+    if (isCurrent()) this.executeNavigate(remote, path, newHistory);
   }
 
   executeNavigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): void {
+    this.navigationGeneration++;
     const index = this.activeTabIndex();
     const pIdx = this.activePaneIndex();
     const tab = this.tabs()[index];
@@ -666,7 +758,7 @@ export class NautilusTabService {
     let updatedHistory = pane.history;
     let updatedHistoryIndex = pane.historyIndex;
 
-    if (newHistory) {
+    if (newHistory && (pane.remote?.name !== remote?.name || pane.path !== path)) {
       if (pane.historyIndex < pane.history.length - 1) {
         updatedHistory = pane.history.slice(0, pane.historyIndex + 1);
       }

@@ -1,6 +1,7 @@
+import { NavigationHistoryService } from '../navigation-history.service';
 import { inject, Injectable, signal, computed, effect, type Signal } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, Remote, APP_TABS, MainView, CardDisplayMode } from '@app/types';
+import { AppTab, Remote, APP_TABS, MainView, CardDisplayMode, FlowSubMode } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
@@ -14,6 +15,7 @@ export interface MobileSidebarRegistration {
   isOver: Signal<boolean>;
   /** Signal that is `true` when the sidebar drawer is open. */
   isOpen: Signal<boolean>;
+  close: () => void;
 }
 
 /** Configuration and callbacks for active layout editing mode */
@@ -33,6 +35,8 @@ export interface LayoutEditContext {
   providedIn: 'root',
 })
 export class UiStateService {
+  private readonly navigationHistory = inject(NavigationHistoryService);
+  private readonly sidebarHistory = new Map<MainView, () => void>();
   private windowService = inject(WindowService);
   private localStorage = inject(LocalStorageService);
   private appSettingsService = inject(AppSettingsService);
@@ -42,6 +46,18 @@ export class UiStateService {
 
   private readonly _currentTab = signal<AppTab>(this.getInitialTab());
   public readonly currentTab = this._currentTab.asReadonly();
+
+  private readonly _flowSubMode = signal<FlowSubMode>(
+    this.localStorage.get<string>('ui.flowActiveSubMode', 'quick_run') === 'builder'
+      ? 'builder'
+      : 'quick_run'
+  );
+  readonly flowSubMode = this._flowSubMode.asReadonly();
+
+  setFlowSubMode(mode: FlowSubMode): void {
+    this._flowSubMode.set(mode);
+    this.localStorage.set('ui.flowActiveSubMode', mode);
+  }
 
   // JSON Editor mode state
   private readonly _showJsonMode = signal<boolean>(
@@ -80,44 +96,31 @@ export class UiStateService {
     new Map()
   );
 
-  // Overlay signals set lazily to avoid circular dependencies
-  private _overlaySignals?: {
+  private readonly overlaySignals = signal<{
     mainOverlay: Signal<boolean>;
     flowOverlay: Signal<boolean>;
     nautilusOverlay: Signal<boolean>;
-  };
+  } | null>(null);
 
-  /**
-   * Reactive flag consumed by `TabsButtonsComponent` to hide the floating
-   * mobile tab bar whenever the topmost view's sidebar drawer is open in
-   * overlay ('over') mode.
-   *
-   * The value is computed from the active registrations plus the overlay
-   * signals injected lazily via `setOverlaySignals()`.
-   */
-  public readonly mobileSidebarOpen = computed(() => {
-    if (
-      this._overlaySignals?.mainOverlay() ||
-      this._overlaySignals?.flowOverlay() ||
-      this._overlaySignals?.nautilusOverlay()
-    ) {
-      return true;
-    }
+  readonly activeWorkspace = computed((): MainView => {
+    const overlays = this.overlaySignals();
+    if (overlays?.nautilusOverlay()) return 'nautilus';
+    if (overlays?.flowOverlay()) return 'flow';
+    if (overlays?.mainOverlay()) return 'main_menu';
+    return this.selectedMainView();
+  });
 
+  setOverlaySignals(signals: NonNullable<ReturnType<typeof this.overlaySignals>>): void {
+    this.overlaySignals.set(signals);
+  }
+
+  readonly mobileSidebarOpen = computed(() => {
     const registrations = this._mobileSidebarRegistrations();
-    const topView = this._selectedMainView();
+    const topView = this.activeWorkspace();
     const reg = registrations.get(topView);
     if (!reg) return false;
     return reg.isOver() && reg.isOpen();
   });
-
-  setOverlaySignals(signals: {
-    mainOverlay: Signal<boolean>;
-    flowOverlay: Signal<boolean>;
-    nautilusOverlay: Signal<boolean>;
-  }): void {
-    this._overlaySignals = signals;
-  }
 
   private getInitialTab(): AppTab {
     const stored = this.localStorage.get<string>('ui.currentTab', 'general');
@@ -146,6 +149,8 @@ export class UiStateService {
    * Unregister when the component is destroyed. Call from `destroyRef.onDestroy`.
    */
   unregisterMobileSidebar(view: MainView): void {
+    this.sidebarHistory.get(view)?.();
+    this.sidebarHistory.delete(view);
     this._mobileSidebarRegistrations.update(m => {
       const next = new Map(m);
       next.delete(view);
@@ -169,6 +174,19 @@ export class UiStateService {
 
   constructor() {
     this.platform = this.initializePlatform();
+
+    effect(() => {
+      for (const [view, sidebar] of this._mobileSidebarRegistrations()) {
+        if (sidebar.isOver() && sidebar.isOpen()) {
+          if (!this.sidebarHistory.has(view)) {
+            this.sidebarHistory.set(view, this.navigationHistory.openLayer(sidebar.close));
+          }
+        } else {
+          this.sidebarHistory.get(view)?.();
+          this.sidebarHistory.delete(view);
+        }
+      }
+    });
 
     effect(() => {
       this.applyViewportSettings(this.windowService.isMaximized());
@@ -233,6 +251,13 @@ export class UiStateService {
   }
 
   setMainView(view: MainView): void {
+    if (view !== this._selectedMainView()) {
+      for (const [key, sidebar] of this._mobileSidebarRegistrations()) {
+        sidebar.close();
+        this.sidebarHistory.get(key)?.();
+      }
+      this.sidebarHistory.clear();
+    }
     this.endLayoutEdit();
     this._selectedMainView.set(view);
   }

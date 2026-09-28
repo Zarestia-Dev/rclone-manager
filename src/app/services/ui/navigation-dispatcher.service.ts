@@ -27,6 +27,7 @@ export class NavigationDispatcherService {
    */
   navigateToWorkflow(workflowId?: string, workflowName?: string): void {
     this.uiStateService.setMainView('flow');
+    this.uiStateService.setFlowSubMode('builder');
     const wf = this.workflowStorage
       .workflows()
       .find(w => (workflowId && w.id === workflowId) || (workflowName && w.name === workflowName));
@@ -121,7 +122,7 @@ export class NavigationDispatcherService {
    */
   navigateToQuickRun(quickRunId: string): void {
     this.uiStateService.setMainView('flow');
-    this.workflowState.requestedSubMode.set('quick_run');
+    this.uiStateService.setFlowSubMode('quick_run');
     this.quickRunService.select(quickRunId);
   }
 
