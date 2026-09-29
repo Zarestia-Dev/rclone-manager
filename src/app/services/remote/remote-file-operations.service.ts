@@ -258,23 +258,50 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     files: { file: File; relativePath: string }[],
-    source?: Origin
+    source?: Origin,
+    emptyDirectories?: string[]
   ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const group = generatePrefixedId('upload');
-    let successCount = 0;
-    const failedPaths: string[] = [];
-    // Each request stages and transfers one file before the next request starts.
-    // A buffered file is never counted as a completed remote upload.
-    for (const { file, relativePath } of files) {
-      try {
-        await this.uploadFileStream(remote, path, file, source, relativePath, group);
-        successCount++;
-      } catch (error) {
-        console.error('[RemoteFileOps] Upload failed:', relativePath || file.name, error);
-        failedPaths.push(relativePath || file.name);
-      }
+    const uniqueDirs = emptyDirectories?.length ? [...new Set(emptyDirectories)] : [];
+    if (!files.length && !uniqueDirs.length) {
+      return { successCount: 0, failedPaths: [] };
     }
-    return { successCount, failedPaths };
+
+    const body = new FormData();
+    body.append('remote', remote);
+    body.append('path', path);
+    if (source) body.append('origin', JSON.stringify(source));
+    body.append('group', generatePrefixedId('upload'));
+
+    for (const dir of uniqueDirs) {
+      body.append('emptyDirs', dir);
+    }
+
+    for (const { file, relativePath } of files) {
+      body.append('mtime', file.lastModified.toString());
+      body.append('file', file, relativePath || file.name);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ success: boolean; data: string; error?: string }>(
+          `${this.apiClient.getApiBase()}/upload`,
+          body,
+          { withCredentials: true }
+        )
+      );
+      if (!response.success) {
+        return {
+          successCount: 0,
+          failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
+        };
+      }
+      return { successCount: files.length, failedPaths: [] };
+    } catch {
+      return {
+        successCount: 0,
+        failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
+      };
+    }
   }
 
   async submitBatchJob(

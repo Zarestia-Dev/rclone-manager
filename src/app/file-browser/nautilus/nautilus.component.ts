@@ -851,7 +851,7 @@ export class NautilusComponent implements OnInit {
     }
     const destination = this.tabSvc.activePath();
     const success = await this.androidShare.uploadPending(paths =>
-      this.fileOps.uploadSharedPaths(remote, destination, paths)
+      this.fileOps.uploadLocalPaths(remote, destination, paths)
     );
     if (success) this.tabSvc.refreshPath(remote.name, destination);
   }

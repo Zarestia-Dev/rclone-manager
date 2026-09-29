@@ -47,7 +47,8 @@ async fn stage_upload_in(
     let mut origin = None;
     let mut group = None;
     let mut mtime = None;
-    let mut has_files = false;
+    let mut file_count = 0u32;
+    let mut empty_dirs = Vec::new();
 
     while let Some(field) = multipart.next_field().await.map_err(bad_request)? {
         match field.name().unwrap_or_default() {
@@ -74,10 +75,10 @@ async fn stage_upload_in(
             "batchId" | "fileIndex" | "totalFiles" | "jobId" => {
                 return Err(bad_request("Legacy upload batch; reload the application"));
             }
+            "emptyDirs" => {
+                empty_dirs.push(field.text().await.map_err(bad_request)?);
+            }
             "file" => {
-                if has_files {
-                    return Err(bad_request("Only one file is allowed per upload request"));
-                }
                 let relative = validate_filename(field.file_name().unwrap_or("unnamed"))?;
                 let destination = staging.path().join(relative);
                 if let Some(parent) = destination.parent() {
@@ -86,20 +87,22 @@ async fn stage_upload_in(
                         .map_err(upload_io_error)?;
                 }
                 write_field_to_file(field, &destination, mtime.take()).await?;
-                has_files = true;
+                file_count += 1;
             }
             _ => {}
         }
     }
-    if !has_files {
+    if file_count == 0 && empty_dirs.is_empty() {
         return Err(bad_request("No file found"));
     }
     let mut local_paths = Vec::new();
-    let mut entries = tokio::fs::read_dir(staging.path())
-        .await
-        .map_err(upload_io_error)?;
-    while let Some(entry) = entries.next_entry().await.map_err(upload_io_error)? {
-        local_paths.push(entry.path().to_string_lossy().into_owned());
+    if file_count > 0 {
+        let mut entries = tokio::fs::read_dir(staging.path())
+            .await
+            .map_err(upload_io_error)?;
+        while let Some(entry) = entries.next_entry().await.map_err(upload_io_error)? {
+            local_paths.push(entry.path().to_string_lossy().into_owned());
+        }
     }
     Ok((
         staging,
@@ -111,6 +114,7 @@ async fn stage_upload_in(
             group,
             existing_jobid: None,
             no_cache: false,
+            empty_dirs,
         },
     ))
 }

@@ -40,48 +40,55 @@ describe('RemoteFileOperationsService uploads', () => {
     vi.restoreAllMocks();
   });
 
-  it('uploads one file at a time and groups the requests without buffering the whole selection', async () => {
-    const result = service.uploadWebFilesBatch('drive:', 'destination', files, 'filemanager');
-    const first = http.expectOne('/api/upload');
-    expect(first.request.withCredentials).toBe(true);
-    const body = first.request.body as FormData;
+  it('uploads all files and empty directories in a single batch request', async () => {
+    const result = service.uploadWebFilesBatch('drive:', 'destination', files, 'filemanager', [
+      'empty-dir',
+    ]);
+    const req = http.expectOne('/api/upload');
+    expect(req.request.withCredentials).toBe(true);
+    const body = req.request.body as FormData;
     expect(body.get('remote')).toBe('drive:');
     expect(body.get('path')).toBe('destination');
     expect(body.get('origin')).toBe('"filemanager"');
-    expect(body.getAll('mtime')).toEqual(['0']);
-    expect(body.getAll('file').map(file => (file as File).name)).toEqual(['folder/one.txt']);
+    expect(body.getAll('emptyDirs')).toEqual(['empty-dir']);
+    expect(body.getAll('mtime')).toEqual(['0', '123']);
+    expect(body.getAll('file').map(f => (f as File).name)).toEqual(['folder/one.txt', 'özel..txt']);
     expect(body.get('group')).toMatch(/^upload-/);
-    http.expectNone('/api/upload');
-    first.flush({ success: true, data: '42' });
-    await Promise.resolve();
-    await Promise.resolve();
-    const second = http.expectOne('/api/upload');
-    expect(second.request.body.get('group')).toBe(body.get('group'));
-    expect(second.request.body.get('mtime')).toBe('123');
-    expect((second.request.body.get('file') as File).name).toBe('özel..txt');
-    second.flush({ success: true, data: '43' });
+    req.flush({ success: true, data: '42' });
     expect(await result).toEqual({ successCount: 2, failedPaths: [] });
   });
 
-  it('continues after failure and counts only confirmed uploads', async () => {
+  it('handles empty directories only without files in batch request', async () => {
+    const result = service.uploadWebFilesBatch('drive:', 'destination', [], 'filemanager', [
+      'empty-dir',
+    ]);
+    const req = http.expectOne('/api/upload');
+    const body = req.request.body as FormData;
+    expect(body.getAll('emptyDirs')).toEqual(['empty-dir']);
+    expect(body.getAll('file')).toEqual([]);
+    req.flush({ success: true, data: '0' });
+    expect(await result).toEqual({ successCount: 0, failedPaths: [] });
+  });
+
+  it('reports all paths as failed when the batch request returns unsuccessful', async () => {
     const result = service.uploadWebFilesBatch('drive:', '', files);
     http.expectOne('/api/upload').flush({ success: false, error: 'Transfer failed' });
-    await Promise.resolve();
-    await Promise.resolve();
-    http.expectOne('/api/upload').flush({ success: true, data: '43' });
-    expect(await result).toEqual({ successCount: 1, failedPaths: ['folder/one.txt'] });
+    expect(await result).toEqual({
+      successCount: 0,
+      failedPaths: ['folder/one.txt', 'özel..txt'],
+    });
   });
 
-  it('does not count the final file as successful when its request fails', async () => {
+  it('reports all paths as failed when the batch request encounters a network error', async () => {
     const result = service.uploadWebFilesBatch('drive:', '', files);
-    http.expectOne('/api/upload').flush({ success: true, data: '42' });
-    await Promise.resolve();
-    await Promise.resolve();
     http.expectOne('/api/upload').error(new ProgressEvent('error'));
-    expect(await result).toEqual({ successCount: 1, failedPaths: ['özel..txt'] });
+    expect(await result).toEqual({
+      successCount: 0,
+      failedPaths: ['folder/one.txt', 'özel..txt'],
+    });
   });
 
-  it('isolates concurrent selections made in the same millisecond', async () => {
+  it('isolates concurrent batch selections made in the same millisecond', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1000);
     const first = service.uploadWebFilesBatch('drive:', '', [files[0]]);
     const second = service.uploadWebFilesBatch('drive:', '', [files[1]]);

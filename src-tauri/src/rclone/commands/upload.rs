@@ -33,6 +33,10 @@ pub struct UploadBatchParams {
     pub group: Option<String>,
     pub existing_jobid: Option<u64>,
     pub no_cache: bool,
+    /// Empty directory paths (relative to `path`) to create on the remote.
+    /// Used by the web upload handler for directories that contain no files.
+    #[serde(default)]
+    pub empty_dirs: Vec<String>,
 }
 
 // Upload jobs are local synthetic jobs, separate from rclone's job IDs.
@@ -250,6 +254,7 @@ pub async fn execute_upload_batch(
         group,
         existing_jobid,
         no_cache,
+        empty_dirs,
     } = params;
 
     let mut remote = remote;
@@ -274,11 +279,31 @@ pub async fn execute_upload_batch(
 
     let discovery = discover_upload_entries(local_paths.clone(), path.clone()).await?;
 
+    let path_prefix = path.trim_end_matches('/');
     for remote_dir in &discovery.empty_dir_remotes {
         let payload = json!({ "fs": &remote, "remote": remote_dir });
-        transport.rpc(operations::MKDIR, Some(&payload)).await.map_err(|e| {
-            crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
-        })?;
+        transport
+            .rpc(operations::MKDIR, Some(&payload))
+            .await
+            .map_err(|e| {
+                crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
+            })?;
+    }
+    // Web-upload empty dirs are relative to the destination path and need the
+    // prefix prepended so they match the format used by discover_upload_entries.
+    for dir in &empty_dirs {
+        let remote_dir = if path_prefix.is_empty() {
+            dir.clone()
+        } else {
+            format!("{path_prefix}/{dir}")
+        };
+        let payload = json!({ "fs": &remote, "remote": &remote_dir });
+        transport
+            .rpc(operations::MKDIR, Some(&payload))
+            .await
+            .map_err(|e| {
+                crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
+            })?;
     }
 
     let file_entries = discovery.file_entries;
@@ -572,6 +597,7 @@ pub async fn upload_local_drop_paths(
             group,
             existing_jobid: None,
             no_cache: false,
+            empty_dirs: Vec::new(),
         },
     )
     .await

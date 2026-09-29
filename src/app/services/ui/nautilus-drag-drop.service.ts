@@ -3,7 +3,6 @@ import { TranslateService } from '@ngx-translate/core';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
@@ -79,7 +78,6 @@ const NULL_HIT: HitResult = {
 
 @Injectable()
 export class NautilusDragDropService {
-  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
@@ -143,30 +141,8 @@ export class NautilusDragDropService {
         );
         if (!target.remote) return;
 
-        const normalized = this._normalizeRemote(target.remote);
-        try {
-          const batchId = await this.remoteOps.uploadLocalDropPaths(
-            normalized,
-            target.path,
-            event.payload.paths,
-            'filemanager'
-          );
-
-          if (batchId) {
-            this.notifications.showInfo(
-              this.translate.instant('nautilus.notifications.uploadStarted', {
-                count: event.payload.paths.length,
-              })
-            );
-          }
-        } catch (err) {
-          console.error('[Nautilus] Native drop upload failed', err);
-          this.notifications.showError(
-            this.translate.instant('nautilus.errors.externalDropFailed')
-          );
-        } finally {
-          this._cb.refresh(target.remote.name, target.path);
-        }
+        await this.fileOps.uploadLocalPaths(target.remote, target.path, event.payload.paths);
+        this._cb.refresh(target.remote.name, target.path);
       });
 
       this.destroyRef.onDestroy(() => unlisten());
@@ -648,70 +624,40 @@ export class NautilusDragDropService {
     if (!dt) return;
 
     const fsEntries = providedFsEntries ?? this._snapshotEntries(dt.items);
-    if (!fsEntries.length) return;
 
-    const allEntries: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
-    for (const fsEntry of fsEntries) {
-      allEntries.push(...(await this._collectFileEntries(fsEntry)));
-    }
-    if (!allEntries.length) return;
-
-    const normalized = this._normalizeRemote(target.remote);
     const seen = new Set<string>();
-    const filesToUpload: { file: File; relativePath: string }[] = [];
+    const files: { file: File; relativePath: string }[] = [];
+    const emptyDirectories: string[] = [];
 
-    for (const item of allEntries) {
-      if (seen.has(item.relativePath)) continue;
-      seen.add(item.relativePath);
-
-      if (item.isDir) {
-        await this.remoteOps
-          .makeDirectory(normalized, `${target.path}/${item.relativePath}`, 'filemanager')
-          .catch(error => {
-            console.error(error);
-            this.notifications.showError(
-              this.translate.instant('nautilus.notifications.mkdirFailed', {
-                path: `${target.path}/${item.relativePath}`,
-              })
-            );
-          });
-      } else {
-        const file = await this._readFileEntry(item.entry as FileSystemFileEntry);
-        filesToUpload.push({ file, relativePath: item.relativePath });
+    if (!fsEntries.length && dt.files.length > 0) {
+      for (const file of Array.from(dt.files)) {
+        files.push({ file, relativePath: file.name });
+      }
+    } else if (fsEntries.length > 0) {
+      try {
+        for (const entry of fsEntries) {
+          for (const item of await this._collectFileEntries(entry)) {
+            if (seen.has(item.relativePath)) continue;
+            seen.add(item.relativePath);
+            if (item.isDir) {
+              emptyDirectories.push(item.relativePath);
+            } else if (item.file) {
+              files.push({
+                file: item.file,
+                relativePath: item.relativePath,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Nautilus] Failed to read dropped files:', error);
+        this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+        return;
       }
     }
-
-    if (filesToUpload.length === 0) {
-      this._cb.refresh(target.remote.name, target.path);
-      return;
-    }
-
-    const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
-      normalized,
-      target.path,
-      filesToUpload,
-      'filemanager'
-    );
-
+    if (!files.length && !emptyDirectories.length) return;
+    await this.fileOps.uploadWebEntries(target.remote, target.path, files, emptyDirectories);
     this._cb.refresh(target.remote.name, target.path);
-
-    if (failedPaths.length === 0 && successCount > 0) {
-      this.notifications.showSuccess(
-        this.translate.instant('nautilus.notifications.uploadSuccess', { count: successCount })
-      );
-    } else if (failedPaths.length > 0 && successCount > 0) {
-      this.notifications.showWarning(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
-    } else if (failedPaths.length > 0) {
-      this.notifications.showError(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
-    }
   }
 
   private _resolveDropHit(point: { x: number; y: number }, ctx: DragDropContext): HitResult {
@@ -840,22 +786,16 @@ export class NautilusDragDropService {
   private _readDirEntries(entry: FileSystemDirectoryEntry): Promise<FileSystemEntry[]> {
     const reader = entry.createReader();
     const all: FileSystemEntry[] = [];
-    return new Promise(res => {
+    return new Promise((res, reject) => {
       const readBatch = (): void => {
-        reader.readEntries(
-          batch => {
-            if (!batch.length) {
-              res(all);
-              return;
-            }
-            all.push(...batch);
-            readBatch();
-          },
-          err => {
-            console.warn(`Failed to read directory entries for ${entry.name}:`, err);
+        reader.readEntries(batch => {
+          if (!batch.length) {
             res(all);
+            return;
           }
-        );
+          all.push(...batch);
+          readBatch();
+        }, reject);
       };
       readBatch();
     });
@@ -864,32 +804,29 @@ export class NautilusDragDropService {
   private async _collectFileEntries(
     entry: FileSystemEntry,
     prefix = ''
-  ): Promise<{ entry: FileSystemEntry; relativePath: string; isDir: boolean }[]> {
-    const results: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
+  ): Promise<{ file?: File; relativePath: string; isDir: boolean }[]> {
+    const results: { file?: File; relativePath: string; isDir: boolean }[] = [];
     const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
     if (entry.isFile) {
+      const file = await this._readFileEntry(entry as FileSystemFileEntry);
       results.push({
-        entry: entry as FileSystemFileEntry,
+        file,
         relativePath: currentPath,
         isDir: false,
       });
     } else if (entry.isDirectory) {
-      results.push({
-        entry: entry as FileSystemDirectoryEntry,
-        relativePath: currentPath,
-        isDir: true,
-      });
       const children = await this._readDirEntries(entry as FileSystemDirectoryEntry);
+      // File uploads create their parent directories. Explicit mkdir is only
+      // needed for empty leaves; creating a leaf also creates its ancestors.
+      if (children.length === 0) {
+        results.push({ relativePath: currentPath, isDir: true });
+      }
       for (const child of children) {
         results.push(...(await this._collectFileEntries(child, currentPath)));
       }
     }
 
     return results;
-  }
-
-  private _normalizeRemote(remote: ExplorerRoot): string {
-    return this.pathService.normalizeExplorerRoot(remote);
   }
 }

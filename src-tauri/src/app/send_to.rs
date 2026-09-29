@@ -23,6 +23,7 @@ pub(super) fn build_send_to_params(
         group: Some("send_to".to_string()),
         existing_jobid: None,
         no_cache: false,
+        empty_dirs: Vec::new(),
     }
 }
 pub(super) fn start(app: &crate::utils::context::AppHandle, cli_args: crate::core::cli::CliArgs) {
