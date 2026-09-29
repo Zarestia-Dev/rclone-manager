@@ -375,66 +375,53 @@ export class NautilusTabService {
     }
   }
 
-  /**
-   * Refreshes any pane/tab that is currently viewing the specified remote and path.
-   */
-  refreshPath(remoteName: string, path: string): void {
-    const normalizedTargetRemote = this.pathService.normalizeRemoteName(remoteName);
-    const normalizedTargetPath = this.pathService.normalizePath(path).replace(/^\/+|\/+$/g, '');
-
-    // 1. Refresh active pane signals if they match
-    for (let i = 0; i < 2; i++) {
-      const ref = this.getPaneRef(i as 0 | 1);
-      const remote = ref.remote();
-      if (!remote) continue;
-
-      const normRemote = this.pathService.normalizeRemoteName(remote.name);
-      const normPath = this.pathService.normalizePath(ref.path()).replace(/^\/+|\/+$/g, '');
-
-      if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
-        this.refresh(i as 0 | 1);
-      }
-    }
-
-    // 2. Update all matching PaneStates in all tabs
-    this.tabs.update(tabs =>
-      tabs.map(tab => {
-        const updatePane = (pane: PaneState): PaneState => {
-          if (!pane.remote) return pane;
-          const normRemote = this.pathService.normalizeRemoteName(pane.remote.name);
-          const normPath = this.pathService.normalizePath(pane.path).replace(/^\/+|\/+$/g, '');
-
-          if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
-            pane.refreshTrigger.update(v => v + 1);
-          }
-          return pane;
-        };
-
-        const newTab = { ...tab, left: updatePane({ ...tab.left }) };
-        if (tab.right) {
-          newTab.right = updatePane({ ...tab.right });
-        }
-        return newTab;
-      })
-    );
+  /** Refresh matching panes now; invalidate inactive tabs for their next activation. */
+  refreshPath(remote: string, path: string): void {
+    this.refreshAffectedPaths([{ remote, path }]);
   }
 
-  /**
-   * Refresh multiple paths at once.
-   */
-  refreshAffectedPaths(affected: { remote: string; path: string }[]): void {
-    const pathsByRemote = new Map<string, Set<string>>();
-    for (const item of affected) {
-      let set = pathsByRemote.get(item.remote);
-      if (!set) {
-        set = new Set<string>();
-        pathsByRemote.set(item.remote, set);
-      }
-      set.add(item.path);
+  refreshAffectedPaths(affected: { remote: string; path: string; descendants?: boolean }[]): void {
+    const targets = affected.map(target => ({
+      ...this.normalizeRefreshLocation(target.remote, target.path),
+      descendants: target.descendants,
+    }));
+    const matches = (remote: ExplorerRoot | null, path: string): boolean => {
+      if (!remote) return false;
+      const location = this.normalizeRefreshLocation(remote.name, path);
+      return targets.some(
+        target =>
+          target.remote === location.remote &&
+          (target.path === location.path ||
+            (target.descendants && (!target.path || location.path.startsWith(`${target.path}/`))))
+      );
+    };
+
+    const activeIndex = this.activeTabIndex();
+    for (const paneIndex of [0, 1] as const) {
+      if (paneIndex === 1 && !this.tabs()[activeIndex]?.right) continue;
+      const ref = this.getPaneRef(paneIndex);
+      if (matches(ref.remote(), ref.path())) this.refresh(paneIndex);
     }
-    pathsByRemote.forEach((paths, remote) => {
-      paths.forEach(path => this.refreshPath(remote, path));
-    });
+    for (const [index, tab] of this.tabs().entries()) {
+      if (index === activeIndex) continue;
+      for (const pane of [tab.left, tab.right]) {
+        if (pane && matches(pane.remote, pane.path)) {
+          pane.refreshTrigger.update(value => value + 1);
+        }
+      }
+    }
+  }
+
+  private normalizeRefreshLocation(remote: string, path: string): { remote: string; path: string } {
+    let name = this.pathService.normalizeRemoteName(remote);
+    let normalizedPath = this.pathService.normalizePath(path).replace(/^\/+|\/+$/g, '');
+    if (/^[a-zA-Z]:[\\/]*$/.test(name)) {
+      name = name.slice(0, 2).toUpperCase();
+      if (normalizedPath.slice(0, 2).toUpperCase() === name) {
+        normalizedPath = normalizedPath.slice(2).replace(/^\/+/, '');
+      }
+    }
+    return { remote: name, path: normalizedPath };
   }
 
   createPaneState(remote: ExplorerRoot | null, path = ''): PaneState {
@@ -831,31 +818,30 @@ export class NautilusTabService {
       .listenToJobCacheChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(event => {
-        const { status, remote, source, destination } = event;
-        if ((status === 'Completed' || status === 'Failed' || status === 'Stopped') && remote) {
-          const cleanRemote = this.pathService.normalizeRemoteName(remote);
-          const isRelevant = this.tabs().some(
-            t =>
-              this.pathService.normalizeRemoteName(t.left.remote?.name) === cleanRemote ||
-              this.pathService.normalizeRemoteName(t.right?.remote?.name) === cleanRemote
-          );
-          if (!isRelevant && cleanRemote !== 'local') return;
+        const { status, remote, source, sources, destination } = event;
+        if (status !== 'Completed' && status !== 'Failed' && status !== 'Stopped') return;
 
-          const affected: { remote: string; path: string }[] = [];
-          const addAffected = (pathStr: string): void => {
-            const parsed = this.pathService.splitFsPath(pathStr);
-            const r = parsed.remote || remote;
-            affected.push({ remote: r, path: parsed.path });
-            affected.push({ remote: r, path: this.pathService.getParentPath(parsed.path) });
-          };
-
-          if (source) addAffected(source);
-          if (destination) addAffected(destination);
-
-          if (affected.length > 0) {
-            this.refreshAffectedPaths(affected);
+        const affected: { remote: string; path: string; descendants?: boolean }[] = [];
+        const addAffected = (value: string): void => {
+          if (!value || /^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return;
+          const parsed = this.pathService.splitFsPath(value);
+          let name = parsed.remote || remote;
+          let path = parsed.path;
+          if (!parsed.remote && /^(?:[a-zA-Z]:[\\/]|[\\/])/.test(value)) {
+            const local = this.pathService.splitLocalPath(value);
+            name = local.remote;
+            path = local.remainder;
           }
+          if (!name || name === 'multiple') return;
+          affected.push({ remote: name, path, descendants: true });
+          affected.push({ remote: name, path: this.pathService.getParentPath(path) });
+        };
+        for (const path of sources ?? (source ? [source] : [])) addAffected(path);
+        if (destination) addAffected(destination);
+        else if (destination === '' && affected.length === 0 && remote) {
+          affected.push({ remote, path: '', descendants: true });
         }
+        this.refreshAffectedPaths(affected);
       });
   }
 
@@ -880,7 +866,7 @@ export class NautilusTabService {
       const activeTab = this.tabs()[this.activeTabIndex()];
       return {
         tabId: activeTab?.id,
-        remote: ref.remote(),
+        remote: paneIndex === 1 && !activeTab?.right ? null : ref.remote(),
         path: ref.path(),
         _trigger: ref.refreshTrigger(),
       };

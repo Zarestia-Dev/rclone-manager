@@ -273,6 +273,8 @@ pub struct JobChangeEvent {
     pub status: crate::utils::types::jobs::JobStatus,
     pub remote: Option<String>,
     pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<String>,
     pub destination: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile: Option<String>,
@@ -291,6 +293,7 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
             status: job.status.clone(),
             remote: Some(job.remote_name.clone()),
             source: Some(job.source.join(", ")),
+            sources: job.source.clone(),
             destination: Some(job.destination.clone()),
             profile: job.profile.clone(),
             quick_run_id: job.quick_run_id.clone(),
@@ -373,7 +376,7 @@ mod tests {
         use crate::utils::types::jobs::{JobInfo, JobStatus, JobType};
         use chrono::Utc;
 
-        let job = JobInfo {
+        let mut job = JobInfo {
             jobid: 42,
             execute_id: Some("exec-42".to_string()),
             quick_run_id: Some("qr-99".to_string()),
@@ -416,6 +419,18 @@ mod tests {
 
         let deserialized: JobChangeEvent = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, ev);
+        job.source = vec!["first:folder/a, b.txt".into(), "second:folder/c.txt".into()];
+        let event = JobChangeEvent::from(&job);
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(json["sources"], serde_json::json!(job.source));
+        let mut legacy = json;
+        legacy.as_object_mut().unwrap().remove("sources");
+        assert!(
+            serde_json::from_value::<JobChangeEvent>(legacy)
+                .unwrap()
+                .sources
+                .is_empty()
+        );
     }
 
     #[test]

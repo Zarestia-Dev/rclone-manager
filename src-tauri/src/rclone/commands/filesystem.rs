@@ -82,7 +82,14 @@ pub async fn cleanup(
     }
     payload.insert("_async".to_string(), json!(true));
 
-    let metadata = JobMetadata::for_query(remote, path_str, JobType::Cleanup, origin, group);
+    let metadata = JobMetadata::for_mutation(
+        remote,
+        vec![path_str.to_string()],
+        "",
+        JobType::Cleanup,
+        origin,
+        group,
+    );
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::CLEANUP,
@@ -157,7 +164,8 @@ pub async fn remove_empty_dirs(
         "_async": true,
     });
 
-    let metadata = JobMetadata::for_query(remote, path, JobType::Rmdirs, origin, group);
+    let metadata =
+        JobMetadata::for_mutation(remote, vec![path], "", JobType::Rmdirs, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::RMDIRS,

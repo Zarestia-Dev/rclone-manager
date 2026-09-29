@@ -164,6 +164,8 @@ export class NautilusDragDropService {
           this.notifications.showError(
             this.translate.instant('nautilus.errors.externalDropFailed')
           );
+        } finally {
+          this._cb.refresh(target.remote.name, target.path);
         }
       });
 
@@ -627,7 +629,12 @@ export class NautilusDragDropService {
     );
     this._cb.refresh(target.remote.name, target.path);
     if (isSameRemote) {
-      this._cb.refresh(target.remote.name, sourceParentPath);
+      for (const item of items) {
+        this._cb.refresh(
+          item.meta.remote ?? target.remote.name,
+          this.pathService.getParentPath(item.entry.Path)
+        );
+      }
     }
   }
 
@@ -674,7 +681,10 @@ export class NautilusDragDropService {
       }
     }
 
-    if (filesToUpload.length === 0) return;
+    if (filesToUpload.length === 0) {
+      this._cb.refresh(target.remote.name, target.path);
+      return;
+    }
 
     const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
       normalized,

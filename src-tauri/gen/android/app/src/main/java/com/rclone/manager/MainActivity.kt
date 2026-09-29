@@ -17,6 +17,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
@@ -317,15 +319,13 @@ class MainActivity : TauriActivity() {
 
   /** Dispatches `android-share-files` CustomEvent to Angular with a list of local paths. */
   private fun notifyShareFiles(paths: List<String>) {
-    val escaped = paths.joinToString(",") { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" }
-    val js = "window.dispatchEvent(new CustomEvent('android-share-files',{detail:{paths:[$escaped]}}))"
+    val js = "window.dispatchEvent(new CustomEvent('android-share-files',{detail:{paths:${JSONArray(paths)}}}))"
     appWebView?.post { appWebView?.evaluateJavascript(js, null) }
   }
 
   /** Dispatches `android-share-text` CustomEvent to Angular with shared text. */
   private fun notifyShareText(text: String) {
-    val escaped = text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-    val js = "window.dispatchEvent(new CustomEvent('android-share-text',{detail:{text:\"$escaped\"}}))"
+    val js = "window.dispatchEvent(new CustomEvent('android-share-text',{detail:{text:${JSONObject.quote(text)}}}))"
     appWebView?.post { appWebView?.evaluateJavascript(js, null) }
   }
 
@@ -342,9 +342,9 @@ class MainActivity : TauriActivity() {
     isFrontendReady = true
     synchronized(pendingSharedPaths) {
       if (pendingSharedPaths.isEmpty()) return "[]"
-      val escaped = pendingSharedPaths.joinToString(",") { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" }
+      val json = JSONArray(pendingSharedPaths).toString()
       pendingSharedPaths.clear()
-      return "[$escaped]"
+      return json
     }
   }
 
@@ -362,19 +362,29 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  /**
-   * Cleans up the temporary shared_files cache directory.
-   * Called when Angular cancels the pending share.
-   */
+  /** Removes only the cached files acknowledged or cancelled by Angular. */
   @JavascriptInterface
-  fun clearSharedFiles() {
-    synchronized(pendingSharedPaths) {
-      pendingSharedPaths.clear()
-    }
-    try {
-      File(cacheDir, "shared_files").deleteRecursively()
+  fun clearSharedFiles(pathsJson: String) {
+    val paths = try {
+      val json = JSONArray(pathsJson)
+      (0 until json.length()).map { json.getString(it) }
     } catch (e: Exception) {
-      Logger.error("clearSharedFiles failed: ${e.message}")
+      Logger.error("Invalid shared file cleanup request: ${e.message}")
+      return
+    }
+    shareExecutor.execute {
+      try {
+        val root = File(cacheDir, "shared_files").canonicalFile
+        for (path in paths) {
+          val file = File(path).canonicalFile
+          if (file.parentFile == root) file.delete()
+        }
+        synchronized(pendingSharedPaths) {
+          pendingSharedPaths.removeAll(paths.toSet())
+        }
+      } catch (e: Exception) {
+        Logger.error("clearSharedFiles failed: ${e.message}")
+      }
     }
   }
 

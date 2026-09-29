@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { generatePrefixedId } from 'src/app/shared/utils';
 import {
   Entry,
   FsInfo,
@@ -218,14 +219,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     name: string,
     content: Uint8Array
   ): Promise<string> {
-    // ⚠️ Performance issue (preserved for wire-format compatibility):
-    // `Array.from(content)` serializes every byte as a JSON number, multiplying
-    // payload size ~5x and amplifying memory pressure on large files.
-    // The proper fix is to switch to a base64-encoded payload + a backend
-    // handler that decodes it — but that requires a coordinated Rust-side
-    // change to `upload_file`. See refactor plan: switch both sides to
-    // base64 in a single PR, or route large uploads through `uploadFileStream`
-    // which already uses multipart FormData via HTTP.
     return this.invokeCommand<string>('upload_file', {
       remote,
       path,
@@ -239,32 +232,26 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path: string,
     file: File,
     source?: Origin,
-    overrideName?: string,
-    batchId?: string,
-    fileIndex?: number,
-    totalFiles?: number,
-    jobId?: number
+    relativePath = file.name,
+    group?: string
   ): Promise<string> {
-    const fd = new FormData();
-    fd.append('remote', remote);
-    fd.append('path', path);
-    if (source) fd.append('origin', JSON.stringify(source));
-    if (batchId) fd.append('batchId', batchId);
-    if (jobId !== undefined) fd.append('jobId', jobId.toString());
-    if (fileIndex !== undefined) fd.append('fileIndex', fileIndex.toString());
-    if (totalFiles !== undefined) fd.append('totalFiles', totalFiles.toString());
-    if (file.lastModified) fd.append('mtime', file.lastModified.toString());
-    fd.append('file', file, overrideName || file.name);
+    const body = new FormData();
+    body.append('remote', remote);
+    body.append('path', path);
+    if (source) body.append('origin', JSON.stringify(source));
+    if (group) body.append('group', group);
+    body.append('mtime', file.lastModified.toString());
+    body.append('file', file, relativePath || file.name);
 
-    const res = await firstValueFrom(
+    const response = await firstValueFrom(
       this.http.post<{ success: boolean; data: string; error?: string }>(
         `${this.apiClient.getApiBase()}/upload`,
-        fd,
+        body,
         { withCredentials: true }
       )
     );
-    if (res.success) return res.data;
-    throw new Error(res.error || 'Upload failed');
+    if (!response.success) throw new Error(response.error || 'Upload failed');
+    return response.data;
   }
 
   async uploadWebFilesBatch(
@@ -273,67 +260,21 @@ export class RemoteFileOperationsService extends TauriBaseService {
     files: { file: File; relativePath: string }[],
     source?: Origin
   ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const batchId = Date.now().toString(),
-      jobId = Date.now(),
-      totalFiles = files.length,
-      totalBytes = files.reduce((s, f) => s + f.file.size, 0);
-    await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
-
+    const group = generatePrefixedId('upload');
     let successCount = 0;
     const failedPaths: string[] = [];
-
-    for (let i = 0; i < totalFiles; i++) {
-      const { file, relativePath } = files[i];
+    // Each request stages and transfers one file before the next request starts.
+    // A buffered file is never counted as a completed remote upload.
+    for (const { file, relativePath } of files) {
       try {
-        await this.uploadFileStream(
-          remote,
-          path,
-          file,
-          source,
-          relativePath,
-          batchId,
-          i,
-          totalFiles,
-          jobId
-        );
+        await this.uploadFileStream(remote, path, file, source, relativePath, group);
         successCount++;
-      } catch (err) {
-        console.error('[RemoteFileOps] Upload stream error:', relativePath, err);
-        failedPaths.push(relativePath);
+      } catch (error) {
+        console.error('[RemoteFileOps] Upload failed:', relativePath || file.name, error);
+        failedPaths.push(relativePath || file.name);
       }
     }
-
-    if (successCount === 0 && totalFiles > 0) {
-      try {
-        await this.apiClient.invoke('delete_job', { jobid: jobId });
-      } catch {
-        /* ignore */
-      }
-    }
-
     return { successCount, failedPaths };
-  }
-
-  async registerPreparingJob(
-    jobId: number,
-    remote: string,
-    destination: string,
-    totalFiles: number,
-    totalBytes: number,
-    origin?: Origin
-  ): Promise<void> {
-    return this.apiClient.invoke('register_preparing_job', {
-      jobid: jobId,
-      remote,
-      destination,
-      totalFiles,
-      totalBytes,
-      origin,
-    });
-  }
-
-  async updateJobStats(jobId: number, stats: unknown): Promise<void> {
-    return this.apiClient.invoke('update_job_stats', { jobid: jobId, stats });
   }
 
   async submitBatchJob(

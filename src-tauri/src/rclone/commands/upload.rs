@@ -5,7 +5,10 @@ use futures::StreamExt;
 use log::debug;
 use serde::Deserialize;
 use serde_json::json;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 
 use crate::{
     core::bridge,
@@ -28,9 +31,20 @@ pub struct UploadBatchParams {
     pub local_paths: Vec<String>,
     pub origin: Option<Origin>,
     pub group: Option<String>,
-    pub cleanup_dir: Option<std::path::PathBuf>,
     pub existing_jobid: Option<u64>,
     pub no_cache: bool,
+}
+
+// Upload jobs are local synthetic jobs, separate from rclone's job IDs.
+fn next_upload_jobid() -> u64 {
+    static LAST_ID: AtomicU64 = AtomicU64::new(0);
+    let now = chrono::Utc::now().timestamp_millis() as u64;
+    let previous = LAST_ID
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |last| {
+            Some(now.max(last + 1))
+        })
+        .expect("upload job ID update cannot fail");
+    now.max(previous + 1)
 }
 
 struct UploadProgress {
@@ -97,7 +111,7 @@ impl UploadProgress {
             "totalTransfers": total_files,
             "transferTime": elapsed,
             "transferring": self.transferring,
-            "transfers": self.completed.len(),
+            "transfers": self.completed.len() - self.errors.len(),
             "listed": total_files,
             "completed": self.completed,
         })
@@ -115,16 +129,16 @@ async fn discover_upload_entries(
     local_paths: Vec<String>,
     remote_path: String,
 ) -> Result<UploadDiscoveryResult, String> {
-    tokio::task::spawn_blocking(move || {
+    crate::utils::spawn_blocking(move || {
         let remote_path = if remote_path == "/" { "" } else { &remote_path };
         let mut file_entries = Vec::new();
         let mut empty_dirs = Vec::new();
 
         for raw in &local_paths {
             let p = std::path::PathBuf::from(raw);
-            if !p.exists() {
-                continue;
-            }
+            let metadata = std::fs::metadata(&p).map_err(|e| {
+                crate::localized_error!("backendErrors.request.failed", "error" => format!("{}: {e}", p.display()))
+            })?;
 
             let parent = p.parent().unwrap_or(&p);
             let top_name = p
@@ -133,14 +147,14 @@ async fn discover_upload_entries(
                 .to_string_lossy()
                 .to_string();
 
-            if p.is_file() {
+            if metadata.is_file() {
                 let rel_name = p
                     .strip_prefix(parent)
                     .unwrap_or(&p)
                     .to_string_lossy()
                     .to_string();
                 file_entries.push((p, remote_path.to_string(), rel_name));
-            } else if p.is_dir() {
+            } else if metadata.is_dir() {
                 let mut all_dirs: std::collections::HashSet<std::path::PathBuf> =
                     std::collections::HashSet::new();
                 let mut dirs_with_files: std::collections::HashSet<std::path::PathBuf> =
@@ -148,11 +162,10 @@ async fn discover_upload_entries(
 
                 all_dirs.insert(p.clone());
 
-                for entry in walkdir::WalkDir::new(&p)
-                    .min_depth(1)
-                    .into_iter()
-                    .filter_map(std::result::Result::ok)
-                {
+                for entry in walkdir::WalkDir::new(&p).min_depth(1) {
+                    let entry = entry.map_err(|e| {
+                        crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
+                    })?;
                     let file_path = entry.path().to_path_buf();
                     if entry.file_type().is_dir() {
                         all_dirs.insert(file_path);
@@ -235,13 +248,16 @@ pub async fn execute_upload_batch(
         local_paths,
         origin,
         group,
-        cleanup_dir,
         existing_jobid,
         no_cache,
     } = params;
 
     let mut remote = remote;
-    if !remote.ends_with(':') && !remote.contains('/') && !remote.contains('\\') {
+    if !remote.is_empty()
+        && !remote.ends_with(':')
+        && !remote.contains('/')
+        && !remote.contains('\\')
+    {
         remote.push(':');
     }
 
@@ -260,28 +276,26 @@ pub async fn execute_upload_batch(
 
     for remote_dir in &discovery.empty_dir_remotes {
         let payload = json!({ "fs": &remote, "remote": remote_dir });
-        let _ = transport.rpc("operations/mkdir", Some(&payload)).await;
+        transport.rpc(operations::MKDIR, Some(&payload)).await.map_err(|e| {
+            crate::localized_error!("backendErrors.request.failed", "error" => e.to_string())
+        })?;
     }
 
     let file_entries = discovery.file_entries;
     if file_entries.is_empty() {
-        if let Some(dir) = cleanup_dir {
-            let _ = tokio::fs::remove_dir_all(dir).await;
-        }
         return Ok("0".to_string());
     }
 
     let total_files = file_entries.len();
-    let total_bytes: u64 =
-        futures::future::join_all(file_entries.iter().map(|(p, _, _)| tokio::fs::metadata(p)))
-            .await
-            .into_iter()
-            .filter_map(std::result::Result::ok)
-            .map(|m| m.len())
-            .sum();
+    let mut total_bytes = 0;
+    for (file_path, _, _) in &file_entries {
+        total_bytes += tokio::fs::metadata(file_path).await.map_err(|e| {
+            crate::localized_error!("backendErrors.request.failed", "error" => format!("{}: {e}", file_path.display()))
+        })?.len();
+    }
 
     let destination = build_full_path(&remote, &path);
-    let jobid = existing_jobid.unwrap_or_else(|| chrono::Utc::now().timestamp_millis() as u64);
+    let jobid = existing_jobid.unwrap_or_else(next_upload_jobid);
     let metadata = JobMetadata::new(
         remote.clone(),
         JobType::Upload,
@@ -390,16 +404,10 @@ pub async fn execute_upload_batch(
                     } else {
                         format!("{remote_dir}/{base_filename}")
                     };
-                    let dst_fs_arg =
-                        if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
-                            remote.clone()
-                        } else {
-                            format!("{remote}:")
-                        };
                     let payload = json!({
                         "srcFs": src_fs,
                         "srcRemote": base_filename,
-                        "dstFs": dst_fs_arg,
+                        "dstFs": remote,
                         "dstRemote": dst_remote,
                     });
 
@@ -542,10 +550,6 @@ pub async fn execute_upload_batch(
         .complete_job(jobid, success, error_msg.clone())
         .await;
 
-    if let Some(dir) = cleanup_dir {
-        let _ = tokio::fs::remove_dir_all(dir).await;
-    }
-
     error_msg.map_or(Ok(jobid.to_string()), Err)
 }
 
@@ -566,7 +570,6 @@ pub async fn upload_local_drop_paths(
             local_paths,
             origin,
             group,
-            cleanup_dir: None,
             existing_jobid: None,
             no_cache: false,
         },
@@ -687,4 +690,96 @@ fn parse_rclone_error(err_text: &str) -> String {
         .ok()
         .and_then(|val| val.get("error").and_then(|e| e.as_str()).map(String::from))
         .unwrap_or_else(|| err_text.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn discovers_nested_files_and_empty_directories() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("folder");
+        std::fs::create_dir_all(root.join("nested")).unwrap();
+        std::fs::create_dir_all(root.join("empty/child")).unwrap();
+        std::fs::write(root.join("nested/özel..txt"), "data").unwrap();
+        let discovery =
+            discover_upload_entries(vec![root.to_string_lossy().into_owned()], "target/".into())
+                .await
+                .unwrap();
+        assert_eq!(
+            discovery.file_entries,
+            vec![(
+                root.join("nested/özel..txt"),
+                "target/folder/nested".into(),
+                "folder/nested/özel..txt".into()
+            )]
+        );
+        let mut dirs = discovery.empty_dir_remotes;
+        dirs.sort();
+        assert_eq!(dirs, ["target/folder/empty", "target/folder/empty/child"]);
+    }
+
+    #[tokio::test]
+    async fn missing_source_fails_instead_of_reporting_success() {
+        let temp = tempfile::tempdir().unwrap();
+        let missing = temp.path().join("missing").to_string_lossy().into_owned();
+        assert!(
+            discover_upload_entries(vec![missing], String::new())
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn single_file_and_empty_input_preserve_root_destination() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("file.txt");
+        std::fs::write(&file, "").unwrap();
+        let result = discover_upload_entries(vec![file.to_string_lossy().into_owned()], "/".into())
+            .await
+            .unwrap();
+        assert_eq!(
+            result.file_entries,
+            vec![(file, String::new(), "file.txt".into())]
+        );
+        assert!(result.empty_dir_remotes.is_empty());
+        let result = discover_upload_entries(vec![], String::new())
+            .await
+            .unwrap();
+        assert!(result.file_entries.is_empty());
+        assert!(result.empty_dir_remotes.is_empty());
+    }
+    #[test]
+    fn concurrent_uploads_have_distinct_javascript_safe_job_ids() {
+        let mut ids = std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..4)
+                .map(|_| scope.spawn(|| (0..100).map(|_| next_upload_jobid()).collect::<Vec<_>>()))
+                .collect();
+            workers
+                .into_iter()
+                .flat_map(|worker| worker.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(ids.iter().all(|id| *id < (1_u64 << 53)));
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), 400);
+    }
+    #[test]
+    fn stats_count_successful_transfers_separately_from_failed_files() {
+        let mut progress = UploadProgress::new();
+        progress.completed.push(json!({"name": "ok", "bytes": 10}));
+        progress
+            .completed
+            .push(json!({"name": "failed", "bytes": 0}));
+        progress.errors.push("failed".into());
+        progress.uploaded_bytes = 10;
+        let stats = progress.build_stats(20, 2);
+        assert_eq!(stats["transfers"], 1);
+        assert_eq!(stats["errors"], 1);
+        assert_eq!(stats["bytes"], 10);
+        assert_eq!(stats["totalTransfers"], 2);
+        assert_eq!(stats["completed"].as_array().unwrap().len(), 2);
+    }
 }

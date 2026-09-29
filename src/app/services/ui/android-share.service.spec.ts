@@ -108,16 +108,82 @@ describe('AndroidShareService', () => {
     expect(mockNautilusService.newNautilusWindow).toHaveBeenCalledWith(null, null);
   });
 
-  it('should consume pending paths and reset queue', () => {
-    mockBridge.getPendingSharedFiles.mockReturnValue(
-      JSON.stringify(['/cache/shared_files/doc.txt'])
-    );
-    service.initialize();
-
-    const consumed = service.consumePendingPaths();
-
-    expect(consumed).toEqual(['/cache/shared_files/doc.txt']);
+  it('cleans only successfully uploaded paths', async () => {
+    service.pendingSharedPaths.set(['/cache/shared_files/doc.txt']);
+    expect(await service.uploadPending(async () => true)).toBe(true);
     expect(service.pendingSharedPaths()).toEqual([]);
+    expect(mockBridge.clearSharedFiles).toHaveBeenCalledWith('["/cache/shared_files/doc.txt"]');
+    expect(service.uploading()).toBe(false);
+  });
+
+  it.each([false, 'throw'])('preserves files for retry on failure: %s', async outcome => {
+    service.pendingSharedPaths.set(['/cache/shared_files/doc.txt']);
+    const upload = service.uploadPending(async () => {
+      if (outcome === 'throw') throw new Error('offline');
+      return false;
+    });
+    if (outcome === 'throw') await expect(upload).rejects.toThrow('offline');
+    else expect(await upload).toBe(false);
+    expect(service.pendingSharedPaths()).toEqual(['/cache/shared_files/doc.txt']);
+    expect(mockBridge.clearSharedFiles).not.toHaveBeenCalled();
+    expect(service.uploading()).toBe(false);
+  });
+
+  it('merges consecutive shares and rejects malformed payloads', () => {
+    service.initialize();
+    for (const paths of [['one'], ['two', 'one'], null, 'invalid', [null, 42, '']]) {
+      window.dispatchEvent(new CustomEvent('android-share-files', { detail: { paths } }));
+    }
+    expect(service.pendingSharedPaths()).toEqual(['one', 'two']);
+  });
+
+  it('prevents duplicate uploads and keeps new shares separate from active files', async () => {
+    service.initialize();
+    service.pendingSharedPaths.set(['active']);
+    let resolve!: (success: boolean) => void;
+    const result = service.uploadPending(
+      () =>
+        new Promise<boolean>(done => {
+          resolve = done;
+        })
+    );
+    window.dispatchEvent(new CustomEvent('android-share-files', { detail: { paths: ['new'] } }));
+    const duplicate = vi.fn();
+    expect(await service.uploadPending(duplicate)).toBe(false);
+    expect(duplicate).not.toHaveBeenCalled();
+    service.cancelPendingShare();
+    expect(mockBridge.clearSharedFiles).toHaveBeenCalledWith('["new"]');
+    resolve(false);
+    expect(await result).toBe(false);
+    expect(service.pendingSharedPaths()).toEqual(['active']);
+  });
+
+  it('ignores duplicate share events for files already being uploaded', async () => {
+    service.initialize();
+    service.pendingSharedPaths.set(['active']);
+    let resolve!: (success: boolean) => void;
+    const result = service.uploadPending(
+      () =>
+        new Promise<boolean>(done => {
+          resolve = done;
+        })
+    );
+    mockBridge.getPendingSharedFiles.mockReturnValueOnce('["active"]');
+    window.dispatchEvent(new CustomEvent('android-share-files', { detail: { paths: ['active'] } }));
+    expect(mockBridge.getPendingSharedFiles).toHaveBeenCalledTimes(2);
+    expect(service.pendingSharedPaths()).toEqual([]);
+    service.cancelPendingShare();
+    expect(mockBridge.clearSharedFiles).not.toHaveBeenCalled();
+    resolve(false);
+    await result;
+    expect(service.pendingSharedPaths()).toEqual(['active']);
+  });
+
+  it('removes window listeners when the service is destroyed', () => {
+    service.initialize();
+    TestBed.resetTestingModule();
+    window.dispatchEvent(new CustomEvent('android-share-files', { detail: { paths: ['late'] } }));
+    expect(mockNautilusService.newNautilusWindow).not.toHaveBeenCalled();
   });
 
   it('should clear pending paths and call native clearSharedFiles on cancel', () => {

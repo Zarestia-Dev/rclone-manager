@@ -138,28 +138,27 @@ export class NautilusActionsService {
 
   async openNewFolder(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const existingNames = this.tabSvc.activeFiles().map(f => f.entry.Name);
-    const created = await this.fileOps.openNewFolderDialog(
-      remote,
-      this.tabSvc.activePath(),
-      existingNames
-    );
-    if (created) this._refresh();
+    const created = await this.fileOps.openNewFolderDialog(remote, path, existingNames);
+    if (created) this._refresh(remote, path);
   }
 
   async openCopyUrlDialog(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
-    const changed = await this.fileOps.openCopyUrlDialog(remote, this.tabSvc.activePath());
-    if (changed) this._refresh();
+    const changed = await this.fileOps.openCopyUrlDialog(remote, path);
+    if (changed) this._refresh(remote, path);
   }
 
   async openRename(): Promise<void> {
     const item = this.contextMenuItem();
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!item || !remote) return;
 
     const existingNames = this.tabSvc
@@ -168,7 +167,7 @@ export class NautilusActionsService {
       .map(f => f.entry.Name);
 
     const changed = await this.fileOps.openRenameDialog(remote, item, existingNames);
-    if (changed) this._refresh();
+    if (changed) this._refresh(remote, path);
   }
 
   getSelectedOrContextItems(): FileBrowserItem[] {
@@ -181,6 +180,7 @@ export class NautilusActionsService {
 
   async deleteSelectedItems(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const itemsToDelete = this.getSelectedOrContextItems();
@@ -188,13 +188,16 @@ export class NautilusActionsService {
 
     const refreshNeeded = await this.fileOps.deleteItems(remote, itemsToDelete);
     if (refreshNeeded) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     }
   }
 
   async removeEmptyDirs(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const selection = this.tabSvc.activeSelection();
@@ -204,22 +207,19 @@ export class NautilusActionsService {
     if (!item) return;
 
     const changed = await this.fileOps.removeEmptyDirs(remote, item);
-    if (changed) this._refresh();
+    if (changed) this._refresh(remote, path);
   }
 
   async openArchiveCreate(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const selectedFiles = this.getSelectedOrContextItems();
     if (selectedFiles.length === 0) return;
 
-    const changed = await this.fileOps.openArchiveCreateDialog(
-      remote,
-      selectedFiles,
-      this.tabSvc.activePath()
-    );
-    if (changed) this._refresh();
+    const changed = await this.fileOps.openArchiveCreateDialog(remote, selectedFiles, path);
+    if (changed) this._refresh(remote, path);
   }
 
   openContextMenuOpenInNewTab(): void {
@@ -302,6 +302,7 @@ export class NautilusActionsService {
 
   async createFolderWithSelectedItems(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
@@ -321,15 +322,16 @@ export class NautilusActionsService {
       folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
 
-      const currentPath = this.tabSvc.activePath();
-      const newPath = this.pathSvc.joinPath(currentPath, folderName);
+      const newPath = this.pathSvc.joinPath(path, folderName);
       const normalizedRemote = this.pathSvc.normalizeExplorerRoot(remote);
 
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       await this.fileOps.performFileOperations(items, remote, newPath, 'move');
 
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     } catch (err) {
       console.error('Failed to create folder with selected items', err);
       this.notificationService.showError(
@@ -343,6 +345,7 @@ export class NautilusActionsService {
 
   async openMultiRename(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
@@ -352,18 +355,15 @@ export class NautilusActionsService {
 
     const changed = await firstValueFrom(ref.afterClosed());
     if (changed) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     }
   }
 
-  private _refresh(): void {
-    const remote = this.tabSvc.activeRemote();
-    if (remote) {
-      this.tabSvc.refreshPath(remote.name, this.tabSvc.activePath());
-    } else {
-      this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-    }
+  private _refresh(remote: ExplorerRoot, path: string): void {
+    this.tabSvc.refreshPath(remote.name, path);
   }
 
   private _itemKey(item: FileBrowserItem): string {

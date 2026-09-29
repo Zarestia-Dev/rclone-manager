@@ -85,6 +85,7 @@ export interface JobChangeEvent {
   status: JobStatus;
   remote?: string;
   source?: string;
+  sources?: string[];
   destination?: string;
   profile?: string;
   quickRunId?: string;

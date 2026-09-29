@@ -1,11 +1,11 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { NautilusService } from './nautilus.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 
 interface AndroidNativeBridge {
   getPendingSharedFiles?: () => string;
   getPendingRoute?: () => string;
-  clearSharedFiles?: () => void;
+  clearSharedFiles?: (paths: string) => void;
   notifyFrontendReady?: () => void;
 }
 
@@ -26,71 +26,110 @@ const getBridge = (): AndroidNativeBridge | undefined =>
  */
 @Injectable({ providedIn: 'root' })
 export class AndroidShareService {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly nautilusService = inject(NautilusService);
 
   /** Absolute local paths of files shared into the app from other apps. */
   readonly pendingSharedPaths = signal<string[]>([]);
 
+  readonly uploading = signal(false);
+
   private initialized = false;
+  private activePaths = new Set<string>();
 
   /** Call once from AppComponent to start listening for share events. */
   initialize(): void {
     if (!isMobile() || this.initialized) return;
     this.initialized = true;
 
-    window.addEventListener('android-share-files', (event: Event) => {
+    const onShare = (event: Event): void => {
       const detail = (event as CustomEvent<{ paths: string[] }>).detail;
-      if (!detail?.paths?.length) return;
-
-      this.pendingSharedPaths.set(detail.paths);
+      const received = this.addPendingPaths(detail?.paths);
+      const pending = this.readPendingFiles();
+      if (!received && !pending) return;
 
       // Open Nautilus so the user can pick the destination remote/folder.
       // newNautilusWindow() falls back to openBrowserOverlay() on mobile.
       void this.nautilusService.newNautilusWindow(null, null);
-    });
+    };
 
-    window.addEventListener('android-navigate-route', (event: Event) => {
+    const onNavigate = (event: Event): void => {
       const detail = (event as CustomEvent<{ route: string }>).detail;
       if (detail?.route === 'nautilus') {
         void this.nautilusService.newNautilusWindow(null, null);
       }
+    };
+    window.addEventListener('android-share-files', onShare);
+    window.addEventListener('android-navigate-route', onNavigate);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('android-share-files', onShare);
+      window.removeEventListener('android-navigate-route', onNavigate);
     });
 
     // Check for pending cold start share files or route queued in Kotlin
     this.checkPendingColdStart();
   }
 
-  /** Called when the user confirms the upload destination. Clears the queue. */
-  consumePendingPaths(): string[] {
+  async uploadPending(upload: (paths: string[]) => Promise<boolean>): Promise<boolean> {
+    if (this.uploading() || !this.pendingSharedPaths().length) return false;
     const paths = this.pendingSharedPaths();
     this.pendingSharedPaths.set([]);
-    return paths;
+    this.activePaths = new Set(paths);
+    this.uploading.set(true);
+    let success = false;
+    try {
+      success = await upload(paths);
+      if (success) this.clearCachedPaths(paths);
+      return success;
+    } finally {
+      this.activePaths.clear();
+      if (!success) this.addPendingPaths(paths);
+      this.uploading.set(false);
+    }
   }
 
-  /** Discard the pending share without uploading and clean up cached files. */
+  /** Discard only the pending files, leaving active uploads intact. */
   cancelPendingShare(): void {
+    const paths = this.pendingSharedPaths();
     this.pendingSharedPaths.set([]);
-    getBridge()?.clearSharedFiles?.();
+    this.clearCachedPaths(paths);
+  }
+
+  private clearCachedPaths(paths: string[]): void {
+    if (!paths.length) return;
+    try {
+      getBridge()?.clearSharedFiles?.(JSON.stringify(paths));
+    } catch (error) {
+      console.error('[AndroidShareService] Failed to clean shared files:', error);
+    }
+  }
+
+  private addPendingPaths(value: unknown): boolean {
+    if (!Array.isArray(value)) return false;
+    const paths = value.filter(
+      (path): path is string => typeof path === 'string' && !!path && !this.activePaths.has(path)
+    );
+    if (!paths.length) return false;
+    this.pendingSharedPaths.update(pending => [...new Set([...pending, ...paths])]);
+    return true;
+  }
+
+  private readPendingFiles(): boolean {
+    try {
+      const raw = getBridge()?.getPendingSharedFiles?.();
+      return raw ? this.addPendingPaths(JSON.parse(raw)) : false;
+    } catch (error) {
+      console.error('[AndroidShareService] Failed to parse pending shared files:', error);
+      return false;
+    }
   }
 
   private checkPendingColdStart(): void {
     const bridge = getBridge();
     if (!bridge) return;
 
-    // Pull any shared files queued during cold start
-    if (bridge.getPendingSharedFiles) {
-      try {
-        const raw = bridge.getPendingSharedFiles();
-        if (raw && raw !== '[]') {
-          const paths = JSON.parse(raw) as string[];
-          if (Array.isArray(paths) && paths.length > 0) {
-            this.pendingSharedPaths.set(paths);
-            void this.nautilusService.newNautilusWindow(null, null);
-          }
-        }
-      } catch (err) {
-        console.error('[AndroidShareService] Failed to parse pending shared files:', err);
-      }
+    if (this.readPendingFiles()) {
+      void this.nautilusService.newNautilusWindow(null, null);
     }
 
     // Pull any route intent queued during cold start (e.g. App Shortcut)

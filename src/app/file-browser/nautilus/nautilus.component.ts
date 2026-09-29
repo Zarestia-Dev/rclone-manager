@@ -731,8 +731,9 @@ export class NautilusComponent implements OnInit {
       ? this.pathService.joinPath(this.tabSvc.activePath(), target.entry.Name)
       : this.tabSvc.activePath();
 
-    await this.fileOps.pasteItems(this.tabSvc.activeRemote(), dstPath, this.allRemotesLookup());
-    this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    const remote = this.tabSvc.activeRemote();
+    await this.fileOps.pasteItems(remote, dstPath, this.allRemotesLookup());
+    if (remote) this.tabSvc.refreshPath(remote.name, dstPath);
   }
 
   // ── Stars & bookmarks ────────────────────────────────────────────────────────
@@ -813,8 +814,9 @@ export class NautilusComponent implements OnInit {
     }
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
-    const success = await this.fileOps.uploadExternalFiles(remote, this.tabSvc.activePath());
-    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    const destination = this.tabSvc.activePath();
+    await this.fileOps.uploadExternalFiles(remote, destination);
+    this.tabSvc.refreshPath(remote.name, destination);
   }
 
   /**
@@ -829,8 +831,9 @@ export class NautilusComponent implements OnInit {
     }
     const remote = this.tabSvc.activeRemote();
     if (!remote) return;
-    const success = await this.fileOps.uploadExternalFolder(remote, this.tabSvc.activePath());
-    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    const destination = this.tabSvc.activePath();
+    await this.fileOps.uploadExternalFolder(remote, destination);
+    this.tabSvc.refreshPath(remote.name, destination);
   }
 
   /**
@@ -846,10 +849,11 @@ export class NautilusComponent implements OnInit {
       );
       return;
     }
-    const paths = this.androidShare.consumePendingPaths();
-    if (!paths.length) return;
-    const success = await this.fileOps.uploadSharedPaths(remote, this.tabSvc.activePath(), paths);
-    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    const destination = this.tabSvc.activePath();
+    const success = await this.androidShare.uploadPending(paths =>
+      this.fileOps.uploadSharedPaths(remote, destination, paths)
+    );
+    if (success) this.tabSvc.refreshPath(remote.name, destination);
   }
 
   /** Cancel the pending Android share without uploading. */
@@ -872,12 +876,9 @@ export class NautilusComponent implements OnInit {
     if (!input.files || input.files.length === 0) return;
     const remote = this.tabSvc.activeRemote();
     if (remote) {
-      const success = await this.fileOps.uploadWebFiles(
-        remote,
-        this.tabSvc.activePath(),
-        input.files
-      );
-      if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+      const destination = this.tabSvc.activePath();
+      await this.fileOps.uploadWebFiles(remote, destination, input.files);
+      this.tabSvc.refreshPath(remote.name, destination);
     }
     input.value = '';
   }
