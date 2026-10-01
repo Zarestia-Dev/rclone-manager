@@ -521,6 +521,10 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
+      },
+      "skip_mount_plugin_check": {
+        "label": "Bağlama Eklentisi Kontrolünü Atla",
+        "description": "Başlangıçta ve ilk kurulumda bağlama eklentisi kontrolünü ve indirme uyarısını atla"
       }
     },
     "developer": {
@@ -582,6 +586,10 @@
       "flatpak_warn": {
         "label": "Flatpak Uyarısı Gösterildi"
       },
+      "mount_warn": {
+        "label": "Bağlama Uyarısı Gösterimi",
+        "description": "Bağlama sürücüsü kontrolleri devre dışı bırakıldığında bağlama görünümünde uyarı başlığı göster"
+      },
       "dashboard_layout": {
         "label": "Panel Düzeni",
         "description": "Panel için özel düzen yapılandırması."
@@ -621,6 +629,12 @@
       "title": "Flatpak Notu",
       "subtitle": "Bazı özellikler manuel izin ayarlamaları gerektirebilir.",
       "learnMore": "Daha fazla bilgi",
+      "dismissTooltip": "Bir daha gösterme"
+    },
+    "mountPlugin": {
+      "title": "Bağlama Sürücüsü Kontrolü Devre Dışı",
+      "description": "Bağlama sürücüsü kontrolü atlandı. Uzak konumları bağlamak için sisteminizde uyumlu bir bağlama sürücüsünün kurulu olması gerekir.",
+      "install": "Sürücüyü Yükle",
       "dismissTooltip": "Bir daha gösterme"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Bağlama Eklentisini Kur",
-        "content": "Bağlama eklentisi, bulut depolamayı yerel sürücüler olarak bağlamanızı sağlar. Bu isteğe bağlı bileşen Rclone deneyiminizi geliştirir."
+        "content": "Bağlama eklentisi, bulut depolamayı yerel sürücüler olarak bağlamanızı sağlar. Bu isteğe bağlı bileşen Rclone deneyiminizi geliştirir.",
+        "skipMountTitle": "Mount özelliğini kullanmayacağım",
+        "skipMountDesc": "Sürücü bağlamayacaksanız bağlama sürücüsü kurulumunu atlayabilirsiniz."
       },
       "selectConfig": {
         "title": "Rclone Yapılandırmasını Seç",
@@ -3243,6 +3259,10 @@
       "repairing": "Onarılıyor...",
       "configuring": "Yapılandırılıyor..."
     },
+    "mountPreference": {
+      "title": "Mount özelliğini kullanmayacağım",
+      "desc": "Sürücü bağlamayacaksanız bağlama sürücüsü denetimini devre dışı bırakın."
+    },
     "actions": {
       "installRclone": "Rclone Kur",
       "installPlugin": "Eklenti Kur",
@@ -3251,7 +3271,8 @@
       "submitPassword": "Kilidi Aç",
       "changePort": "Bağlantı Noktasını Uygula ve Yeniden Başlat",
       "configureBackend": "Backend'i Yapılandır",
-      "repair": "Onar"
+      "repair": "Onar",
+      "saveAndClose": "Kaydet ve Kapat"
     },
     "portConfig": {
       "portLabel": "Yerel Bağlantı Noktası",

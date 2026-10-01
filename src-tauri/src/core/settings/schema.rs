@@ -226,6 +226,13 @@ pub struct CoreSettings {
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
+
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[setting(
+        label = "settings.core.skip_mount_plugin_check.label",
+        description = "settings.core.skip_mount_plugin_check.description"
+    )]
+    pub skip_mount_plugin_check: bool,
 }
 
 impl Default for CoreSettings {
@@ -247,6 +254,8 @@ impl Default for CoreSettings {
             ],
             bandwidth_limit: String::new(),
             completed_onboarding: false,
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            skip_mount_plugin_check: false,
         }
     }
 }
@@ -329,6 +338,13 @@ pub struct RuntimeSettings {
     #[cfg(feature = "flatpak")]
     pub flatpak_warn: bool,
 
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[setting(
+        label = "settings.runtime.mount_warn.label",
+        description = "settings.runtime.mount_warn.description"
+    )]
+    pub mount_warn: bool,
+
     #[setting(
         label = "settings.runtime.dashboard_layout.label",
         description = "settings.runtime.dashboard_layout.description"
@@ -370,6 +386,8 @@ impl Default for RuntimeSettings {
             rclone_update_channel: "stable".to_string(),
             #[cfg(feature = "flatpak")]
             flatpak_warn: true,
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            mount_warn: true,
             dashboard_layout: Value::Object(Default::default()),
             quick_run_layout: Value::Object(Default::default()),
             remote_layouts: Value::Object(Default::default()),

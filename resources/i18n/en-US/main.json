@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Skip Mount Plugin Check",
+        "description": "Skip checking and prompting for mount plugin installation on startup and onboarding"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Flatpak Warning Shown"
       },
+      "mount_warn": {
+        "label": "Mount Driver Warning Shown",
+        "description": "Show warning banner on mount view when mount driver checks are disabled"
+      },
       "dashboard_layout": {
         "label": "Dashboard Layout",
         "description": "Custom layout configuration for the dashboard."
@@ -621,6 +629,12 @@
       "title": "Flatpak Note",
       "subtitle": "Some features may require manual permission adjustments.",
       "learnMore": "Learn more",
+      "dismissTooltip": "Don't show again"
+    },
+    "mountPlugin": {
+      "title": "Mount Driver Check Disabled",
+      "description": "Mount driver check was skipped. Mounting remotes requires a compatible mount driver installed on your system.",
+      "install": "Install Driver",
       "dismissTooltip": "Don't show again"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Install Mount Plugin",
-        "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your Rclone experience."
+        "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your Rclone experience.",
+        "skipMountTitle": "I won't use mount",
+        "skipMountDesc": "Skip installing mount drivers if you do not plan to mount drives."
       },
       "selectConfig": {
         "title": "Select Rclone Config",
@@ -3243,6 +3259,10 @@
       "repairing": "Repairing...",
       "configuring": "Configuring..."
     },
+    "mountPreference": {
+      "title": "I won't use mount",
+      "desc": "Disable mount driver checks if you do not plan to mount drives."
+    },
     "actions": {
       "installRclone": "Install Rclone",
       "installPlugin": "Install Plugin",
@@ -3251,7 +3271,8 @@
       "submitPassword": "Unlock",
       "changePort": "Apply Port & Restart",
       "configureBackend": "Configure Backend",
-      "repair": "Repair"
+      "repair": "Repair",
+      "saveAndClose": "Save & Close"
     },
     "portConfig": {
       "portLabel": "Local Port",

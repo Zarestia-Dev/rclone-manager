@@ -1,11 +1,12 @@
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'success' | 'dim';
 
 @Component({
   selector: 'app-alert-banner',
-  imports: [MatIconModule],
+  imports: [MatIconModule, TranslatePipe],
   templateUrl: './alert-banner.component.html',
   styleUrl: './alert-banner.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,6 +22,9 @@ export class AlertBannerComponent {
   readonly icon = input<string>('');
   readonly linkUrl = input<string>('');
   readonly linkText = input<string>('');
+  readonly dismissable = input<boolean>(false);
+  readonly dismissTooltip = input<string>('');
+  readonly dismiss = output<void>();
 
   readonly resolvedIcon = computed(() => {
     const customIcon = this.icon();

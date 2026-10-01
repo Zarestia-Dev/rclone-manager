@@ -7,6 +7,18 @@
   border-radius: var(--card-border-radius, var(--radius-md));
   animation: fadeInUp var(--transition-cubic) both;
 
+  > div,
+  .alert-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dismiss-button {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
   strong {
     display: block;
     font-weight: 600;

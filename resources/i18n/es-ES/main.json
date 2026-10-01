@@ -521,6 +521,10 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
+      },
+      "skip_mount_plugin_check": {
+        "label": "Omitir verificación del complemento de montaje",
+        "description": "Omitir la comprobación y solicitud de instalación del complemento de montaje al iniciar y en la configuración inicial"
       }
     },
     "developer": {
@@ -582,6 +586,10 @@
       "flatpak_warn": {
         "label": "Advertencia de Flatpak mostrada"
       },
+      "mount_warn": {
+        "label": "Aviso de montaje mostrado",
+        "description": "Mostrar aviso en la vista de montaje cuando la comprobación del controlador de montaje esté desactivada"
+      },
       "dashboard_layout": {
         "label": "Diseño del panel de control",
         "description": "Configuración de diseño personalizada para el panel de control."
@@ -621,6 +629,12 @@
       "title": "Nota de Flatpak",
       "subtitle": "Algunas funciones pueden requerir ajustes manuales de permisos.",
       "learnMore": "Más información",
+      "dismissTooltip": "No volver a mostrar"
+    },
+    "mountPlugin": {
+      "title": "Comprobación de controlador de montaje desactivada",
+      "description": "Se omitió la comprobación del controlador de montaje. Montar unidades remotas requiere un controlador compatible instalado en el sistema.",
+      "install": "Instalar controlador",
       "dismissTooltip": "No volver a mostrar"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Instalar el plugin de montaje",
-        "content": "El plugin de montaje le permite montar el almacenamiento en la nube como unidades locales. Este componente opcional mejora su experiencia con Rclone."
+        "content": "El plugin de montaje le permite montar el almacenamiento en la nube como unidades locales. Este componente opcional mejora su experiencia con Rclone.",
+        "skipMountTitle": "No utilizaré el montaje",
+        "skipMountDesc": "Omita la instalación de controladores si no planea montar unidades."
       },
       "selectConfig": {
         "title": "Seleccionar configuración de Rclone",
@@ -3202,6 +3218,10 @@
       "repairing": "Reparando...",
       "configuring": "Configurando..."
     },
+    "mountPreference": {
+      "title": "No utilizaré el montaje",
+      "desc": "Desactive las comprobaciones de controladores si no planea montar unidades."
+    },
     "actions": {
       "installRclone": "Instalar Rclone",
       "installPlugin": "Instalar complemento",
@@ -3210,7 +3230,8 @@
       "submitPassword": "Desbloquear",
       "changePort": "Aplicar puerto y reiniciar",
       "configureBackend": "Configurar backend",
-      "repair": "Reparar"
+      "repair": "Reparar",
+      "saveAndClose": "Guardar y cerrar"
     },
     "portConfig": {
       "portLabel": "Puerto local",

@@ -161,6 +161,27 @@
       </div>
     }
 
+    @if (isMountPluginRepair()) {
+      <div class="mount-toggle-card">
+        <div class="toggle-icon-wrapper">
+          <mat-icon svgIcon="hard-drive"></mat-icon>
+        </div>
+        <div class="toggle-body">
+          <span class="toggle-title">
+            {{ 'repairSheet.mountPreference.title' | translate }}
+          </span>
+          <span class="toggle-desc">
+            {{ 'repairSheet.mountPreference.desc' | translate }}
+          </span>
+        </div>
+        <mat-slide-toggle
+          [checked]="willNotMount()"
+          (change)="willNotMount.set($event.checked)"
+          [disabled]="installing()"
+        ></mat-slide-toggle>
+      </div>
+    }
+
     @if (installing()) {
       <app-provision-progress [progress]="activeProgress()"></app-provision-progress>
     }

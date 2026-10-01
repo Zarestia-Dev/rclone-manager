@@ -521,6 +521,10 @@
       "completed_onboarding": {
         "label": "Terminer l’onboarding",
         "description": "Si l'utilisateur a terminé le processus d'intégration"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Ignorer la vérification du plugin de montage",
+        "description": "Ignorer la vérification et l'invite d'installation du plugin de montage au démarrage et lors de l'intégration"
       }
     },
     "developer": {
@@ -582,6 +586,10 @@
       "flatpak_warn": {
         "label": "Avertissement Flatpak affiché"
       },
+      "mount_warn": {
+        "label": "Avertissement de montage affiché",
+        "description": "Afficher la bannière d'avertissement sur la vue de montage lorsque les vérifications du pilote sont désactivées"
+      },
       "dashboard_layout": {
         "label": "Disposition du tableau de bord",
         "description": "Configuration personnalisée de la mise en page du tableau de bord."
@@ -621,6 +629,12 @@
       "title": "Note Flatpak",
       "subtitle": "Certaines fonctionnalités peuvent nécessiter des ajustements manuels de permission.",
       "learnMore": "Plus d'informations",
+      "dismissTooltip": "Ne plus afficher"
+    },
+    "mountPlugin": {
+      "title": "Vérification du pilote de montage désactivée",
+      "description": "La vérification du pilote de montage a été ignorée. Le montage de disques distants nécessite un pilote compatible installé sur votre système.",
+      "install": "Installer le pilote",
       "dismissTooltip": "Ne plus afficher"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Installer le plugin de montage",
-        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de rclone."
+        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de rclone.",
+        "skipMountTitle": "Je n'utiliserai pas le montage",
+        "skipMountDesc": "Ignorez l'installation si vous ne prévoyez pas de monter de lecteurs."
       },
       "selectConfig": {
         "title": "Sélectionnez la configuration de rclone",
@@ -3202,6 +3218,10 @@
       "repairing": "Réparation ...",
       "configuring": "Configuration..."
     },
+    "mountPreference": {
+      "title": "Je n'utiliserai pas le montage",
+      "desc": "Désactivez les vérifications si vous ne prévoyez pas de monter de lecteurs."
+    },
     "actions": {
       "installRclone": "Installer rclone",
       "installPlugin": "Installer un plugin",
@@ -3210,7 +3230,8 @@
       "submitPassword": "Déverrouiller",
       "changePort": "Appliquer le port & Redémarrer",
       "configureBackend": "Configurer le backend",
-      "repair": "Réparer"
+      "repair": "Réparer",
+      "saveAndClose": "Enregistrer et fermer"
     },
     "portConfig": {
       "portLabel": "Port local",

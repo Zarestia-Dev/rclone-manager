@@ -6,6 +6,7 @@ import { RepairSheetComponent } from '../../../features/components/repair-sheet/
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
 import { SystemInfoService } from '../system/system-info.service';
 import { InstallationService } from '../../settings/installation.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 import { RclonePasswordService } from '../../security/rclone-password.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { BackendService } from '../system/backend.service';
@@ -16,6 +17,7 @@ export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'passwor
 export class SystemHealthService {
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly installationService = inject(InstallationService);
+  private readonly appSettingsService = inject(AppSettingsService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly backendService = inject(BackendService);
@@ -33,6 +35,7 @@ export class SystemHealthService {
   readonly mountPluginInstalled = signal<boolean | null>(null);
   readonly configEncrypted = signal<boolean | null>(null);
   readonly passwordUnlocked = signal(false);
+  readonly skipMountPluginCheck = signal(false);
 
   readonly isCheckingRclone = signal(false);
   readonly isCheckingMountPlugin = signal(false);
@@ -41,7 +44,9 @@ export class SystemHealthService {
   readonly problems = computed<SystemProblem[]>(() => {
     const list: SystemProblem[] = [];
     if (this.rcloneInstalled() === false) list.push('rclone-missing');
-    if (this.mountPluginInstalled() === false) list.push('mount-plugin-missing');
+    if (!this.skipMountPluginCheck() && this.mountPluginInstalled() === false) {
+      list.push('mount-plugin-missing');
+    }
     if (this.configEncrypted() === true && !this.passwordUnlocked()) list.push('password-required');
     return list;
   });
@@ -51,7 +56,7 @@ export class SystemHealthService {
   readonly isInitialized = computed(
     () =>
       this.rcloneInstalled() !== null &&
-      this.mountPluginInstalled() !== null &&
+      (this.skipMountPluginCheck() || this.mountPluginInstalled() !== null) &&
       this.configEncrypted() !== null
   );
 
@@ -65,6 +70,24 @@ export class SystemHealthService {
 
   constructor() {
     this.setupRcloneEngineListeners();
+    this.setupSettingsListener();
+  }
+
+  private setupSettingsListener(): void {
+    this.appSettingsService
+      .selectSetting('core.skip_mount_plugin_check')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(setting => {
+        const skip = setting?.value === true;
+        this.setSkipMountPluginCheck(skip);
+      });
+  }
+
+  setSkipMountPluginCheck(skip: boolean): void {
+    this.skipMountPluginCheck.set(skip);
+    if (skip) {
+      this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+    }
   }
 
   async runAllChecks(): Promise<void> {
@@ -76,9 +99,16 @@ export class SystemHealthService {
   }
 
   async checkMountPluginAndPromptRepair(): Promise<void> {
+    const skip =
+      this.skipMountPluginCheck() ||
+      (await this.appSettingsService.getSettingValue<boolean>('core.skip_mount_plugin_check')) ===
+        true;
+    if (skip) {
+      return;
+    }
     try {
       const ok = await this.checkMountPlugin();
-      if (ok === false) {
+      if (ok === false && !this.skipMountPluginCheck()) {
         await this.showRepairSheet({ type: RepairSheetType.MOUNT_PLUGIN });
         this.setupMountPluginListener();
       }
@@ -103,6 +133,10 @@ export class SystemHealthService {
   }
 
   async checkMountPlugin(): Promise<boolean> {
+    if (this.skipMountPluginCheck()) {
+      this.mountPluginInstalled.set(true);
+      return true;
+    }
     this.isCheckingMountPlugin.set(true);
     try {
       const installed = await this.installationService.isMountPluginInstalled();

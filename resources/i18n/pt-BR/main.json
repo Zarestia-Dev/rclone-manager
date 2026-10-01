@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "Onboarding Concluído",
         "description": "Se o usuário completou o processo de onboarding"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Ignorar verificação do plugin de montagem",
+        "description": "Ignorar a verificação e o aviso de instalação do plugin de montagem na inicialização e na integração"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Aviso do Flatpak Exibido"
       },
+      "mount_warn": {
+        "label": "Aviso de montagem exibido",
+        "description": "Exibir banner de aviso na visualização de montagem quando a verificação do driver estiver desativada"
+      },
       "dashboard_layout": {
         "label": "Layout do Painel de Controle",
         "description": "Configuração de layout personalizada para o painel."
@@ -622,6 +630,12 @@
       "subtitle": "Algumas características podem exigir ajustes manuais de permissão.",
       "learnMore": "Saiba mais",
       "dismissTooltip": "Não mostre novamente"
+    },
+    "mountPlugin": {
+      "title": "Verificação de driver de montagem desativada",
+      "description": "A verificação do driver de montagem foi ignorada. A montagem de remotos requer um driver compatível instalado no seu sistema.",
+      "install": "Instalar driver",
+      "dismissTooltip": "Não mostrar novamente"
     },
     "metered": {
       "message": "Você está conectado por um plano de dados mediados. Algumas funcionalidades podem usar mais dados."
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Instale o Plugin de Montagem",
-        "content": "O plug-in de montagem permite que você monte armazenamento em nuvem como unidades locais. Este componente opcional melhora sua experiência com Rclone."
+        "content": "O plug-in de montagem permite que você monte armazenamento em nuvem como unidades locais. Este componente opcional melhora sua experiência com Rclone.",
+        "skipMountTitle": "Não usarei a montagem",
+        "skipMountDesc": "Ignore a instalação se não planeja montar unidades."
       },
       "selectConfig": {
         "title": "Selecione a Configuração do Rclone",
@@ -3202,6 +3218,10 @@
       "repairing": "Reparando...",
       "configuring": "Configurando..."
     },
+    "mountPreference": {
+      "title": "Não usarei a montagem",
+      "desc": "Desative as verificações de driver se não planeja montar unidades."
+    },
     "actions": {
       "installRclone": "Instale o Rclone",
       "installPlugin": "Instale o Plugin",
@@ -3210,7 +3230,8 @@
       "submitPassword": "Desbloquear",
       "changePort": "Aplicar Porta & Reiniciar",
       "configureBackend": "Configurar backend",
-      "repair": "Reparar"
+      "repair": "Reparar",
+      "saveAndClose": "Salvar e fechar"
     },
     "portConfig": {
       "portLabel": "Porta Local",

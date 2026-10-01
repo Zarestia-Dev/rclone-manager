@@ -64,6 +64,7 @@ import {
   createDefaultRemoteFeatures,
   findInFlightAction,
   Automation,
+  RepairSheetType,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -89,6 +90,8 @@ import {
 
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 
 @Component({
   selector: 'app-app-detail',
@@ -147,6 +150,10 @@ export class AppDetailComponent {
   private readonly dialog = inject(MatDialog);
   private readonly modalService = inject(ModalService);
   private readonly automationService = inject(AutomationService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly systemHealth = inject(SystemHealthService);
+
+  readonly mountWarningDismissed = signal(false);
 
   private readonly _cronNextRun = signal<string | null>(null);
 
@@ -190,6 +197,15 @@ export class AppDetailComponent {
     if (qr) {
       this.quickRunService.openEditor(qr);
     }
+  }
+
+  async dismissMountPluginWarning(): Promise<void> {
+    this.mountWarningDismissed.set(true);
+    await this.appSettingsService.saveSetting('runtime', 'mount_warn', false);
+  }
+
+  onInstallMountPlugin(): void {
+    this.systemHealth.showRepairSheet({ type: RepairSheetType.MOUNT_PLUGIN });
   }
 
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
@@ -278,6 +294,18 @@ export class AppDetailComponent {
       ? this.selectedSyncOperation()
       : (this.mainOperationType() as PrimaryActionType);
     return ALL_PRIMARY_ACTIONS.includes(op) ? op : 'mount';
+  });
+
+  readonly showMountPluginWarning = computed(() => {
+    if (this.currentOpType() !== 'mount') return false;
+    if (this.mountWarningDismissed()) return false;
+    const isPluginDisabledOrMissing =
+      this.systemHealth.skipMountPluginCheck() ||
+      this.systemHealth.mountPluginInstalled() === false;
+    if (!isPluginDisabledOrMissing) return false;
+
+    const warnOption = this.appSettingsService.options()?.['runtime.mount_warn'];
+    return warnOption !== undefined ? !!warnOption.value : true;
   });
 
   readonly currentOpMetadata = computed(() => {

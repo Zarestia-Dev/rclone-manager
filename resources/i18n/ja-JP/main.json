@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "オンボーディング完了フラグ",
         "description": "ユーザーがオンボーディングプロセスを完了したかどうか。"
+      },
+      "skip_mount_plugin_check": {
+        "label": "マウントプラグインの確認をスキップ",
+        "description": "起動時および初期設定時にマウントプラグインの確認とインストール要求をスキップします"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Flatpak警告表示済み"
       },
+      "mount_warn": {
+        "label": "マウント警告の表示",
+        "description": "マウントドライバーの確認が無効な場合、マウント画面に警告バナーを表示します"
+      },
       "dashboard_layout": {
         "label": "ダッシュボードレイアウト",
         "description": "ダッシュボードのカスタムレイアウト設定。"
@@ -622,6 +630,12 @@
       "subtitle": "一部の機能で手動の権限調整が必要になる場合があります。",
       "learnMore": "詳細を見る",
       "dismissTooltip": "次回から表示しない"
+    },
+    "mountPlugin": {
+      "title": "マウントドライバーの確認が無効",
+      "description": "マウントドライバーの確認がスキップされました。リモートのマウントには互換性のあるドライバーのインストールが必要です。",
+      "install": "ドライバーをインストール",
+      "dismissTooltip": "今後表示しない"
     },
     "metered": {
       "message": "従量制課金接続を使用中です。一部の機能で追加データが発生する場合があります。"
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "マウントプラグインのインストール",
-        "content": "マウントプラグインを使用すると、クラウドストレージをローカルドライブとしてマウントできるようになります。このオプションコンポーネントでRcloneの利便性が向上します。"
+        "content": "マウントプラグインを使用すると、クラウドストレージをローカルドライブとしてマウントできるようになります。このオプションコンポーネントでRcloneの利便性が向上します。",
+        "skipMountTitle": "マウントを使用しない",
+        "skipMountDesc": "ドライブをマウントしない場合は、ドライバーのインストールをスキップします。"
       },
       "selectConfig": {
         "title": "Rclone設定ファイルの選択",
@@ -3202,6 +3218,10 @@
       "repairing": "修復中...",
       "configuring": "設定中..."
     },
+    "mountPreference": {
+      "title": "マウントを使用しない",
+      "desc": "ドライブをマウントしない場合は、マウント確認を無効にします。"
+    },
     "actions": {
       "installRclone": "Rcloneをインストール",
       "installPlugin": "プラグインをインストール",
@@ -3210,7 +3230,8 @@
       "submitPassword": "ロック解除",
       "changePort": "ポートを適用して再起動",
       "configureBackend": "バックエンドを設定",
-      "repair": "修復"
+      "repair": "修復",
+      "saveAndClose": "保存して閉じる"
     },
     "portConfig": {
       "portLabel": "ローカルポート",

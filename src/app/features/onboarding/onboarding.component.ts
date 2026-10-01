@@ -13,6 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
@@ -72,6 +73,7 @@ interface PrimaryButton {
   imports: [
     MatButtonModule,
     MatIconModule,
+    MatSlideToggleModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
     ProvisionProgressComponent,
@@ -109,6 +111,7 @@ export class OnboardingComponent {
 
   readonly installing = signal(false);
   readonly downloadingPlugin = signal(false);
+  readonly willNotMount = signal(false);
 
   readonly installationData = signal<InstallationOptionsData>({ ...DEFAULT_INSTALLATION_DATA });
   readonly installationValid = signal(true);
@@ -178,7 +181,7 @@ export class OnboardingComponent {
         case 'installRclone':
           return !sys.rcloneInstalled();
         case 'installPlugin':
-          return !sys.mountPluginInstalled();
+          return !sys.skipMountPluginCheck() && !sys.mountPluginInstalled();
         case 'passwordRequired':
           return sys.passwordRequired();
         default:
@@ -243,6 +246,17 @@ export class OnboardingComponent {
         };
       }
       case 'install-plugin': {
+        if (this.willNotMount()) {
+          return {
+            labelKey: 'common.next',
+            icon: 'right-arrow',
+            disabled: false,
+            titleKey: null,
+            action: (): void => {
+              void this.skipMountPlugin();
+            },
+          };
+        }
         const downloading = this.downloadingPlugin();
         return {
           labelKey: downloading
@@ -408,7 +422,9 @@ export class OnboardingComponent {
       case 'installRclone':
         return !this.systemHealth.rcloneInstalled();
       case 'installPlugin':
-        return !this.systemHealth.mountPluginInstalled();
+        return (
+          !this.systemHealth.skipMountPluginCheck() && !this.systemHealth.mountPluginInstalled()
+        );
       case 'selectConfig':
         return !this.configValid();
       case 'passwordRequired':
@@ -476,6 +492,16 @@ export class OnboardingComponent {
       console.error('Plugin installation failed:', error);
     } finally {
       this.downloadingPlugin.set(false);
+    }
+  }
+
+  async skipMountPlugin(): Promise<void> {
+    try {
+      await this.appSettingsService.saveSetting('core', 'skip_mount_plugin_check', true);
+    } catch (error) {
+      console.error('Failed to save skip_mount_plugin_check setting:', error);
+    } finally {
+      this.systemHealth.setSkipMountPluginCheck(true);
     }
   }
 

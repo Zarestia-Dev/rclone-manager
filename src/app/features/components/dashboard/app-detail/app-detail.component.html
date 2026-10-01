@@ -46,7 +46,7 @@
         'flow.quickRun.missingRemoteDesc' | translate: { remote: quickRun()?.remoteName }
       "
     >
-      <div class="missing-remote-actions">
+      <div class="actions">
         <button
           matButton="filled"
           class="primary"
@@ -67,6 +67,29 @@
         >
           <mat-icon svgIcon="pen"></mat-icon>
           <span>{{ 'flow.quickRun.actions.changeRemote' | translate }}</span>
+        </button>
+      </div>
+    </app-alert-banner>
+  }
+
+  @if (showMountPluginWarning()) {
+    <app-alert-banner
+      severity="warning"
+      [title]="'banners.mountPlugin.title' | translate"
+      [description]="'banners.mountPlugin.description' | translate"
+      [dismissable]="true"
+      [dismissTooltip]="'banners.mountPlugin.dismissTooltip' | translate"
+      (dismiss)="dismissMountPluginWarning()"
+    >
+      <div class="actions">
+        <button
+          matButton="filled"
+          class="accent"
+          (click)="onInstallMountPlugin()"
+          [attr.title]="'banners.mountPlugin.install' | translate"
+        >
+          <mat-icon svgIcon="wrench"></mat-icon>
+          <span>{{ 'banners.mountPlugin.install' | translate }}</span>
         </button>
       </div>
     </app-alert-banner>

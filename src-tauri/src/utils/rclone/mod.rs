@@ -1,4 +1,6 @@
 pub mod endpoints;
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub mod mount;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]

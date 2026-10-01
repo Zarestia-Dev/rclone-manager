@@ -521,6 +521,10 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
+      },
+      "skip_mount_plugin_check": {
+        "label": "跳过挂载插件检查",
+        "description": "在启动和初始配置时跳过挂载插件检查和安装提示"
       }
     },
     "developer": {
@@ -582,6 +586,10 @@
       "flatpak_warn": {
         "label": "已显示 Flatpak 提示"
       },
+      "mount_warn": {
+        "label": "显示挂载警告",
+        "description": "当禁用挂载驱动检查时，在挂载视图中显示警告横幅"
+      },
       "dashboard_layout": {
         "label": "仪表盘布局",
         "description": "仪表盘自定义布局配置"
@@ -621,6 +629,12 @@
       "title": "Flatpak 注意",
       "subtitle": "部分功能可能需要手动调整权限",
       "learnMore": "了解更多",
+      "dismissTooltip": "不再显示"
+    },
+    "mountPlugin": {
+      "title": "挂载驱动检查已禁用",
+      "description": "已跳过挂载驱动检查。挂载远程存储需要系统上安装兼容的挂载驱动。",
+      "install": "安装驱动",
       "dismissTooltip": "不再显示"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "安装挂载插件",
-        "content": "挂载插件可将云存储映射为本地磁盘，可选组件，增强使用体验。"
+        "content": "挂载插件可将云存储映射为本地磁盘，可选组件，增强使用体验。",
+        "skipMountTitle": "我不会使用挂载",
+        "skipMountDesc": "如果您不打算挂载驱动器，可以跳过安装挂载驱动程序。"
       },
       "selectConfig": {
         "title": "选择 Rclone 配置",
@@ -3202,6 +3218,10 @@
       "repairing": "正在修复…",
       "configuring": "正在配置…"
     },
+    "mountPreference": {
+      "title": "我不会使用挂载",
+      "desc": "如果您不打算挂载驱动器，请禁用挂载驱动程序检查。"
+    },
     "actions": {
       "installRclone": "安装 Rclone",
       "installPlugin": "安装插件",
@@ -3210,7 +3230,8 @@
       "submitPassword": "解锁",
       "changePort": "应用端口并重启",
       "configureBackend": "配置后端",
-      "repair": "修复"
+      "repair": "修复",
+      "saveAndClose": "保存并关闭"
     },
     "portConfig": {
       "portLabel": "本地端口",

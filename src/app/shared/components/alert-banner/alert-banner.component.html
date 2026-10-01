@@ -1,5 +1,5 @@
 <mat-icon style="align-self: baseline" [svgIcon]="resolvedIcon()" />
-<div>
+<div class="alert-content">
   @if (title()) {
     <strong>{{ title() }}</strong>
   }
@@ -14,3 +14,14 @@
     </a>
   }
 </div>
+@if (dismissable()) {
+  <button
+    type="button"
+    class="action-button dismiss-button"
+    [attr.title]="dismissTooltip() || ('common.close' | translate)"
+    (click)="dismiss.emit()"
+    [attr.aria-label]="dismissTooltip() || ('common.close' | translate)"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+}

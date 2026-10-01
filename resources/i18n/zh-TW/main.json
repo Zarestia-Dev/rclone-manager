@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "已完成引導",
         "description": "標記是否已完成初始化引導"
+      },
+      "skip_mount_plugin_check": {
+        "label": "略過掛載外掛程式檢查",
+        "description": "在啟動和初始設定時略過掛載外掛程式檢查與安裝提示"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "已顯示 Flatpak 提示"
       },
+      "mount_warn": {
+        "label": "顯示掛載警告",
+        "description": "當停用掛載驅動檢查時，在掛載檢視中顯示警告橫幅"
+      },
       "dashboard_layout": {
         "label": "儀錶板佈局",
         "description": "儀錶板自定義佈局設定"
@@ -621,6 +629,12 @@
       "title": "Flatpak 注意",
       "subtitle": "部分功能可能需要手動調整許可權",
       "learnMore": "瞭解更多",
+      "dismissTooltip": "不再顯示"
+    },
+    "mountPlugin": {
+      "title": "掛載驅動檢查已停用",
+      "description": "已略過掛載驅動檢查。掛載遠端儲存需要系統上安裝相容的掛載驅動。",
+      "install": "安裝驅動",
       "dismissTooltip": "不再顯示"
     },
     "metered": {
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "安裝掛載外掛程式",
-        "content": "掛載外掛程式可將雲端儲存對映為本機磁碟，可選元件，增強使用體驗。"
+        "content": "掛載外掛程式可將雲端儲存對映為本機磁碟，可選元件，增強使用體驗。",
+        "skipMountTitle": "我不會使用掛載",
+        "skipMountDesc": "如果您不打算掛載磁碟機，可以跳過安裝掛載驅動程式。"
       },
       "selectConfig": {
         "title": "選擇 Rclone 設定",
@@ -3243,6 +3259,10 @@
       "repairing": "正在修復…",
       "configuring": "正在設定…"
     },
+    "mountPreference": {
+      "title": "我不會使用掛載",
+      "desc": "如果您不打算掛載磁碟機，請停用掛載驅動程式檢查。"
+    },
     "actions": {
       "installRclone": "安裝 Rclone",
       "installPlugin": "安裝外掛程式",
@@ -3251,7 +3271,8 @@
       "submitPassword": "解鎖",
       "changePort": "套用連線埠並重新啟動",
       "configureBackend": "設定後端",
-      "repair": "修復"
+      "repair": "修復",
+      "saveAndClose": "儲存並關閉"
     },
     "portConfig": {
       "portLabel": "本機連線埠",

@@ -1,5 +1,4 @@
 use crate::core::bridge;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
     github_client,
     rclone::downloader::stream_download_to_file,
@@ -11,7 +10,7 @@ use crate::utils::{
 };
 
 #[cfg(target_os = "macos")]
-fn check_fuse_installed() -> bool {
+fn check_installed() -> bool {
     use std::path::Path;
 
     let fuse_t = [
@@ -35,7 +34,7 @@ fn check_fuse_installed() -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn check_winfsp_installed() -> bool {
+fn check_installed() -> bool {
     use std::path::Path;
 
     if [
@@ -63,21 +62,9 @@ fn check_winfsp_installed() -> bool {
 
 #[bridge]
 pub fn check_mount_plugin_installed() -> bool {
-    #[cfg(target_os = "macos")]
-    {
-        check_fuse_installed()
-    }
-    #[cfg(target_os = "windows")]
-    {
-        check_winfsp_installed()
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        true
-    }
+    check_installed()
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 struct MountPluginInfo {
     download_url: String,
     filename: String,
@@ -121,7 +108,6 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
     })
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn run_install(
     app_handle: &crate::utils::context::AppHandle,
     info: MountPluginInfo,
@@ -215,17 +201,6 @@ pub async fn install_mount_plugin(
     run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-#[bridge]
-pub async fn install_mount_plugin(
-    _app_handle: crate::utils::context::AppHandle,
-) -> Result<String, String> {
-    Err(crate::localized_error!(
-        "backendErrors.rclone.unsupportedPlatform"
-    ))
-}
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[bridge]
 pub async fn cancel_mount_plugin_install(
     app_handle: crate::utils::context::AppHandle,
@@ -238,15 +213,6 @@ pub async fn cancel_mount_plugin_install(
     Ok(())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-#[bridge]
-pub async fn cancel_mount_plugin_install(
-    _app_handle: crate::utils::context::AppHandle,
-) -> Result<(), String> {
-    Ok(())
-}
-
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), String> {
     let path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
 

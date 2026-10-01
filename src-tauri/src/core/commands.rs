@@ -187,8 +187,11 @@ macro_rules! MASTER_COMMAND_LIST {
             (is_network_metered, $crate::utils::io::network::is_network_metered, [], [no_app]);
 
             // MOUNT PLUGIN
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [sync, no_app, infallible]);
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             (cancel_mount_plugin_install, $crate::utils::rclone::mount::cancel_mount_plugin_install, []);
 
             // CACHE

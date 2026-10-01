@@ -90,16 +90,15 @@ export class InstallationService extends TauriBaseService {
   }
 
   /**
-   * Check if mount plugin is installed
+   * Check if mount plugin is installed.
+   * If the command is not accessible (e.g. Linux, Android, Web/Headless where mount.rs is gated),
+   * the plugin is not required and this resolves to true.
    */
   async isMountPluginInstalled(): Promise<boolean> {
     try {
-      return await this.invokeWithNotification<boolean>('check_mount_plugin_installed', undefined, {
-        errorKey: 'repairSheet.messages.mountPluginStatusError',
-      });
-    } catch (error) {
-      console.error('Error checking mount plugin installation:', error);
-      return false;
+      return await this.invokeCommand<boolean>('check_mount_plugin_installed');
+    } catch {
+      return true;
     }
   }
 
