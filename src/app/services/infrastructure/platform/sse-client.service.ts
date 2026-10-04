@@ -15,6 +15,9 @@ export class SseClientService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly events$ = new Subject<SseEvent>();
 
+  private readonly connections = new Subject<void>();
+  readonly connected$ = this.connections.asObservable();
+
   private source: EventSource | null = null;
   private reconnectAttempt = 0;
   private readonly maxReconnectAttempts = 50;
@@ -24,6 +27,7 @@ export class SseClientService {
     this.destroyRef.onDestroy(() => {
       this.disconnect();
       this.events$.complete();
+      this.connections.complete();
     });
   }
 
@@ -62,6 +66,7 @@ export class SseClientService {
 
     this.source.onopen = (): void => {
       this.reconnectAttempt = 0;
+      this.connections.next();
       this.events$.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: { status: 'ready' } });
     };
 

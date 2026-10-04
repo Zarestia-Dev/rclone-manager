@@ -31,6 +31,11 @@ pub enum TrayAction {
 }
 
 impl TrayAction {
+    /// Actions that do not expose configuration or control operations while locked.
+    pub fn allowed_when_locked(&self) -> bool {
+        matches!(self, Self::ShowApp | Self::OpenWebUI | Self::Quit)
+    }
+
     /// Converts a tray action into its unique string ID.
     /// Example: `TrayAction::StartProfile(OperationType::Mount, "myRemote", "profile1") -> "mount_profile__myRemote__profile1"`
     pub fn to_id(&self) -> String {

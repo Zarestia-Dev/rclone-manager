@@ -60,7 +60,7 @@ tauri-plugin-os = { version = "2", optional = true, default-features = false }
 tauri-plugin-opener = { version = "2", optional = true, default-features = false }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.2", path = "../../rcman", features = ["backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
 
 urlencoding = "2"
 futures = "0.3"

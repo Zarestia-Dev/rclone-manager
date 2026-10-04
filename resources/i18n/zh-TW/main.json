@@ -700,7 +700,9 @@
       "import": "匯入",
       "export": "匯出",
       "preferences": "偏好設定",
+      "advanced": "進階設定",
       "flags": "Rclone 旗標",
+      "vault": "保存庫",
       "fileBrowser": "檔案瀏覽器",
       "flowWorkspace": "Flow 工作區",
       "shortcuts": "鍵盤快速鍵",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "顯示鍵盤快速鍵",
       "openPreferences": "開啟偏好設定",
       "openFlags": "開啟 Rclone 旗標",
+      "openVault": "開啟保存庫",
       "forceCheck": "強制檢查掛載",
       "forceCheckServes": "強制檢查已服務遠端",
       "newRemoteDetailed": "新增遠端連線（詳細）",
@@ -2073,7 +2076,8 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
-        "developer": "開發者"
+        "developer": "開發者",
+        "vault": "保存庫"
       },
       "aria": {
         "resetAll": "將所有設定恢復為預設值",
@@ -2993,6 +2997,12 @@
       "eventEmitFailed": "傳送設定事件失敗：{{error}}",
       "subSettingsFailed": "取得子設定失敗：{{error}}",
       "deleteFailed": "刪除遠端連線設定失敗：{{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "保存庫密碼不能為空",
+      "notEnabled": "保存庫未啟用",
+      "invalidPassword": "保存庫主密碼不正確",
+      "operationFailed": "保存庫操作失敗：{{error}}"
     }
   },
   "backendSuccess": {
@@ -3026,6 +3036,14 @@
       "unencrypted": "設定已解密",
       "encrypted": "設定已加密",
       "passwordChanged": "設定密碼已修改"
+    },
+    "vault": {
+      "unlocked": "保存庫解鎖成功",
+      "locked": "保存庫已成功鎖定",
+      "enabled": "保存庫加密已成功啟用",
+      "disabled": "保存庫加密已停用",
+      "passwordChanged": "保存庫主密碼已成功變更",
+      "timeoutUpdated": "自動鎖定逾時已更新"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
         "false": "已停用 (false)",
         "unset": "未設置"
       }
+    }
+  },
+  "vault": {
+    "title": "設定保存庫",
+    "description": "使用 AES-256-GCM 加密保護靜態設定、認證資訊和子設定。",
+    "status": {
+      "protected": "受保護",
+      "unprotected": "未保護"
+    },
+    "actions": {
+      "lockNow": "立即鎖定",
+      "unlock": "解鎖保存庫",
+      "enable": "啟用保存庫",
+      "disable": "停用保存庫",
+      "updatePassword": "變更密碼"
+    },
+    "enable": {
+      "title": "啟用保存庫保護",
+      "description": "輸入主密碼以加密應用程式設定與子組態。您需要此密碼才能解鎖應用程式。"
+    },
+    "changePassword": {
+      "title": "變更主密碼"
+    },
+    "disable": {
+      "title": "停用保存庫保護",
+      "warning": "停用保存庫會將設定與組態以未加密的明文形式儲存在磁碟上。"
+    },
+    "settings": {
+      "autoLockTitle": "自動鎖定逾時",
+      "autoLockDesc": "在閒置一段時間後自動鎖定保存庫。"
+    },
+    "fields": {
+      "masterPassword": "主密碼",
+      "confirmPassword": "確認密碼",
+      "currentPassword": "目前密碼",
+      "newPassword": "新密碼",
+      "autoLockTimeout": "自動鎖定時間"
+    },
+    "timeout": {
+      "never": "永不",
+      "5m": "5 分鐘",
+      "15m": "15 分鐘",
+      "30m": "30 分鐘",
+      "1h": "1 小時"
+    },
+    "lockScreen": {
+      "title": "保存庫已鎖定",
+      "subtitle": "輸入主密碼以解鎖 RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "密碼不相符",
+      "unlockFailed": "解鎖保存庫失敗"
     }
   }
 }

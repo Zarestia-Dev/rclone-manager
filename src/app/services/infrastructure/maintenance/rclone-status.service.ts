@@ -3,6 +3,7 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DOCUMENT } from '@angular/common';
 import { fromEvent, from } from 'rxjs';
 import { filter, switchMap, tap } from 'rxjs/operators';
+import { VaultService } from '../../security/vault.service';
 import { SystemInfoService } from '../system/system-info.service';
 import { BackendService } from '../system/backend.service';
 import { EventListenersService } from '../system/event-listeners.service';
@@ -27,6 +28,9 @@ export class RcloneStatusService {
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
+  private readonly vault = inject(VaultService);
+  private readonly canLoad = this.vault.isAccessible;
+
   readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: deepEqual });
   readonly bandwidthLimit = signal<BandwidthLimitResponse | null>(null, {
     equal: deepEqual,
@@ -46,14 +50,24 @@ export class RcloneStatusService {
   private isVisible = signal(!this.document.hidden);
 
   readonly isPollingActive = computed(() => {
-    return !this.isManuallyPaused() && this.isVisible();
+    return this.canLoad() && !this.isManuallyPaused() && this.isVisible();
   });
 
   constructor() {
     this.setupReconciliationTriggers();
     this.setupPollingControl();
     this.setupStatusListeners();
-    void this.refreshStatus();
+    if (this.canLoad()) {
+      void this.refreshStatus();
+    }
+    this.eventListenersService
+      .listenToVaultState()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(payload => {
+        if (!payload.isLocked) {
+          void this.refreshStatus();
+        }
+      });
   }
 
   async refreshStatus(): Promise<void> {
@@ -63,7 +77,9 @@ export class RcloneStatusService {
   private setupPollingControl(): void {
     effect(() => {
       const active = this.isPollingActive();
-      void this.systemInfoService.setPollerVisibility(active);
+      void this.systemInfoService.setPollerVisibility(active).catch(error => {
+        console.error('[RcloneStatusService] Failed to update polling visibility:', error);
+      });
     });
   }
 
@@ -87,7 +103,7 @@ export class RcloneStatusService {
       .listenToBandwidthLimitChanged()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(data => {
-        if (data) {
+        if (this.canLoad() && data) {
           this.bandwidthLimit.set(data);
         }
       });
@@ -118,8 +134,10 @@ export class RcloneStatusService {
   }
 
   private async hydrateSystemStatus(): Promise<void> {
+    if (!this.canLoad()) return;
     try {
       const snapshot = await this.systemInfoService.getSystemStatusSnapshot();
+      if (!this.canLoad()) return;
       this.applySystemStatusPayload(snapshot);
       await this.loadBandwidthLimit();
     } catch (error) {
@@ -129,6 +147,7 @@ export class RcloneStatusService {
   }
 
   private applySystemStatusPayload(payload: SystemStatusPayload): void {
+    if (!this.canLoad()) return;
     const newStatus: RcloneStatus = payload.status;
 
     this.rcloneStatus.set(newStatus);
@@ -161,9 +180,12 @@ export class RcloneStatusService {
   }
 
   async loadBandwidthLimit(): Promise<void> {
+    if (!this.canLoad()) return;
     try {
-      this.bandwidthLimit.set(await this.systemInfoService.bandwidthLimit());
+      const limit = await this.systemInfoService.bandwidthLimit();
+      if (this.canLoad()) this.bandwidthLimit.set(limit);
     } catch (error) {
+      if (!this.canLoad()) return;
       if (this.rcloneStatus() !== 'error') {
         console.error('[RcloneStatusService] Failed to load bandwidth limit:', error);
       }

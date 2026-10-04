@@ -16,7 +16,7 @@ export class TauriBaseService {
   protected readonly translate = inject(TranslateService);
   protected readonly backendTranslation = inject(BackendTranslationService);
 
-  private readonly sseClient = inject(SseClientService);
+  protected readonly sseClient = inject(SseClientService);
   protected readonly isTauri = !isHeadlessMode();
 
   private readonly tauriEventStreams = new Map<string, Observable<unknown>>();

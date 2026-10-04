@@ -4,6 +4,7 @@ pub mod operations;
 pub mod rclone_backend;
 pub mod remote;
 pub mod schema;
+pub mod vault;
 
 use schema::AppSettings;
 

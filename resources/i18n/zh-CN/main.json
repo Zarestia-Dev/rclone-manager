@@ -700,7 +700,9 @@
       "import": "导入",
       "export": "导出",
       "preferences": "偏好设置",
+      "advanced": "高级设置",
       "flags": "Rclone 标志",
+      "vault": "保管库",
       "fileBrowser": "文件浏览器",
       "flowWorkspace": "Flow 工作区",
       "shortcuts": "快捷键",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "显示键盘快捷键",
       "openPreferences": "打开偏好设置",
       "openFlags": "打开 Rclone 标志",
+      "openVault": "打开保管库",
       "forceCheck": "强制检查挂载",
       "forceCheckServes": "强制检查已服务远程",
       "newRemoteDetailed": "新建远程存储（详细）",
@@ -2032,7 +2035,8 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
-        "developer": "开发者"
+        "developer": "开发者",
+        "vault": "保管库"
       },
       "aria": {
         "resetAll": "将所有设置恢复为默认值",
@@ -2952,6 +2956,12 @@
       "eventEmitFailed": "发送设置事件失败：{{error}}",
       "subSettingsFailed": "获取子设置失败：{{error}}",
       "deleteFailed": "删除远程存储设置失败：{{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "保管库密码不能为空",
+      "notEnabled": "保管库未启用",
+      "invalidPassword": "保管库主密码不正确",
+      "operationFailed": "保管库操作失败：{{error}}"
     }
   },
   "backendSuccess": {
@@ -2985,6 +2995,14 @@
       "unencrypted": "配置已解密",
       "encrypted": "配置已加密",
       "passwordChanged": "配置密码已修改"
+    },
+    "vault": {
+      "unlocked": "保管库解锁成功",
+      "locked": "保管库已成功锁定",
+      "enabled": "保管库加密已成功启用",
+      "disabled": "保管库加密已停用",
+      "passwordChanged": "保管库主密码已成功更改",
+      "timeoutUpdated": "自动锁定超时已更新"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
       "hostShuttingDown": "操作系统正在关机...",
       "hostSleeping": "正在让系统进入睡眠...",
       "hostLocking": "正在锁定系统会话..."
+    }
+  },
+  "vault": {
+    "title": "配置保管库",
+    "description": "使用 AES-256-GCM 加密保护静态配置、凭据和子设置。",
+    "status": {
+      "protected": "受保护",
+      "unprotected": "未保护"
+    },
+    "actions": {
+      "lockNow": "立即锁定",
+      "unlock": "解锁保管库",
+      "enable": "启用保管库",
+      "disable": "停用保管库",
+      "updatePassword": "更改密码"
+    },
+    "enable": {
+      "title": "启用保管库保护",
+      "description": "输入主密码以加密应用程序设置和子配置。您需要此密码来解锁应用程序。"
+    },
+    "changePassword": {
+      "title": "更改主密码"
+    },
+    "disable": {
+      "title": "停用保管库保护",
+      "warning": "停用保管库会将设置和配置以未加密的明文形式存储在磁盘上。"
+    },
+    "settings": {
+      "autoLockTitle": "自动锁定超时",
+      "autoLockDesc": "在一段不活动时间后自动锁定保管库。"
+    },
+    "fields": {
+      "masterPassword": "主密码",
+      "confirmPassword": "确认密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "autoLockTimeout": "自动锁定时间"
+    },
+    "timeout": {
+      "never": "永不",
+      "5m": "5 分钟",
+      "15m": "15 分钟",
+      "30m": "30 分钟",
+      "1h": "1 小时"
+    },
+    "lockScreen": {
+      "title": "保管库已锁定",
+      "subtitle": "输入主密码以解锁 RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "密码不匹配",
+      "unlockFailed": "解锁保管库失败"
     }
   }
 }

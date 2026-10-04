@@ -6,3 +6,4 @@ export * from './keyboard-utils';
 export * from './id.util';
 export * from './responsive.util';
 export * from './shared-item.util';
+export * from './slide-menu.util';

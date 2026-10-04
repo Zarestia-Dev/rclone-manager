@@ -18,8 +18,29 @@ use serde_json::json;
 use crate::core::tray::core::update_tray_menu;
 
 /// Handles async startup tasks using a phased approach
-pub async fn initialization(app_handle: crate::utils::context::AppHandle) {
+pub async fn initialization(app_handle: crate::utils::context::AppHandle) -> Result<(), String> {
+    let state = app_handle.state::<RcloneState>();
+    let _startup = state.initialization_lock.lock().await;
+    if !state
+        .initial_startup
+        .load(std::sync::atomic::Ordering::Acquire)
+    {
+        return Ok(());
+    }
     debug!("Starting async startup tasks");
+
+    let settings_manager = app_handle.state::<AppSettingsManager>();
+    if settings_manager.is_locked() {
+        info!(
+            "Configuration vault is locked. Postponing background initialization until unlocked."
+        );
+        if let Ok(app_paths) = crate::core::paths::AppPaths::from_app_handle(&app_handle) {
+            crate::utils::i18n::init(app_paths.resource_dir);
+            crate::utils::i18n::set_language(crate::utils::i18n::DEFAULT_LANG);
+        }
+        crate::utils::logging::log::init_logging("info", app_handle.clone())?;
+        return Ok(());
+    }
 
     if let Err(e) = async_core_setup(&app_handle).await {
         error!("Phase 0 Core Setup failed: {e}");
@@ -27,7 +48,7 @@ pub async fn initialization(app_handle: crate::utils::context::AppHandle) {
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
-        return;
+        return Err(e);
     }
 
     if let Err(e) = bootstrap::init_all(&app_handle).await {
@@ -36,7 +57,7 @@ pub async fn initialization(app_handle: crate::utils::context::AppHandle) {
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
         );
-        return;
+        return Err(e);
     }
 
     info!("Phase 2: Checking backend connectivity...");
@@ -79,6 +100,10 @@ pub async fn initialization(app_handle: crate::utils::context::AppHandle) {
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
     info!("Initialization complete");
+    if settings_manager.is_vault_enabled() {
+        crate::core::settings::vault::emit_vault_state(settings_manager.inner(), "unlocked");
+    }
+    Ok(())
 }
 
 /// Fully refreshes all system components after settings change or restore.

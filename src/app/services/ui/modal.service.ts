@@ -7,7 +7,7 @@ import {
   MatDialogRef,
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
-import { Subject, Observable, from, switchMap, take } from 'rxjs';
+import { Subject, Observable, from, of, switchMap, take } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -30,6 +30,7 @@ import {
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { VaultService } from '../security/vault.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
@@ -101,14 +102,14 @@ export interface DialogRefLike<R = any> {
 }
 
 export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
-  constructor(private readonly promise: Promise<MatDialogRef<unknown, R>>) {}
+  constructor(private readonly promise: Promise<MatDialogRef<unknown, R> | null>) {}
 
   afterClosed(): Observable<R | undefined> {
-    return from(this.promise).pipe(switchMap(ref => ref.afterClosed()));
+    return from(this.promise).pipe(switchMap(ref => (ref ? ref.afterClosed() : of(undefined))));
   }
 
   close(result?: R): void {
-    this.promise.then(ref => ref.close(result));
+    this.promise.then(ref => ref?.close(result));
   }
 }
 
@@ -139,6 +140,7 @@ export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
 
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
+  private readonly vault = inject(VaultService);
   private readonly dialog = inject(MatDialog);
   private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
@@ -212,6 +214,10 @@ export class ModalService extends TauriBaseService {
     'rclone-flags': () =>
       import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
         m => m.RcloneFlagsModalComponent
+      ),
+    vault: () =>
+      import('../../features/modals/settings/vault-modal/vault-modal.component').then(
+        m => m.VaultModalComponent
       ),
     'job-detail': () =>
       import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
@@ -319,6 +325,7 @@ export class ModalService extends TauriBaseService {
     config: MatDialogConfig<TData>,
     standalone?: Omit<StandaloneOpts<TData>, 'type' | 'data'>
   ): DialogRefLike<TResult> {
+    if (!this.vault.isAccessible()) return new AsyncDialogRef<TResult>(Promise.resolve(null));
     if (standalone && this.standaloneEnabled) {
       return this.spawnStandaloneWindow<TData, TResult>({
         type,
@@ -330,7 +337,7 @@ export class ModalService extends TauriBaseService {
       config.panelClass = 'mobile-sheet-dialog';
     }
     const dialogPromise = this.loaders[type]().then(comp =>
-      this.dialog.open<unknown, TData, TResult>(comp, config)
+      this.vault.isAccessible() ? this.dialog.open<unknown, TData, TResult>(comp, config) : null
     );
     return new AsyncDialogRef<TResult>(dialogPromise);
   }
@@ -612,6 +619,18 @@ export class ModalService extends TauriBaseService {
       { ...STANDARD_MODAL_SIZE, disableClose: true },
       {
         title: this.translate.instant('titlebar.menu.flags'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openVault<TResult = void>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'vault',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('vault.title'),
         width: 680,
         height: 600,
       }

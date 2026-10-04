@@ -1,10 +1,11 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, effect } from '@angular/core';
 import { outputToObservable } from '@angular/core/rxjs-interop';
-import { Overlay } from '@angular/cdk/overlay';
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
 import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
+import { VaultService } from '../security/vault.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
@@ -15,6 +16,23 @@ import { encodeUrlPath, extractFilenameFromUrl } from 'src/app/shared/utils/url.
   providedIn: 'root',
 })
 export class FileViewerService extends TauriBaseService {
+  private readonly vault = inject(VaultService);
+  private overlayRef: OverlayRef | null = null;
+
+  constructor() {
+    super();
+    effect(() => {
+      if (!this.vault.isAccessible()) this.close();
+    });
+  }
+
+  private close(): void {
+    this.overlayRef?.dispose();
+    this.overlayRef = null;
+    this._isViewerOpen.set(false);
+    this._activeFileName.set(null);
+  }
+
   private readonly overlay = inject(Overlay);
   private readonly pathService = inject(PathService);
 
@@ -50,6 +68,7 @@ export class FileViewerService extends TauriBaseService {
     remoteName: string,
     isLocal: boolean
   ): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     const item = items[currentIndex];
     const fileUrl = await this.generateUrl(item, remoteName, isLocal);
     await this.attachModalOverlay({
@@ -91,32 +110,34 @@ export class FileViewerService extends TauriBaseService {
     remoteName: string;
     isDirectUrl?: boolean;
   }): Promise<void> {
+    if (!this.vault.isAccessible()) return;
+    this.close();
     const overlayRef = this.overlay.create({
       hasBackdrop: true,
       scrollStrategy: this.overlay.scrollStrategies.block(),
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
     });
+    this.overlayRef = overlayRef;
     this._isViewerOpen.set(true);
 
-    const { FileViewerModalComponent } =
-      await import('../../file-browser/file-viewer/file-viewer-modal.component');
-    const portal = new ComponentPortal(FileViewerModalComponent);
-    const componentRef = overlayRef.attach(portal);
-    componentRef.instance.data = data;
+    try {
+      const { FileViewerModalComponent } =
+        await import('../../file-browser/file-viewer/file-viewer-modal.component');
+      if (!this.vault.isAccessible() || this.overlayRef !== overlayRef) return;
+      const componentRef = overlayRef.attach(new ComponentPortal(FileViewerModalComponent));
+      componentRef.instance.data = data;
 
-    const cleanup = (): void => {
-      overlayRef.dispose();
-      this._isViewerOpen.set(false);
-      this._activeFileName.set(null);
-    };
-
-    outputToObservable(componentRef.instance.closeViewer)
-      .pipe(take(1))
-      .subscribe(() => cleanup());
-    overlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => cleanup());
+      outputToObservable(componentRef.instance.closeViewer)
+        .pipe(take(1))
+        .subscribe(() => this.close());
+      overlayRef
+        .backdropClick()
+        .pipe(take(1))
+        .subscribe(() => this.close());
+    } catch (error) {
+      if (this.overlayRef === overlayRef) this.close();
+      throw error;
+    }
   }
 
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {

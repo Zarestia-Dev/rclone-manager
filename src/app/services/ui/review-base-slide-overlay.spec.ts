@@ -1,9 +1,10 @@
-import { Component, Injectable, Type } from '@angular/core';
+import { Component, Injectable, Type, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Overlay } from '@angular/cdk/overlay';
 import { NEVER } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
+import { VaultService } from '../security/vault.service';
 import { BaseSlideOverlayService } from './base-slide-overlay.service';
 import { NotificationService } from './notification.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
@@ -19,7 +20,11 @@ class TestOverlayService extends BaseSlideOverlayService<OverlayContent> {
   protected loadComponent(): Promise<Type<OverlayContent>> {
     return this.load();
   }
-  protected getStandaloneConfig(): { url: string; label: string; title: string } {
+  protected getStandaloneConfig(): {
+    url: string;
+    label: string;
+    title: string;
+  } {
     return { url: '/', label: 'test', title: 'Test' };
   }
   protected detectStandaloneWindow(): boolean {
@@ -48,6 +53,7 @@ describe('BaseSlideOverlayService', () => {
     TestBed.configureTestingModule({
       providers: [
         TestOverlayService,
+        { provide: VaultService, useValue: { isAccessible: signal(true) } },
         {
           provide: Overlay,
           useValue: {

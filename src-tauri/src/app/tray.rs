@@ -9,7 +9,6 @@ use crate::core::tray::{
     },
     tray_action::TrayAction,
 };
-#[cfg(feature = "web-server")]
 use crate::utils::context::Manager;
 pub(super) fn handle_tray_menu_event(
     app: &crate::utils::context::AppHandle,
@@ -26,6 +25,13 @@ fn dispatch_tray_action(app: &crate::utils::context::AppHandle, action: TrayActi
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
+    if app
+        .state::<crate::core::settings::AppSettingsManager>()
+        .is_locked()
+        && !action.allowed_when_locked()
+    {
+        return;
+    }
     match action {
         TrayAction::StartProfile(op, remote, profile) => match op {
             OperationType::Mount => {

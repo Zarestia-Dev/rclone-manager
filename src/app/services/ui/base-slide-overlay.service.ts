@@ -1,13 +1,15 @@
-import { Injectable, ComponentRef, inject, signal, Type } from '@angular/core';
+import { Injectable, ComponentRef, inject, effect, signal, Type } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs';
 
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { VaultService } from '../security/vault.service';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 
 @Injectable()
 export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
+  private readonly vault = inject(VaultService);
   protected readonly overlay = inject(Overlay);
 
   protected overlayRef: OverlayRef | null = null;
@@ -20,16 +22,23 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
   readonly isStandaloneWindow = this._isStandaloneWindow.asReadonly();
 
   protected abstract loadComponent(): Promise<Type<T>>;
-  protected abstract getStandaloneConfig(): { url: string; label: string; title: string };
+  protected abstract getStandaloneConfig(): {
+    url: string;
+    label: string;
+    title: string;
+  };
   protected abstract detectStandaloneWindow(): boolean;
 
   constructor() {
     super();
+    effect(() => {
+      if (!this.vault.isAccessible()) this.closeOverlay();
+    });
     this._isStandaloneWindow.set(this.detectStandaloneWindow());
   }
 
   async openOverlay(): Promise<void> {
-    if (this.overlayRef) return;
+    if (!this.vault.isAccessible() || this.overlayRef) return;
     this._isOpen.set(true);
 
     const overlayRef = this.overlay.create({
@@ -42,7 +51,7 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
     this.overlayRef = overlayRef;
     try {
       const componentType = await this.loadComponent();
-      if (this.overlayRef !== overlayRef) return;
+      if (!this.vault.isAccessible() || this.overlayRef !== overlayRef) return;
       const componentRef = overlayRef.attach(new ComponentPortal(componentType));
 
       const host = componentRef.location.nativeElement as HTMLElement;
@@ -76,6 +85,10 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
     this.overlayRef = null;
     this.componentRef = null;
 
+    if (!this.vault.isAccessible()) {
+      overlayRefToDispose.dispose();
+      return;
+    }
     componentRefToAnimate?.location.nativeElement.classList.add('slide-overlay-left-leave');
     setTimeout(() => overlayRefToDispose.dispose(), 200);
   }
@@ -89,6 +102,7 @@ export abstract class BaseSlideOverlayService<T> extends TauriBaseService {
   }
 
   async detachToStandaloneWindow(): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     const config = this.getStandaloneConfig();
     if (this.isTauri && !isMobile()) {
       try {

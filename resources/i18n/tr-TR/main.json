@@ -700,7 +700,9 @@
       "import": "İçe Aktar",
       "export": "Dışa Aktar",
       "preferences": "Tercihler",
+      "advanced": "Gelişmiş Ayarlar",
       "flags": "Rclone Bayrakları",
+      "vault": "Kasa",
       "fileBrowser": "Dosya Gezgini",
       "flowWorkspace": "Akış Çalışma Alanı",
       "shortcuts": "Klavye Kısayolları",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "Klavye Kısayollarını Göster",
       "openPreferences": "Tercihleri Aç",
       "openFlags": "Rclone Bayraklarını Aç",
+      "openVault": "Kasayı Aç",
       "forceCheck": "Bağlantıları Zorla Kontrol Et",
       "forceCheckServes": "Sunulan Uzak Bağlantıları Zorla Kontrol Et",
       "newRemoteDetailed": "Yeni Uzak Sunucu Oluştur (Detaylı)",
@@ -2073,7 +2076,8 @@
       "tabs": {
         "general": "Genel",
         "core": "Çekirdek",
-        "developer": "Geliştirici"
+        "developer": "Geliştirici",
+        "vault": "Kasa"
       },
       "aria": {
         "resetAll": "Tüm ayarları varsayılan değerlere sıfırla",
@@ -2993,6 +2997,12 @@
       "eventEmitFailed": "Ayarlar olayı gönderilemedi: {{error}}",
       "subSettingsFailed": "Alt ayarlar alınamadı: {{error}}",
       "deleteFailed": "Uzak bağlantı ayarları silinemedi: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "Kasa parolası boş olamaz",
+      "notEnabled": "Kasa etkin değil",
+      "invalidPassword": "Hatalı kasa ana parolası",
+      "operationFailed": "Kasa işlemi başarısız oldu: {{error}}"
     }
   },
   "backendSuccess": {
@@ -3026,6 +3036,14 @@
       "unencrypted": "Yapılandırma başarıyla şifresiz hale getirildi",
       "encrypted": "Yapılandırma başarıyla şifrelendi",
       "passwordChanged": "Yapılandırma parolası başarıyla değiştirildi"
+    },
+    "vault": {
+      "unlocked": "Kasa kilidi başarıyla açıldı",
+      "locked": "Kasa başarıyla kilitlendi",
+      "enabled": "Kasa şifreleme başarıyla etkinleştirildi",
+      "disabled": "Kasa şifreleme devre dışı bırakıldı",
+      "passwordChanged": "Kasa ana parolası başarıyla değiştirildi",
+      "timeoutUpdated": "Otomatik kilitleme süresi güncellendi"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
         "false": "Devre dışı (false)",
         "unset": "Açıkta / Ayarlanmamış"
       }
+    }
+  },
+  "vault": {
+    "title": "Yapılandırma Kasası",
+    "description": "Yapılandırmalarınızı, kimlik bilgilerinizi ve alt ayarlarınızı AES-256-GCM şifreleme ile koruyun.",
+    "status": {
+      "protected": "Korumalı",
+      "unprotected": "Korumasız"
+    },
+    "actions": {
+      "lockNow": "Kasayı Kilitle",
+      "unlock": "Kasayı Aç",
+      "enable": "Kasayı Etkinleştir",
+      "disable": "Kasayı Devre Dışı Bırak",
+      "updatePassword": "Parolayı Değiştir"
+    },
+    "enable": {
+      "title": "Kasa Korumasını Etkinleştir",
+      "description": "Ayarlarınızı ve alt yapılandırmalarınızı şifrelemek için bir ana parola girin. Uygulamanın kilidini açmak için bu parolaya ihtiyacınız olacak."
+    },
+    "changePassword": {
+      "title": "Ana Parolayı Değiştir"
+    },
+    "disable": {
+      "title": "Kasa Korumasını Devre Dışı Bırak",
+      "warning": "Kasanın devre dışı bırakılması, ayarları ve yapılandırmaları diskte şifrelenmemiş düz metin olarak depolar."
+    },
+    "settings": {
+      "autoLockTitle": "Otomatik Kilitleme Süresi",
+      "autoLockDesc": "Belirli bir süre işlem yapılmadığında kasayı otomatik olarak kilitler."
+    },
+    "fields": {
+      "masterPassword": "Ana Parola",
+      "confirmPassword": "Parolayı Onayla",
+      "currentPassword": "Geçerli Parola",
+      "newPassword": "Yeni Parola",
+      "autoLockTimeout": "Sonra otomatik kilitle"
+    },
+    "timeout": {
+      "never": "Asla",
+      "5m": "5 dakika",
+      "15m": "15 dakika",
+      "30m": "30 dakika",
+      "1h": "1 saat"
+    },
+    "lockScreen": {
+      "title": "Kasa Kilitli",
+      "subtitle": "RClone Manager kilidini açmak için ana parolanızı girin"
+    },
+    "errors": {
+      "passwordsMismatch": "Parolalar eşleşmiyor",
+      "unlockFailed": "Kasa kilidi açılamadı"
     }
   }
 }

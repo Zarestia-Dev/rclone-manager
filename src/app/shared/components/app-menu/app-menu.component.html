@@ -1,6 +1,7 @@
 <button
   matIconButton
   [cdkMenuTriggerFor]="menu"
+  (cdkMenuOpened)="menuCtrl.reset()"
   [attr.aria-label]="'titlebar.appMenu' | translate"
   class="menu-button"
   [matBadge]="
@@ -20,150 +21,204 @@
 </button>
 
 <ng-template #menu>
-  <div cdkMenu class="material-context-menu">
-    <!-- Theme Selector -->
-    <div
-      class="theme-selector"
-      [attr.aria-label]="'titlebar.menu.theme' | translate"
-      data-tauri-drag-region="false"
-    >
-      @for (theme of themes; track theme.id) {
-        <button
-          class="theme-button"
-          [class]="theme.class"
-          [class.selected]="currentTheme() === theme.id"
-          (click)="setTheme(theme.id, $event)"
-          [attr.aria-label]="theme.label | translate"
+  <div
+    cdkMenu
+    class="material-context-menu sliding-container app-sliding-container"
+    [style.height.px]="menuCtrl.contextMenuHeight()"
+  >
+    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'submenu'">
+      <!-- Main Page -->
+      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
+        <!-- Theme Selector -->
+        <div
+          class="theme-selector"
+          [attr.aria-label]="'titlebar.menu.theme' | translate"
+          data-tauri-drag-region="false"
         >
-          @if (currentTheme() === theme.id) {
-            <mat-icon
-              svgIcon="check-circle"
-              class="checkmark"
-              [class.accent]="theme.id === 'system'"
-              aria-hidden="true"
-            ></mat-icon>
+          @for (theme of themes; track theme.id) {
+            <button
+              class="theme-button"
+              [class]="theme.class"
+              [class.selected]="currentTheme() === theme.id"
+              (click)="setTheme(theme.id, $event)"
+              [attr.aria-label]="theme.label | translate"
+            >
+              @if (currentTheme() === theme.id) {
+                <mat-icon
+                  svgIcon="check-circle"
+                  class="checkmark"
+                  [class.accent]="theme.id === 'system'"
+                  aria-hidden="true"
+                ></mat-icon>
+              }
+            </button>
+          }
+        </div>
+        <mat-divider></mat-divider>
+
+        <!-- Import / Export -->
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="restoreSettings()"
+          [attr.aria-label]="'titlebar.menu.import' | translate"
+        >
+          <span>{{ 'titlebar.menu.import' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + I</span>
+        </button>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openExportModal()"
+          [attr.aria-label]="'titlebar.menu.export' | translate"
+        >
+          <span>{{ 'titlebar.menu.export' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + E</span>
+        </button>
+        <mat-divider></mat-divider>
+
+        <!-- Preferences & Advanced Settings -->
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openPreferencesModal()"
+          [attr.aria-label]="'titlebar.menu.preferences' | translate"
+        >
+          <span>{{ 'titlebar.menu.preferences' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
+        </button>
+
+        <button
+          type="button"
+          class="menu-item space-between advanced-menu-trigger"
+          role="menuitem"
+          tabindex="0"
+          (click)="menuCtrl.openSubmenu('submenu'); $event.stopPropagation()"
+          (keydown)="onAdvancedKeydown($event)"
+          [attr.aria-label]="'titlebar.menu.advanced' | translate"
+        >
+          <span>{{ 'titlebar.menu.advanced' | translate }}</span>
+          <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Workspaces / Overlays -->
+        @if (activeWorkspace() !== 'main_menu') {
+          <button cdkMenuItem class="menu-item" (click)="openWorkspace('main_menu')">
+            <span>{{ 'settings.general.default_view.options.main_menu' | translate }}</span>
+          </button>
+        }
+        @if (activeWorkspace() !== 'nautilus') {
+          <button cdkMenuItem class="menu-item" (click)="openWorkspace('nautilus')">
+            <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
+            <span class="shortcut" aria-hidden="true">Ctrl + B</span>
+          </button>
+        }
+        @if (activeWorkspace() !== 'flow') {
+          <button cdkMenuItem class="menu-item" (click)="openWorkspace('flow')">
+            <span>{{ 'titlebar.menu.flowWorkspace' | translate }}</span>
+            <span class="shortcut" aria-hidden="true">Ctrl + Alt + F</span>
+          </button>
+        }
+        <mat-divider></mat-divider>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openAlertsModal()"
+          [attr.aria-label]="'alerts.title' | translate"
+        >
+          <span>{{ 'alerts.title' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">
+            @if (alertService.unacknowledged() > 0) {
+              <span
+                [matBadge]="alertService.unacknowledged()"
+                matBadgePosition="after"
+                matBadgeSize="small"
+              ></span>
+            }
+            Ctrl + Alt + A</span
+          >
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openKeyboardShortcutsModal()"
+          [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
+        >
+          <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- About (Hold to open Power Menu, Click to open About) -->
+        <button
+          cdkMenuItem
+          class="menu-item about-menu-item"
+          [attr.title]="updateTooltip()"
+          (click)="onAboutClicked()"
+          appLongPress
+          (longPress)="onAboutLongPress()"
+          [attr.aria-label]="'titlebar.menu.about' | translate"
+        >
+          <span>{{ 'titlebar.menu.about' | translate }}</span>
+          @if (
+            readyToRestart() || rcloneRestartRequired() || hasUpdates() || rcloneUpdateAvailable()
+          ) {
+            <span
+              [matBadge]="aboutMenuBadge()"
+              matBadgePosition="below before"
+              matBadgeSize="small"
+            ></span>
           }
         </button>
-      }
+      </div>
+
+      <!-- Advanced Submenu Page -->
+      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'submenu'">
+        <div class="menu-header">
+          <button
+            matIconButton
+            type="button"
+            role="menuitem"
+            (click)="menuCtrl.goBack(); $event.stopPropagation()"
+            (keydown)="onBackKeydown($event)"
+            [attr.aria-label]="'common.back' | translate"
+            [attr.title]="'common.back' | translate"
+          >
+            <mat-icon svgIcon="chevron-left" aria-hidden="true"></mat-icon>
+          </button>
+          <span class="menu-title">{{ 'titlebar.menu.advanced' | translate }}</span>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openVaultModal()"
+          [attr.aria-label]="'titlebar.menu.vault' | translate"
+        >
+          <span>{{ 'titlebar.menu.vault' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + Alt + V</span>
+        </button>
+
+        <button
+          cdkMenuItem
+          class="menu-item"
+          (click)="openRcloneFlagsModal()"
+          [attr.aria-label]="'titlebar.menu.flags' | translate"
+        >
+          <span>{{ 'titlebar.menu.flags' | translate }}</span>
+          <span class="shortcut" aria-hidden="true">Ctrl + .</span>
+        </button>
+      </div>
     </div>
-    <mat-divider></mat-divider>
-
-    <!-- Import / Export -->
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="restoreSettings()"
-      [attr.aria-label]="'titlebar.menu.import' | translate"
-    >
-      <span>{{ 'titlebar.menu.import' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + I</span>
-    </button>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openExportModal()"
-      [attr.aria-label]="'titlebar.menu.export' | translate"
-    >
-      <span>{{ 'titlebar.menu.export' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + E</span>
-    </button>
-    <mat-divider></mat-divider>
-
-    <!-- Preferences & Flags -->
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openPreferencesModal()"
-      [attr.aria-label]="'titlebar.menu.preferences' | translate"
-    >
-      <span>{{ 'titlebar.menu.preferences' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
-    </button>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openRcloneFlagsModal()"
-      [attr.aria-label]="'titlebar.menu.flags' | translate"
-    >
-      <span>{{ 'titlebar.menu.flags' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + .</span>
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <!-- Workspaces / Overlays -->
-    @if (activeWorkspace() !== 'main_menu') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('main_menu')">
-        <span>{{ 'settings.general.default_view.options.main_menu' | translate }}</span>
-      </button>
-    }
-    @if (activeWorkspace() !== 'nautilus') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('nautilus')">
-        <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + B</span>
-      </button>
-    }
-    @if (activeWorkspace() !== 'flow') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('flow')">
-        <span>{{ 'titlebar.menu.flowWorkspace' | translate }}</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + Alt + F</span>
-      </button>
-    }
-    <mat-divider></mat-divider>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openAlertsModal()"
-      [attr.aria-label]="'alerts.title' | translate"
-    >
-      <span>{{ 'alerts.title' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">
-        @if (alertService.unacknowledged() > 0) {
-          <span
-            [matBadge]="alertService.unacknowledged()"
-            matBadgePosition="after"
-            matBadgeSize="small"
-          ></span>
-        }
-        Ctrl + Alt + A</span
-      >
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openKeyboardShortcutsModal()"
-      [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
-    >
-      <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <!-- About (Hold to open Power Menu, Click to open About) -->
-    <button
-      cdkMenuItem
-      class="menu-item about-menu-item"
-      [attr.title]="updateTooltip()"
-      (click)="onAboutClicked()"
-      appLongPress
-      (longPress)="onAboutLongPress()"
-      [attr.aria-label]="'titlebar.menu.about' | translate"
-    >
-      <span>{{ 'titlebar.menu.about' | translate }}</span>
-      @if (readyToRestart() || rcloneRestartRequired() || hasUpdates() || rcloneUpdateAvailable()) {
-        <span
-          [matBadge]="aboutMenuBadge()"
-          matBadgePosition="below before"
-          matBadgeSize="small"
-        ></span>
-      }
-    </button>
   </div>
 </ng-template>

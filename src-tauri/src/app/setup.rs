@@ -52,6 +52,32 @@ pub(super) fn setup_context(
     let rcman_manager =
         crate::core::settings::manager::create_settings_manager(&app_paths.config_dir)?;
 
+    let app_handle_for_vault = app_handle.clone();
+    rcman_manager.events().on_vault_event(move |event| {
+        // The IPC command publishes unlock only after deferred startup succeeds.
+        if matches!(event, rcman::vault::VaultEvent::Unlocked) {
+            return;
+        }
+        let is_locked = matches!(
+            event,
+            rcman::vault::VaultEvent::Locked | rcman::vault::VaultEvent::AutoLocked
+        );
+        let is_enabled = !matches!(event, rcman::vault::VaultEvent::Disabled);
+        let lock_timeout = app_handle_for_vault
+            .try_state::<crate::core::settings::AppSettingsManager>()
+            .and_then(|m| m.vault_lock_timeout())
+            .map(|d| d.as_secs());
+        crate::core::bridge::emit(
+            crate::utils::types::events::VAULT_STATE_CHANGED,
+            crate::utils::types::events::VaultStatePayload {
+                event: event.to_string(),
+                is_locked,
+                is_enabled,
+                lock_timeout,
+            },
+        );
+    });
+
     use crate::core::security::SafeEnvironmentManager;
     let env_manager = SafeEnvironmentManager::new();
 
@@ -79,6 +105,8 @@ pub(super) fn setup_context(
         poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
         initial_startup: AtomicBool::new(true),
+        initialization_lock: tokio::sync::Mutex::new(()),
+        vault_operation_lock: tokio::sync::Mutex::new(()),
         updater_running: AtomicBool::new(false),
     });
 
@@ -112,7 +140,9 @@ pub(super) fn setup_context(
 
     let app_handle_clone = app_handle.clone();
     crate::utils::spawn(async move {
-        initialization(app_handle_clone).await;
+        if let Err(error) = initialization(app_handle_clone).await {
+            log::error!("Application initialization failed: {error}");
+        }
     });
 
     #[cfg(all(

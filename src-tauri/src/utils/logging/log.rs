@@ -68,6 +68,11 @@ fn parse_log_level(level: &str) -> LevelFilter {
 }
 
 pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String> {
+    if LOG_SENDER.get().is_some() {
+        update_log_level(log_level);
+        return Ok(());
+    }
+
     // Initialize rotating file logger using cache directory
     let paths = crate::core::paths::AppPaths::from_app_handle(&app_handle)?;
     let log_dir = paths.get_app_log_dir();
@@ -76,6 +81,8 @@ pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String
         eprintln!("Failed to initialize file logger: {e}");
         return Err(format!("Failed to initialize file logger: {e}"));
     }
+
+    log::set_logger(&DynamicLogger).map_err(|error| error.to_string())?;
 
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
 
@@ -95,7 +102,6 @@ pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String
 
     LOG_LEVEL.store(level as usize, Ordering::Relaxed);
     log::set_max_level(level);
-    log::set_logger(&DynamicLogger).map_err(|e| e.to_string())?;
     Ok(())
 }
 

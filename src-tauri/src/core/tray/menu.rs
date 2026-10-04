@@ -46,6 +46,28 @@ pub struct MenuPlan {
 }
 
 impl MenuPlan {
+    /// A locked tray exposes no remote names, profiles, or operational controls.
+    pub fn locked() -> Self {
+        let mut plan = Self::build(
+            &TraySnapshot {
+                active_jobs: vec![],
+                mounted_remotes: vec![],
+                active_serves: vec![],
+                remotes: vec![],
+                quick_runs: vec![],
+                workflows: vec![],
+            },
+            0,
+        );
+        plan.items.retain(|item| match item {
+            MenuItemKind::Regular(item) => {
+                TrayAction::from_id(&item.id).is_some_and(|action| action.allowed_when_locked())
+            }
+            _ => false,
+        });
+        plan
+    }
+
     pub fn build(snapshot: &TraySnapshot, max_tray_items: usize) -> Self {
         let mut items: Vec<MenuItemKind> = Vec::new();
 
@@ -540,5 +562,25 @@ fn kind_to_tauri<R: Runtime>(
                 app, &s.label, s.enabled, &refs,
             )?))
         }
+    }
+}
+
+#[cfg(test)]
+mod vault_tests {
+    use super::*;
+
+    #[test]
+    fn locked_menu_only_exposes_open_and_quit() {
+        let plan = MenuPlan::locked();
+        assert_eq!(plan.items.len(), 2);
+        for item in plan.items {
+            let MenuItemKind::Regular(item) = item else {
+                panic!("unexpected locked menu item")
+            };
+            assert!(TrayAction::from_id(&item.id).unwrap().allowed_when_locked());
+        }
+        assert!(!TrayAction::OpenFileBrowser.allowed_when_locked());
+        assert!(!TrayAction::StopAllJobs.allowed_when_locked());
+        assert!(!TrayAction::StartQuickRun("example".into()).allowed_when_locked());
     }
 }

@@ -1,3 +1,4 @@
+import { VaultService } from '../../services/security/vault.service';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
@@ -22,7 +23,10 @@ class TestHostComponent {}
 
 describe('ShortcutHandlerDirective', () => {
   let fixture: ComponentFixture<TestHostComponent>;
-  let modalServiceSpy: { openKeyboardShortcuts: ReturnType<typeof vi.fn> };
+  let modalServiceSpy: {
+    openKeyboardShortcuts: ReturnType<typeof vi.fn>;
+    openVault: ReturnType<typeof vi.fn>;
+  };
   let windowServiceSpy: { quitApplication: ReturnType<typeof vi.fn> };
   let nautilusServiceSpy: {
     toggleNautilusOverlay: ReturnType<typeof vi.fn>;
@@ -36,7 +40,10 @@ describe('ShortcutHandlerDirective', () => {
   let onboardingStateServiceSpy: { isOnboardingActive: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    modalServiceSpy = { openKeyboardShortcuts: vi.fn() };
+    modalServiceSpy = {
+      openKeyboardShortcuts: vi.fn(),
+      openVault: vi.fn(),
+    };
     windowServiceSpy = { quitApplication: vi.fn().mockResolvedValue(undefined) };
     nautilusServiceSpy = {
       toggleNautilusOverlay: vi.fn(),
@@ -52,6 +59,10 @@ describe('ShortcutHandlerDirective', () => {
     await TestBed.configureTestingModule({
       imports: [TestHostComponent],
       providers: [
+        {
+          provide: VaultService,
+          useValue: { isAccessible: (): boolean => true },
+        },
         provideTranslateService(),
         { provide: ModalService, useValue: modalServiceSpy },
         { provide: WindowService, useValue: windowServiceSpy },
@@ -106,6 +117,19 @@ describe('ShortcutHandlerDirective', () => {
 
     window.dispatchEvent(event);
     expect(nautilusServiceSpy.toggleNautilusOverlay).toHaveBeenCalled();
+  });
+
+  it('triggers openVault on Ctrl+Alt+V', () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'v',
+      ctrlKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+    expect(modalServiceSpy.openVault).toHaveBeenCalled();
   });
 
   it('opens main shortcuts modal on Ctrl+? when neither flow nor nautilus is open', () => {

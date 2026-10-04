@@ -44,22 +44,37 @@ async fn perform_update_tray_menu<R: Runtime>(
     state: &TrayMenuState,
 ) -> tauri::Result<()> {
     let settings_manager = app.state::<AppSettingsManager>();
-    let settings = settings_manager
-        .get_all()
-        .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
-
-    if !settings.general.tray_enabled {
-        return Ok(());
-    }
-
-    let snapshot = TraySnapshot::fetch(app).await?;
-
-    let is_active = !snapshot.active_jobs.is_empty();
-    let tooltip = build_tooltip(&snapshot);
-    let max_tray_items = settings.core.max_tray_items;
-
-    let plan = MenuPlan::build(&snapshot, max_tray_items);
-    let icon_kind = TrayIconKind::resolve(is_active, &settings.general.tray_icon_theme);
+    let (plan, tooltip, icon_kind) = if settings_manager.is_locked() {
+        (
+            MenuPlan::locked(),
+            crate::t!("tray.tooltipDefault"),
+            TrayIconKind::resolve(false, "system"),
+        )
+    } else {
+        let settings = settings_manager
+            .get_all()
+            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
+        if !settings.general.tray_enabled {
+            return Ok(());
+        }
+        let snapshot = TraySnapshot::fetch(app).await?;
+        if settings_manager.is_locked() {
+            (
+                MenuPlan::locked(),
+                crate::t!("tray.tooltipDefault"),
+                TrayIconKind::resolve(false, "system"),
+            )
+        } else {
+            (
+                MenuPlan::build(&snapshot, settings.core.max_tray_items),
+                build_tooltip(&snapshot),
+                TrayIconKind::resolve(
+                    !snapshot.active_jobs.is_empty(),
+                    &settings.general.tray_icon_theme,
+                ),
+            )
+        }
+    };
 
     let (plan_changed, tooltip_changed, icon_changed) = state
         .cache
@@ -87,6 +102,11 @@ async fn perform_update_tray_menu<R: Runtime>(
             return;
         };
 
+        // A queued main-thread update may outlive the unlock session that built it.
+        let locked = app_clone.state::<AppSettingsManager>().is_locked();
+        let plan_to_set = if locked { Some(MenuPlan::locked()) } else { plan_to_set };
+        let tooltip_to_set = if locked { Some(crate::t!("tray.tooltipDefault")) } else { tooltip_to_set };
+        let icon = if locked { Some(TrayIconKind::resolve(false, "system").to_image()) } else { icon };
         if let Some(ref plan) = plan_to_set {
             match create_tray_menu_from_plan(&app_clone, plan) {
                 Ok(menu) => {

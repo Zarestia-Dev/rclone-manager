@@ -1,9 +1,10 @@
-import { Component, Injectable, Type } from '@angular/core';
+import { Component, Injectable, Type, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Overlay } from '@angular/cdk/overlay';
 import { NEVER } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
+import { VaultService } from '../security/vault.service';
 import { BaseSlideOverlayService } from './base-slide-overlay.service';
 import { NotificationService } from './notification.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
@@ -19,7 +20,11 @@ class TestOverlayService extends BaseSlideOverlayService<OverlayContent> {
   protected loadComponent(): Promise<Type<OverlayContent>> {
     return this.load();
   }
-  protected getStandaloneConfig(): { url: string; label: string; title: string } {
+  protected getStandaloneConfig(): {
+    url: string;
+    label: string;
+    title: string;
+  } {
     return { url: '/', label: 'test', title: 'Test' };
   }
   protected detectStandaloneWindow(): boolean {
@@ -45,6 +50,7 @@ describe('BaseSlideOverlayService', () => {
     TestBed.configureTestingModule({
       providers: [
         TestOverlayService,
+        { provide: VaultService, useValue: { isAccessible: signal(true) } },
         {
           provide: Overlay,
           useValue: {
@@ -69,6 +75,22 @@ describe('BaseSlideOverlayService', () => {
     vi.runAllTimers();
     vi.useRealTimers();
     TestBed.resetTestingModule();
+  });
+
+  it('blocks opening while locked and disposes an open overlay on lock', async () => {
+    const accessible = TestBed.inject(VaultService).isAccessible as ReturnType<
+      typeof signal<boolean>
+    >;
+    accessible.set(false);
+    await service.openOverlay();
+    expect(service.load).not.toHaveBeenCalled();
+    accessible.set(true);
+    service.load.mockResolvedValue(OverlayContent);
+    await service.openOverlay();
+    accessible.set(false);
+    TestBed.tick();
+    expect(service.isOpen()).toBe(false);
+    expect(overlayRef.dispose).toHaveBeenCalledOnce();
   });
 
   it('does not attach or register history after closing during lazy loading', async () => {

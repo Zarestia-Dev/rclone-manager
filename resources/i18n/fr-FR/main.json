@@ -700,7 +700,9 @@
       "import": "Importer",
       "export": "Exporter",
       "preferences": "Préférences",
+      "advanced": "Paramètres avancés",
       "flags": "Rclone Flags",
+      "vault": "Coffre-fort",
       "fileBrowser": "Explorateur de fichiers",
       "flowWorkspace": "Espace de travail Flow",
       "shortcuts": "Raccourcis clavier",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "Afficher les raccourcis clavier",
       "openPreferences": "Ouvrir les préférences",
       "openFlags": "Flags de rclone Ouvert",
+      "openVault": "Ouvrir le coffre-fort",
       "forceCheck": "Forcer le contrôle des montages",
       "forceCheckServes": "Forcer la vérification des dépôts distants",
       "newRemoteDetailed": "Créer un nouveau dépôt distant (détaillé)",
@@ -2032,7 +2035,8 @@
       "tabs": {
         "general": "Général",
         "core": "Core",
-        "developer": "Développeur"
+        "developer": "Développeur",
+        "vault": "Coffre-fort"
       },
       "aria": {
         "resetAll": "Réinitialiser les paramètres de l'application aux valeurs par défaut",
@@ -2952,6 +2956,12 @@
       "eventEmitFailed": "Échec de l'émission des paramètres d'événement : {{error}}",
       "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
       "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "Le mot de passe du coffre ne peut pas être vide",
+      "notEnabled": "Le coffre-fort n'est pas activé",
+      "invalidPassword": "Mot de passe maître du coffre incorrect",
+      "operationFailed": "L'opération du coffre-fort a échoué: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2985,6 +2995,14 @@
       "unencrypted": "Configuration déchiffrée avec succès",
       "encrypted": "Configuration chiffrée avec succès",
       "passwordChanged": "Mot de passe de configuration modifié avec succès"
+    },
+    "vault": {
+      "unlocked": "Coffre-fort déverrouillé avec succès",
+      "locked": "Coffre-fort verrouillé avec succès",
+      "enabled": "Chiffrement du coffre-fort activé avec succès",
+      "disabled": "Chiffrement du coffre-fort désactivé avec succès",
+      "passwordChanged": "Mot de passe maître changé avec succès",
+      "timeoutUpdated": "Délai de verrouillage automatique mis à jour"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
       "hostShuttingDown": "Le système d'exploitation s'éteint...",
       "hostSleeping": "Mise en veille du système...",
       "hostLocking": "Verrouillage de la session utilisateur..."
+    }
+  },
+  "vault": {
+    "title": "Coffre de configuration",
+    "description": "Protégez vos configurations, identifiants et sous-paramètres au repos avec le chiffrement AES-256-GCM.",
+    "status": {
+      "protected": "Protégé",
+      "unprotected": "Non protégé"
+    },
+    "actions": {
+      "lockNow": "Verrouiller le coffre",
+      "unlock": "Déverrouiller le coffre",
+      "enable": "Activer le coffre",
+      "disable": "Désactiver le coffre",
+      "updatePassword": "Changer le mot de passe"
+    },
+    "enable": {
+      "title": "Activer la protection du coffre",
+      "description": "Saisissez un mot de passe maître pour chiffrer vos paramètres et sous-configurations. Vous en aurez besoin pour déverrouiller l’application."
+    },
+    "changePassword": {
+      "title": "Changer le mot de passe maître"
+    },
+    "disable": {
+      "title": "Désactiver la protection du coffre",
+      "warning": "La désactivation du coffre stockera les paramètres et configurations en texte brut non chiffré sur le disque."
+    },
+    "settings": {
+      "autoLockTitle": "Délai de verrouillage automatique",
+      "autoLockDesc": "Verrouiller automatiquement le coffre après une période d'inactivité."
+    },
+    "fields": {
+      "masterPassword": "Mot de passe maître",
+      "confirmPassword": "Confirmer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "autoLockTimeout": "Verrouiller après"
+    },
+    "timeout": {
+      "never": "Jamais",
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 heure"
+    },
+    "lockScreen": {
+      "title": "Coffre verrouillé",
+      "subtitle": "Entrez votre mot de passe maître pour déverrouiller RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "unlockFailed": "Échec du déverrouillage du coffre"
     }
   }
 }

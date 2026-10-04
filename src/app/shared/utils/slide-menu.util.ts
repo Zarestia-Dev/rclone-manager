@@ -1,11 +1,11 @@
 import { effect, signal } from '@angular/core';
 
 /**
- * Shared logic for the sliding context menu used in Nautilus-style components.
+ * Shared logic for sliding menus used across Nautilus and App Menu components.
  * Handles view state, height calculation, and menu resets.
  */
-export class SlideMenuController {
-  readonly currentMenuView = signal<'main' | 'open'>('main');
+export class SlideMenuController<T extends string = 'main' | 'submenu'> {
+  readonly currentMenuView = signal<T>('main' as T);
   readonly contextMenuHeight = signal<number | null>(null);
   private readonly _menuOpenedTrigger = signal(0);
 
@@ -13,7 +13,7 @@ export class SlideMenuController {
     private containerSelector: string,
     private rootResolver?: () => HTMLElement | null | undefined
   ) {
-    // Track context menu page height for the sliding animation.
+    // Track menu page height for the sliding animation.
     effect(() => {
       this.currentMenuView();
       this._menuOpenedTrigger();
@@ -32,17 +32,17 @@ export class SlideMenuController {
 
   /** Resets the menu to the main page and triggers a height recalculation. */
   reset(): void {
-    this.currentMenuView.set('main');
+    this.currentMenuView.set('main' as T);
     this._menuOpenedTrigger.update(v => v + 1);
   }
 
   /** Switches to the submenu. */
-  openSubmenu(): void {
-    this.currentMenuView.set('open');
+  openSubmenu(view: T = 'submenu' as T): void {
+    this.currentMenuView.set(view);
   }
 
   /** Switches back to the main menu. */
   goBack(): void {
-    this.currentMenuView.set('main');
+    this.currentMenuView.set('main' as T);
   }
 }

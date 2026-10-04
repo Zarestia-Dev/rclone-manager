@@ -35,6 +35,10 @@ pub struct RcloneState {
     pub poller_visible: AtomicBool,
     /// Flag indicating if the app is in initial startup phase
     pub initial_startup: AtomicBool,
+    /// Serializes deferred startup without marking an unfinished startup complete.
+    pub initialization_lock: tokio::sync::Mutex<()>,
+    /// Prevents competing vault commands from rotating or removing keys concurrently.
+    pub vault_operation_lock: tokio::sync::Mutex<()>,
     /// Flag indicating if the auto-updater is running
     pub updater_running: AtomicBool,
 }

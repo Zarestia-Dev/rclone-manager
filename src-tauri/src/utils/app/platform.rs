@@ -409,9 +409,11 @@ fn nvidia_proprietary_driver_loaded() -> bool {
 #[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
 mod graphics_quirks_tests {
     use super::{is_strict_wayland_compositor, is_wayland_session};
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn strict_compositor_detected_for_kde() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
         let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
         unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
@@ -442,6 +444,7 @@ mod graphics_quirks_tests {
 
     #[test]
     fn strict_compositor_detected_for_hyprland() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
         let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
         unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
@@ -466,6 +469,7 @@ mod graphics_quirks_tests {
 
     #[test]
     fn tolerant_compositor_not_detected_as_strict() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
         let prev_session = std::env::var("XDG_SESSION_DESKTOP").ok();
         unsafe { std::env::remove_var("XDG_CURRENT_DESKTOP") };
@@ -491,6 +495,7 @@ mod graphics_quirks_tests {
 
     #[test]
     fn strict_compositor_handles_colon_separated_desktops() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_current = std::env::var("XDG_CURRENT_DESKTOP").ok();
         unsafe { std::env::remove_var("XDG_SESSION_DESKTOP") };
 
@@ -510,6 +515,7 @@ mod graphics_quirks_tests {
 
     #[test]
     fn wayland_detected_via_xdg_session_type() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_xdg = std::env::var("XDG_SESSION_TYPE").ok();
         // Remove WAYLAND_DISPLAY so only XDG_SESSION_TYPE is in effect.
         let prev_wd = std::env::var("WAYLAND_DISPLAY").ok();
@@ -540,6 +546,7 @@ mod graphics_quirks_tests {
 
     #[test]
     fn wayland_detected_via_wayland_display() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let prev_wd = std::env::var("WAYLAND_DISPLAY").ok();
         let prev_xdg = std::env::var("XDG_SESSION_TYPE").ok();
         // Ensure XDG_SESSION_TYPE doesn't interfere.

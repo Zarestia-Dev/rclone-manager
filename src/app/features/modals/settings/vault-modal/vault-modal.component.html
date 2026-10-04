@@ -1,0 +1,315 @@
+<header data-tauri-drag-region>
+  <button tabindex="-1" aria-hidden="true">
+    <mat-icon svgIcon="shield"></mat-icon>
+  </button>
+  <p>{{ 'vault.title' | translate }}</p>
+  <button
+    matIconButton
+    (click)="close()"
+    [attr.aria-label]="'common.close' | translate"
+    [attr.title]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <div class="vault-container">
+    <!-- Status Card -->
+    <div class="status-card">
+      <div class="status-header">
+        <div class="icon-badge" [class.active]="isVaultEnabled()">
+          <mat-icon [svgIcon]="isVaultEnabled() ? 'shield' : 'shield-halved'"></mat-icon>
+        </div>
+        <div class="status-info">
+          <h3>{{ 'vault.title' | translate }}</h3>
+          <p class="description">{{ 'vault.description' | translate }}</p>
+        </div>
+        <div class="status-actions">
+          <span
+            class="app-pill"
+            [class.p-primary]="isVaultEnabled()"
+            [class.p-dim]="!isVaultEnabled()"
+          >
+            {{
+              (isVaultEnabled() ? 'vault.status.protected' : 'vault.status.unprotected') | translate
+            }}
+          </span>
+          @if (isVaultEnabled()) {
+            <button
+              matButton="elevated"
+              type="button"
+              (click)="lockNow()"
+              [disabled]="isBusy()"
+              [attr.title]="'vault.actions.lockNow' | translate"
+            >
+              <mat-icon svgIcon="lock"></mat-icon>
+              {{ 'vault.actions.lockNow' | translate }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (!isVaultEnabled()) {
+      <!-- Enable Vault Form -->
+      <div class="section-card">
+        <div class="section-header">
+          <h4>{{ 'vault.enable.title' | translate }}</h4>
+          <p>{{ 'vault.enable.description' | translate }}</p>
+        </div>
+
+        <form [formGroup]="enableForm" (ngSubmit)="submitEnableVault()" class="vault-form">
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>{{ 'vault.fields.masterPassword' | translate }}</mat-label>
+              <mat-icon matPrefix svgIcon="lock"></mat-icon>
+              <input
+                matInput
+                formControlName="password"
+                [type]="showEnablePassword() ? 'text' : 'password'"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                (click)="showEnablePassword.set(!showEnablePassword())"
+                [attr.title]="(showEnablePassword() ? 'common.hide' : 'common.show') | translate"
+                [attr.aria-label]="
+                  (showEnablePassword() ? 'common.hide' : 'common.show') | translate
+                "
+              >
+                <mat-icon [svgIcon]="showEnablePassword() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+              @if (
+                enableForm.get('password')?.hasError('required') &&
+                enableForm.get('password')?.touched
+              ) {
+                <mat-error>{{ 'common.required' | translate }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>{{ 'vault.fields.confirmPassword' | translate }}</mat-label>
+              <mat-icon matPrefix svgIcon="lock"></mat-icon>
+              <input
+                matInput
+                formControlName="confirmPassword"
+                [type]="showEnableConfirm() ? 'text' : 'password'"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                (click)="showEnableConfirm.set(!showEnableConfirm())"
+                [attr.title]="(showEnableConfirm() ? 'common.hide' : 'common.show') | translate"
+                [attr.aria-label]="
+                  (showEnableConfirm() ? 'common.hide' : 'common.show') | translate
+                "
+              >
+                <mat-icon [svgIcon]="showEnableConfirm() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+              @if (
+                enableForm.hasError('passwordMismatch') &&
+                enableForm.get('confirmPassword')?.touched
+              ) {
+                <mat-error>{{ 'vault.errors.passwordsMismatch' | translate }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>{{ 'vault.fields.autoLockTimeout' | translate }}</mat-label>
+              <mat-icon matPrefix svgIcon="clock"></mat-icon>
+              <mat-select formControlName="timeoutSecs">
+                @for (opt of timeoutOptions; track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.labelKey | translate }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="form-actions">
+            <button matButton="filled" type="submit" [disabled]="isBusy() || enableForm.invalid">
+              <mat-icon svgIcon="shield"></mat-icon>
+              {{ 'vault.actions.enable' | translate }}
+            </button>
+          </div>
+        </form>
+      </div>
+    } @else {
+      <!-- Auto-Lock Timeout Config -->
+      <div class="section-card">
+        <div class="section-header">
+          <h4>{{ 'vault.settings.autoLockTitle' | translate }}</h4>
+          <p>{{ 'vault.settings.autoLockDesc' | translate }}</p>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>{{ 'vault.fields.autoLockTimeout' | translate }}</mat-label>
+            <mat-icon matPrefix svgIcon="clock"></mat-icon>
+            <mat-select
+              [value]="lockTimeoutSecs() ?? 0"
+              (valueChange)="onTimeoutChange($event)"
+              [disabled]="isBusy()"
+            >
+              @for (opt of timeoutOptions; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.labelKey | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Change Password Panel -->
+      <mat-accordion class="vault-accordion">
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon svgIcon="key"></mat-icon>
+              <span>{{ 'vault.changePassword.title' | translate }}</span>
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <form
+            [formGroup]="changePasswordForm"
+            (ngSubmit)="submitChangePassword()"
+            class="vault-form"
+          >
+            <div class="form-row">
+              <mat-form-field>
+                <mat-label>{{ 'vault.fields.currentPassword' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                <input
+                  matInput
+                  formControlName="currentPassword"
+                  [type]="showChangeCurrent() ? 'text' : 'password'"
+                />
+                <button
+                  matIconButton
+                  matSuffix
+                  type="button"
+                  (click)="showChangeCurrent.set(!showChangeCurrent())"
+                  [attr.title]="(showChangeCurrent() ? 'common.hide' : 'common.show') | translate"
+                  [attr.aria-label]="
+                    (showChangeCurrent() ? 'common.hide' : 'common.show') | translate
+                  "
+                >
+                  <mat-icon [svgIcon]="showChangeCurrent() ? 'eye-slash' : 'eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field>
+                <mat-label>{{ 'vault.fields.newPassword' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                <input
+                  matInput
+                  formControlName="newPassword"
+                  [type]="showChangeNew() ? 'text' : 'password'"
+                />
+                <button
+                  matIconButton
+                  matSuffix
+                  type="button"
+                  (click)="showChangeNew.set(!showChangeNew())"
+                  [attr.title]="(showChangeNew() ? 'common.hide' : 'common.show') | translate"
+                  [attr.aria-label]="(showChangeNew() ? 'common.hide' : 'common.show') | translate"
+                >
+                  <mat-icon [svgIcon]="showChangeNew() ? 'eye-slash' : 'eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>{{ 'vault.fields.confirmPassword' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                <input
+                  matInput
+                  formControlName="confirmPassword"
+                  [type]="showChangeConfirm() ? 'text' : 'password'"
+                />
+                <button
+                  matIconButton
+                  matSuffix
+                  type="button"
+                  (click)="showChangeConfirm.set(!showChangeConfirm())"
+                  [attr.title]="(showChangeConfirm() ? 'common.hide' : 'common.show') | translate"
+                  [attr.aria-label]="
+                    (showChangeConfirm() ? 'common.hide' : 'common.show') | translate
+                  "
+                >
+                  <mat-icon [svgIcon]="showChangeConfirm() ? 'eye-slash' : 'eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+
+            <div class="form-actions">
+              <button
+                matButton="filled"
+                type="submit"
+                [disabled]="isBusy() || changePasswordForm.invalid"
+              >
+                {{ 'vault.actions.updatePassword' | translate }}
+              </button>
+            </div>
+          </form>
+        </mat-expansion-panel>
+
+        <!-- Disable Vault Panel -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon svgIcon="shield-xmark" class="warn"></mat-icon>
+              <span>{{ 'vault.disable.title' | translate }}</span>
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div class="danger-warning">
+            <p>{{ 'vault.disable.warning' | translate }}</p>
+          </div>
+
+          <form [formGroup]="disableForm" (ngSubmit)="submitDisableVault()" class="vault-form">
+            <div class="form-row">
+              <mat-form-field>
+                <mat-label>{{ 'vault.fields.masterPassword' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="lock"></mat-icon>
+                <input
+                  matInput
+                  formControlName="password"
+                  [type]="showDisablePassword() ? 'text' : 'password'"
+                />
+                <button
+                  matIconButton
+                  matSuffix
+                  type="button"
+                  (click)="showDisablePassword.set(!showDisablePassword())"
+                  [attr.title]="(showDisablePassword() ? 'common.hide' : 'common.show') | translate"
+                  [attr.aria-label]="
+                    (showDisablePassword() ? 'common.hide' : 'common.show') | translate
+                  "
+                >
+                  <mat-icon [svgIcon]="showDisablePassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+
+            <div class="form-actions">
+              <button
+                matButton="filled"
+                class="warn"
+                type="submit"
+                [disabled]="isBusy() || disableForm.invalid"
+              >
+                <mat-icon svgIcon="trash"></mat-icon>
+                {{ 'vault.actions.disable' | translate }}
+              </button>
+            </div>
+          </form>
+        </mat-expansion-panel>
+      </mat-accordion>
+    }
+  </div>
+</main>

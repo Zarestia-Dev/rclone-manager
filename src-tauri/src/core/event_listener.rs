@@ -40,7 +40,8 @@ use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
 #[cfg(feature = "tray")]
 use crate::utils::types::events::{
-    BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU, WORKFLOW_EXECUTION_STATE_CHANGED,
+    BACKEND_SWITCHED, REMOTE_SETTINGS_CHANGED, UPDATE_TRAY_MENU, VAULT_STATE_CHANGED,
+    WORKFLOW_EXECUTION_STATE_CHANGED,
 };
 
 #[cfg(feature = "tray")]
@@ -406,6 +407,7 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
         | BACKEND_SWITCHED
         | REMOTE_SETTINGS_CHANGED
         | WORKFLOW_EXECUTION_STATE_CHANGED
+        | VAULT_STATE_CHANGED
         | UPDATE_TRAY_MENU => {
             trigger_tray_update(app.clone());
         }
@@ -424,14 +426,25 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
     }
 }
 
+static EVENT_LISTENER_INITIALIZED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 pub fn setup_event_listener(app: &AppHandle) {
-    handle_termination_signals(app);
+    if EVENT_LISTENER_INITIALIZED.load(std::sync::atomic::Ordering::Acquire) {
+        debug!("Event listener already initialized, skipping duplicate registration");
+        return;
+    }
 
     let Some(mut rx) = crate::core::bridge::subscribe() else {
         error!("Failed to subscribe to EventBridge: bridge not initialized");
         return;
     };
 
+    if EVENT_LISTENER_INITIALIZED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+
+    handle_termination_signals(app);
     let app = app.clone();
     spawn(async move {
         loop {

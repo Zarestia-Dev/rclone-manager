@@ -33,6 +33,12 @@ export const MAIN_SHORTCUTS: ShortcutDefinition[] = [
     categoryKey: 'shortcuts.categories.application',
   },
   {
+    actionId: 'app.openVault',
+    keys: 'Ctrl + Alt + V',
+    descriptionKey: 'shortcuts.actions.openVault',
+    categoryKey: 'shortcuts.categories.application',
+  },
+  {
     actionId: 'app.openAlerts',
     keys: 'Ctrl + Alt + A',
     descriptionKey: 'alerts.title',

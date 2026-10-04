@@ -28,6 +28,7 @@ export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as cons
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
 export const UPDATER_STATE_CHANGED = 'updater_state_changed' as const;
+export const VAULT_STATE_CHANGED = 'vault_state_changed' as const;
 
 export interface UpdaterStateChanged {
   target: 'app' | 'rclone';
@@ -74,6 +75,13 @@ export interface SettingsChangeEvent {
   category: string;
   key: string;
   value: unknown;
+}
+
+export interface VaultStatePayload {
+  event: string;
+  isLocked: boolean;
+  isEnabled: boolean;
+  lockTimeout?: number | null;
 }
 
 export interface OAuthUrlEvent {

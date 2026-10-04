@@ -43,6 +43,8 @@ import {
   WORKFLOW_EXECUTION_STATE_CHANGED,
   WorkflowNodeStatePayload,
   WorkflowExecutionStatePayload,
+  VAULT_STATE_CHANGED,
+  VaultStatePayload,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -280,5 +282,13 @@ export class EventListenersService extends TauriBaseService {
 
   listenToWorkflowExecutionStateChanged(): Observable<WorkflowExecutionStatePayload> {
     return this.listenToEvent<WorkflowExecutionStatePayload>(WORKFLOW_EXECUTION_STATE_CHANGED);
+  }
+
+  listenToServerConnection(): Observable<void> {
+    return this.sseClient.connected$;
+  }
+
+  listenToVaultState(): Observable<VaultStatePayload> {
+    return this.listenToEvent<VaultStatePayload>(VAULT_STATE_CHANGED);
   }
 }

@@ -22,8 +22,8 @@ import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
-import { SlideMenuController } from '../slide-menu';
 import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/types';
+import { SlideMenuController } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-nautilus-context-menu',

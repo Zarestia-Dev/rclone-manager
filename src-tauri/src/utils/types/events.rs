@@ -61,6 +61,11 @@ pub const BANDWIDTH_LIMIT_CHANGED: &str = "bandwidth_limit_changed";
 /// Emitted when an encrypted rclone configuration has been successfully unlocked.
 pub const RCLONE_CONFIG_UNLOCKED: &str = "rclone_config_unlocked";
 
+/// Emitted when the rcman configuration vault state changes (locked, unlocked, auto_locked, password_changed, enabled, disabled).
+/// - Emitted by: `core::settings::vault` and `rcman::on_vault_event`
+/// - Handled by: `VaultService`, `EventListenersService`
+pub const VAULT_STATE_CHANGED: &str = "vault_state_changed";
+
 // --- UI and Cache Events ---
 
 /// Emitted to trigger an immediate tray menu re-render.
@@ -191,6 +196,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     ALERT_FIRED,
     SYSTEM_STATUS,
     FILE_DOWNLOAD_PROGRESS,
+    VAULT_STATE_CHANGED,
 ];
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -263,6 +269,17 @@ pub struct SettingsChangeEvent {
     pub category: String,
     pub key: String,
     pub value: serde_json::Value,
+}
+
+/// Strongly typed payload for configuration vault state events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultStatePayload {
+    pub event: String,
+    pub is_locked: bool,
+    pub is_enabled: bool,
+    #[serde(default)]
+    pub lock_timeout: Option<u64>,
 }
 
 /// Strongly typed payload for job cache change events

@@ -700,7 +700,9 @@
       "import": "Import",
       "export": "Export",
       "preferences": "Preferences",
+      "advanced": "Advanced Settings",
       "flags": "Rclone Flags",
+      "vault": "Vault",
       "fileBrowser": "File Browser",
       "flowWorkspace": "Flow Workspace",
       "shortcuts": "Keyboard Shortcuts",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "Show Keyboard Shortcuts",
       "openPreferences": "Open Preferences",
       "openFlags": "Open Rclone Flags",
+      "openVault": "Open Vault",
       "forceCheck": "Force Check Mounts",
       "forceCheckServes": "Force Check Served Remotes",
       "newRemoteDetailed": "Create New Remote (Detailed)",
@@ -2073,7 +2076,8 @@
       "tabs": {
         "general": "General",
         "core": "Core",
-        "developer": "Developer"
+        "developer": "Developer",
+        "vault": "Vault"
       },
       "aria": {
         "resetAll": "Reset all settings to default values",
@@ -2993,6 +2997,12 @@
       "eventEmitFailed": "Failed to emit settings event: {{error}}",
       "subSettingsFailed": "Failed to get sub-settings: {{error}}",
       "deleteFailed": "Failed to delete remote settings: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "Vault password cannot be empty",
+      "notEnabled": "Vault is not enabled",
+      "invalidPassword": "Incorrect vault master password",
+      "operationFailed": "Vault operation failed: {{error}}"
     }
   },
   "backendSuccess": {
@@ -3026,6 +3036,14 @@
       "unencrypted": "Configuration unencrypted successfully",
       "encrypted": "Configuration encrypted successfully",
       "passwordChanged": "Config password changed successfully"
+    },
+    "vault": {
+      "unlocked": "Vault unlocked successfully",
+      "locked": "Vault locked successfully",
+      "enabled": "Vault encryption enabled successfully",
+      "disabled": "Vault encryption disabled successfully",
+      "passwordChanged": "Vault master password changed successfully",
+      "timeoutUpdated": "Auto-lock timeout updated successfully"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
         "false": "Disabled (false)",
         "unset": "Unset"
       }
+    }
+  },
+  "vault": {
+    "title": "Configuration Vault",
+    "description": "Protect your configurations, credentials, and sub-settings at rest using AES-256-GCM encryption.",
+    "status": {
+      "protected": "Protected",
+      "unprotected": "Unprotected"
+    },
+    "actions": {
+      "lockNow": "Lock Vault",
+      "unlock": "Unlock Vault",
+      "enable": "Enable Vault",
+      "disable": "Disable Vault",
+      "updatePassword": "Change Password"
+    },
+    "enable": {
+      "title": "Enable Vault Protection",
+      "description": "Enter a master password to encrypt your application settings and sub-settings. You will need this password to unlock the application."
+    },
+    "changePassword": {
+      "title": "Change Master Password"
+    },
+    "disable": {
+      "title": "Disable Vault Protection",
+      "warning": "Disabling the vault will store settings and configurations in unencrypted plain text on disk."
+    },
+    "settings": {
+      "autoLockTitle": "Auto-Lock Timeout",
+      "autoLockDesc": "Automatically lock the vault after a period of inactivity."
+    },
+    "fields": {
+      "masterPassword": "Master Password",
+      "confirmPassword": "Confirm Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "autoLockTimeout": "Auto-lock after"
+    },
+    "timeout": {
+      "never": "Never",
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 hour"
+    },
+    "lockScreen": {
+      "title": "Vault Locked",
+      "subtitle": "Enter your master password to unlock RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "Passwords do not match",
+      "unlockFailed": "Failed to unlock vault"
     }
   }
 }

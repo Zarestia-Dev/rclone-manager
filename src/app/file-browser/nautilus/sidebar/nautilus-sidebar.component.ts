@@ -21,13 +21,13 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
-import { SlideMenuController } from '../slide-menu';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import {
   ItemOrderVisibilityModalComponent,
   ItemOrderVisibilityConfigItem,
   ItemOrderVisibilityResult,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
+import { SlideMenuController } from 'src/app/shared/utils';
 
 interface BookmarkViewModel {
   bm: FileBrowserItem;

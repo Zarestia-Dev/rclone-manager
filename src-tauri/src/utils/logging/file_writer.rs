@@ -157,13 +157,12 @@ static FILE_WRITER: std::sync::OnceLock<Mutex<RotatingFileWriter>> = std::sync::
 
 /// Initialize the file writer with a log directory
 pub fn init_file_writer(log_dir: &Path) -> io::Result<()> {
+    if FILE_WRITER.get().is_some() {
+        return Ok(());
+    }
     let writer = RotatingFileWriter::new(log_dir)?;
-    FILE_WRITER.set(Mutex::new(writer)).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "File writer already initialized",
-        )
-    })
+    let _ = FILE_WRITER.set(Mutex::new(writer));
+    Ok(())
 }
 
 /// Write a log line to the rotating file

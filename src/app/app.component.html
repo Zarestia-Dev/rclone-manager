@@ -1,6 +1,16 @@
 <div class="app-wrapper" appShortcutHandler>
   @if (!initializing()) {
-    @if (modalService.isDialogStandalone()) {
+    @if (!vaultService.isStatusKnown()) {
+      <div class="empty-state">
+        <mat-icon svgIcon="shield-halved"></mat-icon>
+        <span>{{ 'backendErrors.remote.networkError' | translate }}</span>
+        <button matButton="filled" class="accent" type="button" (click)="retryInit()">
+          {{ 'common.retry' | translate }}
+        </button>
+      </div>
+    } @else if (vaultService.isVaultLocked()) {
+      <app-vault-lock-screen></app-vault-lock-screen>
+    } @else if (modalService.isDialogStandalone()) {
       <ng-container
         *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
       ></ng-container>

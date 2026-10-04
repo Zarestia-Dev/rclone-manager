@@ -38,6 +38,8 @@ describe('OnboardingComponent', () => {
     listenToRemoteCacheUpdated: ReturnType<typeof vi.fn>;
     listenToRemoteSettingsChanged: ReturnType<typeof vi.fn>;
     listenToBackendSwitched: ReturnType<typeof vi.fn>;
+    listenToVaultState: ReturnType<typeof vi.fn>;
+    listenToServerConnection: ReturnType<typeof vi.fn>;
   };
 
   let rclonePasswordServiceMock: {
@@ -93,6 +95,10 @@ describe('OnboardingComponent', () => {
       listenToRemoteCacheUpdated: vi.fn().mockReturnValue(of(undefined)),
       listenToRemoteSettingsChanged: vi.fn().mockReturnValue(of(undefined)),
       listenToBackendSwitched: vi.fn().mockReturnValue(of(undefined)),
+      listenToVaultState: vi.fn().mockReturnValue(
+        of({ isLocked: false, isEnabled: false, event: 'unlocked' })
+      ),
+      listenToServerConnection: vi.fn().mockReturnValue(of(undefined)),
     };
 
     rclonePasswordServiceMock = {

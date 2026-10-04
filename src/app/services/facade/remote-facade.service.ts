@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
+import { VaultService } from '../security/vault.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
@@ -97,6 +98,9 @@ export class RemoteFacadeService {
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
 
+  private readonly vault = inject(VaultService);
+  private readonly canLoad = this.vault.isAccessible;
+
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
   readonly runningServes = this.serveService.runningServes;
@@ -182,7 +186,23 @@ export class RemoteFacadeService {
   private nextLoadRemotesPromise: Promise<void> | null = null;
 
   constructor() {
-    void this.refreshAll();
+    if (this.canLoad()) {
+      void this.refreshAll();
+    }
+
+    this.eventListeners
+      .listenToVaultState()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        if (payload.isLocked) {
+          this.backgroundLoadGeneration++;
+          this.remoteNames.set([]);
+          this.remoteSettings.set({});
+          this.remoteStates.clear();
+        } else {
+          void this.refreshAll();
+        }
+      });
 
     // Primary trigger: engine ready event (fires after caches are populated)
     this.eventListeners
@@ -314,6 +334,7 @@ export class RemoteFacadeService {
   // --- Disk Usage ---
 
   updateDiskUsage(remoteName: string, usage: Partial<DiskUsage>): void {
+    if (!this.canLoad()) return;
     this.getOrCreateRemoteState(remoteName).disk.update((cur: DiskUsage) => ({ ...cur, ...usage }));
   }
 
@@ -324,6 +345,7 @@ export class RemoteFacadeService {
     group?: string,
     forceRefresh = false
   ): Promise<DiskUsage | null> {
+    if (!this.canLoad()) return null;
     const state = this.getOrCreateRemoteState(remoteName);
 
     const cached = state.disk();
@@ -379,6 +401,7 @@ export class RemoteFacadeService {
   // --- Data Loading ---
 
   async loadRemotes(): Promise<void> {
+    if (!this.canLoad()) return;
     if (this.loadRemotesInFlight) {
       if (!this.nextLoadRemotesPromise) {
         this.nextLoadRemotesPromise = this.loadRemotesInFlight
@@ -398,6 +421,7 @@ export class RemoteFacadeService {
           this.appSettingsService.getRemoteSettings(),
         ]);
 
+        if (!this.canLoad()) return;
         const incomingNames = Object.keys(configs);
         const currentNames = Array.from(this.remoteStates.keys());
 
@@ -478,6 +502,7 @@ export class RemoteFacadeService {
   }
 
   async refreshAll(): Promise<void> {
+    if (!this.canLoad()) return;
     if (this.refreshInFlight) {
       if (!this.nextRefreshPromise) {
         this.nextRefreshPromise = this.refreshInFlight
@@ -492,16 +517,22 @@ export class RemoteFacadeService {
 
     const promise = (async (): Promise<void> => {
       this.isLoading.set(true);
-      void this.flagConfigService.loadAllFlagFields();
-      void this.remoteService.getRemoteTypes();
       try {
-        await Promise.all([
+        const results = await Promise.allSettled([
+          this.flagConfigService.loadAllFlagFields(),
+          this.remoteService.getRemoteTypes(),
           this.statusService.refreshStatus(),
           this.loadRemotes(),
           this.mountService.getMountedRemotes(),
           this.serveService.refreshServes(),
           this.jobService.refreshJobs(),
         ]);
+        if (!this.canLoad()) return;
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            console.error('[RemoteFacadeService] Failed to refresh remote data:', result.reason);
+          }
+        }
         this.loadDiskUsageInBackground();
       } finally {
         if (!this.nextRefreshPromise) {
@@ -838,13 +869,14 @@ export class RemoteFacadeService {
   }
 
   loadDiskUsageInBackground(remotes?: Remote[]): void {
+    if (!this.canLoad()) return;
     const generation = ++this.backgroundLoadGeneration;
     const targets = remotes ?? this.activeRemotes();
     if (!targets.length) return;
 
     void (async (): Promise<void> => {
       for (const remote of targets) {
-        if (generation !== this.backgroundLoadGeneration) return;
+        if (!this.canLoad() || generation !== this.backgroundLoadGeneration) return;
         try {
           await this.getCachedOrFetchDiskUsage(remote.name);
         } catch (e) {

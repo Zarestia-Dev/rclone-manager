@@ -700,7 +700,9 @@
       "import": "Importar",
       "export": "Exportar",
       "preferences": "Preferências",
+      "advanced": "Configurações Avançadas",
       "flags": "Flags do Rclone",
+      "vault": "Cofre",
       "fileBrowser": "Gerenciador de Arquivos",
       "flowWorkspace": "Espaço de trabalho Flow",
       "shortcuts": "Atalhos do teclado",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "Mostrar atalhos do Teclado",
       "openPreferences": "Abrir Preferências",
       "openFlags": "Abrir Flags do Rclone",
+      "openVault": "Abrir cofre",
       "forceCheck": "Forçar Verificação de Montagens",
       "forceCheckServes": "Força de Verificação de Remotos Servidos",
       "newRemoteDetailed": "Criar Nova Remota Detalhada",
@@ -2032,7 +2035,8 @@
       "tabs": {
         "general": "Geral",
         "core": "Núcleo",
-        "developer": "Desenvolvedor"
+        "developer": "Desenvolvedor",
+        "vault": "Cofre"
       },
       "aria": {
         "resetAll": "Redefinir todas as configurações para os valores padrão",
@@ -2952,6 +2956,12 @@
       "eventEmitFailed": "Falha ao emiter evento de configuração: {{error}}",
       "subSettingsFailed": "Falha ao obter sub-configurações: {{error}}",
       "deleteFailed": "Falha ao excluir configurações remotas: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "A senha do cofre não pode ficar vazia",
+      "notEnabled": "O cofre não está ativado",
+      "invalidPassword": "Senha mestra do cofre incorreta",
+      "operationFailed": "Falha na operação do cofre: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2985,6 +2995,14 @@
       "unencrypted": "Configuração descriptografada com sucesso",
       "encrypted": "Configuração criptografada com sucesso",
       "passwordChanged": "A senha de configuração foi alterada com sucesso"
+    },
+    "vault": {
+      "unlocked": "Cofre desbloqueado com sucesso",
+      "locked": "Cofre bloqueado com sucesso",
+      "enabled": "Criptografia do cofre ativada com sucesso",
+      "disabled": "Criptografia do cofre desativada com sucesso",
+      "passwordChanged": "Senha mestra do cofre alterada com sucesso",
+      "timeoutUpdated": "Tempo de bloqueio automático atualizado com sucesso"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
       "hostShuttingDown": "O sistema operacional está desligando...",
       "hostSleeping": "Colocando o sistema em suspensão...",
       "hostLocking": "Bloqueando a sessão do usuário..."
+    }
+  },
+  "vault": {
+    "title": "Cofre de Configurações",
+    "description": "Proteja suas configurações, credenciais e subconfigurações em repouso com criptografia AES-256-GCM.",
+    "status": {
+      "protected": "Protegido",
+      "unprotected": "Desprotegido"
+    },
+    "actions": {
+      "lockNow": "Bloquear cofre",
+      "unlock": "Desbloquear cofre",
+      "enable": "Ativar cofre",
+      "disable": "Desativar cofre",
+      "updatePassword": "Alterar senha"
+    },
+    "enable": {
+      "title": "Ativar proteção do cofre",
+      "description": "Digite uma senha mestra para criptografar suas configurações. Você precisará dela para desbloquear o aplicativo."
+    },
+    "changePassword": {
+      "title": "Alterar senha mestra"
+    },
+    "disable": {
+      "title": "Desativar proteção do cofre",
+      "warning": "Desativar o cofre armazenará configurações e credenciais em texto simples no disco."
+    },
+    "settings": {
+      "autoLockTitle": "Tempo de bloqueio automático",
+      "autoLockDesc": "Bloqueia o cofre automaticamente após um período de inatividade."
+    },
+    "fields": {
+      "masterPassword": "Senha mestra",
+      "confirmPassword": "Confirmar senha",
+      "currentPassword": "Senha atual",
+      "newPassword": "Nova senha",
+      "autoLockTimeout": "Bloquear após"
+    },
+    "timeout": {
+      "never": "Nunca",
+      "5m": "5 minutos",
+      "15m": "15 minutos",
+      "30m": "30 minutos",
+      "1h": "1 hora"
+    },
+    "lockScreen": {
+      "title": "Cofre Bloqueado",
+      "subtitle": "Digite sua senha mestra para desbloquear o RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "As senhas não coincidem",
+      "unlockFailed": "Falha ao desbloquear o cofre"
     }
   }
 }

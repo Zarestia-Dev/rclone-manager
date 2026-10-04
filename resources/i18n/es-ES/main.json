@@ -700,7 +700,9 @@
       "import": "Importar",
       "export": "Exportar",
       "preferences": "Preferencias",
+      "advanced": "Ajustes avanzados",
       "flags": "Banderas de Rclone",
+      "vault": "Bóveda",
       "fileBrowser": "Explorador de archivos",
       "flowWorkspace": "Espacio de trabajo Flow",
       "shortcuts": "Atajos de teclado",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "Mostrar atajos de teclado",
       "openPreferences": "Abrir preferencias",
       "openFlags": "Abrir banderas de Rclone",
+      "openVault": "Abrir bóveda",
       "forceCheck": "Forzar comprobación de montajes",
       "forceCheckServes": "Forzar comprobación de remotos servidos",
       "newRemoteDetailed": "Crear nuevo remoto (detallado)",
@@ -2032,7 +2035,8 @@
       "tabs": {
         "general": "General",
         "core": "Núcleo",
-        "developer": "Desarrollador"
+        "developer": "Desarrollador",
+        "vault": "Bóveda"
       },
       "aria": {
         "resetAll": "Restablecer todos los ajustes a los valores predeterminados",
@@ -2952,6 +2956,12 @@
       "eventEmitFailed": "Error al emitir evento de configuraciones: {{error}}",
       "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
       "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "La contraseña de la bóveda no puede estar vacía",
+      "notEnabled": "La bóveda no está habilitada",
+      "invalidPassword": "Contraseña maestra de la bóveda incorrecta",
+      "operationFailed": "Operación de la bóveda fallida: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2985,6 +2995,14 @@
       "unencrypted": "Configuración desencriptada exitosamente",
       "encrypted": "Configuración encriptada exitosamente",
       "passwordChanged": "Contraseña de configuración cambiada exitosamente"
+    },
+    "vault": {
+      "unlocked": "Bóveda desbloqueada con éxito",
+      "locked": "Bóveda bloqueada con éxito",
+      "enabled": "Cifrado de bóveda habilitado con éxito",
+      "disabled": "Cifrado de bóveda deshabilitado con éxito",
+      "passwordChanged": "Contraseña maestra cambiada con éxito",
+      "timeoutUpdated": "Tiempo de autobloqueo actualizado con éxito"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
       "hostShuttingDown": "El sistema operativo se está apagando...",
       "hostSleeping": "Poniendo el sistema en suspensión...",
       "hostLocking": "Bloqueando la sesión del usuario..."
+    }
+  },
+  "vault": {
+    "title": "Bóveda de Configuración",
+    "description": "Proteja sus configuraciones, credenciales y subajustes en reposo mediante cifrado AES-256-GCM.",
+    "status": {
+      "protected": "Protegido",
+      "unprotected": "Desprotegido"
+    },
+    "actions": {
+      "lockNow": "Bloquear bóveda",
+      "unlock": "Desbloquear bóveda",
+      "enable": "Habilitar bóveda",
+      "disable": "Deshabilitar bóveda",
+      "updatePassword": "Cambiar contraseña"
+    },
+    "enable": {
+      "title": "Habilitar protección de bóveda",
+      "description": "Ingrese una contraseña maestra para cifrar los ajustes y subajustes de su aplicación. Necesitará esta contraseña para desbloquearla."
+    },
+    "changePassword": {
+      "title": "Cambiar contraseña maestra"
+    },
+    "disable": {
+      "title": "Deshabilitar protección de bóveda",
+      "warning": "Deshabilitar la bóveda almacenará los ajustes y configuraciones en texto plano sin cifrar en el disco."
+    },
+    "settings": {
+      "autoLockTitle": "Tiempo de autobloqueo",
+      "autoLockDesc": "Bloquear automáticamente la bóveda tras un período de inactividad."
+    },
+    "fields": {
+      "masterPassword": "Contraseña maestra",
+      "confirmPassword": "Confirmar contraseña",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "autoLockTimeout": "Autobloquear después de"
+    },
+    "timeout": {
+      "never": "Nunca",
+      "5m": "5 minutos",
+      "15m": "15 minutos",
+      "30m": "30 minutos",
+      "1h": "1 hora"
+    },
+    "lockScreen": {
+      "title": "Bóveda bloqueada",
+      "subtitle": "Ingrese su contraseña maestra para desbloquear RClone Manager"
+    },
+    "errors": {
+      "passwordsMismatch": "Las contraseñas no coinciden",
+      "unlockFailed": "Error al desbloquear la bóveda"
     }
   }
 }

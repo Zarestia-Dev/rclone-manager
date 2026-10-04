@@ -294,6 +294,16 @@ macro_rules! MASTER_COMMAND_LIST {
             (change_config_password, $crate::core::security::change_config_password, [old_password: String, new_password: String]);
             (set_config_password_env, $crate::core::security::set_config_password_env, [password: String]);
 
+            // CONFIGURATION VAULT (rcman)
+            (get_vault_info, $crate::core::settings::vault::get_vault_info, []);
+            (unlock_vault, $crate::core::settings::vault::unlock_vault, [password: String]);
+            (lock_vault, $crate::core::settings::vault::lock_vault, []);
+            (enable_vault, $crate::core::settings::vault::enable_vault, [password: String, timeout_secs: Option<u64>]);
+            (disable_vault, $crate::core::settings::vault::disable_vault, [password: String]);
+            (change_vault_password, $crate::core::settings::vault::change_vault_password, [old_password: String, new_password: String]);
+            (set_vault_lock_timeout, $crate::core::settings::vault::set_vault_lock_timeout, [timeout_secs: Option<u64>]);
+            (touch_vault, $crate::core::settings::vault::touch_vault, []);
+
             // ALERTS
             (get_alert_rules, $crate::core::alerts::commands::get_alert_rules, []);
             (save_alert_rule, $crate::core::alerts::commands::save_alert_rule, [rule: $crate::core::alerts::types::AlertRule]);

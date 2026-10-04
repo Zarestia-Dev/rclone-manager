@@ -1,0 +1,50 @@
+<div class="vault-lock-container">
+  <div class="vault-lock-card">
+    <div class="vault-header">
+      <div class="vault-icon-badge">
+        <mat-icon svgIcon="shield"></mat-icon>
+      </div>
+      <h2>{{ 'vault.lockScreen.title' | translate }}</h2>
+      <p class="subtitle">{{ 'vault.lockScreen.subtitle' | translate }}</p>
+    </div>
+
+    <form class="vault-form" [formGroup]="lockForm" (ngSubmit)="submitUnlock($event)">
+      <mat-form-field class="password-field">
+        <mat-label>{{ 'vault.fields.masterPassword' | translate }}</mat-label>
+        <mat-icon matPrefix svgIcon="lock"></mat-icon>
+        <input
+          matInput
+          formControlName="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          autocomplete="current-password"
+        />
+        <button
+          matIconButton
+          matSuffix
+          type="button"
+          (click)="togglePasswordVisibility()"
+          [attr.title]="(showPassword() ? 'common.hide' : 'common.show') | translate"
+          [attr.aria-label]="(showPassword() ? 'common.hide' : 'common.show') | translate"
+        >
+          <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+        </button>
+        @if (passwordControl.hasError('required') && passwordControl.touched) {
+          <mat-error>{{ 'common.required' | translate }}</mat-error>
+        }
+      </mat-form-field>
+
+      @if (errorMessage(); as errorMsg) {
+        <app-alert-banner severity="error" [description]="errorMsg"></app-alert-banner>
+      }
+
+      <button matButton="filled" type="submit" class="unlock-button" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="lock-open"></mat-icon>
+        }
+        <span>{{ 'vault.actions.unlock' | translate }}</span>
+      </button>
+    </form>
+  </div>
+</div>

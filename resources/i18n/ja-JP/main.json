@@ -700,7 +700,9 @@
       "import": "インポート",
       "export": "エクスポート",
       "preferences": "環境設定",
+      "advanced": "詳細設定",
       "flags": "Rcloneフラグ",
+      "vault": "ボルト",
       "fileBrowser": "ファイルブラウザ",
       "flowWorkspace": "Flow ワークスペース",
       "shortcuts": "キーボードショートカット",
@@ -1789,6 +1791,7 @@
       "showShortcuts": "キーボードショートカットを表示",
       "openPreferences": "環境設定を開く",
       "openFlags": "Rcloneフラグを開く",
+      "openVault": "ボルトを開く",
       "forceCheck": "マウントを強制チェック",
       "forceCheckServes": "公開中リモートを強制チェック",
       "newRemoteDetailed": "新規リモート作成 (詳細)",
@@ -2032,7 +2035,8 @@
       "tabs": {
         "general": "一般",
         "core": "コア",
-        "developer": "開発者向け"
+        "developer": "開発者向け",
+        "vault": "ボルト"
       },
       "aria": {
         "resetAll": "全ての設定をデフォルト値にリセット",
@@ -2952,6 +2956,12 @@
       "eventEmitFailed": "設定イベントの発行に失敗しました: {{error}}",
       "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
       "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "ボルトのパスワードを空にすることはできません",
+      "notEnabled": "ボルトは有効になっていません",
+      "invalidPassword": "ボルトのマスターパスワードが正しくありません",
+      "operationFailed": "ボルトの操作に失敗しました: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2985,6 +2995,14 @@
       "unencrypted": "設定の暗号化を正常に解除しました",
       "encrypted": "設定を正常に暗号化しました",
       "passwordChanged": "設定パスワードを正常に変更しました"
+    },
+    "vault": {
+      "unlocked": "ボルトのロックが解除されました",
+      "locked": "ボルトがロックされました",
+      "enabled": "ボルトの暗号化が有効になりました",
+      "disabled": "ボルトの暗号化が無効になりました",
+      "passwordChanged": "マスターパスワードが正常に変更されました",
+      "timeoutUpdated": "自動ロックのタイムアウトが更新されました"
     }
   },
   "overviews": {
@@ -3972,6 +3990,58 @@
       "hostShuttingDown": "オペレーティングシステムをシャットダウンしています...",
       "hostSleeping": "システムをスリープに移行しています...",
       "hostLocking": "ユーザーセッションをロックしています..."
+    }
+  },
+  "vault": {
+    "title": "構成ボルト",
+    "description": "AES-256-GCM 暗号化を使用して、保存時の構成、認証情報、およびサブ設定を保護します。",
+    "status": {
+      "protected": "保護中",
+      "unprotected": "未保護"
+    },
+    "actions": {
+      "lockNow": "今すぐロック",
+      "unlock": "ボルトのロック解除",
+      "enable": "ボルトを有効化",
+      "disable": "ボルトを無効化",
+      "updatePassword": "パスワード変更"
+    },
+    "enable": {
+      "title": "ボルト保護を有効化",
+      "description": "マスターパスワードを設定して、設定とサブ構成を暗号化します。アプリのロック解除に必要です。"
+    },
+    "changePassword": {
+      "title": "マスターパスワードの変更"
+    },
+    "disable": {
+      "title": "ボルト保護を無効化",
+      "warning": "ボルトを無効にすると、設定と構成はディスク上に暗号化されていない平文で保存されます。"
+    },
+    "settings": {
+      "autoLockTitle": "自動ロックのタイムアウト",
+      "autoLockDesc": "非アクティブな状態が続いた後、自動的にボルトをロックします。"
+    },
+    "fields": {
+      "masterPassword": "マスターパスワード",
+      "confirmPassword": "パスワードの確認",
+      "currentPassword": "現在のパスワード",
+      "newPassword": "新しいパスワード",
+      "autoLockTimeout": "自動ロック時間"
+    },
+    "timeout": {
+      "never": "なし",
+      "5m": "5 分",
+      "15m": "15 分",
+      "30m": "30 分",
+      "1h": "1 時間"
+    },
+    "lockScreen": {
+      "title": "ボルトがロックされています",
+      "subtitle": "RClone Manager のロックを解除するにはマスターパスワードを入力してください"
+    },
+    "errors": {
+      "passwordsMismatch": "パスワードが一致しません",
+      "unlockFailed": "ボルトのロック解除に失敗しました"
     }
   }
 }

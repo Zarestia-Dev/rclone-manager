@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, computed, WritableSignal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
+import { VaultStatePayload } from '@app/types';
+import { VaultService } from '../security/vault.service';
 import { RemoteFacadeService } from './remote-facade.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
@@ -33,6 +35,9 @@ describe('RemoteFacadeService', () => {
   let remoteSettingsChanged$: Subject<void>;
   let backendSwitched$: Subject<void>;
   let systemSettingsChanged$: Subject<SettingsChangeEvent>;
+  let vaultState$: Subject<VaultStatePayload>;
+  let isStatusKnown: WritableSignal<boolean>;
+  let isVaultLocked: WritableSignal<boolean>;
 
   let mockRemoteService: {
     getAllRemoteConfigs: ReturnType<typeof vi.fn>;
@@ -59,6 +64,7 @@ describe('RemoteFacadeService', () => {
     remoteSettingsChanged$ = new Subject<void>();
     backendSwitched$ = new Subject<void>();
     systemSettingsChanged$ = new Subject<SettingsChangeEvent>();
+    vaultState$ = new Subject<VaultStatePayload>();
 
     mockRemoteService = {
       getAllRemoteConfigs: vi.fn().mockResolvedValue({}),
@@ -79,10 +85,21 @@ describe('RemoteFacadeService', () => {
       rcloneStatus: signal('inactive'),
     };
 
+    isStatusKnown = signal(true);
+    isVaultLocked = signal(false);
+
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService(),
         RemoteFacadeService,
+        {
+          provide: VaultService,
+          useValue: {
+            isStatusKnown,
+            isVaultLocked,
+            isAccessible: computed(() => isStatusKnown() && !isVaultLocked()),
+          },
+        },
         {
           provide: JobManagementService,
           useValue: {
@@ -124,6 +141,7 @@ describe('RemoteFacadeService', () => {
             listenToBackendSwitched: (): Subject<void> => backendSwitched$,
             listenToSystemSettingsChanged: (): Subject<SettingsChangeEvent> =>
               systemSettingsChanged$,
+            listenToVaultState: (): Subject<VaultStatePayload> => vaultState$,
           },
         },
         { provide: FileSystemService, useValue: {} },
@@ -195,8 +213,49 @@ describe('RemoteFacadeService', () => {
   });
 
   it('should initialize and call initial refreshAll', () => {
+    TestBed.tick();
     expect(service).toBeTruthy();
     expect(mockRemoteService.getAllRemoteConfigs).toHaveBeenCalled();
+  });
+
+  it('defers startup until vault status is known and unlocked', async () => {
+    mockRemoteService.getRemoteTypes.mockClear();
+    mockRemoteService.getAllRemoteConfigs.mockClear();
+    isStatusKnown.set(false);
+    TestBed.tick();
+    rcloneReady$.next();
+    await service.refreshAll();
+    expect(mockRemoteService.getRemoteTypes).not.toHaveBeenCalled();
+    expect(mockRemoteService.getAllRemoteConfigs).not.toHaveBeenCalled();
+
+    isVaultLocked.set(true);
+    isStatusKnown.set(true);
+    TestBed.tick();
+    rcloneReady$.next();
+    remoteCacheUpdated$.next(undefined);
+    expect(mockRemoteService.getRemoteTypes).not.toHaveBeenCalled();
+    expect(mockRemoteService.getAllRemoteConfigs).not.toHaveBeenCalled();
+
+    isVaultLocked.set(false);
+    TestBed.tick();
+    await service.refreshAll();
+    expect(mockRemoteService.getRemoteTypes).toHaveBeenCalled();
+    expect(mockRemoteService.getAllRemoteConfigs).toHaveBeenCalled();
+  });
+
+  it('handles provider loading failures during background refresh', async () => {
+    const error = new Error('RPC unavailable');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockRemoteService.getRemoteTypes.mockRejectedValue(error);
+    try {
+      await expect(service.refreshAll()).resolves.toBeUndefined();
+      expect(log).toHaveBeenCalledWith(
+        '[RemoteFacadeService] Failed to refresh remote data:',
+        error
+      );
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it('should coalesce concurrent calls to loadRemotes and execute a trailing run', async () => {

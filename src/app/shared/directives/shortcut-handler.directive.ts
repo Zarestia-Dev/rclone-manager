@@ -1,3 +1,4 @@
+import { VaultService } from '../../services/security/vault.service';
 import { Directive, HostListener, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,6 +20,7 @@ import { MAIN_SHORTCUTS } from '../models/shortcut-definitions';
   selector: '[appShortcutHandler]',
 })
 export class ShortcutHandlerDirective {
+  private readonly vaultService = inject(VaultService);
   private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly modalService = inject(ModalService);
@@ -43,6 +45,7 @@ export class ShortcutHandlerDirective {
     'app.exportConfiguration': () => this.exportConfiguration(),
     'app.openPreferences': () => this.openPreferences(),
     'app.openFlags': () => this.openRcloneFlags(),
+    'app.openVault': () => this.openVault(),
     'app.openAlerts': () => this.openAlerts(),
     'app.toggleFlowOverlay': () => this.toggleFlowOverlay(),
   };
@@ -96,7 +99,10 @@ export class ShortcutHandlerDirective {
     }
 
     return (
-      this.isFileViewerOpen() || this.dialog.openDialogs.length > 0 || this.isOnboardingActive()
+      !this.vaultService.isAccessible() ||
+      this.isFileViewerOpen() ||
+      this.dialog.openDialogs.length > 0 ||
+      this.isOnboardingActive()
     );
   }
 
@@ -191,6 +197,10 @@ export class ShortcutHandlerDirective {
 
   private openRcloneFlags(): void {
     this.modalService.openRcloneFlags();
+  }
+
+  private openVault(): void {
+    this.modalService.openVault();
   }
 
   private openAlerts(): void {

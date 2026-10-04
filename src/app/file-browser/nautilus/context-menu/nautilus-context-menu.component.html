@@ -4,7 +4,7 @@
     cdkMenu
     [style.height.px]="menuCtrl.contextMenuHeight()"
   >
-    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'open'">
+    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'submenu'">
       <!-- Main Page -->
       <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
         @if (!tabSvc.errorState()) {
@@ -211,7 +211,7 @@
       </div>
 
       <!-- Open Submenu Page -->
-      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'open'">
+      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'submenu'">
         <button
           class="menu-item centered-item"
           (click)="menuCtrl.goBack(); $event.stopPropagation()"
