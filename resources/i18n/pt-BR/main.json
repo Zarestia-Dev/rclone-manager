@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Iniciando o RClone Manager",
-    "loadingMessage": "Verificando configuração do sistema...",
     "cards": {
       "welcome": {
         "title": "Bem-vindo ao RClone Manager",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Painel Clássico",
-        "badge": "Padrão",
         "description": "Visão geral com conexões remotas, transferências ativas, ações rápidas e status do sistema."
       },
       "nautilus": {
         "title": "Navegador de Arquivos (Nautilus)",
-        "badge": "Gerenciador de Arquivos",
         "description": "Interface dedicada de dois painéis projetada para navegar e transferir arquivos remotos."
       },
       "flow": {
         "title": "Espaço de Trabalho Flow",
-        "badge": "Fluxos de Trabalho",
         "description": "Painel visual interativo para orquestrar tarefas automatizadas e execuções rápidas."
       }
     },
@@ -2069,6 +2064,8 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
+      "vaultWarningTitle": "O cofre de configurações está aberto",
+      "vaultWarningDesc": "Os backups exportados não herdam a criptografia do cofre. Use a opção de criptografia abaixo para proteger credenciais e configurações confidenciais com uma senha.",
       "exportNow": "Exportar Agora",
       "exporting": "Exportação...",
       "fullBackup": "Backup Completo",
@@ -2629,8 +2626,6 @@
       "increaseIconSize": "Aumentar tamanho do ícone"
     },
     "notifications": {
-      "mkdirFailed": "Falha ao criar diretório: {{path}}",
-      "uploadStarted": "Iniciando o upload de {{count}} arquivos.",
       "uploadSuccess": "{{count}} arquivos carregados com sucesso.",
       "uploadFailed": "Falha de upload de {{count}} arquivos.",
       "trashEmptied": "Operação de limpeza concluída",
@@ -2700,9 +2695,6 @@
     "resetRemote": {
       "title": "Redefinir Configurações do Remoto",
       "message": "Você tem certeza de que deseja redefinir TODOS os parâmetros para {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "As configurações para {{name}} foram redefinidas."
     },
     "errors": {
       "generic": "Um erro inesperado ocorreu. Por favor, verifique os logs para mais detalhes.",
@@ -2854,7 +2846,6 @@
       "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação."
     },
     "rclone": {
-      "unsupportedPlatform": "Plataforma não suportada",
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
       "mountPluginVerificationFailed": "A instalação foi bem-sucedida, mas a verificação falhou. Pode ser necessário reiniciar.",
       "configEncrypted": "A configuração está criptografada e não foi fornecido senha",
@@ -2894,7 +2885,10 @@
       "unsupportedArchive": "Tipo de arquivo não suportado. Deve ser um arquivo .rcman",
       "invalidArchive": "Formato de arquivo de backup inválido",
       "restoreFailed": "Falha na restauração do backup: {{error}}",
-      "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha"
+      "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha",
+      "exportFailed": "Falha na exportação do backup: {{error}}",
+      "refreshFailed": "Falha ao atualizar o sistema após a restauração do backup: {{error}}",
+      "restoreIncomplete": "A restauração do backup ficou incompleta: {{error}}"
     },
     "backend": {
       "nameEmpty": "Nome do backend não pode estar vazio",
@@ -2911,7 +2905,6 @@
       "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum."
     },
     "cache": {
-      "fetchRemotesFailed": "Falha ao recuperar repositórios",
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
       "refreshMountsFailed": "Falha ao atualizar os remotos montados",
       "refreshServesFailed": "Falha ao recarregar serviços"
@@ -2953,7 +2946,6 @@
       "saveFailed": "Falha ao salvar configuração: {{error}}",
       "resetFailed": "Falha ao reiniciar configuração: {{error}}",
       "resetAllFailed": "Falha ao redefinir todas as configurações: {{error}}",
-      "eventEmitFailed": "Falha ao emiter evento de configuração: {{error}}",
       "subSettingsFailed": "Falha ao obter sub-configurações: {{error}}",
       "deleteFailed": "Falha ao excluir configurações remotas: {{error}}"
     },
@@ -3222,7 +3214,6 @@
       "passwordRequired": "A configuração de seu Rclone está criptografada. Por favor insira sua senha.",
       "versionTooOld": "Sua versão do rclone é mais antiga que {{required}}. Por favor atualize para continuar.",
       "defaultParams": "Um componente do sistema não está funcionando corretamente.",
-      "mountPluginStatusError": "Falha ao verificar o status",
       "authRequired": "O backend rejeitou a conexão devido a uma falha na autenticação.",
       "remoteAuthRequired": "O backend remoto rejeitou a conexão devido a uma falha de autenticação. Verifique suas credenciais.",
       "portInUse": "A porta {{port}} já está ocupada por outro aplicativo ou conexão. Escolha uma porta diferente para continuar."
@@ -3433,7 +3424,6 @@
         "delete": "Excluir Nó",
         "duplicateWorkflow": "Duplicar Fluxo",
         "deleteWorkflow": "Excluir Fluxo",
-        "exportWorkflow": "Exportar JSON",
         "inspectJob": "Inspecionar Tarefa"
       },
       "canvas": {

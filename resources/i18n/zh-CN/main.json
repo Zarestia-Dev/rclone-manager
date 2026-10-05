@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "正在初始化 RClone Manager",
-    "loadingMessage": "正在检查系统配置...",
     "cards": {
       "welcome": {
         "title": "欢迎使用 RClone Manager",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "经典控制台",
-        "badge": "默认",
         "description": "包含远程连接、传输监控、快捷操作和系统状态的标签页总览。"
       },
       "nautilus": {
         "title": "文件浏览器 (Nautilus)",
-        "badge": "文件管理器",
         "description": "双面板文件管理界面，专门用于浏览和传输远程文件。"
       },
       "flow": {
         "title": "Flow 工作区",
-        "badge": "工作流",
         "description": "交互式可视化工作区，用于编排自动化任务与快捷运行。"
       }
     },
@@ -2069,6 +2064,8 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
+      "vaultWarningTitle": "配置保管库已打开",
+      "vaultWarningDesc": "导出的备份不继承保管库加密。若要使用密码保护敏感凭据和配置，请启用下方的加密选项。",
       "exportNow": "立即导出",
       "exporting": "正在导出...",
       "fullBackup": "完整备份",
@@ -2629,8 +2626,6 @@
       "increaseIconSize": "放大图标大小"
     },
     "notifications": {
-      "mkdirFailed": "创建目录失败: {{path}}",
-      "uploadStarted": "正在开始上传 {{count}} 个文件...",
       "uploadSuccess": "成功上传 {{count}} 个文件。",
       "uploadFailed": "上传 {{count}} 个文件失败。",
       "trashEmptied": "清理操作完成",
@@ -2700,9 +2695,6 @@
     "resetRemote": {
       "title": "重置远程存储设置",
       "message": "确定要重置 {{name}} 的**所有**设置吗？"
-    },
-    "notifications": {
-      "settingsReset": "{{name}} 的设置已重置。"
     },
     "errors": {
       "generic": "发生意外错误。请检查日志获取更多详细信息。",
@@ -2854,7 +2846,6 @@
       "readOnly": "目标文件系统为只读或受写保护。"
     },
     "rclone": {
-      "unsupportedPlatform": "不支持的平台",
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
       "mountPluginVerificationFailed": "安装成功但验证失败。可能需要重新启动。",
       "configEncrypted": "配置已加密，未提供密码",
@@ -2894,7 +2885,10 @@
       "unsupportedArchive": "不支持的压缩包类型，必须是 .rcman 文件",
       "invalidArchive": "无效的备份存档格式",
       "restoreFailed": "备份恢复失败: {{error}}",
-      "secretRequirePassword": "此备份受密码保护，需要输入密码"
+      "secretRequirePassword": "此备份受密码保护，需要输入密码",
+      "exportFailed": "备份导出失败: {{error}}",
+      "refreshFailed": "备份恢复后刷新系统失败: {{error}}",
+      "restoreIncomplete": "备份恢复未完成: {{error}}"
     },
     "backend": {
       "nameEmpty": "后端名称不能为空",
@@ -2911,7 +2905,6 @@
       "corruptedTransfer": "传输过程中文件损坏或校验和验证失败。"
     },
     "cache": {
-      "fetchRemotesFailed": "获取远程存储失败",
       "fetchConfigFailed": "获取远程存储配置失败",
       "refreshMountsFailed": "刷新已挂载远程存储失败",
       "refreshServesFailed": "刷新服务失败"
@@ -2953,7 +2946,6 @@
       "saveFailed": "保存设置失败：{{error}}",
       "resetFailed": "重置设置失败：{{error}}",
       "resetAllFailed": "重置所有设置失败：{{error}}",
-      "eventEmitFailed": "发送设置事件失败：{{error}}",
       "subSettingsFailed": "获取子设置失败：{{error}}",
       "deleteFailed": "删除远程存储设置失败：{{error}}"
     },
@@ -3222,7 +3214,6 @@
       "passwordRequired": "rclone 配置已加密，请输入密码。",
       "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
-      "mountPluginStatusError": "状态检查失败",
       "authRequired": "由于身份验证失败，后端拒绝了连接。",
       "remoteAuthRequired": "由于身份验证失败，远程后端拒绝了连接。请检查您的凭据。",
       "portInUse": "端口 {{port}} 已被其他应用程序或连接占用。请选择其他端口以继续。"
@@ -3433,7 +3424,6 @@
         "delete": "删除节点",
         "duplicateWorkflow": "复制工作流",
         "deleteWorkflow": "删除工作流",
-        "exportWorkflow": "导出 JSON",
         "inspectJob": "检查任务"
       },
       "canvas": {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -6,6 +7,7 @@ import { ExportModalComponent } from './export-modal.component';
 import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { VaultService } from 'src/app/services/security/vault.service';
 import { ExportType, ExportModalData } from '@app/types';
 
 describe('ExportModalComponent', () => {
@@ -22,6 +24,10 @@ describe('ExportModalComponent', () => {
   };
   let fileSystemSpy: {
     selectFolder: ReturnType<typeof vi.fn>;
+  };
+  let vaultServiceMock: {
+    isVaultEnabled: ReturnType<typeof signal<boolean>>;
+    checkVaultStatus: ReturnType<typeof vi.fn>;
   };
 
   const mockCategories = [
@@ -49,6 +55,14 @@ describe('ExportModalComponent', () => {
     fileSystemSpy = {
       selectFolder: vi.fn().mockResolvedValue('/tmp/backup'),
     };
+    vaultServiceMock = {
+      isVaultEnabled: signal(false),
+      checkVaultStatus: vi.fn().mockResolvedValue({
+        enabled: false,
+        isLocked: false,
+        lockTimeoutSecs: null,
+      }),
+    };
 
     await TestBed.configureTestingModule({
       imports: [ExportModalComponent],
@@ -59,6 +73,7 @@ describe('ExportModalComponent', () => {
         { provide: BackupRestoreService, useValue: backupRestoreSpy },
         { provide: RemoteManagementService, useValue: remoteManagementSpy },
         { provide: FileSystemService, useValue: fileSystemSpy },
+        { provide: VaultService, useValue: vaultServiceMock },
       ],
     }).compileComponents();
 
@@ -220,5 +235,29 @@ describe('ExportModalComponent', () => {
 
     expect(component.selectedOption()).toBe('workflows');
     expect(component.selectedRemoteName()).toBe('');
+  });
+
+  it('correctly evaluates isVaultOpen when vault is enabled vs disabled', () => {
+    // Disabled (default)
+    expect(component.isVaultOpen()).toBe(false);
+
+    // Enabled
+    vaultServiceMock.isVaultEnabled.set(true);
+    expect(component.isVaultOpen()).toBe(true);
+
+    // Disabled
+    vaultServiceMock.isVaultEnabled.set(false);
+    expect(component.isVaultOpen()).toBe(false);
+  });
+
+  it('renders alert banner when vault is open and hides it when vault is not open', () => {
+    vaultServiceMock.isVaultEnabled.set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-alert-banner')).toBeNull();
+
+    vaultServiceMock.isVaultEnabled.set(true);
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('app-alert-banner');
+    expect(banner).not.toBeNull();
   });
 });

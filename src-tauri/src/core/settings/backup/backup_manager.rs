@@ -23,7 +23,28 @@ pub async fn backup_settings(
     include_profiles: Option<Vec<String>>,
     include_secrets: Option<bool>,
 ) -> Result<String, String> {
+    let state = app_handle.state::<crate::utils::types::state::RcloneState>();
+    let _operation = state.vault_operation_lock.lock().await;
     let manager = app_handle.state::<AppSettingsManager>();
+    if manager.is_locked() {
+        return Err(
+            crate::localized_error!("backendErrors.vault.operationFailed", "error" => rcman::Error::ConfigLocked),
+        );
+    }
+    let password = password
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty());
+    let includes_external = matches!(&export_type, ExportType::All | ExportType::SpecificRemote)
+        || matches!(&export_type, ExportType::Category(category) if category == "remotes");
+    if (includes_external || include_secrets.unwrap_or(false))
+        && !password.as_ref().is_some_and(|value| value.len() >= 4)
+    {
+        return Err(crate::localized_error!(
+            "backendErrors.backup.secretRequirePassword"
+        ));
+    }
+    let provider_state = app_handle.state::<super::rclone_config_provider::RcloneConfigProvider>();
+    provider_state.replace(super::rclone_config_provider::RcloneConfigProvider::default());
     info!("Starting backup with rcman to: {backup_dir}");
 
     // Map app's ExportType to rcman's ExportType
@@ -57,14 +78,14 @@ pub async fn backup_settings(
             options = options.include_sub_settings(category);
         }
         if category == "remotes" {
-            register_rclone_config_provider(&app_handle, &manager).await?;
+            register_rclone_config_provider(&app_handle).await?;
             options = options.include_external("rclone.conf");
         }
         options = options.filename_suffix(category);
     }
 
     if matches!(export_type, ExportType::All) {
-        register_rclone_config_provider(&app_handle, &manager).await?;
+        register_rclone_config_provider(&app_handle).await?;
         options = options.include_external("rclone.conf");
         options = options.include_sub_settings(crate::utils::constants::SUB_REMOTES);
         options = options.include_sub_settings(crate::utils::constants::SUB_BACKEND);
@@ -88,7 +109,7 @@ pub async fn backup_settings(
 
         let provider = RcloneConfigProvider::for_remote(name, remote_config)
             .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
-        manager.register_external_provider(Box::new(provider));
+        provider_state.replace(provider);
         options = options.include_external(format!("remote:{name}"));
     }
 
@@ -124,26 +145,36 @@ pub async fn backup_settings(
         }
     }
 
-    let backup_path = manager.backup().create(&options).map_err(|e| {
-        error!("Backup failed: {e}");
-        format!("Backup failed: {e}")
-    })?;
+    let worker_app = app_handle.clone();
+    let result = crate::utils::spawn_blocking(move || {
+        worker_app
+            .state::<AppSettingsManager>()
+            .backup()
+            .create(&options)
+    })
+    .await;
+    provider_state.replace(super::rclone_config_provider::RcloneConfigProvider::default());
+    let backup_path = result
+        .map_err(|e| crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string()))?
+        .map_err(|e| {
+            error!("Backup failed: {e}");
+            crate::localized_error!("backendErrors.backup.exportFailed", "error" => e.to_string())
+        })?;
 
     info!("Backup complete: {}", backup_path.display());
     Ok(format!("Backup created at: {}", backup_path.display()))
 }
 
-pub(super) async fn register_rclone_config_provider(
-    app_handle: &AppHandle,
-    manager: &AppSettingsManager,
-) -> Result<(), String> {
+pub(super) async fn register_rclone_config_provider(app_handle: &AppHandle) -> Result<(), String> {
     use crate::core::settings::backup::rclone_config_provider::RcloneConfigProvider;
 
     let config_path = get_rclone_config_file(app_handle.clone())
         .await
         .map_err(|e| format!("Failed to fetch rclone config path: {e}"))?;
 
-    manager.register_external_provider(Box::new(RcloneConfigProvider::from_path(config_path)));
+    app_handle
+        .state::<RcloneConfigProvider>()
+        .replace(RcloneConfigProvider::from_path(config_path));
 
     Ok(())
 }

@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Initializing RClone Manager",
-    "loadingMessage": "Checking system configuration...",
     "cards": {
       "welcome": {
         "title": "Welcome to RClone Manager",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Classic Dashboard",
-        "badge": "Default",
         "description": "Tabbed overview featuring remote connections, active transfers, quick actions, and system status."
       },
       "nautilus": {
         "title": "File Browser (Nautilus)",
-        "badge": "File Manager",
         "description": "Dedicated dual-pane file management interface designed for navigating and transferring remote files."
       },
       "flow": {
         "title": "Flow Workspace",
-        "badge": "Workflows",
         "description": "Interactive visual hub for orchestrating automated jobs, remote quick runs, and pipeline execution."
       }
     },
@@ -2110,6 +2105,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
+      "vaultWarningTitle": "Configuration Vault is Open",
+      "vaultWarningDesc": "Exported backups do not inherit vault encryption. Use the encryption option below to protect sensitive credentials and configurations with a password.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -2670,8 +2667,6 @@
       "increaseIconSize": "Increase icon size"
     },
     "notifications": {
-      "mkdirFailed": "Failed to create directory: {{path}}",
-      "uploadStarted": "Starting upload of {{count}} files...",
       "uploadSuccess": "Successfully uploaded {{count}} files.",
       "uploadFailed": "Failed to upload {{count}} files.",
       "trashEmptied": "Cleanup operation completed",
@@ -2741,9 +2736,6 @@
     "resetRemote": {
       "title": "Reset Remote Settings",
       "message": "Are you sure you want to reset ALL settings for {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "Settings for {{name}} have been reset."
     },
     "errors": {
       "generic": "An unexpected error occurred. Please check the logs for more details.",
@@ -2895,7 +2887,6 @@
       "readOnly": "The target file system is read-only or write-protected."
     },
     "rclone": {
-      "unsupportedPlatform": "Unsupported platform",
       "downloadCancelled": "Download cancelled by user",
       "mountPluginInstallFailed": "Failed to install mount plugin: {{error}}",
       "mountPluginVerificationFailed": "Installation succeeded but verification failed. Restart may be required.",
@@ -2935,7 +2926,10 @@
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "invalidArchive": "Invalid backup archive format",
       "restoreFailed": "Backup restore failed: {{error}}",
-      "secretRequirePassword": "This backup is protected by a secret and requires a password"
+      "secretRequirePassword": "This backup is protected by a secret and requires a password",
+      "exportFailed": "Backup export failed: {{error}}",
+      "refreshFailed": "Failed to refresh system after backup restore: {{error}}",
+      "restoreIncomplete": "Backup restore was incomplete: {{error}}"
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
@@ -2952,7 +2946,6 @@
       "corruptedTransfer": "File corrupted during transfer or checksum verification failed."
     },
     "cache": {
-      "fetchRemotesFailed": "Failed to fetch remotes",
       "fetchConfigFailed": "Failed to fetch remotes config",
       "refreshMountsFailed": "Failed to refresh mounted remotes",
       "refreshServesFailed": "Failed to refresh serves"
@@ -2994,7 +2987,6 @@
       "saveFailed": "Failed to save setting: {{error}}",
       "resetFailed": "Failed to reset setting: {{error}}",
       "resetAllFailed": "Failed to reset all settings: {{error}}",
-      "eventEmitFailed": "Failed to emit settings event: {{error}}",
       "subSettingsFailed": "Failed to get sub-settings: {{error}}",
       "deleteFailed": "Failed to delete remote settings: {{error}}"
     },
@@ -3263,7 +3255,6 @@
       "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
       "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
-      "mountPluginStatusError": "Failed to check status",
       "authRequired": "The backend rejected the connection due to an authentication failure.",
       "remoteAuthRequired": "The remote backend rejected the connection due to an authentication failure. Please check your credentials.",
       "portInUse": "Port {{port}} is already occupied by another application or connection. Choose a different port to continue."
@@ -3474,8 +3465,7 @@
         "delete": "Delete Node",
         "inspectJob": "Inspect Job",
         "duplicateWorkflow": "Duplicate Workflow",
-        "deleteWorkflow": "Delete Workflow",
-        "exportWorkflow": "Export JSON"
+        "deleteWorkflow": "Delete Workflow"
       },
       "canvas": {
         "navigation": "Canvas Navigation",

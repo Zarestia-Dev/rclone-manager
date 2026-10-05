@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Inicializando RClone Manager",
-    "loadingMessage": "Comprobando la configuración del sistema...",
     "cards": {
       "welcome": {
         "title": "Bienvenido a RClone Manager",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Panel clásico",
-        "badge": "Predeterminado",
         "description": "Vista general con conexiones remotas, transferencias activas, acciones rápidas y estado del sistema."
       },
       "nautilus": {
         "title": "Navegador de archivos (Nautilus)",
-        "badge": "Gestor de archivos",
         "description": "Interfaz de gestión de archivos de doble panel dedicada para navegar y transferir archivos remotos."
       },
       "flow": {
         "title": "Espacio de trabajo Flow",
-        "badge": "Flujos de trabajo",
         "description": "Panel visual interactivo para orquestar tareas automatizadas, ejecuciones rápidas y pipelines."
       }
     },
@@ -2069,6 +2064,8 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
+      "vaultWarningTitle": "La bóveda de configuración está abierta",
+      "vaultWarningDesc": "Las copias de seguridad exportadas no heredan el cifrado de la bóveda. Utilice la opción de cifrado a continuación para proteger las credenciales y configuraciones sensibles con una contraseña.",
       "exportNow": "Exportar ahora",
       "exporting": "Exportando...",
       "fullBackup": "Copia de seguridad completa",
@@ -2629,8 +2626,6 @@
       "increaseIconSize": "Aumentar tamaño de icono"
     },
     "notifications": {
-      "mkdirFailed": "Error al crear el directorio: {{path}}",
-      "uploadStarted": "Iniciando carga de {{count}} archivos...",
       "uploadSuccess": "{{count}} archivos cargados correctamente.",
       "uploadFailed": "Error al cargar {{count}} archivos.",
       "trashEmptied": "Papelera vaciada",
@@ -2700,9 +2695,6 @@
     "resetRemote": {
       "title": "Restablecer configuraciones del remoto",
       "message": "¿Está seguro de que desea restablecer TODAS las configuraciones para {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "Configuraciones de {{name}} restablecidas."
     },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
@@ -2854,7 +2846,6 @@
       "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura."
     },
     "rclone": {
-      "unsupportedPlatform": "Plataforma no soportada",
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
@@ -2894,7 +2885,10 @@
       "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman",
       "invalidArchive": "Formato de archivo de copia de seguridad no válido",
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
-      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña"
+      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña",
+      "exportFailed": "Fallo en la exportación de la copia de seguridad: {{error}}",
+      "refreshFailed": "Error al actualizar el sistema tras restaurar la copia de seguridad: {{error}}",
+      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}"
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
@@ -2911,7 +2905,6 @@
       "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
     },
     "cache": {
-      "fetchRemotesFailed": "Error al obtener los remotos",
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
       "refreshMountsFailed": "Error al refrescar los remotos montados",
       "refreshServesFailed": "Error al refrescar los servicios"
@@ -2953,7 +2946,6 @@
       "saveFailed": "Error al guardar la configuración: {{error}}",
       "resetFailed": "Error al restablecer la configuración: {{error}}",
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
-      "eventEmitFailed": "Error al emitir evento de configuraciones: {{error}}",
       "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
       "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
     },
@@ -3222,7 +3214,6 @@
       "passwordRequired": "Su configuración de rclone está cifrada. Por favor, introduzca su contraseña.",
       "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Actualícela para continuar.",
       "defaultParams": "Un componente del sistema no funciona correctamente.",
-      "mountPluginStatusError": "Error al comprobar el estado",
       "authRequired": "El backend rechazó la conexión debido a un fallo de autenticación.",
       "remoteAuthRequired": "El backend remoto rechazó la conexión debido a un fallo de autenticación. Por favor, verifique sus credenciales.",
       "portInUse": "El puerto {{port}} ya está ocupado por otra aplicación o conexión. Elija un puerto diferente para continuar."
@@ -3433,7 +3424,6 @@
         "delete": "Eliminar nodo",
         "duplicateWorkflow": "Duplicar flujo",
         "deleteWorkflow": "Eliminar flujo",
-        "exportWorkflow": "Exportar JSON",
         "inspectJob": "Inspeccionar Tarea"
       },
       "canvas": {

@@ -3,35 +3,6 @@
   align-items: center;
 }
 
-.shortcut {
-  margin-left: auto;
-  opacity: 0.6;
-}
-
-.menu-icon {
-  margin-right: 8px;
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-}
-
-.menu-section-label {
-  padding: var(--space-xs) var(--space-md);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--dim-color);
-}
-
-.selection-icon {
-  margin-left: auto;
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  color: var(--accent-color);
-}
-
 .theme-selector {
   display: flex;
   justify-content: center;
@@ -90,9 +61,4 @@
 
 .selected::before {
   box-shadow: 0 0 0 2px var(--accent-color);
-}
-
-.about-menu-item {
-  position: relative;
-  overflow: hidden;
 }

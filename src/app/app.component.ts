@@ -124,11 +124,7 @@ export class AppComponent implements OnInit {
         this.dialogs.closeAll();
         return;
       }
-      if (
-        this.vaultService.isStatusKnown() &&
-        !this.vaultService.isVaultLocked() &&
-        !this.appInitialized
-      ) {
+      if (!this.appInitialized) {
         void this.initializeApp();
       }
     });

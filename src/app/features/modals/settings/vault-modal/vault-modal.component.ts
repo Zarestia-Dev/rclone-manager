@@ -8,9 +8,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslatePipe } from '@ngx-translate/core';
-import { VaultService } from 'src/app/services/security/vault.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { VaultService } from '../../../../services/security/vault.service';
+import { ValidatorRegistryService } from '../../../../services/ui/validation/validator-registry.service';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 
 interface TimeoutOption {
   value: number;
@@ -29,6 +30,7 @@ interface TimeoutOption {
     MatSelectModule,
     MatExpansionModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './vault-modal.component.html',
   styleUrls: ['./vault-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -41,7 +43,6 @@ export class VaultModalComponent implements OnInit {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
 
   readonly isVaultEnabled = this.vaultService.isVaultEnabled;
-  readonly isVaultLocked = this.vaultService.isVaultLocked;
   readonly lockTimeoutSecs = this.vaultService.lockTimeoutSecs;
   readonly isBusy = this.vaultService.isBusy;
 

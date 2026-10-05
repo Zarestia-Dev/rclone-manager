@@ -21,6 +21,7 @@
     "format": "prettier --write \"**/*.{ts,html,scss,json}\" && cd src-tauri && cargo fmt",
     "fix:all": "node scripts/fix-svg-ids.cjs && npm run format && eslint --fix \"**/*.{ts,html}\"",
     "audit:i18n": "node scripts/audit-i18n-keys.cjs",
+    "cleanup:i18n": "node scripts/cleanup-i18n-keys.cjs",
     "sync:flags": "node scripts/update-flags.cjs",
     "sync:providers": "node scripts/update-providers.cjs",
     "sync:endpoints": "node scripts/update-endpoints.cjs",

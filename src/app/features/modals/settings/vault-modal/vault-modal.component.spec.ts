@@ -4,14 +4,13 @@ import { signal } from '@angular/core';
 import { provideTranslateService } from '@ngx-translate/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { VaultModalComponent } from './vault-modal.component';
-import { VaultService } from 'src/app/services/security/vault.service';
+import { VaultService } from '../../../../services/security/vault.service';
 
 describe('VaultModalComponent', () => {
   let component: VaultModalComponent;
   let fixture: ComponentFixture<VaultModalComponent>;
   let vaultServiceMock: {
     isVaultEnabled: ReturnType<typeof signal<boolean>>;
-    isVaultLocked: ReturnType<typeof signal<boolean>>;
     lockTimeoutSecs: ReturnType<typeof signal<number | null>>;
     isBusy: ReturnType<typeof signal<boolean>>;
     checkVaultStatus: ReturnType<typeof vi.fn>;
@@ -28,7 +27,6 @@ describe('VaultModalComponent', () => {
   beforeEach(async () => {
     vaultServiceMock = {
       isVaultEnabled: signal(false),
-      isVaultLocked: signal(false),
       lockTimeoutSecs: signal<number | null>(300),
       isBusy: signal(false),
       checkVaultStatus: vi.fn().mockResolvedValue(undefined),

@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "RClone Yöneticisi Başlatılıyor",
-    "loadingMessage": "Sistem yapılandırması kontrol ediliyor...",
     "cards": {
       "welcome": {
         "title": "RClone Yöneticisine Hoş Geldiniz",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Klasik Kontrol Paneli",
-        "badge": "Varsayılan",
         "description": "Uzak depolama bağlantıları, aktif transferler, hızlı eylemler ve sistem durumunu içeren sekmeli görünüm."
       },
       "nautilus": {
         "title": "Dosya Tarayıcısı (Nautilus)",
-        "badge": "Dosya Yöneticisi",
         "description": "Bulut dosyalarında gezinmek ve transfer etmek için tasarlanmış özel çift panelli dosya yönetimi arayüzü."
       },
       "flow": {
         "title": "Flow Çalışma Alanı",
-        "badge": "İş Akışları",
         "description": "Otomatik işleri, hızlı çalıştırma profillerini ve hat yürütmesini koordine etmek için etkileşimli görsel alan."
       }
     },
@@ -2110,6 +2105,8 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
+      "vaultWarningTitle": "Yapılandırma Kasası Açık",
+      "vaultWarningDesc": "Dışa aktarılan yedekler kasa şifrelemesini devralmaz. Hassas kimlik bilgilerini ve yapılandırmaları bir parola ile korumak için aşağıdaki şifreleme seçeneğini kullanın.",
       "exportNow": "Şimdi Dışa Aktar",
       "exporting": "Dışa aktarılıyor...",
       "fullBackup": "Tam Yedekleme",
@@ -2670,8 +2667,6 @@
       "increaseIconSize": "Simge boyutunu büyüt"
     },
     "notifications": {
-      "mkdirFailed": "Klasör oluşturulamadı: {{path}}",
-      "uploadStarted": "{{count}} dosya yüklenmesi başlatılıyor...",
       "uploadSuccess": "{{count}} dosya başarıyla yüklendi.",
       "uploadFailed": "{{count}} dosya yüklenemedi.",
       "trashEmptied": "Temizlik işlemi başlatıldı",
@@ -2741,9 +2736,6 @@
     "resetRemote": {
       "title": "Uzak Sunucu Ayarlarını Sıfırla",
       "message": "{{name}} için TÜM ayarları sıfırlamak istediğinizden emin misiniz?"
-    },
-    "notifications": {
-      "settingsReset": "{{name}} ayarları sıfırlandı."
     },
     "errors": {
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
@@ -2895,7 +2887,6 @@
       "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı."
     },
     "rclone": {
-      "unsupportedPlatform": "Desteklenmeyen platform",
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",
       "mountPluginInstallFailed": "Eklenti kurulumu başarısız: {{error}}",
       "mountPluginVerificationFailed": "Kurulum başarılı oldu ancak doğrulama başarısız oldu. Yeniden başlatma gerekebilir.",
@@ -2935,7 +2926,10 @@
       "unsupportedArchive": "Desteklenmeyen arşiv türü. .rcman dosyası olmalıdır",
       "invalidArchive": "Geçersiz yedekleme arşivi biçimi",
       "restoreFailed": "Yedekleme geri yükleme başarısız oldu: {{error}}",
-      "secretRequirePassword": "Bu yedekleme gizli bir anahtarla korunuyor ve şifre gerektiriyor"
+      "secretRequirePassword": "Bu yedekleme gizli bir anahtarla korunuyor ve şifre gerektiriyor",
+      "exportFailed": "Yedekleme dışa aktarma başarısız oldu: {{error}}",
+      "refreshFailed": "Yedek geri yükleme sonrasında sistem yenilenemedi: {{error}}",
+      "restoreIncomplete": "Yedekleme geri yükleme tamamlanamadı: {{error}}"
     },
     "backend": {
       "nameEmpty": "Arka uç adı boş olamaz",
@@ -2952,7 +2946,6 @@
       "corruptedTransfer": "Aktarım sırasında dosya bozuldu veya doğrulama toplamı uyuşmadı."
     },
     "cache": {
-      "fetchRemotesFailed": "Uzak bağlantılar alınamadı",
       "fetchConfigFailed": "Uzak bağlantı yapılandırması alınamadı",
       "refreshMountsFailed": "Bağlı uzak bağlantılar yenilenemedi",
       "refreshServesFailed": "Sunucular yenilenemedi"
@@ -2994,7 +2987,6 @@
       "saveFailed": "Ayar kaydedilemedi: {{error}}",
       "resetFailed": "Ayar sıfırlanamadı: {{error}}",
       "resetAllFailed": "Tüm ayarlar sıfırlanamadı: {{error}}",
-      "eventEmitFailed": "Ayarlar olayı gönderilemedi: {{error}}",
       "subSettingsFailed": "Alt ayarlar alınamadı: {{error}}",
       "deleteFailed": "Uzak bağlantı ayarları silinemedi: {{error}}"
     },
@@ -3263,7 +3255,6 @@
       "passwordRequired": "Rclone yapılandırmanız şifrelenmiş. Lütfen parolanızı girin.",
       "versionTooOld": "Rclone sürümünüz {{required}} sürümünden daha eski. Devam etmek için lütfen güncelleyin.",
       "defaultParams": "Bir sistem bileşeni düzgün çalışmıyor.",
-      "mountPluginStatusError": "Durum kontrol edilemedi",
       "authRequired": "Kimlik doğrulama hatası nedeniyle bağlantı reddedildi.",
       "remoteAuthRequired": "Uzak backend, kimlik doğrulama hatası nedeniyle bağlantıyı reddetti. Lütfen kimlik bilgilerinizi kontrol edin.",
       "portInUse": "{{port}} bağlantı noktası başka bir uygulama veya bağlantı tarafından kullanılıyor. Devam etmek için farklı bir bağlantı noktası seçin."
@@ -3474,8 +3465,7 @@
         "delete": "Düğümü Sil",
         "inspectJob": "Görevi İncele",
         "duplicateWorkflow": "İş Akışını Çoğalt",
-        "deleteWorkflow": "İş Akışını Sil",
-        "exportWorkflow": "JSON Dışa Aktar"
+        "deleteWorkflow": "İş Akışını Sil"
       },
       "canvas": {
         "navigation": "Tuval Gezintisi",

@@ -4884,6 +4884,7 @@ dependencies = [
  "time",
  "windows 0.62.2",
  "windows-native-keyring-store",
+ "zeroize",
  "zip",
 ]
 

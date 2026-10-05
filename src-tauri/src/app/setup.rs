@@ -87,6 +87,10 @@ pub(super) fn setup_context(
     app.manage(app_paths);
     app.manage(backend_manager);
     app.manage(env_manager);
+    let backup_provider =
+        core::settings::backup::rclone_config_provider::RcloneConfigProvider::default();
+    rcman_manager.register_external_provider(Box::new(backup_provider.clone()));
+    app.manage(backup_provider);
     app.manage(rcman_manager);
 
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));

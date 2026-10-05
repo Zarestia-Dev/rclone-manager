@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "RClone Manager を初期化中",
-    "loadingMessage": "システム構成を確認中...",
     "cards": {
       "welcome": {
         "title": "RClone Manager へようこそ",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "クラシックダッシュボード",
-        "badge": "デフォルト",
         "description": "リモート接続、転送、クイックアクション、システムステータスを一覧表示するタブ付きダッシュボード。"
       },
       "nautilus": {
         "title": "ファイルブラウザ (Nautilus)",
-        "badge": "ファイルマネージャー",
         "description": "リモートファイルの参照および転送に最適化された2ペインのファイル管理UI。"
       },
       "flow": {
         "title": "Flow ワークスペース",
-        "badge": "ワークフロー",
         "description": "自動タスクおよびクイック実行プロファイルを構築・実行するためのビジュアルUI。"
       }
     },
@@ -2069,6 +2064,8 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
+      "vaultWarningTitle": "構成ボルトが開いています",
+      "vaultWarningDesc": "エクスポートされたバックアップはボルトの暗号化を継承しません。機密の認証情報や設定をパスワードで保護するには、以下の暗号化オプションを使用してください。",
       "exportNow": "今すぐエクスポート",
       "exporting": "エクスポート中...",
       "fullBackup": "完全バックアップ",
@@ -2629,8 +2626,6 @@
       "increaseIconSize": "アイコンサイズを拡大"
     },
     "notifications": {
-      "mkdirFailed": "ディレクトリの作成に失敗しました: {{path}}",
-      "uploadStarted": "{{count}} 個のファイルのアップロードを開始しています...",
       "uploadSuccess": "{{count}} 個のファイルのアップロードに成功しました。",
       "uploadFailed": "{{count}} 個のファイルのアップロードに失敗しました。",
       "trashEmptied": "クリーンアップ操作が完了しました",
@@ -2700,9 +2695,6 @@
     "resetRemote": {
       "title": "リモート設定のリセット",
       "message": "{{name}} の全ての設定をリセットしてもよろしいですか?"
-    },
-    "notifications": {
-      "settingsReset": "{{name}} の設定がリセットされました。"
     },
     "errors": {
       "generic": "予期しないエラーが発生しました。詳細についてはログを確認してください。",
@@ -2854,7 +2846,6 @@
       "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。"
     },
     "rclone": {
-      "unsupportedPlatform": "サポートされていないプラットフォームです",
       "mountPluginInstallFailed": "マウントプラグインのインストールに失敗しました: {{error}}",
       "mountPluginVerificationFailed": "インストールは成功しましたが検証に失敗しました。再起動が必要な場合があります。",
       "configEncrypted": "設定が暗号化されていますが、パスワードが入力されていません",
@@ -2894,7 +2885,10 @@
       "unsupportedArchive": "サポートされていないファイル形式です。.rcman ファイルである必要があります",
       "invalidArchive": "無効なバックアップファイル形式です",
       "restoreFailed": "バックアップの復元に失敗しました: {{error}}",
-      "secretRequirePassword": "このバックアップはシークレットで保護されているためパスワードが必要です"
+      "secretRequirePassword": "このバックアップはシークレットで保護されているためパスワードが必要です",
+      "exportFailed": "バックアップのエクスポートに失敗しました: {{error}}",
+      "refreshFailed": "バックアップ復元後のシステム更新に失敗しました: {{error}}",
+      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}"
     },
     "backend": {
       "nameEmpty": "バックエンド名を空欄にすることはできません",
@@ -2911,7 +2905,6 @@
       "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。"
     },
     "cache": {
-      "fetchRemotesFailed": "リモート一覧の取得に失敗しました",
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
       "refreshMountsFailed": "マウント済みリモートの更新に失敗しました",
       "refreshServesFailed": "公開中リモートの更新に失敗しました"
@@ -2953,7 +2946,6 @@
       "saveFailed": "設定の保存に失敗しました: {{error}}",
       "resetFailed": "設定のリセットに失敗しました: {{error}}",
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
-      "eventEmitFailed": "設定イベントの発行に失敗しました: {{error}}",
       "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
       "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
     },
@@ -3222,7 +3214,6 @@
       "passwordRequired": "rclone設定ファイルが暗号化されています。パスワードを入力してください。",
       "versionTooOld": "お使いのrcloneバージョンは {{required}} より古いです。続行するには更新してください。",
       "defaultParams": "システムコンポーネントが正常に機能していません。",
-      "mountPluginStatusError": "ステータスの確認に失敗しました",
       "authRequired": "認証失敗のためバックエンドへの接続が拒否されました。",
       "remoteAuthRequired": "認証エラーのため、リモートバックエンドが接続を拒否しました。認証情報を確認してください。",
       "portInUse": "ポート {{port}} は別のアプリケーションまたは接続によって既に使用されています。続行するには別のポートを選択してください。"
@@ -3433,7 +3424,6 @@
         "delete": "ノードを削除",
         "duplicateWorkflow": "ワークフローを複製",
         "deleteWorkflow": "ワークフローを削除",
-        "exportWorkflow": "JSONをエクスポート",
         "inspectJob": "ジョブを検査"
       },
       "canvas": {

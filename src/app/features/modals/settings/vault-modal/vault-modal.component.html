@@ -16,10 +16,10 @@
 <main>
   <div class="vault-container">
     <!-- Status Card -->
-    <div class="status-card">
+    <div class="section-card">
       <div class="status-header">
         <div class="icon-badge" [class.active]="isVaultEnabled()">
-          <mat-icon [svgIcon]="isVaultEnabled() ? 'shield' : 'shield-halved'"></mat-icon>
+          <mat-icon [svgIcon]="isVaultEnabled() ? 'shield' : 'security'"></mat-icon>
         </div>
         <div class="status-info">
           <h3>{{ 'vault.title' | translate }}</h3>
@@ -37,7 +37,8 @@
           </span>
           @if (isVaultEnabled()) {
             <button
-              matButton="elevated"
+              matButton
+              class="primary"
               type="button"
               (click)="lockNow()"
               [disabled]="isBusy()"
@@ -130,12 +131,10 @@
             </mat-form-field>
           </div>
 
-          <div class="form-actions">
-            <button matButton="filled" type="submit" [disabled]="isBusy() || enableForm.invalid">
-              <mat-icon svgIcon="shield"></mat-icon>
-              {{ 'vault.actions.enable' | translate }}
-            </button>
-          </div>
+          <button matButton="filled" type="submit" [disabled]="isBusy() || enableForm.invalid">
+            <mat-icon svgIcon="shield"></mat-icon>
+            {{ 'vault.actions.enable' | translate }}
+          </button>
         </form>
       </div>
     } @else {
@@ -164,7 +163,7 @@
       </div>
 
       <!-- Change Password Panel -->
-      <mat-accordion class="vault-accordion">
+      <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
@@ -246,15 +245,13 @@
               </mat-form-field>
             </div>
 
-            <div class="form-actions">
-              <button
-                matButton="filled"
-                type="submit"
-                [disabled]="isBusy() || changePasswordForm.invalid"
-              >
-                {{ 'vault.actions.updatePassword' | translate }}
-              </button>
-            </div>
+            <button
+              matButton="filled"
+              type="submit"
+              [disabled]="isBusy() || changePasswordForm.invalid"
+            >
+              {{ 'vault.actions.updatePassword' | translate }}
+            </button>
           </form>
         </mat-expansion-panel>
 
@@ -267,9 +264,10 @@
             </mat-panel-title>
           </mat-expansion-panel-header>
 
-          <div class="danger-warning">
-            <p>{{ 'vault.disable.warning' | translate }}</p>
-          </div>
+          <app-alert-banner
+            severity="warning"
+            [description]="'vault.disable.warning' | translate"
+          ></app-alert-banner>
 
           <form [formGroup]="disableForm" (ngSubmit)="submitDisableVault()" class="vault-form">
             <div class="form-row">
@@ -296,17 +294,15 @@
               </mat-form-field>
             </div>
 
-            <div class="form-actions">
-              <button
-                matButton="filled"
-                class="warn"
-                type="submit"
-                [disabled]="isBusy() || disableForm.invalid"
-              >
-                <mat-icon svgIcon="trash"></mat-icon>
-                {{ 'vault.actions.disable' | translate }}
-              </button>
-            </div>
+            <button
+              matButton="filled"
+              class="warn"
+              type="submit"
+              [disabled]="isBusy() || disableForm.invalid"
+            >
+              <mat-icon svgIcon="trash"></mat-icon>
+              {{ 'vault.actions.disable' | translate }}
+            </button>
           </form>
         </mat-expansion-panel>
       </mat-accordion>

@@ -34,6 +34,7 @@ export const BASE_ICONS: Record<string, string> = {
   lock: 'assets/icons/status/lock.svg',
   'lock-open': 'assets/icons/status/lock-open.svg',
   shield: 'assets/icons/status/shield.svg',
+  'shield-xmark': 'assets/icons/status/shield-xmark.svg',
   security: 'assets/icons/status/security.svg',
   key: 'assets/icons/status/key.svg',
   fingerprint: 'assets/icons/status/fingerprint.svg',

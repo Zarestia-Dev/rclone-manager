@@ -26,6 +26,7 @@ import {
 } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { VaultService } from 'src/app/services/security/vault.service';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 // Static lookup — mapping specific IDs and category types to icons
@@ -85,6 +86,7 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly vaultService = inject(VaultService);
 
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 
@@ -102,6 +104,8 @@ export class ExportModalComponent implements OnInit {
   readonly userNote = signal('');
   readonly exportOptions = signal<BackupExportOption[]>([]);
   readonly isTypeMenuExpanded = signal(false);
+
+  readonly isVaultOpen = this.vaultService.isVaultEnabled;
 
   readonly selectedOptionDetails = computed(
     () => this.exportOptions().find(o => o.id === this.selectedOption()) ?? this.exportOptions()[0]
@@ -125,6 +129,9 @@ export class ExportModalComponent implements OnInit {
   );
 
   async ngOnInit(): Promise<void> {
+    void this.vaultService.checkVaultStatus().catch(() => {
+      // Best-effort status refresh when opening export modal
+    });
     this.isLoading.set(true);
     try {
       const [remotesList, categoriesList, profilesList] = await Promise.allSettled([

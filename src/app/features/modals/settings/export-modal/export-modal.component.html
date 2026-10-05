@@ -20,6 +20,14 @@
   </div>
 } @else {
   <main>
+    @if (isVaultOpen()) {
+      <app-alert-banner
+        severity="warning"
+        [title]="'modals.export.vaultWarningTitle' | translate"
+        [description]="'modals.export.vaultWarningDesc' | translate"
+      ></app-alert-banner>
+    }
+
     <div>
       <h3 class="section-label">{{ 'modals.export.selectType' | translate }}</h3>
 

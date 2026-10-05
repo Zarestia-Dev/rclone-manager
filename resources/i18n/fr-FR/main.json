@@ -712,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Initialisation rclone Manager",
-    "loadingMessage": "Vérification de la configuration du système...",
     "cards": {
       "welcome": {
         "title": "Bienvenue dans rclone Manager",
@@ -753,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Tableau de bord classique",
-        "badge": "Par défaut",
         "description": "Aperçu avec connexions distantes, transferts actifs, actions rapides et état du système."
       },
       "nautilus": {
         "title": "Navigateur de fichiers (Nautilus)",
-        "badge": "Gestionnaire de fichiers",
         "description": "Interface dédiée à deux panneaux pour naviguer et transférer des fichiers distants."
       },
       "flow": {
         "title": "Espace de travail Flow",
-        "badge": "Flux de travail",
         "description": "Centre visuel interactif pour orchestrer des tâches automatisées et des exécutions rapides."
       }
     },
@@ -2069,6 +2064,8 @@
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
       "passwordHint": "Ce mot de passe sera requis pour restaurer la sauvegarde.",
+      "vaultWarningTitle": "Le coffre de configuration est ouvert",
+      "vaultWarningDesc": "Les sauvegardes exportées n'héritent pas du chiffrement du coffre. Utilisez l'option de chiffrement ci-dessous pour protéger les identifiants et les paramètres sensibles avec un mot de passe.",
       "exportNow": "Exporter maintenant",
       "exporting": "Exportation en cours...",
       "fullBackup": "Sauvegarde complète",
@@ -2629,8 +2626,6 @@
       "increaseIconSize": "Agrandir la taille des icônes"
     },
     "notifications": {
-      "mkdirFailed": "Échec de la création du répertoire : {{path}}",
-      "uploadStarted": "Démarrage du téléchargement des fichiers {{count}}...",
       "uploadSuccess": "Les fichiers {{count}} ont été téléchargés avec succès.",
       "uploadFailed": "Échec du téléchargement des fichiers {{count}}.",
       "trashEmptied": "Opération de nettoyage terminée",
@@ -2700,9 +2695,6 @@
     "resetRemote": {
       "title": "Réinitialiser les paramètres du dépôt distant",
       "message": "Êtes-vous sûr de vouloir réinitialiser TOUS les paramètres pour {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "Les paramètres de {{name}} ont été réinitialisés."
     },
     "errors": {
       "generic": "Une erreur inattendue s'est produite. Veuillez vérifier les logs pour plus de détails.",
@@ -2854,7 +2846,6 @@
       "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture."
     },
     "rclone": {
-      "unsupportedPlatform": "Plateforme non supportée",
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
       "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",
       "configEncrypted": "La configuration est chiffrée et aucun mot de passe n'est fourni",
@@ -2894,7 +2885,10 @@
       "unsupportedArchive": "Type d'archive non pris en charge. Doit être un fichier .rcman",
       "invalidArchive": "Format d'archive de sauvegarde invalide",
       "restoreFailed": "La restauration de la sauvegarde a échoué : {{error}}",
-      "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe"
+      "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe",
+      "exportFailed": "L'exportation de la sauvegarde a échoué : {{error}}",
+      "refreshFailed": "Échec de l'actualisation du système après la restauration de la sauvegarde : {{error}}",
+      "restoreIncomplete": "La restauration de la sauvegarde est incomplète : {{error}}"
     },
     "backend": {
       "nameEmpty": "Nom du dépôt distant ne peut pas être vide",
@@ -2911,7 +2905,6 @@
       "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide."
     },
     "cache": {
-      "fetchRemotesFailed": "Échec de récupération des dépôts distants",
       "fetchConfigFailed": "Échec de la récupération de la configuration des dépôts distants",
       "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montés",
       "refreshServesFailed": "Échec de l’actualisation des services de partage"
@@ -2953,7 +2946,6 @@
       "saveFailed": "Échec de l'enregistrement du paramètre : {{error}}",
       "resetFailed": "Échec de la réinitialisation du paramètre : {{error}}",
       "resetAllFailed": "Échec de la réinitialisation de tous les paramètres : {{error}}",
-      "eventEmitFailed": "Échec de l'émission des paramètres d'événement : {{error}}",
       "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
       "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
     },
@@ -3222,7 +3214,6 @@
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
       "versionTooOld": "Votre version de rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
       "defaultParams": "Un composant système ne fonctionne pas correctement.",
-      "mountPluginStatusError": "Échec de la vérification du statut",
       "authRequired": "Le serveur a rejeté la connexion en raison d'un échec d'authentification.",
       "remoteAuthRequired": "Le backend distant a rejeté la connexion en raison d'un échec d'authentification. Veuillez vérifier vos identifiants.",
       "portInUse": "Le port {{port}} est déjà occupé par une autre application ou connexion. Choisissez un autre port pour continuer."
@@ -3433,7 +3424,6 @@
         "delete": "Supprimer le nœud",
         "duplicateWorkflow": "Dupliquer le flux",
         "deleteWorkflow": "Supprimer le flux",
-        "exportWorkflow": "Exporter en JSON",
         "inspectJob": "Inspecter la Tâche"
       },
       "canvas": {
