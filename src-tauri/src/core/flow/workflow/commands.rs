@@ -233,6 +233,8 @@ pub async fn test_rc_command(
 
 // ── Persistence Helpers ──────────────────────────────────────────────────
 
+static WORKFLOW_STORAGE_WRITE_LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+
 /// Finds a unique workflow name by appending sequential numbers if a collision occurs with existing names.
 pub fn find_unique_name(existing_names: &HashSet<String>, base_name: &str) -> String {
     if !existing_names.contains(base_name) {
@@ -283,6 +285,7 @@ pub fn save_workflow_record(
     manager: &AppSettingsManager,
     wf: &WorkflowDefinition,
 ) -> Result<(), String> {
+    let _write_guard = WORKFLOW_STORAGE_WRITE_LOCK.lock();
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
@@ -292,12 +295,31 @@ pub fn save_workflow_record(
 }
 
 pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
+    let _write_guard = WORKFLOW_STORAGE_WRITE_LOCK.lock();
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
 
     sub.delete(id)
         .map_err(|e| format!("Failed to delete workflow: {e}"))
+}
+
+/// Preserve the latest graph and never recreate a workflow deleted while it ran.
+pub fn record_workflow_execution_time(
+    manager: &AppSettingsManager,
+    id: &str,
+    timestamp: String,
+) -> Result<(), String> {
+    let _write_guard = WORKFLOW_STORAGE_WRITE_LOCK.lock();
+    let Some(mut latest) = get_workflow_by_id(manager, id)? else {
+        return Ok(());
+    };
+    latest.last_executed_at = Some(timestamp);
+    let sub = manager
+        .sub_settings(SUB_WORKFLOWS)
+        .map_err(|e| e.to_string())?;
+    sub.set(id, &latest)
+        .map_err(|e| format!("Failed to save execution timestamp: {e}"))
 }
 
 pub async fn sync_workflow_automations_bg(app: &AppHandle) {
@@ -337,6 +359,59 @@ mod tests {
             .expect("Failed to register workflows sub-settings");
 
         (temp_dir, manager)
+    }
+
+    #[test]
+    fn workflow_completion_preserves_saved_edits() {
+        let (_temp, manager) = test_manager();
+        let original = WorkflowDefinition {
+            id: "wf-running".into(),
+            name: "Original".into(),
+            ..Default::default()
+        };
+        save_workflow_record(&manager, &original).unwrap();
+        let mut edited = original;
+        edited.name = "Edited while running".into();
+        edited.description = Some("Keep this description".into());
+        edited.updated_at = Some("2026-10-06T10:00:00Z".into());
+        edited.nodes.push(WorkflowNode {
+            id: "notify".into(),
+            node_type: "notification".into(),
+            config: serde_json::json!({"actionId": "failure-alert"}),
+            ..Default::default()
+        });
+        edited.edges.push(WorkflowEdge {
+            id: "failure".into(),
+            source_node_id: "sync".into(),
+            source_port_id: "failure".into(),
+            target_node_id: "notify".into(),
+            target_port_id: "in".into(),
+            is_active: None,
+        });
+        edited.viewport.zoom = 1.5;
+        save_workflow_record(&manager, &edited).unwrap();
+        record_workflow_execution_time(&manager, &edited.id, "2026-10-06T10:01:00Z".into())
+            .unwrap();
+        edited.last_executed_at = Some("2026-10-06T10:01:00Z".into());
+        assert_eq!(
+            get_workflow_by_id(&manager, &edited.id).unwrap(),
+            Some(edited)
+        );
+    }
+
+    #[test]
+    fn workflow_completion_does_not_restore_deleted_record() {
+        let (_temp, manager) = test_manager();
+        let wf = WorkflowDefinition {
+            id: "wf-deleted".into(),
+            name: "Deleted while running".into(),
+            ..Default::default()
+        };
+        save_workflow_record(&manager, &wf).unwrap();
+        delete_workflow_by_id_sync(&manager, &wf.id).unwrap();
+        record_workflow_execution_time(&manager, &wf.id, "2026-10-06T10:01:00Z".into()).unwrap();
+        assert!(get_workflow_by_id(&manager, &wf.id).unwrap().is_none());
+        assert!(get_all_workflows_sync(&manager).unwrap().is_empty());
     }
 
     #[test]
