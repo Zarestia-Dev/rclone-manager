@@ -91,7 +91,10 @@ pub fn normalize_option_key(key: &str) -> Cow<'_, str> {
 /// Zero heap allocations.
 #[must_use]
 pub fn is_flat_option_key(key: &str) -> bool {
-    if is_path_key(key) {
+    if is_path_key(key)
+        || key == "app"
+        || crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&key)
+    {
         return false;
     }
     let stripped = key.trim_start_matches('-');
@@ -431,6 +434,10 @@ mod tests {
         assert!(!is_flat_option_key("mountPoint"));
         assert!(!is_flat_option_key("CheckSum"));
         assert!(!is_flat_option_key("CacheMode"));
+        assert!(!is_flat_option_key("app"));
+        assert!(!is_flat_option_key("autoStart"));
+        assert!(!is_flat_option_key("cronEnabled"));
+        assert!(!is_flat_option_key("watchEnabled"));
     }
 
     #[test]

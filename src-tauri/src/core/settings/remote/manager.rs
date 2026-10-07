@@ -420,27 +420,22 @@ fn partition_profile_to_app_and_rclone(profile: &mut Value) {
         return;
     };
 
+    if let Some(rclone_obj) = p_obj.get_mut("rclone").and_then(|v| v.as_object_mut()) {
+        rclone_obj.remove("app");
+        for &key in crate::utils::types::remotes::APP_PARTITION_KEYS {
+            rclone_obj.remove(key);
+        }
+    }
+
     if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
         return;
     }
-
-    let app_keys = [
-        "autoStart",
-        "cronEnabled",
-        "cronExpression",
-        "watchEnabled",
-        "watchDelay",
-        "vfsProfile",
-        "filterProfile",
-        "backendProfile",
-        "runtimeRemoteProfile",
-    ];
 
     let mut app_map = serde_json::Map::new();
     let mut rclone_map = serde_json::Map::new();
 
     for (k, v) in std::mem::take(p_obj) {
-        if app_keys.contains(&k.as_str()) {
+        if crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&k.as_str()) {
             app_map.insert(k, v);
         } else {
             rclone_map.insert(k, v);
@@ -746,5 +741,28 @@ mod tests {
 
         let migrated = migrate_to_multi_profile(flat.clone());
         assert_eq!(migrated, flat);
+    }
+
+    #[test]
+    fn test_partition_cleans_nested_app_in_rclone() {
+        let mut profile = json!({
+            "app": {
+                "autoStart": true
+            },
+            "rclone": {
+                "app": {
+                    "autoStart": false
+                },
+                "autoStart": false,
+                "fs": "OneDrive:Documents",
+                "mountPoint": "/home/test/OneDrive"
+            }
+        });
+        partition_profile_to_app_and_rclone(&mut profile);
+        let rclone = &profile["rclone"];
+        assert!(rclone.get("app").is_none());
+        assert!(rclone.get("autoStart").is_none());
+        assert_eq!(rclone["fs"], "OneDrive:Documents");
+        assert_eq!(rclone["mountPoint"], "/home/test/OneDrive");
     }
 }

@@ -164,9 +164,12 @@ const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
   ...Object.values(OPERATION_PATH_MAPPINGS).flatMap(m =>
     m ? [m.sourceKey, m.destKey].filter((k): k is string => !!k) : []
   ),
+  'app',
+  'rclone',
   'mountType',
   'type',
   'autoStart',
+  'showOnTray',
   'cronEnabled',
   'cronExpression',
   'watchEnabled',
@@ -317,6 +320,8 @@ function cleanOptions(
   delete cleanedOptions[SERVE_TYPE_KEY];
   delete cleanedOptions[MOUNT_TYPE_KEY];
   delete cleanedOptions['autoFilename'];
+  delete cleanedOptions['app'];
+  delete cleanedOptions['rclone'];
   return Object.keys(cleanedOptions).length > 0 ? cleanedOptions : {};
 }
 
