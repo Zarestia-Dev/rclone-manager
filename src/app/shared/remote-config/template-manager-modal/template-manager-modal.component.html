@@ -44,7 +44,7 @@
 
       <div class="manage-control-bar">
         <div class="bar-left">
-          <span class="selected-count-badge">
+          <span class="app-pill pill-sm p-primary">
             {{ selectedKeysCount() }} / {{ settingEntries().length }}
           </span>
           <button
@@ -100,49 +100,46 @@
         </div>
       </div>
       <mat-divider></mat-divider>
-      @if (!keySearchQuery().trim()) {
-        <div class="template-edit-fields" [formGroup]="saveForm">
-          <mat-form-field class="tpl-name-field no-subscript">
-            <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
-            <input
-              matInput
-              formControlName="name"
-              [placeholder]="'templates.namePlaceholder' | translate"
-            />
-          </mat-form-field>
-
-          <mat-form-field class="tpl-desc-field no-subscript">
-            <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
-            <input
-              matInput
-              formControlName="description"
-              [placeholder]="'templates.descPlaceholder' | translate"
-            />
-          </mat-form-field>
-        </div>
-      }
       @if (saveViewMode() === 'visual') {
         <div class="visual-inspector">
+          @if (!keySearchQuery().trim()) {
+            <div class="template-edit-fields" [formGroup]="saveForm">
+              <mat-form-field class="tpl-name-field no-subscript">
+                <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="name"
+                  [placeholder]="'templates.namePlaceholder' | translate"
+                />
+              </mat-form-field>
+
+              <mat-form-field class="tpl-desc-field no-subscript">
+                <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="description"
+                  [placeholder]="'templates.descPlaceholder' | translate"
+                />
+              </mat-form-field>
+            </div>
+          }
           <mat-accordion multi class="dull">
-            @for (catKey of availableCategories; track catKey) {
-              @if (shouldShowSaveCategory(catKey)) {
-                <mat-expansion-panel [expanded]="isSaveCategoryExpanded(catKey)" class="dull">
+            @for (cat of saveCategories(); track cat.category) {
+              @if (cat.isVisible) {
+                <mat-expansion-panel [expanded]="cat.isExpanded" class="dull">
                   <mat-expansion-panel-header>
                     <mat-panel-title>
-                      <span class="cat-badge">{{ catKey }}</span>
+                      <span class="app-pill pill-sm p-primary">{{ cat.category }}</span>
                     </mat-panel-title>
                     <mat-panel-description>
-                      <span
-                        class="cat-count-badge"
-                        [class.has-keys]="getSaveCategoryTotalCount(catKey) > 0"
-                      >
-                        @if (getSaveCategoryTotalCount(catKey) > 0) {
+                      <span class="count-badge" [class.has-keys]="cat.totalCount > 0">
+                        @if (cat.totalCount > 0) {
                           {{
                             'templates.selectedCount'
                               | translate
                                 : {
-                                    selected: getSaveCategorySelectedCount(catKey),
-                                    total: getSaveCategoryTotalCount(catKey),
+                                    selected: cat.selectedCount,
+                                    total: cat.totalCount,
                                   }
                           }}
                         } @else {
@@ -157,22 +154,20 @@
                       <mat-form-field class="inline-key-field no-subscript">
                         <mat-label>{{ 'templates.key' | translate }}</mat-label>
                         <input
+                          #keyInput
                           matInput
                           [placeholder]="'templates.keyPlaceholder' | translate"
-                          [value]="draftKey(catKey)"
-                          (input)="setDraftKey(catKey, $any($event.target).value)"
-                          (keyup.enter)="addKeyToCategory(catKey)"
+                          (keyup.enter)="addKeyToCategory(cat.category, keyInput, valInput)"
                         />
                       </mat-form-field>
 
                       <mat-form-field class="inline-val-field no-subscript">
                         <mat-label>{{ 'templates.value' | translate }}</mat-label>
                         <input
+                          #valInput
                           matInput
                           [placeholder]="'templates.valuePlaceholder' | translate"
-                          [value]="draftVal(catKey)"
-                          (input)="setDraftVal(catKey, $any($event.target).value)"
-                          (keyup.enter)="addKeyToCategory(catKey)"
+                          (keyup.enter)="addKeyToCategory(cat.category, keyInput, valInput)"
                         />
                       </mat-form-field>
 
@@ -181,35 +176,40 @@
                         mat-flat-button
                         color="primary"
                         [title]="'templates.addKeyToCategory' | translate"
-                        [disabled]="isAddKeyDisabled(catKey)"
-                        (click)="addKeyToCategory(catKey)"
+                        (click)="addKeyToCategory(cat.category, keyInput, valInput)"
                       >
                         <mat-icon svgIcon="plus"></mat-icon>
                         <span>{{ 'templates.addKey' | translate }}</span>
                       </button>
                     </div>
 
-                    @if (getSaveCategoryEntries(catKey).length > 0) {
-                      <div class="cat-kv-grid">
-                        @for (entry of getSaveCategoryEntries(catKey); track entry.id) {
-                          <div class="kv-item" [class.selected]="entry.selected">
+                    @if (cat.entries.length > 0) {
+                      <div class="cat-kv-list">
+                        @for (entry of cat.entries; track entry.id) {
+                          <div
+                            class="kv-item"
+                            [class.selected]="entry.selected"
+                            [class.unselected]="!entry.selected"
+                          >
                             <mat-checkbox
                               [checked]="entry.selected"
                               (change)="toggleEntry(entry.id)"
                             >
                             </mat-checkbox>
-                            <div class="kv-details">
-                              <span class="k-label" [title]="entry.key">{{ entry.key }}</span>
-                              <code [title]="entry.displayValue">{{ entry.displayValue }}</code>
-                            </div>
-
+                            <code class="kv-key truncate" [title]="entry.key">{{ entry.key }}</code>
+                            <code
+                              class="app-pill pill-sm p-dim kv-val truncate"
+                              [title]="entry.displayValue"
+                            >
+                              {{ entry.displayValue }}
+                            </code>
                             <button
                               type="button"
-                              mat-icon-button
+                              class="action-button"
                               [title]="'templates.removeKey' | translate"
                               (click)="removeSaveKey(entry.id)"
                             >
-                              <mat-icon svgIcon="close" class="warn"></mat-icon>
+                              <mat-icon svgIcon="close"></mat-icon>
                             </button>
                           </div>
                         }
@@ -217,7 +217,7 @@
                     } @else {
                       <div class="empty-state">
                         <mat-icon svgIcon="info"></mat-icon>
-                        <p>{{ 'templates.noCatKeys' | translate: { category: catKey } }}</p>
+                        <p>{{ 'templates.noCatKeys' | translate: { category: cat.category } }}</p>
                       </div>
                     }
                   </div>
@@ -244,9 +244,18 @@
         <span>{{ 'templates.manageTitle' | translate }}</span>
       </ng-template>
 
-      <div class="manage-control-bar">
-        <div class="bar-left">
-          @if (userTemplateService.userTemplates().length > 0) {
+      @if (!selectedTemplate()) {
+        <div class="empty-state">
+          <mat-icon svgIcon="info"></mat-icon>
+          <p>{{ 'templates.noUserTemplates' | translate }}</p>
+          <button type="button" mat-flat-button color="primary" (click)="createNewDraftTemplate()">
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'templates.newTitle' | translate }}</span>
+          </button>
+        </div>
+      } @else {
+        <div class="manage-control-bar">
+          <div class="bar-left">
             <mat-form-field class="no-subscript">
               <mat-label>{{ 'templates.userTemplates' | translate }}</mat-label>
               <mat-select
@@ -260,8 +269,7 @@
                 }
               </mat-select>
             </mat-form-field>
-          }
-          @if (selectedTemplate()) {
+
             <button
               type="button"
               mat-icon-button
@@ -270,11 +278,9 @@
             >
               <mat-icon svgIcon="reset-wrench"></mat-icon>
             </button>
-          }
-        </div>
+          </div>
 
-        <div class="bar-right">
-          @if (selectedTemplate()) {
+          <div class="bar-right">
             <div class="view-mode-toggle">
               <button
                 type="button"
@@ -307,61 +313,48 @@
             >
               <mat-icon svgIcon="trash" class="warn"></mat-icon>
             </button>
-          }
-        </div>
-      </div>
-      <mat-divider></mat-divider>
-
-      @if (!selectedTemplate()) {
-        <div class="empty-state">
-          <mat-icon svgIcon="info"></mat-icon>
-          <p>{{ 'templates.noUserTemplates' | translate }}</p>
-        </div>
-      } @else {
-        @if (!keySearchQuery().trim()) {
-          <div class="template-edit-fields">
-            <mat-form-field class="tpl-name-field no-subscript">
-              <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
-              <input
-                matInput
-                [value]="draftName()"
-                [placeholder]="'templates.namePlaceholder' | translate"
-                (input)="updateTemplateName($any($event.target).value)"
-              />
-            </mat-form-field>
-
-            <mat-form-field class="tpl-desc-field no-subscript">
-              <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
-              <input
-                matInput
-                [value]="draftDescription()"
-                [placeholder]="'templates.descPlaceholder' | translate"
-                (input)="updateTemplateDesc($any($event.target).value)"
-              />
-            </mat-form-field>
           </div>
-        }
+        </div>
+        <mat-divider></mat-divider>
         @if (manageViewMode() === 'visual') {
           <div class="visual-inspector">
+            @if (!keySearchQuery().trim()) {
+              <div class="template-edit-fields">
+                <mat-form-field class="tpl-name-field no-subscript">
+                  <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [value]="draftName()"
+                    [placeholder]="'templates.namePlaceholder' | translate"
+                    (input)="updateTemplateName($any($event.target).value)"
+                  />
+                </mat-form-field>
+
+                <mat-form-field class="tpl-desc-field no-subscript">
+                  <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [value]="draftDescription()"
+                    [placeholder]="'templates.descPlaceholder' | translate"
+                    (input)="updateTemplateDesc($any($event.target).value)"
+                  />
+                </mat-form-field>
+              </div>
+            }
             <mat-accordion multi class="dull">
-              @for (catKey of availableCategories; track catKey) {
-                @if (shouldShowManageCategory(catKey)) {
-                  <mat-expansion-panel [expanded]="isManageCategoryExpanded(catKey)" class="dull">
+              @for (cat of manageCategories(); track cat.category) {
+                @if (cat.isVisible) {
+                  <mat-expansion-panel [expanded]="cat.isExpanded" class="dull">
                     <mat-expansion-panel-header>
                       <mat-panel-title>
-                        <span class="cat-badge">{{ catKey }}</span>
+                        <span class="app-pill pill-sm p-primary">{{ cat.category }}</span>
                       </mat-panel-title>
                       <mat-panel-description>
-                        <span
-                          class="cat-count-badge"
-                          [class.has-keys]="getManageCategoryTotalCount(catKey) > 0"
-                        >
-                          @if (getManageCategoryTotalCount(catKey) > 0) {
+                        <span class="count-badge" [class.has-keys]="cat.totalCount > 0">
+                          @if (cat.totalCount > 0) {
                             {{
-                              (getManageCategoryTotalCount(catKey) === 1
-                                ? 'templates.keyCount'
-                                : 'templates.keysCount'
-                              ) | translate: { count: getManageCategoryTotalCount(catKey) }
+                              (cat.totalCount === 1 ? 'templates.keyCount' : 'templates.keysCount')
+                                | translate: { count: cat.totalCount }
                             }}
                           } @else {
                             {{ 'templates.zeroKeys' | translate }}
@@ -375,22 +368,20 @@
                         <mat-form-field class="inline-key-field no-subscript">
                           <mat-label>{{ 'templates.key' | translate }}</mat-label>
                           <input
+                            #mKeyInput
                             matInput
                             [placeholder]="'templates.keyPlaceholder' | translate"
-                            [value]="draftKey(catKey)"
-                            (input)="setDraftKey(catKey, $any($event.target).value)"
-                            (keyup.enter)="addKeyToCategory(catKey)"
+                            (keyup.enter)="addKeyToCategory(cat.category, mKeyInput, mValInput)"
                           />
                         </mat-form-field>
 
                         <mat-form-field class="inline-val-field no-subscript">
                           <mat-label>{{ 'templates.value' | translate }}</mat-label>
                           <input
+                            #mValInput
                             matInput
                             [placeholder]="'templates.valuePlaceholder' | translate"
-                            [value]="draftVal(catKey)"
-                            (input)="setDraftVal(catKey, $any($event.target).value)"
-                            (keyup.enter)="addKeyToCategory(catKey)"
+                            (keyup.enter)="addKeyToCategory(cat.category, mKeyInput, mValInput)"
                           />
                         </mat-form-field>
 
@@ -399,30 +390,33 @@
                           mat-flat-button
                           color="primary"
                           [title]="'templates.addKeyToCategory' | translate"
-                          [disabled]="isAddKeyDisabled(catKey)"
-                          (click)="addKeyToCategory(catKey)"
+                          (click)="addKeyToCategory(cat.category, mKeyInput, mValInput)"
                         >
                           <mat-icon svgIcon="plus"></mat-icon>
                           <span>{{ 'templates.addKey' | translate }}</span>
                         </button>
                       </div>
 
-                      @if (getManageCategoryEntries(catKey).length > 0) {
-                        <div class="cat-kv-grid">
-                          @for (entry of getManageCategoryEntries(catKey); track entry[0]) {
+                      @if (cat.entries.length > 0) {
+                        <div class="cat-kv-list">
+                          @for (entry of cat.entries; track entry.key) {
                             <div class="kv-item">
-                              <div class="kv-details">
-                                <span class="k-label" [title]="entry[0]">{{ entry[0] }}</span>
-                                <code [title]="String(entry[1])">{{ entry[1] }}</code>
-                              </div>
-
+                              <code class="kv-key truncate" [title]="entry.key">{{
+                                entry.key
+                              }}</code>
+                              <code
+                                class="app-pill pill-sm p-dim kv-val truncate"
+                                [title]="entry.displayValue"
+                              >
+                                {{ entry.displayValue }}
+                              </code>
                               <button
                                 type="button"
-                                mat-icon-button
+                                class="action-button"
                                 [title]="'templates.removeKey' | translate"
-                                (click)="removeKeyFromCategory(catKey, entry[0])"
+                                (click)="removeKeyFromCategory(cat.category, entry.key)"
                               >
-                                <mat-icon svgIcon="close" class="warn"></mat-icon>
+                                <mat-icon svgIcon="close"></mat-icon>
                               </button>
                             </div>
                           }
@@ -430,7 +424,7 @@
                       } @else {
                         <div class="empty-state">
                           <mat-icon svgIcon="info"></mat-icon>
-                          <p>{{ 'templates.noCatKeys' | translate: { category: catKey } }}</p>
+                          <p>{{ 'templates.noCatKeys' | translate: { category: cat.category } }}</p>
                         </div>
                       }
                     </div>
@@ -446,9 +440,7 @@
               </div>
             }
           </div>
-        }
-
-        @if (manageViewMode() === 'json') {
+        } @else {
           <div #manageEditorContainer class="code-mirror"></div>
         }
       }
@@ -457,6 +449,22 @@
 </main>
 
 <footer>
+  @if (mode() === 'manage' && selectedTemplate()) {
+    <button
+      type="button"
+      matIconButton
+      class="warn"
+      [disabled]="!isManageDirty()"
+      (click)="onReset()"
+      [attr.title]="'common.reset' | translate"
+      [attr.aria-label]="'common.reset' | translate"
+    >
+      <mat-icon svgIcon="refresh"></mat-icon>
+    </button>
+  }
+
+  <div class="spacer"></div>
+
   @if (mode() === 'save') {
     <button type="button" mat-button (click)="onClose()">
       {{ 'common.cancel' | translate }}
@@ -475,21 +483,16 @@
       <mat-icon svgIcon="floppy-disk"></mat-icon>
       <span>{{ 'common.save' | translate }}</span>
     </button>
-  } @else {
-    <button type="button" mat-button (click)="onClose()">
-      {{ 'common.close' | translate }}
+  } @else if (selectedTemplate()) {
+    <button
+      type="button"
+      mat-flat-button
+      color="primary"
+      [disabled]="!isManageDirty() || (manageViewMode() === 'json' && !!jsonParseError())"
+      (click)="onSaveManageTemplate()"
+    >
+      <mat-icon svgIcon="floppy-disk"></mat-icon>
+      <span>{{ 'common.save' | translate }}</span>
     </button>
-    @if (selectedTemplate()) {
-      <button
-        type="button"
-        mat-flat-button
-        color="primary"
-        [disabled]="!isManageDirty() || (manageViewMode() === 'json' && !!jsonParseError())"
-        (click)="onSaveManageTemplate()"
-      >
-        <mat-icon svgIcon="floppy-disk"></mat-icon>
-        <span>{{ 'common.save' | translate }}</span>
-      </button>
-    }
   }
 </footer>

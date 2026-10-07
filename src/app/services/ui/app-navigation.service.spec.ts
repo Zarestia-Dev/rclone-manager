@@ -1,13 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Subject } from 'rxjs';
+import { AppTab, FlowSubMode, MainView, Remote, WorkflowDefinition } from '@app/types';
 import { NautilusService } from './nautilus.service';
 import { FlowOverlayService } from './flow-overlay.service';
 import { MainUiOverlayService } from './main-ui-overlay.service';
 import { WorkflowStateService } from '../flow/workflow-state.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
-import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppTab, FlowSubMode, MainView, Remote } from '@app/types';
 import { AppNavigationService } from './app-navigation.service';
 import { MainNavigation, NavigationHistoryService } from './navigation-history.service';
 import { UiStateService } from './state/ui-state.service';
@@ -33,6 +33,17 @@ describe('AppNavigationService', () => {
   let restored: Subject<{ main: MainNavigation }>;
   let service: AppNavigationService;
   const updateMain = vi.fn();
+  const workflows = signal<WorkflowDefinition[]>([]);
+  const currentWorkflow = signal<WorkflowDefinition | null>(null);
+  const loadWorkflow = vi.fn((workflow: WorkflowDefinition) => currentWorkflow.set(workflow));
+  const chosen: WorkflowDefinition = {
+    id: 'chosen',
+    name: 'Chosen',
+    showOnTray: false,
+    nodes: [],
+    edges: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+  };
 
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -43,6 +54,9 @@ describe('AppNavigationService', () => {
     quickRun.set(null);
     remotes.set([]);
     updateMain.mockClear();
+    workflows.set([]);
+    currentWorkflow.set(null);
+    loadWorkflow.mockClear();
     restored = new Subject();
     TestBed.configureTestingModule({
       providers: [
@@ -66,9 +80,9 @@ describe('AppNavigationService', () => {
         },
         {
           provide: WorkflowStateService,
-          useValue: { currentWorkflow: signal(null), loadWorkflow: vi.fn() },
+          useValue: { currentWorkflow, loadWorkflow },
         },
-        { provide: WorkflowStorageService, useValue: { workflows: signal([]) } },
+        { provide: WorkflowStorageService, useValue: { workflows } },
         {
           provide: NavigationHistoryService,
           useValue: { restored$: restored, updateMain, initialize: vi.fn() },
@@ -154,6 +168,53 @@ describe('AppNavigationService', () => {
     remote.set(null);
     TestBed.tick();
     expect(remote()).toBeNull();
+    expect(updateMain).toHaveBeenLastCalledWith(home);
+  });
+
+  it('a user workflow selection supersedes an unresolved deep link', async () => {
+    service.initialize(null);
+    restored.next({ main: { ...home, view: 'flow', flowMode: 'builder', workflow: 'missing' } });
+    await Promise.resolve();
+    TestBed.tick();
+    const state = TestBed.inject(WorkflowStateService);
+    state.currentWorkflow.set(chosen);
+    workflows.set([{ ...chosen, id: 'missing' }]);
+    TestBed.tick();
+    expect(updateMain).toHaveBeenLastCalledWith(expect.objectContaining({ workflow: 'chosen' }));
+    expect(loadWorkflow).not.toHaveBeenCalled();
+    expect(currentWorkflow()).toBe(chosen);
+    currentWorkflow.set(null);
+    TestBed.tick();
+    expect(loadWorkflow).not.toHaveBeenCalled();
+    expect(updateMain).toHaveBeenLastCalledWith(expect.objectContaining({ workflow: null }));
+  });
+
+  it('waits for a deep-linked workflow after clearing the previous selection', async () => {
+    service.initialize(null);
+    currentWorkflow.set(chosen);
+    restored.next({ main: { ...home, view: 'flow', flowMode: 'builder', workflow: 'late' } });
+    await Promise.resolve();
+    TestBed.tick();
+    expect(currentWorkflow()).toBeNull();
+    expect(updateMain).toHaveBeenLastCalledWith(expect.objectContaining({ workflow: 'late' }));
+    const late = { ...chosen, id: 'late' };
+    workflows.set([late]);
+    TestBed.tick();
+    expect(loadWorkflow).toHaveBeenCalledExactlyOnceWith(late);
+    expect(currentWorkflow()).toBe(late);
+  });
+
+  it('cancels a pending workflow when history restores an empty selection', async () => {
+    service.initialize(null);
+    restored.next({ main: { ...home, view: 'flow', workflow: 'late' } });
+    await Promise.resolve();
+    TestBed.tick();
+    restored.next({ main: home });
+    await Promise.resolve();
+    workflows.set([{ ...chosen, id: 'late' }]);
+    TestBed.tick();
+    expect(loadWorkflow).not.toHaveBeenCalled();
+    expect(currentWorkflow()).toBeNull();
     expect(updateMain).toHaveBeenLastCalledWith(home);
   });
 });

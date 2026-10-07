@@ -10,19 +10,19 @@ import {
   DestroyRef,
   untracked,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatListModule } from '@angular/material/list';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 
 import {
   UserPresetTemplate,
@@ -65,20 +65,40 @@ export interface SettingKeyEntry {
   selected: boolean;
 }
 
+export interface SaveCategoryView {
+  readonly category: TemplateCategory;
+  readonly totalCount: number;
+  readonly selectedCount: number;
+  readonly entries: readonly SettingKeyEntry[];
+  readonly isExpanded: boolean;
+  readonly isVisible: boolean;
+}
+
+export interface ManageCategoryEntry {
+  readonly key: string;
+  readonly value: unknown;
+  readonly displayValue: string;
+}
+
+export interface ManageCategoryView {
+  readonly category: TemplateCategory;
+  readonly totalCount: number;
+  readonly entries: readonly ManageCategoryEntry[];
+  readonly isExpanded: boolean;
+  readonly isVisible: boolean;
+}
+
 @Component({
   selector: 'app-template-manager-modal',
   hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
-    FormsModule,
-    MatDialogModule,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatCheckboxModule,
-    MatListModule,
     MatTabsModule,
     MatDividerModule,
     MatExpansionModule,
@@ -93,6 +113,8 @@ export class TemplateManagerModalComponent {
   private readonly fb = inject(FormBuilder);
   readonly userTemplateService = inject(UserTemplateService);
   private readonly presetsService = inject(RemotePresetsService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<TemplateManagerModalComponent>);
   readonly data = inject<TemplateManagerModalData>(MAT_DIALOG_DATA, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
@@ -140,11 +162,77 @@ export class TemplateManagerModalComponent {
     return !deepEqual(this.draftValues() ?? {}, tpl.values ?? {});
   });
 
-  // === Add-key row drafts (shared between Save and Manage tabs) ===
-  // One draft per category so input fields across both tabs read/write the
-  // same in-flight text without cross-contaminating actual template state.
-  private readonly draftKeyByCategory = signal<Partial<Record<TemplateCategory, string>>>({});
-  private readonly draftValByCategory = signal<Partial<Record<TemplateCategory, string>>>({});
+  // === Memoized Category Views (Single O(N) pass for reactivity) ===
+  readonly saveCategories = computed<SaveCategoryView[]>(() => {
+    const query = this.keySearchQuery().trim().toLowerCase();
+    const entries = this.settingEntries();
+
+    const entriesByCat = new Map<TemplateCategory, SettingKeyEntry[]>();
+    for (const cat of this.availableCategories) {
+      entriesByCat.set(cat, []);
+    }
+    for (const entry of entries) {
+      entriesByCat.get(entry.category)?.push(entry);
+    }
+
+    return this.availableCategories.map(catKey => {
+      const allCatEntries = entriesByCat.get(catKey) ?? [];
+      const totalCount = allCatEntries.length;
+      const selectedCount = allCatEntries.filter(e => e.selected).length;
+      const filteredEntries = query
+        ? allCatEntries.filter(e =>
+            `${e.key} ${e.category} ${e.displayValue}`.toLowerCase().includes(query)
+          )
+        : allCatEntries;
+
+      return {
+        category: catKey,
+        totalCount,
+        selectedCount,
+        entries: filteredEntries,
+        isExpanded: query ? filteredEntries.length > 0 : totalCount > 0,
+        isVisible: !query || filteredEntries.length > 0,
+      };
+    });
+  });
+
+  readonly hasAnyMatchingSaveCategory = computed(
+    () => !this.keySearchQuery().trim() || this.saveCategories().some(c => c.entries.length > 0)
+  );
+
+  readonly manageCategories = computed<ManageCategoryView[]>(() => {
+    const query = this.keySearchQuery().trim().toLowerCase();
+    const values = this.draftValues();
+
+    return this.availableCategories.map(catKey => {
+      const catObj = values[catKey];
+      const rawEntries = catObj ? Object.entries(catObj) : [];
+      const totalCount = rawEntries.length;
+      const allEntries: ManageCategoryEntry[] = rawEntries.map(([k, v]) => ({
+        key: k,
+        value: v,
+        displayValue: String(v),
+      }));
+
+      const filteredEntries = query
+        ? allEntries.filter(e =>
+            `${e.key} ${catKey} ${e.displayValue}`.toLowerCase().includes(query)
+          )
+        : allEntries;
+
+      return {
+        category: catKey,
+        totalCount,
+        entries: filteredEntries,
+        isExpanded: query ? filteredEntries.length > 0 : totalCount > 0,
+        isVisible: !query || filteredEntries.length > 0,
+      };
+    });
+  });
+
+  readonly hasAnyMatchingManageCategory = computed(
+    () => !this.keySearchQuery().trim() || this.manageCategories().some(c => c.entries.length > 0)
+  );
 
   // === CodeMirror state ===
   private readonly saveEditorContainer = viewChild<ElementRef<HTMLElement>>('saveEditorContainer');
@@ -152,8 +240,6 @@ export class TemplateManagerModalComponent {
     viewChild<ElementRef<HTMLElement>>('manageEditorContainer');
   private saveEditorView: EditorView | null = null;
   private manageEditorView: EditorView | null = null;
-
-  readonly String = String;
 
   constructor() {
     // CodeMirror lifecycle — single helper drives both Save and Manage tabs.
@@ -169,16 +255,9 @@ export class TemplateManagerModalComponent {
     });
 
     effect(() => {
-      const id = this.selectedTemplateId();
+      this.selectedTemplateId();
       untracked(() => {
-        const tpl = this.userTemplateService.userTemplates().find(t => t.id === id);
-        this.draftName.set(tpl?.name ?? '');
-        this.draftDescription.set(tpl?.description ?? '');
-        this.draftValues.set(structuredClone(tpl?.values ?? {}));
-        const jsonStr = JSON.stringify(tpl?.values ?? {}, null, 2);
-        this.jsonEditorContent.set(jsonStr);
-        this.jsonParseError.set(null);
-        this.dispatchEditorText('manage', jsonStr);
+        this.syncDraftFromTemplate(this.selectedTemplate());
       });
     });
 
@@ -303,105 +382,15 @@ export class TemplateManagerModalComponent {
     this.selectedTemplateId.set(id);
   }
 
-  // === Shared category accessors ===
-  private filterByText<T>(items: T[], query: string, extractor: (item: T) => string): T[] {
-    if (!query) return items;
-    const q = query.toLowerCase();
-    return items.filter(item => extractor(item).toLowerCase().includes(q));
-  }
-
-  getSaveCategoryEntries(catKey: TemplateCategory): SettingKeyEntry[] {
-    return this.filterByText(
-      this.settingEntries().filter(e => e.category === catKey),
-      this.keySearchQuery(),
-      e => `${e.key} ${e.category} ${e.displayValue}`
-    );
-  }
-
-  getManageCategoryEntries(catKey: TemplateCategory): [string, unknown][] {
-    const obj = this.draftValues()?.[catKey];
-    if (!obj) return [];
-    return this.filterByText(
-      Object.entries(obj),
-      this.keySearchQuery(),
-      ([k, v]) => `${k} ${catKey} ${String(v)}`
-    );
-  }
-
-  shouldShowSaveCategory(catKey: TemplateCategory): boolean {
-    return !this.keySearchQuery().trim() || this.getSaveCategoryEntries(catKey).length > 0;
-  }
-
-  shouldShowManageCategory(catKey: TemplateCategory): boolean {
-    return !this.keySearchQuery().trim() || this.getManageCategoryEntries(catKey).length > 0;
-  }
-
-  readonly hasAnyMatchingSaveCategory = computed(
-    () =>
-      !this.keySearchQuery().trim() ||
-      this.availableCategories.some(c => this.getSaveCategoryEntries(c).length > 0)
-  );
-
-  readonly hasAnyMatchingManageCategory = computed(
-    () =>
-      !this.keySearchQuery().trim() ||
-      this.availableCategories.some(c => this.getManageCategoryEntries(c).length > 0)
-  );
-
-  getSaveCategoryTotalCount(catKey: TemplateCategory): number {
-    return this.settingEntries().filter(e => e.category === catKey).length;
-  }
-
-  getSaveCategorySelectedCount(catKey: TemplateCategory): number {
-    return this.settingEntries().filter(e => e.category === catKey && e.selected).length;
-  }
-
-  getManageCategoryTotalCount(catKey: TemplateCategory): number {
-    const obj = this.draftValues()?.[catKey];
-    return obj ? Object.keys(obj).length : 0;
-  }
-
-  isSaveCategoryExpanded(catKey: TemplateCategory): boolean {
-    if (this.keySearchQuery().trim()) {
-      return this.getSaveCategoryEntries(catKey).length > 0;
-    }
-    return this.getSaveCategoryTotalCount(catKey) > 0;
-  }
-
-  isManageCategoryExpanded(catKey: TemplateCategory): boolean {
-    if (this.keySearchQuery().trim()) {
-      return this.getManageCategoryEntries(catKey).length > 0;
-    }
-    return this.getManageCategoryTotalCount(catKey) > 0;
-  }
-
-  // === Shared add-key row drafts ===
-  draftKey(cat: TemplateCategory): string {
-    return this.draftKeyByCategory()[cat] ?? '';
-  }
-
-  draftVal(cat: TemplateCategory): string {
-    return this.draftValByCategory()[cat] ?? '';
-  }
-
-  setDraftKey(cat: TemplateCategory, value: string): void {
-    this.draftKeyByCategory.update(s => ({ ...s, [cat]: value }));
-  }
-
-  setDraftVal(cat: TemplateCategory, value: string): void {
-    this.draftValByCategory.update(s => ({ ...s, [cat]: value }));
-  }
-
-  isAddKeyDisabled(cat: TemplateCategory): boolean {
-    const k = this.draftKeyByCategory()[cat];
-    return !k || !k.trim();
-  }
-
-  addKeyToCategory(cat: TemplateCategory): void {
-    const rawKey = (this.draftKeyByCategory()[cat] ?? '').trim();
+  addKeyToCategory(
+    cat: TemplateCategory,
+    keyOrInput: string | HTMLInputElement,
+    valOrInput?: string | HTMLInputElement
+  ): void {
+    const rawKey = (typeof keyOrInput === 'string' ? keyOrInput : keyOrInput.value).trim();
     if (!rawKey) return;
 
-    const rawVal = (this.draftValByCategory()[cat] ?? '').trim();
+    const rawVal = (typeof valOrInput === 'string' ? valOrInput : (valOrInput?.value ?? '')).trim();
     const parsedVal = parseTypedValue(rawVal);
 
     if (this.mode() === 'save') {
@@ -434,8 +423,8 @@ export class TemplateManagerModalComponent {
       this.dispatchEditorText('manage', jsonStr);
     }
 
-    this.setDraftKey(cat, '');
-    this.setDraftVal(cat, '');
+    if (typeof keyOrInput !== 'string') keyOrInput.value = '';
+    if (valOrInput && typeof valOrInput !== 'string') valOrInput.value = '';
   }
 
   removeKeyFromCategory(cat: TemplateCategory, key: string): void {
@@ -545,7 +534,36 @@ export class TemplateManagerModalComponent {
     this.mode.set('save');
   }
 
-  onDeleteUserTemplate(id: string): void {
+  onReset(): void {
+    this.syncDraftFromTemplate(this.selectedTemplate());
+  }
+
+  private syncDraftFromTemplate(tpl: UserPresetTemplate | null): void {
+    if (!tpl) return;
+    this.draftName.set(tpl.name ?? '');
+    this.draftDescription.set(tpl.description ?? '');
+    const clonedValues = structuredClone(tpl.values ?? {});
+    this.draftValues.set(clonedValues);
+    const jsonStr = JSON.stringify(clonedValues, null, 2);
+    this.jsonEditorContent.set(jsonStr);
+    this.jsonParseError.set(null);
+    if (this.manageViewMode() === 'json') {
+      this.dispatchEditorText('manage', jsonStr);
+    }
+  }
+
+  async onDeleteUserTemplate(id: string): Promise<void> {
+    const tpl = this.selectedTemplate();
+    const name = tpl?.name ?? '';
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('templates.deleteTemplate'),
+      this.translate.instant('templates.deleteConfirm', { name }),
+      this.translate.instant('common.delete'),
+      this.translate.instant('common.cancel'),
+      { icon: 'warning', color: 'warn' }
+    );
+    if (!confirmed) return;
+
     try {
       this.userTemplateService.deleteTemplate(id);
       // Auto-select effect handles picking the next template and syncing drafts.
@@ -633,7 +651,11 @@ export class TemplateManagerModalComponent {
   private handleManageJsonInput(text: string): void {
     this.jsonEditorContent.set(text);
     try {
-      JSON.parse(text);
+      const parsed: unknown = JSON.parse(text);
+      if (!isTemplateCategoryRecord(parsed)) {
+        throw new Error('JSON content must be a valid template category record.');
+      }
+      this.draftValues.set(parsed);
       this.jsonParseError.set(null);
     } catch (e) {
       this.jsonParseError.set((e as Error).message);

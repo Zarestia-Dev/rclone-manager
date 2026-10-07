@@ -1,0 +1,211 @@
+<header data-tauri-drag-region>
+  <button tabindex="-1" aria-hidden="true">
+    <mat-icon svgIcon="reset-wrench"></mat-icon>
+  </button>
+  <p data-tauri-drag-region>{{ 'templates.applyModalTitle' | translate }}</p>
+  <button
+    type="button"
+    matIconButton
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+    (click)="onClose()"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <!-- Template Header Info & Summary Pills -->
+  <div class="template-info-card">
+    <div class="template-header-row">
+      <div class="template-title-meta">
+        <h3>{{ template.name }}</h3>
+        @if (template.description) {
+          <p class="template-desc">{{ template.description }}</p>
+        }
+      </div>
+
+      <div class="summary-pill-group">
+        @if (diffResult().totalAdded > 0) {
+          <span
+            class="app-pill pill-sm p-primary"
+            [title]="'templates.addedCount' | translate: { count: diffResult().totalAdded }"
+          >
+            +{{ diffResult().totalAdded }}
+            {{ 'templates.addedCount' | translate: { count: diffResult().totalAdded } }}
+          </span>
+        }
+        @if (diffResult().totalModified > 0) {
+          <span
+            class="app-pill pill-sm p-orange"
+            [title]="'templates.modifiedCount' | translate: { count: diffResult().totalModified }"
+          >
+            ~{{ diffResult().totalModified }}
+            {{ 'templates.modifiedCount' | translate: { count: diffResult().totalModified } }}
+          </span>
+        }
+        @if (diffResult().totalUnchanged > 0) {
+          <span
+            class="app-pill pill-sm p-dim"
+            [title]="'templates.unchangedCount' | translate: { count: diffResult().totalUnchanged }"
+          >
+            ={{ diffResult().totalUnchanged }}
+            {{ 'templates.unchangedCount' | translate: { count: diffResult().totalUnchanged } }}
+          </span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Strategy Selector -->
+  <section class="form-section strategy-section">
+    <span class="section-label">{{ 'templates.applyStrategy' | translate }}</span>
+
+    <div class="strategy-cards">
+      <button
+        type="button"
+        class="strategy-card"
+        [class.selected]="strategy() === 'overwrite'"
+        (click)="setStrategy('overwrite')"
+      >
+        <div class="strategy-radio">
+          <span class="radio-dot" [class.active]="strategy() === 'overwrite'"></span>
+        </div>
+        <div class="strategy-details">
+          <span class="strategy-title">{{ 'templates.strategyOverwrite' | translate }}</span>
+          <span class="strategy-desc">{{ 'templates.strategyOverwriteDesc' | translate }}</span>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="strategy-card"
+        [class.selected]="strategy() === 'fill-empty'"
+        (click)="setStrategy('fill-empty')"
+      >
+        <div class="strategy-radio">
+          <span class="radio-dot" [class.active]="strategy() === 'fill-empty'"></span>
+        </div>
+        <div class="strategy-details">
+          <span class="strategy-title">{{ 'templates.strategyFillEmpty' | translate }}</span>
+          <span class="strategy-desc">{{ 'templates.strategyFillEmptyDesc' | translate }}</span>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <!-- Diff & Category Explorer -->
+  <section class="form-section">
+    <div class="section-header">
+      <span class="section-label">{{ 'templates.selectCategoriesToApply' | translate }}</span>
+      <span class="count-badge"> {{ filteredKeysCount() }} / {{ diffResult().totalCount }} </span>
+    </div>
+
+    @if (diffResult().totalCount === 0) {
+      <div class="empty-state">
+        <mat-icon svgIcon="circle-info"></mat-icon>
+        <p>{{ 'templates.noUserTemplates' | translate }}</p>
+      </div>
+    } @else {
+      @if (!diffResult().hasChanges) {
+        <div class="no-diff-banner">
+          <mat-icon svgIcon="circle-check"></mat-icon>
+          <span>{{ 'templates.noChangesDetected' | translate }}</span>
+        </div>
+      }
+
+      <div class="category-accordion-list">
+        @for (cat of diffResult().categories; track cat) {
+          @if (diffResult().byCategory[cat]?.length) {
+            <div class="category-diff-card" [class.disabled-cat]="!isCategorySelected(cat)">
+              <button type="button" class="category-card-header" (click)="toggleCategory(cat)">
+                <mat-checkbox
+                  [checked]="isCategorySelected(cat)"
+                  (change)="toggleCategory(cat)"
+                  (click)="$event.stopPropagation()"
+                >
+                </mat-checkbox>
+                <span class="app-pill pill-sm p-primary">{{ cat }}</span>
+                <span class="count-badge">{{ diffResult().byCategory[cat]?.length }}</span>
+              </button>
+
+              @if (isCategorySelected(cat)) {
+                <div class="diff-item-list">
+                  @for (item of diffResult().byCategory[cat]; track item.id) {
+                    <div
+                      class="diff-row"
+                      [class.is-added]="item.status === 'added'"
+                      [class.is-modified]="item.status === 'modified'"
+                      [class.is-unchanged]="item.status === 'unchanged'"
+                    >
+                      <div class="diff-key-wrapper">
+                        <span class="diff-key truncate" [title]="item.key">{{ item.key }}</span>
+                      </div>
+
+                      <div class="diff-values-wrapper">
+                        @if (item.status === 'modified') {
+                          <span
+                            class="diff-val current truncate"
+                            [title]="
+                              ('templates.diffCurrent' | translate) + ': ' + item.currentDisplay
+                            "
+                          >
+                            {{ item.currentDisplay }}
+                          </span>
+                          <span class="diff-arrow" aria-hidden="true">→</span>
+                          <span
+                            class="diff-val new truncate"
+                            [title]="('templates.diffNew' | translate) + ': ' + item.newDisplay"
+                          >
+                            {{ item.newDisplay }}
+                          </span>
+                        } @else if (item.status === 'added') {
+                          <span
+                            class="diff-val new truncate"
+                            [title]="('templates.diffNew' | translate) + ': ' + item.newDisplay"
+                          >
+                            {{ item.newDisplay }}
+                          </span>
+                        } @else {
+                          <span class="diff-val unchanged truncate" [title]="item.newDisplay">
+                            {{ item.newDisplay }}
+                          </span>
+                        }
+                      </div>
+
+                      <div class="diff-status-wrapper">
+                        @if (item.status === 'added') {
+                          <span class="app-pill pill-sm p-primary">+</span>
+                        } @else if (item.status === 'modified') {
+                          <span class="app-pill pill-sm p-orange">~</span>
+                        } @else {
+                          <span class="app-pill pill-sm p-dim">=</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+  </section>
+</main>
+
+<footer>
+  <button type="button" matButton="outlined" (click)="onClose()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    type="button"
+    matButton="filled"
+    class="primary"
+    [disabled]="selectedCategories().size === 0 || filteredKeysCount() === 0"
+    (click)="onApply()"
+  >
+    <mat-icon svgIcon="floppy-disk"></mat-icon>
+    <span>{{ 'templates.apply' | translate }}</span>
+  </button>
+</footer>

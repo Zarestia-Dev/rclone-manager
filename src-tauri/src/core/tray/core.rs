@@ -39,41 +39,57 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
     Ok(())
 }
 
+fn locked_tray_visuals(state: &TrayMenuState) -> (MenuPlan, String, TrayIconKind) {
+    let icon = state
+        .cache
+        .lock()
+        .unwrap()
+        .icon
+        .unwrap_or(TrayIconKind::ColorNormal);
+    (MenuPlan::locked(), crate::t!("tray.tooltipDefault"), icon)
+}
+
+async fn build_tray_visuals<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &TrayMenuState,
+    settings_manager: &AppSettingsManager,
+) -> tauri::Result<Option<(MenuPlan, String, TrayIconKind)>> {
+    if settings_manager.is_locked() {
+        return Ok(Some(locked_tray_visuals(state)));
+    }
+
+    let settings = settings_manager
+        .get_all()
+        .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
+
+    if !settings.general.tray_enabled {
+        return Ok(None);
+    }
+
+    let snapshot = TraySnapshot::fetch(app).await?;
+    if settings_manager.is_locked() {
+        return Ok(Some(locked_tray_visuals(state)));
+    }
+
+    Ok(Some((
+        MenuPlan::build(&snapshot, settings.core.max_tray_items),
+        build_tooltip(&snapshot),
+        TrayIconKind::resolve(
+            !snapshot.active_jobs.is_empty(),
+            &settings.general.tray_icon_theme,
+        ),
+    )))
+}
+
 async fn perform_update_tray_menu<R: Runtime>(
     app: &AppHandle<R>,
     state: &TrayMenuState,
 ) -> tauri::Result<()> {
     let settings_manager = app.state::<AppSettingsManager>();
-    let (plan, tooltip, icon_kind) = if settings_manager.is_locked() {
-        (
-            MenuPlan::locked(),
-            crate::t!("tray.tooltipDefault"),
-            TrayIconKind::resolve(false, "system"),
-        )
-    } else {
-        let settings = settings_manager
-            .get_all()
-            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?;
-        if !settings.general.tray_enabled {
-            return Ok(());
-        }
-        let snapshot = TraySnapshot::fetch(app).await?;
-        if settings_manager.is_locked() {
-            (
-                MenuPlan::locked(),
-                crate::t!("tray.tooltipDefault"),
-                TrayIconKind::resolve(false, "system"),
-            )
-        } else {
-            (
-                MenuPlan::build(&snapshot, settings.core.max_tray_items),
-                build_tooltip(&snapshot),
-                TrayIconKind::resolve(
-                    !snapshot.active_jobs.is_empty(),
-                    &settings.general.tray_icon_theme,
-                ),
-            )
-        }
+    let Some((plan, tooltip, icon_kind)) =
+        build_tray_visuals(app, state, &settings_manager).await?
+    else {
+        return Ok(());
     };
 
     let (plan_changed, tooltip_changed, icon_changed) = state
@@ -106,7 +122,7 @@ async fn perform_update_tray_menu<R: Runtime>(
         let locked = app_clone.state::<AppSettingsManager>().is_locked();
         let plan_to_set = if locked { Some(MenuPlan::locked()) } else { plan_to_set };
         let tooltip_to_set = if locked { Some(crate::t!("tray.tooltipDefault")) } else { tooltip_to_set };
-        let icon = if locked { Some(TrayIconKind::resolve(false, "system").to_image()) } else { icon };
+        let icon = if locked { None } else { icon };
         if let Some(ref plan) = plan_to_set {
             match create_tray_menu_from_plan(&app_clone, plan) {
                 Ok(menu) => {

@@ -21,6 +21,7 @@ export class ConfirmModalComponent {
 
   @HostListener('document:keydown.enter', ['$event'])
   onEnterKey(event: Event): void {
+    if ((event.target as HTMLElement)?.tagName === 'BUTTON') return;
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     if (this.data.confirmText) {

@@ -50,6 +50,7 @@ import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
+import { getApplicableTemplateCategories } from '../../../../shared/remote-config/template-diff.utils';
 import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
@@ -378,49 +379,41 @@ export class RemoteConfigModalComponent {
     if (this.state.showObscureTool()) this.closeSidebarIfOver();
   }
 
-  onApplyPresets(): void {
-    const remoteType = this.state.remoteTypeSignal();
-    if (!remoteType) return;
-    this.state.applyPresets(remoteType);
-    const msg = this.translate.instant('wizards.presets.applied');
-    this.notificationService.showSuccess(
-      msg !== 'wizards.presets.applied' ? msg : 'Default presets applied successfully'
-    );
-  }
+  readonly applicableCategories = computed(() =>
+    getApplicableTemplateCategories(this.state.activeStepType())
+  );
 
   readonly currentValues = computed(() => {
     const rcf = this.state.remoteConfigForm;
+    const applicable = new Set(this.applicableCategories());
+    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
+
     const getCleanOptions = (configKey: string, flagType: FlagType): Record<string, unknown> => {
       const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
       const fields = this.state.getDynamicFlagFields(flagType);
       return this.valueMapper.cleanData(opts, fields);
     };
 
-    const remoteRaw = this.state.remoteForm.getRawValue();
-    const remoteClean = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
-    const cleanRemoteData: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(remoteClean)) {
-      if (k !== 'name' && k !== 'type') cleanRemoteData[k] = v;
+    if (applicable.has('remote')) {
+      const remoteRaw = this.state.remoteForm.getRawValue();
+      const remoteClean = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
+      const cleanRemoteData: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(remoteClean)) {
+        if (k !== 'name' && k !== 'type') cleanRemoteData[k] = v;
+      }
+      result.remote = cleanRemoteData;
     }
 
-    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
-      vfs: getCleanOptions('vfsConfig', 'vfs'),
-      mount: getCleanOptions('mountConfig', 'mount'),
-      backend: getCleanOptions('backendConfig', 'backend'),
-      filter: getCleanOptions('filterConfig', 'filter'),
-      remote: cleanRemoteData,
-    };
-
-    const activeFlag = this.state.activeFlagType();
-    if (activeFlag && !result[activeFlag]) {
-      result[activeFlag] = getCleanOptions(`${activeFlag}Config`, activeFlag);
+    for (const cat of applicable) {
+      if (cat === 'remote') continue;
+      result[cat] = getCleanOptions(`${cat}Config`, cat);
     }
 
     return result;
   });
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
-    this.state.applyTemplate(event.values);
+    this.state.applyTemplate(event.values, this.state.activeStepType());
     const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
     this.notificationService.showSuccess(msg);
   }

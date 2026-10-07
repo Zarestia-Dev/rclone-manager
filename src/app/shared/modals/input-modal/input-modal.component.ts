@@ -1,6 +1,5 @@
 import {
   Component,
-  HostListener,
   inject,
   OnInit,
   DestroyRef,
@@ -182,11 +181,6 @@ export class InputModalComponent implements OnInit {
     } catch {
       return null;
     }
-  }
-
-  @HostListener('document:keydown.enter')
-  onEnterKey(): void {
-    if (this.form.valid) this.onConfirm();
   }
 
   getControl(key: string): FormControl {

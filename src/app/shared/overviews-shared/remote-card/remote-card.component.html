@@ -205,7 +205,7 @@
         </div>
       </div>
     } @else {
-      @for (opVm of detailedOperationViewModels(); track $index) {
+      @for (opVm of detailedOperationViewModels(); track opVm.key) {
         @if (opVm.profiles.length > 0) {
           <div class="profile-group" [ngClass]="opVm.cssClass">
             <div class="profile-group-header">
@@ -216,7 +216,7 @@
               <span class="profile-count">{{ opVm.profiles.length }}</span>
             </div>
             <div class="profile-pills">
-              @for (profileVm of opVm.profiles; track $index) {
+              @for (profileVm of opVm.profiles; track profileVm.name) {
                 <div class="profile-item" [class.can-open]="profileVm.canOpen">
                   <button
                     class="app-pill interactive"

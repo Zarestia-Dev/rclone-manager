@@ -237,6 +237,35 @@ describe('RemoteConfigStateService', () => {
         { rclone?: Record<string, unknown> } | undefined;
       expect(mountProfile?.rclone?.['attr_timeout']).toBe('5s');
     });
+
+    it('should only patch allowed categories when target context is scoped (e.g. sync should not touch vfs or mount)', () => {
+      service.initProfiles({ remoteType: 'drive' });
+
+      service.applyTemplate(
+        {
+          vfs: { vfs_cache_mode: 'full' },
+          mount: { attr_timeout: '5s' },
+          sync: { bwlimit: '10M', transfers: 4 },
+        },
+        'sync'
+      );
+
+      const profiles = service.profiles();
+
+      // sync was allowed, so it should be patched
+      const syncProfile = profiles['sync']?.['Default'] as
+        { rclone?: Record<string, unknown> } | undefined;
+      expect(syncProfile?.rclone?.['bwlimit']).toBe('10M');
+      expect(syncProfile?.rclone?.['transfers']).toBe(4);
+
+      // vfs and mount are NOT allowed for sync context, so they must NOT be modified
+      const vfsProfile = profiles['vfs']?.['Default'] as Record<string, unknown> | undefined;
+      expect(vfsProfile?.['vfs_cache_mode']).toBeUndefined();
+
+      const mountProfile = profiles['mount']?.['Default'] as
+        { rclone?: Record<string, unknown> } | undefined;
+      expect(mountProfile?.rclone?.['attr_timeout']).toBeUndefined();
+    });
   });
 
   describe('init error handling on clone failure', () => {

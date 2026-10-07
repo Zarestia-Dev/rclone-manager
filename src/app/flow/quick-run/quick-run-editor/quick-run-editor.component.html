@@ -89,9 +89,9 @@
           </button>
 
           <app-preset-template-bar
-            variant="sidebar-item"
+            [remoteType]="selectedRemoteType()"
+            [applicableCategories]="applicableCategories()"
             [currentValues]="currentValues()"
-            (applyDefaultPresets)="applyDefaultPresets()"
             (applyTemplate)="onApplyTemplate($event)"
           />
         </mat-nav-list>

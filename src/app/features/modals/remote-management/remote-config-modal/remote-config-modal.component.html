@@ -61,6 +61,7 @@
             [remoteEditCategories]="remoteEditCategories"
             [visibleSections]="visibleSections()"
             [profileIcons]="PROFILE_ICONS"
+            [applicableCategories]="applicableCategories()"
             [currentValues]="currentValues()"
             (stepSelected)="onStepSelected($event)"
             (sectionScrolled)="onSectionScrolled($event)"
@@ -70,7 +71,6 @@
             (searchToggled)="onSearchToggled()"
             (cliImportToggled)="onCliImportToggled()"
             (obscureToolToggled)="onObscureToolToggled()"
-            (presetsApplied)="onApplyPresets()"
             (templateApplied)="onApplyTemplate($event)"
           />
         </mat-sidenav>

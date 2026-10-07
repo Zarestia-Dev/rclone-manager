@@ -12,7 +12,7 @@
 
   <ng-template #presetsMenu>
     <div cdkMenu class="material-context-menu">
-      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="applyDefaultPresets.emit()">
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="onApplyDefaultPresets()">
         <mat-icon svgIcon="reset-wrench"></mat-icon>
         <span>{{ 'templates.applyPresets' | translate }}</span>
       </button>

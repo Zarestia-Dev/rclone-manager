@@ -20,6 +20,7 @@ import {
   QuickRun,
   QuickRunInput,
   TemplateCategory,
+  UserPresetTemplate,
   PrimaryActionType,
   WorkflowNode,
   FileBrowserItem,
@@ -72,9 +73,26 @@ export interface RestorePreviewOptions {
   analysis: BackupAnalysis;
 }
 
+export interface TemplateManagerResult {
+  action?: string;
+  template?: UserPresetTemplate;
+}
+
 export interface TemplateManagerModalOptions {
   mode: 'save' | 'manage';
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+}
+
+export interface ApplyTemplateModalOptions {
+  template: UserPresetTemplate;
+  currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+  applicableCategories?: readonly TemplateCategory[];
+}
+
+export interface ApplyTemplateModalResult {
+  applied: boolean;
+  values: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+  strategy: 'overwrite' | 'fill-empty';
 }
 
 export interface QuickRunEditorModalOptions {
@@ -258,6 +276,10 @@ export class ModalService extends TauriBaseService {
     'template-manager': () =>
       import('../../shared/remote-config/template-manager-modal/template-manager-modal.component').then(
         m => m.TemplateManagerModalComponent
+      ),
+    'apply-template': () =>
+      import('../../shared/remote-config/apply-template-modal/apply-template-modal.component').then(
+        m => m.ApplyTemplateModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -716,13 +738,29 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openTemplateManager<TResult = any>(options: TemplateManagerModalOptions): DialogRefLike<TResult> {
+  openTemplateManager<TResult = TemplateManagerResult>(
+    options: TemplateManagerModalOptions
+  ): DialogRefLike<TResult> {
     return this.openModal('template-manager', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
       data: {
         mode: options.mode,
         currentValues: options.currentValues,
+      },
+    });
+  }
+
+  openApplyTemplate<TResult = ApplyTemplateModalResult>(
+    options: ApplyTemplateModalOptions
+  ): DialogRefLike<TResult> {
+    return this.openModal('apply-template', {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: {
+        template: options.template,
+        currentValues: options.currentValues,
+        applicableCategories: options.applicableCategories,
       },
     });
   }

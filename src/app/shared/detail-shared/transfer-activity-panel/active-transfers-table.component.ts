@@ -30,7 +30,7 @@ import { TransferOperationsService } from './transfer-operations.service';
   template: `
     <div class="card-list-container">
       @if (enrichedTransfers().length > 0) {
-        @for (transfer of enrichedTransfers(); track transfer.uniqueId + '-' + $index) {
+        @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
           <div class="card-row-item">
             <div class="card-header">
               <div class="card-info-left">

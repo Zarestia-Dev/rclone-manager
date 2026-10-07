@@ -1,9 +1,32 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { EditorView } from 'codemirror';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
+
+interface CmEditorView {
+  state: {
+    readOnly?: boolean;
+    selection: { main: { from: number; to: number } };
+    sliceDoc(from: number, to: number): string;
+    doc: { length: number };
+    replaceSelection(text: string): unknown;
+  };
+  dispatch(tr: unknown): void;
+  focus(): void;
+}
+
+function findCmView(dom: HTMLElement): CmEditorView | null {
+  const content = dom.querySelector('.cm-content') as
+    | (HTMLElement & {
+        cmTile?: { root?: { view?: CmEditorView } };
+      })
+    | null;
+  const tile =
+    content?.cmTile ||
+    (dom as HTMLElement & { cmTile?: { root?: { view?: CmEditorView } } }).cmTile;
+  return tile?.root?.view || null;
+}
 
 export interface DebugInfo {
   logsDir: string;
@@ -94,7 +117,7 @@ export class DebugService extends TauriBaseService {
     const inputEl = target.closest('input, textarea') as
       HTMLInputElement | HTMLTextAreaElement | null;
     const cmEditor = target.closest('.cm-editor') as HTMLElement | null;
-    const cmView = cmEditor ? EditorView.findFromDOM(cmEditor) : null;
+    const cmView = cmEditor ? findCmView(cmEditor) : null;
     const editableEl =
       !inputEl && !cmView
         ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
@@ -194,7 +217,7 @@ export class DebugService extends TauriBaseService {
     text: string,
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: EditorView | null
+    cmView?: CmEditorView | null
   ): void {
     this.clipboard.copy(text);
     if (inputEl) {
@@ -219,7 +242,7 @@ export class DebugService extends TauriBaseService {
   private async paste(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: EditorView | null
+    cmView?: CmEditorView | null
   ): Promise<void> {
     let text = '';
     try {
@@ -257,7 +280,7 @@ export class DebugService extends TauriBaseService {
   private selectAll(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: EditorView | null
+    cmView?: CmEditorView | null
   ): void {
     if (inputEl) {
       inputEl.select();
@@ -315,7 +338,7 @@ export class DebugService extends TauriBaseService {
 
     this.doc.body.appendChild(this.contextMenu);
     try {
-      (this.contextMenu as any).showPopover();
+      (this.contextMenu as HTMLElement & { showPopover?: () => void }).showPopover?.();
     } catch {
       /* popover not supported, menu visible via fixed positioning */
     }
@@ -333,7 +356,7 @@ export class DebugService extends TauriBaseService {
   private closeMenu(): void {
     if (!this.contextMenu) return;
     try {
-      (this.contextMenu as any).hidePopover();
+      (this.contextMenu as HTMLElement & { hidePopover?: () => void }).hidePopover?.();
     } catch {
       /* ignore */
     }

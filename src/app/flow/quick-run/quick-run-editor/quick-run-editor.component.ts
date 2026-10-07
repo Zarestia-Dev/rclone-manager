@@ -63,12 +63,12 @@ import {
   PresetTemplateBarComponent,
   ApplyTemplateEvent,
 } from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
+import { getApplicableTemplateCategories } from 'src/app/shared/remote-config/template-diff.utils';
 import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { QuickRunEditorModalOptions } from 'src/app/services/ui/modal.service';
-import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
@@ -136,7 +136,6 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly remoteFacade = inject(RemoteFacadeService);
-  private readonly remotePresetsService = inject(RemotePresetsService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly pathInspectionService = inject(PathInspectionService);
@@ -924,43 +923,6 @@ export class QuickRunEditorComponent implements OnInit {
     }
   }
 
-  applyDefaultPresets(): void {
-    const remoteType = this.selectedRemoteType();
-    if (!remoteType) {
-      const warningMsg = this.translate.instant('wizards.presets.noRemoteSelected');
-      this.notificationService.showWarning(
-        warningMsg !== 'wizards.presets.noRemoteSelected'
-          ? warningMsg
-          : 'Please select a remote first'
-      );
-      return;
-    }
-
-    const preset = this.remotePresetsService.resolvePresets(remoteType);
-
-    this.patchGroupOptions('vfsConfig', preset.vfs);
-    this.patchGroupOptions('backendConfig', preset.backend);
-
-    const currentOp = this.currentOpType();
-    if (currentOp === 'mount' && preset.mount) {
-      this.patchGroupOptions('mountConfig', preset.mount);
-    }
-
-    if (preset.remote) {
-      const rtGroup = this.runtimeRemoteForm();
-      for (const [k, v] of Object.entries(preset.remote)) {
-        if (rtGroup.contains(k)) {
-          rtGroup.get(k)?.setValue(v);
-        }
-      }
-    }
-
-    const msg = this.translate.instant('wizards.presets.applied');
-    this.notificationService.showSuccess(
-      msg !== 'wizards.presets.applied' ? msg : 'Default presets applied successfully'
-    );
-  }
-
   private parseAndSetPath(targetGroup: FormGroup, rawPath: string, currentRemote: string): void {
     const existingRemotes = this.existingRemoteNames() || [];
     const defaultType = currentRemote ? 'currentRemote' : 'local';
@@ -1221,11 +1183,15 @@ export class QuickRunEditorComponent implements OnInit {
 
   private readonly formVersion = signal(0);
 
+  readonly applicableCategories = computed(() =>
+    getApplicableTemplateCategories(this.currentOpType())
+  );
+
   readonly currentValues = computed(() => {
     this.formVersion();
     const raw = this.form.getRawValue();
     const fields = this.dynamicFlagFields();
-    const opType = this.currentOpType();
+    const applicable = new Set(this.applicableCategories());
 
     const getCleanOptions = (flagType: string): Record<string, unknown> => {
       const opts =
@@ -1236,21 +1202,9 @@ export class QuickRunEditorComponent implements OnInit {
       return this.valueMapper.cleanData(opts, typeFields);
     };
 
-    const isVfsApplicable = opType === 'mount' || opType === 'serve';
-
-    const res: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
-      vfs: isVfsApplicable ? getCleanOptions('vfs') : {},
-      mount: getCleanOptions('mount'),
-      serve: getCleanOptions('serve'),
-      backend: getCleanOptions('backend'),
-      filter: getCleanOptions('filter'),
-      sync: getCleanOptions('sync'),
-      copy: getCleanOptions('copy'),
-    };
-
-    if (opType) {
-      const cleanedOp = getCleanOptions(opType);
-      (res as Record<string, unknown>)[opType] = cleanedOp;
+    const res: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
+    for (const cat of applicable) {
+      res[cat] = getCleanOptions(cat);
     }
 
     return res;
@@ -1281,22 +1235,33 @@ export class QuickRunEditorComponent implements OnInit {
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
     const { values } = event;
+    const allowed = new Set(this.applicableCategories());
 
-    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs);
-    if (values.mount) this.patchGroupOptions('mountConfig', values.mount);
-    if (values.backend) this.patchGroupOptions('backendConfig', values.backend);
-    if (values.filter) this.patchGroupOptions('filterConfig', values.filter);
-    if (values.sync) this.patchGroupOptions('syncConfig', values.sync);
-    if (values.copy) this.patchGroupOptions('copyConfig', values.copy);
+    if (values.vfs && allowed.has('vfs')) this.patchGroupOptions('vfsConfig', values.vfs);
+    if (values.mount && allowed.has('mount')) this.patchGroupOptions('mountConfig', values.mount);
+    if (values.backend && allowed.has('backend'))
+      this.patchGroupOptions('backendConfig', values.backend);
+    if (values.filter && allowed.has('filter'))
+      this.patchGroupOptions('filterConfig', values.filter);
+    if (values.sync && allowed.has('sync')) this.patchGroupOptions('syncConfig', values.sync);
+    if (values.copy && allowed.has('copy')) this.patchGroupOptions('copyConfig', values.copy);
+    if (values.remote && allowed.has('remote')) {
+      const rtGroup = this.runtimeRemoteForm();
+      for (const [k, v] of Object.entries(values.remote)) {
+        if (rtGroup.contains(k)) {
+          rtGroup.get(k)?.setValue(v);
+        }
+      }
+    }
     const serveValues = (values as Record<string, Record<string, unknown> | undefined>)['serve'];
-    if (serveValues) {
+    if (serveValues && allowed.has('serve')) {
       this.patchGroupOptions('serveConfig', serveValues);
       const sType = serveValues['type'] as string | undefined;
       if (sType) void this.onServeTypeChange(sType);
     }
 
     const currentOp = this.currentOpType();
-    if (currentOp) {
+    if (currentOp && allowed.has(currentOp as TemplateCategory)) {
       const opGroup = this.getOpFormGroup(currentOp);
       const opOpts = (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
       if (opOpts && typeof opOpts === 'object') {

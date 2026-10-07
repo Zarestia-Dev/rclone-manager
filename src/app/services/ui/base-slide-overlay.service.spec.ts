@@ -39,10 +39,12 @@ describe('BaseSlideOverlayService', () => {
     dispose: vi.fn(),
     backdropClick: vi.fn(() => NEVER),
   };
+  const create = vi.fn(() => overlayRef);
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    create.mockReset().mockReturnValue(overlayRef);
     const position = { top: vi.fn(), left: vi.fn(), bottom: vi.fn() };
     position.top.mockReturnValue(position);
     position.left.mockReturnValue(position);
@@ -54,7 +56,7 @@ describe('BaseSlideOverlayService', () => {
         {
           provide: Overlay,
           useValue: {
-            create: vi.fn(() => overlayRef),
+            create,
             position: vi.fn(() => ({ global: vi.fn(() => position) })),
             scrollStrategies: { block: vi.fn() },
           },
@@ -124,6 +126,61 @@ describe('BaseSlideOverlayService', () => {
     service.load.mockResolvedValue(OverlayContent);
     await Promise.all([service.openOverlay(), service.openOverlay()]);
     expect(service.load).toHaveBeenCalledOnce();
+    service.closeOverlay();
+  });
+
+  it('reopens an overlay closed while its lazy import is pending', async () => {
+    let resolve!: (component: Type<OverlayContent>) => void;
+    service.load.mockReturnValue(
+      new Promise(done => {
+        resolve = done;
+      })
+    );
+    const reopened = {
+      ...overlayRef,
+      attach: vi.fn(() => ({ location: { nativeElement: document.createElement('div') } })),
+      dispose: vi.fn(),
+    };
+    create.mockReturnValueOnce(overlayRef).mockReturnValueOnce(reopened);
+    const first = service.openOverlay();
+    service.closeOverlay();
+    const second = service.openOverlay();
+    resolve(OverlayContent);
+    await Promise.all([first, second]);
+    vi.runAllTimers();
+    expect(service.isOpen()).toBe(true);
+    expect(overlayRef.attach).not.toHaveBeenCalled();
+    expect(overlayRef.dispose).toHaveBeenCalledOnce();
+    expect(reopened.attach).toHaveBeenCalledOnce();
+    expect(reopened.dispose).not.toHaveBeenCalled();
+    service.closeOverlay();
+  });
+
+  it('does not close a reopened overlay when the cancelled import fails', async () => {
+    let reject!: (error: Error) => void;
+    service.load
+      .mockReturnValueOnce(
+        new Promise((_, fail) => {
+          reject = fail;
+        })
+      )
+      .mockResolvedValue(OverlayContent);
+    const reopened = {
+      ...overlayRef,
+      attach: vi.fn(() => ({ location: { nativeElement: document.createElement('div') } })),
+      dispose: vi.fn(),
+    };
+    create.mockReturnValueOnce(overlayRef).mockReturnValueOnce(reopened);
+    const first = service.openOverlay();
+    const failed = expect(first).rejects.toThrow('cancelled import failed');
+    service.closeOverlay();
+    await service.openOverlay();
+    reject(new Error('cancelled import failed'));
+    await failed;
+    vi.runAllTimers();
+    expect(service.isOpen()).toBe(true);
+    expect(reopened.attach).toHaveBeenCalledOnce();
+    expect(reopened.dispose).not.toHaveBeenCalled();
     service.closeOverlay();
   });
 });

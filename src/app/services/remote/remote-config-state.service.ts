@@ -17,7 +17,9 @@ import {
   PROFILE_ICONS,
   PendingRemoteData,
   TemplateCategory,
+  OPERATION_REGISTRY,
 } from '@app/types';
+import { getApplicableTemplateCategories } from '../../shared/remote-config/template-diff.utils';
 import { INITIAL_COMMAND_OPTIONS } from './utils/command-options.util';
 import { findUniqueName } from './utils/unique-name.util';
 
@@ -585,7 +587,10 @@ export class RemoteConfigStateService {
       });
     if (fields.includes('autoStart') && !fields.includes('type')) group['cronExpression'] = [null];
     if (LINKED_PROFILE_TYPES.has(flagType)) {
-      group['vfsProfile'] = [AUTO_PROFILE_NAME];
+      const op = OPERATION_REGISTRY.find(o => o.key === flagType);
+      if (op?.supportsVfs) {
+        group['vfsProfile'] = [AUTO_PROFILE_NAME];
+      }
       group['filterProfile'] = [AUTO_PROFILE_NAME];
       group['backendProfile'] = [AUTO_PROFILE_NAME];
       group['runtimeRemoteProfile'] = [AUTO_PROFILE_NAME];
@@ -941,10 +946,17 @@ export class RemoteConfigStateService {
   applyPresets(remoteType: string): void {
     const vendor = this.remoteForm.get('vendor')?.value;
     const preset = this.presetsService.resolvePresets(remoteType, vendor);
-    this.applyTemplate(preset);
+    this.applyTemplate(preset, null);
   }
 
-  applyTemplate(values: Partial<Record<TemplateCategory, Record<string, unknown>>>): void {
+  applyTemplate(
+    values: Partial<Record<TemplateCategory, Record<string, unknown>>>,
+    context?: EditTarget
+  ): void {
+    const targetContext = context !== undefined ? context : null;
+    const allowed = getApplicableTemplateCategories(targetContext);
+    const isAllowed = (cat: TemplateCategory): boolean => allowed.includes(cat);
+
     const patchProfile = (
       type: SharedProfileType,
       overrides: Record<string, unknown> | undefined
@@ -975,23 +987,24 @@ export class RemoteConfigStateService {
       }
     };
 
-    if (values.vfs) patchProfile('vfs', values.vfs);
-    if (values.backend) patchProfile('backend', values.backend);
-    if (values.filter) patchProfile('filter', values.filter);
-    if (values.mount) patchProfile('mount', values.mount);
-    if (values.sync) patchProfile('sync', values.sync);
-    if (values.copy) patchProfile('copy', values.copy);
-    if (values.bisync) patchProfile('bisync', values.bisync);
-    if (values.move) patchProfile('move', values.move);
-    if (values.serve) patchProfile('serve', values.serve);
+    if (values.vfs && isAllowed('vfs')) patchProfile('vfs', values.vfs);
+    if (values.backend && isAllowed('backend')) patchProfile('backend', values.backend);
+    if (values.filter && isAllowed('filter')) patchProfile('filter', values.filter);
+    if (values.mount && isAllowed('mount')) patchProfile('mount', values.mount);
+    if (values.sync && isAllowed('sync')) patchProfile('sync', values.sync);
+    if (values.copy && isAllowed('copy')) patchProfile('copy', values.copy);
+    if (values.bisync && isAllowed('bisync')) patchProfile('bisync', values.bisync);
+    if (values.move && isAllowed('move')) patchProfile('move', values.move);
+    if (values.serve && isAllowed('serve')) patchProfile('serve', values.serve);
 
-    if (values.remote) {
+    if (values.remote && isAllowed('remote')) {
       this.remoteForm.patchValue(values.remote, { emitEvent: false });
       for (const key of Object.keys(values.remote)) this.onRemoteFieldChanged(key, true);
     }
 
     // Re-sync active profile forms so they reflect the patched template values.
     for (const flagType of this.PROFILE_TYPES) {
+      if (flagType === 'runtimeRemote' || !isAllowed(flagType) || !values[flagType]) continue;
       const activeProfile = this.selectedProfileName()[flagType];
       if (!activeProfile) continue;
       const profileData = this.readProfileRecord(flagType, activeProfile);
@@ -1735,12 +1748,17 @@ export class RemoteConfigStateService {
       this.populateProfileOptions(group, type, vals);
 
       if (LINKED_PROFILE_TYPES.has(type)) {
-        await Promise.all([
-          this.selectLinkedProfile('vfs', String(vals['vfsProfile'] ?? '')),
+        const op = OPERATION_REGISTRY.find(o => o.key === type);
+        const linkedTasks: Promise<void>[] = [];
+        if (op?.supportsVfs) {
+          linkedTasks.push(this.selectLinkedProfile('vfs', String(vals['vfsProfile'] ?? '')));
+        }
+        linkedTasks.push(
           this.selectLinkedProfile('filter', String(vals['filterProfile'] ?? '')),
           this.selectLinkedProfile('backend', String(vals['backendProfile'] ?? '')),
-          this.selectLinkedProfile('runtimeRemote', String(vals['runtimeRemoteProfile'] ?? '')),
-        ]);
+          this.selectLinkedProfile('runtimeRemote', String(vals['runtimeRemoteProfile'] ?? ''))
+        );
+        await Promise.all(linkedTasks);
       }
     } finally {
       this.isPopulatingForm.set(false);

@@ -167,4 +167,28 @@ describe('NautilusTabService navigation', () => {
     expect(service.activeRemote()).toBeNull();
     expect(service.activePath()).toBe('');
   });
+
+  it('cached tabs do not collide with newly created tab ids', () => {
+    service.createTab(null, '');
+    const cached = service.tabs();
+    const recreated = TestBed.runInInjectionContext(() => new NautilusTabService());
+    recreated.tabs.set(cached);
+    recreated.switchTab(0);
+    recreated.createTab(null, '');
+    const ids = recreated.tabs().map(tab => tab.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('allocates above unordered cached IDs and does not reuse closed tab IDs', () => {
+    const tab = service.tabs()[0];
+    service.tabs.set([
+      { ...tab, id: 42 },
+      { ...tab, id: 7 },
+    ]);
+    service.createTab(null);
+    expect(service.tabs().map(tab => tab.id)).toEqual([42, 7, 43]);
+    service.closeTab(2);
+    service.createTab(null);
+    expect(service.tabs().map(tab => tab.id)).toEqual([42, 7, 44]);
+  });
 });

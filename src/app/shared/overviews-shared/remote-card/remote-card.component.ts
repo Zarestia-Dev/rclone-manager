@@ -54,6 +54,7 @@ interface ProfileChipViewModel {
 }
 
 interface DetailedOperationViewModel {
+  key: PrimaryActionType;
   operation: PrimaryActionType;
   cssClass: string;
   labelIcon: string;
@@ -316,6 +317,7 @@ export class RemoteCardComponent {
 
   readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
     this.detailedOperations().map(operation => ({
+      key: operation,
       operation,
       cssClass: this.getOperationCssClass(operation),
       labelIcon: this.getOperationLabelIcon(operation),

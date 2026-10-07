@@ -176,9 +176,10 @@
         </button>
 
         <app-preset-template-bar
-          variant="sidebar-item"
+          [remoteType]="state.remoteTypeSignal()"
+          [vendor]="state.remoteForm.get('vendor')?.value"
+          [applicableCategories]="applicableCategories()"
           [currentValues]="currentValues()"
-          (applyDefaultPresets)="presetsApplied.emit()"
           (applyTemplate)="templateApplied.emit($event)"
         />
       }

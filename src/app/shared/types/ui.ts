@@ -1,5 +1,3 @@
-import { HighlightStyle } from '@codemirror/language';
-import { tags } from '@lezer/highlight';
 import { PrimaryActionType } from './operations';
 import { Remote } from './remotes';
 import { OPERATION_REGISTRY } from './operation-registry';
@@ -281,10 +279,15 @@ export const ACTION_CONFIGS: readonly ActionConfig[] = Object.freeze(
     label: op.actionLabel,
     icon: op.icon,
     getTooltip: (remote: Remote): string => {
-      const state = (remote.status as any)[op.key];
+      const state = (
+        remote.status as unknown as Record<string, { active?: boolean } | undefined> | undefined
+      )?.[op.key];
       return state?.active ? op.activeTooltip : op.inactiveTooltip;
     },
-    getActiveState: (remote: Remote) => !!(remote.status as any)[op.key]?.active,
+    getActiveState: (remote: Remote) =>
+      !!(
+        remote.status as unknown as Record<string, { active?: boolean } | undefined> | undefined
+      )?.[op.key]?.active,
   }))
 );
 
@@ -448,41 +451,3 @@ export interface VfsInstance {
   pollInterval: string;
   pollIntervalSupported?: boolean;
 }
-
-// ── GNOME / Adwaita Light Syntax Highlighting ──
-export const gnomeLightHighlighting = HighlightStyle.define([
-  { tag: tags.keyword, color: '#0d7377' }, // Teal — keywords (if, const, return)
-  { tag: tags.controlKeyword, color: '#0d7377', fontWeight: '500' },
-  { tag: tags.definitionKeyword, color: '#0d7377' },
-  { tag: tags.moduleKeyword, color: '#0d7377' },
-  { tag: tags.function(tags.variableName), color: '#1a5fb4' }, // Blue — function names
-  { tag: tags.function(tags.definition(tags.variableName)), color: '#1a5fb4', fontWeight: '500' },
-  { tag: tags.string, color: '#c64600' }, // Orange — strings
-  { tag: tags.number, color: '#813d9c' }, // Purple — numbers
-  { tag: tags.bool, color: '#813d9c' },
-  { tag: tags.null, color: '#813d9c', fontStyle: 'italic' },
-  { tag: tags.comment, color: '#5e5c64', fontStyle: 'italic' }, // Dim gray — comments
-  { tag: tags.lineComment, color: '#5e5c64', fontStyle: 'italic' },
-  { tag: tags.blockComment, color: '#5e5c64', fontStyle: 'italic' },
-  { tag: tags.typeName, color: '#1a5fb4' }, // Blue — types
-  { tag: tags.className, color: '#1a5fb4', fontWeight: '500' },
-  { tag: tags.propertyName, color: '#26a269' }, // Green — properties
-  { tag: tags.definition(tags.propertyName), color: '#26a269' },
-  { tag: tags.variableName, color: '#241f31' }, // Near-black — variables
-  { tag: tags.definition(tags.variableName), color: '#241f31' },
-  { tag: tags.operator, color: '#0d7377' }, // Teal — operators
-  { tag: tags.punctuation, color: '#77767b' }, // Gray — punctuation
-  { tag: tags.bracket, color: '#5e5c64' },
-  { tag: tags.meta, color: '#813d9c' }, // Purple — decorators / meta
-  { tag: tags.attributeName, color: '#26a269' }, // Green — HTML/XML attributes
-  { tag: tags.attributeValue, color: '#c64600' }, // Orange — attribute values
-  { tag: tags.tagName, color: '#1a5fb4' }, // Blue — HTML/XML tags
-  { tag: tags.heading, color: '#1a5fb4', fontWeight: 'bold' },
-  { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.strong, fontWeight: 'bold' },
-  { tag: tags.link, color: '#1a5fb4', textDecoration: 'underline' },
-  { tag: tags.url, color: '#1a5fb4' },
-  { tag: tags.regexp, color: '#a51d2d' }, // Red — regex
-  { tag: tags.escape, color: '#a51d2d' },
-  { tag: tags.special(tags.string), color: '#a51d2d' },
-]);
