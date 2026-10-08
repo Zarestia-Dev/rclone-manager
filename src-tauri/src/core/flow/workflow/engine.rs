@@ -53,6 +53,58 @@ static ACTIVE_WORKFLOW_EXECUTIONS: once_cell::sync::Lazy<
     RwLock<HashMap<String, ActiveWorkflowState>>,
 > = once_cell::sync::Lazy::new(|| RwLock::new(HashMap::new()));
 
+/// Keeps a workflow registered until all completion bookkeeping has finished.
+struct WorkflowExecutionGuard {
+    workflow_id: String,
+    cancel_flag: Arc<AtomicBool>,
+}
+
+impl WorkflowExecutionGuard {
+    fn try_acquire(workflow_id: &str, state: ActiveWorkflowState) -> Option<Self> {
+        let mut active = ACTIVE_WORKFLOW_EXECUTIONS.write();
+        if active.contains_key(workflow_id) {
+            return None;
+        }
+
+        let guard = Self {
+            workflow_id: workflow_id.to_string(),
+            cancel_flag: state.cancel_flag.clone(),
+        };
+        active.insert(workflow_id.to_string(), state);
+        Some(guard)
+    }
+}
+
+impl Drop for WorkflowExecutionGuard {
+    fn drop(&mut self) {
+        let mut active = ACTIVE_WORKFLOW_EXECUTIONS.write();
+        if active
+            .get(&self.workflow_id)
+            .is_some_and(|state| Arc::ptr_eq(&state.cancel_flag, &self.cancel_flag))
+        {
+            active.remove(&self.workflow_id);
+        }
+    }
+}
+
+// A closed watch channel is not an explicit cancellation request.
+async fn wait_for_workflow_cancellation(
+    cancel_flag: &AtomicBool,
+    mut receiver: tokio::sync::watch::Receiver<bool>,
+) {
+    loop {
+        if cancel_flag.load(Ordering::SeqCst) || *receiver.borrow() {
+            return;
+        }
+        if receiver.changed().await.is_err() {
+            if cancel_flag.load(Ordering::SeqCst) || *receiver.borrow() {
+                return;
+            }
+            std::future::pending::<()>().await;
+        }
+    }
+}
+
 /// Returns a set of all currently active (running) workflow IDs.
 #[cfg(feature = "tray")]
 #[must_use]
@@ -660,7 +712,7 @@ async fn await_rclone_job(
     app: &AppHandle,
     job_id: u64,
     cancel_flag: &AtomicBool,
-    mut cancel_rx: tokio::sync::watch::Receiver<bool>,
+    cancel_rx: tokio::sync::watch::Receiver<bool>,
     active_jobs: &Arc<RwLock<HashSet<u64>>>,
     workflow_id: &str,
 ) -> Result<NodeExecutionOutput, String> {
@@ -707,7 +759,7 @@ async fn await_rclone_job(
                 }
                 JobStatus::Running => {
                     tokio::select! {
-                        _ = cancel_rx.changed() => {
+                        _ = wait_for_workflow_cancellation(cancel_flag, cancel_rx.clone()) => {
                             info!("Workflow '{workflow_id}' received cancel signal; aborting job {job_id} in Rclone");
                             let remote = job_cache
                                 .get_job(job_id)
@@ -1073,7 +1125,7 @@ pub(crate) async fn handle_app_start_node(
 pub(crate) async fn handle_exec_script_node(
     config: &Value,
     cancel_flag: &AtomicBool,
-    mut cancel_rx: tokio::sync::watch::Receiver<bool>,
+    cancel_rx: tokio::sync::watch::Receiver<bool>,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     let command = config
@@ -1136,7 +1188,7 @@ pub(crate) async fn handle_exec_script_node(
         res = cmd.output() => {
             res.map_err(|e| format!("Failed to spawn command '{command}': {e}"))?
         }
-        _ = cancel_rx.changed() => {
+        _ = wait_for_workflow_cancellation(cancel_flag, cancel_rx.clone()) => {
             return Err("Execution cancelled while running script".to_string());
         }
     };
@@ -1184,7 +1236,7 @@ async fn execute_single_node(
     node: &WorkflowNode,
     workflow: &WorkflowDefinition,
     cancel_flag: &AtomicBool,
-    mut cancel_rx: tokio::sync::watch::Receiver<bool>,
+    cancel_rx: tokio::sync::watch::Receiver<bool>,
     active_jobs: &Arc<RwLock<HashSet<u64>>>,
     node_results: &Arc<RwLock<HashMap<String, Value>>>,
     dry_run: bool,
@@ -1406,7 +1458,7 @@ async fn execute_single_node(
             let rpc_fut = state.transport.rpc("operations/cleanup", Some(&params));
             let out = tokio::select! {
                 res = rpc_fut => res.map_err(|e| format!("Cleanup failed on '{fs}': {e}"))?,
-                _ = cancel_rx.changed() => return Err(format!("Workflow cancelled during cleanup on '{fs}'")),
+                _ = wait_for_workflow_cancellation(cancel_flag, cancel_rx.clone()) => return Err(format!("Workflow cancelled during cleanup on '{fs}'")),
             };
 
             Ok(NodeExecutionOutput::new(json!({
@@ -1726,7 +1778,7 @@ async fn execute_single_node(
             let rpc_fut = state.transport.rpc(command, Some(&params));
             let out = tokio::select! {
                 res = rpc_fut => res.map_err(|e| format!("RC command '{command}' failed: {e}"))?,
-                _ = cancel_rx.changed() => return Err(format!("Workflow cancelled during RC command '{command}'")),
+                _ = wait_for_workflow_cancellation(cancel_flag, cancel_rx.clone()) => return Err(format!("Workflow cancelled during RC command '{command}'")),
             };
 
             let formatted_json =
@@ -2154,6 +2206,7 @@ async fn execute_notification_node(
 }
 
 /// Executes a workflow by ID from storage using dynamic, dependency-driven DAG scheduling.
+/// A duplicate start skips every node while the existing execution remains active.
 pub async fn execute_workflow(
     app: AppHandle,
     workflow_id: String,
@@ -2164,9 +2217,34 @@ pub async fn execute_workflow(
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
 
-    let mut workflow: WorkflowDefinition = sub
+    let workflow: WorkflowDefinition = sub
         .get(&workflow_id)
         .map_err(|e| format!("Workflow '{workflow_id}' not found: {e}"))?;
+
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+    let active_job_ids = Arc::new(RwLock::new(HashSet::new()));
+    let Some(_execution_guard) = WorkflowExecutionGuard::try_acquire(
+        &workflow_id,
+        ActiveWorkflowState {
+            cancel_flag: cancel_flag.clone(),
+            cancel_tx,
+            active_job_ids: active_job_ids.clone(),
+        },
+    ) else {
+        info!("Skipping workflow '{workflow_id}': an execution is already active");
+        return Ok(WorkflowExecutionResult {
+            workflow_id,
+            success: true,
+            total_nodes: workflow.nodes.len(),
+            completed_nodes: 0,
+            failed_nodes: 0,
+            skipped_nodes: workflow.nodes.len(),
+            duration_ms: 0,
+            dry_run,
+            error: None,
+        });
+    };
 
     info!(
         "Starting execution of workflow: {} ({workflow_id}, dry_run: {dry_run})",
@@ -2186,20 +2264,6 @@ pub async fn execute_workflow(
             },
         );
         return Err(format!("Validation failed: {err_msg}"));
-    }
-
-    let cancel_flag = Arc::new(AtomicBool::new(false));
-    let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-    let active_job_ids = Arc::new(RwLock::new(HashSet::new()));
-    {
-        ACTIVE_WORKFLOW_EXECUTIONS.write().insert(
-            workflow_id.clone(),
-            ActiveWorkflowState {
-                cancel_flag: cancel_flag.clone(),
-                cancel_tx,
-                active_job_ids: active_job_ids.clone(),
-            },
-        );
     }
 
     let start_instant = Instant::now();
@@ -2575,10 +2639,7 @@ pub async fn execute_workflow(
         }
     }
 
-    // Cleanup active execution tracker
-    {
-        ACTIVE_WORKFLOW_EXECUTIONS.write().remove(&workflow_id);
-    }
+    // The registration guard releases this execution only when this function exits.
 
     let is_cancelled = cancel_flag.load(Ordering::SeqCst);
     let total_duration_ms = start_instant.elapsed().as_millis() as u64;
@@ -2589,8 +2650,13 @@ pub async fn execute_workflow(
 
     let overall_success = (!is_cancelled || has_graceful_stop) && failed_nodes == 0;
 
-    workflow.last_executed_at = Some(Utc::now().to_rfc3339());
-    let _ = sub.set(&workflow.id, &workflow);
+    if let Err(error) = super::commands::record_workflow_execution_time(
+        &manager,
+        &workflow.id,
+        Utc::now().to_rfc3339(),
+    ) {
+        warn!("Failed to record workflow execution timestamp: {error}");
+    }
 
     let final_state = if is_cancelled && !has_graceful_stop {
         "cancelled"
@@ -2825,6 +2891,111 @@ pub async fn trigger_workflows_for_job_finish(
 
 #[cfg(test)]
 mod tests {
+    fn workflow_test_state() -> ActiveWorkflowState {
+        let (cancel_tx, _) = tokio::sync::watch::channel(false);
+        ActiveWorkflowState {
+            cancel_flag: Arc::new(AtomicBool::new(false)),
+            cancel_tx,
+            active_job_ids: Arc::new(RwLock::new(HashSet::new())),
+        }
+    }
+
+    #[test]
+    fn workflow_admission_is_atomic_and_released_on_drop() {
+        let id = format!("test-{}", uuid::Uuid::new_v4());
+        let barrier = Arc::new(std::sync::Barrier::new(8));
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                let id = id.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    WorkflowExecutionGuard::try_acquire(&id, workflow_test_state())
+                })
+            })
+            .collect();
+        let guards: Vec<_> = handles
+            .into_iter()
+            .filter_map(|h| h.join().unwrap())
+            .collect();
+        assert_eq!(guards.len(), 1);
+        assert!(WorkflowExecutionGuard::try_acquire(&id, workflow_test_state()).is_none());
+        drop(guards);
+        assert!(WorkflowExecutionGuard::try_acquire(&id, workflow_test_state()).is_some());
+        assert!(!ACTIVE_WORKFLOW_EXECUTIONS.read().contains_key(&id));
+    }
+
+    #[test]
+    fn workflow_guard_does_not_remove_another_execution() {
+        let id = format!("test-{}", uuid::Uuid::new_v4());
+        let guard = WorkflowExecutionGuard::try_acquire(&id, workflow_test_state()).unwrap();
+        let replacement = workflow_test_state();
+        let replacement_flag = replacement.cancel_flag.clone();
+        ACTIVE_WORKFLOW_EXECUTIONS
+            .write()
+            .insert(id.clone(), replacement);
+        drop(guard);
+        assert!(Arc::ptr_eq(
+            &ACTIVE_WORKFLOW_EXECUTIONS
+                .read()
+                .get(&id)
+                .unwrap()
+                .cancel_flag,
+            &replacement_flag,
+        ));
+        ACTIVE_WORKFLOW_EXECUTIONS.write().remove(&id);
+    }
+
+    #[tokio::test]
+    async fn workflow_cancellation_requires_an_explicit_request() {
+        use std::time::Duration;
+        use tokio::time::timeout;
+
+        let flag = AtomicBool::new(false);
+        let (tx, rx) = tokio::sync::watch::channel(false);
+        tx.send(false).unwrap();
+        assert!(
+            timeout(
+                Duration::from_millis(10),
+                wait_for_workflow_cancellation(&flag, rx.clone()),
+            )
+            .await
+            .is_err()
+        );
+        tx.send(true).unwrap();
+        timeout(
+            Duration::from_secs(1),
+            wait_for_workflow_cancellation(&flag, rx),
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn workflow_closed_channel_does_not_cancel() {
+        use std::time::Duration;
+        use tokio::time::timeout;
+
+        let flag = AtomicBool::new(false);
+        let (tx, rx) = tokio::sync::watch::channel(false);
+        drop(tx);
+        assert!(
+            timeout(
+                Duration::from_millis(10),
+                wait_for_workflow_cancellation(&flag, rx.clone()),
+            )
+            .await
+            .is_err()
+        );
+        flag.store(true, Ordering::SeqCst);
+        timeout(
+            Duration::from_secs(1),
+            wait_for_workflow_cancellation(&flag, rx),
+        )
+        .await
+        .unwrap();
+    }
+
     use super::*;
     use crate::core::flow::workflow::types::*;
 
