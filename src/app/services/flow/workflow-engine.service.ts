@@ -10,7 +10,7 @@ import {
 import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
 
-export interface WorkflowExecutionResultDto {
+interface WorkflowExecutionResultDto {
   workflowId: string;
   success: boolean;
   totalNodes: number;

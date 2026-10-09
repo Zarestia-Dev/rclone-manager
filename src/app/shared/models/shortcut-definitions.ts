@@ -100,7 +100,7 @@ export const MAIN_SHORTCUTS: ShortcutDefinition[] = [
   },
 ];
 
-export const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
+const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
   {
     actionId: 'nautilus.copy',
     keys: 'Ctrl + C',
@@ -241,7 +241,7 @@ export const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
   },
 ];
 
-export const FLOW_SHORTCUTS: ShortcutDefinition[] = [
+const FLOW_SHORTCUTS: ShortcutDefinition[] = [
   {
     actionId: 'flow.save',
     keys: 'Ctrl + S',

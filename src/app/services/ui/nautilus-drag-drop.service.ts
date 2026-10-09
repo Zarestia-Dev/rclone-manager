@@ -8,9 +8,9 @@ import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
+const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
 
-export interface NautilusDragPayload {
+interface NautilusDragPayload {
   items: FileBrowserItem[];
   sourcePaneIndex: 0 | 1;
 }

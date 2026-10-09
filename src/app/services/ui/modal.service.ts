@@ -105,7 +105,7 @@ export interface QuickRunEditorModalOptions {
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-interface StandaloneOpts<D = any> {
+interface StandaloneOpts<D = unknown> {
   type: string;
   title: string;
   data?: D | null;
@@ -114,12 +114,12 @@ interface StandaloneOpts<D = any> {
   suffix?: string;
 }
 
-export interface DialogRefLike<R = any> {
+export interface DialogRefLike<R = unknown> {
   afterClosed(): Observable<R | undefined>;
   close?(result?: R): void;
 }
 
-export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
+class AsyncDialogRef<R = unknown> implements DialogRefLike<R> {
   constructor(private readonly promise: Promise<MatDialogRef<unknown, R> | null>) {}
 
   afterClosed(): Observable<R | undefined> {
@@ -131,7 +131,7 @@ export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
   }
 }
 
-class ChildWindowRef<R = any> {
+class ChildWindowRef<R = unknown> {
   constructor(private readonly windowLabel: string) {}
 
   close(result?: R): void {
@@ -143,7 +143,7 @@ class ChildWindowRef<R = any> {
   }
 }
 
-export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
+export class StandaloneWindowRef<R = unknown> implements DialogRefLike<R> {
   private readonly closed$ = new Subject<R | undefined>();
 
   afterClosed(): Observable<R | undefined> {
@@ -342,7 +342,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  private openModal<TData = any, TResult = any>(
+  private openModal<TData = unknown, TResult = unknown>(
     type: string,
     config: MatDialogConfig<TData>,
     standalone?: Omit<StandaloneOpts<TData>, 'type' | 'data'>
@@ -364,7 +364,7 @@ export class ModalService extends TauriBaseService {
     return new AsyncDialogRef<TResult>(dialogPromise);
   }
 
-  private spawnStandaloneWindow<TData = any, TResult = any>(
+  private spawnStandaloneWindow<TData = unknown, TResult = unknown>(
     opts: StandaloneOpts<TData>
   ): StandaloneWindowRef<TResult> {
     const suffix = opts.suffix ? `-${sanitizeLabel(opts.suffix)}` : '';
@@ -378,7 +378,7 @@ export class ModalService extends TauriBaseService {
     return ref;
   }
 
-  private async openWindowAndBind<TResult = any>(
+  private async openWindowAndBind<TResult = unknown>(
     label: string,
     url: string,
     title: string,
@@ -412,7 +412,7 @@ export class ModalService extends TauriBaseService {
     }
   }
 
-  openQuickRunEditor<TResult = any>(
+  openQuickRunEditor<TResult = unknown>(
     optionsOrTarget?: QuickRun | QuickRunEditorModalOptions,
     initialOpType?: PrimaryActionType,
     initialRemoteName?: string
@@ -513,7 +513,9 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {
+  openRemoteConfig<TResult = unknown>(
+    options: RemoteConfigModalOptions = {}
+  ): DialogRefLike<TResult> {
     const data = {
       name: options.remoteName,
       remoteType: options.remoteType,
@@ -538,7 +540,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openLogs<TResult = any>(remoteName: string): DialogRefLike<TResult> {
+  openLogs<TResult = unknown>(remoteName: string): DialogRefLike<TResult> {
     const data = { remoteName };
     return this.openModal(
       'logs',
@@ -552,7 +554,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
+  openExport<TResult = unknown>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
     const data: ExportModalData = {
       remoteName: options.remoteName,
       defaultExportType:
@@ -571,7 +573,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openJobDetail<TResult = any>(job: JobInfo): DialogRefLike<TResult> {
+  openJobDetail<TResult = unknown>(job: JobInfo): DialogRefLike<TResult> {
     const data = { ...job };
     return this.openModal(
       'job-detail',
@@ -585,7 +587,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openRestorePreview<TResult = any>(options: RestorePreviewOptions): DialogRefLike<TResult> {
+  openRestorePreview<TResult = unknown>(options: RestorePreviewOptions): DialogRefLike<TResult> {
     const data = { backupPath: options.backupPath, analysis: options.analysis };
     return this.openModal(
       'restore-preview',
@@ -599,7 +601,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openQuickAddRemote<TResult = any>(): DialogRefLike<TResult> {
+  openQuickAddRemote<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -611,7 +613,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openBackend<TResult = any>(): DialogRefLike<TResult> {
+  openBackend<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'backend',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -623,7 +625,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openPreferences<TResult = any>(): DialogRefLike<TResult> {
+  openPreferences<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'preferences',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -635,7 +637,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openRcloneFlags<TResult = any>(): DialogRefLike<TResult> {
+  openRcloneFlags<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'rclone-flags',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -659,7 +661,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openAlerts<TResult = any>(): DialogRefLike<TResult> {
+  openAlerts<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'alerts',
       {
@@ -676,7 +678,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openProperties<TResult = any>(options: PropertiesModalOptions): DialogRefLike<TResult> {
+  openProperties<TResult = unknown>(options: PropertiesModalOptions): DialogRefLike<TResult> {
     return this.openModal('properties', {
       data: {
         remoteName: options.remoteName,
@@ -693,7 +695,7 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openRemoteAbout<TResult = any>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
+  openRemoteAbout<TResult = unknown>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
     return this.openModal('remote-about', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -707,7 +709,7 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openKeyboardShortcuts<TResult = any>(data?: {
+  openKeyboardShortcuts<TResult = unknown>(data?: {
     context?: ShortcutContext;
     nautilus?: boolean;
   }): DialogRefLike<TResult> {
@@ -718,16 +720,16 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openAbout<TResult = any>(): DialogRefLike<TResult> {
+  openAbout<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openPowerMenu<TResult = any>(): DialogRefLike<TResult> {
+  openPowerMenu<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal('power-menu', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openArchiveCreate<TResult = any>(data: {
-    items: any[];
+  openArchiveCreate<TResult = unknown>(data: {
+    items: unknown[];
     defaultName: string;
   }): DialogRefLike<TResult> {
     return this.openModal('archive-create', {

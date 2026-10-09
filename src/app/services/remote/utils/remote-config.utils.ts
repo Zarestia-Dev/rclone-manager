@@ -107,7 +107,7 @@ export function stripCliPrefix(query: string): string {
   return q;
 }
 
-export function normalizeRcloneKey(val: string | undefined | null): string {
+function normalizeRcloneKey(val: string | undefined | null): string {
   return val ? val.toLowerCase().replace(/[- ]/g, '_') : '';
 }
 

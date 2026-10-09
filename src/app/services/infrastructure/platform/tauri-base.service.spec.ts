@@ -2,11 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from './tauri-base.service';
 import { ApiClientService } from './api-client.service';
-import { SseClientService } from './sse-client.service';
 import { NotificationService } from '../../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
-import { Observable, of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotifyOptions } from '@app/types';
 
@@ -19,10 +17,6 @@ class TestTauriBaseService extends TauriBaseService {
   ): Promise<T> {
     return this.invokeWithNotification<T>(command, args, options);
   }
-
-  public testListenToEvent<T>(eventName: string): Observable<T> {
-    return this.listenToEvent<T>(eventName);
-  }
 }
 
 describe('TauriBaseService', () => {
@@ -34,7 +28,6 @@ describe('TauriBaseService', () => {
   };
   let translateMock: { instant: ReturnType<typeof vi.fn> };
   let backendTranslationMock: { translateBackendMessage: ReturnType<typeof vi.fn> };
-  let sseClientMock: { listen: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     apiClientMock = { invoke: vi.fn() };
@@ -50,7 +43,6 @@ describe('TauriBaseService', () => {
     backendTranslationMock = {
       translateBackendMessage: vi.fn((err: unknown) => `translated:${String(err)}`),
     };
-    sseClientMock = { listen: vi.fn().mockReturnValue(of()) };
 
     TestBed.configureTestingModule({
       providers: [
@@ -59,7 +51,6 @@ describe('TauriBaseService', () => {
         { provide: NotificationService, useValue: notificationMock },
         { provide: TranslateService, useValue: translateMock },
         { provide: BackendTranslationService, useValue: backendTranslationMock },
-        { provide: SseClientService, useValue: sseClientMock },
       ],
     });
 

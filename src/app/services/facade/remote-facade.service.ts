@@ -56,8 +56,10 @@ import {
   ProfileConfigMap,
   BATCH_OP_LABELS,
   OPERATION_TYPE_KEYS,
-  RemoteStatus,
+  createDefaultRemoteStatus,
+  createDefaultRemoteFeatures,
 } from '@app/types';
+import { deepEqual } from 'src/app/shared/utils';
 
 interface RemoteState {
   base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
@@ -926,8 +928,8 @@ export class RemoteFacadeService {
       if (!state) {
         return {
           ...baseSig(),
-          status: {} as unknown as RemoteStatus,
-          features: {} as unknown as RemoteFeatures,
+          status: createDefaultRemoteStatus(),
+          features: createDefaultRemoteFeatures(baseSig().type === 'local'),
         };
       }
 
@@ -1100,7 +1102,7 @@ function shallowEqualObjects(a: unknown, b: unknown): boolean {
     if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
     const av = (a as Record<string, unknown>)[key];
     const bv = bObj[key];
-    if (av !== bv && JSON.stringify(av) !== JSON.stringify(bv)) return false;
+    if (av !== bv && !deepEqual(av, bv)) return false;
   }
   return true;
 }

@@ -353,6 +353,8 @@ export interface OpenableFolder {
   path: string;
   isLocal: boolean;
   icon: string;
+  shortName?: string;
+  isOpening?: boolean;
 }
 
 export type OnboardingCardKey =

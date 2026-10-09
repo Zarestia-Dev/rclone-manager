@@ -75,7 +75,7 @@
           <button
             type="button"
             class="app-pill interactive"
-            [class.is-selected]="isPresetActive(preset.value)"
+            [class.is-selected]="activePreset() === preset.value"
             (click)="setBandwidthLimit(preset.value)"
             [attr.title]="preset.labelKey ? (preset.labelKey | translate) : preset.label"
           >

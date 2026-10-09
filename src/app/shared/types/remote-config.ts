@@ -451,6 +451,18 @@ export interface Entry {
   Metadata?: Record<string, string>;
 }
 
+export function createMinimalEntry(path: string, name?: string, size = 0): Entry {
+  return {
+    ID: '',
+    IsDir: false,
+    MimeType: '',
+    ModTime: '',
+    Name: name ?? path.split('/').filter(Boolean).pop() ?? path,
+    Path: path,
+    Size: size,
+  };
+}
+
 export interface LocalDrive {
   id: string;
   name: string; // The path used for rclone

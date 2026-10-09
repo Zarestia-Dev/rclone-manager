@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { INTERACTIVE_REMOTES, isRclonePathKey } from './remote-config';
+import { INTERACTIVE_REMOTES, isRclonePathKey, createMinimalEntry } from './remote-config';
 
 describe('Remote Config Types', () => {
   describe('INTERACTIVE_REMOTES', () => {
@@ -50,6 +50,26 @@ describe('Remote Config Types', () => {
       expect(isRclonePathKey('transfers')).toBe(false);
       expect(isRclonePathKey('vfs_cache_mode')).toBe(false);
       expect(isRclonePathKey('')).toBe(false);
+    });
+  });
+
+  describe('createMinimalEntry', () => {
+    it('creates an Entry object with valid defaults', () => {
+      const entry = createMinimalEntry('my/folder/file.txt', 'file.txt', 2048);
+      expect(entry.Path).toBe('my/folder/file.txt');
+      expect(entry.Name).toBe('file.txt');
+      expect(entry.Size).toBe(2048);
+      expect(entry.IsDir).toBe(false);
+      expect(entry.ID).toBe('');
+      expect(entry.ModTime).toBe('');
+      expect(entry.MimeType).toBe('');
+    });
+
+    it('derives name from path when name is omitted', () => {
+      const entry = createMinimalEntry('documents/report.pdf');
+      expect(entry.Name).toBe('report.pdf');
+      expect(entry.Path).toBe('documents/report.pdf');
+      expect(entry.Size).toBe(0);
     });
   });
 });

@@ -425,6 +425,8 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
         )
       : items.filter(t => !hidden.has(`${t.jobid}-${t.name}`));
 
+    const counts = new Map<string, number>();
+
     return rawFiltered.map(transfer => {
       let status = transfer.status;
       let error = transfer.error;
@@ -482,6 +484,11 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
           break;
       }
 
+      const base = `${transfer.jobid}:${status}:${transfer.name}`;
+      const count = (counts.get(base) ?? 0) + 1;
+      counts.set(base, count);
+      const uniqueId = count === 1 ? base : `${base}#${count}`;
+
       return {
         ...transfer,
         status,
@@ -494,7 +501,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
         badgeClass,
         badgeIcon,
         badgeText,
-        uniqueId: `${transfer.jobid}-${transfer.name}`,
+        uniqueId,
         resolvePercentage,
         resolveIsPreparing,
         resolveBytes,
@@ -566,23 +573,26 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
   }
 
   async onDeleteSource(item: CompletedTransfer): Promise<void> {
-    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    const hiddenKey = `${item.jobid}-${item.name}`;
+    const uniqueId = item.uniqueId || hiddenKey;
     await this.ops.deleteSource(item, uniqueId, () => {
-      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+      this.hiddenIds.update(s => new Set(s).add(hiddenKey));
     });
   }
 
   async onDeleteDst(item: CompletedTransfer): Promise<void> {
-    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    const hiddenKey = `${item.jobid}-${item.name}`;
+    const uniqueId = item.uniqueId || hiddenKey;
     await this.ops.deleteDst(item, uniqueId, () => {
-      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+      this.hiddenIds.update(s => new Set(s).add(hiddenKey));
     });
   }
 
   async onDeleteFallback(item: CompletedTransfer): Promise<void> {
-    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    const hiddenKey = `${item.jobid}-${item.name}`;
+    const uniqueId = item.uniqueId || hiddenKey;
     await this.ops.deleteFallback(item, uniqueId, this.remoteName(), () => {
-      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+      this.hiddenIds.update(s => new Set(s).add(hiddenKey));
     });
   }
 }

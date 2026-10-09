@@ -3,30 +3,7 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
-
-interface CmEditorView {
-  state: {
-    readOnly?: boolean;
-    selection: { main: { from: number; to: number } };
-    sliceDoc(from: number, to: number): string;
-    doc: { length: number };
-    replaceSelection(text: string): unknown;
-  };
-  dispatch(tr: unknown): void;
-  focus(): void;
-}
-
-function findCmView(dom: HTMLElement): CmEditorView | null {
-  const content = dom.querySelector('.cm-content') as
-    | (HTMLElement & {
-        cmTile?: { root?: { view?: CmEditorView } };
-      })
-    | null;
-  const tile =
-    content?.cmTile ||
-    (dom as HTMLElement & { cmTile?: { root?: { view?: CmEditorView } } }).cmTile;
-  return tile?.root?.view || null;
-}
+import type { EditorView } from 'codemirror';
 
 export interface DebugInfo {
   logsDir: string;
@@ -59,6 +36,7 @@ export class DebugService extends TauriBaseService {
   private readonly clipboard = inject(Clipboard);
 
   private contextMenu: HTMLElement | null = null;
+  private contextMenuRequestId = 0;
 
   constructor() {
     super();
@@ -97,27 +75,46 @@ export class DebugService extends TauriBaseService {
   }
 
   private setupContextMenu(): void {
-    const onContextMenu = (e: MouseEvent): void => this.handleContextMenu(e);
+    const onContextMenu = (e: MouseEvent): void => {
+      void this.handleContextMenu(e);
+    };
     this.doc.addEventListener('contextmenu', onContextMenu);
+    this.doc.addEventListener('mousedown', this.onGlobalMousedown);
+    this.doc.addEventListener('keydown', this.onGlobalKeydown);
     this.destroyRef.onDestroy(() => {
       this.doc.removeEventListener('contextmenu', onContextMenu);
+      this.doc.removeEventListener('mousedown', this.onGlobalMousedown);
+      this.doc.removeEventListener('keydown', this.onGlobalKeydown);
       this.closeMenu();
     });
   }
 
-  private handleContextMenu(e: MouseEvent): void {
+  private async handleContextMenu(e: MouseEvent): Promise<void> {
     if (e.defaultPrevented) return;
     const target = e.target as HTMLElement | null;
     if (!target) return;
     e.preventDefault();
-    this.createContextMenu(e.clientX, e.clientY, this.buildMenuItems(target));
+
+    this.closeMenu();
+    const id = ++this.contextMenuRequestId;
+    const items = await this.buildMenuItems(target);
+    if (id !== this.contextMenuRequestId) return;
+    this.createContextMenu(e.clientX, e.clientY, items);
   }
 
-  private buildMenuItems(target: HTMLElement): MenuEntry[] {
+  private async buildMenuItems(target: HTMLElement): Promise<MenuEntry[]> {
     const inputEl = target.closest('input, textarea') as
       HTMLInputElement | HTMLTextAreaElement | null;
     const cmEditor = target.closest('.cm-editor') as HTMLElement | null;
-    const cmView = cmEditor ? findCmView(cmEditor) : null;
+    let cmView: EditorView | null = null;
+    if (cmEditor) {
+      try {
+        const { EditorView } = await import('codemirror');
+        cmView = EditorView.findFromDOM(cmEditor);
+      } catch {
+        cmView = null;
+      }
+    }
     const editableEl =
       !inputEl && !cmView
         ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
@@ -217,7 +214,7 @@ export class DebugService extends TauriBaseService {
     text: string,
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: CmEditorView | null
+    cmView?: EditorView | null
   ): void {
     this.clipboard.copy(text);
     if (inputEl) {
@@ -242,7 +239,7 @@ export class DebugService extends TauriBaseService {
   private async paste(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: CmEditorView | null
+    cmView?: EditorView | null
   ): Promise<void> {
     let text = '';
     try {
@@ -280,7 +277,7 @@ export class DebugService extends TauriBaseService {
   private selectAll(
     inputEl: HTMLInputElement | HTMLTextAreaElement | null,
     editableEl: HTMLElement | null,
-    cmView?: CmEditorView | null
+    cmView?: EditorView | null
   ): void {
     if (inputEl) {
       inputEl.select();
@@ -347,10 +344,6 @@ export class DebugService extends TauriBaseService {
     const { right, bottom, width, height } = this.contextMenu.getBoundingClientRect();
     if (right > window.innerWidth) this.contextMenu.style.left = `${x - width}px`;
     if (bottom > window.innerHeight) this.contextMenu.style.top = `${y - height}px`;
-
-    // Dynamic active-menu listeners
-    this.doc.addEventListener('mousedown', this.onGlobalMousedown);
-    this.doc.addEventListener('keydown', this.onGlobalKeydown);
   }
 
   private closeMenu(): void {
@@ -362,19 +355,18 @@ export class DebugService extends TauriBaseService {
     }
     this.contextMenu.remove();
     this.contextMenu = null;
-
-    this.doc.removeEventListener('mousedown', this.onGlobalMousedown);
-    this.doc.removeEventListener('keydown', this.onGlobalKeydown);
   }
 
   private readonly onGlobalMousedown = (e: MouseEvent): void => {
-    if (!this.contextMenu?.contains(e.target as Node)) {
+    this.contextMenuRequestId++;
+    if (this.contextMenu && !this.contextMenu.contains(e.target as Node)) {
       this.closeMenu();
     }
   };
 
   private readonly onGlobalKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') {
+      this.contextMenuRequestId++;
       this.closeMenu();
     }
   };

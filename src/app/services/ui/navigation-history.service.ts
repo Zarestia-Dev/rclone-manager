@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Subject, take } from 'rxjs';
 import { AppTab, APP_TABS, FlowSubMode, MainView } from '@app/types';
-import { generatePrefixedId } from 'src/app/shared/utils';
+import { deepEqual, generatePrefixedId } from 'src/app/shared/utils';
 import { navigationPath, parseNavigationUrl } from 'src/app/shared/utils/navigation-url.utils';
 
 export interface MainNavigation {
@@ -190,7 +190,7 @@ export class NavigationHistoryService {
   }
 
   private update(next: NavigationEntry): void {
-    if (JSON.stringify(next) === JSON.stringify(this.entry())) return;
+    if (deepEqual(next, this.entry())) return;
     this.entry.set(next);
     if (this.scheduled) return;
     this.scheduled = true;
@@ -203,13 +203,12 @@ export class NavigationHistoryService {
     this.scheduled = false;
     const entry = this.entry();
     if (!entry || this.restoring || this.closingLayer !== null) return;
-    if (JSON.stringify(entry) === JSON.stringify(this.committed)) return;
+    if (deepEqual(entry, this.committed)) return;
     if (
       this.committed &&
       navigationPath(entry.main, entry.nautilus) ===
         navigationPath(this.committed.main, this.committed.nautilus) &&
-      (entry.main.view !== 'nautilus' ||
-        JSON.stringify(entry.nautilus) === JSON.stringify(this.committed.nautilus))
+      (entry.main.view !== 'nautilus' || deepEqual(entry.nautilus, this.committed.nautilus))
     ) {
       this.write(entry, true);
       return;
@@ -235,8 +234,8 @@ export class NavigationHistoryService {
       this.closingLayer !== null &&
       this.committed &&
       pending &&
-      (JSON.stringify(pending.main) !== JSON.stringify(this.committed.main) ||
-        JSON.stringify(pending.nautilus) !== JSON.stringify(this.committed.nautilus));
+      (!deepEqual(pending.main, this.committed.main) ||
+        !deepEqual(pending.nautilus, this.committed.nautilus));
     const committed = this.committed;
     this.closingLayer = null;
     if (keepPending && pending) {
@@ -244,14 +243,10 @@ export class NavigationHistoryService {
       const next = {
         ...entry,
         index: entry.index + 1,
-        main:
-          JSON.stringify(pending.main) !== JSON.stringify(committed?.main)
-            ? pending.main
-            : entry.main,
-        nautilus:
-          JSON.stringify(pending.nautilus) !== JSON.stringify(committed?.nautilus)
-            ? pending.nautilus
-            : entry.nautilus,
+        main: !deepEqual(pending.main, committed?.main) ? pending.main : entry.main,
+        nautilus: !deepEqual(pending.nautilus, committed?.nautilus)
+          ? pending.nautilus
+          : entry.nautilus,
       };
       this.entry.set(next);
       this.lastIndex.set(next.index);

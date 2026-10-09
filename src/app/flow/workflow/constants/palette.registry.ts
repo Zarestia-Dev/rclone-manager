@@ -38,10 +38,10 @@ function singleOutput(labelKey: string, name = 'Out'): WorkflowPort[] {
 export const SINGLE_START_OUTPUT = singleOutput('flow.workflow.ports.start', 'Trigger');
 export const SINGLE_TRIGGER_OUTPUT = singleOutput('flow.workflow.ports.trigger', 'Trigger');
 export const SINGLE_CHANGE_OUTPUT = singleOutput('flow.workflow.ports.onChange', 'Trigger');
-export const SINGLE_FINISH_OUTPUT = singleOutput('flow.workflow.ports.onFinish', 'Trigger');
+const SINGLE_FINISH_OUTPUT = singleOutput('flow.workflow.ports.onFinish', 'Trigger');
 export const SINGLE_DONE_OUTPUT = singleOutput('flow.workflow.ports.done');
-export const SINGLE_AFTER_DELAY_OUTPUT = singleOutput('flow.workflow.ports.afterDelay');
-export const SINGLE_AFTER_SCHEDULE_OUTPUT = singleOutput('flow.workflow.ports.onSchedule');
+const SINGLE_AFTER_DELAY_OUTPUT = singleOutput('flow.workflow.ports.afterDelay');
+const SINGLE_AFTER_SCHEDULE_OUTPUT = singleOutput('flow.workflow.ports.onSchedule');
 
 export const BOOLEAN_BRANCH_OUTPUTS: WorkflowPort[] = [
   {
@@ -84,7 +84,7 @@ export const JOIN_BRANCH_INPUTS: WorkflowPort[] = [
 
 // ── Default Config Helpers ──────────────────────────────────────────────────
 
-export function getOperationDefaultConfig(opKey: string): Record<string, unknown> {
+function getOperationDefaultConfig(opKey: string): Record<string, unknown> {
   const defaultRclone: Record<string, unknown> = {};
   if (opKey === 'bisync') {
     defaultRclone['path1'] = '';
@@ -127,7 +127,7 @@ export function getOperationDefaultConfig(opKey: string): Record<string, unknown
   };
 }
 
-export function createPaletteItem(
+function createPaletteItem(
   type: string,
   category: WorkflowNodeCategory,
   defaultInputs: WorkflowPort[],

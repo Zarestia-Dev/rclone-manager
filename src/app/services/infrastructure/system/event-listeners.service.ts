@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
-import { Observable, fromEvent, filter, map } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { Observable, fromEvent, filter, map, Subject, share } from 'rxjs';
+import { listen } from '@tauri-apps/api/event';
+import { SseClientService } from '../platform/sse-client.service';
 import {
   AppEventPayloadType,
   MOUNT_STATE_CHANGED,
@@ -50,6 +52,24 @@ import { TauriBaseService } from '../platform/tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
 export class EventListenersService extends TauriBaseService {
+  private readonly sseClient = inject(SseClientService);
+  private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
+
+  private listenToEvent<T>(eventName: string): Observable<T> {
+    let stream = this.tauriEventStreams.get(eventName);
+    if (!stream) {
+      if (!this.isTauri) {
+        stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
+      } else {
+        const subject = new Subject<T>();
+        void listen<T>(eventName, event => subject.next(event.payload));
+        stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      }
+      this.tauriEventStreams.set(eventName, stream);
+    }
+    return stream as Observable<T>;
+  }
+
   listenToWindowResize(): Observable<unknown> {
     if (!this.isTauri) {
       return fromEvent(window, 'resize');

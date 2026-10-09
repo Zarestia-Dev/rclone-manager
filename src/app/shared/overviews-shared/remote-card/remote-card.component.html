@@ -151,11 +151,11 @@
               cdkMenuItem
               class="menu-item"
               [class]="folder.cssClass"
-              [disabled]="isFolderOpeningFor(folder.operation, folder.profile)"
+              [disabled]="folder.isOpening"
               (click)="onOpenFolderClick(folder, $event)"
             >
               <mat-icon [svgIcon]="folder.icon" style="color: white"></mat-icon>
-              <span>{{ folder.profile }} ({{ pathService.getFilename(folder.path) || '/' }})</span>
+              <span>{{ folder.profile }} ({{ folder.shortName }})</span>
             </button>
           }
         </div>
@@ -243,13 +243,13 @@
                       <button
                         type="button"
                         class="profile-open-btn"
-                        [disabled]="isFolderOpeningFor(opVm.operation, profileVm.name)"
+                        [disabled]="profileVm.isOpening"
                         [attr.title]="pathVm.tooltip"
                         (click)="
                           onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
                         "
                       >
-                        @if (isFolderOpeningFor(opVm.operation, profileVm.name)) {
+                        @if (profileVm.isOpening) {
                           <mat-icon svgIcon="spinner"></mat-icon>
                         } @else {
                           <mat-icon

@@ -123,6 +123,29 @@ export interface RemoteFeatures {
   [feature: string]: unknown;
 }
 
+export function createDefaultRemoteOperationState(): RemoteOperationState {
+  return {
+    active: false,
+  };
+}
+
+export function createDefaultRemoteStatus(): RemoteStatus {
+  return {
+    diskUsage: {},
+    mount: createDefaultRemoteOperationState(),
+    sync: createDefaultRemoteOperationState(),
+    copy: createDefaultRemoteOperationState(),
+    bisync: createDefaultRemoteOperationState(),
+    move: createDefaultRemoteOperationState(),
+    check: createDefaultRemoteOperationState(),
+    delete: createDefaultRemoteOperationState(),
+    copyurl: createDefaultRemoteOperationState(),
+    archivecreate: createDefaultRemoteOperationState(),
+    cryptcheck: createDefaultRemoteOperationState(),
+    serve: { active: false, count: 0, serves: [] },
+  };
+}
+
 export function createDefaultRemoteFeatures(isLocal = false, loading = false): RemoteFeatures {
   return {
     IsLocal: isLocal,

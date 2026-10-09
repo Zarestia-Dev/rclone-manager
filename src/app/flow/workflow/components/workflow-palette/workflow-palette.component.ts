@@ -19,8 +19,6 @@ import { NodePaletteItem, WorkflowNodeCategory } from '../../types/workflow.type
 import { isMobile } from '../../../../services/infrastructure/platform/api-client.service';
 import { PALETTE_ITEMS } from '../../constants/palette.registry';
 
-export { PALETTE_ITEMS };
-
 @Component({
   selector: 'app-workflow-palette',
   imports: [CommonModule, MatIconModule, MatButtonModule, TranslatePipe, SearchContainerComponent],

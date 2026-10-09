@@ -1,9 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
-import { Observable, Subject, share } from 'rxjs';
 import { ApiClientService, isHeadlessMode } from './api-client.service';
-import { SseClientService } from './sse-client.service';
 import { NotificationService } from '../../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../../i18n/backend-translation.service';
@@ -16,10 +13,7 @@ export class TauriBaseService {
   protected readonly translate = inject(TranslateService);
   protected readonly backendTranslation = inject(BackendTranslationService);
 
-  protected readonly sseClient = inject(SseClientService);
   protected readonly isTauri = !isHeadlessMode();
-
-  private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
 
   protected getCurrentTauriWindow(): Window | undefined {
     return this.isTauri ? getCurrentWindow() : undefined;
@@ -27,21 +21,6 @@ export class TauriBaseService {
 
   protected invokeCommand<T>(command: string, args?: Record<string, unknown>): Promise<T> {
     return this.apiClient.invoke<T>(command, args);
-  }
-
-  protected listenToEvent<T>(eventName: string): Observable<T> {
-    let stream = this.tauriEventStreams.get(eventName);
-    if (!stream) {
-      if (!this.isTauri) {
-        stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
-      } else {
-        const subject = new Subject<T>();
-        void listen<T>(eventName, event => subject.next(event.payload));
-        stream = subject.asObservable().pipe(share()) as Observable<unknown>;
-      }
-      this.tauriEventStreams.set(eventName, stream);
-    }
-    return stream as Observable<T>;
   }
 
   protected async invokeWithNotification<T>(

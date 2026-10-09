@@ -49,6 +49,7 @@ interface ProfileChipViewModel {
   isBusy: boolean;
   canOpen: boolean;
   isActive: boolean;
+  isOpening: boolean;
   chipTooltip: string;
   openPaths: ProfilePathViewModel[];
 }
@@ -227,6 +228,8 @@ export class RemoteCardComponent {
             operation: op,
             profile,
             path,
+            shortName: this.pathService.getFilename(path) || '/',
+            isOpening: this.isFolderOpeningFor(op, profile),
             isLocal: local,
             icon: local ? 'folder' : 'folder-open',
             cssClass: OPERATION_META[op].cssClass,
@@ -326,6 +329,7 @@ export class RemoteCardComponent {
         isBusy: this.isProfileActionInProgress(operation, profile),
         canOpen: this.canOpenProfilePath(operation, profile),
         isActive: this.isProfileActive(operation, profile),
+        isOpening: this.isFolderOpeningFor(operation, profile),
         chipTooltip: this.getProfileChipTooltip(operation, profile),
         openPaths: this.getProfileOpenPaths(operation, profile).map<ProfilePathViewModel>(path => ({
           path,

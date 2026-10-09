@@ -9,6 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -88,6 +89,7 @@ export class VfsControlPanelComponent {
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
   private readonly mapper = inject(RcloneValueMapperService);
+  private readonly document = inject(DOCUMENT);
 
   readonly changeNotify = computed(() => this.selectedVfs()?.pollIntervalSupported !== false);
 
@@ -194,7 +196,7 @@ export class VfsControlPanelComponent {
 
     timer(POLL_INTERVAL_MS, POLL_INTERVAL_MS)
       .pipe(
-        filter(() => !this.vfsNotFound() && this.hasUsableVfs()),
+        filter(() => !this.document.hidden && !this.vfsNotFound() && this.hasUsableVfs()),
         switchMap(() => this.refreshStatsAndQueue()),
         retry({ delay: POLL_INTERVAL_MS }),
         takeUntilDestroyed()

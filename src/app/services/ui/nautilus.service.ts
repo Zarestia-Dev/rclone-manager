@@ -628,35 +628,12 @@ export class NautilusService extends TauriBaseService {
     overlayRef: OverlayRef | null
   ): void {
     if (!overlayRef) return;
-    if (!this.vault.isAccessible()) {
+    if (!this.vault.isAccessible() || !componentRef) {
       overlayRef.dispose();
       return;
     }
-    const element = componentRef?.location?.nativeElement as HTMLElement | undefined;
-    if (element) {
-      element.classList.add('slide-overlay-leave');
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const onEnd = (): void => {
-        if (timer !== null) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        element.removeEventListener('animationend', onEnd);
-        if (overlayRef.hasAttached()) {
-          overlayRef.dispose();
-        }
-      };
-      element.addEventListener('animationend', onEnd);
-      timer = setTimeout(() => {
-        element.removeEventListener('animationend', onEnd);
-        if (overlayRef.hasAttached()) {
-          overlayRef.dispose();
-        }
-      }, 250);
-    } else {
-      if (overlayRef.hasAttached()) {
-        overlayRef.dispose();
-      }
-    }
+    const element = componentRef.location?.nativeElement as HTMLElement | undefined;
+    element?.classList.add('slide-overlay-leave');
+    setTimeout(() => overlayRef.dispose(), 200);
   }
 }

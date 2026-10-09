@@ -203,7 +203,7 @@ export function getNotificationIcon(kind?: string): string {
   }
 }
 
-export const NODES_WITH_DETAILED_CONFIG = new Set<string>([
+const NODES_WITH_DETAILED_CONFIG = new Set<string>([
   'sync',
   'copy',
   'move',

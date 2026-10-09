@@ -38,6 +38,7 @@ import {
   DEFAULT_PICKER_OPTIONS,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
+import { deepEqual } from 'src/app/shared/utils';
 import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
 
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
@@ -755,7 +756,7 @@ export class NautilusComponent implements OnInit {
   ): void {
     this.tabSvc.restoreNavigation(location);
     const restored = this.tabSvc.navigationSnapshot();
-    if (restored && JSON.stringify(restored) !== JSON.stringify(location)) {
+    if (restored && !deepEqual(restored, location)) {
       this.navigationHistory.replaceNautilus(restored);
     }
   }

@@ -136,26 +136,6 @@ export interface UpdateResult {
   manual?: boolean;
 }
 
-export interface LoadingStates {
-  isValidating: boolean;
-  isEncrypting: boolean;
-  isUnencrypting: boolean;
-  isChangingPassword: boolean;
-  isStoringPassword: boolean;
-  isRemovingPassword: boolean;
-  isSettingEnv: boolean;
-  isClearingEnv: boolean;
-  isResettingLockout: boolean;
-}
-
-export interface PasswordManagerState {
-  hasStoredPassword: boolean;
-  hasEnvPassword: boolean;
-  isConfigEncrypted: boolean;
-  loading: LoadingStates;
-  errors: string[];
-}
-
 export interface SettingTab {
   label: string;
   icon: string;

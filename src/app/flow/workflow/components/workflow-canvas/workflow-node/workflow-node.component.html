@@ -116,7 +116,7 @@
   <!-- Dedicated Structured Port Rows -->
   @if (portRows().length > 0) {
     <div class="node-ports">
-      @for (row of portRows(); track $index) {
+      @for (row of portRows(); track row.inputPort?.id || row.outputPort?.id) {
         <div class="port-row">
           <!-- Left Input Port Slot (if present) -->
           @if (row.inputPort; as inPort) {

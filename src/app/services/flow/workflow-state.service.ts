@@ -25,8 +25,6 @@ import {
   DEFAULT_CANVAS_HEIGHT,
 } from '../../flow/workflow/constants/workflow.constants';
 
-export { GRID_SIZE, MIN_ZOOM, MAX_ZOOM, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT };
-
 /** Cache of computed content hashes keyed by workflow reference to avoid redundant full-tree serializations */
 const contentHashCache = new WeakMap<WorkflowDefinition, string>();
 
@@ -36,7 +34,7 @@ const contentHashCache = new WeakMap<WorkflowDefinition, string>();
  * Excludes transient execution states (e.g. node.state, errorMessage, lastDurationMs)
  * and interactive camera viewport (x, y, zoom).
  */
-export function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
+function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
   if (!wf) return '';
   const cached = contentHashCache.get(wf);
   if (cached !== undefined) return cached;

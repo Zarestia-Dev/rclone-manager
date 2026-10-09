@@ -134,7 +134,7 @@
   @if (openableFolders().length > 1) {
     <ng-template #folderMenu>
       <div cdkMenu class="material-context-menu has-caret">
-        @for (folder of openableFolders(); track folder.type + folder.path) {
+        @for (folder of openableFolders(); track folder.path) {
           <button
             cdkMenuItem
             class="menu-item"
@@ -149,7 +149,7 @@
                   ? ('detailShared.pathDisplay.source' | translate)
                   : ('detailShared.pathDisplay.destination' | translate)
               }}
-              ({{ pathService.getFilename(folder.path) || folder.path }})
+              ({{ folder.shortName }})
             </span>
           </button>
         }

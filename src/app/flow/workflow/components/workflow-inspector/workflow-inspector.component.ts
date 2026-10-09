@@ -39,11 +39,7 @@ import {
   getNotificationIcon,
   hasDetailedConfig,
 } from '../../utils/node-style.util';
-import {
-  extractActiveConfigEntries,
-  ActiveConfigItem,
-  PRIMARY_EXCLUDED_KEYS,
-} from '../../utils/config-entries.util';
+import { extractActiveConfigEntries, ActiveConfigItem } from '../../utils/config-entries.util';
 import {
   getRcloneCfg,
   extractProfileSource,
@@ -54,8 +50,6 @@ import { TaskNodeFormComponent } from './node-forms/task-node-form.component';
 import { LogicNodeFormComponent } from './node-forms/logic-node-form.component';
 import { ActionNodeFormComponent } from './node-forms/action-node-form.component';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
-
-export { ActiveConfigItem, PRIMARY_EXCLUDED_KEYS };
 
 @Component({
   selector: 'app-workflow-inspector',

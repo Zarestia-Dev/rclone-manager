@@ -62,7 +62,7 @@
         {{ 'nautilus.titles.bookmarks' | translate }}
       </div>
 
-      @for (item of bookmarkViewModels(); track item.bm.meta.remote + ':' + item.bm.entry.Path) {
+      @for (item of bookmarkViewModels(); track item.key) {
         <button
           class="sidebar-item"
           [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
