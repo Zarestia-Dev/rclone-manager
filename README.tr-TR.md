@@ -62,6 +62,7 @@
 - 🚀 **Hızlı Görevler (Quick Runs):** Duruma duyarlı bir kart ızgarasından tek tıklamayla bulut işlemlerini ve özel CLI bayrak ön ayarlarını tetikleyin.
 - ⚙️ **Bağlama ve Sunma:** Kolay bağlama kontrolleri ve sunma yönetimi (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Görev İzleyici:** Gerçek zamanlı aktarım izleme ve bant genişliği kontrolü.
+- 📱 **Android SAF & DocumentsProvider:** Root veya FUSE gerektirmeden Depolama Erişim Çerçevesi (SAF) ve yerleşik VFS bağlama köprüsüyle bulut remotes'larına sistem dosya seçicilerinden doğrudan erişin.
 - 🌐 **Headless Modu:** VPS/NAS sunucularında GUI olmadan bir web sunucusu olarak çalıştırmak için [RClone Manager Headless](headless/README.md) sürümüne göz atın!
 
 ---
@@ -137,7 +138,9 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 | :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
 | **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK İndirmeleri (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Kılavuz:** [Wiki: Android Desteği (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go motoru / librclone detayları & kurulum)
+> 📱 **Depolama Erişim Çerçevesi (SAF):** Yerel `DocumentsProvider` (`RcloneDocumentsProvider`) entegrasyonu ve dahili VFS bağlama köprüsü içerir; root veya `/dev/fuse` gerektirmeden bulut bağlantılarını doğrudan Android sistem dosya seçicilerine ve harici dosya yöneticilerine sunar.
+>
+> 📚 **Kılavuz:** [Wiki: Android Desteği (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go motoru / librclone detayları, SAF sağlayıcısı & kurulum)
 
 > 🛠️ **Sistem Gereksinimleri:** Sürücüleri bağlamak WinFsp (Windows), macFUSE (macOS) veya FUSE3 (Linux) gerektirir. Rclone eksikse otomatik olarak indirilir. Bkz. [Wiki: Sistem Gereksinimleri](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

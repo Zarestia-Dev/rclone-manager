@@ -62,6 +62,7 @@
 - 🚀 **快捷运行 (Quick Runs):** 从状态感知的卡片网格中一键触发云端操作与自定义 CLI 参数预设。
 - ⚙️ **挂载与服务:** 简便的挂载控制和服务管理（WebDAV、SFTP、HTTP、FTP）。
 - 🔄 **任务监视器:** 实时传输监控和带宽控制。
+- 📱 **Android SAF 与 DocumentsProvider:** 通过存储访问框架 (SAF) 和内置 VFS 挂载桥，无需 Root 或 FUSE 即可在系统文件选择器中原生访问云端远程存储。
 - 🌐 **无头（Headless）模式:** 访问 [RClone Manager Headless](headless/README.md) 在 VPS/NAS 上将其作为 Web 服务器运行！
 
 ---
@@ -137,7 +138,9 @@
 | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
 | **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK 下载 (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **指南:** [Wiki: Android 支持 (测试版)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go 引擎 / librclone 详细信息及配置)
+> 📱 **存储访问框架 (SAF):** 提供原生 `DocumentsProvider` (`RcloneDocumentsProvider`) 集成与进程内 VFS 挂载桥，无需 Root 或 `/dev/fuse` 即可将已挂载的云端存储直接公开给 Android 系统文件选择器和外部应用程序。
+>
+> 📚 **指南:** [Wiki: Android 支持 (测试版)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go 引擎 / librclone 详细信息、SAF 提供程序及配置)
 
 > 🛠️ **系统要求:** 挂载驱动器需要 WinFsp (Windows)、macFUSE (macOS) 或 FUSE3 (Linux)。如果缺失，Rclone 本身会自动下载。参见 [Wiki: 系统要求](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies)。
 

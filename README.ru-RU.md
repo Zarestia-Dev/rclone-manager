@@ -62,6 +62,7 @@
 - 🚀 **Быстрые запуски (Quick Runs):** запуск облачных операций в один клик и управление пресетами параметров CLI из интерактивной сетки карточек.
 - ⚙️ **Монтирование и серверы:** удобное управление подключениями и серверами WebDAV, SFTP, HTTP и FTP.
 - 🔄 **Наблюдение за заданиями:** контроль передачи файлов и ограничение пропускной способности в реальном времени.
+- 📱 **Android SAF и DocumentsProvider:** встроенная поддержка Storage Access Framework (SAF) и монтирование через VFS мост без root и FUSE для прямого доступа к облачным хранилищам из системного проводника.
 - 🌐 **Серверный режим:** используйте [RClone Manager Headless](headless/README.md) для запуска в качестве веб-сервера на VPS или NAS.
 
 ---
@@ -137,7 +138,9 @@
 | :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
 | **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Скачать APK (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
-> 📚 **Руководство:** [Wiki: Поддержка Android (Бета)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Подробности движка Go / librclone и настройка)
+> 📱 **Storage Access Framework (SAF):** включает встроенный `DocumentsProvider` (`RcloneDocumentsProvider`) и VFS-мост монтирования, открывая доступ к удалённым хранилищам для системного проводника Android и сторонних приложений без root-прав и `/dev/fuse`.
+>
+> 📚 **Руководство:** [Wiki: Поддержка Android (Бета)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Подробности движка Go / librclone, провайдер SAF и настройка)
 
 > 🛠️ **Системные требования:** для монтирования дисков необходимы WinFsp в Windows, macFUSE в macOS или FUSE3 в Linux. При отсутствии Rclone приложение загружает его автоматически. Подробности доступны в разделе [системных требований](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

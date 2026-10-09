@@ -186,7 +186,10 @@ impl RclonePayloadBuilder {
                 };
 
             for (k, v) in extra {
-                if crate::utils::json_helpers::is_path_key(k) {
+                if crate::utils::json_helpers::is_path_key(k)
+                    || k == "app"
+                    || crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&k.as_str())
+                {
                     continue;
                 }
                 if k == "mountOpt"
@@ -381,8 +384,15 @@ pub fn flatten_rclone_config(val: &Value) -> Value {
         let is_structured = map.values().any(|v| v.is_object());
         let mut flat = serde_json::Map::new();
         for (k, v) in map {
+            if k == "app" || crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&k.as_str())
+            {
+                continue;
+            }
             if is_structured && let Value::Object(sub_map) = v {
                 for (sub_k, sub_v) in sub_map {
+                    if crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&sub_k.as_str()) {
+                        continue;
+                    }
                     let norm_sub = crate::utils::json_helpers::normalize_option_key(sub_k);
                     flat.insert(norm_sub.into_owned(), sub_v.clone());
                 }
@@ -700,5 +710,54 @@ mod tests {
         assert_eq!(config_opt.get("AutoConfirm").unwrap(), true);
         assert_eq!(config_opt.get("Transfers").unwrap(), 4);
         assert_eq!(config_opt.get("Checkers").unwrap(), 32);
+    }
+
+    #[test]
+    fn test_flatten_rclone_config_ignores_app_keys() {
+        let rclone_config = json!({
+            "fs": "OneDrive:Documents",
+            "mountPoint": "/mnt/onedrive",
+            "autoStart": false,
+            "app": {
+                "autoStart": false,
+                "cronEnabled": false
+            },
+            "vfs": {
+                "vfs-cache-mode": "writes"
+            }
+        });
+
+        let flattened = flatten_rclone_config(&rclone_config);
+        let obj = flattened.as_object().unwrap();
+
+        assert_eq!(obj.get("fs").unwrap(), "OneDrive:Documents");
+        assert_eq!(obj.get("mountPoint").unwrap(), "/mnt/onedrive");
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "writes");
+        assert!(obj.get("app").is_none());
+        assert!(obj.get("autoStart").is_none());
+        assert!(obj.get("cronEnabled").is_none());
+    }
+
+    #[test]
+    fn test_payload_builder_ignores_app_keys() {
+        let rclone_config = json!({
+            "fs": "OneDrive:Documents",
+            "mountPoint": "/mnt/onedrive",
+            "autoStart": false,
+            "app": {
+                "autoStart": false
+            }
+        });
+
+        let payload = RclonePayloadBuilder::from_rclone_config(&rclone_config)
+            .insert("fs", "OneDrive:Documents")
+            .insert("mountPoint", "/mnt/onedrive")
+            .build();
+        let obj = payload.as_object().unwrap();
+
+        assert_eq!(obj.get("fs").unwrap(), "OneDrive:Documents");
+        assert_eq!(obj.get("mountPoint").unwrap(), "/mnt/onedrive");
+        assert!(obj.get("app").is_none());
+        assert!(obj.get("autoStart").is_none());
     }
 }
