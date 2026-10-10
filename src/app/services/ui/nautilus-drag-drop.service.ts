@@ -3,7 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -440,9 +440,6 @@ export class NautilusDragDropService {
     event.stopPropagation();
     const pIdx = paneIndex as 0 | 1;
     const ctx = this._cb.getContext();
-    const targetRemote = ctx.panes[pIdx].remote;
-    if (!targetRemote) return;
-
     const resolved = this._resolveDropHit({ x: event.clientX, y: event.clientY }, ctx);
     const folder = resolved.folder ?? this.hoveredFolder();
     const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
@@ -456,6 +453,11 @@ export class NautilusDragDropService {
       }
       return;
     }
+
+    const targetRemote = folder
+      ? this.nautilusService.lookupRemoteByName(folder.meta.remote)
+      : ctx.panes[pIdx].remote;
+    if (!targetRemote) return;
 
     const targetPath = folder
       ? folder.entry.Path
@@ -486,7 +488,7 @@ export class NautilusDragDropService {
     const ctx = this._cb.getContext();
     const hit = this._resolveDropHit(point, ctx);
 
-    const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${hit.folder?.entry.Path}:${hit.sidebarItem}`;
+    const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${fileBrowserItemKey(hit.folder)}:${hit.sidebarItem}`;
     if (hitKey === this._lastHitKey) return;
     this._lastHitKey = hitKey;
 
@@ -516,7 +518,7 @@ export class NautilusDragDropService {
 
       const hitFolder = hit.folder;
       if (hitFolder?.entry.IsDir) {
-        if (!this._items.some(item => item.entry.Path === hitFolder.entry.Path)) {
+        if (!this._items.some(item => fileBrowserItemKey(item) === fileBrowserItemKey(hitFolder))) {
           this._cb.navigateTo(hitFolder);
         }
         return;
@@ -540,8 +542,8 @@ export class NautilusDragDropService {
         if (hit.sidebarItem === 'starred') {
           this._cb.selectStarred();
         } else if (hit.sidebarItem.startsWith('bookmark:')) {
-          const bmPath = hit.sidebarItem.replace('bookmark:', '');
-          const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
+          const bmKey = hit.sidebarItem.slice('bookmark:'.length);
+          const bm = ctx.bookmarks.find(b => fileBrowserItemKey(b) === bmKey);
           if (bm) this._cb.openBookmark(bm);
         } else if (hit.sidebarItem.startsWith('remote:')) {
           const remoteName = hit.sidebarItem.replace('remote:', '');
@@ -585,17 +587,28 @@ export class NautilusDragDropService {
   ): Promise<void> {
     if (!target.remote || !items.length) return;
 
-    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
-
     const normalizedTargetRemote = this.pathService.normalizeRemoteName(target.remote.name);
-    const isSameRemote = items.every(
+    if (
+      items.some(
+        item =>
+          item.entry.IsDir &&
+          item.entry.Path === target.path &&
+          this.pathService.normalizeRemoteName(item.meta.remote) === normalizedTargetRemote
+      )
+    )
+      return;
+
+    // A starred selection can contain items from different parent directories.
+    items = items.filter(
       item =>
-        this.pathService.normalizeRemoteName(item.meta.remote ?? '') === normalizedTargetRemote
+        this.pathService.normalizeRemoteName(item.meta.remote) !== normalizedTargetRemote ||
+        this.pathService.getParentPath(item.entry.Path) !== target.path.replace(/\/$/, '')
     );
+    if (!items.length) return;
 
-    const sourceParentPath = this.pathService.getParentPath(items[0].entry.Path);
-
-    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
+    const isSameRemote = items.every(
+      item => this.pathService.normalizeRemoteName(item.meta.remote) === normalizedTargetRemote
+    );
 
     await this.fileOps.performFileOperations(
       items,
@@ -672,10 +685,10 @@ export class NautilusDragDropService {
     const paneIndex = paneIdxRaw != null ? parseInt(paneIdxRaw, 10) : null;
     const targetPaneIndex = paneIndex ?? ctx.activePaneIndex;
 
-    const folderPath = getAttr('[data-folder-path]', 'data-folder-path');
+    const folderKey = getAttr('[data-folder-key]', 'data-folder-key');
     const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
-    const folder = folderPath
-      ? (currentFiles.find(f => f.entry.Path === folderPath) ?? null)
+    const folder = folderKey
+      ? (currentFiles.find(f => fileBrowserItemKey(f) === folderKey) ?? null)
       : null;
 
     const segIdxRaw = getAttr('[data-segment-index]', 'data-segment-index');
@@ -690,9 +703,9 @@ export class NautilusDragDropService {
     } else if (hasTag('[data-sidebar-bookmarks-header]')) {
       sidebarItem = 'bookmarks-header';
     } else {
-      const bmPath = getAttr('[data-sidebar-bookmark-path]', 'data-sidebar-bookmark-path');
-      if (bmPath) {
-        sidebarItem = `bookmark:${bmPath}`;
+      const bmKey = getAttr('[data-sidebar-bookmark-key]', 'data-sidebar-bookmark-key');
+      if (bmKey) {
+        sidebarItem = `bookmark:${bmKey}`;
       } else {
         const remoteName = getAttr('[data-sidebar-remote-name]', 'data-sidebar-remote-name');
         if (remoteName) sidebarItem = `remote:${remoteName}`;
@@ -728,8 +741,8 @@ export class NautilusDragDropService {
       }
 
       if (sidebarItem.startsWith('bookmark:')) {
-        const bmPath = sidebarItem.replace('bookmark:', '');
-        const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
+        const bmKey = sidebarItem.slice('bookmark:'.length);
+        const bm = ctx.bookmarks.find(b => fileBrowserItemKey(b) === bmKey);
         if (bm) {
           const remote = this.nautilusService.lookupRemoteByName(bm.meta.remote ?? '');
           if (remote) return { remote, path: bm.entry.Path };
@@ -740,11 +753,8 @@ export class NautilusDragDropService {
 
     if (resolved.paneIndex !== null) {
       const pane = ctx.panes[resolved.paneIndex as 0 | 1];
-      if (!pane.remote) return { remote: null, path: '' };
-
       if (folder?.entry.IsDir) {
-        const folderRemote =
-          this.nautilusService.lookupRemoteByName(folder.meta.remote) ?? pane.remote;
+        const folderRemote = this.nautilusService.lookupRemoteByName(folder.meta.remote);
         return { remote: folderRemote, path: folder.entry.Path };
       }
 

@@ -2,7 +2,6 @@ import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { WorkflowDefinition, WorkflowTemplate } from '../../flow/workflow/types/workflow.types';
-import { BUILTIN_WORKFLOW_TEMPLATES } from './recipes/workflow-recipes';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
@@ -16,6 +15,7 @@ export class WorkflowStorageService extends TauriBaseService {
 
   readonly workflows = signal<WorkflowDefinition[]>([]);
   readonly isLoading = signal<boolean>(false);
+  readonly presetTemplates = signal<WorkflowTemplate[]>([]);
 
   private loadInFlight: Promise<WorkflowDefinition[]> | null = null;
   private nextLoadPromise: Promise<WorkflowDefinition[]> | null = null;
@@ -204,18 +204,42 @@ export class WorkflowStorageService extends TauriBaseService {
   }
 
   /**
+   * Lazily loads and returns the list of pre-configured workflow templates.
+   */
+  async loadPresetTemplates(): Promise<WorkflowTemplate[]> {
+    if (this.presetTemplates().length === 0) {
+      const { BUILTIN_WORKFLOW_TEMPLATES } = await import('./recipes/workflow-recipes');
+      this.presetTemplates.set(BUILTIN_WORKFLOW_TEMPLATES);
+    }
+    return this.presetTemplates();
+  }
+
+  /**
    * Returns the list of pre-configured workflow templates.
+   * If not yet loaded, triggers dynamic loading in the background.
    */
   getPresetTemplates(): WorkflowTemplate[] {
-    return BUILTIN_WORKFLOW_TEMPLATES;
+    if (this.presetTemplates().length === 0) {
+      void this.loadPresetTemplates();
+    }
+    return this.presetTemplates();
   }
 
   /**
    * Creates a new WorkflowDefinition instance from a template.
    */
-  instantiateTemplate(templateId: string): WorkflowDefinition {
+  instantiateTemplate(templateOrId: WorkflowTemplate | string): WorkflowDefinition {
+    const list = this.presetTemplates();
     const tpl =
-      BUILTIN_WORKFLOW_TEMPLATES.find(t => t.id === templateId) ?? BUILTIN_WORKFLOW_TEMPLATES[0];
+      typeof templateOrId === 'string'
+        ? (list.find(t => t.id === templateOrId) ?? list[0])
+        : templateOrId;
+
+    if (!tpl) {
+      throw new Error(
+        `Template not loaded: ${typeof templateOrId === 'string' ? templateOrId : ''}`
+      );
+    }
 
     const existingNames = this.workflows().map(w => w.name);
     const uniqueName = findUniqueName(tpl.definition.name, existingNames);

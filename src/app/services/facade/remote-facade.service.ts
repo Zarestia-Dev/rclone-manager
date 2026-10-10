@@ -877,13 +877,23 @@ export class RemoteFacadeService {
     if (!targets.length) return;
 
     void (async (): Promise<void> => {
-      for (const remote of targets) {
+      const concurrency = 4;
+      for (let i = 0; i < targets.length; i += concurrency) {
         if (!this.canLoad() || generation !== this.backgroundLoadGeneration) return;
-        try {
-          await this.getCachedOrFetchDiskUsage(remote.name);
-        } catch (e) {
-          console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
-        }
+        const chunk = targets.slice(i, i + concurrency);
+        await Promise.allSettled(
+          chunk.map(async remote => {
+            if (!this.canLoad() || generation !== this.backgroundLoadGeneration) return;
+            try {
+              await this.getCachedOrFetchDiskUsage(remote.name);
+            } catch (e) {
+              console.error(
+                `[RemoteFacadeService] Error loading disk usage for ${remote.name}:`,
+                e
+              );
+            }
+          })
+        );
       }
     })();
   }

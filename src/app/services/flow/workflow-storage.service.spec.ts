@@ -96,11 +96,15 @@ describe('WorkflowStorageService', () => {
     service = TestBed.inject(WorkflowStorageService);
   });
 
-  it('loads templates and provides preset templates', () => {
-    const templates = service.getPresetTemplates();
+  it('loads templates and provides preset templates', async () => {
+    const templates = await service.loadPresetTemplates();
     expect(templates.length).toBeGreaterThan(0);
     expect(templates.some(t => t.id === 'tpl-daily-backup-notify')).toBe(true);
     expect(templates.some(t => t.id === 'tpl-drift-check-sync')).toBe(true);
+
+    const instantiated = service.instantiateTemplate(templates[0]);
+    expect(instantiated.id).toMatch(/^wf-/);
+    expect(instantiated.name).toBe(templates[0].definition.name);
   });
 
   it('reloads workflows when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {

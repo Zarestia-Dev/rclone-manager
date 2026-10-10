@@ -9,6 +9,7 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -29,6 +30,7 @@ import { SlideMenuController } from 'src/app/shared/utils';
   selector: 'app-nautilus-context-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     TranslatePipe,
     MatIconModule,
     MatDividerModule,
@@ -115,6 +117,14 @@ export class NautilusContextMenuComponent {
 
   protected getFormattedPath(item: FileBrowserItem | null): string {
     if (!item) return this.fullPathInput();
-    return this.pathService.getFullDisplayPath(this.tabSvc.activeRemote(), item.entry.Path);
+    return this.pathService.getFullDisplayPath(
+      {
+        name: item.meta.remote,
+        isLocal: item.meta.isLocal,
+        label: item.meta.remote,
+        type: item.meta.remoteType ?? '',
+      },
+      item.entry.Path
+    );
   }
 }

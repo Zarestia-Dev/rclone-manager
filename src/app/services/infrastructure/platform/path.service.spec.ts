@@ -384,7 +384,7 @@ describe('PathService', () => {
   describe('resolvePathGroup', () => {
     it('should resolve local items correctly by joining root and path', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Documents/test' } as any,
+        entry: { Path: 'Documents/test' } as unknown as FileBrowserItem['entry'],
         meta: { remote: '/home/hakan', isLocal: true },
       };
       const result = service.resolvePathGroup(item, 'myremote');
@@ -397,7 +397,7 @@ describe('PathService', () => {
 
     it('should resolve current remote items correctly', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Photos/album' } as any,
+        entry: { Path: 'Photos/album' } as unknown as FileBrowserItem['entry'],
         meta: { remote: 'myremote:', isLocal: false },
       };
       const result = service.resolvePathGroup(item, 'myremote');
@@ -410,7 +410,7 @@ describe('PathService', () => {
 
     it('should resolve other remote items correctly', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Photos/album' } as any,
+        entry: { Path: 'Photos/album' } as unknown as FileBrowserItem['entry'],
         meta: { remote: 'gdrive:', isLocal: false },
       };
       const result = service.resolvePathGroup(item, 'myremote');

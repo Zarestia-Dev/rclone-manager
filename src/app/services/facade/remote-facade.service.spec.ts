@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal, computed, WritableSignal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
-import { VaultStatePayload } from '@app/types';
+import { Remote, VaultStatePayload } from '@app/types';
 import { VaultService } from '../security/vault.service';
 import { RemoteFacadeService } from './remote-facade.service';
 import { JobManagementService } from '../operations/job-management.service';
@@ -348,5 +348,44 @@ describe('RemoteFacadeService', () => {
     systemSettingsChanged$.next({ category: '*', key: '*', value: null });
 
     expect(refreshAllSpy).toHaveBeenCalled();
+  });
+
+  describe('loadDiskUsageInBackground', () => {
+    it('processes targets in bounded concurrency batches and loads disk usage', async () => {
+      const diskUsageSpy = vi.spyOn(service, 'getCachedOrFetchDiskUsage').mockResolvedValue(null);
+      const mockRemotes = [
+        { name: 'remote1' },
+        { name: 'remote2' },
+        { name: 'remote3' },
+        { name: 'remote4' },
+        { name: 'remote5' },
+      ] as unknown as Remote[];
+
+      service.loadDiskUsageInBackground(mockRemotes);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(diskUsageSpy).toHaveBeenCalledTimes(5);
+      expect(diskUsageSpy).toHaveBeenCalledWith('remote1');
+      expect(diskUsageSpy).toHaveBeenCalledWith('remote5');
+    });
+
+    it('handles individual fetch failures gracefully without stopping the batch', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const diskUsageSpy = vi
+        .spyOn(service, 'getCachedOrFetchDiskUsage')
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValue(null);
+
+      const mockRemotes = [{ name: 'fail-remote' }, { name: 'ok-remote' }] as unknown as Remote[];
+
+      service.loadDiskUsageInBackground(mockRemotes);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(diskUsageSpy).toHaveBeenCalledTimes(2);
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
   });
 });

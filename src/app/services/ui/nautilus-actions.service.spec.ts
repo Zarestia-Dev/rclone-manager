@@ -15,7 +15,7 @@ import { PathService } from '../infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { DownloadService } from '../operations/download.service';
-import { ExplorerRoot } from '@app/types';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
 
 const remote: ExplorerRoot = { name: 'drive', label: 'Drive', isLocal: false, type: 'drive' };
 
@@ -27,6 +27,7 @@ describe('Nautilus action refresh destination', () => {
     activeFiles: signal([]),
     refreshPath: vi.fn(),
   };
+  const viewer = { open: vi.fn() };
   const fileOps = { openNewFolderDialog: vi.fn(), openCopyUrlDialog: vi.fn() };
 
   beforeEach(() => {
@@ -38,6 +39,7 @@ describe('Nautilus action refresh destination', () => {
         NautilusActionsService,
         { provide: NautilusTabService, useValue: tab },
         { provide: NautilusFileOperationsService, useValue: fileOps },
+        { provide: FileViewerService, useValue: viewer },
         ...[
           NautilusSelectionService,
           TranslateService,
@@ -45,7 +47,6 @@ describe('Nautilus action refresh destination', () => {
           RemoteFileOperationsService,
           PathService,
           RemoteFacadeService,
-          FileViewerService,
           NautilusService,
           ModalService,
           DownloadService,
@@ -81,5 +82,51 @@ describe('Nautilus action refresh destination', () => {
     fileOps.openNewFolderDialog.mockResolvedValueOnce(false);
     await service.openNewFolder();
     expect(tab.refreshPath).not.toHaveBeenCalled();
+  });
+  it('keeps preview navigation within the selected root and matches the full item identity', async () => {
+    tab.activeRemote.set(null);
+    const file = (root: string, id = ''): FileBrowserItem => ({
+      entry: {
+        ID: id,
+        Name: 'photo.jpg',
+        Path: 'photos/photo.jpg',
+        IsDir: false,
+        Size: 1,
+        ModTime: '',
+        MimeType: 'image/jpeg',
+      },
+      meta: { remote: root, isLocal: false },
+    });
+    const otherRoot = file('other');
+    const first = file('drive', 'first');
+    const selected = file('drive', 'selected');
+    const next = {
+      ...file('drive', 'next'),
+      entry: { ...file('drive', 'next').entry, Path: 'photos/next.jpg' },
+    };
+    await service.openFilePreview(selected, [otherRoot, first, selected, next]);
+    expect(viewer.open).toHaveBeenCalledExactlyOnceWith(
+      [first.entry, selected.entry, next.entry],
+      1,
+      'drive',
+      false
+    );
+  });
+
+  it('does not preview a stale item absent from the pane', async () => {
+    const selected: FileBrowserItem = {
+      entry: {
+        ID: '',
+        Name: 'photo.jpg',
+        Path: 'photo.jpg',
+        IsDir: false,
+        Size: 1,
+        ModTime: '',
+        MimeType: '',
+      },
+      meta: { remote: '/', isLocal: true },
+    };
+    await service.openFilePreview(selected, []);
+    expect(viewer.open).not.toHaveBeenCalled();
   });
 });

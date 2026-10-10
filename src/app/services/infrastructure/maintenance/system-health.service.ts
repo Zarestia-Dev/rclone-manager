@@ -2,7 +2,6 @@ import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core'
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { EMPTY, firstValueFrom, from, catchError, exhaustMap, filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RepairSheetComponent } from '../../../features/components/repair-sheet/repair-sheet.component';
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
 import { SystemInfoService } from '../system/system-info.service';
 import { InstallationService } from '../../settings/installation.service';
@@ -12,6 +11,11 @@ import { EventListenersService } from '../system/event-listeners.service';
 import { BackendService } from '../system/backend.service';
 
 export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
+
+interface ActiveRepairSheet {
+  ref: MatBottomSheetRef<unknown>;
+  type: RepairSheetType | RepairData['type'];
+}
 
 @Injectable({ providedIn: 'root' })
 export class SystemHealthService {
@@ -24,7 +28,7 @@ export class SystemHealthService {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
+  private readonly activeSheets = new Set<ActiveRepairSheet>();
   private hasReportedRclonePathError = false;
   private hasReportedRcloneVersionError = false;
   private hasReportedRcloneAuthError = false;
@@ -201,38 +205,39 @@ export class SystemHealthService {
     this.passwordUnlocked.set(false);
   }
 
-  showRepairSheet(data: RepairData): void {
+  async showRepairSheet(data: RepairData): Promise<void> {
+    const { RepairSheetComponent } =
+      await import('../../../features/components/repair-sheet/repair-sheet.component');
     const sheetRef = this.bottomSheet.open(RepairSheetComponent, { data, disableClose: true });
-    this.activeSheets.add(sheetRef);
-    sheetRef.afterDismissed().subscribe(() => this.activeSheets.delete(sheetRef));
+    const sheetItem: ActiveRepairSheet = { ref: sheetRef, type: data.type };
+    this.activeSheets.add(sheetItem);
+    sheetRef.afterDismissed().subscribe(() => this.activeSheets.delete(sheetItem));
   }
 
   async openRepairSheetWithResult(data: RepairData): Promise<PasswordPromptResult | null> {
+    const { RepairSheetComponent } =
+      await import('../../../features/components/repair-sheet/repair-sheet.component');
     const sheetRef = this.bottomSheet.open(RepairSheetComponent, { data, disableClose: true });
-    this.activeSheets.add(sheetRef);
+    const sheetItem: ActiveRepairSheet = { ref: sheetRef, type: data.type };
+    this.activeSheets.add(sheetItem);
     try {
       return ((await firstValueFrom(sheetRef.afterDismissed())) as PasswordPromptResult) ?? null;
     } catch (error) {
       console.error('Error in repair sheet:', error);
       return null;
     } finally {
-      this.activeSheets.delete(sheetRef);
+      this.activeSheets.delete(sheetItem);
     }
   }
 
-  hasActiveSheetOfType(type: RepairSheetType): boolean {
-    return [...this.activeSheets].some(
-      s => s.instance instanceof RepairSheetComponent && s.instance.data?.type === type
-    );
+  hasActiveSheetOfType(type: RepairSheetType | RepairData['type']): boolean {
+    return [...this.activeSheets].some(s => s.type === type);
   }
 
-  closeSheetsByType(...types: RepairSheetType[]): void {
-    for (const sheet of this.activeSheets) {
-      if (
-        sheet.instance instanceof RepairSheetComponent &&
-        types.includes(sheet.instance.data?.type as RepairSheetType)
-      ) {
-        sheet.dismiss();
+  closeSheetsByType(...types: (RepairSheetType | RepairData['type'])[]): void {
+    for (const sheet of [...this.activeSheets]) {
+      if (types.includes(sheet.type)) {
+        sheet.ref.dismiss();
       }
     }
   }

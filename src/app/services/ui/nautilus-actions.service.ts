@@ -125,11 +125,15 @@ export class NautilusActionsService {
     }
 
     const isLocal = item.meta.isLocal;
-    const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
+    // The viewer has one root for its entire playlist. Starred items can span roots.
+    const files = activePaneFiles.filter(
+      f => f.meta.remote === actualRemoteName && f.meta.isLocal === isLocal
+    );
+    const idx = files.findIndex(f => this._itemKey(f) === this._itemKey(item));
     if (idx === -1) return;
 
     this.fileViewerSvc.open(
-      activePaneFiles.map(f => f.entry),
+      files.map(f => f.entry),
       idx,
       actualRemoteName,
       isLocal

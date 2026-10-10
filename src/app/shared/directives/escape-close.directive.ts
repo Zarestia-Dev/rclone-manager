@@ -1,5 +1,5 @@
 import { Directive, HostListener, inject } from '@angular/core';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 /**
  * Closes the host MatDialog when the user presses Escape anywhere in the document.
@@ -14,19 +14,24 @@ import { MatDialogRef } from '@angular/material/dialog';
  *   @Component({ hostDirectives: [EscapeCloseDirective] })
  *
  * The directive is a no-op when not inside a MatDialog (the `MatDialogRef` injection is optional).
- * Modals that need custom Escape logic (conditional close, extra cleanup, returning a specific
- * result) should NOT use this directive — keep their explicit `@HostListener` instead.
+ * Only closes the dialog if it is the top-most active dialog in the MatDialog stack.
  */
 @Directive({
   selector: '[appEscapeClose]',
 })
 export class EscapeCloseDirective {
   private readonly dialogRef = inject(MatDialogRef<unknown>, { optional: true });
+  private readonly dialog = inject(MatDialog, { optional: true });
 
   @HostListener('document:keydown.escape')
   close(): void {
-    if (this.dialogRef) {
-      this.dialogRef.close();
+    if (!this.dialogRef) return;
+    if (this.dialog && this.dialog.openDialogs.length > 0) {
+      const topDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
+      if (topDialog !== this.dialogRef) {
+        return;
+      }
     }
+    this.dialogRef.close();
   }
 }

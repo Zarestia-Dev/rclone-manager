@@ -49,11 +49,11 @@
             [class.selected]="selection().has(key)"
             [class.unselectable]="!isItemSelectable()(item.entry)"
             [class.cut-item]="isCut"
-            [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+            [attr.data-folder-key]="item.entry.IsDir ? getItemKey(item) : null"
             [class.folder-drag-over]="
               isDragging() &&
               hoveredFolderPaneIndex() === paneIndex() &&
-              hoveredFolder()?.entry?.Path === item.entry.Path &&
+              hoveredFolder() === item &&
               _draggedItemPath() !== item.entry.Path
             "
           >
@@ -248,11 +248,11 @@
           [class.unselectable]="!isItemSelectable()(item.entry)"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
           [class.cut-item]="cutItemPaths().has(getItemKey(item))"
-          [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+          [attr.data-folder-key]="item.entry.IsDir ? getItemKey(item) : null"
           [class.folder-drag-over]="
             isDragging() &&
             hoveredFolderPaneIndex() === paneIndex() &&
-            hoveredFolder()?.entry?.Path === item.entry.Path &&
+            hoveredFolder() === item &&
             _draggedItemPath() !== item.entry.Path
           "
         ></tr>

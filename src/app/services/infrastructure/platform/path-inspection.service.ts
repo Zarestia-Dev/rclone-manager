@@ -1,20 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { LocalDrive } from '@app/types';
+import { LocalDrive, PathStyle, DefaultPathOp, PathInspectionStatus } from '@app/types';
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
 import { RemoteFacadeService } from '../../facade/remote-facade.service';
-import { PathService, PathStyle } from './path.service';
+import { PathService } from './path.service';
 
-export type DefaultPathOp = 'mount' | 'bisync';
-
-export interface PathInspectionStatus {
-  state: 'clean' | 'nonEmpty' | 'colliding' | 'willCreate' | 'checking';
-  details?: string;
-  icon: string;
-  badgeClass: string;
-  labelKey: string;
-}
+export type { DefaultPathOp, PathInspectionStatus };
 
 const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
 const BISYNC_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}-bisync';

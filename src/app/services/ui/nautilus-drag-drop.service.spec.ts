@@ -1,8 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ExplorerRoot } from '@app/types';
-import { DragDropCallbacks, NautilusDragDropService } from './nautilus-drag-drop.service';
+import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey } from '@app/types';
+import {
+  DragDropCallbacks,
+  DragDropContext,
+  NautilusDragDropService,
+} from './nautilus-drag-drop.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { NotificationService } from './notification.service';
@@ -155,5 +159,179 @@ describe('Nautilus external folder drops', () => {
     expect(uploadWebFilesBatch).toHaveBeenCalledOnce();
     expect(uploadWebFilesBatch.mock.calls[0][2]).toHaveLength(1);
     expect(uploadWebFilesBatch.mock.calls[0][4]).toEqual(['empty']);
+  });
+});
+
+describe('Nautilus mixed-root drop targets', () => {
+  let service: NautilusDragDropService;
+  let ctx: DragDropContext;
+  let hitElement: HTMLElement;
+  const roots: ExplorerRoot[] = [
+    { name: '/', label: 'Unix', type: 'local', isLocal: true },
+    { name: 'C:\\', label: 'Windows', type: 'local', isLocal: true },
+    { name: 'drive', label: 'Cloud', type: 'drive', isLocal: false },
+  ];
+  const folder = (root: ExplorerRoot, path = 'shared'): FileBrowserItem => ({
+    entry: { ID: '', Name: 'shared', Path: path, IsDir: true, Size: -1, ModTime: '', MimeType: '' },
+    meta: { remote: root.name, isLocal: root.isLocal },
+  });
+  const performFileOperations = vi.fn();
+  const refresh = vi.fn();
+  const navigateTo = vi.fn();
+  const openBookmark = vi.fn();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ctx = {
+      activeRemote: null,
+      activePath: '',
+      activePaneIndex: 0,
+      panes: [
+        { remote: null, path: '' },
+        { remote: null, path: '' },
+      ],
+      files: roots.map(root => folder(root)),
+      filesRight: [],
+      pathSegments: [],
+      tabs: [],
+      allRemotesLookup: roots,
+      bookmarks: roots.map(root => folder(root, '')),
+    };
+    hitElement = document.createElement('div');
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: vi.fn(() => hitElement),
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        NautilusDragDropService,
+        {
+          provide: NautilusService,
+          useValue: {
+            lookupRemoteByName: (name: string): ExplorerRoot | null =>
+              roots.find(root => root.name === name) ?? null,
+          },
+        },
+        { provide: NautilusFileOperationsService, useValue: { performFileOperations } },
+        {
+          provide: PathService,
+          useValue: {
+            normalizeRemoteName: (name: string): string => name,
+            getParentPath: (path: string): string =>
+              path.slice(0, Math.max(0, path.lastIndexOf('/'))),
+          },
+        },
+        { provide: NotificationService, useValue: {} },
+        { provide: TranslateService, useValue: {} },
+      ],
+    });
+    service = TestBed.inject(NautilusDragDropService);
+    service.register({
+      getContext: () => ctx,
+      refresh,
+      navigateTo,
+      openBookmark,
+    } as unknown as DragDropCallbacks);
+  });
+  afterEach(() => {
+    service.endDrag();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    Reflect.deleteProperty(document, 'elementFromPoint');
+  });
+
+  function pointAt(item: FileBrowserItem, sidebar = false): void {
+    hitElement.setAttribute(
+      sidebar ? 'data-sidebar-bookmark-key' : 'data-folder-key',
+      fileBrowserItemKey(item)
+    );
+    if (!sidebar) hitElement.setAttribute('data-pane-index', '0');
+  }
+
+  it.each([0, 1, 2])('resolves starred folder %s despite identical relative paths', index => {
+    pointAt(ctx.files[index]);
+    expect(service['_resolveDropTargetFromPoint'](0, 0)).toEqual({
+      remote: roots[index],
+      path: 'shared',
+    });
+  });
+  it.each([0, 1, 2])('resolves bookmarked root %s with an empty relative path', index => {
+    pointAt(ctx.bookmarks[index], true);
+    expect(service['_resolveDropTargetFromPoint'](0, 0)).toEqual({
+      remote: roots[index],
+      path: '',
+    });
+  });
+  it('does not treat the starred background as a filesystem destination', () => {
+    hitElement.setAttribute('data-pane-index', '0');
+    expect(service['_resolveDropTargetFromPoint'](0, 0).remote).toBeNull();
+  });
+  it('does not fall back to another root for an unavailable folder', () => {
+    const missing = folder({ ...roots[0], name: 'unavailable' });
+    ctx.files = [missing];
+    ctx.panes[0].remote = roots[1];
+    pointAt(missing);
+    expect(service['_resolveDropTargetFromPoint'](0, 0).remote).toBeNull();
+  });
+  it('allows identical relative paths on different roots', async () => {
+    await service['_processInternalItemsDrop']([ctx.files[0]], {
+      remote: roots[1],
+      path: 'shared',
+    });
+    expect(performFileOperations).toHaveBeenCalledExactlyOnceWith(
+      [ctx.files[0]],
+      roots[1],
+      'shared',
+      'copy'
+    );
+  });
+  it('prevents dropping a folder into itself', async () => {
+    await service['_processInternalItemsDrop']([ctx.files[0]], {
+      remote: roots[0],
+      path: 'shared',
+    });
+    expect(performFileOperations).not.toHaveBeenCalled();
+  });
+  it('resolves the starred target for browser drops too', async () => {
+    pointAt(ctx.files[1]);
+    const process = vi
+      .spyOn(
+        service as unknown as { _processDrop: (...args: unknown[]) => Promise<void> },
+        '_processDrop'
+      )
+      .mockResolvedValue();
+    const event = { stopPropagation: vi.fn(), clientX: 0, clientY: 0 } as unknown as DragEvent;
+    await service.dropToCurrentDirectory(event, 0);
+    expect(process).toHaveBeenCalledWith(event, { remote: roots[1], path: 'shared' }, []);
+  });
+  it('hover-opens the correct bookmark among identical paths', () => {
+    vi.useFakeTimers();
+    service['_isInternalDragging'].set(true);
+    pointAt(ctx.bookmarks[1], true);
+    service['_onMove']({ x: 0, y: 0 });
+    vi.advanceTimersByTime(1000);
+    expect(openBookmark).toHaveBeenCalledExactlyOnceWith(ctx.bookmarks[1]);
+  });
+  it('hover-opens a different root even when its folder path matches the dragged folder', () => {
+    vi.useFakeTimers();
+    service['_isInternalDragging'].set(true);
+    service['_items'] = [ctx.files[0]];
+    pointAt(ctx.files[1]);
+    service['_onMove']({ x: 0, y: 0 });
+    vi.advanceTimersByTime(1000);
+    expect(navigateTo).toHaveBeenCalledExactlyOnceWith(ctx.files[1]);
+  });
+  it('skips only items already in the destination when a starred selection spans parents', async () => {
+    const alreadyThere = folder(roots[0], 'target/first');
+    const elsewhere = folder(roots[0], 'other/second');
+    await service['_processInternalItemsDrop']([alreadyThere, elsewhere], {
+      remote: roots[0],
+      path: 'target',
+    });
+    expect(performFileOperations).toHaveBeenCalledExactlyOnceWith(
+      [elsewhere],
+      roots[0],
+      'target',
+      'move'
+    );
   });
 });

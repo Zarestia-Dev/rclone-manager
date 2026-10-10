@@ -197,13 +197,15 @@ Common language codes:
 
 ### Cron Expressions
 
-The application uses `cronstrue` to display human-readable cron schedules. To support a new language:
+The application uses `cronstrue` to display human-readable cron schedules. To minimize initial bundle size, cron locales are dynamically loaded on demand:
 
-1. **Register the Locale**: Import the locale in `src/app/core/i18n/cron-locale.mapper.ts`.
+1. **Register the Dynamic Import**: Add the locale import case to `ensureCronLocaleLoaded` in `src/app/services/i18n/cron-locale.mapper.ts`:
    ```typescript
-   import 'cronstrue/locales/fr'; // Example for French
+   case 'fr':
+     await import('cronstrue/locales/fr');
+     break;
    ```
-2. **Verify Mapping**: Ensure `getCronstrueLocale` correctly maps your app locale (e.g., `fr-FR`) to the `cronstrue` locale (e.g., `fr`).
+2. **Verify Mapping**: Ensure `getCronstrueLocale` in `src/app/services/i18n/cron-locale.mapper.ts` correctly maps your app locale (e.g., `fr-FR`) to the `cronstrue` locale (e.g., `fr`).
 
 ---
 

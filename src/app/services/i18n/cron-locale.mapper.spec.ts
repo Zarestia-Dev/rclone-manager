@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatCronHumanReadable, getCronstrueLocale } from './cron-locale.mapper';
+import {
+  formatCronHumanReadable,
+  getCronstrueLocale,
+  ensureCronLocaleLoaded,
+} from './cron-locale.mapper';
 
 describe('cron-locale.mapper', () => {
   describe('getCronstrueLocale', () => {
@@ -37,7 +41,8 @@ describe('cron-locale.mapper', () => {
       expect(formatCronHumanReadable('', 'zh-TW')).toBe('');
     });
 
-    it('should format cron expression in Traditional Chinese', () => {
+    it('should format cron expression in Traditional Chinese', async () => {
+      await ensureCronLocaleLoaded('zh_TW');
       const result = formatCronHumanReadable('0 0 * * *', 'zh-TW');
       expect(result).toBeTruthy();
       expect(typeof result).toBe('string');
@@ -45,6 +50,13 @@ describe('cron-locale.mapper', () => {
 
     it('should fallback gracefully on invalid cron expression', () => {
       expect(formatCronHumanReadable('invalid-cron', 'zh-TW')).toBe('invalid-cron');
+    });
+  });
+
+  describe('ensureCronLocaleLoaded', () => {
+    it('loads locale without error', async () => {
+      await expect(ensureCronLocaleLoaded('tr')).resolves.toBeUndefined();
+      await expect(ensureCronLocaleLoaded('es')).resolves.toBeUndefined();
     });
   });
 });

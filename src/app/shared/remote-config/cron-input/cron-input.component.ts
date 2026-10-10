@@ -144,6 +144,10 @@ export class CronInputComponent {
     return formatCronHumanReadable(cron, this.translate.currentLang());
   });
 
+  readonly formattedNextRun = computed(() => {
+    return this.formatNextRun(this.validationResponse()?.nextRun ?? null);
+  });
+
   readonly userTimezone = this.getUserTimezoneFormatted();
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
   readonly presetOptions = PRESET_OPTIONS;
@@ -154,7 +158,7 @@ export class CronInputComponent {
     effect(() => {
       const val = this.initialValue() || '';
       if (val !== this.cronControl.value) {
-        this.updateCronSourceOfTruth(val, false);
+        this.updateCronSourceOfTruth(val);
       }
     });
 
@@ -205,18 +209,18 @@ export class CronInputComponent {
     });
   }
 
-  private updateCronSourceOfTruth(newValue: string | null, emitEvent: boolean): void {
+  private updateCronSourceOfTruth(newValue: string | null): void {
     const validValue = newValue || '';
-    this.setCronControlValue(validValue, emitEvent);
+    this.setCronControlValue(validValue);
 
     if (!this.isUpdatingForms) {
       this.syncViewsFromCron(validValue);
     }
   }
 
-  private setCronControlValue(value: string, emitEvent = true): void {
+  private setCronControlValue(value: string): void {
     if (this.cronControl.value !== value) {
-      this.cronControl.setValue(value, { emitEvent });
+      this.cronControl.setValue(value);
     }
   }
 

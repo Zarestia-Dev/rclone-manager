@@ -19,7 +19,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE } from '@app/types';
+import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE, fileBrowserItemKey } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import {
@@ -119,6 +119,7 @@ export class NautilusSidebarComponent {
   });
 
   readonly activeBookmarkKey = this._activeKey;
+  protected readonly getItemKey = fileBrowserItemKey;
 
   readonly anyBookmarkSelected = computed(() => {
     const active = this._activeKey();

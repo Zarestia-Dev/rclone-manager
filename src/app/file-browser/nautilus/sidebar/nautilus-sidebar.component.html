@@ -65,10 +65,10 @@
       @for (item of bookmarkViewModels(); track item.key) {
         <button
           class="sidebar-item"
-          [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
+          [attr.data-sidebar-bookmark-key]="getItemKey(item.bm)"
           [class.selected]="item.key === activeBookmarkKey()"
           [class.drag-over]="
-            isDragging() && hoveredSidebarItem() === 'bookmark:' + item.bm.entry.Path
+            isDragging() && hoveredSidebarItem() === 'bookmark:' + getItemKey(item.bm)
           "
           (click)="onOpenBookmark(item.bm)"
           (dragover)="$event.preventDefault()"

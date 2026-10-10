@@ -605,10 +605,20 @@ export class NautilusComponent implements OnInit {
     if (!pane) return;
 
     if (item.entry.IsDir) {
+      // Starred panes have no root; each saved item carries its own location.
+      const remote = pane.remote ?? this.nautilusService.lookupRemoteByName(item.meta.remote);
+      if (!remote) {
+        this.notificationService.showError(
+          this.translate.instant('nautilus.errors.bookmarkRemoteNotFound', {
+            remote: item.meta.remote,
+          })
+        );
+        return;
+      }
       if (!isNewTab) {
-        this.navigate(pane.remote, item.entry.Path, true);
+        this.navigate(remote, item.entry.Path, true);
       } else {
-        this.tabSvc.createTab(pane.remote, item.entry.Path);
+        this.tabSvc.createTab(remote, item.entry.Path);
       }
     } else {
       if (this.isPickerMode()) {
@@ -728,13 +738,13 @@ export class NautilusComponent implements OnInit {
   protected async pasteItems(targetFolder?: FileBrowserItem): Promise<void> {
     const contextItem = this.actions.contextMenuItem();
     const target = targetFolder ?? (contextItem?.entry?.IsDir ? contextItem : undefined);
-    const dstPath = target?.entry?.IsDir
-      ? this.pathService.joinPath(this.tabSvc.activePath(), target.entry.Name)
-      : this.tabSvc.activePath();
-
-    const remote = this.tabSvc.activeRemote();
+    const dstPath = target?.entry.Path ?? this.tabSvc.activePath();
+    const remote = target
+      ? this.nautilusService.lookupRemoteByName(target.meta.remote)
+      : this.tabSvc.activeRemote();
+    if (!remote) return;
     await this.fileOps.pasteItems(remote, dstPath, this.allRemotesLookup());
-    if (remote) this.tabSvc.refreshPath(remote.name, dstPath);
+    this.tabSvc.refreshPath(remote.name, dstPath);
   }
 
   // ── Stars & bookmarks ────────────────────────────────────────────────────────

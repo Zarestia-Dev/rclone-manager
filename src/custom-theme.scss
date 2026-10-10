@@ -1192,10 +1192,6 @@ mat-accordion:not(.dull) {
 
   mat-panel-title {
     gap: var(--space-sm);
-
-    mat-icon:first-child {
-      color: var(--primary-color);
-    }
   }
 
   mat-panel-description {

@@ -19,7 +19,9 @@ export class JobManagementService extends TauriBaseService {
     this._jobs().filter(job => job.origin === 'filemanager')
   );
 
-  public readonly jobsByRemote = computed(() => groupBy(this._jobs(), j => j.remote_name));
+  public readonly jobsByRemote = computed(() => groupBy(this._jobs(), j => j.remote_name), {
+    equal: areJobGroupsEqual,
+  });
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly eventListeners = inject(EventListenersService);
@@ -197,4 +199,43 @@ export class JobManagementService extends TauriBaseService {
   async stopAllActiveJobs(): Promise<void> {
     await this.invokeCommand('stop_all_active_jobs');
   }
+}
+
+/**
+ * Compares two remote-to-job dictionary groups for downstream signal equality.
+ * Ignores high-frequency telemetry stat changes (speed, bytes transferred, eta)
+ * so that consumers such as RemoteCard are not invalidated every second while
+ * job status, identity, and profile stay identical.
+ */
+export function areJobGroupsEqual(
+  prev: Record<string, JobInfo[]>,
+  next: Record<string, JobInfo[]>
+): boolean {
+  if (prev === next) return true;
+  if (!prev || !next) return false;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+
+  for (const key of prevKeys) {
+    const prevList = prev[key];
+    const nextList = next[key];
+    if (!nextList || prevList.length !== nextList.length) return false;
+
+    for (let i = 0; i < prevList.length; i++) {
+      const p = prevList[i];
+      const n = nextList[i];
+      if (
+        p.jobid !== n.jobid ||
+        p.status !== n.status ||
+        p.job_type !== n.job_type ||
+        p.profile !== n.profile ||
+        p.parent_job_id !== n.parent_job_id ||
+        p.error !== n.error
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
 }

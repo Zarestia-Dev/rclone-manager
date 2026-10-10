@@ -19,4 +19,5 @@ export * from './operation-registry';
 export * from './quick-run';
 export * from './user-template';
 export * from './vault';
+export * from './path';
 export * from '../../flow/workflow/types/workflow.types';

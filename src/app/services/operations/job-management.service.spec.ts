@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
-import { JobManagementService } from './job-management.service';
+import { JobManagementService, areJobGroupsEqual } from './job-management.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { DEFAULT_JOB_STATS, JobInfo, JobStatsUpdatedEvent } from '@app/types';
@@ -212,6 +212,92 @@ describe('JobManagementService', () => {
       expect(service.jobs()[0].stats.bytes).toBe(500);
       expect(service.jobs()[0].stats.speed).toBe(50);
       expect(mockApiClient.invoke).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('areJobGroupsEqual & jobsByRemote reference stability', () => {
+    it('returns true for same reference or structurally identical groups', () => {
+      const jobA = createMockJob({ jobid: 1, remote_name: 'r1', status: 'Running' });
+      const groupA = { r1: [jobA] };
+      expect(areJobGroupsEqual(groupA, groupA)).toBe(true);
+
+      const jobB = createMockJob({ jobid: 1, remote_name: 'r1', status: 'Running' });
+      const groupB = { r1: [jobB] };
+      expect(areJobGroupsEqual(groupA, groupB)).toBe(true);
+    });
+
+    it('returns true when only stats differ between job groups', () => {
+      const jobA = createMockJob({
+        jobid: 1,
+        remote_name: 'r1',
+        stats: { ...DEFAULT_JOB_STATS, bytes: 100, speed: 10 },
+      });
+      const jobB = createMockJob({
+        jobid: 1,
+        remote_name: 'r1',
+        stats: { ...DEFAULT_JOB_STATS, bytes: 9000, speed: 500 },
+      });
+      expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobB] })).toBe(true);
+    });
+
+    it('returns false when status, jobid, profile, or error differs', () => {
+      const jobA = createMockJob({ jobid: 1, remote_name: 'r1', status: 'Running' });
+      const jobDifferentStatus = createMockJob({
+        jobid: 1,
+        remote_name: 'r1',
+        status: 'Completed',
+      });
+      const jobDifferentId = createMockJob({ jobid: 2, remote_name: 'r1', status: 'Running' });
+      const jobDifferentProfile = createMockJob({
+        jobid: 1,
+        remote_name: 'r1',
+        status: 'Running',
+        profile: 'prof-a',
+      });
+      const jobDifferentError = createMockJob({
+        jobid: 1,
+        remote_name: 'r1',
+        status: 'Running',
+        error: 'disk full',
+      });
+
+      expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobDifferentStatus] })).toBe(false);
+      expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobDifferentId] })).toBe(false);
+      expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobDifferentProfile] })).toBe(false);
+      expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobDifferentError] })).toBe(false);
+    });
+
+    it('returns false when remotes count, keys, or array lengths differ', () => {
+      const job1 = createMockJob({ jobid: 1, remote_name: 'r1' });
+      const job2 = createMockJob({ jobid: 2, remote_name: 'r2' });
+
+      expect(areJobGroupsEqual({ r1: [job1] }, { r1: [job1], r2: [job2] })).toBe(false);
+      expect(areJobGroupsEqual({ r1: [job1] }, { r2: [job2] })).toBe(false);
+      expect(areJobGroupsEqual({ r1: [job1] }, { r1: [job1, job2] })).toBe(false);
+    });
+
+    it('preserves jobsByRemote signal reference when jobStatsUpdated arrives', async () => {
+      const initialJob = createMockJob({
+        jobid: 77,
+        remote_name: 'my-remote',
+        status: 'Running',
+        stats: { ...DEFAULT_JOB_STATS, bytes: 100 },
+      });
+      mockApiClient.invoke.mockResolvedValueOnce([initialJob]);
+      await service.refreshJobs();
+
+      const initialGroupRef = service.jobsByRemote();
+      expect(initialGroupRef['my-remote']).toHaveLength(1);
+
+      // Emit high-frequency transfer telemetry
+      jobStatsUpdated$.next({
+        jobId: 77,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 200, speed: 50 },
+      });
+
+      const updatedGroupRef = service.jobsByRemote();
+      // Reference should be preserved to stop downstream remote-card re-evaluation
+      expect(updatedGroupRef).toBe(initialGroupRef);
     });
   });
 });
