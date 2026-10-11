@@ -27,7 +27,6 @@ import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
 import { NotificationService } from '../ui/notification.service';
-import { ModalService } from '../ui/modal.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
@@ -58,6 +57,7 @@ import {
   OPERATION_TYPE_KEYS,
   createDefaultRemoteStatus,
   createDefaultRemoteFeatures,
+  MountPathCollision,
 } from '@app/types';
 import { deepEqual } from 'src/app/shared/utils';
 
@@ -98,7 +98,6 @@ export class RemoteFacadeService {
   private readonly notificationService = inject(NotificationService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
 
   private readonly vault = inject(VaultService);
   private readonly canLoad = this.vault.isAccessible;
@@ -252,67 +251,13 @@ export class RemoteFacadeService {
     proposedPath: string,
     currentRemoteName: string,
     currentProfileName?: string
-  ): { remoteName: string; profileName: string; opType: string; path: string }[] {
-    if (!proposedPath || !proposedPath.trim()) return [];
-
-    const normTarget = proposedPath
-      .trim()
-      .replace(/[/\\]+$/, '')
-      .toLowerCase();
-    const collisions: { remoteName: string; profileName: string; opType: string; path: string }[] =
-      [];
-    const allSettings = this.remoteSettings();
-    const opKeys = ['mount', 'bisync'] as const;
-
-    for (const [rName, rConfig] of Object.entries(allSettings)) {
-      if (!rConfig) continue;
-
-      for (const opType of opKeys) {
-        const profilesMap = rConfig[opType] as Record<string, Record<string, unknown>> | undefined;
-        if (!profilesMap || typeof profilesMap !== 'object') continue;
-
-        for (const [pName, pConfig] of Object.entries(profilesMap)) {
-          if (!pConfig || typeof pConfig !== 'object') continue;
-          if (rName === currentRemoteName && pName === currentProfileName) continue;
-
-          const pathsToCheck: string[] = [];
-          if (opType === 'mount') {
-            if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
-            const dest = pConfig['dest'] as { path?: string } | undefined;
-            if (dest?.path) pathsToCheck.push(dest.path);
-            const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
-            if (typeof rclone?.['mountPoint'] === 'string') {
-              pathsToCheck.push(rclone['mountPoint']);
-            }
-          } else if (opType === 'bisync') {
-            if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
-            if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
-            const dest = pConfig['dest'] as { path?: string } | undefined;
-            if (dest?.path) pathsToCheck.push(dest.path);
-          }
-
-          for (const rawPath of pathsToCheck) {
-            if (!rawPath || typeof rawPath !== 'string') continue;
-            if (!this.pathService.isLocalPath(rawPath)) continue;
-
-            const normPath = rawPath
-              .trim()
-              .replace(/[/\\]+$/, '')
-              .toLowerCase();
-            if (normPath === normTarget) {
-              collisions.push({
-                remoteName: rName,
-                profileName: pName,
-                opType,
-                path: rawPath,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return collisions;
+  ): MountPathCollision[] {
+    return this.pathService.checkMountPathCollision(
+      proposedPath,
+      currentRemoteName,
+      this.remoteSettings(),
+      currentProfileName
+    );
   }
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
@@ -568,18 +513,6 @@ export class RemoteFacadeService {
 
   canEmptyTrash(remote: { name: string; type?: string }): boolean {
     return this.hasFeature(remote.name, 'CleanUp', remote.type);
-  }
-
-  openRemoteAbout(remote: { name: string; type: string; isLocal?: boolean }): void {
-    const isLocal = remote.isLocal ?? false;
-    const normalized = isLocal
-      ? remote.name
-      : this.pathService.normalizeRemoteForRclone(remote.name);
-    this.modalService.openRemoteAbout({
-      displayName: remote.name,
-      normalizedName: normalized,
-      type: remote.type,
-    });
   }
 
   async emptyTrash(

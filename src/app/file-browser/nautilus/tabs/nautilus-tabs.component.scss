@@ -64,7 +64,7 @@
     position: relative;
     background: transparent;
     cursor: pointer;
-    -webkit-user-drag: element;
+    touch-action: none;
     transition:
       var(--transition-fast),
       transform 150ms ease,
@@ -113,20 +113,7 @@
     }
 
     &.is-dragging {
-      opacity: 0.35;
-      transition:
-        opacity 120ms ease,
-        transform 150ms ease;
-
-      &.is-outside {
-        opacity: 0;
-        transform: scale(0.5);
-        flex: 0 0 0 !important;
-        min-width: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        pointer-events: none;
-      }
+      opacity: 0;
     }
 
     .tab-title {

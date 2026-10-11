@@ -245,8 +245,13 @@ export class NautilusComponent implements OnInit {
   protected readonly filesRight = computed(() => this._getPaneFiles(1));
 
   protected readonly visiblePanes = computed((): PaneViewModel[] => {
+    const leftKey = this.tabSvc.starredMode()
+      ? '__starred__'
+      : `${this.tabSvc.nautilusRemote()?.name ?? ''}:${this.tabSvc.currentPath()}`;
+
     const left: PaneViewModel = {
       index: 0,
+      directoryKey: leftKey,
       files: this.files(),
       selection: this.tabSvc.selectedItems(),
       loading: this.tabSvc.isLoading(),
@@ -254,10 +259,16 @@ export class NautilusComponent implements OnInit {
       starredMode: this.tabSvc.starredMode(),
     };
     if (!this.tabSvc.isSplitEnabled()) return [left];
+
+    const rightKey = this.tabSvc.starredModeRight()
+      ? '__starred__'
+      : `${this.tabSvc.nautilusRemoteRight()?.name ?? ''}:${this.tabSvc.currentPathRight()}`;
+
     return [
       left,
       {
         index: 1,
+        directoryKey: rightKey,
         files: this.filesRight(),
         selection: this.tabSvc.selectedItemsRight(),
         loading: this.tabSvc.isLoadingRight(),
@@ -328,6 +339,7 @@ export class NautilusComponent implements OnInit {
     this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit(null);
 
     this.destroyRef.onDestroy(() => {
+      this._splitDragCleanup?.();
       this.nautilusService.setWindowTitle('RClone Manager');
       this.releaseSearchHistory?.();
       this.uiStateService.unregisterMobileSidebar('nautilus');
@@ -590,11 +602,12 @@ export class NautilusComponent implements OnInit {
     this.updatePath(currentPath ? `${currentPath}/${normalized}` : normalized);
   }
 
-  protected onPopOutToWindow(): void {
+  protected async onPopOutToWindow(): Promise<void> {
     const remote = this.tabSvc.activeRemote()?.name ?? null;
     const path = this.tabSvc.activePath() ?? null;
-    void this.nautilusService.newNautilusWindow(remote, path, true);
-    this.closeOverlay.emit(null);
+    if (await this.nautilusService.openStandaloneWindow(remote, path)) {
+      this.closeOverlay.emit(null);
+    }
   }
 
   protected navigateTo(item: FileBrowserItem, isNewTab = false): void {
@@ -663,29 +676,48 @@ export class NautilusComponent implements OnInit {
   // Split divider
   // ---------------------------------------------------------------------------
 
-  onSplitDividerDrag(event: MouseEvent): void {
-    event.preventDefault();
-    const container = (event.target as HTMLElement).parentElement;
-    if (!container) return;
+  private _splitDragCleanup?: () => void;
 
-    const onMouseMove = (e: MouseEvent): void => {
+  onSplitDividerDrag(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    const container = (event.currentTarget as HTMLElement).parentElement;
+    if (!container) return;
+    this._splitDragCleanup?.();
+    event.preventDefault();
+    const previousCursor = document.body.style.cursor;
+    let moved = false;
+    const onMove = (e: PointerEvent): void => {
+      if (e.pointerId !== event.pointerId) return;
+      if (!moved && Math.abs(e.clientX - event.clientX) < 8) return;
       const rect = container.getBoundingClientRect();
+      if (rect.width === 0) return;
+      moved = true;
       const pos = ((e.clientX - rect.left) / rect.width) * 100;
       this.tabSvc.splitDividerPos.set(Math.max(20, Math.min(80, pos)));
     };
-
-    const onMouseUp = (): void => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      this.settings.saveSplitDividerPos(this.tabSvc.splitDividerPos());
+    const cleanup = (): void => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('blur', cleanup);
+      document.body.style.cursor = previousCursor;
+      this._splitDragCleanup = undefined;
     };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    const onUp = (e: PointerEvent): void => {
+      if (e.pointerId !== event.pointerId) return;
+      onMove(e);
+      cleanup();
+      if (moved) this.settings.saveSplitDividerPos(this.tabSvc.splitDividerPos());
+    };
+    const onCancel = (e: PointerEvent): void => {
+      if (e.pointerId === event.pointerId) cleanup();
+    };
+    this._splitDragCleanup = cleanup;
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('blur', cleanup);
     document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
   }
 
   // ---------------------------------------------------------------------------
@@ -718,7 +750,7 @@ export class NautilusComponent implements OnInit {
   }
 
   protected onUpdateSelection(selection: Set<string>, paneIndex: 0 | 1): void {
-    this.tabSvc.syncSelection(selection, paneIndex);
+    this.selectionSvc.updateSelection(selection, paneIndex, this.getActivePaneFiles(paneIndex));
   }
 
   selectAll(): void {
@@ -925,9 +957,6 @@ export class NautilusComponent implements OnInit {
   }
   onDropToStarred(event: DragEvent): void {
     this.dragDrop.dropToStarred(event);
-  }
-  onDropToLocal(event: DragEvent): void {
-    this.dragDrop.dropToLocal(event);
   }
   async onDropToBookmark(e: DragEvent, bm: FileBrowserItem): Promise<void> {
     await this.dragDrop.dropToBookmark(e, bm);

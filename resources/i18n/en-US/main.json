@@ -1158,7 +1158,6 @@
       "apply": "Apply to Field"
     },
     "presets": {
-      "applied": "Default presets applied successfully",
       "noRemoteSelected": "Please select a remote first"
     },
     "remoteConfig": {
@@ -2486,7 +2485,9 @@
       "internalStorage": "Internal Storage"
     },
     "bookmarks": {
-      "emptyHint": "No bookmarks"
+      "emptyHint": "No bookmarks",
+      "add": "Add to Bookmarks",
+      "dropHint": "Drop folders here to add bookmarks"
     },
     "sort": {
       "az": "A-Z",
@@ -2592,6 +2593,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Could not open a new window. Your current view has been kept open.",
       "connectionFailed": "Connection Failed",
       "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
       "loadFailed": "Failed to load directory",

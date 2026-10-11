@@ -1,4 +1,4 @@
-import { ExplorerRoot, PathGroup, PathSegment, PathStyle } from '@app/types';
+import { ExplorerRoot, MountPathCollision, PathGroup, PathSegment, PathStyle } from '@app/types';
 
 /**
  * Splits a path into non-empty segments by forward or back slash.
@@ -414,4 +414,76 @@ export function parseLocation(
   }
 
   return null;
+}
+
+/**
+ * Checks for path collisions across remote mount and bisync profiles in remote settings.
+ */
+export function checkMountPathCollision(
+  proposedPath: string,
+  currentRemoteName: string,
+  allSettings: Record<string, unknown> | undefined | null,
+  isLocalPathFn: (path: string) => boolean,
+  currentProfileName?: string
+): MountPathCollision[] {
+  if (!proposedPath || !proposedPath.trim()) return [];
+
+  const normTarget = proposedPath
+    .trim()
+    .replace(/[/\\]+$/, '')
+    .toLowerCase();
+  const collisions: MountPathCollision[] = [];
+  if (!allSettings) return [];
+  const opKeys = ['mount', 'bisync'] as const;
+
+  for (const [rName, rConfig] of Object.entries(allSettings)) {
+    if (!rConfig || typeof rConfig !== 'object') continue;
+
+    for (const opType of opKeys) {
+      const profilesMap = (rConfig as Record<string, unknown>)[opType] as
+        Record<string, Record<string, unknown>> | undefined;
+      if (!profilesMap || typeof profilesMap !== 'object') continue;
+
+      for (const [pName, pConfig] of Object.entries(profilesMap)) {
+        if (!pConfig || typeof pConfig !== 'object') continue;
+        if (rName === currentRemoteName && pName === currentProfileName) continue;
+
+        const pathsToCheck: string[] = [];
+        if (opType === 'mount') {
+          if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
+          const dest = pConfig['dest'] as { path?: string } | undefined;
+          if (dest?.path) pathsToCheck.push(dest.path);
+          const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
+          if (typeof rclone?.['mountPoint'] === 'string') {
+            pathsToCheck.push(rclone['mountPoint']);
+          }
+        } else if (opType === 'bisync') {
+          if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
+          if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
+          const dest = pConfig['dest'] as { path?: string } | undefined;
+          if (dest?.path) pathsToCheck.push(dest.path);
+        }
+
+        for (const rawPath of pathsToCheck) {
+          if (!rawPath || typeof rawPath !== 'string') continue;
+          if (!isLocalPathFn(rawPath)) continue;
+
+          const normPath = rawPath
+            .trim()
+            .replace(/[/\\]+$/, '')
+            .toLowerCase();
+          if (normPath === normTarget) {
+            collisions.push({
+              remoteName: rName,
+              profileName: pName,
+              opType,
+              path: rawPath,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return collisions;
 }

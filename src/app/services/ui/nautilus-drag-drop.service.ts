@@ -52,6 +52,7 @@ interface HitResult {
   segmentIndex: number | null;
   tabIndex: number | null;
   sidebarItem: string | null;
+  isOverSidebar: boolean;
   paneIndex: number | null;
 }
 
@@ -73,6 +74,7 @@ const NULL_HIT: HitResult = {
   segmentIndex: null,
   tabIndex: null,
   sidebarItem: null,
+  isOverSidebar: false,
   paneIndex: null,
 };
 
@@ -87,6 +89,9 @@ export class NautilusDragDropService {
 
   private readonly _isInternalDragging = signal(false);
   readonly isInternalDragging = this._isInternalDragging.asReadonly();
+  private readonly _canBookmarkDrag = signal(false);
+  private readonly _isOverSidebar = signal(false);
+  readonly canBookmarkDrag = computed(() => this._canBookmarkDrag() && this._isOverSidebar());
 
   private readonly _isExternalDragging = signal(false);
   readonly isExternalDragging = this._isExternalDragging.asReadonly();
@@ -166,6 +171,8 @@ export class NautilusDragDropService {
     svgIcon: SVGElement | null = null
   ): void {
     this._isInternalDragging.set(true);
+    this._canBookmarkDrag.set(items.some(item => item.entry.IsDir));
+    this._isOverSidebar.set(false);
     this._isExternalDragging.set(false);
     this._lastHitKey = '';
     this._items = items;
@@ -304,7 +311,7 @@ export class NautilusDragDropService {
 
     if (resolved.sidebarItem === 'bookmarks-header') {
       this._internalPointerDrag.items.forEach(item => {
-        if (item.entry.IsDir) this._cb.toggleBookmark(item);
+        this._addBookmark(item);
       });
       this.cancelInternalPointerDrag();
       return;
@@ -337,6 +344,8 @@ export class NautilusDragDropService {
     }
     this._lastMovePoint = null;
     this._isInternalDragging.set(false);
+    this._canBookmarkDrag.set(false);
+    this._isOverSidebar.set(false);
     this._isExternalDragging.set(false);
     this._counter = 0;
     this._lastHitKey = '';
@@ -413,14 +422,13 @@ export class NautilusDragDropService {
     });
   }
 
-  dropToLocal(event: DragEvent): void {
-    event.stopPropagation();
-    const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
-    if (!data) return;
-    const { items } = JSON.parse(data) as NautilusDragPayload;
-    items.forEach(item => {
-      if (item.entry.IsDir) this._cb.toggleBookmark(item);
-    });
+  private _addBookmark(item: FileBrowserItem): void {
+    if (
+      item.entry.IsDir &&
+      !this.nautilusService.isSaved('bookmarks', item.meta.remote, item.entry.Path)
+    ) {
+      this._cb.toggleBookmark(item);
+    }
   }
 
   async dropToBookmark(event: DragEvent, bookmark: FileBrowserItem): Promise<void> {
@@ -487,6 +495,7 @@ export class NautilusDragDropService {
   private _onMove(point: { x: number; y: number }): void {
     const ctx = this._cb.getContext();
     const hit = this._resolveDropHit(point, ctx);
+    this._isOverSidebar.set(hit.isOverSidebar);
 
     const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${fileBrowserItemKey(hit.folder)}:${hit.sidebarItem}`;
     if (hitKey === this._lastHitKey) return;
@@ -712,7 +721,14 @@ export class NautilusDragDropService {
       }
     }
 
-    return { folder, segmentIndex, tabIndex, sidebarItem, paneIndex };
+    return {
+      folder,
+      segmentIndex,
+      tabIndex,
+      sidebarItem,
+      paneIndex,
+      isOverSidebar: hasTag('app-nautilus-sidebar'),
+    };
   }
 
   private _resolveDropTargetFromPoint(

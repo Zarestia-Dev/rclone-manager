@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@angular/core';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { NautilusComponent } from './nautilus.component';
 
@@ -144,5 +145,150 @@ describe('Nautilus paste destination', () => {
       target
     );
     expect(context.fileOps.pasteItems).not.toHaveBeenCalled();
+  });
+});
+
+describe('Nautilus split divider gestures', () => {
+  const context = {
+    tabSvc: { splitDividerPos: signal(50) },
+    settings: { saveSplitDividerPos: vi.fn() },
+    _splitDragCleanup: undefined as (() => void) | undefined,
+  };
+  let container: HTMLElement;
+  let divider: HTMLElement;
+  let previousCursor: string;
+
+  function pointer(type: string, x: number, pointerId = 1, button = 0): PointerEvent {
+    return Object.assign(
+      new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, button }),
+      { pointerId }
+    ) as PointerEvent;
+  }
+
+  function start(x = 300, pointerId = 1, button = 0): void {
+    divider.dispatchEvent(pointer('pointerdown', x, pointerId, button));
+  }
+
+  beforeEach(() => {
+    context.tabSvc.splitDividerPos.set(50);
+    context.settings.saveSplitDividerPos.mockClear();
+    previousCursor = document.body.style.cursor;
+    document.body.style.cursor = 'crosshair';
+    container = document.createElement('div');
+    divider = document.createElement('div');
+    container.appendChild(divider);
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 0, 400, 300));
+    divider.addEventListener('pointerdown', event => {
+      NautilusComponent.prototype.onSplitDividerDrag.call(
+        context as unknown as NautilusComponent,
+        event as PointerEvent
+      );
+    });
+  });
+
+  afterEach(() => {
+    context._splitDragCleanup?.();
+    document.body.style.cursor = previousCursor;
+    vi.restoreAllMocks();
+  });
+
+  it('resizes relative to the container and saves the final release position once', () => {
+    start();
+    window.dispatchEvent(pointer('pointermove', 340));
+    expect(context.tabSvc.splitDividerPos()).toBe(60);
+    expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+    window.dispatchEvent(pointer('pointerup', 380));
+    expect(context.tabSvc.splitDividerPos()).toBe(70);
+    expect(context.settings.saveSplitDividerPos).toHaveBeenCalledExactlyOnceWith(70);
+    expect(document.body.style.cursor).toBe('crosshair');
+    window.dispatchEvent(pointer('pointermove', 200));
+    window.dispatchEvent(pointer('pointerup', 200));
+    expect(context.tabSvc.splitDividerPos()).toBe(70);
+    expect(context.settings.saveSplitDividerPos).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [0, 20],
+    [600, 80],
+  ])('clamps a release at %s to %s percent', (x, expected) => {
+    start();
+    window.dispatchEvent(pointer('pointerup', x));
+    expect(context.tabSvc.splitDividerPos()).toBe(expected);
+    expect(context.settings.saveSplitDividerPos).toHaveBeenCalledExactlyOnceWith(expected);
+  });
+
+  it('does not resize or persist a click below the movement threshold', () => {
+    start();
+    window.dispatchEvent(pointer('pointermove', 307));
+    window.dispatchEvent(pointer('pointerup', 303));
+    expect(context.tabSvc.splitDividerPos()).toBe(50);
+    expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+    expect(document.body.style.cursor).toBe('crosshair');
+  });
+
+  it.each([1, 2])('ignores mouse button %s', button => {
+    start(300, 1, button);
+    window.dispatchEvent(pointer('pointermove', 400));
+    window.dispatchEvent(pointer('pointerup', 400));
+    expect(context.tabSvc.splitDividerPos()).toBe(50);
+    expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+    expect(document.body.style.cursor).toBe('crosshair');
+  });
+
+  it('ignores movement, release and cancellation from a different pointer', () => {
+    start();
+    window.dispatchEvent(pointer('pointermove', 400, 2));
+    window.dispatchEvent(pointer('pointerup', 400, 2));
+    window.dispatchEvent(pointer('pointercancel', 400, 2));
+    expect(context.tabSvc.splitDividerPos()).toBe(50);
+    expect(document.body.style.cursor).toBe('col-resize');
+    window.dispatchEvent(pointer('pointerup', 340));
+    expect(context.settings.saveSplitDividerPos).toHaveBeenCalledExactlyOnceWith(60);
+  });
+
+  it.each(['pointercancel', 'blur', 'cleanup'])(
+    'removes listeners and restores the cursor on %s without saving',
+    action => {
+      start();
+      window.dispatchEvent(pointer('pointermove', 340));
+      if (action === 'cleanup') context._splitDragCleanup?.();
+      else if (action === 'blur') window.dispatchEvent(new Event('blur'));
+      else window.dispatchEvent(pointer('pointercancel', 340));
+      window.dispatchEvent(pointer('pointermove', 400));
+      window.dispatchEvent(pointer('pointerup', 400));
+      expect(context.tabSvc.splitDividerPos()).toBe(60);
+      expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+      expect(document.body.style.cursor).toBe('crosshair');
+      expect(context._splitDragCleanup).toBeUndefined();
+    }
+  );
+
+  it('replaces a previous gesture without leaving its listeners active', () => {
+    start();
+    start(300, 2);
+    window.dispatchEvent(pointer('pointermove', 400, 1));
+    window.dispatchEvent(pointer('pointerup', 400, 1));
+    expect(context.tabSvc.splitDividerPos()).toBe(50);
+    window.dispatchEvent(pointer('pointerup', 340, 2));
+    expect(context.settings.saveSplitDividerPos).toHaveBeenCalledExactlyOnceWith(60);
+    expect(document.body.style.cursor).toBe('crosshair');
+  });
+
+  it('ignores zero-width containers instead of storing an invalid ratio', () => {
+    vi.mocked(container.getBoundingClientRect).mockReturnValue(new DOMRect(100, 0, 0, 300));
+    start();
+    window.dispatchEvent(pointer('pointermove', 400));
+    window.dispatchEvent(pointer('pointerup', 400));
+    expect(context.tabSvc.splitDividerPos()).toBe(50);
+    expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+  });
+
+  it('ignores a divider that has no parent container', () => {
+    divider.remove();
+    start();
+    window.dispatchEvent(pointer('pointerup', 400));
+    expect(context.settings.saveSplitDividerPos).not.toHaveBeenCalled();
+    expect(context._splitDragCleanup).toBeUndefined();
+    expect(document.body.style.cursor).toBe('crosshair');
   });
 });

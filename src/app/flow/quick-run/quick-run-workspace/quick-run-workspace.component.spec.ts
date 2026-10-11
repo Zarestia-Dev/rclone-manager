@@ -36,7 +36,6 @@ describe('QuickRunWorkspaceComponent', () => {
     selectedRemote: selectedRemoteSignal,
     orderedRemotes: orderedRemotesSignal,
     activeRemotes: activeRemotesSignal,
-    openRemoteAbout: vi.fn(),
     canEmptyTrash: vi.fn(),
     emptyTrash: vi.fn().mockResolvedValue(true),
     cloneRemote: vi.fn().mockResolvedValue(undefined),
@@ -122,9 +121,9 @@ describe('QuickRunWorkspaceComponent', () => {
   });
 
   describe('Remote About & Trash Cleanup actions', () => {
-    it('should delegate openRemoteAbout to RemoteFacadeService', () => {
+    it('should delegate openRemoteAbout to ModalService', () => {
       component.openRemoteAbout(mockRemote);
-      expect(mockRemoteFacade.openRemoteAbout).toHaveBeenCalledWith(mockRemote);
+      expect(mockModalService.openRemoteAbout).toHaveBeenCalledWith(mockRemote);
     });
 
     it('should delegate canEmptyTrash to RemoteFacadeService', () => {

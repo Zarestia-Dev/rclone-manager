@@ -1416,7 +1416,6 @@
       }
     },
     "presets": {
-      "applied": "Ajustes preestablecidos predeterminados aplicados con éxito",
       "noRemoteSelected": "Por favor, seleccione un remoto primero"
     }
   },
@@ -2445,7 +2444,9 @@
       "internalStorage": "Almacenamiento interno"
     },
     "bookmarks": {
-      "emptyHint": "Sin marcadores"
+      "emptyHint": "Sin marcadores",
+      "add": "Añadir a marcadores",
+      "dropHint": "Suelta carpetas aquí para añadir marcadores"
     },
     "sort": {
       "az": "A-Z",
@@ -2551,6 +2552,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "No se pudo abrir una nueva ventana. La vista actual sigue abierta.",
       "connectionFailed": "Conexión fallida",
       "bookmarkRemoteNotFound": "Remoto '{{remote}}' para marcador no encontrado",
       "loadFailed": "Error al cargar el directorio",

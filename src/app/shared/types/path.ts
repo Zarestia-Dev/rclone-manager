@@ -15,6 +15,13 @@ export interface PathGroup {
 
 export type DefaultPathOp = 'mount' | 'bisync';
 
+export interface MountPathCollision {
+  remoteName: string;
+  profileName: string;
+  opType: string;
+  path: string;
+}
+
 export interface PathInspectionStatus {
   state: 'clean' | 'nonEmpty' | 'colliding' | 'willCreate' | 'checking';
   details?: string;

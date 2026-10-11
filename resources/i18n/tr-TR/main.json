@@ -1416,7 +1416,6 @@
       }
     },
     "presets": {
-      "applied": "Varsayılan hazır ayarlar başarıyla uygulandı",
       "noRemoteSelected": "Lütfen önce bir uzak bağlantı seçin"
     }
   },
@@ -2486,7 +2485,9 @@
       "internalStorage": "Dahili Depolama"
     },
     "bookmarks": {
-      "emptyHint": "Yer imi yok"
+      "emptyHint": "Yer imi yok",
+      "add": "Yer imlerine ekle",
+      "dropHint": "Yer imi eklemek için klasörleri buraya bırakın"
     },
     "sort": {
       "az": "A-Z",
@@ -2592,6 +2593,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Yeni pencere açılamadı. Mevcut görünümünüz açık tutuldu.",
       "connectionFailed": "Bağlantı Başarısız",
       "bookmarkRemoteNotFound": "Yer imi için uzak sunucu '{{remote}}' bulunamadı",
       "loadFailed": "Dizin yüklenemedi",

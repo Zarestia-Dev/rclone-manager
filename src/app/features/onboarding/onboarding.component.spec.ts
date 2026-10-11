@@ -95,9 +95,9 @@ describe('OnboardingComponent', () => {
       listenToRemoteCacheUpdated: vi.fn().mockReturnValue(of(undefined)),
       listenToRemoteSettingsChanged: vi.fn().mockReturnValue(of(undefined)),
       listenToBackendSwitched: vi.fn().mockReturnValue(of(undefined)),
-      listenToVaultState: vi.fn().mockReturnValue(
-        of({ isLocked: false, isEnabled: false, event: 'unlocked' })
-      ),
+      listenToVaultState: vi
+        .fn()
+        .mockReturnValue(of({ isLocked: false, isEnabled: false, event: 'unlocked' })),
       listenToServerConnection: vi.fn().mockReturnValue(of(undefined)),
     };
 

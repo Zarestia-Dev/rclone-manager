@@ -8,6 +8,7 @@ import {
   PathStyle,
   DefaultPathOp,
   PathInspectionStatus,
+  MountPathCollision,
 } from '@app/types';
 import { BackendService } from '../system/backend.service';
 import * as pathUtils from '../../../shared/utils/path.utils';
@@ -19,6 +20,7 @@ export type {
   PathGroup,
   DefaultPathOp,
   PathInspectionStatus,
+  MountPathCollision,
 };
 
 @Injectable({ providedIn: 'root' })
@@ -232,5 +234,20 @@ export class PathService {
       normalizedRemote === normalizedCurrent ? 'currentRemote' : `otherRemote:${normalizedRemote}`;
 
     return { type, path: entryPath, remote: normalizedRemote };
+  }
+
+  checkMountPathCollision(
+    proposedPath: string,
+    currentRemoteName: string,
+    allSettings: Record<string, unknown> | undefined | null,
+    currentProfileName?: string
+  ): MountPathCollision[] {
+    return pathUtils.checkMountPathCollision(
+      proposedPath,
+      currentRemoteName,
+      allSettings,
+      p => this.isLocalPath(p),
+      currentProfileName
+    );
   }
 }

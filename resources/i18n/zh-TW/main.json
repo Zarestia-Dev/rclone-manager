@@ -1158,7 +1158,6 @@
       "apply": "應用到欄位"
     },
     "presets": {
-      "applied": "Default presets applied successfully",
       "noRemoteSelected": "Please select a remote first"
     },
     "remoteConfig": {
@@ -2486,7 +2485,9 @@
       "internalStorage": "內部儲存空間"
     },
     "bookmarks": {
-      "emptyHint": "暫無書籤"
+      "emptyHint": "暫無書籤",
+      "add": "加入書籤",
+      "dropHint": "將資料夾拖放至此處以加入書籤"
     },
     "sort": {
       "az": "按名稱升序",
@@ -2592,6 +2593,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "無法開啟新視窗。目前的檢視保持開啟。",
       "connectionFailed": "連線失敗",
       "bookmarkRemoteNotFound": "未找到書籤對應的遠端連線 '{{remote}}'",
       "loadFailed": "載入目錄失敗",

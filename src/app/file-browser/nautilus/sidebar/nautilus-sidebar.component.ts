@@ -77,6 +77,7 @@ export class NautilusSidebarComponent {
   readonly bookmarks = input.required<FileBrowserItem[]>();
   readonly title = input.required<string>();
   readonly isDragging = input.required<boolean>();
+  readonly canBookmarkDrag = input(false);
 
   readonly currentPath = input('');
   readonly isPickerMode = input(false);
@@ -101,7 +102,6 @@ export class NautilusSidebarComponent {
   readonly requestProperties = output<FileBrowserItem>();
 
   readonly droppedToStarred = output<DragEvent>();
-  readonly droppedToLocal = output<DragEvent>();
   readonly droppedToBookmark = output<{ event: DragEvent; target: FileBrowserItem }>();
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
 

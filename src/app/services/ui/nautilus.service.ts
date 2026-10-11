@@ -270,12 +270,6 @@ export class NautilusService extends TauriBaseService {
     return new URL(buildNautilusPath(remote, canonical), window.location.origin).href;
   }
 
-  private getNautilusLabel(remote: string | null): string {
-    if (!remote) return 'nautilus';
-    const slug = remote.replace(/[^a-zA-Z0-9-]/g, '_');
-    return `nautilus-${slug}`;
-  }
-
   private get isStandaloneEnabled(): boolean {
     const opts = this.appSettingsService.options();
     return this.isTauri && !isMobile() && opts?.['general.standalone_dialogs']?.value === true;
@@ -292,37 +286,42 @@ export class NautilusService extends TauriBaseService {
       return;
     }
 
+    if (!(await this.openStandaloneWindow(remote, path)) && !forceStandalone) {
+      await this.openBrowserOverlay(remote, path);
+    }
+  }
+
+  /** Explicit window actions bypass the preference for opening browser overlays. */
+  async openStandaloneWindow(remote: string | null, path: string | null): Promise<boolean> {
+    if (!this.vault.isAccessible()) return false;
+    if (this.isTauri && isMobile()) {
+      await this.openBrowserOverlay(remote, path);
+      return false;
+    }
+
     const standaloneUrl = new URL(this.getNautilusUrl(remote, path));
     standaloneUrl.searchParams.set('standalone', 'nautilus');
-    const url = standaloneUrl.href;
-    if (this.isTauri) {
-      if (isMobile()) {
-        await this.openBrowserOverlay(remote, path);
-        return;
-      }
-
-      const label = this.getNautilusLabel(remote);
-      try {
-        await this.invokeCommand('new_window', {
-          opts: {
-            label,
-            url,
-            title: 'RClone Nautilus',
-            width: 1024,
-            height: 768,
-          },
-        });
-        this.closeBrowserOverlay();
-      } catch (err) {
-        console.warn(
-          '[NautilusService] new_window command failed/unavailable, falling back to overlay:',
-          err
-        );
-        await this.openBrowserOverlay(remote, path);
-      }
-    } else {
-      window.open(url, '_blank');
+    try {
+      const opened = this.isTauri
+        ? await this.invokeCommand<boolean>('new_window', {
+            opts: {
+              label: generatePrefixedId('nautilus'),
+              url: standaloneUrl.href,
+              title: 'RClone Nautilus',
+              width: 1024,
+              height: 768,
+            },
+          })
+        : !!window.open(standaloneUrl.href, '_blank');
+      if (!opened) throw new Error('Window was not created');
       this.closeBrowserOverlay();
+      return true;
+    } catch (error) {
+      console.error('[NautilusService] Failed to open a new window:', error);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.windowOpenFailed')
+      );
+      return false;
     }
   }
 

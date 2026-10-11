@@ -42,7 +42,37 @@
                   'nautilus.contextMenu.renameMultiple' | translate
                 }}</span>
               </button>
-              <ng-container *ngTemplateOutlet="sharedItemActions"></ng-container>
+              <button
+                class="menu-item"
+                cdkMenuItem
+                [disabled]="tabSvc.activeStarredMode()"
+                (click)="actions.openArchiveCreate()"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
+              </button>
+
+              <mat-divider></mat-divider>
+
+              <button
+                class="menu-item danger-item"
+                cdkMenuItem
+                [disabled]="tabSvc.activeStarredMode()"
+                (click)="actions.deleteSelectedItems()"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
+                <span class="shortcut">Delete</span>
+              </button>
+
+              <mat-divider></mat-divider>
+
+              <button
+                class="menu-item"
+                cdkMenuItem
+                (click)="actions.openPropertiesDialog('contextMenu')"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
+                <span class="shortcut">Alt+Return</span>
+              </button>
             } @else {
               <!-- Single Selection Mode -->
               @if (actions.contextMenuItem()?.entry?.IsDir) {
@@ -125,7 +155,37 @@
                 <span class="item-label">{{ 'nautilus.contextMenu.rename' | translate }}</span>
                 <span class="shortcut">F2</span>
               </button>
-              <ng-container *ngTemplateOutlet="sharedItemActions"></ng-container>
+              <button
+                class="menu-item"
+                cdkMenuItem
+                [disabled]="tabSvc.activeStarredMode()"
+                (click)="actions.openArchiveCreate()"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
+              </button>
+
+              <mat-divider></mat-divider>
+
+              <button
+                class="menu-item danger-item"
+                cdkMenuItem
+                [disabled]="tabSvc.activeStarredMode()"
+                (click)="actions.deleteSelectedItems()"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
+                <span class="shortcut">Delete</span>
+              </button>
+
+              <mat-divider></mat-divider>
+
+              <button
+                class="menu-item"
+                cdkMenuItem
+                (click)="actions.openPropertiesDialog('contextMenu')"
+              >
+                <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
+                <span class="shortcut">Alt+Return</span>
+              </button>
             }
           }
           @if (!actions.contextMenuItem()) {
@@ -211,6 +271,17 @@
 
 <ng-template #pathOptionsMenuTemplate>
   <div class="material-context-menu" cdkMenu>
+    @if (!isPickerMode() && !tabSvc.activeStarredMode() && tabSvc.activeRemote()) {
+      <button class="menu-item" cdkMenuItem (click)="actions.toggleCurrentPathBookmark()">
+        <span class="item-label">{{
+          (actions.isCurrentPathBookmarked()
+            ? 'nautilus.contextMenu.removeBookmark'
+            : 'nautilus.bookmarks.add'
+          ) | translate
+        }}</span>
+      </button>
+      <mat-divider></mat-divider>
+    }
     @if (!tabSvc.errorState()) {
       @if (!tabSvc.activeStarredMode()) {
         <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
@@ -283,34 +354,4 @@
       }
     }
   </div>
-</ng-template>
-
-<ng-template #sharedItemActions>
-  <button
-    class="menu-item"
-    cdkMenuItem
-    [disabled]="tabSvc.activeStarredMode()"
-    (click)="actions.openArchiveCreate()"
-  >
-    <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
-  </button>
-
-  <mat-divider></mat-divider>
-
-  <button
-    class="menu-item danger-item"
-    cdkMenuItem
-    [disabled]="tabSvc.activeStarredMode()"
-    (click)="actions.deleteSelectedItems()"
-  >
-    <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
-    <span class="shortcut">Delete</span>
-  </button>
-
-  <mat-divider></mat-divider>
-
-  <button class="menu-item" cdkMenuItem (click)="actions.openPropertiesDialog('contextMenu')">
-    <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
-    <span class="shortcut">Alt+Return</span>
-  </button>
 </ng-template>

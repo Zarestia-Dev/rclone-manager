@@ -63,9 +63,11 @@ export interface PropertiesModalOptions {
 }
 
 export interface RemoteAboutModalOptions {
-  displayName: string;
-  normalizedName: string;
+  displayName?: string;
+  normalizedName?: string;
+  name?: string;
   type: string;
+  isLocal?: boolean;
 }
 
 export interface RestorePreviewOptions {
@@ -696,13 +698,18 @@ export class ModalService extends TauriBaseService {
   }
 
   openRemoteAbout<TResult = unknown>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
+    const displayName = options.displayName ?? options.name ?? '';
+    const normalizedName =
+      options.normalizedName ??
+      (options.isLocal ? (options.name ?? '') : (options.name ?? '').replace(/:$/, ''));
+
     return this.openModal('remote-about', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
       data: {
         remote: {
-          displayName: options.displayName,
-          normalizedName: options.normalizedName,
+          displayName,
+          normalizedName,
           type: options.type,
         },
       },

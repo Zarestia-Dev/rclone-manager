@@ -179,8 +179,11 @@ describe('Nautilus mixed-root drop targets', () => {
   const refresh = vi.fn();
   const navigateTo = vi.fn();
   const openBookmark = vi.fn();
+  const toggleBookmark = vi.fn();
+  const isSaved = vi.fn(() => false);
   beforeEach(() => {
     vi.clearAllMocks();
+    isSaved.mockReturnValue(false);
     ctx = {
       activeRemote: null,
       activePath: '',
@@ -207,6 +210,7 @@ describe('Nautilus mixed-root drop targets', () => {
         {
           provide: NautilusService,
           useValue: {
+            isSaved,
             lookupRemoteByName: (name: string): ExplorerRoot | null =>
               roots.find(root => root.name === name) ?? null,
           },
@@ -230,6 +234,7 @@ describe('Nautilus mixed-root drop targets', () => {
       refresh,
       navigateTo,
       openBookmark,
+      toggleBookmark,
     } as unknown as DragDropCallbacks);
   });
   afterEach(() => {
@@ -246,6 +251,42 @@ describe('Nautilus mixed-root drop targets', () => {
     );
     if (!sidebar) hitElement.setAttribute('data-pane-index', '0');
   }
+
+  it('reveals the bookmark target only while dragging folders over the sidebar', () => {
+    service.beginInternalPointerDrag([ctx.files[0]], 0, { x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(false);
+    service['_onMove']({ x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(false);
+
+    const sidebar = document.createElement('app-nautilus-sidebar');
+    sidebar.appendChild(hitElement);
+    service['_onMove']({ x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(true);
+
+    hitElement.remove();
+    service['_onMove']({ x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(false);
+    sidebar.appendChild(hitElement);
+    service['_onMove']({ x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(true);
+    service.cancelInternalPointerDrag();
+    expect(service.canBookmarkDrag()).toBe(false);
+    const item = { ...ctx.files[0], entry: { ...ctx.files[0].entry, IsDir: false } };
+    service.beginInternalPointerDrag([item], 0, { x: 0, y: 0 });
+    service['_onMove']({ x: 0, y: 0 });
+    expect(service.canBookmarkDrag()).toBe(false);
+  });
+
+  it('adds dropped folders without removing existing bookmarks or adding files', async () => {
+    hitElement.setAttribute('data-sidebar-bookmarks-header', 'true');
+    isSaved.mockImplementation((_type?: string, root?: string) => root === roots[0].name);
+    const item = { ...ctx.files[2], entry: { ...ctx.files[2].entry, IsDir: false } };
+    service.beginInternalPointerDrag([ctx.files[0], ctx.files[1], item], 0, { x: 0, y: 0 });
+    await service.commitInternalPointerDrag({ x: 0, y: 0 });
+    expect(toggleBookmark).toHaveBeenCalledExactlyOnceWith(ctx.files[1]);
+    expect(service.canBookmarkDrag()).toBe(false);
+    expect(performFileOperations).not.toHaveBeenCalled();
+  });
 
   it.each([0, 1, 2])('resolves starred folder %s despite identical relative paths', index => {
     pointAt(ctx.files[index]);

@@ -33,6 +33,31 @@ export class NautilusActionsService {
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
+  readonly isCurrentPathBookmarked = computed(() => {
+    const remote = this.tabSvc.activeRemote();
+    return (
+      !!remote && this.nautilusService.isSaved('bookmarks', remote.name, this.tabSvc.activePath())
+    );
+  });
+
+  toggleCurrentPathBookmark(): void {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote || this.tabSvc.activeStarredMode()) return;
+    const path = this.tabSvc.activePath();
+    this.nautilusService.toggleItem('bookmarks', {
+      entry: {
+        ID: '',
+        Name: path ? this.pathSvc.extractName(path) : remote.label || remote.name,
+        Path: path,
+        IsDir: true,
+        Size: -1,
+        ModTime: '',
+        MimeType: '',
+      },
+      meta: { remote: remote.name, isLocal: remote.isLocal, remoteType: remote.type },
+    });
+  }
+
   private _resolveItemRemoteInfo(itemOverride?: FileBrowserItem | null): {
     item: FileBrowserItem | null;
     remoteName: string;
@@ -109,7 +134,7 @@ export class NautilusActionsService {
   }
 
   openAboutModal(remote: ExplorerRoot): void {
-    this.remoteFacadeSvc.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   async confirmAndCleanup(r: ExplorerRoot): Promise<void> {
@@ -249,7 +274,7 @@ export class NautilusActionsService {
   openContextMenuOpenInNewWindow(): void {
     const item = this.contextMenuItem();
     if (!item?.entry.IsDir) return;
-    this.nautilusService.newNautilusWindow(item.meta.remote, item.entry.Path);
+    void this.nautilusService.openStandaloneWindow(item.meta.remote, item.entry.Path);
   }
 
   openBookmarkInNewTab(bookmark: FileBrowserItem): void {
@@ -259,7 +284,7 @@ export class NautilusActionsService {
 
   openBookmarkInNewWindow(bookmark: FileBrowserItem): void {
     const remote = this._resolveBookmarkRemote(bookmark);
-    if (remote) this.nautilusService.newNautilusWindow(remote.name, bookmark.entry.Path);
+    if (remote) void this.nautilusService.openStandaloneWindow(remote.name, bookmark.entry.Path);
   }
 
   readonly supportsPublicLink = computed(() => {

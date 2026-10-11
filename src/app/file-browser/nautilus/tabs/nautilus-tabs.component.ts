@@ -10,6 +10,7 @@ import {
   computed,
   inject,
   OnDestroy,
+  effect,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -59,7 +60,21 @@ export class NautilusTabsComponent implements OnDestroy {
   protected readonly _isDraggedOutside = signal(false);
   private _dragStartPos = { x: 0, y: 0 };
   private _draggedTabWidth = 0;
-  private _dropSucceeded = false;
+  private _pointerDrag: {
+    pointerId: number;
+    tabId: number;
+    tabIds: number[];
+    index: number;
+    centers: number[];
+    scrollLeft: number;
+  } | null = null;
+  private _dragGhost: HTMLElement | null = null;
+  private _captureElement: HTMLElement | null = null;
+  private _ghostOffset = { x: 0, y: 0 };
+  private _ignoreClick = false;
+  private _destroyed = false;
+  private _scrollFrame: number | null = null;
+  private readonly _detachingTabs = new Set<number>();
 
   // --- Scroll shadow state ---
   protected readonly showLeft = signal(false);
@@ -78,6 +93,16 @@ export class NautilusTabsComponent implements OnDestroy {
     viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');
 
   constructor() {
+    effect(() => {
+      const ids = this.tabs().map(tab => tab.id);
+      const pending = this._pointerDrag;
+      if (
+        pending &&
+        (ids.length !== pending.tabIds.length || ids.some((id, i) => id !== pending.tabIds[i]))
+      ) {
+        this.cancelPointerDrag();
+      }
+    });
     afterRenderEffect(() => {
       const activeIndex = this.activeTabIndex();
       this.tabs();
@@ -86,7 +111,8 @@ export class NautilusTabsComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    window.removeEventListener('dragover', this.onGlobalDragOver);
+    this._destroyed = true;
+    this.cancelPointerDrag();
   }
 
   // ---------------------------------------------------------------------------
@@ -138,122 +164,172 @@ export class NautilusTabsComponent implements OnDestroy {
     }
   }
 
-  protected onNativeDragStart(event: DragEvent, tab: NautilusTabItem, index: number): void {
-    this._draggedTabIndex.set(index);
-    this._insertAtIndex.set(index);
-    this._isDraggedOutside.set(false);
-    this._dropSucceeded = false;
+  protected onTabClick(index: number): void {
+    if (!this._ignoreClick) this.switchTab.emit(index);
+  }
+
+  protected onTabPointerDown(event: PointerEvent, tab: NautilusTabItem, index: number): void {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+    this.cancelPointerDrag();
+    const container = this.tabsScrollContainer()?.nativeElement;
+    if (!container) return;
+    const elements = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-index]'));
+    this._pointerDrag = {
+      pointerId: event.pointerId,
+      tabId: tab.id,
+      tabIds: this.tabs().map(item => item.id),
+      index,
+      centers: elements.map(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left + rect.width / 2;
+      }),
+      scrollLeft: container.scrollLeft,
+    };
     this._dragStartPos = { x: event.clientX, y: event.clientY };
-
-    window.addEventListener('dragover', this.onGlobalDragOver);
-
-    this._draggedTabWidth = (event.currentTarget as HTMLElement).offsetWidth + 4;
-
-    const url = this.nautilusService.getNautilusUrl(tab.remote?.name ?? null, tab.path ?? null);
-    const ghost = this.buildTabDragGhost(tab);
-    document.body.appendChild(ghost);
-
-    if (event.dataTransfer) {
-      event.dataTransfer.setData('text/uri-list', url);
-      event.dataTransfer.setData('text/plain', url);
-      event.dataTransfer.setData('application/x-nautilus-tab', String(index));
-      event.dataTransfer.effectAllowed = 'copyMove';
-
-      event.dataTransfer.setDragImage(ghost, 0, 0);
+    const element = event.currentTarget as HTMLElement;
+    const tabRect = element.getBoundingClientRect();
+    this._ghostOffset = { x: event.clientX - tabRect.left, y: event.clientY - tabRect.top };
+    this._draggedTabWidth = tabRect.width;
+    this._captureElement = element;
+    element.setPointerCapture?.(event.pointerId);
+    if (elements[index + 1]) {
+      this._draggedTabWidth =
+        elements[index + 1].getBoundingClientRect().left - element.getBoundingClientRect().left;
     }
-
-    requestAnimationFrame(() => ghost.remove());
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerCancel);
+    window.addEventListener('lostpointercapture', this.onPointerCancel);
+    window.addEventListener('blur', this.cancelPointerDrag);
   }
 
-  protected onNativeDragOver(event: DragEvent, index?: number): void {
-    if (this._draggedTabIndex() === null) return;
-    this._isDraggedOutside.set(false);
-    event.preventDefault();
-
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
-    }
-
-    // Determine the logical index to insert at
-    let targetIndex = index;
-
-    if (targetIndex === undefined) {
-      // If we are over the bar but not a specific tab, calculate based on mouse position
-      const bar = event.currentTarget as HTMLElement;
-      const rect = bar.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const totalTabs = this.tabs().length;
-
-      if (totalTabs > 0) {
-        const avgWidth = rect.width / totalTabs;
-        targetIndex = Math.max(0, Math.min(totalTabs - 1, Math.floor(x / avgWidth)));
+  private readonly onPointerMove = (event: PointerEvent): void => {
+    const pending = this._pointerDrag;
+    if (!pending || event.pointerId !== pending.pointerId) return;
+    if (this._draggedTabIndex() === null) {
+      if (
+        Math.hypot(event.clientX - this._dragStartPos.x, event.clientY - this._dragStartPos.y) < 8
+      )
+        return;
+      const tab = this.tabs().find(item => item.id === pending.tabId);
+      if (!tab) return;
+      this._draggedTabIndex.set(pending.index);
+      this._dragGhost = this.buildTabDragGhost(tab);
+      document.documentElement.appendChild(this._dragGhost);
+      if (typeof this._dragGhost.showPopover === 'function') {
+        this._dragGhost.popover = 'manual';
+        this._dragGhost.showPopover();
       }
     }
-
-    if (targetIndex !== undefined && this._insertAtIndex() !== targetIndex) {
-      this._insertAtIndex.set(targetIndex);
-    }
-  }
-
-  protected onNativeDragLeave(event: DragEvent): void {
-    const related = event.relatedTarget as Node | null;
-    if (related && (event.currentTarget as HTMLElement).contains(related)) return;
-  }
-
-  protected onNativeDrop(event: DragEvent, index?: number): void {
     event.preventDefault();
-
-    const previousIndex = this._draggedTabIndex();
-    const currentIndex = index !== undefined ? index : this._insertAtIndex();
-
-    if (previousIndex !== null && currentIndex !== null) {
-      this._dropSucceeded = true;
-      if (previousIndex !== currentIndex) {
-        this.moveTab.emit({ previousIndex, currentIndex });
-      }
+    if (this._dragGhost) {
+      this._dragGhost.style.transform = `translate(${event.clientX - this._ghostOffset.x}px, ${event.clientY - this._ghostOffset.y}px)`;
     }
+    const container = this.tabsScrollContainer()?.nativeElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const outside =
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom ||
+      event.clientX < rect.left ||
+      event.clientX > rect.right;
+    this._isDraggedOutside.set(
+      event.clientY < rect.top - 32 ||
+        event.clientY > rect.bottom + 32 ||
+        event.clientX < rect.left - 32 ||
+        event.clientX > rect.right + 32
+    );
+    if (outside) {
+      if (this._scrollFrame !== null) cancelAnimationFrame(this._scrollFrame);
+      this._scrollFrame = null;
+      return;
+    }
+    const x = event.clientX + container.scrollLeft - pending.scrollLeft;
+    let target = pending.index;
+    pending.centers.forEach((center, index) => {
+      if (index < pending.index && x < center) target = Math.min(target, index);
+      if (index > pending.index && x > center) target = Math.max(target, index);
+    });
+    this._insertAtIndex.set(target);
+    if (this._scrollFrame !== null) cancelAnimationFrame(this._scrollFrame);
+    this._scrollFrame = null;
+    const direction = event.clientX < rect.left + 24 ? -1 : event.clientX > rect.right - 24 ? 1 : 0;
+    if (direction !== 0) {
+      this._scrollFrame = requestAnimationFrame(() => {
+        this._scrollFrame = null;
+        const previous = container.scrollLeft;
+        container.scrollLeft += direction * 12;
+        if (container.scrollLeft !== previous) this.onPointerMove(event);
+      });
+    }
+  };
 
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    const pending = this._pointerDrag;
+    if (!pending || event.pointerId !== pending.pointerId) return;
+    const started = this._draggedTabIndex() !== null;
+    if (started) this.onPointerMove(event);
+    const target = this._insertAtIndex();
+    const detach = this._isDraggedOutside();
+    const rect = this.tabsScrollContainer()?.nativeElement.getBoundingClientRect();
+    const inside =
+      rect &&
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+    this.cancelPointerDrag();
+    if (!started) return;
+    this._ignoreClick = true;
+    setTimeout(() => (this._ignoreClick = false), 0);
+    if (detach) {
+      void this.detachTabAction(pending.index);
+    } else if (inside && target !== null && target !== pending.index) {
+      this.moveTab.emit({ previousIndex: pending.index, currentIndex: target });
+    }
+  };
+
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    if (event.pointerId === this._pointerDrag?.pointerId) this.cancelPointerDrag();
+  };
+
+  private readonly cancelPointerDrag = (): void => {
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerCancel);
+    window.removeEventListener('lostpointercapture', this.onPointerCancel);
+    window.removeEventListener('blur', this.cancelPointerDrag);
+    const pointerId = this._pointerDrag?.pointerId;
+    this._pointerDrag = null;
+    if (pointerId !== undefined && this._captureElement?.hasPointerCapture?.(pointerId)) {
+      this._captureElement.releasePointerCapture(pointerId);
+    }
+    this._captureElement = null;
+    if (this._scrollFrame !== null) cancelAnimationFrame(this._scrollFrame);
+    this._scrollFrame = null;
+    this._dragGhost?.remove();
+    this._dragGhost = null;
     this._draggedTabIndex.set(null);
     this._insertAtIndex.set(null);
-  }
-
-  protected async onNativeDragEnd(
-    event: DragEvent,
-    tab: NautilusTabItem,
-    index: number
-  ): Promise<void> {
-    window.removeEventListener('dragover', this.onGlobalDragOver);
-
-    const succeeded = this._dropSucceeded;
-    this._dropSucceeded = false;
     this._isDraggedOutside.set(false);
-    this._draggedTabIndex.set(null);
-    this._insertAtIndex.set(null);
-
-    if (!succeeded) {
-      const isOutside =
-        event.clientX < -20 ||
-        event.clientY < -20 ||
-        event.clientX >= window.innerWidth + 20 ||
-        event.clientY >= window.innerHeight + 20;
-
-      const dy = Math.abs(event.clientY - this._dragStartPos.y);
-      const isSignificantMove = dy > 70;
-
-      if (isOutside || (event.dataTransfer?.dropEffect !== 'none' && isSignificantMove)) {
-        await this.detachTabAction(index);
-      }
-    }
-  }
+  };
 
   protected async detachTabAction(index: number): Promise<void> {
     const tab = this.tabs()[index];
-    if (!tab) return;
+    if (!tab || this._detachingTabs.has(tab.id)) return;
+    this._detachingTabs.add(tab.id);
     try {
-      await this.nautilusService.newNautilusWindow(tab.remote?.name ?? null, tab.path ?? null);
-      this.closeTab.emit(index);
+      const opened = await this.nautilusService.openStandaloneWindow(
+        tab.remote?.name ?? null,
+        tab.path ?? null
+      );
+      if (!opened) return;
+      const currentIndex = this.tabs().findIndex(item => item.id === tab.id);
+      if (!this._destroyed && currentIndex >= 0) this.closeTab.emit(currentIndex);
     } catch (err) {
       console.error('Failed to detach tab:', err);
+    } finally {
+      this._detachingTabs.delete(tab.id);
     }
   }
 
@@ -265,21 +341,6 @@ export class NautilusTabsComponent implements OnDestroy {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
-
-  private readonly onGlobalDragOver = (event: DragEvent): void => {
-    if (this._draggedTabIndex() === null) return;
-
-    const isOutsideWindow =
-      event.clientX < -20 ||
-      event.clientY < -20 ||
-      event.clientX >= window.innerWidth + 20 ||
-      event.clientY >= window.innerHeight + 20;
-
-    const dy = Math.abs(event.clientY - this._dragStartPos.y);
-    const isDraggedDown = dy > 100;
-
-    this._isDraggedOutside.set(isOutsideWindow || isDraggedDown);
-  };
 
   private scrollToActiveTab(index: number): void {
     const container = this.tabsScrollContainer()?.nativeElement;
@@ -298,12 +359,21 @@ export class NautilusTabsComponent implements OnDestroy {
 
   private buildTabDragGhost(tab: NautilusTabItem): HTMLElement {
     const ghost = document.createElement('div');
+    ghost.classList.add('truncate');
+    ghost.setAttribute('aria-hidden', 'true');
     Object.assign(ghost.style, {
       position: 'fixed',
-      top: '-9999px',
-      left: '-9999px',
+      top: '0',
+      left: '0',
+      margin: '0',
+      border: 'none',
+      boxSizing: 'border-box',
+      width: `${this._captureElement?.getBoundingClientRect().width ?? this._draggedTabWidth}px`,
+      pointerEvents: 'none',
+      zIndex: '2147483647',
       padding: 'var(--space-xs) var(--space-md)',
-      background: 'var(--selected-bg-color)',
+      background: 'var(--popover-bg-color)',
+      boxShadow: 'var(--box-shadow)',
       color: 'var(--window-fg-color)',
       borderRadius: 'var(--radius-sm)',
       fontSize: 'var(--font-size-md)',

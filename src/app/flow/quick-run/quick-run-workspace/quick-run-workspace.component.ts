@@ -182,7 +182,7 @@ export class QuickRunWorkspaceComponent {
   }
 
   openRemoteAbout(remote: Remote): void {
-    this.remoteFacade.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   canEmptyTrash(remote: Remote): boolean {

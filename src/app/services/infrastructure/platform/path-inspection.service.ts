@@ -3,7 +3,6 @@ import { LocalDrive, PathStyle, DefaultPathOp, PathInspectionStatus } from '@app
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
-import { RemoteFacadeService } from '../../facade/remote-facade.service';
 import { PathService } from './path.service';
 
 export type { DefaultPathOp, PathInspectionStatus };
@@ -18,7 +17,6 @@ export class PathInspectionService {
   private readonly apiClient = inject(ApiClientService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteFileOps = inject(RemoteFileOperationsService);
-  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
 
   /**
@@ -27,7 +25,8 @@ export class PathInspectionService {
    */
   async inspect(path: string, remoteName: string): Promise<PathInspectionStatus> {
     // 1. Collision check (highest priority, synchronous)
-    const collisions = this.remoteFacade.checkMountPathCollision(path, remoteName);
+    const allSettings = await this.appSettingsService.getRemoteSettings();
+    const collisions = this.pathService.checkMountPathCollision(path, remoteName, allSettings);
     if (collisions.length > 0) {
       const c = collisions[0];
       return {

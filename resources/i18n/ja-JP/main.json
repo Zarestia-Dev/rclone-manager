@@ -1416,7 +1416,6 @@
       }
     },
     "presets": {
-      "applied": "デフォルトプリセットが正常に適用されました",
       "noRemoteSelected": "最初にリモートを選択してください"
     }
   },
@@ -2445,7 +2444,9 @@
       "internalStorage": "内部ストレージ"
     },
     "bookmarks": {
-      "emptyHint": "ブックマークはありません"
+      "emptyHint": "ブックマークはありません",
+      "add": "ブックマークに追加",
+      "dropHint": "ここにフォルダーをドロップしてブックマークに追加"
     },
     "sort": {
       "az": "A-Z 昇順",
@@ -2551,6 +2552,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "新しいウィンドウを開けませんでした。現在の画面は開いたままです。",
       "connectionFailed": "接続に失敗しました",
       "bookmarkRemoteNotFound": "ブックマークのリモート 「{{remote}}」 が見つかりません",
       "loadFailed": "ディレクトリの読み込みに失敗しました",

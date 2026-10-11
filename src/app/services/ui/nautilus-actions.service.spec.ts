@@ -24,15 +24,19 @@ describe('Nautilus action refresh destination', () => {
   const tab = {
     activeRemote: signal<ExplorerRoot | null>(remote),
     activePath: signal('original'),
+    activeStarredMode: signal(false),
     activeFiles: signal([]),
     refreshPath: vi.fn(),
   };
+  const bookmarks = { isSaved: vi.fn(() => false), toggleItem: vi.fn() };
   const viewer = { open: vi.fn() };
   const fileOps = { openNewFolderDialog: vi.fn(), openCopyUrlDialog: vi.fn() };
 
   beforeEach(() => {
     tab.activeRemote.set(remote);
     tab.activePath.set('original');
+    tab.activeStarredMode.set(false);
+    bookmarks.isSaved.mockReturnValue(false);
     vi.clearAllMocks();
     TestBed.configureTestingModule({
       providers: [
@@ -40,14 +44,19 @@ describe('Nautilus action refresh destination', () => {
         { provide: NautilusTabService, useValue: tab },
         { provide: NautilusFileOperationsService, useValue: fileOps },
         { provide: FileViewerService, useValue: viewer },
+        { provide: NautilusService, useValue: bookmarks },
+        {
+          provide: PathService,
+          useValue: {
+            extractName: (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? '',
+          },
+        },
         ...[
           NautilusSelectionService,
           TranslateService,
           NotificationService,
           RemoteFileOperationsService,
-          PathService,
           RemoteFacadeService,
-          NautilusService,
           ModalService,
           DownloadService,
           Clipboard,
@@ -55,6 +64,56 @@ describe('Nautilus action refresh destination', () => {
       ],
     });
     service = TestBed.inject(NautilusActionsService);
+  });
+
+  it.each(['photos/旅行 & family', 'Documents', 'photos/'])(
+    'bookmarks the current folder %s',
+    path => {
+      tab.activePath.set(path);
+      service.toggleCurrentPathBookmark();
+      expect(bookmarks.toggleItem).toHaveBeenCalledExactlyOnceWith('bookmarks', {
+        entry: {
+          ID: '',
+          Name: path.split('/').filter(Boolean).pop(),
+          Path: path,
+          IsDir: true,
+          Size: -1,
+          ModTime: '',
+          MimeType: '',
+        },
+        meta: { remote: 'drive', isLocal: false, remoteType: 'drive' },
+      });
+    }
+  );
+
+  it('uses the root label for an empty path and preserves local metadata', () => {
+    tab.activeRemote.set({ name: 'C:\\', label: 'Windows', isLocal: true, type: 'local' });
+    tab.activePath.set('');
+    service.toggleCurrentPathBookmark();
+    expect(bookmarks.toggleItem).toHaveBeenCalledWith(
+      'bookmarks',
+      expect.objectContaining({
+        entry: expect.objectContaining({ Name: 'Windows', Path: '' }),
+        meta: { remote: 'C:\\', isLocal: true, remoteType: 'local' },
+      })
+    );
+  });
+
+  it('does not bookmark a missing remote or the starred view', () => {
+    tab.activeRemote.set(null);
+    service.toggleCurrentPathBookmark();
+    tab.activeRemote.set(remote);
+    tab.activeStarredMode.set(true);
+    service.toggleCurrentPathBookmark();
+    expect(bookmarks.toggleItem).not.toHaveBeenCalled();
+  });
+
+  it('checks the current location for the add/remove menu label', () => {
+    bookmarks.isSaved.mockReturnValue(true);
+    expect(service.isCurrentPathBookmarked()).toBe(true);
+    expect(bookmarks.isSaved).toHaveBeenCalledWith('bookmarks', 'drive', 'original');
+    tab.activeRemote.set(null);
+    expect(service.isCurrentPathBookmarked()).toBe(false);
   });
 
   it.each(['openNewFolder', 'openCopyUrlDialog'] as const)(

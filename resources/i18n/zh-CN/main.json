@@ -1416,7 +1416,6 @@
       }
     },
     "presets": {
-      "applied": "已成功应用默认预设",
       "noRemoteSelected": "请先选择一个远程存储"
     }
   },
@@ -2445,7 +2444,9 @@
       "internalStorage": "内部存储"
     },
     "bookmarks": {
-      "emptyHint": "暂无书签"
+      "emptyHint": "暂无书签",
+      "add": "添加到书签",
+      "dropHint": "将文件夹拖放到此处以添加书签"
     },
     "sort": {
       "az": "按名称升序",
@@ -2551,6 +2552,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "无法打开新窗口。当前视图保持打开。",
       "connectionFailed": "连接失败",
       "bookmarkRemoteNotFound": "未找到书签对应的远程存储 '{{remote}}'",
       "loadFailed": "加载目录失败",

@@ -23,6 +23,7 @@ import {
   splitFsPath,
   parseLocation,
   splitSegments,
+  checkMountPathCollision,
 } from './path.utils';
 import { ExplorerRoot, PathGroup } from '@app/types';
 
@@ -249,6 +250,76 @@ describe('path.utils', () => {
       expect(res).not.toBeNull();
       expect(res?.remote.name).toBe('C:/');
       expect(res?.path).toBe('Users/Admin');
+    });
+  });
+
+  describe('checkMountPathCollision', () => {
+    const isLocalMock = (p: string): boolean => !p.startsWith('remote:');
+    const mockSettings = {
+      remote1: {
+        mount: {
+          default: {
+            mountPoint: '/mnt/media',
+          },
+        },
+        bisync: {
+          sync1: {
+            path1: '/home/user/documents',
+            path2: 'remote:backup',
+          },
+        },
+      },
+      remote2: {
+        mount: {
+          custom: {
+            dest: { path: '/mnt/photos' },
+          },
+        },
+      },
+    };
+
+    it('returns empty array when proposed path is empty', () => {
+      expect(checkMountPathCollision('', 'remote1', mockSettings, isLocalMock)).toEqual([]);
+      expect(checkMountPathCollision('   ', 'remote1', mockSettings, isLocalMock)).toEqual([]);
+    });
+
+    it('returns empty array when no collision exists', () => {
+      const res = checkMountPathCollision('/mnt/other', 'remote1', mockSettings, isLocalMock);
+      expect(res).toEqual([]);
+    });
+
+    it('detects collision with mountPoint from another remote', () => {
+      const res = checkMountPathCollision('/mnt/media', 'remote2', mockSettings, isLocalMock);
+      expect(res.length).toBe(1);
+      expect(res[0]).toEqual({
+        remoteName: 'remote1',
+        profileName: 'default',
+        opType: 'mount',
+        path: '/mnt/media',
+      });
+    });
+
+    it('detects collision with bisync path1 from another remote', () => {
+      const res = checkMountPathCollision(
+        '/home/user/documents/',
+        'remote2',
+        mockSettings,
+        isLocalMock
+      );
+      expect(res.length).toBe(1);
+      expect(res[0].remoteName).toBe('remote1');
+      expect(res[0].opType).toBe('bisync');
+    });
+
+    it('ignores collision with same remote and profile', () => {
+      const res = checkMountPathCollision(
+        '/mnt/media',
+        'remote1',
+        mockSettings,
+        isLocalMock,
+        'default'
+      );
+      expect(res).toEqual([]);
     });
   });
 });

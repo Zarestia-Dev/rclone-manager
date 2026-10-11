@@ -5,20 +5,19 @@ import { PathInspectionService } from './path-inspection.service';
 import { ApiClientService } from './api-client.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
-import { RemoteFacadeService } from '../../facade/remote-facade.service';
 import { PathService } from './path.service';
 
 describe('PathInspectionService', () => {
   let service: PathInspectionService;
   let mockApiClient: { invoke: ReturnType<typeof vi.fn> };
-  let mockAppSettings: { getSettingValue: ReturnType<typeof vi.fn> };
+  let mockAppSettings: {
+    getSettingValue: ReturnType<typeof vi.fn>;
+    getRemoteSettings: ReturnType<typeof vi.fn>;
+  };
   let mockRemoteFileOps: {
     getStat: ReturnType<typeof vi.fn>;
     getSize: ReturnType<typeof vi.fn>;
     makeDirectory: ReturnType<typeof vi.fn>;
-  };
-  let mockRemoteFacade: {
-    checkMountPathCollision: ReturnType<typeof vi.fn>;
   };
   let mockPathService: {
     splitLocalForStat: ReturnType<typeof vi.fn>;
@@ -26,18 +25,19 @@ describe('PathInspectionService', () => {
     normalizeForPlatform: ReturnType<typeof vi.fn>;
     getParentPath: ReturnType<typeof vi.fn>;
     isTrulyLocalPath: ReturnType<typeof vi.fn>;
+    checkMountPathCollision: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     mockApiClient = { invoke: vi.fn() };
-    mockAppSettings = { getSettingValue: vi.fn().mockResolvedValue(null) };
+    mockAppSettings = {
+      getSettingValue: vi.fn().mockResolvedValue(null),
+      getRemoteSettings: vi.fn().mockResolvedValue({}),
+    };
     mockRemoteFileOps = {
       getStat: vi.fn().mockResolvedValue({ item: null }),
       getSize: vi.fn().mockResolvedValue({ count: 0 }),
       makeDirectory: vi.fn().mockResolvedValue(undefined),
-    };
-    mockRemoteFacade = {
-      checkMountPathCollision: vi.fn().mockReturnValue([]),
     };
     mockPathService = {
       splitLocalForStat: vi.fn().mockReturnValue({ root: '/', relative: 'home/user/path' }),
@@ -45,6 +45,7 @@ describe('PathInspectionService', () => {
       normalizeForPlatform: vi.fn().mockImplementation((p: string) => p),
       getParentPath: vi.fn().mockReturnValue('/home/user'),
       isTrulyLocalPath: vi.fn().mockReturnValue(true),
+      checkMountPathCollision: vi.fn().mockReturnValue([]),
     };
 
     TestBed.configureTestingModule({
@@ -53,7 +54,6 @@ describe('PathInspectionService', () => {
         { provide: ApiClientService, useValue: mockApiClient },
         { provide: AppSettingsService, useValue: mockAppSettings },
         { provide: RemoteFileOperationsService, useValue: mockRemoteFileOps },
-        { provide: RemoteFacadeService, useValue: mockRemoteFacade },
         { provide: PathService, useValue: mockPathService },
       ],
     });
@@ -63,7 +63,7 @@ describe('PathInspectionService', () => {
 
   describe('inspect', () => {
     it('should return colliding if mount collision is detected', async () => {
-      mockRemoteFacade.checkMountPathCollision.mockReturnValue([
+      mockPathService.checkMountPathCollision.mockReturnValue([
         { remoteName: 'otherRemote', opType: 'mount' },
       ]);
 

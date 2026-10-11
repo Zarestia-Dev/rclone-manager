@@ -9,7 +9,6 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -30,7 +29,6 @@ import { SlideMenuController } from 'src/app/shared/utils';
   selector: 'app-nautilus-context-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgTemplateOutlet,
     TranslatePipe,
     MatIconModule,
     MatDividerModule,

@@ -242,7 +242,7 @@ export class HomeComponent {
   }
 
   openRemoteAbout(remote: Remote): void {
-    this.remoteFacadeService.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   hasCleanUpFeature(remote: Remote): boolean {

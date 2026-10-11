@@ -8,16 +8,10 @@
     (leftShadow)="showLeft.set($event)"
     (rightShadow)="showRight.set($event)"
   >
-    <div
-      class="tabs-bar"
-      role="tablist"
-      (dragover)="onNativeDragOver($event)"
-      (drop)="onNativeDrop($event)"
-    >
+    <div class="tabs-bar" role="tablist">
       @for (vm of tabViewModels(); track vm.tab.id) {
         <div
           class="tab"
-          draggable="true"
           role="tab"
           tabindex="0"
           [attr.aria-selected]="activeTabIndex() === vm.index"
@@ -27,15 +21,11 @@
           [class.is-outside]="_isDraggedOutside() && _draggedTabIndex() === vm.index"
           [class.file-drag-over]="isDragging() && hoveredTabIndex() === vm.index"
           [style.transform]="vm.transform"
-          (click)="switchTab.emit(vm.index)"
+          (click)="onTabClick(vm.index)"
           (keydown.enter)="switchTab.emit(vm.index)"
           (keydown.space)="$event.preventDefault(); switchTab.emit(vm.index)"
           (mousedown)="onTabMiddleClick($event, vm.index)"
-          (dragstart)="onNativeDragStart($event, vm.tab, vm.index)"
-          (dragend)="onNativeDragEnd($event, vm.tab, vm.index)"
-          (dragover)="onNativeDragOver($event, vm.index)"
-          (dragleave)="onNativeDragLeave($event)"
-          (drop)="onNativeDrop($event, vm.index)"
+          (pointerdown)="onTabPointerDown($event, vm.tab, vm.index)"
           [cdkContextMenuTriggerFor]="tabContextMenu"
           [cdkContextMenuTriggerData]="{ $implicit: vm.index }"
           [attr.title]="vm.tooltip"

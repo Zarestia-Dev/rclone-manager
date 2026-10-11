@@ -23,6 +23,7 @@
       [localDrives]="localDrives()"
       [cloudRemotes]="cloudRemotes()"
       [bookmarks]="filteredBookmarks()"
+      [canBookmarkDrag]="dragDrop.canBookmarkDrag()"
       [title]="title()"
       [isPickerMode]="isPickerMode()"
       [isSearchMode]="isSearchMode()"
@@ -37,14 +38,13 @@
       (requestAbout)="actions.openAboutModal($event)"
       (requestCleanup)="actions.confirmAndCleanup($event)"
       (remoteOpenedInNewTab)="tabSvc.createTab($event, '')"
-      (remoteOpenedInNewWindow)="nautilusService.newNautilusWindow($event.name, '')"
+      (remoteOpenedInNewWindow)="nautilusService.openStandaloneWindow($event.name, '')"
       (bookmarkOpenedInNewTab)="actions.openBookmarkInNewTab($event)"
       (bookmarkOpenedInNewWindow)="actions.openBookmarkInNewWindow($event)"
       (requestBookmarkRemoval)="nautilusService.toggleItem('bookmarks', $event)"
       (requestProperties)="actions.openPropertiesDialog('bookmark', $event)"
       (droppedToBookmark)="onDropToBookmark($event.event, $event.target)"
       (droppedToStarred)="onDropToStarred($event)"
-      (droppedToLocal)="onDropToLocal($event)"
       (droppedToRemote)="onDropToRemote($event.event, $event.target)"
     ></app-nautilus-sidebar>
   </mat-sidenav>
@@ -101,9 +101,10 @@
     <div class="nautilus-content" [style.gridTemplateColumns]="tabSvc.splitGridColumns()">
       @for (pane of visiblePanes(); track pane.index) {
         @if (!$first) {
-          <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
+          <div class="split-divider" (pointerdown)="onSplitDividerDrag($event)"></div>
         }
         <app-nautilus-view-pane
+          [directoryKey]="pane.directoryKey"
           [files]="pane.files"
           [selection]="pane.selection"
           [paneIndex]="pane.index"

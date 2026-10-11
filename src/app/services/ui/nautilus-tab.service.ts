@@ -51,6 +51,7 @@ export interface PaneRef {
 /** View-model snapshot passed to each <app-nautilus-view-pane>. */
 export interface PaneViewModel {
   index: 0 | 1;
+  directoryKey: string;
   files: FileBrowserItem[];
   selection: Set<string>;
   loading: boolean;

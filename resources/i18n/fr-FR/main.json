@@ -1416,7 +1416,6 @@
       }
     },
     "presets": {
-      "applied": "Préréglages par défaut appliqués avec succès",
       "noRemoteSelected": "Veuillez d'abord sélectionner un remote"
     }
   },
@@ -2445,7 +2444,9 @@
       "internalStorage": "Stockage interne"
     },
     "bookmarks": {
-      "emptyHint": "Aucun signet"
+      "emptyHint": "Aucun signet",
+      "add": "Ajouter aux favoris",
+      "dropHint": "Déposez des dossiers ici pour les ajouter aux favoris"
     },
     "sort": {
       "az": "A-Z",
@@ -2551,6 +2552,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Impossible d’ouvrir une nouvelle fenêtre. La vue actuelle reste ouverte.",
       "connectionFailed": "Échec de la Connexion",
       "bookmarkRemoteNotFound": "Le dépôt distant '{{remote}}' associé au signet est introuvable",
       "loadFailed": "Échec du chargement du répertoire",
