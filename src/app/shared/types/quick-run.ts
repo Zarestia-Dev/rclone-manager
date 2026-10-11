@@ -6,7 +6,6 @@ import {
   extractProfileDest,
 } from '../utils/profile-config.util';
 import type { PrimaryActionType } from './operations';
-import type { ConfigValue } from './system';
 
 /**
  * Runtime status of a quick run entry.
@@ -132,8 +131,9 @@ export function getQuickRunPaths(config: ConfigWithSubConfigs): {
  * Convert a `ConfigValue` to a string for display in the inspect view.
  * Arrays are joined with `, ` and falsy values become `''`.
  */
-export function formatConfigValue(value: ConfigValue | undefined): string {
+export function formatConfigValue(value: unknown): string {
   if (value == null || value === '') return '';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);

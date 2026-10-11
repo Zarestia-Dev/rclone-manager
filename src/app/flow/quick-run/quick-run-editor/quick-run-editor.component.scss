@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 :host {
   --sidebar-icon-width: 56px;
 }
@@ -15,58 +17,8 @@ main {
   background: var(--window-bg-color);
 }
 .modal-sidebar {
-  width: var(--sidebar-width);
-  background: var(--sidebar-bg-color);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-
-  .step-indicator-container {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .step-indicator {
-    padding: var(--space-xs);
-
-    ::ng-deep .mat-mdc-list-item {
-      border-radius: var(--radius-sm);
-      margin-bottom: 4px;
-      max-height: 40px;
-      transition: background-color 0.2s ease;
-
-      &.mdc-list-item--activated {
-        background: var(--selected-bg-color);
-      }
-
-      &.mdc-list-item--disabled {
-        opacity: 0.5;
-        background: transparent !important;
-      }
-
-      .mat-mdc-list-item-icon {
-        font-size: var(--icon-size-sm);
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        color: var(--dim-color);
-      }
-
-      .mat-mdc-list-item-title {
-        font-size: var(--font-size-md);
-        font-weight: 500;
-      }
-    }
-  }
-
-  .sidebar-footer {
-    padding: var(--space-xs);
-    border-top: 1px solid var(--border-color);
-
-    .step-indicator {
-      padding: 0 !important;
-    }
-  }
+  @include wizard-modal-sidebar;
+  @include wizard-step-indicator;
 }
 
 .modal-content {

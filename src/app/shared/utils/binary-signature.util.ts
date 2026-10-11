@@ -24,7 +24,7 @@ export interface BinaryInspectionResult {
 /**
  * Helper to convert string | Uint8Array | ArrayBuffer to Uint8Array.
  */
-export function toUint8Array(input: string | Uint8Array | ArrayBuffer): Uint8Array {
+function toUint8Array(input: string | Uint8Array | ArrayBuffer): Uint8Array {
   if (ArrayBuffer.isView(input)) {
     return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
   }
@@ -44,7 +44,7 @@ export function toUint8Array(input: string | Uint8Array | ArrayBuffer): Uint8Arr
 /**
  * Helper to get ASCII / raw byte string for regex pattern scanning.
  */
-export function toByteString(input: string | Uint8Array | ArrayBuffer): string {
+function toByteString(input: string | Uint8Array | ArrayBuffer): string {
   if (typeof input === 'string') return input;
   const uint8 = toUint8Array(input);
   let str = '';

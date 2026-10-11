@@ -3,14 +3,6 @@
   width: 100%;
 }
 
-.origin-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
-}
-
 // Small pill size modifier for .app-pill
 .app-pill.pill-sm {
   font-size: var(--font-size-xs);

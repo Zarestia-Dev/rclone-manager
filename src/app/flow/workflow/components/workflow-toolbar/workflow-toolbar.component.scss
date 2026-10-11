@@ -58,11 +58,11 @@
   // ── Center: Run & Presets ────────────────────────────────────────────────
 
   .run-workflow-btn,
-  .stop-workflow-btn {
+  .stop-workflow-btn,
+  .dry-run-workflow-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
     border-radius: var(--button-border-radius);
     font-size: var(--font-size-sm);
     font-weight: 600;
@@ -74,6 +74,11 @@
       height: var(--icon-size-sm);
       font-size: var(--icon-size-sm);
     }
+  }
+
+  .run-workflow-btn,
+  .stop-workflow-btn {
+    padding: 6px 14px;
   }
 
   .run-actions-group {
@@ -93,24 +98,10 @@
   }
 
   .dry-run-workflow-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
     padding: 6px 12px;
-    border-radius: var(--button-border-radius);
     background: rgba(var(--accent-color-rgb), 0.12);
     border: 1px dashed rgba(var(--accent-color-rgb), 0.45);
     color: var(--accent-color);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition-fast);
-
-    mat-icon {
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-      font-size: var(--icon-size-sm);
-    }
 
     &:hover {
       background: rgba(var(--accent-color-rgb), 0.22);

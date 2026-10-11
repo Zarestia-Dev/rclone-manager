@@ -1,38 +1,11 @@
+@use "../../../styles/mixins" as *;
+
 .tabs-container {
   position: relative;
   width: 100%;
   display: flex;
 
-  &::before,
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 28px;
-    pointer-events: none;
-    z-index: 10;
-    opacity: 0;
-    transition: opacity 120ms ease;
-  }
-
-  &::before {
-    left: 0;
-    background: linear-gradient(to right, var(--view-bg-color) 0%, transparent 100%);
-  }
-
-  &::after {
-    right: 0;
-    background: linear-gradient(to left, var(--view-bg-color) 0%, transparent 100%);
-  }
-
-  &:has(.show-left-shadow)::before {
-    opacity: 1;
-  }
-
-  &:has(.show-right-shadow)::after {
-    opacity: 1;
-  }
+  @include scroll-edge-fades(var(--view-bg-color));
 }
 
 .tabs-scroll-container {

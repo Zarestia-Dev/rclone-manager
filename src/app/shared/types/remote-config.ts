@@ -24,10 +24,6 @@ export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
   OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
 );
 
-export function isLinkedProfileType(type: string): type is SharedProfileType {
-  return LINKED_PROFILE_TYPES.has(type);
-}
-
 export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
   mount: 'hard-drive',
   sync: 'refresh',
@@ -501,7 +497,7 @@ export const RCLONE_PATH_KEYS = [
 
 export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
 
-export const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
+const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
 
 export function isRclonePathKey(key: string): boolean {
   return RCLONE_PATH_KEYS_SET.has(key);

@@ -1,3 +1,5 @@
+@use "../../../../styles/mixins" as *;
+
 /* --- Main Container --- */
 :host {
   display: flex;
@@ -26,18 +28,7 @@
 }
 
 .icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-container-size);
-  height: var(--icon-container-size);
-  border-radius: var(--icon-radius);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--primary-color-rgb), var(--active-opacity)) 0%,
-    rgba(var(--accent-color-rgb), var(--active-opacity)) 100%
-  );
-  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
+  @include remote-icon-ring;
 }
 
 .remote-type-icon {
@@ -59,9 +50,6 @@
   margin: 0;
   color: var(--window-fg-color);
   letter-spacing: -0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 300px;
 }
 

@@ -14,13 +14,20 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { Origin, ServeListItem } from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 @Component({
   selector: 'app-serves-overview-panel',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatExpansionModule, MatIconModule, TranslatePipe, ServeCardComponent],
+  imports: [
+    MatExpansionModule,
+    MatIconModule,
+    TranslatePipe,
+    ServeCardComponent,
+    OriginFilterBarComponent,
+  ],
   templateUrl: './serves-overview-panel.component.html',
   styleUrls: ['./serves-overview-panel.component.scss'],
 })

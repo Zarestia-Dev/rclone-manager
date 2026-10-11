@@ -43,15 +43,9 @@ export class AppUpdaterService extends TauriBaseService {
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
 
-  public readonly updateAvailable = computed(() => {
-    const update = this._updateState();
-    return update &&
-      (update.status === BackendUpdateStatus.Downloading ||
-        update.status === BackendUpdateStatus.ReadyToRestart ||
-        !this.settings.isVersionSkipped(update.version))
-      ? update
-      : null;
-  });
+  public readonly updateAvailable = computed(() =>
+    this.settings.computeAvailableUpdate(this._updateState())
+  );
 
   public readonly hasUpdates = computed(() => !!this.updateAvailable());
   public readonly updateInProgress = computed(

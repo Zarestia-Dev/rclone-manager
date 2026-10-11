@@ -178,13 +178,6 @@ export type BatchApiLabel = Extract<
  */
 export const OPERATION_TYPE_KEYS: ReadonlySet<string> = new Set<string>(ALL_PRIMARY_ACTIONS);
 
-/**
- * Type guard to check if a value is a PrimaryActionType.
- */
-export function isPrimaryActionType(type: string): type is PrimaryActionType {
-  return OPERATION_TYPE_KEYS.has(type);
-}
-
 // ── Operation Category Constants for unifying inline lists ──────────────────
 // Each list is typed as `readonly PrimaryActionType[]` so consumers can pass
 // them to APIs expecting `PrimaryActionType` without an `as` cast.

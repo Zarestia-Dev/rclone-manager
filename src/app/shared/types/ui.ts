@@ -381,8 +381,6 @@ export const DEFAULT_ONBOARDING_IMAGE = '../assets/rclone-manager.svg';
 
 export type MainView = 'main_menu' | 'nautilus' | 'flow';
 
-export const MAIN_VIEWS: readonly MainView[] = Object.freeze(['main_menu', 'nautilus', 'flow']);
-
 export interface RemoteAboutData {
   remote: { displayName: string; normalizedName: string; type?: string };
 }

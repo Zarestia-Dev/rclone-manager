@@ -14,13 +14,20 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { Automation, Origin } from '@app/types';
 import { AutomationCardComponent } from '../../detail-shared/automation-card/automation-card.component';
-import { AutomationService } from 'src/app/services/operations/automation.service';
+import { AutomationService } from '../../../services/operations/automation.service';
+import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 @Component({
   selector: 'app-automations-overview-panel',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatExpansionModule, MatIconModule, TranslatePipe, AutomationCardComponent],
+  imports: [
+    MatExpansionModule,
+    MatIconModule,
+    TranslatePipe,
+    AutomationCardComponent,
+    OriginFilterBarComponent,
+  ],
   templateUrl: './automations-overview-panel.component.html',
   styleUrls: ['./automations-overview-panel.component.scss'],
 })

@@ -28,52 +28,37 @@ export class RepairService extends TauriBaseService {
   readonly rcloneProgress = this.installationService.rcloneProgress;
   readonly mountPluginProgress = this.installationService.mountPluginProgress;
 
-  /**
-   * Install or provision rclone binary
-   * @param path Optional custom installation path. If null, uses default location
-   */
+  /** Install or provision rclone binary */
   async repairRclonePath(path?: string | null): Promise<string> {
     return this.installationService.installRclone(path);
   }
 
-  /**
-   * Cancel in-progress rclone provisioning
-   */
+  /** Cancel in-progress rclone provisioning */
   async cancelRcloneRepair(): Promise<void> {
     return this.installationService.cancelRcloneInstall();
   }
 
-  /**
-   * Install the mount plugin
-   */
+  /** Install the mount plugin */
   async repairMountPlugin(): Promise<string> {
     return this.installationService.installMountPlugin();
   }
 
-  /**
-   * Check if an error represents a user-initiated download cancellation
-   */
+  /** Check if an error represents a user-initiated download cancellation */
   isCancellationError(error: unknown): boolean {
     return this.installationService.isCancellationError(error);
   }
 
-  /**
-   * Cancel in-progress mount plugin installation
-   */
+  /** Cancel in-progress mount plugin installation */
   async cancelMountPluginRepair(): Promise<void> {
     return this.installationService.cancelMountPluginInstall();
   }
 
-  /**
-   * Restore configuration from backup
-   */
+  /** Restore configuration from backup */
   async repairConfigCorrupt(): Promise<void> {
     return this.invokeCommand('restore_backup_config');
   }
 
-  /**
-   * Restart the API engine
-   */
+  /** Restart the API engine */
   async repairBackendUnreachable(): Promise<void> {
     return this.invokeCommand('restart_api_engine');
   }
@@ -149,56 +134,32 @@ export class RepairService extends TauriBaseService {
     }
   }
 
-  /**
-   * Get repair title key based on repair type
-   * @param repairType The type of repair
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair title key */
   getRepairTitleKey(repairType: RepairData['type'], isRemote?: boolean): string {
     return this.getRepairUi(repairType, isRemote).titleKey;
   }
 
-  /**
-   * Get repair message key based on repair type
-   * @param repairType The type of repair
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair message key */
   getRepairMessageKey(repairType: RepairData['type'], isRemote?: boolean): string {
     return this.getRepairUi(repairType, isRemote).messageKey;
   }
 
-  /**
-   * Get repair progress text based on repair type
-   * @param repairType The type of repair being performed
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair progress text key */
   getRepairProgressTextKey(repairType: RepairData['type'], isRemote?: boolean): string {
     return this.getRepairUi(repairType, isRemote).progressKey;
   }
 
-  /**
-   * Get repair button text based on repair type
-   * @param repairType The type of repair to be performed
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair button text key */
   getRepairButtonTextKey(repairType: RepairData['type'], isRemote?: boolean): string {
     return this.getRepairUi(repairType, isRemote).buttonTextKey;
   }
 
-  /**
-   * Get repair button icon based on repair type
-   * @param repairType The type of repair to be performed
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair button icon */
   getRepairButtonIcon(repairType: RepairData['type'], isRemote?: boolean): string {
     return this.getRepairUi(repairType, isRemote).icon;
   }
 
-  /**
-   * Get repair details for display
-   * @param repairType The type of repair
-   * @param isRemote Whether the active backend is a remote backend
-   */
+  /** Get repair details for display */
   getRepairDetails(
     repairType: RepairData['type'],
     isRemote?: boolean

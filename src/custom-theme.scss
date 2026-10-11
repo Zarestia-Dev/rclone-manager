@@ -1247,6 +1247,36 @@ mat-accordion:not(.dull) {
   line-height: 1.2;
 }
 
+.origin-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim-color);
+  opacity: 0.75;
+  vertical-align: middle;
+  transition: var(--transition-fast);
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.quickrun {
+    color: var(--primary-color);
+    opacity: 0.9;
+  }
+
+  &.flow {
+    color: var(--accent-color);
+    opacity: 0.9;
+  }
+
+  .origin-mini-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}
+
 .no-subscript .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }

@@ -3,7 +3,6 @@ import { Component, computed, input, inject, output, ChangeDetectionStrategy } f
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import {
   AppTab,
   PrimaryActionType,
@@ -31,68 +30,41 @@ import {
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import {
+  StatusIndicatorViewModel,
+  ProfilePathViewModel,
+  ProfileChipViewModel,
+  DetailedOperationViewModel,
+  ProfilePickerEntry,
+  ProfilePickerGroup,
+  ActionButtonClickEvent,
+  STATUS_INDICATOR_META,
+} from './remote-card.types';
+import { RemoteCardActionsComponent } from './remote-card-actions.component';
+import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details.component';
 
-interface StatusIndicatorViewModel {
-  op: PrimaryActionType;
-  meta: { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean };
-  tooltip: string;
-}
-
-interface ProfilePathViewModel {
-  path: string;
-  isLocal: boolean;
-  tooltip: string;
-}
-
-interface ProfileChipViewModel {
-  name: string;
-  isBusy: boolean;
-  canOpen: boolean;
-  isActive: boolean;
-  isOpening: boolean;
-  chipTooltip: string;
-  openPaths: ProfilePathViewModel[];
-}
-
-interface DetailedOperationViewModel {
-  key: PrimaryActionType;
-  operation: PrimaryActionType;
-  cssClass: string;
-  labelIcon: string;
-  profiles: ProfileChipViewModel[];
-}
-
-/** Per-operation profile picker entry used by the compact card's hover blossom. */
-interface ProfilePickerEntry {
-  operation: PrimaryActionType;
-  profile: string;
-  isActive: boolean;
-  isBusy: boolean;
-  startIcon: string;
-  stopIcon: string;
-  cssClass: string;
-  tooltip: string;
-}
-
-/** Per-operation group of profile picker entries (one group per operation). */
-interface ProfilePickerGroup {
-  operation: PrimaryActionType;
-  cssClass: string;
-  /** Single-button trigger tooltip when only one profile exists. */
-  triggerTooltip: string;
-  /** Icon to show on the trigger button. */
-  triggerIcon: string;
-  /** Whether the operation is currently active (any profile running). */
-  isActive: boolean;
-  /** Whether at least one in-flight action targets this operation. */
-  isBusy: boolean;
-  entries: ProfilePickerEntry[];
-}
+export type {
+  StatusIndicatorViewModel,
+  ProfilePathViewModel,
+  ProfileChipViewModel,
+  DetailedOperationViewModel,
+  ProfilePickerEntry,
+  ProfilePickerGroup,
+};
 
 @Component({
   selector: 'app-remote-card',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, TitleCasePipe, MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
+  imports: [
+    NgClass,
+    TitleCasePipe,
+    MatIconModule,
+    MatButtonModule,
+    TranslatePipe,
+    RemoteCardActionsComponent,
+    RemoteCardProfileDetailsComponent,
+  ],
   templateUrl: './remote-card.component.html',
   styleUrls: ['./remote-card.component.scss', '../../../styles/_shared-card.scss'],
   host: {
@@ -221,8 +193,6 @@ export class RemoteCardComponent {
       for (const profile of Object.keys(activeProfiles)) {
         for (const path of this.getProfileOpenPaths(op, profile)) {
           const local = this.pathService.isLocalPath(path);
-          // Show the profile name in the tooltip regardless — all profiles
-          // are equal now, none is hidden behind a 'default' suppression.
           const profileSuffix = ` · ${profile}`;
           folders.push({
             operation: op,
@@ -265,18 +235,6 @@ export class RemoteCardComponent {
     }))
   );
 
-  /**
-   * Per-operation profile-picker groups for compact mode.
-   *
-   * For each action button that has multiple configured profiles, this produces
-   * a group with one entry per profile. The template uses this to render a
-   * `.folder-blossom`-style hover popup on the action button so the user can
-   * pick which profile to act on — there is no longer any "default profile"
-   * auto-pick.
-   *
-   * Operations with exactly one configured profile produce a single-entry group
-   * — the template renders those as a plain action button (no blossom).
-   */
   readonly profilePickerGroups = computed<ProfilePickerGroup[]>(() => {
     if (this.displayMode() !== 'compact') return [];
     const buttons = this.actionButtons();
@@ -287,7 +245,6 @@ export class RemoteCardComponent {
       if (configured.length === 0) continue;
       const meta = OPERATION_META[op];
       const isActive = this.isOpActive(op);
-      // isBusy for the group trigger: true if ANY profile of this op is in progress.
       const isBusy = isOperationActionInProgress(this.actionStates(), op);
       const entries: ProfilePickerEntry[] = configured.map(profile => ({
         operation: op,
@@ -350,7 +307,6 @@ export class RemoteCardComponent {
     const meta = OPERATION_META[type];
     if (!meta) return null;
 
-    // Compute inProgress for this specific operation type only (not global first-action).
     const inProgress = isOperationActionInProgress(this.actionStates(), type);
     const isActive = !startOnly && this.isOpActive(type);
     const isLoading = startOnly ? this.actionStates().some(a => a.type === type) : inProgress;
@@ -406,7 +362,6 @@ export class RemoteCardComponent {
   }
 
   onRemoteKeyDown(event: KeyboardEvent): void {
-    // Only trigger if the target is the card itself (not a button inside it)
     if (event.target !== event.currentTarget) return;
 
     if (event.key === 'Enter' || event.key === ' ') {
@@ -420,15 +375,12 @@ export class RemoteCardComponent {
     this.toggleHidden.emit(this.remote().name);
   }
 
-  onActionButtonClick(action: { id: string; event: Event }): void {
+  onActionButtonClick(action: ActionButtonClickEvent): void {
     action.event.stopPropagation();
     const type = action.id as PrimaryActionType;
     if (!OPERATION_META[type]) return;
     const remoteName = this.remote().name;
 
-    // Stop case: if the operation is active, stop the first active profile.
-    // (For multi-profile stops, the user should click the per-profile blossom
-    // or the detailed-mode pill — those go through onProfilePickerClick.)
     if (this.isOpActive(type)) {
       const profileName = this.getFirstActiveProfile(type);
       if (profileName) {
@@ -437,20 +389,12 @@ export class RemoteCardComponent {
       return;
     }
 
-    // Start case: if exactly one profile is configured, start it directly.
-    // If zero or multiple profiles are configured, do nothing here — the
-    // multi-profile case is handled by the hover blossom; the zero-profile
-    // case is a no-op (the action button should be disabled in that case).
     const configured = this.getConfiguredProfiles(type);
     if (configured.length === 1) {
       this.startJob.emit({ type, remoteName, profileName: configured[0] });
     }
   }
 
-  /**
-   * Per-profile action click from the compact-mode hover blossom.
-   * Starts or stops the specific profile the user clicked.
-   */
   onProfilePickerClick(operation: PrimaryActionType, profile: string, event: Event): void {
     event.stopPropagation();
     const remoteName = this.remote().name;
@@ -529,39 +473,13 @@ export class RemoteCardComponent {
     return OPERATION_META[op]?.cssClass ?? 'primary';
   }
 
-  private static readonly STATUS_INDICATOR_META: Record<
-    PrimaryActionType,
-    { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean }
-  > = {
-    mount: { icon: 'mount', pillClass: 'p-accent', ariaKey: 'detailShared.status.mounted' },
-    sync: { icon: 'refresh', pillClass: 'p-primary', ariaKey: 'detailShared.status.syncing' },
-    copy: { icon: 'copy', pillClass: 'p-yellow', ariaKey: 'detailShared.status.copying' },
-    move: { icon: 'move', pillClass: 'p-orange', ariaKey: 'detailShared.status.moving' },
-    bisync: { icon: 'right-left', pillClass: 'p-purple', ariaKey: 'detailShared.status.bisyncing' },
-    serve: {
-      icon: 'satellite-dish',
-      pillClass: 'p-accent',
-      ariaKey: 'detailShared.status.serving',
-      animateContainer: true,
-    },
-    check: { icon: 'search', pillClass: 'p-accent', ariaKey: 'operations.checkActive' },
-    cryptcheck: { icon: 'shield', pillClass: 'p-accent', ariaKey: 'operations.cryptcheckActive' },
-    delete: { icon: 'trash', pillClass: 'p-warn', ariaKey: 'operations.deleteActive' },
-    copyurl: { icon: 'link', pillClass: 'p-accent', ariaKey: 'operations.copyurlActive' },
-    archivecreate: {
-      icon: 'compress',
-      pillClass: 'p-primary',
-      ariaKey: 'operations.archivecreateActive',
-    },
-  };
-
   getStatusIndicatorMeta(op: PrimaryActionType): {
     icon: string;
     pillClass: string;
     ariaKey: string;
     animateContainer?: boolean;
   } {
-    return RemoteCardComponent.STATUS_INDICATOR_META[op];
+    return STATUS_INDICATOR_META[op];
   }
 
   // ── Operation state helpers ────────────────────────────────────────────────

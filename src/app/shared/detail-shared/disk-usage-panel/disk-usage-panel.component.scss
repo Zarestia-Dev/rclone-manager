@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 :host {
   display: block;
 }
@@ -129,17 +131,9 @@
 }
 
 // ── Legend ────────────────────────────────────────────────────────────
-.legend {
-  display: flex;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-}
+@include status-chart-legend;
 
 .legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-
   // Total pushed to the far right as a quiet tertiary value
   &.total-item {
     margin-left: auto;
@@ -153,11 +147,6 @@
 }
 
 .legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-
   &.used {
     &.healthy {
       background: var(--primary-color);
@@ -184,16 +173,4 @@
     background: var(--dim-color);
     opacity: 0.4;
   }
-}
-
-.legend-label {
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-  font-weight: 500;
-}
-
-.legend-value {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--window-fg-color);
 }

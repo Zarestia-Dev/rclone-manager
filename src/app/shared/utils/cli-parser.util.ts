@@ -14,7 +14,7 @@ export interface ParsedCLI {
   flags: ParsedCLIFlag[];
 }
 
-export const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
+const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
 
 export const SHORT_FLAG_ALIASES: Record<string, string> = {
   P: 'progress',
@@ -51,7 +51,7 @@ export const VERB_MAP: Record<string, { verb: string; mountSubtype?: string }> =
   rmdirs: { verb: 'delete' },
 };
 
-export const WRAPPER_TOKENS = new Set([
+const WRAPPER_TOKENS = new Set([
   'sudo',
   'nohup',
   'nice',

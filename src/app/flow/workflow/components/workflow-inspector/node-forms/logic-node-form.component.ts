@@ -21,6 +21,7 @@ import {
 import { AlertBannerComponent } from '../../../../../shared/components/alert-banner/alert-banner.component';
 import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
+import { CronSummaryCardComponent } from './cron-summary-card.component';
 
 @Component({
   selector: 'app-logic-node-form',
@@ -36,6 +37,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
     MatOptionModule,
     TranslatePipe,
     AlertBannerComponent,
+    CronSummaryCardComponent,
   ],
   templateUrl: './logic-node-form.component.html',
   styleUrls: ['../workflow-inspector.component.scss', './logic-node-form.component.scss'],

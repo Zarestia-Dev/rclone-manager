@@ -1,4 +1,4 @@
-import { NavigationHistoryService } from 'src/app/services/ui/navigation-history.service';
+import { NavigationHistoryService } from '../../services/ui/navigation-history.service';
 // Nautilus file manager – handles tabs, split-view, rich file operations.
 import {
   Component,

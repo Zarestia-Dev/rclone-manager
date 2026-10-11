@@ -42,37 +42,6 @@
                   'nautilus.contextMenu.renameMultiple' | translate
                 }}</span>
               </button>
-              <button
-                class="menu-item"
-                cdkMenuItem
-                [disabled]="tabSvc.activeStarredMode()"
-                (click)="actions.openArchiveCreate()"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
-              </button>
-
-              <mat-divider></mat-divider>
-
-              <button
-                class="menu-item danger-item"
-                cdkMenuItem
-                [disabled]="tabSvc.activeStarredMode()"
-                (click)="actions.deleteSelectedItems()"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
-                <span class="shortcut">Delete</span>
-              </button>
-
-              <mat-divider></mat-divider>
-
-              <button
-                class="menu-item"
-                cdkMenuItem
-                (click)="actions.openPropertiesDialog('contextMenu')"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
-                <span class="shortcut">Alt+Return</span>
-              </button>
             } @else {
               <!-- Single Selection Mode -->
               @if (actions.contextMenuItem()?.entry?.IsDir) {
@@ -155,38 +124,39 @@
                 <span class="item-label">{{ 'nautilus.contextMenu.rename' | translate }}</span>
                 <span class="shortcut">F2</span>
               </button>
-              <button
-                class="menu-item"
-                cdkMenuItem
-                [disabled]="tabSvc.activeStarredMode()"
-                (click)="actions.openArchiveCreate()"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
-              </button>
-
-              <mat-divider></mat-divider>
-
-              <button
-                class="menu-item danger-item"
-                cdkMenuItem
-                [disabled]="tabSvc.activeStarredMode()"
-                (click)="actions.deleteSelectedItems()"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
-                <span class="shortcut">Delete</span>
-              </button>
-
-              <mat-divider></mat-divider>
-
-              <button
-                class="menu-item"
-                cdkMenuItem
-                (click)="actions.openPropertiesDialog('contextMenu')"
-              >
-                <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
-                <span class="shortcut">Alt+Return</span>
-              </button>
             }
+
+            <button
+              class="menu-item"
+              cdkMenuItem
+              [disabled]="tabSvc.activeStarredMode()"
+              (click)="actions.openArchiveCreate()"
+            >
+              <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
+            </button>
+
+            <mat-divider></mat-divider>
+
+            <button
+              class="menu-item danger-item"
+              cdkMenuItem
+              [disabled]="tabSvc.activeStarredMode()"
+              (click)="actions.deleteSelectedItems()"
+            >
+              <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
+              <span class="shortcut">Delete</span>
+            </button>
+
+            <mat-divider></mat-divider>
+
+            <button
+              class="menu-item"
+              cdkMenuItem
+              (click)="actions.openPropertiesDialog('contextMenu')"
+            >
+              <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
+              <span class="shortcut">Alt+Return</span>
+            </button>
           }
           @if (!actions.contextMenuItem()) {
             <button

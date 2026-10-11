@@ -17,11 +17,12 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 import { JobInfo, JobStatItem, Origin, StopJobEvent, JOB_ICON_MAP } from '@app/types';
 import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
-import { ModalService } from 'src/app/services/ui/modal.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
+import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
+import { ModalService } from '../../../services/ui/modal.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
+import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 export interface RunningJobViewModel {
   job: JobInfo;
@@ -50,6 +51,7 @@ export interface RunningJobViewModel {
     FormatRateValuePipe,
     CopyToClipboardDirective,
     AlertBannerComponent,
+    OriginFilterBarComponent,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],

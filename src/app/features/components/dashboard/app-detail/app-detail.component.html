@@ -12,7 +12,7 @@
     </div>
     <div class="remote-text-info">
       <h2
-        class="remote-name"
+        class="remote-name truncate"
         [attr.title]="mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name"
       >
         {{ mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name }}

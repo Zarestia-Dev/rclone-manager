@@ -1,5 +1,5 @@
 import { getRcloneCfg } from '../../../shared/utils/profile-config.util';
-import { RCLONE_PATH_KEYS } from '@app/types';
+import { RCLONE_PATH_KEYS, formatConfigValue } from '@app/types';
 
 export interface ActiveConfigItem {
   category: 'operation' | 'filter' | 'backend' | 'vfs' | 'general';
@@ -46,14 +46,6 @@ export const PRIMARY_EXCLUDED_KEYS = new Set([
   'config',
   'rclone',
 ]);
-
-function formatConfigValue(v: unknown): string {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'boolean') return v ? 'true' : 'false';
-  if (Array.isArray(v)) return v.join(', ');
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
 
 /**
  * Extracts active non-default and advanced config flags from a node configuration object.

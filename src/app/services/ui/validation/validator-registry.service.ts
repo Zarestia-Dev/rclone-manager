@@ -1,43 +1,34 @@
 import { Injectable, inject, DestroyRef } from '@angular/core';
-import {
-  AbstractControl,
-  ValidatorFn,
-  ValidationErrors,
-  FormGroup,
-  FormArray,
-} from '@angular/forms';
+import { AbstractControl, ValidatorFn, FormGroup, FormArray } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { REMOTE_NAME_REGEX } from '@app/types';
 import { Observable, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-
-const INTEGER_REGEX = /^-?\d+$/;
-const FLOAT_REGEX = /^-?\d+(\.\d+)?$/;
-const DURATION_REGEX = /^(\d+(?:\.\d+)?(ns|us|µs|ms|s|m|h|d|w|M|y))+$/;
-const SIZE_SUFFIX_REGEX =
-  /^\d+(?:\.\d+)?\s*(b|k|m|g|t|p|e|ki|mi|gi|ti|pi|ei|kb|mb|gb|tb|pb|eb|kib|mib|gib|tib|pib|eib)?$/i;
-const TIME_REGEX =
-  /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[+-]\d{2}:\d{2}|Z)?)?$/;
-const FILE_MODE_REGEX = /^0?[0-7]{3,4}$/;
-const BW_TIMETABLE_SLOT_REGEX =
-  /^(?:(?:mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)-)?([01]?\d|2[0-3]):[0-5]\d,(?:off|\d+(?:\.\d+)?\s*(?:[bBkKmMgGtTpPeE](?:i?B)?)?)(?::(?:off|\d+(?:\.\d+)?\s*(?:[bBkKmMgGtTpPeE](?:i?B)?)?))?$/i;
-const BW_PAIR_REGEX =
-  /^(?:off|\d+(?:\.\d+)?\s*(?:[bBkKmMgGtTpPeE](?:i?B)?)?)(?::(?:off|\d+(?:\.\d+)?\s*(?:[bBkKmMgGtTpPeE](?:i?B)?)?))?$/i;
-const URL_PATTERN_REGEX = /^https?:\/\/[^\s;]+$/;
-const BANDWIDTH_PATTERN_REGEX =
-  /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
-
-function isMatchingExample(
-  value: string,
-  examples?: readonly (string | { Value?: unknown })[]
-): boolean {
-  if (!examples || !examples.length) return false;
-  const lower = value.toLowerCase();
-  return examples.some(ex => {
-    const v = typeof ex === 'object' && ex !== null ? String(ex.Value ?? '') : String(ex);
-    return v.trim().toLowerCase() === lower;
-  });
-}
+import {
+  ValidationMessageResolver,
+  arrayValidator,
+  integerValidator,
+  floatValidator,
+  durationValidator,
+  sizeSuffixValidator,
+  tristateValidator,
+  timeValidator,
+  spaceSepListValidator,
+  bwTimetableValidator,
+  fileModeValidator,
+  enumValidator,
+  urlArrayValidator,
+  bandwidthValidator,
+  passwordValidator,
+  remoteNameValidator,
+  passwordMatchValidator,
+  uniqueNameValidator,
+  forbiddenCharsValidator,
+  duplicateNameValidator,
+  duplicateHostValidator,
+  requiredIfCronEnabled,
+  requiredIfWatchEnabled,
+} from 'src/app/shared/validators';
 
 @Injectable({
   providedIn: 'root',
@@ -45,6 +36,9 @@ function isMatchingExample(
 export class ValidatorRegistryService {
   private readonly validators = new Map<string, ValidatorFn>();
   private readonly translate = inject(TranslateService);
+
+  private readonly resolver: ValidationMessageResolver = (key, params) =>
+    this.translate.instant(key, params);
 
   constructor() {
     this.validators.set('urlList', this.urlArrayValidator());
@@ -61,196 +55,113 @@ export class ValidatorRegistryService {
   }
 
   arrayValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || Array.isArray(control.value) || typeof control.value === 'string')
-        return null;
-      return { invalidArray: true };
-    };
+    return arrayValidator();
   }
 
   integerValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (!INTEGER_REGEX.test(value)) {
-        return { integer: { value, message: this.translate.instant('validators.integer') } };
-      }
-      return null;
-    };
+    return integerValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   floatValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (!FLOAT_REGEX.test(value)) {
-        return { float: { value, message: this.translate.instant('validators.float') } };
-      }
-      return null;
-    };
+    return floatValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   durationValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (value.toLowerCase() === 'off' || value === '0') return null;
-      if (
-        !DURATION_REGEX.test(value) &&
-        !/^\d+(?:\.\d+)?$/.test(value) &&
-        isNaN(Date.parse(value))
-      ) {
-        return { duration: { value, message: this.translate.instant('validators.duration') } };
-      }
-      return null;
-    };
+    return durationValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   sizeSuffixValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (value.toLowerCase() === 'off' || value === '0') return null;
-      if (!SIZE_SUFFIX_REGEX.test(value)) {
-        return { sizeSuffix: { value, message: this.translate.instant('validators.sizeSuffix') } };
-      }
-      return null;
-    };
+    return sizeSuffixValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   tristateValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      if (typeof control.value === 'boolean') return null;
-      const str = String(control.value).trim().toLowerCase();
-      if (['true', 'false', 'unset'].includes(str)) return null;
-      return {
-        tristate: { value: control.value, message: this.translate.instant('validators.tristate') },
-      };
-    };
+    return tristateValidator(this.resolver);
   }
 
   timeValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (!TIME_REGEX.test(value) && isNaN(new Date(value).getTime())) {
-        return { time: { value, message: this.translate.instant('validators.time') } };
-      }
-      return null;
-    };
+    return timeValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   spaceSepListValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (value.length > 0 && !/\S/.test(value)) {
-        return {
-          spaceSepList: { value, message: this.translate.instant('validators.spaceSepList') },
-        };
-      }
-      return null;
-    };
+    return spaceSepListValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   bwTimetableValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (value.toLowerCase() === 'off') return null;
-      if (BW_PAIR_REGEX.test(value)) return null;
-      const slots = value.split(/\s+/);
-      const isValidSchedule =
-        slots.length > 0 && slots.every((slot: string) => BW_TIMETABLE_SLOT_REGEX.test(slot));
-      if (!isValidSchedule) {
-        return {
-          bwTimetable: { value, message: this.translate.instant('validators.bwTimetable') },
-        };
-      }
-      return null;
-    };
+    return bwTimetableValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   fileModeValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
   ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (isMatchingExample(value, allowedExamples)) return null;
-      if (!FILE_MODE_REGEX.test(value)) {
-        return { fileMode: { value, message: this.translate.instant('validators.fileMode') } };
-      }
-      return null;
-    };
+    return fileModeValidator(defaultValue, allowedExamples, this.resolver);
   }
 
   enumValidator(allowedValues: unknown[]): ValidatorFn {
-    const lowerValues = allowedValues.map(v => String(v ?? '').toLowerCase());
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (control.value === null || control.value === undefined || control.value === '')
-        return null;
-      const value = control.value.toString().trim().toLowerCase();
-      if (!lowerValues.includes(value)) {
-        return {
-          enum: {
-            value,
-            allowedValues,
-            message: this.translate.instant('validators.enum', {
-              values: allowedValues.map(v => String(v)).join(', '),
-            }),
-          },
-        };
-      }
-      return null;
-    };
+    return enumValidator(allowedValues, this.resolver);
+  }
+
+  requiredIfCronEnabled(): ValidatorFn {
+    return requiredIfCronEnabled();
+  }
+
+  requiredIfWatchEnabled(): ValidatorFn {
+    return requiredIfWatchEnabled();
+  }
+
+  createRemoteNameValidator(
+    existingNames: string[],
+    allowedPattern: RegExp = REMOTE_NAME_REGEX
+  ): ValidatorFn {
+    return remoteNameValidator(existingNames, allowedPattern, this.resolver);
+  }
+
+  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
+    return passwordMatchValidator(passwordFieldName, confirmFieldName, this.resolver);
+  }
+
+  createUniqueNameValidator(config: { existingNames: string[]; typeLabel?: string }): ValidatorFn {
+    return uniqueNameValidator(config);
+  }
+
+  createForbiddenCharsValidator(forbidden: string[] = ['/', ':']): ValidatorFn {
+    return forbiddenCharsValidator(forbidden);
+  }
+
+  createDuplicateNameValidator(config: {
+    getExisting: () => { name: string }[];
+    getEditingName: () => string | undefined;
+    getMode: () => 'create' | 'edit' | null;
+  }): ValidatorFn {
+    return duplicateNameValidator(config);
+  }
+
+  createDuplicateHostValidator(config: {
+    getExisting: () => { name: string; host: string; port: number | string }[];
+    getEditingName: () => string | undefined;
+  }): ValidatorFn {
+    return duplicateHostValidator(config);
   }
 
   setupOperationValidation(opGroup: FormGroup, destroyRef: DestroyRef): void {
@@ -298,183 +209,15 @@ export class ValidatorRegistryService {
     }
   }
 
-  requiredIfCronEnabled(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const opGroup = control.parent;
-      if (!opGroup) return null;
-      if (opGroup.get('cronEnabled')?.value && !control.value) return { required: true };
-      return null;
-    };
-  }
-
-  requiredIfWatchEnabled(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const opGroup = control.parent;
-      if (!opGroup) return null;
-      if (!opGroup.get('watchEnabled')?.value) return null;
-
-      if (control.value === null || control.value === undefined || control.value === '') {
-        return { required: true };
-      }
-      const val = Number(control.value);
-      if (isNaN(val) || val < 1) {
-        return { min: { min: 1, actual: control.value } };
-      }
-      return null;
-    };
-  }
-
-  createRemoteNameValidator(
-    existingNames: string[],
-    allowedPattern: RegExp = REMOTE_NAME_REGEX
-  ): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const raw = control.value;
-      const value = typeof raw === 'string' ? raw.trim() : raw;
-      if (!value) return null;
-
-      if (allowedPattern && !allowedPattern.test(value)) {
-        return {
-          invalidChars: { message: this.translate.instant('validators.remoteName.invalidChars') },
-        };
-      }
-      if (value.startsWith('-') || value.startsWith(' ')) {
-        return {
-          invalidStart: { message: this.translate.instant('validators.remoteName.invalidStart') },
-        };
-      }
-      if (control.value.endsWith(' ')) {
-        return {
-          invalidEnd: { message: this.translate.instant('validators.remoteName.invalidEnd') },
-        };
-      }
-
-      const existingTrimmed = existingNames.map(n => String(n).trim());
-      return existingTrimmed.includes(String(value))
-        ? { nameTaken: { message: this.translate.instant('validators.remoteName.nameTaken') } }
-        : null;
-    };
-  }
-
-  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const password = group.get(passwordFieldName)?.value;
-      const confirm = group.get(confirmFieldName)?.value;
-      if (password && confirm && password !== confirm) {
-        return {
-          passwordMismatch: { message: this.translate.instant('validators.passwordMismatch') },
-        };
-      }
-      return null;
-    };
-  }
-
   private urlArrayValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const urls = control.value;
-      if (!Array.isArray(urls) || urls.length === 0) return null;
-
-      for (const url of urls) {
-        if (typeof url !== 'string' || !URL_PATTERN_REGEX.test(url.trim())) {
-          return {
-            urlArray: { message: this.translate.instant('validators.urlArray'), invalidUrl: url },
-          };
-        }
-      }
-      return null;
-    };
+    return urlArrayValidator(this.resolver);
   }
 
   private bandwidthValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value) return null;
-      if (!BANDWIDTH_PATTERN_REGEX.test(control.value)) {
-        return { bandwidth: { message: this.translate.instant('validators.bandwidth') } };
-      }
-      return null;
-    };
+    return bandwidthValidator(this.resolver);
   }
 
   private passwordValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value;
-      if (!value) return null;
-      if (value.length < 3) {
-        return {
-          minLength: {
-            message: this.translate.instant('validators.password.minLength'),
-            actualLength: value.length,
-            requiredLength: 3,
-          },
-        };
-      }
-      if (/['"]/.test(value)) {
-        return {
-          invalidChars: { message: this.translate.instant('validators.password.invalidChars') },
-        };
-      }
-      return null;
-    };
-  }
-
-  createUniqueNameValidator(config: { existingNames: string[]; typeLabel?: string }): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const existing = (config.existingNames || []).map(e => e.toString().trim().toLowerCase());
-      const val = (control.value || '').toString().trim().toLowerCase();
-      return existing.some(e => e === val) ? { alreadyExists: true } : null;
-    };
-  }
-
-  createForbiddenCharsValidator(forbidden: string[] = ['/', ':']): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const val = (control.value || '').toString();
-      return forbidden.some(ch => val.includes(ch)) ? { forbiddenChars: true } : null;
-    };
-  }
-
-  createDuplicateNameValidator(config: {
-    getExisting: () => { name: string }[];
-    getEditingName: () => string | undefined;
-    getMode: () => 'create' | 'edit' | null;
-  }): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const name = control.value?.trim().toLowerCase();
-      if (!name) return null;
-      if (config.getMode() === 'edit' && config.getEditingName()?.toLowerCase() === name)
-        return null;
-      const exists = config.getExisting().some(b => b.name.toLowerCase() === name);
-      return exists ? { duplicateName: true } : null;
-    };
-  }
-
-  createDuplicateHostValidator(config: {
-    getExisting: () => { name: string; host: string; port: number | string }[];
-    getEditingName: () => string | undefined;
-  }): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const hostCtrl = group.get('host');
-      const portCtrl = group.get('port');
-      if (!hostCtrl?.value || !portCtrl?.value) return null;
-
-      const editingName = config.getEditingName();
-      const exists = config
-        .getExisting()
-        .some(
-          b =>
-            b.name !== editingName &&
-            b.host === hostCtrl.value &&
-            Number(b.port) === Number(portCtrl.value)
-        );
-
-      const hasDup = hostCtrl.hasError('duplicateHost');
-      if (exists && !hasDup) {
-        hostCtrl.setErrors({ ...hostCtrl.errors, duplicateHost: true });
-      } else if (!exists && hasDup) {
-        const { duplicateHost: _, ...errors } = hostCtrl.errors || {};
-        hostCtrl.setErrors(Object.keys(errors).length ? errors : null);
-      }
-
-      return exists ? { duplicateHost: true } : null;
-    };
+    return passwordValidator(this.resolver);
   }
 }

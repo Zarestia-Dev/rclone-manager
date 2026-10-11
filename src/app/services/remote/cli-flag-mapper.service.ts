@@ -29,8 +29,7 @@ export interface ImportResult {
   classified: ClassifiedFlag[];
 }
 
-export const SHORT_FLAG_ALIASES = cliParser.SHORT_FLAG_ALIASES;
-export const VERB_MAP = cliParser.VERB_MAP;
+const SHORT_FLAG_ALIASES = cliParser.SHORT_FLAG_ALIASES;
 
 export interface LookupEntry {
   option: RcConfigOption;

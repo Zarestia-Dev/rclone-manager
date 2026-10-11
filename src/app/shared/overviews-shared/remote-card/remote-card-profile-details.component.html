@@ -1,0 +1,74 @@
+<div class="profile-details-section">
+  @if (detailedOperations().length === 0) {
+    <div class="profile-empty-state">
+      <mat-icon svgIcon="folder-off" class="profile-empty-icon"></mat-icon>
+      <div class="profile-empty-text">
+        <span class="profile-empty-title">
+          {{ 'overviews.remoteCard.emptyState.title' | translate }}
+        </span>
+        <span class="profile-empty-subtitle">
+          {{ 'overviews.remoteCard.emptyState.message' | translate }}
+        </span>
+      </div>
+    </div>
+  } @else {
+    @for (opVm of detailedOperationViewModels(); track opVm.key) {
+      @if (opVm.profiles.length > 0) {
+        <div class="profile-group" [ngClass]="opVm.cssClass">
+          <div class="profile-group-header">
+            <span class="operation-label">
+              <mat-icon class="operation-icon" [svgIcon]="opVm.labelIcon"></mat-icon>
+              {{ opVm.operation | titlecase }}
+            </span>
+            <span class="profile-count">{{ opVm.profiles.length }}</span>
+          </div>
+          <div class="profile-pills">
+            @for (profileVm of opVm.profiles; track profileVm.name) {
+              <div class="profile-item" [class.can-open]="profileVm.canOpen">
+                <button
+                  class="app-pill interactive"
+                  [ngClass]="'p-' + opVm.cssClass"
+                  [class.p-warn]="profileVm.isActive"
+                  [class.p-dim]="profileVm.isBusy"
+                  [disabled]="profileVm.isBusy"
+                  [attr.title]="profileVm.chipTooltip"
+                  (click)="onProfileChipClick(opVm.operation, profileVm.name, $event)"
+                >
+                  @if (profileVm.isBusy) {
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+                  } @else if (profileVm.isActive) {
+                    <mat-icon
+                      class="profile-icon"
+                      [svgIcon]="opVm.operation === 'mount' ? 'eject' : 'stop'"
+                    ></mat-icon>
+                  }
+                  <span class="profile-name-text">{{ profileVm.name }}</span>
+                </button>
+
+                @if (profileVm.openPaths.length > 0) {
+                  @for (pathVm of profileVm.openPaths; track $index) {
+                    <button
+                      type="button"
+                      class="profile-open-btn"
+                      [disabled]="profileVm.isOpening"
+                      [attr.title]="pathVm.tooltip"
+                      (click)="
+                        onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
+                      "
+                    >
+                      @if (profileVm.isOpening) {
+                        <mat-icon svgIcon="spinner"></mat-icon>
+                      } @else {
+                        <mat-icon [svgIcon]="pathVm.isLocal ? 'folder' : 'folder-open'"></mat-icon>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
