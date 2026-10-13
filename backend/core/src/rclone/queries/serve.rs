@@ -1,0 +1,56 @@
+use log::debug;
+use serde_json::Value;
+
+use crate::rclone::endpoints::serve;
+use crate::utils::types::remotes::ServeInstance;
+
+/// Parse serves list from API JSON response
+pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
+    response
+        .get("list")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    let id = item.get("id")?.as_str()?;
+                    let addr = item.get("addr")?.as_str()?;
+                    let params = item.get("params")?.clone();
+
+                    Some(ServeInstance::new(id, addr, params))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Get all supported serve types from rclone
+pub async fn get_serve_types(app: crate::context::AppHandle) -> Result<Vec<String>, String> {
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(serve::TYPES, None)
+        .await
+        .map_err(|e| format!("Failed to fetch serve types: {e}"))?;
+
+    let serve_types = json["types"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|st| st.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    debug!("✅ Serve types: {serve_types:?}");
+
+    Ok(serve_types)
+}
+
+pub async fn list_serves(app: crate::context::AppHandle) -> Result<Vec<ServeInstance>, String> {
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(serve::LIST, None)
+        .await
+        .map_err(|e| format!("Failed to list serves: {e}"))?;
+
+    debug!("✅ Running serves: {json}");
+
+    Ok(parse_serves_response(&json))
+}

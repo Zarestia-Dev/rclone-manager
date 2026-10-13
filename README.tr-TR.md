@@ -63,7 +63,7 @@
 - ⚙️ **Bağlama ve Sunma:** Kolay bağlama kontrolleri ve sunma yönetimi (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Görev İzleyici:** Gerçek zamanlı aktarım izleme ve bant genişliği kontrolü.
 - 📱 **Android SAF & DocumentsProvider:** Root veya FUSE gerektirmeden Depolama Erişim Çerçevesi (SAF) ve yerleşik VFS bağlama köprüsüyle bulut remotes'larına sistem dosya seçicilerinden doğrudan erişin.
-- 🌐 **Headless Modu:** VPS/NAS sunucularında GUI olmadan bir web sunucusu olarak çalıştırmak için [RClone Manager Headless](headless/README.md) sürümüne göz atın!
+- 🌐 **Headless Modu:** VPS/NAS sunucularında GUI olmadan bir web sunucusu olarak çalıştırmak için [RClone Manager Headless](backend/server/README.md) sürümüne göz atın!
 
 ---
 

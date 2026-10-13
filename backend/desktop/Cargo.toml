@@ -1,0 +1,107 @@
+[package]
+name = "rclone-manager"
+version.workspace = true
+description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
+authors = ["Hakan İSMAİL"]
+edition.workspace = true
+default-run = "rclone-manager"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "rclone_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+rclone-manager-core = { path = "../core", default-features = false }
+rclone-manager-server = { path = "../server", optional = true, default-features = false }
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+log = "0.4"
+sysinfo = "0.39"
+clap = { version = "4", features = ["derive", "env"] }
+url = "2"
+tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
+tauri-plugin-clipboard-manager = { version = "2", optional = true, default-features = false }
+tauri-plugin-notification = { version = "2", optional = true, default-features = false }
+tauri-plugin-deep-link = { version = "2", optional = true, default-features = false }
+tauri-plugin-os = { version = "2", optional = true, default-features = false }
+tauri-plugin-opener = { version = "2", optional = true, default-features = false }
+urlencoding = "2"
+futures = "0.3"
+http = "1"
+mime_guess = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", optional = true }
+notify-rust = { version = "4", optional = true }
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
+tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
+tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
+
+[features]
+# Application builds. Server/mobile builds require --no-default-features.
+default = ["desktop", "tray"]
+desktop = [
+    "rclone-manager-core/desktop",
+    "shared-tauri",
+    "tauri-plugin-window-state",
+    "tauri-plugin-autostart",
+    "tauri-plugin-single-instance",
+    "tauri/devtools",
+    "updater",
+    "dep:zbus",
+]
+mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile"]
+web-server = ["dep:rclone-manager-server"]
+
+# Distribution variants retain all default desktop functionality.
+portable = ["desktop", "tray", "rclone-manager-core/portable"]
+flatpak = ["desktop", "tray", "rclone-manager-core/flatpak"]
+
+# Optional native integrations, also usable with the web server.
+tray = [
+    "rclone-manager-core/tray",
+    "tauri/tray-icon",
+    "tauri/image-png",
+    "tauri-plugin-opener",
+    "tauri-plugin-autostart",
+    "tauri-plugin-single-instance",
+]
+updater = ["rclone-manager-core/updater", "dep:tauri-plugin-updater"]
+
+# Internal dependency groups. Keep plugin feature names used by Rust cfgs.
+shared-tauri = [
+    "dep:tauri-plugin-dialog",
+    "tauri-plugin-dialog/xdg-portal",
+    "tauri-plugin-notification",
+    "tauri-plugin-deep-link",
+    "dep:tauri-plugin-clipboard-manager",
+    "dep:tauri-plugin-os",
+    "tauri-plugin-opener",
+]
+tauri-plugin-notification = ["rclone-manager-core/notifications", "dep:tauri-plugin-notification", "dep:notify-rust"]
+
+# In-process rclone via librclone FFI (mobile target).
+librclone = ["rclone-manager-core/librclone"]
+# Opt-in native mock runtime for tray tests.
+tauri-test = ["tauri/test"]
+
+# Native autostart capability exposed to shared settings.
+tauri-plugin-autostart = ["dep:tauri-plugin-autostart", "rclone-manager-core/autostart"]
+
+[dev-dependencies]
+tempfile = "3"

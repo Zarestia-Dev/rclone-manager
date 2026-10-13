@@ -6,19 +6,19 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "tauri": "tauri",
+    "tauri": "node scripts/tauri.cjs",
     "dev:portable": "npm run tauri dev -- --features portable",
     "dev:flatpak": "npm run tauri dev -- --features flatpak",
-    "dev:headless": "npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
+    "dev:headless": "npm run tauri dev -- --config backend/desktop/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
     "dev:android": "npm run tauri android dev -- --features mobile -- --no-default-features",
     "build:portable": "npm run tauri build -- --features portable --no-bundle",
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
-    "build:headless": "npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
+    "build:headless": "npm run tauri build -- --config backend/desktop/tauri.conf.headless.json --features web-server,tray,updater -- --no-default-features",
     "test": "ng test",
     "test:ci": "ng test --no-watch",
     "test:coverage": "ng test --no-watch --code-coverage",
-    "lint": "eslint \"**/*.{ts,html}\" && cd src-tauri && cargo clippy -- -D warnings",
-    "format": "prettier --write \"**/*.{ts,html,scss,json}\" && cd src-tauri && cargo fmt",
+    "lint": "eslint \"**/*.{ts,html}\" && cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager -- -D warnings && cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings",
+    "format": "prettier --write \"**/*.{ts,html,scss,json}\" && cargo fmt --manifest-path backend/Cargo.toml --all",
     "fix:all": "node scripts/fix-svg-ids.cjs && npm run format && eslint --fix \"**/*.{ts,html}\"",
     "audit:i18n": "node scripts/audit-i18n-keys.cjs",
     "cleanup:i18n": "node scripts/cleanup-i18n-keys.cjs",
@@ -26,7 +26,9 @@
     "sync:providers": "node scripts/update-providers.cjs",
     "sync:endpoints": "node scripts/update-endpoints.cjs",
     "optimize:svg": "svgo -f src/assets -r && node scripts/fix-svg-ids.cjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:server": "cargo run --manifest-path backend/Cargo.toml -p rclone-manager-server --",
+    "build:server": "npm run build && cargo build --manifest-path backend/Cargo.toml -p rclone-manager-server --release"
   },
   "private": true,
   "dependencies": {
@@ -93,9 +95,9 @@
     "**/*.{scss,json}": [
       "prettier --write"
     ],
-    "src-tauri/**/*.rs": [
-      "sh -c 'cd src-tauri && cargo fmt'",
-      "sh -c 'export LIBRCLONE_SKIP_LINK_CHECK=1 && cd src-tauri && cargo clippy -- -D warnings'"
+    "backend/**/*.rs": [
+      "sh -c 'cargo fmt --manifest-path backend/Cargo.toml --all'",
+      "sh -c 'LIBRCLONE_SKIP_LINK_CHECK=1 cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager -- -D warnings && cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings'"
     ]
   }
 }

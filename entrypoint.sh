@@ -116,14 +116,14 @@ ARGS=()
 # `exec` ensures the resulting process becomes PID 1 to gracefully receive
 # termination signals issued by Docker stop commands.
 if [ "$(id -u)" -eq 0 ]; then
-    echo "Starting rclone-manager-headless as UID $PUID, GID $PGID (Supplementary Groups: $SUP_GROUPS)..."
+    echo "Starting rclone-manager-server as UID $PUID, GID $PGID (Supplementary Groups: $SUP_GROUPS)..."
     exec setpriv \
         --reuid="$PUID" \
         --regid="$PGID" \
         --groups="$SUP_GROUPS" \
         --inh-caps=-all \
-        /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
+        /usr/local/bin/rclone-manager-server "${ARGS[@]}" "$@"
 else
-    echo "Starting rclone-manager-headless as unprivileged user (UID $(id -u))..."
-    exec /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
+    echo "Starting rclone-manager-server as unprivileged user (UID $(id -u))..."
+    exec /usr/local/bin/rclone-manager-server "${ARGS[@]}" "$@"
 fi

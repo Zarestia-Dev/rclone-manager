@@ -63,7 +63,7 @@
 - ⚙️ **Montage & Diffusion:** Contrôles de montage simples et gestion des serveurs de diffusion (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Suivi des tâches:** Surveillance des transferts en temps réel et contrôle de la bande passante.
 - 📱 **Android SAF & DocumentsProvider :** Accédez nativement à vos stockages cloud distants dans les sélecteurs de fichiers système via le Storage Access Framework et un pont de montage VFS intégré, sans root ni FUSE.
-- 🌐 **Mode Headless (Sans tête):** Consultez [RClone Manager Headless](headless/README.md) pour l'exécuter en tant que serveur web sur VPS/NAS !
+- 🌐 **Mode Headless (Sans tête):** Consultez [RClone Manager Headless](backend/server/README.md) pour l'exécuter en tant que serveur web sur VPS/NAS !
 
 ---
 

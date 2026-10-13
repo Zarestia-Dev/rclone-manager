@@ -51,8 +51,8 @@ RUN npm ci
 
 # Copy project source and build headless binary
 COPY . .
-RUN npm run build && cargo build --manifest-path src-tauri/Cargo.toml \
-    --release --no-default-features --features web-server
+RUN npm run build && cargo build --manifest-path backend/Cargo.toml \
+    --release -p rclone-manager-server
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -99,14 +99,9 @@ RUN mkdir -p \
 WORKDIR /app
 
 # Copy the built backend binary
-COPY --from=builder /app/src-tauri/target/release/rclone-manager /usr/local/bin/rclone-manager-headless
+COPY --from=builder /app/backend/target/release/rclone-manager-server /usr/local/bin/rclone-manager-server
 
-# Copy the built frontend assets
-# Keep the installed resource directory shared with native headless packages.
-COPY --from=builder \
-    ["/app/dist/rclone-manager/browser", "/usr/lib/RClone Manager Headless/browser/"]
-COPY --from=builder \
-    ["/app/resources/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
+# UI, translations, and templates are embedded in the executable.
 
 # Copy and setup the runtime entrypoint script
 # Moving this to the end ensures that changes to entrypoint.sh don't invalidate

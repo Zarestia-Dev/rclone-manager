@@ -54,7 +54,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: './backend -> target'
           key: portable-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
@@ -68,7 +68,7 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VERSION=$(node -p "require('./backend/desktop/tauri.conf.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       # --- Packaging for Windows ---
@@ -97,9 +97,8 @@ jobs:
           '@
           Set-Content -Path "$dirName/config/settings.json" -Value $settingsJson
 
-          # 2. Copy Binary and Resources
-          Copy-Item "src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
-          Copy-Item -Path "resources/i18n" -Destination "$dirName/i18n" -Recurse
+          # 2. Copy Binary (UI and shared resources are embedded)
+          Copy-Item "backend/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
 
           # 3. Copy Localized READMEs (all supported languages)
           Get-ChildItem "resources/portable/README_*" -Exclude "*linux*" | ForEach-Object {
@@ -132,9 +131,8 @@ jobs:
             }
           }' > "$DIR_NAME/config/settings.json"
 
-          # 2. Copy Binary, Resources & Make Executable
-          cp src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager "$DIR_NAME/RCloneManager"
-          cp -r resources/i18n "$DIR_NAME/i18n"
+          # 2. Copy Binary & Make Executable (resources are embedded)
+          cp backend/target/${{ matrix.rust_target }}/release/rclone-manager "$DIR_NAME/RCloneManager"
           chmod +x "$DIR_NAME/RCloneManager"
 
           # 3. Copy Localized READMEs

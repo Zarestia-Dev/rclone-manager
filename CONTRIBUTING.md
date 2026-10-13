@@ -97,7 +97,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
    cp -r resources/i18n/en-US/* resources/i18n/YOUR-LANG/
    ```
 
-3. **Update the backend schema** (`src-tauri/src/core/settings/schema.rs`):
+3. **Update the backend schema** (`backend/core/src/services/settings/schema.rs`):
 
    Add your language to `SUPPORTED_LANGUAGES` and the language options:
 
@@ -132,7 +132,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
 6. **Android Native Strings (Mobile)**:
 
-   When translating native Android components (such as foreground services, SAF notifications, and channel descriptions), add or update the language `strings.xml` file under `src-tauri/gen/android/app/src/main/res/values-YOUR-LANG/strings.xml` (e.g., `values-tr`, `values-es`, `values-fr`, `values-ja`, `values-pt-rBR`, `values-ru`, `values-uk`, `values-zh-rCN`).
+   When translating native Android components (such as foreground services, SAF notifications, and channel descriptions), add or update the language `strings.xml` file under `backend/desktop/gen/android/app/src/main/res/values-YOUR-LANG/strings.xml` (e.g., `values-tr`, `values-es`, `values-fr`, `values-ja`, `values-pt-rBR`, `values-ru`, `values-uk`, `values-zh-rCN`).
 
    Example (`values-tr/strings.xml`):
 
@@ -320,25 +320,21 @@ rclone-manager/
 │   ├── app/          # Application components, services, and modules
 │   ├── assets/       # Static assets (images, icons)
 │   └── styles/       # Global styles and themes
-├── src-tauri/         # Rust backend (Tauri)
-│   ├── src/          # Rust source code
-│   │   ├── core/     # Core backend logic
-│   │   ├── server/   # Web server implementation (headless mode)
-│   │   ├── rclone/   # Rclone backend logic
-│   │   └── utils/    # Utility functions
-│   └── tauri.conf.json # Tauri configuration
-│   └── tauri.conf.headless.json # Tauri configuration (headless mode)
-│   └── Cargo.toml    # Rust dependencies and configuration
-├── headless/          # Headless/web server mode documentation
+├── backend/           # Rust workspace
+│   ├── core/          # Shared services and command contract
+│   ├── server/        # Tokio/Axum server, deployment docs and Linux service template
+│   ├── desktop/       # Tauri, desktop/mobile integrations and packaging
+│   ├── Cargo.toml     # Workspace configuration
+│   └── Cargo.lock     # Shared dependency lockfile
 └── package.json       # Node.js dependencies and scripts
 ```
 
 ### Key Directories
 
 - **`src/app/`**: Angular components, services, and application logic
-- **`src-tauri/src/core/`**: Core Rust backend logic (scheduler, settings, security)
-- **`src-tauri/src/server/`**: Web server implementation for headless mode
-- **`src-tauri/src/rclone/`**: Rclone backend logic
+- **`backend/core/src/services/`**: Core Rust backend logic (scheduler, settings, security)
+- **`backend/`**: Shared core, independent HTTP server, and native Tauri application; see [backend architecture](backend/ARCHITECTURE.md)
+- **`backend/core/src/rclone/`**: Rclone backend logic
 - **`.github/workflows/`**: CI/CD workflows for building and releasing
 
 ---
@@ -355,7 +351,7 @@ rclone-manager/
 
 2. **Make your changes** in the appropriate directory:
    - Frontend changes → `src/`
-   - Backend changes → `src-tauri/src/`
+   - Backend changes → `backend/core/src/`, `backend/server/src/`, or `backend/desktop/src/`
    - Documentation → `README.md`, Wiki, or `*.md` files
 
 3. **Test your changes**:
@@ -392,8 +388,8 @@ npx prettier --write "**/*.{ts,html,scss,json}"
 
 #### Backend (Rust)
 
-- **Linting**: Clippy (`cd src-tauri && cargo clippy -- -D warnings`)
-- **Formatting**: rustfmt (`cd src-tauri && cargo fmt`)
+- **Linting**: Clippy (`cd backend/desktop && cargo clippy -- -D warnings`)
+- **Formatting**: rustfmt (`cargo fmt --manifest-path backend/Cargo.toml --all`)
 
 #### Run All Checks & Fixes
 

@@ -1,0 +1,729 @@
+use crate::context::AppHandle;
+use log::{debug, error, info};
+use serde_json::json;
+use tokio::sync::RwLock;
+
+use crate::{
+    rclone::{
+        backend::BackendManager,
+        queries::{get_all_remote_configs, get_mounted_remotes, list_serves},
+    },
+    services::settings::AppSettingsManager,
+    utils::types::{
+        events::{MOUNT_STATE_CHANGED, REMOTE_CACHE_CHANGED, SERVE_STATE_CHANGED},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
+    },
+};
+
+/// Persistent context for `RemoteCache` — saved/restored on backend switches so that
+/// profile associations (embedded in the structs) survive the transition.
+#[derive(Debug, Clone, Default)]
+pub struct RemoteCacheContext {
+    pub mounts: Vec<MountedRemote>,
+    pub serves: Vec<ServeInstance>,
+}
+
+impl RemoteCache {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            remotes: RwLock::new(Vec::new()),
+            configs: RwLock::new(json!({})),
+            mounted: RwLock::new(Vec::new()),
+            serves: RwLock::new(Vec::new()),
+        }
+    }
+
+    /// Clear ALL cache data (remotes, configs, mounts, serves).
+    /// Called when switching backends to ensure no stale data remains.
+    /// Profiles are preserved via `get_context/set_context`, which snapshots the vecs.
+    pub async fn clear_all(&self) {
+        self.remotes.write().await.clear();
+        *self.configs.write().await = json!({});
+        self.mounted.write().await.clear();
+        self.serves.write().await.clear();
+    }
+
+    /// Snapshot the current mounts and serves (including embedded profiles) for
+    /// later restoration when returning to this backend.
+    pub async fn get_context(&self) -> RemoteCacheContext {
+        RemoteCacheContext {
+            mounts: self.mounted.read().await.clone(),
+            serves: self.serves.read().await.clone(),
+        }
+    }
+
+    /// Restore a previously saved context. The background watcher will reconcile
+    /// against the live API shortly after, carrying profiles forward via the merge logic.
+    pub async fn set_context(&self, context: RemoteCacheContext) {
+        *self.mounted.write().await = context.mounts;
+        *self.serves.write().await = context.serves;
+    }
+
+    // These carry the profile field forward from the existing cache entry when the
+    // rclone API (which has no concept of profiles) returns fresh data.
+
+    fn merge_mount_profiles(
+        incoming: Vec<MountedRemote>,
+        existing: &[MountedRemote],
+    ) -> Vec<MountedRemote> {
+        incoming
+            .into_iter()
+            .map(|mut m| {
+                let norm = normalize_mount_path(&m.mount_point);
+                if let Some(e) = existing
+                    .iter()
+                    .find(|e| normalize_mount_path(&e.mount_point) == norm)
+                {
+                    m.profile = e.profile.clone();
+                    m.quick_run_id = e.quick_run_id.clone();
+                    m.execute_id = e.execute_id.clone();
+                    m.origin = e.origin.clone();
+                    m.workflow_id = e.workflow_id.clone();
+                    m.node_id = e.node_id.clone();
+                }
+                m
+            })
+            .collect()
+    }
+
+    fn merge_serve_profiles(
+        incoming: Vec<ServeInstance>,
+        existing: &[ServeInstance],
+    ) -> Vec<ServeInstance> {
+        incoming
+            .into_iter()
+            .map(|mut s| {
+                if let Some(e) = existing.iter().find(|e| e.id == s.id) {
+                    s.profile = e.profile.clone();
+                    s.quick_run_id = e.quick_run_id.clone();
+                    s.execute_id = e.execute_id.clone();
+                    s.origin = e.origin.clone();
+                    s.workflow_id = e.workflow_id.clone();
+                    s.node_id = e.node_id.clone();
+                }
+                s
+            })
+            .collect()
+    }
+
+    // REACTIVE CACHE UPDATES — emit events only when data actually changes
+
+    /// Update mounted remotes cache and emit event if changed.
+    /// Carries profiles forward from the existing cache. Returns true if changed.
+    pub async fn update_mounts_if_changed(&self, new_mounts: Vec<MountedRemote>) -> bool {
+        let mut cache = self.mounted.write().await;
+        let merged = Self::merge_mount_profiles(new_mounts, &cache);
+        if *cache == merged {
+            return false;
+        }
+        *cache = merged;
+        drop(cache);
+
+        info!("📡 Mount cache changed");
+        crate::services::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+
+        #[cfg(target_os = "android")]
+        {
+            let cache_read = self.mounted.read().await;
+            crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
+        }
+
+        true
+    }
+
+    /// Update serves cache and emit event if changed.
+    /// Carries profiles forward from the existing cache. Returns true if changed.
+    pub async fn update_serves_if_changed(&self, new_serves: Vec<ServeInstance>) -> bool {
+        let mut cache = self.serves.write().await;
+        let merged = Self::merge_serve_profiles(new_serves, &cache);
+        if *cache == merged {
+            return false;
+        }
+        *cache = merged;
+        drop(cache);
+
+        info!("📡 Serve cache changed");
+        crate::services::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        true
+    }
+
+    // FULL REFRESH — called on startup / backend switch / remote changes
+
+    /// Atomically refreshes both remote configs and remote names from rclone `config/dump`.
+    /// Emits `REMOTE_CACHE_CHANGED` to notify subscribers.
+    pub async fn refresh_remotes_and_configs(&self, app: AppHandle) -> Result<(), String> {
+        match get_all_remote_configs(app).await {
+            Ok(configs) => {
+                let mut remote_names: Vec<String> = configs
+                    .as_object()
+                    .map(|m| m.keys().cloned().collect())
+                    .unwrap_or_default();
+                remote_names.sort();
+
+                let mut configs_lock = self.configs.write().await;
+                let mut remotes_lock = self.remotes.write().await;
+
+                *configs_lock = configs;
+                *remotes_lock = remote_names;
+
+                drop(remotes_lock);
+                drop(configs_lock);
+
+                crate::services::bridge::emit(
+                    REMOTE_CACHE_CHANGED,
+                    crate::utils::constants::CACHE_UPDATED,
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to fetch remote configs: {e}");
+                Err(crate::localized_error!(
+                    "backendErrors.cache.fetchConfigFailed"
+                ))
+            }
+        }
+    }
+
+    /// Refresh mounted remotes from rclone API and update cache.
+    pub async fn refresh_mounted_remotes(&self, app: AppHandle) -> Result<(), String> {
+        match get_mounted_remotes(app).await {
+            Ok(remotes) => {
+                self.update_mounts_if_changed(remotes).await;
+                Ok(())
+            }
+            Err(e) => {
+                error!("❌ Failed to refresh mounted remotes: {e}");
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshMountsFailed"
+                ))
+            }
+        }
+    }
+
+    /// Refresh serves from rclone API and update cache.
+    pub async fn refresh_serves(&self, app: AppHandle) -> Result<(), String> {
+        match list_serves(app).await {
+            Ok(serves) => {
+                self.update_serves_if_changed(serves).await;
+                Ok(())
+            }
+            Err(e) => {
+                error!("❌ Failed to refresh serves: {e}");
+                Err(crate::localized_error!(
+                    "backendErrors.cache.refreshServesFailed"
+                ))
+            }
+        }
+    }
+
+    pub async fn refresh_all(&self, app: AppHandle) -> Result<(), String> {
+        let (r1, r2, r3) = tokio::join!(
+            self.refresh_remotes_and_configs(app.clone()),
+            self.refresh_mounted_remotes(app.clone()),
+            self.refresh_serves(app),
+        );
+
+        for (label, res) in [
+            ("remotes and configs", r1),
+            ("mounted remotes", r2),
+            ("serves", r3),
+        ] {
+            if let Err(e) = res {
+                error!("Failed to refresh {label}: {e}");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Pre-seed or update mount metadata before/during refresh so the upcoming
+    /// reconciliation carries the metadata without any race condition.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn preseed_mount_metadata(
+        &self,
+        fs: &str,
+        mount_point: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
+    ) {
+        let norm = normalize_mount_path(mount_point);
+        let mut mounts = self.mounted.write().await;
+        if let Some(m) = mounts
+            .iter_mut()
+            .find(|m| normalize_mount_path(&m.mount_point) == norm)
+        {
+            m.fs = fs.to_string();
+            m.profile = profile;
+            m.quick_run_id = quick_run_id;
+            m.origin = origin;
+            m.execute_id = execute_id;
+            m.workflow_id = workflow_id;
+            m.node_id = node_id;
+        } else {
+            mounts.push(MountedRemote {
+                fs: fs.to_string(),
+                mount_point: mount_point.to_string(),
+                profile,
+                quick_run_id,
+                origin,
+                execute_id,
+                workflow_id,
+                node_id,
+            });
+        }
+        drop(mounts);
+
+        info!("📡 Mount cache preseeded, emitting change");
+        crate::services::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+        #[cfg(target_os = "android")]
+        {
+            let cache_read = self.mounted.read().await;
+            crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
+        }
+    }
+
+    /// Pre-seed or update serve metadata before/during refresh so the upcoming
+    /// reconciliation carries the metadata without any race condition.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn preseed_serve_metadata(
+        &self,
+        serve_id: &str,
+        addr: &str,
+        params: serde_json::Value,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
+    ) {
+        let mut serves = self.serves.write().await;
+        if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
+            s.profile = profile;
+            s.quick_run_id = quick_run_id;
+            s.origin = origin;
+            s.execute_id = execute_id;
+            s.workflow_id = workflow_id;
+            s.node_id = node_id;
+        } else {
+            serves.push(ServeInstance {
+                id: serve_id.to_string(),
+                addr: addr.to_string(),
+                params,
+                profile,
+                quick_run_id,
+                origin,
+                execute_id,
+                workflow_id,
+                node_id,
+            });
+        }
+        drop(serves);
+
+        info!("📡 Serve cache preseeded, emitting change");
+        crate::services::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+    }
+
+    /// Write profile and execution metadata directly onto the matching mount cache entry.
+    /// Must be called AFTER `force_check_mounted_remotes` so the entry exists.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn store_mount_profile(
+        &self,
+        mount_point: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+        workflow_id: Option<String>,
+        node_id: Option<String>,
+    ) {
+        let norm = normalize_mount_path(mount_point);
+        let mut mounts = self.mounted.write().await;
+        if let Some(m) = mounts
+            .iter_mut()
+            .find(|m| normalize_mount_path(&m.mount_point) == norm)
+        {
+            debug!(
+                "📌 Stored mount metadata: {mount_point} -> profile:{profile:?}, qr:{quick_run_id:?}"
+            );
+            m.profile = profile;
+            m.quick_run_id = quick_run_id;
+            m.origin = origin;
+            m.execute_id = execute_id;
+            m.workflow_id = workflow_id;
+            m.node_id = node_id;
+            drop(mounts);
+            crate::services::bridge::emit(
+                MOUNT_STATE_CHANGED,
+                crate::utils::constants::CACHE_UPDATED,
+            );
+        }
+    }
+
+    /// Write profile and execution metadata directly onto the matching serve cache entry.
+    /// Must be called AFTER `force_check_serves` so the entry exists.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn store_serve_profile(
+        &self,
+        serve_id: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+    ) {
+        let mut serves = self.serves.write().await;
+        if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
+            debug!(
+                "📌 Stored serve metadata: {serve_id} -> profile:{profile:?}, qr:{quick_run_id:?}"
+            );
+            s.profile = profile;
+            s.quick_run_id = quick_run_id;
+            s.origin = origin;
+            s.execute_id = execute_id;
+            drop(serves);
+            crate::services::bridge::emit(
+                SERVE_STATE_CHANGED,
+                crate::utils::constants::CACHE_UPDATED,
+            );
+        }
+    }
+
+    pub async fn get_mounted_remotes(&self) -> Vec<MountedRemote> {
+        self.mounted.read().await.clone()
+    }
+
+    pub async fn get_serves(&self) -> Vec<ServeInstance> {
+        self.serves.read().await.clone()
+    }
+
+    pub async fn get_remotes(&self) -> Vec<String> {
+        self.remotes.read().await.clone()
+    }
+
+    pub async fn get_configs(&self) -> serde_json::Value {
+        self.configs.read().await.clone()
+    }
+
+    pub async fn get_mount_profile(&self, mount_point: &str) -> Option<String> {
+        self.mounted
+            .read()
+            .await
+            .iter()
+            .find(|m| m.mount_point == mount_point)
+            .and_then(|m| m.profile.clone())
+    }
+
+    pub async fn get_serve_profile(&self, serve_id: &str) -> Option<String> {
+        self.serves
+            .read()
+            .await
+            .iter()
+            .find(|s| s.id == serve_id)
+            .and_then(|s| s.profile.clone())
+    }
+
+    pub async fn get_serve_by_id(&self, serve_id: &str) -> Option<ServeInstance> {
+        self.serves
+            .read()
+            .await
+            .iter()
+            .find(|s| s.id == serve_id)
+            .cloned()
+    }
+
+    pub async fn get_mount_by_point(&self, mount_point: &str) -> Option<MountedRemote> {
+        self.mounted
+            .read()
+            .await
+            .iter()
+            .find(|m| m.mount_point == mount_point)
+            .cloned()
+    }
+
+    // PROFILE RENAME — called when a profile is renamed in settings
+
+    /// Rename a profile in all mounted remotes for a given remote.
+    pub async fn rename_profile_in_mounts(
+        &self,
+        remote_name: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> usize {
+        let mut mounts = self.mounted.write().await;
+        let mut count = 0;
+        for mount in mounts.iter_mut() {
+            if mount.fs.starts_with(remote_name) && mount.profile.as_deref() == Some(old_name) {
+                mount.profile = Some(new_name.to_string());
+                count += 1;
+            }
+        }
+        count
+    }
+
+    /// Rename a profile in all serves for a given remote.
+    pub async fn rename_profile_in_serves(
+        &self,
+        remote_name: &str,
+        old_name: &str,
+        new_name: &str,
+    ) -> usize {
+        let mut serves = self.serves.write().await;
+        let mut count = 0;
+        for serve in serves.iter_mut() {
+            let fs_matches = serve
+                .params
+                .get("fs")
+                .and_then(|v| v.as_str())
+                .is_some_and(|fs| fs.starts_with(remote_name));
+            if fs_matches && serve.profile.as_deref() == Some(old_name) {
+                serve.profile = Some(new_name.to_string());
+                count += 1;
+            }
+        }
+        count
+    }
+}
+
+/// Check if a path is a local path (i.e. not a remote path).
+///
+/// Logically, a path in rclone is local if it does not refer to a remote config.
+/// Historically, we checked if it started with `/`, `\`, or had a Windows drive letter (e.g., `C:`).
+/// More robustly, we check if it has a colon `:` and the part before the colon is not a drive letter
+/// and doesn't contain path separators.
+#[must_use]
+pub fn is_local_path(path: &str) -> bool {
+    // If there is no colon, it's definitely a local path
+    let Some(colon_idx) = path.find(':') else {
+        return true;
+    };
+
+    // If the colon is at index 1 (like C: or C:\), it's a drive letter (local path)
+    if colon_idx == 1 {
+        return true;
+    }
+
+    // If there is a path separator before the first colon, the colon is part of the path (local path)
+    let remote_part = &path[..colon_idx];
+    if remote_part.contains('/') || remote_part.contains('\\') {
+        return true;
+    }
+
+    // Otherwise, it starts with a remote name (e.g., "remote:path"), so it's not a local path
+    false
+}
+
+pub async fn get_cached_remotes(app: AppHandle) -> Result<Vec<String>, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_remotes()
+        .await)
+}
+
+pub async fn get_configs(app: AppHandle) -> Result<serde_json::Value, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_configs()
+        .await)
+}
+
+/// Get all remote settings from rcman sub-settings (including orphaned remotes)
+pub async fn get_settings(
+    app: AppHandle,
+) -> Result<std::collections::HashMap<String, crate::utils::types::remotes::RemoteSettings>, String>
+{
+    let manager = app.state::<AppSettingsManager>();
+    Ok(crate::utils::types::remotes::RemoteSettings::load_all(
+        manager.inner(),
+    ))
+}
+
+pub async fn get_cached_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_mounted_remotes()
+        .await)
+}
+
+pub async fn get_cached_serves(app: AppHandle) -> Result<Vec<ServeInstance>, String> {
+    Ok(app
+        .state::<BackendManager>()
+        .remote_cache
+        .get_serves()
+        .await)
+}
+
+/// Rename a profile in all cached mounts
+pub async fn rename_mount_profile_in_cache(
+    app: AppHandle,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    let updated = app
+        .state::<BackendManager>()
+        .remote_cache
+        .rename_profile_in_mounts(&remote_name, &old_name, &new_name)
+        .await;
+
+    if updated > 0 {
+        crate::services::bridge::emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+    }
+
+    Ok(updated)
+}
+
+/// Rename a profile in all cached serves
+pub async fn rename_serve_profile_in_cache(
+    app: AppHandle,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    let updated = app
+        .state::<BackendManager>()
+        .remote_cache
+        .rename_profile_in_serves(&remote_name, &old_name, &new_name)
+        .await;
+
+    if updated > 0 {
+        crate::services::bridge::emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+    }
+
+    Ok(updated)
+}
+
+/// Normalize a mount path for robust equality comparison across platforms and slashes.
+pub fn normalize_mount_path(path: &str) -> String {
+    let p = path.replace('\\', "/");
+    let trimmed = p.trim_end_matches('/');
+    if trimmed.is_empty() {
+        p
+    } else {
+        trimmed.to_string()
+    }
+}
+
+impl Default for RemoteCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_mount_path() {
+        assert_eq!(normalize_mount_path("/mnt/drive/"), "/mnt/drive");
+        assert_eq!(normalize_mount_path("/mnt/drive"), "/mnt/drive");
+        assert_eq!(normalize_mount_path(r"C:\mnt\drive\"), "C:/mnt/drive");
+        assert_eq!(normalize_mount_path(r"C:\mnt\drive"), "C:/mnt/drive");
+        assert_eq!(normalize_mount_path("/"), "/");
+    }
+
+    #[test]
+    fn test_merge_mount_profiles_preserves_metadata() {
+        let existing = vec![MountedRemote {
+            fs: "drive:".to_string(),
+            mount_point: "/mnt/drive".to_string(),
+            profile: Some("my-profile".to_string()),
+            quick_run_id: Some("qr-123".to_string()),
+            origin: Some(crate::utils::types::origin::Origin::QuickRun),
+            execute_id: Some("exec-1".to_string()),
+            workflow_id: Some("wf-1".to_string()),
+            node_id: Some("node-1".to_string()),
+        }];
+
+        // Incoming mount from rclone with trailing slash
+        let incoming = vec![MountedRemote::new("drive:", "/mnt/drive/")];
+
+        let merged = RemoteCache::merge_mount_profiles(incoming, &existing);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].profile.as_deref(), Some("my-profile"));
+        assert_eq!(merged[0].quick_run_id.as_deref(), Some("qr-123"));
+        assert_eq!(merged[0].execute_id.as_deref(), Some("exec-1"));
+        assert_eq!(merged[0].workflow_id.as_deref(), Some("wf-1"));
+        assert_eq!(merged[0].node_id.as_deref(), Some("node-1"));
+        assert_eq!(
+            merged[0].origin,
+            Some(crate::utils::types::origin::Origin::QuickRun)
+        );
+    }
+
+    #[test]
+    fn test_is_local_path() {
+        // Local path cases
+        assert!(is_local_path("/absolute/path/on/linux"));
+        assert!(is_local_path("relative/path/on/linux"));
+        assert!(is_local_path(r"C:\absolute\path\on\windows"));
+        assert!(is_local_path(r"d:\some\path"));
+        assert!(is_local_path("c:relative/path"));
+        assert!(is_local_path(r"\relative\backslash\path"));
+        assert!(is_local_path("/path/with:colon/in/middle"));
+        assert!(is_local_path(""));
+
+        // Remote path cases
+        assert!(!is_local_path("remote:"));
+        assert!(!is_local_path("my-remote:bucket/file.txt"));
+        assert!(!is_local_path("s3:path"));
+        assert!(!is_local_path("folder:name/file.txt"));
+    }
+
+    #[tokio::test]
+    async fn test_update_mounts_preserves_profiles_and_detects_changes() {
+        let cache = RemoteCache::new();
+        let mounts1 = vec![MountedRemote {
+            fs: "drive:".to_string(),
+            mount_point: "/mnt/drive".to_string(),
+            profile: Some("profile-a".to_string()),
+            quick_run_id: None,
+            origin: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+        }];
+
+        // Initial update: should return true (changed from empty)
+        let changed = cache.update_mounts_if_changed(mounts1.clone()).await;
+        assert!(changed);
+        assert_eq!(cache.get_mounted_remotes().await.len(), 1);
+
+        // Same mounts: should return false (no change)
+        let changed_same = cache.update_mounts_if_changed(mounts1).await;
+        assert!(!changed_same);
+    }
+
+    #[tokio::test]
+    async fn test_update_serves_preserves_profiles_and_detects_changes() {
+        let cache = RemoteCache::new();
+        let serves1 = vec![ServeInstance {
+            id: "serve-1".to_string(),
+            addr: "127.0.0.1:8080".to_string(),
+            params: json!({"fs": "myremote:"}),
+            profile: Some("srv-profile".to_string()),
+            quick_run_id: None,
+            origin: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+        }];
+
+        // Initial update: should return true (changed from empty)
+        let changed = cache.update_serves_if_changed(serves1.clone()).await;
+        assert!(changed);
+        assert_eq!(cache.get_serves().await.len(), 1);
+
+        // Same serves: should return false (no change)
+        let changed_same = cache.update_serves_if_changed(serves1).await;
+        assert!(!changed_same);
+    }
+}

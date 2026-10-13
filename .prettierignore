@@ -4,7 +4,7 @@ dist/
 build/
 *.min.js
 *.min.css
-src-tauri/target/
-src-tauri/gen/
+backend/target/
+backend/desktop/gen/
 CHANGELOG.md
 package-lock.json

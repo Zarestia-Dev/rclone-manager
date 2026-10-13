@@ -6,7 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Standalone Web Server**: Added `rclone-manager-server`, a dedicated server executable that runs without Tauri, GTK, WebKit, or a desktop session. Server archives are built independently from the tray-enabled headless installers, with Linux, Windows, and macOS builds for x86_64 and aarch64, plus a Linux systemd service template.
+- **Configuration Vault**: Added master-password protection for application settings and sub-settings, with a lock screen, manual locking, password changes, and configurable inactivity auto-lock. Backup exports now explain that vault protection does not automatically encrypt exported files and offer separate backup encryption.
+- **Empty Directory Uploads**: Nautilus uploads now preserve empty directories, including uploads through the web server.
+- **Optional Mount Driver Checks**: Added an option to skip mount plugin checks and dismiss related setup warnings when mounting is not needed.
+
+### Changed
+
+- **Separate Rust Desktop, Server, and Shared Core**: Replaced the `src-tauri` layout with a Cargo workspace under `backend/`: `core` owns shared application logic, `desktop` owns Tauri and native integrations, and `server` owns HTTP and standalone server startup. Native packaging lives with desktop, while server deployment documentation and service files live with server. Build scripts and CI now use the workspace paths.
+- **Embedded Release Resources**: Release server binaries embed the Angular interface. Desktop, portable, and server releases also embed backend translations and shared OAuth/serve templates, removing the need to distribute adjacent translation and template files. Templates are materialized in the application cache when Rclone needs a file path and recreated if missing. Debug builds continue to read source assets from disk; settings, logs, and the separately managed Rclone executable remain external.
+- **Server Build and Distribution**: `npm run build:server` now builds Angular before compiling the standalone server. Docker uses the standalone executable, and server archives no longer ship a separate `browser/` directory. The tray-enabled server remains available as `rclone-manager-headless`, with its own release workflow.
+- **Shared Runtime Boundaries**: Separated host-specific CLI options, product metadata, exit confirmation, and desktop event delivery from shared application logic. Backend events continue to reach desktop through Tauri and web clients through SSE.
+- **Frontend Maintenance**: Consolidated form validators, remote-card components, operation filters, and shared styles. Expanded regression coverage for file browsing, navigation, updates, and workflow behavior.
+
 ### Fixed
+
+- **Update Download State**: Improved application and Rclone update cancellation and concurrent request handling so update checks do not overwrite active downloads or staged updates.
+- **Navigation and File Browser State**: Fixed duplicate history entries, Back/Forward restoration, and nested overlay closing. Improved Nautilus tab dragging and detachment, preserving tabs when opening a new window fails and closing the correct tab after asynchronous reordering.
+- **Context-Aware Templates**: Applying a configuration template now respects the selected editing context; VFS profile links are only offered for operations that support them.
+- **Upload Cleanup**: Rejected upload requests now clean up files already staged before validation fails.
+- **Typed Server Errors**: Server port conflicts now use the operating system's error kind. Rclone HTTP status codes remain structured through the transport and poller, preventing unrelated error text from being mistaken for a 401/403 authentication failure.
+- **Standalone Server Shutdown**: Added bounded HTTP connection draining and shared cleanup for server shutdown, including Unix SIGINT/SIGTERM handling.
+- **macOS Packaging Metadata**: Consolidated the native entitlement and Info.plist configuration, fixed missing entitlement file references, and removed unused camera and microphone permissions.
 - **Android Bisync Permission Denied on Workdir**: Fixed an issue where running `bisync` operations on Android failed immediately with `failed to create workdir: mkdir /data/local/tmp/rclone: permission denied`. In-process `librclone` now routes the default bisync working directory to the application's internal writable cache storage instead of defaulting to `/data/local/tmp`. Fixes #307
 
 ## [v0.3.3] - 2026-09-23

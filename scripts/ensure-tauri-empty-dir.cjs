@@ -1,4 +1,4 @@
 const fs = require('fs');
 
 // Ensure Tauri headless frontendDist placeholder exists.
-fs.mkdirSync('src-tauri/empty', { recursive: true });
+fs.mkdirSync('backend/desktop/empty', { recursive: true });

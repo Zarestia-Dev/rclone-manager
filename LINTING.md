@@ -58,7 +58,7 @@ The project automatically runs linting and formatting on staged files before eac
 
 If you encounter errors during pre-commit:
 
-1. **Rust formatting errors**: Ensure you're in the project root directory and `src-tauri/Cargo.toml` exists
+1. **Rust formatting errors**: Ensure you're in the project root directory and `backend/desktop/Cargo.toml` exists
 2. **ESLint/Prettier SIGKILL errors**: Usually caused by insufficient memory or conflicting processes
 3. **To bypass hooks temporarily**: Use `git commit --no-verify` (not recommended for main branch)
 
@@ -73,13 +73,13 @@ If the pre-commit hooks fail, you'll see errors like:
 `cargo metadata` exited with an error: error: could not find `Cargo.toml` in `/home/hakan/Documents/GitHub/rclone-manager` or any parent directory
 ```
 
-This usually indicates that the Rust commands are not running from the correct directory. The fix is to ensure that the lint-staged configuration uses shell commands that properly change to the `src-tauri` directory.
+This usually indicates that the Rust commands are not running from the correct directory. The fix is to ensure that the lint-staged configuration uses shell commands that properly change to the `backend/desktop` directory.
 
 ### Common Issues and Solutions
 
 1. **TOML Parse Errors**: If you see "duplicate key" errors, check:
-   - `src-tauri/Cargo.toml` for duplicate keys
-   - `src-tauri/rustfmt.toml` for conflicting configuration options
+   - `backend/desktop/Cargo.toml` for duplicate keys
+   - `backend/rustfmt.toml` for conflicting configuration options
    - Ensure the Rust edition is valid (2015, 2018, 2021)
 
 2. **ESLint Errors**: The project has strict linting rules. Common issues:
@@ -105,8 +105,8 @@ npm run format        # Format code
 npm run lint:rust     # Check for warnings
 npm run format:rust   # Format code
 
-# Or run directly in src-tauri directory
-cd src-tauri
+# Or run directly in backend/desktop directory
+cd backend/desktop
 cargo fmt             # Format code
 cargo clippy -- -D warnings  # Check for warnings
 ```
@@ -124,8 +124,8 @@ git commit --no-verify -m "commit message"
 - `.eslintrc.js` - ESLint configuration
 - `.prettierrc.json` - Prettier configuration
 - `.prettierignore` - Prettier ignore patterns
-- `src-tauri/.clippy.toml` - Clippy configuration
-- `src-tauri/rustfmt.toml` - Rustfmt configuration
+- `backend/.clippy.toml` - Clippy configuration
+- `backend/rustfmt.toml` - Rustfmt configuration
 - `.vscode/settings.json` - VS Code integration settings
 
 ## VS Code Integration

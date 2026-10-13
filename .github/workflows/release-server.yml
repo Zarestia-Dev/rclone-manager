@@ -1,0 +1,183 @@
+name: 'Release Server'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-headless
+  cancel-in-progress: false
+
+# Shares the release tag with tray packages, but has no dependency on their builds.
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release-id: ${{ steps.release.outputs.result }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check release versions
+        id: version
+        shell: python
+        run: |
+          import json, os, tomllib
+          from pathlib import Path
+          version = tomllib.loads(Path('backend/Cargo.toml').read_text())['workspace']['package']['version']
+          native = json.loads(Path('backend/desktop/tauri.conf.headless.json').read_text())['version']
+          if version != native:
+              raise SystemExit(f'Server version {version} differs from tray version {native}')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+      - name: Prepare shared draft release
+        id: release
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        with:
+          script: |
+            const tag = `headless-v${process.env.VERSION}`;
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            });
+            const existing = releases.find(release => release.tag_name === tag);
+            if (existing) {
+              if (!existing.draft) throw new Error(`Refusing to replace published release ${tag}`);
+              return existing.id;
+            }
+            const { data } = await github.rest.repos.createRelease({
+              ...context.repo,
+              tag_name: tag,
+              target_commitish: context.sha,
+              name: `RClone Manager Headless v${process.env.VERSION}`,
+              body: [
+                '## Server',
+                '`rclone-manager-server_*` archives contain the standalone web server with embedded browser UI, translations, and templates.',
+                'Linux, Windows, and macOS: x86_64 and aarch64. No Tauri or desktop session required.',
+                'Linux: glibc 2.35+ and the D-Bus runtime library; FUSE is needed for mounts.',
+                'Extract the whole archive and run rclone-manager-server (with .exe on Windows).',
+                '',
+                '## Server + Tray',
+                'The rclone-manager-headless native installers include a tray and native updater.',
+                'These require desktop runtime libraries and a display session on Linux.',
+                '',
+                'Stop standalone services before replacing the executable. Preserve application data.',
+              ].join('\n'),
+              draft: true,
+              prerelease: false,
+            });
+            return data.id;
+
+  build-server:
+    needs: prepare-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            os: linux
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            os: linux
+            arch: aarch64
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            os: windows
+            arch: x86_64
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            os: windows
+            arch: aarch64
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            os: macos
+            arch: x86_64
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            os: macos
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install server build dependencies (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libdbus-1-dev libssl-dev
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './backend -> target'
+          key: server-${{ matrix.target }}
+      - name: Build browser UI
+        run: |
+          npm ci
+          npm run build
+      - name: Build standalone server
+        run: cargo build --locked --release --manifest-path backend/Cargo.toml -p rclone-manager-server --target ${{ matrix.target }}
+      - name: Package server with resources
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          TARGET: ${{ matrix.target }}
+          PACKAGE_OS: ${{ matrix.os }}
+          PACKAGE_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          package="rclone-manager-server_${VERSION}_${PACKAGE_OS}_${PACKAGE_ARCH}"
+          binary=rclone-manager-server
+          if [ "$PACKAGE_OS" = windows ]; then binary="$binary.exe"; fi
+          mkdir -p "staging/$package" artifacts
+          cp "backend/target/$TARGET/release/$binary" "staging/$package/"
+          cp backend/server/README.md "staging/$package/README.md"
+          cp LICENSE "staging/$package/"
+          if [ "$PACKAGE_OS" = windows ]; then
+            export SERVER_PACKAGE="$package"
+            pwsh -NoProfile -Command 'Compress-Archive -Path "staging/$env:SERVER_PACKAGE" -DestinationPath "artifacts/$env:SERVER_PACKAGE.zip"'
+          else
+            tar -czf "artifacts/$package.tar.gz" -C staging "$package"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.target }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  upload-server:
+    needs: [prepare-release, build-server]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: server-*
+          path: artifacts
+          merge-multiple: true
+      - name: Attach server archives to the shared draft
+        working-directory: artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="headless-v$VERSION"
+          if [ "$(gh release view "$tag" --json isDraft --jq .isDraft)" != true ]; then
+            echo "Refusing to change a published release" >&2
+            exit 1
+          fi
+          sha256sum rclone-manager-server_* > server-SHA256SUMS
+          gh release upload "$tag" rclone-manager-server_* server-SHA256SUMS --clobber

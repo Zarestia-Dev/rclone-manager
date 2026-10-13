@@ -9,7 +9,9 @@ const args = new Set(process.argv.slice(2));
 const strictMode = args.has('--strict');
 const jsonMode = args.has('--json');
 
-const backendFiles = collectFiles(path.join(repoRoot, 'src-tauri', 'src'), ['.rs']);
+const backendFiles = ['core', 'server', 'desktop'].flatMap(crate =>
+  collectFiles(path.join(repoRoot, 'backend', crate, 'src'), ['.rs'])
+);
 const frontendFiles = collectFiles(path.join(repoRoot, 'src'), ['.ts', '.html']);
 const localeFiles = collectLocaleFiles(i18nRoot);
 

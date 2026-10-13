@@ -1,0 +1,305 @@
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use std::collections::HashMap;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use crate::utils::types::rclone::CheckResult;
+
+#[cfg(not(target_os = "ios"))]
+use crate::utils::types::events::NETWORK_STATUS_CHANGED;
+#[cfg(not(target_os = "ios"))]
+use crate::utils::types::monitoring::NetworkStatusPayload;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub async fn check_links(
+    links: Vec<String>,
+    max_retries: usize,
+    retry_delay_secs: u64,
+) -> Result<CheckResult, String> {
+    let checker = LinkChecker::new(max_retries, retry_delay_secs);
+    checker.check_links(&links).await.map_err(|e| e.to_string())
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub struct LinkChecker {
+    pub client: reqwest::Client,
+    pub max_retries: usize,
+    pub retry_delay: std::time::Duration,
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+impl LinkChecker {
+    fn new(max_retries: usize, retry_delay_secs: u64) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        Self {
+            client,
+            max_retries,
+            retry_delay: std::time::Duration::from_secs(retry_delay_secs),
+        }
+    }
+
+    async fn check_links(
+        &self,
+        links: &[String],
+    ) -> Result<CheckResult, Box<dyn std::error::Error>> {
+        let links_vec = links.to_vec();
+
+        let successful = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
+        let failed = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+        let retries_used = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+
+        let mut handles = vec![];
+
+        for link in links_vec {
+            let checker = self.client.clone();
+            let max_retries = self.max_retries;
+            let retry_delay = self.retry_delay;
+            let successful = successful.clone();
+            let failed = failed.clone();
+            let retries_used = retries_used.clone();
+
+            handles.push(crate::utils::spawn(async move {
+                let mut last_error = None;
+                let mut retries = 0;
+
+                while retries <= max_retries {
+                    match checker.get(&link).send().await {
+                        Ok(response) => {
+                            if response.status().is_success() {
+                                successful.lock().await.push(link.clone());
+                                retries_used.lock().await.insert(link.clone(), retries);
+                                return;
+                            }
+                            last_error = Some(format!("HTTP status: {}", response.status()));
+                        }
+                        Err(e) => {
+                            last_error = Some(e.to_string());
+                        }
+                    }
+
+                    if retries < max_retries {
+                        tokio::time::sleep(retry_delay).await;
+                    }
+                    retries += 1;
+                }
+
+                failed.lock().await.insert(
+                    link.clone(),
+                    last_error.unwrap_or_else(|| "Unknown error".to_string()),
+                );
+                retries_used.lock().await.insert(link.clone(), retries - 1);
+            }));
+        }
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            let _ = handle.await;
+        }
+
+        let successful = successful.lock().await.clone();
+        let failed = failed.lock().await.clone();
+        let retries_used = retries_used.lock().await.clone();
+
+        Ok(CheckResult {
+            successful,
+            failed,
+            retries_used,
+        })
+    }
+}
+
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+#[must_use]
+pub fn is_metered() -> bool {
+    std::thread::spawn(|| {
+        use zbus::blocking::{Connection, Proxy};
+
+        let connection = match Connection::system() {
+            Ok(c) => c,
+            Err(e) => {
+                log::debug!("Failed to connect to D-Bus for metered network check: {e}");
+                return false;
+            }
+        };
+
+        let proxy = match Proxy::new(
+            &connection,
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
+            "org.freedesktop.NetworkManager",
+        ) {
+            Ok(p) => p,
+            Err(e) => {
+                log::debug!("NetworkManager D-Bus proxy error: {e}");
+                return false;
+            }
+        };
+
+        match proxy.get_property::<u32>("Metered") {
+            Ok(status) => matches!(status, 1 | 3),
+            Err(e) => {
+                log::debug!("Failed to read Metered property: {e}");
+                false
+            }
+        }
+    })
+    .join()
+    .unwrap_or(false)
+}
+
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+use {futures::StreamExt, zbus::Connection};
+
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+pub async fn monitor_network_changes() {
+    let connection = match Connection::system().await {
+        Ok(c) => c,
+        Err(e) => {
+            log::debug!("Failed to connect to D-Bus for network change monitoring: {e}");
+            return;
+        }
+    };
+
+    let proxy = match zbus::Proxy::new(
+        &connection,
+        "org.freedesktop.NetworkManager",
+        "/org/freedesktop/NetworkManager",
+        "org.freedesktop.NetworkManager",
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(e) => {
+            log::debug!("Failed to create NetworkManager D-Bus proxy: {e}");
+            return;
+        }
+    };
+
+    let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
+    log::info!("Listening for NetworkManager 'Metered' property changes...");
+
+    while let Some(_metered_status) = metered_changed_stream.next().await {
+        log::debug!("'Metered' property changed!");
+        let payload = NetworkStatusPayload {
+            is_metered: is_metered(),
+        };
+
+        crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
+    }
+}
+
+#[cfg(all(target_os = "linux", not(feature = "desktop")))]
+#[must_use]
+pub fn is_metered() -> bool {
+    log::debug!(
+        "is_metered: headless/server mode does not support metered network detection, returning false."
+    );
+    false
+}
+
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "linux", not(feature = "desktop"))
+))]
+pub async fn monitor_network_changes() {
+    let payload = NetworkStatusPayload { is_metered: false };
+    crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
+}
+
+#[cfg(target_os = "macos")]
+pub fn is_metered() -> bool {
+    // macOS does not support metered network detection.
+    // Always return false.
+    log::info!("is_metered: macOS does not support metered network detection, returning false.");
+    false
+}
+
+#[cfg(windows)]
+pub fn is_metered() -> bool {
+    use windows::Networking::Connectivity::{NetworkCostType, NetworkInformation};
+
+    let profile = match NetworkInformation::GetInternetConnectionProfile() {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
+    let cost = match profile.GetConnectionCost() {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    matches!(
+        cost.NetworkCostType()
+            .unwrap_or(NetworkCostType::Unrestricted),
+        NetworkCostType::Fixed | NetworkCostType::Variable
+    )
+}
+
+#[cfg(windows)]
+pub async fn monitor_network_changes() {
+    use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
+    let handler = NetworkStatusChangedEventHandler::new(move |_| {
+        let payload = NetworkStatusPayload {
+            is_metered: is_metered(),
+        };
+        crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
+        Ok(())
+    });
+
+    if let Err(e) = NetworkInformation::NetworkStatusChanged(&handler) {
+        log::error!("Failed to register network status changed handler: {e}");
+    }
+}
+
+#[cfg(target_os = "android")]
+#[must_use]
+pub fn is_metered() -> bool {
+    crate::rclone::backend::saf_bridge::is_network_metered()
+}
+
+#[cfg(target_os = "android")]
+pub async fn monitor_network_changes() {
+    use tokio::time::{Duration, sleep};
+
+    let mut last_metered = is_metered();
+    log::info!("Starting Android network status monitor (initial metered: {last_metered})");
+
+    loop {
+        sleep(Duration::from_secs(5)).await;
+        let current_metered = is_metered();
+        if current_metered != last_metered {
+            log::info!(
+                "Android metered network status changed: {last_metered} -> {current_metered}"
+            );
+            last_metered = current_metered;
+            let payload = NetworkStatusPayload {
+                is_metered: current_metered,
+            };
+            crate::services::bridge::emit(NETWORK_STATUS_CHANGED, payload);
+        }
+    }
+}
+
+pub async fn is_network_metered() -> Result<bool, String> {
+    #[cfg(target_os = "linux")]
+    return Ok(is_metered());
+
+    #[cfg(windows)]
+    return Ok(is_metered());
+
+    #[cfg(target_os = "macos")]
+    return Ok(is_metered());
+
+    #[cfg(target_os = "android")]
+    return Ok(is_metered());
+
+    #[cfg(not(any(
+        windows,
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "android"
+    )))]
+    return Ok(false); // Default for unsupported platforms
+}

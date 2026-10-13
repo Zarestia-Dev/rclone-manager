@@ -40,6 +40,11 @@ jobs:
             echo "::error::Frontend build emitted warnings"
             exit 1
           fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-ui
+          path: dist/rclone-manager/browser
+          retention-days: 1
       - run: npm run test:ci
 
   validate:
@@ -52,7 +57,7 @@ jobs:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     defaults:
       run:
-        working-directory: src-tauri
+        working-directory: backend
         shell: bash
     env:
       # Type-check mobile FFI without building the external Go archive.
@@ -66,7 +71,7 @@ jobs:
           components: clippy, rustfmt
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: './backend -> target'
           save-if: ${{ github.event_name == 'push' }}
       - name: Install Linux libraries
         if: runner.os == 'Linux'
@@ -77,31 +82,61 @@ jobs:
         run: mkdir -p ../dist/rclone-manager/browser
       - name: Rust formatting
         if: runner.os == 'Linux'
-        run: cargo fmt -- --check
+        run: cargo fmt --all -- --check
       - name: Desktop and Portable
         run: |
           for features in desktop desktop,tray portable; do
-            cargo clippy --locked --no-default-features --features "$features" -- -D warnings
+            cargo clippy --locked -p rclone-manager --no-default-features --features "$features" -- -D warnings
           done
       - name: Pure web server
-        run: cargo clippy --locked --no-default-features --features web-server -- -D warnings
+        run: cargo clippy --locked -p rclone-manager-server -- -D warnings
       - name: Web server with tray and updater
         run: |
-          export TAURI_CONFIG="$(cat tauri.conf.headless.json)"
-          cargo clippy --locked --no-default-features --features web-server,tray,updater -- -D warnings
+          export TAURI_CONFIG="$(cat desktop/tauri.conf.headless.json)"
+          cargo clippy --locked -p rclone-manager --no-default-features --features web-server,tray,updater -- -D warnings
       - name: Linux and mobile variants
         if: runner.os == 'Linux'
         run: |
           for features in flatpak mobile; do
-            cargo clippy --locked --no-default-features --features "$features" -- -D warnings
+            cargo clippy --locked -p rclone-manager --no-default-features --features "$features" -- -D warnings
           done
       - name: Server unit tests
         if: runner.os == 'Linux'
-        run: cargo test --locked --no-default-features --features web-server --lib
+        run: |
+          cargo test --locked -p rclone-manager-core
+          cargo test --locked -p rclone-manager-server --lib
       - name: Native unit tests
         if: runner.os == 'Linux'
         run: |
+          cargo test --locked -p rclone-manager-core --features desktop,tray,updater,notifications,autostart --lib
           # Graphics tests mutate process environment variables.
           for features in desktop desktop,tray,tauri-test; do
-            cargo test --locked --no-default-features --features "$features" --lib -- --test-threads=1
+            cargo test --locked -p rclone-manager --no-default-features --features "$features" --lib -- --test-threads=1
           done
+
+  embedded-server:
+    name: Embedded server UI
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: browser-ui
+          path: dist/rclone-manager/browser
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './backend -> target'
+          key: embedded-server
+      - run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev libssl-dev pkg-config
+      - run: cargo clippy --locked --release -p rclone-manager-server --all-targets -- -D warnings
+      - run: cargo test --locked --release -p rclone-manager-server --lib
