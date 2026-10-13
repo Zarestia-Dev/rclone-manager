@@ -2,7 +2,6 @@ import {
   Component,
   HostListener,
   OnInit,
-  OnDestroy,
   computed,
   inject,
   signal,
@@ -10,60 +9,47 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { UpperCasePipe, DecimalPipe, DatePipe } from '@angular/common';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import {
-  RemoteFileOperationsService,
-  NautilusService,
-  RemoteFacadeService,
-  ModalService,
-  IconService,
-  RemoteMetadataService,
-  PathService,
-  JobManagementService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
-import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
+import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
+import { NautilusService } from '../../../services/ui/nautilus.service';
+import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { IconService } from '../../../services/ui/icon.service';
+import { RemoteManagementService } from '../../../services/remote/remote-management.service';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption, ExplorerRoot } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
-interface ExpiryOption {
-  value: string;
-  label: string;
-}
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { getShareInfo, ItemShareInfo } from '../../../shared/utils';
 
 @Component({
   selector: 'app-properties-modal',
-  standalone: true,
   imports: [
     UpperCasePipe,
     DecimalPipe,
     DatePipe,
-    MatDialogModule,
-    MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
     MatDividerModule,
-    MatTooltipModule,
     MatSelectModule,
     MatFormFieldModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './properties-modal.component.html',
   styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PropertiesModalComponent implements OnInit, OnDestroy {
-  private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
-  public data: {
+export class PropertiesModalComponent implements OnInit {
+  private readonly dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
+  public readonly data: {
     remoteName: string;
     path: string;
     isLocal: boolean;
@@ -79,17 +65,24 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
-  private readonly remoteMetadata = inject(RemoteMetadataService);
+  private readonly remoteService = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      void this.stopReadJobs();
+    });
+  }
+
   // Derived properties (pure data derivations)
   readonly displayLocation: string = this.pathService.getFullDisplayPath(
-    this.data.isLocal
-      ? ({ name: this.data.remoteName, isLocal: true } as any)
-      : ({ name: this.data.remoteName, isLocal: false } as any),
+    {
+      name: this.data.remoteName,
+      isLocal: this.data.isLocal,
+      type: this.data.remoteType ?? '',
+    } as ExplorerRoot,
     this.data.path
   );
 
@@ -97,38 +90,50 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     ? '/'
     : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
-  readonly hashPath: string = ((): string => {
-    const { remoteName, path, isLocal, item } = this.data;
-    if (isLocal) {
-      return this.pathService.joinPath(remoteName, path || item?.Path || item?.Name || '');
-    }
-    return path;
-  })();
+  readonly hashPath: string = this.data.isLocal
+    ? this.pathService.joinPath(
+        this.data.remoteName,
+        this.data.path || this.data.item?.Path || this.data.item?.Name || ''
+      )
+    : this.data.path;
 
   // Separate loading states
-  readonly loadingStat = signal(true);
+  readonly loadingStat = signal(false);
   readonly loadingSize = signal(false);
   readonly loadingDiskUsage = signal(true);
   readonly loadingHashes = signal(false);
 
-  readonly item = signal<Entry | null>(null);
+  readonly item = signal<Entry | null>(this.data.item ?? null);
+  readonly shareInfo = computed<ItemShareInfo>(() =>
+    getShareInfo(this.item(), this.data.remoteType, this.data.remoteName)
+  );
   readonly size = signal<{ count: number; bytes: number } | null>(null);
   readonly diskUsage = signal<{ total?: number; used?: number; free?: number } | null>(null);
+
+  // Metadata overlay state
+  readonly showMetadataOverlay = signal(false);
+  readonly loadingMetadata = signal(true);
+  readonly metadataEntries = computed<{ key: string; value: string }[]>(() => {
+    const md = this.item()?.Metadata;
+    if (!md) return [];
+
+    return Object.entries(md)
+      .filter(([_, val]) => val !== undefined && val !== null && val !== '')
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  });
 
   // Hash related state
   readonly supportedHashes = signal<string[]>([]);
   readonly fileHashes = signal<Record<string, string>>({});
   readonly loadingHashTypes = signal<Set<string>>(new Set()); // Track which hash types are currently loading
   readonly hashError = signal<string | null>(null);
-  readonly copiedHash = signal<string | null>(null); // Track which hash was just copied
-  readonly copiedBulkHash = signal(false); // Track if bulk hash was copied
 
   // Public Link state
   readonly supportsPublicLink = signal(false);
   readonly publicLinkUrl = signal<string | null>(null);
   readonly loadingPublicLink = signal(false);
   readonly publicLinkError = signal<string | null>(null);
-  readonly copiedLink = signal(false);
   readonly selectedExpiry = signal(''); // Empty = no expiry
 
   // Expiry options for public links
@@ -169,11 +174,10 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   readonly bulkHashError = signal<string | null>(null);
 
   ngOnInit(): void {
-    const { remoteName, path, isLocal, item } = this.data;
+    const { remoteName, path, isLocal } = this.data;
 
-    // Set the item immediately
-    this.item.set(item ?? null);
-    this.loadingStat.set(false);
+    // Load full stat with metadata
+    void this.loadStat();
 
     const currentItem = this.item();
     const targetIsDir = currentItem ? !!currentItem.IsDir : true;
@@ -196,24 +200,57 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     }
 
     // 2. Get Disk Usage - try cache first for remote roots
-    this.loadDiskUsage(remoteName, path, isLocal, item);
+    this.loadDiskUsage(remoteName, path, isLocal);
 
     // 3. Load remote features (hashes, public links, etc.)
     this.loadRemoteFeatures();
   }
 
-  /**
-   * Load disk usage - uses centralized method that handles caching
-   */
-  private async loadDiskUsage(
-    remoteName: string,
-    path: string,
-    isLocal: boolean,
-    item: Entry | null | undefined
-  ): Promise<void> {
+  private async loadStat(): Promise<void> {
+    const hasInitialItem = Boolean(this.item());
+    if (!hasInitialItem) {
+      this.loadingStat.set(true);
+    }
+    this.loadingMetadata.set(true);
     try {
-      // For remote roots, use centralized caching method
-      if (!isLocal && (!path || path === '/')) {
+      let statRemote = this.fsRemote;
+      let statPath = this.data.path;
+
+      if (this.data.isLocal) {
+        const localPath = this.pathService.joinPath(
+          this.data.remoteName,
+          this.data.path || this.data.item?.Path || this.data.item?.Name || ''
+        );
+        const split = this.pathService.splitLocalForStat(localPath);
+        statRemote = split.root;
+        statPath = split.relative;
+      }
+
+      const res = await this.remoteOps.getStat(
+        statRemote,
+        statPath,
+        { metadata: true },
+        'filemanager',
+        this.readJobGroup
+      );
+      if (res?.item) {
+        this.item.set(res.item);
+        if (!res.item.IsDir && this.size() === null) {
+          this.size.set({ count: 1, bytes: res.item.Size });
+        }
+      }
+    } catch (err) {
+      console.debug('Failed to getStat with metadata:', err);
+    } finally {
+      this.loadingStat.set(false);
+      this.loadingMetadata.set(false);
+    }
+  }
+
+  private async loadDiskUsage(remoteName: string, path: string, isLocal: boolean): Promise<void> {
+    try {
+      // For remote paths, use centralized caching method on the remote root
+      if (!isLocal) {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           this.pathService.normalizeRemoteForRclone(remoteName),
@@ -222,28 +259,15 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         );
 
         if (diskUsage) {
-          this.diskUsage.set({
-            total: diskUsage.total_space,
-            used: diskUsage.used_space,
-            free: diskUsage.free_space,
-          });
+          this.diskUsage.set(diskUsage);
         }
-        this.loadingDiskUsage.set(false);
         return;
       }
 
-      // Fall back to direct API call for subdirectories or local paths
-      let diskUsageRemote = remoteName;
-      let diskUsagePath = path;
-
-      if (isLocal && !(item && item.IsDir)) {
-        diskUsageRemote = this.pathService.getParentPath(remoteName) || '/';
-        diskUsagePath = '';
-      }
-
+      // Fall back to direct API call for local paths (resolved by backend if it's a file)
       const diskUsage = await this.remoteOps.getDiskUsage(
-        diskUsageRemote,
-        diskUsagePath,
+        remoteName,
+        path,
         'filemanager',
         this.readJobGroup
       );
@@ -255,11 +279,8 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Load remote features (supported hashes and special capabilities like public links)
-   */
   private async loadRemoteFeatures(): Promise<void> {
-    const { remoteName, isLocal } = this.data;
+    const { remoteName } = this.data;
 
     this.loadingHashes.set(true);
     this.hashError.set(null);
@@ -269,19 +290,19 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       const baseName = this.pathService.normalizeRemoteName(remoteName);
 
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
-      if (!features || !features.hashes || features.hashes.length === 0) {
-        this.remoteMetadata.clearCache(baseName); // Clear cache to ensure fresh fetch
-        features = await this.remoteMetadata.getFeatures(baseName, 'filemanager');
+      if (!features || !features.Hashes || features.Hashes.length === 0) {
+        features = await this.remoteService.getFeatures(
+          baseName,
+          this.data.remoteType,
+          'filemanager'
+        );
       }
 
       // Update supported hashes
-      const hashes = features?.hashes ?? [];
+      const hashes = features?.Hashes ?? [];
       this.supportedHashes.set(hashes);
 
-      // Update public link support (only for remotes)
-      if (!isLocal) {
-        this.supportsPublicLink.set(features?.hasPublicLink ?? false);
-      }
+      this.supportsPublicLink.set(!!features?.PublicLink);
 
       // Auto-calculate only the first hash (usually md5) for single files
       const currentItem = this.item();
@@ -295,14 +316,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     } finally {
       this.loadingHashes.set(false);
     }
-  }
-
-  /**
-   * Helper to handle copy reset logic with memory safety
-   */
-  private startCopyReset(resetFn: () => void): void {
-    const id = setTimeout(resetFn, 2000);
-    this.destroyRef.onDestroy(() => clearTimeout(id));
   }
 
   /**
@@ -375,7 +388,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       }
     } catch (err) {
       console.error('Failed to get public link:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.publicLinkError.set(`${this.translate.instant('common.error')}: ${errorMessage}`);
     } finally {
       this.loadingPublicLink.set(false);
@@ -403,7 +416,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       this.publicLinkUrl.set(null);
     } catch (err) {
       console.error('Failed to remove public link:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.publicLinkError.set(
         `${this.translate.instant('fileBrowser.properties.removeLink')} ${this.translate.instant(
           'common.error'
@@ -416,7 +429,15 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
 
   toggleStar(): void {
     const item: FileBrowserItem = {
-      entry: this.getEffectiveItem(),
+      entry: this.item() ?? {
+        Name: this.pathService.extractName(this.data.path, this.data.remoteName),
+        Path: this.data.path,
+        IsDir: true,
+        Size: 0,
+        ModTime: new Date().toISOString(),
+        ID: '',
+        MimeType: 'inode/directory',
+      },
       meta: {
         remote: this.data.remoteName,
         isLocal: this.data.isLocal,
@@ -425,24 +446,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     };
 
     this.nautilusService.toggleItem('starred', item);
-  }
-
-  private getEffectiveItem(): Entry {
-    return (
-      this.item() ?? {
-        Name: this.pathService.extractName(this.data.path, this.data.remoteName),
-        Path: this.data.path,
-        IsDir: true,
-        Size: 0,
-        ModTime: new Date().toISOString(),
-        ID: '',
-        MimeType: 'inode/directory',
-      }
-    );
-  }
-
-  ngOnDestroy(): void {
-    void this.stopReadJobs();
   }
 
   private async stopReadJobs(): Promise<void> {
@@ -455,8 +458,15 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
 
   @HostListener('keydown.escape')
   close(): void {
-    void this.stopReadJobs();
-    this.modalService.animatedClose(this.dialogRef);
+    if (this.showMetadataOverlay()) {
+      this.showMetadataOverlay.set(false);
+      return;
+    }
+    this.dialogRef.close();
+  }
+
+  closeModal(): void {
+    this.dialogRef.close();
   }
 
   getIcon(item?: Entry | null): string {
@@ -477,10 +487,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     try {
       let fsRemote = this.fsRemote;
       let hashPath = this.hashPath;
-
-      // For local bulk hashing, we need to manually construct the full absolute path
-      // and send it as 'fs' (remote), leaving 'path' empty.
-      // This avoids backend string concatenation issues (e.g. missing slashes or double slashes)
       if (this.data.isLocal) {
         fsRemote = this.pathService.isLocalPath(hashPath)
           ? hashPath
@@ -505,7 +511,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       }
     } catch (err) {
       console.error('Failed to calculate bulk hash:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.bulkHashError.set(`${this.translate.instant('common.error')}: ${errorMessage}`);
     } finally {
       this.calculatingBulkHash.set(false);

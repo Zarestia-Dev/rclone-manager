@@ -1,14 +1,14 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import cronstrue from 'cronstrue';
 import { DatePipe, NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Automation } from '@app/types';
-import { PathService } from '@app/services';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 const AUTOMATION_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
   sync: { icon: 'refresh', colorClass: 'sync-color' },
@@ -21,7 +21,7 @@ const STATUS_TOGGLE: Record<string, { icon: string; tooltip: string }> = {
   enabled: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   running: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   disabled: { icon: 'play', tooltip: 'automation.toggle.enable' },
-  failed: { icon: 'play', tooltip: 'automation.toggle.enable' },
+  failed: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   stopping: { icon: 'stop', tooltip: 'automation.toggle.stopping' },
 };
 
@@ -30,15 +30,15 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
 
 @Component({
   selector: 'app-automation-card',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     DatePipe,
+    CopyToClipboardDirective,
   ],
   templateUrl: './automation-card.component.html',
   styleUrl: './automation-card.component.scss',
@@ -52,6 +52,39 @@ export class AutomationCardComponent {
 
   toggled = output<string>();
   openInFiles = output<string>();
+
+  protected readonly isFlow = computed(() => {
+    const auto = this.automation();
+    return auto.args?.source === 'flow';
+  });
+
+  protected readonly isQuickRun = computed(() => {
+    const auto = this.automation();
+    return auto.args?.source === 'quickrun';
+  });
+
+  protected readonly originLabel = computed(() => {
+    if (this.isFlow()) {
+      const t = this.translate.instant('flow.title');
+      return t === 'flow.title' ? 'Flow' : t;
+    }
+    if (this.isQuickRun()) {
+      const t = this.translate.instant('flow.tabs.quickRun');
+      return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
+    }
+    const t = this.translate.instant('navigation.dashboard');
+    return t === 'navigation.dashboard' ? 'Dashboard' : t;
+  });
+
+  protected readonly originIcon = computed(() => {
+    if (this.isFlow()) return 'workflow';
+    return this.isQuickRun() ? 'quick-run' : 'cloud';
+  });
+
+  protected readonly originBadgeClass = computed(() => {
+    if (this.isFlow()) return 'p-accent';
+    return this.isQuickRun() ? 'p-primary' : 'p-dim';
+  });
 
   protected readonly automationMeta = computed(
     () => AUTOMATION_TYPE_META[this.automation().automationType] ?? DEFAULT_META
@@ -68,7 +101,7 @@ export class AutomationCardComponent {
       return this.translate.instant('automation.nextRun.disabled');
     if (automation.status === 'stopping')
       return this.translate.instant('automation.nextRun.stopping');
-    if (automation.watchEnabled && automation.cronExpression === 'realtime') {
+    if (automation.watchEnabled && !automation.cronExpression) {
       return this.translate.instant('automation.monitoring.watcherActive');
     }
     return automation.nextRun
@@ -86,14 +119,14 @@ export class AutomationCardComponent {
   protected readonly cronDescription = computed(() => {
     try {
       const cronExpr = this.automation().cronExpression;
-      if (cronExpr === 'realtime') {
+      if (!cronExpr) {
         return (
           this.translate.instant('automation.monitoring.realtimeSchedule') ||
           'Real-time File Watcher'
         );
       }
       return cronstrue.toString(cronExpr, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang()),
+        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
       });
     } catch {
       return this.automation().cronExpression;
@@ -108,8 +141,8 @@ export class AutomationCardComponent {
 
     const mapPathToIcon = (path: string): string => {
       const isLocal = this.pathService.isLocalPath(path);
-      const lastSegment = path.split(/[\\/]/).pop() ?? '';
-      const isFile = lastSegment.includes('.') && !path.endsWith('/') && !path.endsWith('\\');
+      const lastSegment = this.pathService.splitSegments(path).pop() ?? '';
+      const isFile = lastSegment.includes('.') && !path.endsWith('/');
       if (isFile) {
         return 'file-lines';
       }

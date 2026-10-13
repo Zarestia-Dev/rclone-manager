@@ -2,37 +2,35 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  HostListener,
-  Injector,
   OnInit,
-  afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
-import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
+import { LoggingService } from 'src/app/services/infrastructure/platform/logging.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AnsiToHtmlPipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { CopyToClipboardDirective } from '@app/directives';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-logs-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
-    MatProgressSpinnerModule,
     MatIconModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -40,11 +38,10 @@ import { CopyToClipboardDirective } from '@app/directives';
     FormsModule,
     MatSnackBarModule,
     MatButtonModule,
-    MatTooltipModule,
     AnsiToHtmlPipe,
     DatePipe,
     UpperCasePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './logs-modal.component.html',
@@ -58,9 +55,7 @@ export class LogsModalComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly loggingService = inject(LoggingService);
   private readonly backendTranslation = inject(BackendTranslationService);
-  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
-  private readonly injector = inject(Injector);
 
   public readonly logLevels = LOG_LEVELS;
 
@@ -72,22 +67,61 @@ export class LogsModalComponent implements OnInit {
   readonly expandedLogs = signal<Set<string>>(new Set());
 
   // --- Computed Logic ---
+  private readonly searchableLogs = computed(() => {
+    const logs = this.logs();
+    return logs.map(log => ({
+      log,
+      haystack: `${log.message.toLowerCase()} ${
+        log.context ? JSON.stringify(log.context).toLowerCase() : ''
+      }`,
+    }));
+  });
+
   readonly filteredLogs = computed(() => {
-    const allLogs = this.logs();
     const level = this.selectedLevel();
     const search = this.searchText().toLowerCase();
+    const items = this.searchableLogs();
 
-    return allLogs.filter(log => {
-      const matchesLevel = level ? log.level === level : true;
-      const matchesSearch = search
-        ? log.message.toLowerCase().includes(search) ||
-          (log.context && JSON.stringify(log.context).toLowerCase().includes(search))
-        : true;
-      return matchesLevel && matchesSearch;
-    });
+    return items
+      .filter(({ log, haystack }) => {
+        const matchesLevel = level ? log.level === level : true;
+        const matchesSearch = search ? haystack.includes(search) : true;
+        return matchesLevel && matchesSearch;
+      })
+      .map(({ log }) => log);
+  });
+
+  readonly logVm = computed(() => {
+    const map = new Map<
+      string,
+      {
+        copyText: string;
+        contextStr: string | null;
+        output: string | null;
+        translatedMessage: string;
+      }
+    >();
+    for (const log of this.logs()) {
+      const id = this.getLogId(log);
+      map.set(id, {
+        copyText: this.getFormattedLog(log),
+        contextStr: log.context ? this.formatContext(log.context) : null,
+        output: this.getCommandOutput(log),
+        translatedMessage: this.translateLogMessage(log.message),
+      });
+    }
+    return map;
   });
 
   readonly terminalLogArea = viewChild<ElementRef<HTMLDivElement>>('terminalLogArea');
+
+  constructor() {
+    effect(() => {
+      if (this.logs().length > 0) {
+        requestAnimationFrame(() => this.scrollToBottom());
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadLogs();
@@ -100,7 +134,6 @@ export class LogsModalComponent implements OnInit {
         this.data.remoteName
       )) as unknown as RemoteLogEntry[];
       this.logs.set(fetchedLogs);
-      afterNextRender(() => this.scrollToBottom(), { injector: this.injector });
     } catch {
       const message = this.translate.instant('modals.logs.fetchError');
       this.snackBar.open(message, undefined, { duration: 3000 });
@@ -149,21 +182,24 @@ export class LogsModalComponent implements OnInit {
   getCommandOutput(log: RemoteLogEntry): string | null {
     if (!log.context) return null;
 
-    const ctx = log.context as any;
+    const ctx = log.context as Record<string, unknown>;
+    const status = ctx['status'] as Record<string, unknown> | undefined;
+    const statusOutput = status?.['output'] as Record<string, unknown> | undefined;
 
-    if (ctx?.status?.output?.output) return ctx.status.output.output;
-    if (typeof ctx?.output === 'string') return ctx.output;
-    if (ctx?.output && typeof ctx.output === 'object') return JSON.stringify(ctx.output, null, 2);
+    if (typeof statusOutput?.['output'] === 'string') return statusOutput['output'];
+    if (typeof ctx['output'] === 'string') return ctx['output'];
+    if (ctx['output'] && typeof ctx['output'] === 'object')
+      return JSON.stringify(ctx['output'], null, 2);
 
     return null;
   }
 
   formatContext(context: LogContext): string {
     try {
-      const displayContext = { ...context } as any;
-      if (typeof displayContext.response === 'string') {
+      const displayContext = { ...context } as Record<string, unknown>;
+      if (typeof displayContext['response'] === 'string') {
         try {
-          displayContext.response = JSON.parse(displayContext.response);
+          displayContext['response'] = JSON.parse(displayContext['response']);
         } catch {
           /* not valid JSON, keep as-is */
         }
@@ -208,8 +244,7 @@ export class LogsModalComponent implements OnInit {
     this.terminalLogArea()?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

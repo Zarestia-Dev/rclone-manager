@@ -11,6 +11,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_rclone_state(app_handle).await?;
 
     // Apply any pending rclone updates before starting the engine
+    #[cfg(not(feature = "librclone"))]
     let _ = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await;
 
     // Initialize Alert Engine Worker
@@ -22,14 +23,21 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     // Initialize Engine (Background monitoring loop)
     init_engine(app_handle).await?;
 
+    // Initialize native system theme detection
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::app::ui::init_system_theme();
+
     // Monitor Network Changes (Background task)
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    #[cfg(not(target_os = "ios"))]
     {
-        let handle = app_handle.clone();
-        tauri::async_runtime::spawn(async move {
-            crate::utils::io::network::monitor_network_changes(handle).await;
+        crate::utils::spawn(async move {
+            crate::utils::io::network::monitor_network_changes().await;
         });
     }
+
+    // Monitor OS Theme Changes (Background task)
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::app::ui::monitor_theme_changes();
 
     Ok(())
 }
@@ -71,7 +79,8 @@ async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
     })?;
     let mut engine = engine_state.lock().await;
 
-    if !engine.running && !engine.path_error && !engine.password_error {
+    let is_blocked = engine.start_block_reason().is_some();
+    if !engine.is_running() && !is_blocked {
         engine.init(app_handle).await;
     }
 

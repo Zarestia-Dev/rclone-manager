@@ -2,14 +2,13 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import {
-  NotificationService,
-  PathService,
-  RemoteFileOperationsService,
-  ModalService,
-  ApiClientService,
-} from '@app/services';
-import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -32,13 +31,16 @@ export class NautilusFileOperationsService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
-  private readonly apiClient = inject(ApiClientService);
+  private readonly fileSystem = inject(FileSystemService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
   >([]);
   readonly clipboardMode = signal<'copy' | 'cut' | null>(null);
-  readonly hasClipboard = computed(() => this.clipboardItems().length > 0);
+  readonly systemClipboardHasPaths = signal<boolean>(false);
+  readonly hasClipboard = computed(
+    () => this.clipboardItems().length > 0 || this.systemClipboardHasPaths()
+  );
   readonly cutItemPaths = computed(() => {
     if (this.clipboardMode() !== 'cut') return new Set<string>();
     return new Set(this.clipboardItems().map(i => `${i.remote}:${i.path}`));
@@ -69,31 +71,117 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const clipboardData = this.clipboardItems();
     const mode = this.clipboardMode();
-    if (clipboardData.length === 0 || !dstRemote || !mode) return false;
+    if (clipboardData.length > 0 && dstRemote && mode) {
+      const items: FileBrowserItem[] = clipboardData.map(item => {
+        const remoteInfo = allRemotes.find(r => r.name === item.remote);
+        return {
+          entry: {
+            Name: item.name,
+            Path: item.path,
+            IsDir: item.isDir,
+            ID: '',
+            Size: 0,
+            ModTime: '',
+            MimeType: '',
+          },
+          meta: {
+            remote: item.remote,
+            isLocal: remoteInfo?.isLocal ?? false,
+            remoteType: remoteInfo?.type,
+          },
+        };
+      });
 
-    const items: FileBrowserItem[] = clipboardData.map(item => {
-      const remoteInfo = allRemotes.find(r => r.name === item.remote);
-      return {
-        entry: {
-          Name: item.name,
-          Path: item.path,
-          IsDir: item.isDir,
-          ID: '',
-          Size: 0,
-          ModTime: '',
-          MimeType: '',
-        },
-        meta: {
-          remote: item.remote,
-          isLocal: remoteInfo?.isLocal ?? false,
-          remoteType: remoteInfo?.type,
-        },
-      };
-    });
+      await this.performFileOperations(items, dstRemote, dstPath, mode === 'cut' ? 'move' : 'copy');
+      if (mode === 'cut') this.clearClipboard();
+      return true;
+    }
 
-    await this.performFileOperations(items, dstRemote, dstPath, mode === 'cut' ? 'move' : 'copy');
-    if (mode === 'cut') this.clearClipboard();
-    return true;
+    if (dstRemote) {
+      return this.pasteSystemClipboard(dstRemote, dstPath);
+    }
+
+    return false;
+  }
+
+  async pasteSystemClipboard(
+    dstRemote: ExplorerRoot | null,
+    dstPath: string,
+    preparsedText?: string
+  ): Promise<boolean> {
+    if (!dstRemote) return false;
+    const text = preparsedText ?? (await this._readSystemClipboardText());
+    const paths = this.parseClipboardPaths(text);
+    if (paths.length > 0) {
+      return this._handleDesktopUpload(dstRemote, dstPath, paths);
+    }
+    return false;
+  }
+
+  async checkSystemClipboard(): Promise<boolean> {
+    const text = await this._readSystemClipboardText();
+    const hasPaths = this.parseClipboardPaths(text).length > 0;
+    this.systemClipboardHasPaths.set(hasPaths);
+    return hasPaths;
+  }
+
+  private _clipboardReader: (() => Promise<string>) | null = null;
+
+  private async _readSystemClipboardText(): Promise<string> {
+    try {
+      if (isHeadlessMode()) {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+          return await navigator.clipboard.readText();
+        }
+        return '';
+      }
+      if (!this._clipboardReader) {
+        const mod = await import('@tauri-apps/plugin-clipboard-manager');
+        this._clipboardReader = mod.readText;
+      }
+      return await this._clipboardReader();
+    } catch (err) {
+      console.debug('[NautilusFileOps] Could not read system clipboard:', err);
+      return '';
+    }
+  }
+
+  parseClipboardPaths(text: string): string[] {
+    if (!text || typeof text !== 'string') return [];
+    const lines = text
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => Boolean(l) && l !== 'copy' && l !== 'cut');
+    const paths: string[] = [];
+
+    for (let line of lines) {
+      if (
+        (line.startsWith('"') && line.endsWith('"')) ||
+        (line.startsWith("'") && line.endsWith("'"))
+      ) {
+        line = line.slice(1, -1).trim();
+      }
+
+      if (line.startsWith('file://')) {
+        try {
+          const url = new URL(line);
+          let pathname = decodeURIComponent(url.pathname);
+          if (/^\/[a-zA-Z]:/.test(pathname)) {
+            pathname = pathname.slice(1);
+          }
+          if (pathname) paths.push(pathname);
+          continue;
+        } catch {
+          line = decodeURIComponent(line.replace(/^file:\/\/*/, '/'));
+        }
+      }
+
+      if (line.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(line)) {
+        paths.push(line);
+      }
+    }
+
+    return Array.from(new Set(paths));
   }
 
   async performFileOperations(
@@ -127,7 +215,7 @@ export class NautilusFileOperationsService {
         normalizedDst,
         dstPath,
         mode,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       const succeededItems: UndoEntry['items'] = items.map(item => ({
@@ -168,8 +256,8 @@ export class NautilusFileOperationsService {
     const confirmed = await this.notifications.confirmModal(
       this.translate.instant('nautilus.modals.delete.title'),
       message,
-      undefined,
-      undefined,
+      'common.delete',
+      'common.cancel',
       { icon: 'trash', color: 'warn' }
     );
     if (!confirmed) return false;
@@ -185,7 +273,7 @@ export class NautilusFileOperationsService {
     }));
 
     try {
-      await this.remoteOps.deleteItems(deleteItems, ORIGINS.FILEMANAGER);
+      await this.remoteOps.deleteItems(deleteItems, 'filemanager');
       return true;
     } catch (e) {
       console.error('Batch delete failed', e);
@@ -206,7 +294,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.modalService.openInput({
+    const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.rename.title'),
       label: this.translate.instant('nautilus.modals.rename.label'),
       icon: 'pen',
@@ -230,15 +318,20 @@ export class NautilusFileOperationsService {
         item.entry.Path,
         newPath,
         !!item.entry.IsDir,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.renameStarted')
       );
       return true;
-    } catch {
-      this.notifications.showError(this.translate.instant('nautilus.errors.renameFailed'));
+    } catch (e) {
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.renameFailed', {
+          name: item.entry.Name,
+          error: (e as Error).message || String(e),
+        })
+      );
       return false;
     }
   }
@@ -260,7 +353,7 @@ export class NautilusFileOperationsService {
       this.notifications.showInfo(
         this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
       );
-      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
+      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, 'filemanager');
       return true;
     } catch (e) {
       this.notifications.showError(
@@ -278,7 +371,6 @@ export class NautilusFileOperationsService {
     if (stack.length === 0) return;
 
     const entry = stack[stack.length - 1];
-    this._undoStack.set(stack.slice(0, -1));
 
     try {
       if (entry.mode === 'copy') {
@@ -287,37 +379,27 @@ export class NautilusFileOperationsService {
           path: item.dstFullPath,
           isDir: item.isDir,
         }));
-        await this.remoteOps.deleteItems(itemsToDelete, ORIGINS.FILEMANAGER);
+        await this.remoteOps.deleteItems(itemsToDelete, 'filemanager');
       } else {
-        const groups = new Map<string, { dstRemote: string; dstPath: string; items: unknown[] }>();
-
-        for (const item of entry.items) {
-          const dstParentPath = this.pathService.getParentPath(item.path);
-          const key = `${item.remote}:${dstParentPath}`;
-
-          if (!groups.has(key)) {
-            groups.set(key, { dstRemote: item.remote, dstPath: dstParentPath, items: [] });
-          }
-
-          groups.get(key)!.items.push({
-            remote: item.dstRemote,
-            path: item.dstFullPath,
-            name: item.name,
-            isDir: item.isDir,
-          });
-        }
+        const groups = this._groupTransferItems(entry.items, item => ({
+          sourceRemote: item.dstRemote,
+          sourcePath: item.dstFullPath,
+          dstRemote: item.remote,
+          dstPath: this.pathService.getParentPath(item.path),
+        }));
 
         for (const group of groups.values()) {
           await this.remoteOps.transferItems(
-            group.items as { remote: string; path: string; name: string; isDir: boolean }[],
+            group.items,
             group.dstRemote,
             group.dstPath,
             'move',
-            ORIGINS.FILEMANAGER
+            'filemanager'
           );
         }
       }
 
+      this._undoStack.set(stack.slice(0, -1));
       this._redoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
       this.notifications.showSuccess(this.translate.instant('nautilus.notifications.undoComplete'));
     } catch (e) {
@@ -333,27 +415,26 @@ export class NautilusFileOperationsService {
     if (stack.length === 0) return;
 
     const entry = stack[stack.length - 1];
-    this._redoStack.set(stack.slice(0, -1));
-
-    const transferItems = entry.items.map(item => ({
-      remote: item.remote,
-      path: item.path,
-      name: item.name,
-      isDir: item.isDir,
-    }));
 
     try {
-      const firstItem = entry.items[0];
-      const parentPath = this.pathService.getParentPath(firstItem.dstFullPath);
+      const groups = this._groupTransferItems(entry.items, item => ({
+        sourceRemote: item.remote,
+        sourcePath: item.path,
+        dstRemote: item.dstRemote,
+        dstPath: this.pathService.getParentPath(item.dstFullPath),
+      }));
 
-      await this.remoteOps.transferItems(
-        transferItems,
-        firstItem.dstRemote,
-        parentPath,
-        entry.mode,
-        ORIGINS.FILEMANAGER
-      );
+      for (const group of groups.values()) {
+        await this.remoteOps.transferItems(
+          group.items,
+          group.dstRemote,
+          group.dstPath,
+          entry.mode,
+          'filemanager'
+        );
+      }
 
+      this._redoStack.set(stack.slice(0, -1));
       this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
       this.notifications.showSuccess(this.translate.instant('nautilus.notifications.redoComplete'));
     } catch (e) {
@@ -364,15 +445,61 @@ export class NautilusFileOperationsService {
     }
   }
 
+  private _groupTransferItems(
+    items: UndoEntry['items'],
+    getDstInfo: (item: UndoEntry['items'][number]) => {
+      sourceRemote: string;
+      sourcePath: string;
+      dstRemote: string;
+      dstPath: string;
+    }
+  ): Map<
+    string,
+    {
+      dstRemote: string;
+      dstPath: string;
+      items: { remote: string; path: string; name: string; isDir: boolean }[];
+    }
+  > {
+    const groups = new Map<
+      string,
+      {
+        dstRemote: string;
+        dstPath: string;
+        items: { remote: string; path: string; name: string; isDir: boolean }[];
+      }
+    >();
+
+    for (const item of items) {
+      const { sourceRemote, sourcePath, dstRemote, dstPath } = getDstInfo(item);
+      const key = `${dstRemote}:${dstPath}`;
+
+      let group = groups.get(key);
+      if (!group) {
+        group = { dstRemote, dstPath, items: [] };
+        groups.set(key, group);
+      }
+
+      group.items.push({
+        remote: sourceRemote,
+        path: sourcePath,
+        name: item.name,
+        isDir: item.isDir,
+      });
+    }
+
+    return groups;
+  }
+
   async uploadExternalFiles(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
-      const paths = await this.apiClient.invoke<string[] | null>('get_files_location');
-      if (paths && paths.length > 0) {
+      const paths = await this.fileSystem.selectFilesForUpload();
+      if (paths.length > 0) {
         return this._handleDesktopUpload(remote, currentPath, paths);
       }
       return false;
     } catch (err) {
-      console.error('Failed to get files location', err);
+      console.error('Failed to select files', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
       return false;
     }
@@ -380,15 +507,13 @@ export class NautilusFileOperationsService {
 
   async uploadExternalFolder(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
-      const folderPath = await this.apiClient.invoke<string | null>('get_folder_location', {
-        requireEmpty: false,
-      });
+      const folderPath = await this.fileSystem.selectFolder();
       if (folderPath) {
         return this._handleDesktopUpload(remote, currentPath, [folderPath]);
       }
       return false;
     } catch (err) {
-      console.error('Failed to get folder location', err);
+      console.error('Failed to select folder', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
       return false;
     }
@@ -409,7 +534,7 @@ export class NautilusFileOperationsService {
       normalized,
       currentPath,
       filesArray,
-      ORIGINS.FILEMANAGER
+      'filemanager'
     );
 
     if (failedPaths.length === 0) {
@@ -440,7 +565,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.modalService.openInput({
+    const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',
@@ -448,26 +573,37 @@ export class NautilusFileOperationsService {
       existingNames,
     });
 
+    let folderName: string | undefined;
     try {
-      const folderName = await firstValueFrom(ref.afterClosed());
+      folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return false;
 
       const newPath = this.pathService.joinPath(currentPath, folderName);
-      await this.remoteOps.makeDirectory(normalizedRemote, newPath, ORIGINS.FILEMANAGER);
+      await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       return true;
-    } catch {
-      this.notifications.showError(this.translate.instant('nautilus.errors.createFolderFailed'));
+    } catch (err) {
+      console.error('[NautilusFileOps] Failed to create folder:', err);
+      const errMsg = (err as Error)?.message || String(err);
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.createFolderFailed', {
+          name: folderName || '',
+          error: errMsg,
+        })
+      );
       return false;
     }
   }
 
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
+    const destBasePath = this.pathService.joinPath(normalizedRemote, currentPath);
 
-    const ref = this.modalService.openInput({
+    const ref = await this.notifications.openInput<{ url?: string; filename?: string }>({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
       icon: 'download',
       createLabel: this.translate.instant('nautilus.modals.copyUrl.confirm'),
+      destinationPath: destBasePath,
+      showUrlPreview: true,
       fields: [
         {
           key: 'url',
@@ -493,9 +629,10 @@ export class NautilusFileOperationsService {
       const { url, filename } = result;
       const autoFilename = !filename || filename.trim() === '';
       const targetFilename = filename?.trim();
-      const targetPath = !autoFilename
-        ? this.pathService.joinPath(currentPath, targetFilename)
-        : currentPath;
+      const targetPath =
+        !autoFilename && targetFilename
+          ? this.pathService.joinPath(currentPath, targetFilename)
+          : currentPath;
 
       this.notifications.showInfo(this.translate.instant('nautilus.notifications.copyUrlStarted'));
 
@@ -504,7 +641,7 @@ export class NautilusFileOperationsService {
         targetPath,
         url.trim(),
         autoFilename,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       return true;
@@ -594,7 +731,7 @@ export class NautilusFileOperationsService {
         normalized,
         currentPath,
         paths,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
       return !!batchId;
     } catch (err) {
@@ -604,7 +741,21 @@ export class NautilusFileOperationsService {
     }
   }
 
+  /**
+   * Uploads local file paths (shared from another Android app) to the given remote/path.
+   * Called by NautilusComponent after the user navigates to the destination folder
+   * and confirms the Android share-intent upload.
+   */
+  async uploadSharedPaths(
+    remote: ExplorerRoot,
+    currentPath: string,
+    paths: string[]
+  ): Promise<boolean> {
+    if (!paths.length) return false;
+    return this._handleDesktopUpload(remote, currentPath, paths);
+  }
+
   private _normalizeRemote(remote: ExplorerRoot): string {
-    return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
+    return this.pathService.normalizeExplorerRoot(remote);
   }
 }

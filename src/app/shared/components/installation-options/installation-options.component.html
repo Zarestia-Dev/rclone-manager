@@ -36,7 +36,7 @@
           <p>
             {{ 'shared.installationOptions.modes.' + mode() + '.custom.description' | translate }}
           </p>
-          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'">
             <mat-label>{{
               'shared.installationOptions.modes.' + mode() + '.custom.label' | translate
             }}</mat-label>
@@ -48,11 +48,12 @@
               "
             />
             <button
+              type="button"
               matSuffix
               matIconButton
               (click)="selectCustomPath()"
               [disabled]="disabled()"
-              [matTooltip]="'shared.installationOptions.browse' | translate"
+              [attr.title]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon [svgIcon]="mode() === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
@@ -68,7 +69,7 @@
           <p>
             {{ 'shared.installationOptions.modes.' + mode() + '.existing.description' | translate }}
           </p>
-          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'" appearance="fill">
+          <mat-form-field [class]="mode() === 'config' ? 'accent' : 'primary'">
             <mat-label>{{
               'shared.installationOptions.modes.' + mode() + '.existing.label' | translate
             }}</mat-label>
@@ -78,11 +79,12 @@
               [placeholder]="'shared.installationOptions.existingBinaryPlaceholder' | translate"
             />
             <button
+              type="button"
               matSuffix
               matIconButton
               (click)="selectBinary()"
               [disabled]="disabled()"
-              [matTooltip]="'shared.installationOptions.browse' | translate"
+              [attr.title]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon svgIcon="file"></mat-icon>
             </button>
@@ -93,13 +95,11 @@
 
           @if (existingBinaryControl.value?.trim()) {
             <div class="binary-status" [class]="binaryTestResult()">
-              <mat-icon
-                [svgIcon]="statusIcon()"
-                [class.animate-spin]="binaryTestResult() === 'testing'"
-              ></mat-icon>
+              <mat-icon [svgIcon]="statusIcon()" class="colorful-spinner"></mat-icon>
               <span>{{ statusText() }}</span>
               @if (binaryTestResult() !== 'valid') {
                 <button
+                  type="button"
                   matButton="outlined"
                   (click)="testBinary()"
                   [disabled]="disabled() || binaryTestResult() === 'testing'"

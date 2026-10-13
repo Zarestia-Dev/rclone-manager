@@ -19,3 +19,30 @@ export interface FsInfo {
   /** Metadata information */
   MetadataInfo?: Record<string, unknown>;
 }
+
+export interface FsTransferItem {
+  remote: string;
+  path: string;
+  name: string;
+  isDir: boolean;
+}
+
+export interface FsDeleteItem {
+  remote: string;
+  path: string;
+  isDir: boolean;
+}
+
+export interface ArchiveListItem {
+  path: string;
+  isDir: boolean;
+  size?: number;
+  date?: string;
+  time?: string;
+  name?: string;
+}
+
+export interface ArchiveListResponse {
+  success: boolean;
+  items: ArchiveListItem[];
+}

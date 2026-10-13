@@ -25,6 +25,8 @@ export interface ServeStartResponse {
   addr: string; // Address server is listening on
 }
 
+import { Origin } from './origin';
+
 /**
  * Running serve instance information
  */
@@ -32,13 +34,16 @@ export interface ServeListItem {
   id: string;
   addr: string;
   profile?: string;
+  quick_run_id?: string;
+  execute_id?: string;
+  origin?: Origin;
+  workflow_id?: string;
+  node_id?: string;
   params: {
     fs: string;
     type: string;
     opt?: ServeOptions;
     vfsOpt?: VfsOptions;
-    _config?: BackendOptions;
-    _filter?: FilterOptions;
   };
 }
 
@@ -48,3 +53,21 @@ export interface ServeListItem {
 export interface ServeListResponse {
   list: ServeListItem[];
 }
+
+export interface TypeInfo {
+  icon: string;
+}
+
+export const TYPE_INFO: Record<string, TypeInfo> = {
+  http: { icon: 'globe' },
+  webdav: { icon: 'cloud' },
+  ftp: { icon: 'file-arrow-up' },
+  sftp: { icon: 'lock' },
+  nfs: { icon: 'server' },
+  dlna: { icon: 'tv' },
+  restic: { icon: 'shield' },
+  s3: { icon: 'bucket' },
+};
+
+export const DEFAULT_ICON = 'satellite-dish';
+export const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);

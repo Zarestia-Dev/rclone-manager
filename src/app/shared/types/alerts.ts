@@ -2,14 +2,14 @@ import type { Origin } from './origin';
 
 export type AlertSeverity = 'critical' | 'high' | 'average' | 'warning' | 'info';
 
+export interface SeverityStyle {
+  color: string;
+  bg: string;
+  border: string;
+}
+
 export type AlertEventKind =
-  | 'job'
-  | 'serve'
-  | 'mount'
-  | 'engine'
-  | 'update'
-  | 'automation'
-  | 'system';
+  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system' | 'workflow';
 
 export interface AlertRule {
   id: string;
@@ -20,6 +20,7 @@ export interface AlertRule {
   remote_filter: string[];
   backend_filter: string[];
   profile_filter: string[];
+  workflow_filter?: string[];
   origin_filter: Origin[];
   action_ids: string[];
   cooldown_secs: number;
@@ -29,12 +30,16 @@ export interface AlertRule {
   auto_acknowledge?: boolean;
 }
 
-export type AlertActionKind = 'webhook' | 'script' | 'os_toast' | 'telegram' | 'mqtt' | 'email';
+export type AlertActionKind =
+  'webhook' | 'script' | 'os_toast' | 'telegram' | 'whatsapp' | 'mqtt' | 'email';
 
-export interface WebhookAction {
+export interface BaseAlertAction {
   id: string;
   name: string;
   enabled: boolean;
+}
+
+export interface WebhookAction extends BaseAlertAction {
   kind: 'webhook';
   url: string;
   method: string;
@@ -45,10 +50,7 @@ export interface WebhookAction {
   retry_count: number;
 }
 
-export interface ScriptAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface ScriptAction extends BaseAlertAction {
   kind: 'script';
   command: string;
   args: string[];
@@ -56,18 +58,13 @@ export interface ScriptAction {
   env_vars: Record<string, string>;
 }
 
-export interface OsToastAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface OsToastAction extends BaseAlertAction {
   kind: 'os_toast';
 }
 
-export interface TelegramAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface TelegramAction extends BaseAlertAction {
   kind: 'telegram';
+  mode?: 'bot' | 'botless';
   bot_token: string;
   chat_id: string;
   body_template: string;
@@ -75,12 +72,22 @@ export interface TelegramAction {
   retry_count: number;
 }
 
-export interface MqttAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface WhatsappAction extends BaseAlertAction {
+  kind: 'whatsapp';
+  phone: string;
+  apikey: string;
+  provider?: 'callmebot' | 'custom_gateway';
+  gateway_url?: string;
+  body_template: string;
+  timeout_secs: number;
+  retry_count: number;
+}
+
+export interface MqttAction extends BaseAlertAction {
   kind: 'mqtt';
-  broker_url: string;
+  host: string;
+  port: number;
+  use_tls: boolean;
   topic: string;
   username?: string;
   password?: string;
@@ -89,12 +96,10 @@ export interface MqttAction {
   body_template: string;
   timeout_secs: number;
   retry_count: number;
+  broker_url?: string;
 }
 
-export interface EmailAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface EmailAction extends BaseAlertAction {
   kind: 'email';
   smtp_server: string;
   smtp_port: number;
@@ -106,6 +111,7 @@ export interface EmailAction {
   body_template: string;
   encryption: 'none' | 'tls' | 'starttls';
   timeout_secs: number;
+  retry_count: number;
 }
 
 export type AlertAction =
@@ -113,6 +119,7 @@ export type AlertAction =
   | ScriptAction
   | OsToastAction
   | TelegramAction
+  | WhatsappAction
   | MqttAction
   | EmailAction;
 
@@ -173,4 +180,9 @@ export interface AlertHistoryPage {
   total: number;
   offset: number;
   limit: number;
+}
+
+export interface KindOption {
+  value: AlertActionKind;
+  label: string;
 }

@@ -2,9 +2,9 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
+import { OperationContext, ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
-import { EventListenersService } from '@app/services';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
 /**
@@ -114,25 +114,30 @@ export class ServeManagementService extends TauriBaseService {
   }
 
   /**
+   * Force check running serves
+   */
+  public async forceCheckServes(): Promise<void> {
+    await this.invokeCommand('force_check_serves');
+  }
+
+  /**
    * Start a serve using a named profile
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
-    const params = { remoteName: remoteName, profileName: profileName };
-    const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
-      params,
-    });
-
-    this.notificationService.showSuccess(
-      this.translate.instant('serve.successStart', {
-        remote: remoteName,
-        profile: profileName,
-        addr: response.addr,
-      })
+    const params = { remoteName, profileName };
+    return this.invokeWithNotification<ServeStartResponse>(
+      'start_serve_profile',
+      { params },
+      {
+        successKey: 'serve.successStart',
+        successParams: response => ({
+          remote: remoteName,
+          profile: profileName,
+          addr: response.addr,
+        }),
+      }
     );
-
-    await this.refreshServes();
-    return response;
   }
 
   /**
@@ -149,62 +154,20 @@ export class ServeManagementService extends TauriBaseService {
         errorParams: { id: serverId },
       }
     );
-
-    await this.refreshServes();
   }
 
   /**
    * Stop all running serve instances
    */
-  async stopAllServes(): Promise<void> {
+  async stopAllServes(context: OperationContext = 'normal'): Promise<void> {
     await this.invokeWithNotification(
       'stop_all_serves',
-      { context: 'manual' },
+      { context },
       {
         successKey: 'serve.successStopAll',
         errorKey: 'serve.failedStopAll',
       }
     );
-
-    this._runningServes.set([]);
-  }
-
-  /**
-   * Get the current list of running serves
-   */
-  getRunningServes(): ServeListItem[] {
-    return this._runningServes();
-  }
-
-  /**
-   * Check if a specific serve is running
-   */
-  isServeRunning(serverId: string): boolean {
-    return this._runningServes().some(serve => serve.id === serverId);
-  }
-
-  /**
-   * Get serve instance by ID
-   */
-  getServeById(serverId: string): ServeListItem | undefined {
-    return this._runningServes().find(serve => serve.id === serverId);
-  }
-
-  /**
-   * Get serves for a specific remote
-   */
-  getServesByRemote(fs: string): ServeListItem[] {
-    const targetRemote = this.pathService.getRemoteNameFromFs(fs);
-    return this._runningServes().filter(
-      serve => this.pathService.getRemoteNameFromFs(serve.params?.fs) === targetRemote
-    );
-  }
-
-  /**
-   * Get serves by type
-   */
-  getServesByType(serveType: string): ServeListItem[] {
-    return this._runningServes().filter(serve => serve.params.type === serveType);
   }
 
   /**
@@ -216,17 +179,11 @@ export class ServeManagementService extends TauriBaseService {
     oldName: string,
     newName: string
   ): Promise<number> {
-    const updated = await this.invokeCommand<number>('rename_serve_profile_in_cache', {
+    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
       remoteName,
       oldName,
       newName,
     });
-
-    if (updated > 0) {
-      await this.refreshServesFromCache();
-    }
-
-    return updated;
   }
 
   /**

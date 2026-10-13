@@ -1,22 +1,13 @@
-import { Component, input, computed } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AppTab } from '@app/types';
-
-const ACTIVE_LABELS: Partial<Record<AppTab, string>> = {
-  mount: 'overviews.status.labels.mounted',
-  sync: 'overviews.status.labels.syncing',
-};
-
-const INACTIVE_LABELS: Partial<Record<AppTab, string>> = {
-  mount: 'overviews.status.labels.unmounted',
-  sync: 'overviews.status.labels.offSync',
-};
+import { AppTab, ACTIVE_LABELS, INACTIVE_LABELS } from '@app/types';
 
 @Component({
   selector: 'app-status-overview-panel',
-  imports: [MatCardModule, MatIconModule, TranslateModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatCardModule, MatIconModule, TranslatePipe],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
 })

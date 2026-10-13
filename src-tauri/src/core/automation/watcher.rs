@@ -1,8 +1,11 @@
 use crate::core::automation::engine::execute_automation;
+use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::cache::is_local_path;
-use crate::utils::types::automation::{Automation, AutomationStatus, AutomationType};
+use crate::utils::json_helpers::build_full_path;
+use crate::utils::types::automation::{Automation, AutomationStatus};
+use crate::utils::types::remotes::OperationType;
 use chrono::Utc;
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use serde_json::Value;
@@ -27,7 +30,20 @@ impl WatcherManager {
     }
 
     /// Sync active watchers with the automations cache.
+    /// File watchers only work on local backends — on remote backends we stop all sessions.
     pub async fn sync_watchers(&self, app_handle: AppHandle) -> Result<(), String> {
+        // File watchers can only monitor the local filesystem.
+        // On remote backends, stop any existing sessions and return early.
+        let backend_manager = app_handle.state::<BackendManager>();
+        if !backend_manager.is_active_local().await {
+            let mut sessions = self.sessions.write().await;
+            if !sessions.is_empty() {
+                log::info!("Active backend is remote — stopping all file watchers");
+                sessions.clear();
+            }
+            return Ok(());
+        }
+
         let cache = app_handle.state::<AutomationsCache>();
         let automations = cache.get_all_automations().await;
         let mut sessions = self.sessions.write().await;
@@ -90,33 +106,34 @@ impl WatcherManager {
         let automation_id = automation.id.clone();
         let watch_delay = automation.watch_delay;
 
-        let config_key = match automation.automation_type {
-            AutomationType::Sync => "syncConfigs",
-            AutomationType::Copy => "copyConfigs",
-            AutomationType::Move => "moveConfigs",
-            AutomationType::Bisync => "bisyncConfigs",
-        };
+        let config_key = automation.automation_type.config_key();
 
-        let filter_options = match crate::rclone::commands::common::resolve_profile_settings(
-            &app_handle,
-            &automation.remote_name,
-            &automation.profile_name,
-            config_key,
-        )
-        .await
-        {
-            Ok((config, settings)) => {
-                crate::rclone::commands::common::parse_common_config(&config, &settings)
-                    .and_then(|c| c.filter_options)
-            }
-            Err(e) => {
-                log::debug!(
-                    "Could not resolve filter options for automation {}: {e}",
-                    automation.id
-                );
-                None
-            }
-        };
+        let filter_options =
+            if automation.args.params.source == Some(crate::utils::types::origin::Origin::Flow) {
+                resolve_workflow_filter_options(&app_handle, &automation.id).await
+            } else {
+                match crate::rclone::commands::common::resolve_profile_settings(
+                    &app_handle,
+                    &automation.remote_name,
+                    &automation.profile_name,
+                    config_key,
+                )
+                .await
+                {
+                    Ok((config, settings)) => {
+                        crate::rclone::commands::common::parse_common_config(&config, &settings)
+                            .and_then(|c| c.filter_options)
+                            .map(|opts| resolve_filter_options(&opts))
+                    }
+                    Err(e) => {
+                        log::debug!(
+                            "Could not resolve filter options for automation {}: {e}",
+                            automation.id
+                        );
+                        None
+                    }
+                }
+            };
 
         let (tx, mut rx) = tokio::sync::mpsc::channel::<notify::Result<Event>>(200);
 
@@ -141,9 +158,8 @@ impl WatcherManager {
 
         let cache = app_handle.state::<AutomationsCache>().inner().clone();
         let paths_clone = paths.clone();
-        let filter_opts_clone = filter_options.clone();
 
-        tokio::spawn(async move {
+        crate::utils::spawn(async move {
             // Net-change tracking within the current debounce window:
             //
             // `created_in_window` tracks paths that were *created* since the window opened.
@@ -172,16 +188,8 @@ impl WatcherManager {
                                     continue;
                                 }
 
-                                let is_busy = match cache.get_automation(&automation_id).await {
-                                    Some(a) => is_automation_running_or_in_cooldown(&a, &app_handle).await,
-                                    None => false,
-                                };
-                                if is_busy {
-                                    continue;
-                                }
-
                                 for path in &ev.paths {
-                                    if is_path_filtered(path, &paths_clone, &filter_opts_clone) {
+                                    if is_path_filtered(path, &paths_clone, &filter_options) {
                                         continue;
                                     }
 
@@ -196,8 +204,7 @@ impl WatcherManager {
                                                 // window — net zero change, cancel it out.
                                                 changed_paths.remove(path);
                                                 log::debug!(
-                                                    "Path {:?} created and removed in debounce window — net zero, skipping",
-                                                    path
+                                                    "Path {path:?} created and removed in debounce window — net zero, skipping"
                                                 );
                                             } else {
                                                 // Pre-existing file deleted — real change.
@@ -235,6 +242,7 @@ impl WatcherManager {
                             continue;
                         }
 
+                        let paths_to_sync = changed_paths.clone();
                         created_in_window.clear();
                         changed_paths.clear();
 
@@ -244,11 +252,25 @@ impl WatcherManager {
                             continue;
                         }
 
+                        let scoped_targets = if a.watch_changed_only && a.automation_type != OperationType::Bisync {
+                            let targets = compute_scoped_targets(&paths_clone, &a.args.dst_paths, &paths_to_sync);
+                            log::info!(
+                                "Computed {} scoped sync target(s) for automation {automation_id}",
+                                targets.len()
+                            );
+                            Some(targets)
+                        } else {
+                            None
+                        };
+
                         log::info!("Triggering automation {automation_id} after debounce");
                         let app_handle_clone = app_handle.clone();
                         let id_clone = automation_id.clone();
-                        tokio::spawn(async move {
-                            if let Err(e) = execute_automation(&id_clone, &app_handle_clone).await {
+                        crate::utils::spawn(async move {
+                            if let Err(e) =
+                                execute_automation(&id_clone, &app_handle_clone, scoped_targets)
+                                    .await
+                            {
                                 log::error!("Error executing automation {id_clone}: {e}");
                             }
                         });
@@ -269,9 +291,61 @@ impl Default for WatcherManager {
     }
 }
 
-// ============================================================================
+pub fn compute_scoped_targets(
+    src_paths: &[String],
+    dst_paths: &[String],
+    changed_paths: &std::collections::HashSet<std::path::PathBuf>,
+) -> Vec<(String, String)> {
+    if changed_paths.is_empty() || src_paths.is_empty() {
+        return Vec::new();
+    }
+
+    let default_dst = dst_paths.first().cloned().unwrap_or_default();
+    let mut scoped_pairs = std::collections::HashSet::new();
+
+    for changed in changed_paths {
+        let Some((idx, src_root)) = src_paths
+            .iter()
+            .enumerate()
+            .find(|(_, src)| changed.starts_with(src))
+        else {
+            continue;
+        };
+
+        let Ok(rel_path) = changed.strip_prefix(src_root) else {
+            continue;
+        };
+
+        let rel_dir = if changed.is_dir() {
+            rel_path.to_string_lossy()
+        } else {
+            rel_path
+                .parent()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_default()
+        };
+
+        let rel_dir = rel_dir.replace('\\', "/").trim_matches('/').to_string();
+        let target_dst_root = dst_paths.get(idx).unwrap_or(&default_dst);
+
+        let (scoped_src, scoped_dst) = if rel_dir.is_empty() {
+            (src_root.clone(), target_dst_root.clone())
+        } else {
+            (
+                build_full_path(src_root, &rel_dir),
+                build_full_path(target_dst_root, &rel_dir),
+            )
+        };
+
+        scoped_pairs.insert((scoped_src, scoped_dst));
+    }
+
+    let mut result: Vec<(String, String)> = scoped_pairs.into_iter().collect();
+    result.sort();
+    result
+}
+
 // HELPERS
-// ============================================================================
 
 fn local_paths(automation: &Automation) -> Vec<String> {
     let mut paths: Vec<String> = automation
@@ -282,7 +356,7 @@ fn local_paths(automation: &Automation) -> Vec<String> {
         .cloned()
         .collect();
 
-    if automation.automation_type == AutomationType::Bisync {
+    if automation.automation_type == OperationType::Bisync {
         paths.extend(
             automation
                 .args
@@ -327,7 +401,7 @@ async fn is_automation_running_or_in_cooldown(
 
     let job_cache = &backend_manager.job_cache;
     let remote_name = automation.args.params.remote_name.trim_end_matches(':');
-    let job_type = automation.automation_type.as_job_type();
+    let job_type = automation.automation_type.as_job_type().unwrap();
     let profile = Some(automation.args.params.profile_name.as_str());
 
     let active_jobs = job_cache.get_active_jobs().await;
@@ -355,9 +429,7 @@ async fn is_automation_running_or_in_cooldown(
         .is_some_and(|t| Utc::now().signed_duration_since(t) < chrono::Duration::seconds(5))
 }
 
-// ============================================================================
 // FILTER / PATTERN MATCHING
-// ============================================================================
 
 fn glob_match(pattern: &str, path: &str, ignore_case: bool) -> bool {
     let normalize = |s: &str| {
@@ -467,10 +539,177 @@ fn parse_rclone_duration(s: &str) -> Option<chrono::Duration> {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct ResolvedFilterOptions {
+    ignore_case: bool,
+    max_depth: Option<u64>,
+    min_size: Option<u64>,
+    max_size: Option<u64>,
+    min_age: Option<chrono::Duration>,
+    max_age: Option<chrono::Duration>,
+    filter_rules: Vec<String>,
+    excludes: Vec<String>,
+    includes: Vec<String>,
+    files_from: Vec<String>,
+}
+
+fn resolve_filter_options(opts: &HashMap<String, Value>) -> ResolvedFilterOptions {
+    let normalized_opts: HashMap<String, &Value> =
+        opts.iter().map(|(k, v)| (k.to_lowercase(), v)).collect();
+
+    let get_opt = |keys: &[&str]| -> Option<&Value> {
+        keys.iter()
+            .find_map(|k| normalized_opts.get(&k.to_lowercase()).copied())
+    };
+
+    let ignore_case = get_opt(&["IgnoreCase", "ignore_case"])
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    let max_depth = get_opt(&["MaxDepth", "max_depth"]).and_then(Value::as_u64);
+
+    let min_size = get_opt(&["MinSize", "min_size"]).and_then(|v| {
+        v.as_str()
+            .and_then(parse_rclone_size)
+            .or_else(|| v.as_u64())
+    });
+
+    let max_size = get_opt(&["MaxSize", "max_size"]).and_then(|v| {
+        v.as_str()
+            .and_then(parse_rclone_size)
+            .or_else(|| v.as_u64())
+    });
+
+    let min_age = get_opt(&["MinAge", "min_age"])
+        .and_then(|v| v.as_str())
+        .and_then(parse_rclone_duration);
+
+    let max_age = get_opt(&["MaxAge", "max_age"])
+        .and_then(|v| v.as_str())
+        .and_then(parse_rclone_duration);
+
+    let patterns_for = |keys: &[&str]| -> Vec<String> {
+        keys.iter()
+            .filter_map(|&key| {
+                let val = normalized_opts.get(&key.to_lowercase())?;
+                if let Some(arr) = val.as_array() {
+                    Some(
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(str::to_owned))
+                            .collect::<Vec<_>>(),
+                    )
+                } else {
+                    val.as_str().map(|s| vec![s.to_owned()])
+                }
+            })
+            .flatten()
+            .collect()
+    };
+
+    let patterns_from_files = |keys: &[&str]| -> Vec<String> {
+        patterns_for(keys)
+            .into_iter()
+            .flat_map(|file_path| {
+                std::fs::read_to_string(&file_path)
+                    .unwrap_or_default()
+                    .lines()
+                    .filter_map(|l| {
+                        let trimmed = l.trim();
+                        if trimmed.is_empty()
+                            || trimmed.starts_with('#')
+                            || trimmed.starts_with(';')
+                        {
+                            None
+                        } else {
+                            Some(trimmed.to_owned())
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    };
+
+    let mut filter_rules = patterns_for(&["FilterRule", "filter"]);
+    filter_rules.extend(patterns_from_files(&["FilterFrom", "filter_from"]));
+
+    let mut excludes = patterns_for(&[
+        "ExcludeRule",
+        "exclude",
+        "ExcludeFile",
+        "exclude_if_present",
+    ]);
+    excludes.extend(patterns_from_files(&["ExcludeFrom", "exclude_from"]));
+
+    let mut includes = patterns_for(&["IncludeRule", "include"]);
+    includes.extend(patterns_from_files(&["IncludeFrom", "include_from"]));
+
+    let mut files_from = patterns_for(&["FilesFrom", "files_from"]);
+    files_from.extend(patterns_from_files(&["FilesFrom", "files_from"]));
+
+    ResolvedFilterOptions {
+        ignore_case,
+        max_depth,
+        min_size,
+        max_size,
+        min_age,
+        max_age,
+        filter_rules,
+        excludes,
+        includes,
+        files_from,
+    }
+}
+
+async fn resolve_workflow_filter_options(
+    app_handle: &AppHandle,
+    workflow_id: &str,
+) -> Option<ResolvedFilterOptions> {
+    let manager = app_handle.try_state::<AppSettingsManager>()?;
+    let wf = crate::core::flow::workflow::commands::get_workflow_by_id(&manager, workflow_id)
+        .ok()
+        .flatten()?;
+
+    let glob_pattern = wf.watcher_glob_pattern()?;
+    let mut includes = Vec::new();
+    let mut excludes = Vec::new();
+
+    for pattern in glob_pattern.split(',') {
+        let p = pattern.trim();
+        if p.is_empty() {
+            continue;
+        }
+        if let Some(stripped) = p.strip_prefix('!') {
+            let excl = stripped.trim();
+            if !excl.is_empty() {
+                excludes.push(excl.to_string());
+            }
+        } else {
+            includes.push(p.to_string());
+        }
+    }
+
+    if includes.is_empty() && excludes.is_empty() {
+        return None;
+    }
+
+    Some(ResolvedFilterOptions {
+        ignore_case: false,
+        max_depth: None,
+        min_size: None,
+        max_size: None,
+        min_age: None,
+        max_age: None,
+        filter_rules: Vec::new(),
+        excludes,
+        includes,
+        files_from: Vec::new(),
+    })
+}
+
 fn is_path_filtered(
     path: &std::path::Path,
     src_paths: &[String],
-    filter_options: &Option<HashMap<String, Value>>,
+    filter_options: &Option<ResolvedFilterOptions>,
 ) -> bool {
     let Some(opts) = filter_options else {
         return false;
@@ -492,52 +731,8 @@ fn is_path_filtered(
         return false;
     }
 
-    let ignore_case = opts
-        .get("IgnoreCase")
-        .or_else(|| opts.get("ignoreCase"))
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    // Collect string patterns from a set of keys (array or single string value).
-    let patterns_for = |keys: &[&str]| -> Vec<String> {
-        keys.iter()
-            .flat_map(|&key| {
-                let val = opts.get(key).or_else(|| opts.get(&key.to_lowercase()))?;
-                if let Some(arr) = val.as_array() {
-                    Some(
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(str::to_owned))
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    val.as_str().map(|s| vec![s.to_owned()])
-                }
-            })
-            .flatten()
-            .collect()
-    };
-
-    // Read patterns from filter files listed under `keys`.
-    let patterns_from_files = |keys: &[&str]| -> Vec<String> {
-        patterns_for(keys)
-            .into_iter()
-            .flat_map(|file_path| {
-                std::fs::read_to_string(&file_path)
-                    .unwrap_or_default()
-                    .lines()
-                    .filter(|l| !l.trim().is_empty() && !l.starts_with('#') && !l.starts_with(';'))
-                    .map(|l| l.trim().to_owned())
-                    .collect::<Vec<_>>()
-            })
-            .collect()
-    };
-
     // MaxDepth
-    if let Some(max_depth) = opts
-        .get("MaxDepth")
-        .or_else(|| opts.get("maxDepth"))
-        .and_then(|v| v.as_u64())
-    {
+    if let Some(max_depth) = opts.max_depth {
         let depth = rel_path.split('/').filter(|s| !s.is_empty()).count() as u64;
         if depth > max_depth {
             return true;
@@ -550,27 +745,13 @@ fn is_path_filtered(
     {
         let size = meta.len();
 
-        if let Some(min) = opts
-            .get("MinSize")
-            .or_else(|| opts.get("minSize"))
-            .and_then(|v| {
-                v.as_str()
-                    .and_then(parse_rclone_size)
-                    .or_else(|| v.as_u64())
-            })
+        if let Some(min) = opts.min_size
             && size < min
         {
             return true;
         }
 
-        if let Some(max) = opts
-            .get("MaxSize")
-            .or_else(|| opts.get("maxSize"))
-            .and_then(|v| {
-                v.as_str()
-                    .and_then(parse_rclone_size)
-                    .or_else(|| v.as_u64())
-            })
+        if let Some(max) = opts.max_size
             && size > max
         {
             return true;
@@ -579,21 +760,13 @@ fn is_path_filtered(
         if let Ok(modified) = meta.modified() {
             let age = Utc::now().signed_duration_since(chrono::DateTime::<Utc>::from(modified));
 
-            if let Some(min_age) = opts
-                .get("MinAge")
-                .or_else(|| opts.get("minAge"))
-                .and_then(|v| v.as_str())
-                .and_then(parse_rclone_duration)
+            if let Some(min_age) = opts.min_age
                 && age < min_age
             {
                 return true;
             }
 
-            if let Some(max_age) = opts
-                .get("MaxAge")
-                .or_else(|| opts.get("maxAge"))
-                .and_then(|v| v.as_str())
-                .and_then(parse_rclone_duration)
+            if let Some(max_age) = opts.max_age
                 && age > max_age
             {
                 return true;
@@ -602,10 +775,7 @@ fn is_path_filtered(
     }
 
     // FilterRule / FilterFrom — ordered include/exclude rules.
-    let mut filter_rules = patterns_for(&["FilterRule", "filterRule"]);
-    filter_rules.extend(patterns_from_files(&["FilterFrom", "filterFrom"]));
-
-    for rule in &filter_rules {
+    for rule in &opts.filter_rules {
         let rule = rule.trim();
         let (include, pattern) =
             if let Some(p) = rule.strip_prefix("+ ").or_else(|| rule.strip_prefix('+')) {
@@ -616,42 +786,36 @@ fn is_path_filtered(
                 continue;
             };
 
-        if glob_match(pattern, rel_path, ignore_case) {
+        if glob_match(pattern, rel_path, opts.ignore_case) {
             return !include;
         }
     }
 
     // ExcludeRule / ExcludeFrom / ExcludeFile.
-    let mut excludes = patterns_for(&["ExcludeRule", "excludeRule", "ExcludeFile", "excludeFile"]);
-    excludes.extend(patterns_from_files(&["ExcludeFrom", "excludeFrom"]));
-
-    if excludes
+    if opts
+        .excludes
         .iter()
-        .any(|p| glob_match(p, rel_path, ignore_case))
+        .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
 
     // IncludeRule / IncludeFrom — if any are set, the file must match at least one.
-    let mut includes = patterns_for(&["IncludeRule", "includeRule"]);
-    includes.extend(patterns_from_files(&["IncludeFrom", "includeFrom"]));
-
-    if !includes.is_empty()
-        && !includes
+    if !opts.includes.is_empty()
+        && !opts
+            .includes
             .iter()
-            .any(|p| glob_match(p, rel_path, ignore_case))
+            .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
 
     // FilesFrom / FilesFromRaw — explicit allowlist.
-    let mut files_from = patterns_for(&["FilesFrom", "filesFrom", "FilesFromRaw", "filesFromRaw"]);
-    files_from.extend(patterns_from_files(&["FilesFrom", "filesFrom"]));
-
-    if !files_from.is_empty()
-        && !files_from
+    if !opts.files_from.is_empty()
+        && !opts
+            .files_from
             .iter()
-            .any(|p| glob_match(p, rel_path, ignore_case))
+            .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
@@ -659,9 +823,7 @@ fn is_path_filtered(
     false
 }
 
-// ============================================================================
 // TESTS
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -711,6 +873,89 @@ mod tests {
         assert_eq!(
             parse_rclone_duration("1w"),
             Some(chrono::Duration::weeks(1))
+        );
+    }
+
+    #[test]
+    fn test_is_path_filtered() {
+        let src_paths = vec!["/src".to_string()];
+
+        let mut opts = HashMap::new();
+        opts.insert("maxDepth".to_string(), serde_json::json!(2));
+        let filter_opts = Some(resolve_filter_options(&opts));
+
+        assert!(!is_path_filtered(
+            std::path::Path::new("/src/foo.txt"),
+            &src_paths,
+            &filter_opts
+        ));
+        assert!(is_path_filtered(
+            std::path::Path::new("/src/foo/bar/baz.txt"),
+            &src_paths,
+            &filter_opts
+        ));
+
+        let mut opts2 = HashMap::new();
+        opts2.insert("excludeRule".to_string(), serde_json::json!(["*.log"]));
+        let filter_opts2 = Some(resolve_filter_options(&opts2));
+
+        assert!(is_path_filtered(
+            std::path::Path::new("/src/error.log"),
+            &src_paths,
+            &filter_opts2
+        ));
+        assert!(!is_path_filtered(
+            std::path::Path::new("/src/main.rs"),
+            &src_paths,
+            &filter_opts2
+        ));
+    }
+
+    #[test]
+    fn test_compute_scoped_targets() {
+        let src_paths = vec!["/home/user/backup".to_string()];
+        let dst_paths = vec!["google:test1".to_string()];
+
+        let mut changed = std::collections::HashSet::new();
+        changed.insert(std::path::PathBuf::from(
+            "/home/user/backup/proj/app/main.rs",
+        ));
+        changed.insert(std::path::PathBuf::from(
+            "/home/user/backup/proj/app/lib.rs",
+        ));
+        changed.insert(std::path::PathBuf::from("/home/user/backup/other/doc.txt"));
+
+        let targets = compute_scoped_targets(&src_paths, &dst_paths, &changed);
+        assert_eq!(targets.len(), 2);
+        assert_eq!(
+            targets[0],
+            (
+                "/home/user/backup/other".to_string(),
+                "google:test1/other".to_string()
+            )
+        );
+        assert_eq!(
+            targets[1],
+            (
+                "/home/user/backup/proj/app".to_string(),
+                "google:test1/proj/app".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_compute_scoped_targets_root_file() {
+        let src_paths = vec!["/home/user/backup".to_string()];
+        let dst_paths = vec!["google:test1".to_string()];
+
+        let mut changed = std::collections::HashSet::new();
+        changed.insert(std::path::PathBuf::from("/home/user/backup/notes.txt"));
+
+        let targets = compute_scoped_targets(&src_paths, &dst_paths, &changed);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(
+            targets[0],
+            ("/home/user/backup".to_string(), "google:test1".to_string())
         );
     }
 }

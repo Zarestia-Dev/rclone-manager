@@ -1,27 +1,30 @@
-@use "../../styles/slide-menu";
-
 /* ==========================================================================
    1. Main Container & Sidenav
    ========================================================================== */
 
 .nautilus-overlay-pane {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   --sidebar-width: clamp(180px, 20vw, 240px);
+
+  // CDK overlay is positioned against the raw viewport — needs its own insets
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  @media (max-width: 679px) {
+    --sidebar-width: unset;
+  }
 }
 
 .nautilus-sidenav {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   width: var(--sidebar-width);
   background-color: var(--sidebar-bg-color);
-  border-radius: 0 !important;
-}
-
-.nautilus-sidenav mat-toolbar {
-  display: flex;
-  justify-content: space-between;
-  background-color: var(--sidebar-bg-color) !important;
-  padding-inline: var(--space-sm);
-  height: var(--titlebar-height);
 }
 
 /* ==========================================================================
@@ -36,27 +39,21 @@
 }
 
 .nautilus-content {
+  display: grid;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
   flex: 1;
   min-height: 0;
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
 
 /* ==========================================================================
    3. Split View
    ========================================================================== */
 
-.split-container {
-  display: grid;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
 .split-divider {
-  width: 0.5rem;
+  width: var(--space-xs);
   background: var(--sidebar-bg-color);
   cursor: col-resize;
   position: relative;
@@ -90,7 +87,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-xs) var(--space-sm);
   min-height: 40px;
 
   .control-label {
@@ -101,7 +98,7 @@
 
   .control-buttons {
     display: flex;
-    gap: 4px;
+    gap: var(--space-xxs);
 
     .icon-button {
       all: unset;
@@ -110,9 +107,9 @@
       justify-content: center;
       width: 32px;
       height: 32px;
-      border-radius: 6px;
+      border-radius: var(--radius-xs);
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: var(--transition-fast);
       background: var(--sidebar-bg-color);
       color: var(--window-fg-color);
 
@@ -139,7 +136,7 @@
 }
 
 .menu-section-label {
-  padding: 8px 12px 4px;
+  padding: var(--space-xs) var(--space-sm) var(--space-xxs);
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -147,12 +144,13 @@
   color: var(--dim-color);
 }
 
-.selection-icon {
+.menu-item .selection-icon {
   margin-left: auto;
-  color: var(--accent-color) !important;
-  width: 18px !important;
-  height: 18px !important;
-  font-size: 18px !important;
+  margin-right: 0;
+  color: var(--accent-color);
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
 }
 
 /* ==========================================================================
@@ -191,7 +189,28 @@
   }
 }
 
-// Adjust menu items inside sliding container
-.sliding-container .menu-item {
-  width: calc(100% - 4px) !important;
+/* ==========================================================================
+   7. Android Share Banner
+   ========================================================================== */
+
+.android-share-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--accent-color) 15%, var(--card-bg-color));
+
+  .share-label {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--window-fg-color);
+    font-weight: 500;
+  }
+
+  .share-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+  }
 }

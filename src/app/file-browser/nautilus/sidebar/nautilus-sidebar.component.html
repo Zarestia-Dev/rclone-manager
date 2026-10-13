@@ -1,29 +1,35 @@
 <div class="nautilus-layout">
-  <div class="nautilus-header">
-    <mat-toolbar data-tauri-drag-region>
-      <div class="header-start">
-        <button class="nav-button" (click)="onToggleSearch()" [class.active]="isSearchMode()">
-          <mat-icon svgIcon="search"></mat-icon>
+  <mat-toolbar data-tauri-drag-region>
+    <div class="header-start">
+      <button
+        class="nav-button"
+        (click)="onToggleSearch()"
+        [class.active]="isSearchMode()"
+        [attr.title]="'nautilus.sidebar.toggleSearch' | translate"
+        [attr.aria-label]="'nautilus.sidebar.toggleSearch' | translate"
+      >
+        <mat-icon svgIcon="search"></mat-icon>
+      </button>
+    </div>
+    <div class="header-center">
+      <span>{{ title() | translate }}</span>
+    </div>
+    <div class="header-end">
+      @if (!isPickerMode()) {
+        <button
+          class="nav-button"
+          [cdkMenuTriggerFor]="sidebarMainMenu"
+          [cdkMenuPosition]="[
+            { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+          ]"
+          [attr.title]="'nautilus.sidebar.configureTitle' | translate"
+          [attr.aria-label]="'nautilus.sidebar.configureTitle' | translate"
+        >
+          <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
-      </div>
-      <div class="header-center">
-        <span>{{ title() | translate }}</span>
-      </div>
-      <div class="header-end">
-        @if (!isPickerMode()) {
-          <button
-            class="nav-button"
-            [cdkMenuTriggerFor]="sidebarMainMenu"
-            [cdkMenuPosition]="[
-              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-            ]"
-          >
-            <mat-icon svgIcon="menu-bar"></mat-icon>
-          </button>
-        }
-      </div>
-    </mat-toolbar>
-  </div>
+      }
+    </div>
+  </mat-toolbar>
 
   <div class="nautilus-scroll-content">
     <nav class="sidebar-nav">
@@ -56,33 +62,37 @@
         {{ 'nautilus.titles.bookmarks' | translate }}
       </div>
 
-      @for (bm of bookmarks(); track bm.meta.remote + ':' + bm.entry.Path) {
+      @for (item of bookmarkViewModels(); track item.bm.meta.remote + ':' + item.bm.entry.Path) {
         <button
           class="sidebar-item"
-          [attr.data-sidebar-bookmark-path]="bm.entry.Path"
-          [class.selected]="isBookmarkSelected(bm)"
-          [class.drag-over]="isDragging() && hoveredSidebarItem() === 'bookmark:' + bm.entry.Path"
-          (click)="onOpenBookmark(bm)"
+          [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
+          [class.selected]="item.key === activeBookmarkKey()"
+          [class.drag-over]="
+            isDragging() && hoveredSidebarItem() === 'bookmark:' + item.bm.entry.Path
+          "
+          (click)="onOpenBookmark(item.bm)"
           (dragover)="$event.preventDefault()"
-          (drop)="droppedToBookmark.emit({ event: $event, target: bm })"
+          (drop)="droppedToBookmark.emit({ event: $event, target: item.bm })"
           [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
           (cdkContextMenuOpened)="menuCtrl.reset()"
-          [cdkContextMenuTriggerData]="{ $implicit: bm }"
+          [cdkContextMenuTriggerData]="{ $implicit: item.bm }"
         >
           <mat-icon
-            [svgIcon]="bm.meta.remoteType ? iconService.getIconName(bm.meta.remoteType) : 'folder'"
+            [svgIcon]="
+              item.bm.meta.remoteType ? iconService.getIconName(item.bm.meta.remoteType) : 'folder'
+            "
           ></mat-icon>
-          <span>{{ bm.entry.Name }}</span>
+          <span>{{ item.bm.entry.Name }}</span>
         </button>
       } @empty {
         <p class="empty-hint">{{ 'nautilus.bookmarks.emptyHint' | translate }}</p>
       }
 
       <!-- Local Drives -->
-      @if (localDrives().length > 0) {
+      @if (displayLocalDrives().length > 0) {
         <hr class="sidebar-rule" />
         <div class="sidebar-section-header">{{ 'nautilus.titles.local' | translate }}</div>
-        @for (drive of localDrives(); track drive.name) {
+        @for (drive of displayLocalDrives(); track drive.name) {
           <ng-container
             [ngTemplateOutlet]="remoteItem"
             [ngTemplateOutletContext]="{
@@ -96,10 +106,10 @@
       }
 
       <!-- Cloud Remotes -->
-      @if (cloudRemotes().length > 0) {
+      @if (displayCloudRemotes().length > 0) {
         <hr class="sidebar-rule" />
         <div class="sidebar-section-header">{{ 'nautilus.titles.cloud' | translate }}</div>
-        @for (remote of cloudRemotes(); track remote.name) {
+        @for (remote of displayCloudRemotes(); track remote.name) {
           <ng-container
             [ngTemplateOutlet]="remoteItem"
             [ngTemplateOutletContext]="{
@@ -126,9 +136,7 @@
       nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
     "
     [class.drag-over]="isDragging() && hoveredSidebarItem() === 'remote:' + remote.name"
-    [matTooltip]="getDriveTooltip(remote)"
-    matTooltipShowDelay="600"
-    matTooltipPosition="right"
+    [attr.title]="driveTooltips().get(remote.name) ?? ''"
     (click)="onSelectRemote(remote)"
     (dragover)="$event.preventDefault()"
     (drop)="droppedToRemote.emit({ event: $event, target: remote })"
@@ -166,6 +174,10 @@
 
 <ng-template #sidebarMainMenu>
   <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="onConfigureSidebar()">
+      <span class="item-label">{{ 'nautilus.sidebar.configureTitle' | translate }}</span>
+    </button>
+    <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestShortcuts.emit()">
       <span class="item-label">{{ 'shortcuts.title' | translate }}</span>
     </button>
@@ -189,8 +201,8 @@
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
-        @if (supportsCleanup(remote)) {
-          <button class="menu-item danger" cdkMenuItem (click)="requestCleanup.emit(remote)">
+        @if (hasFeature(remote, 'CleanUp')) {
+          <button class="menu-item danger-item" cdkMenuItem (click)="requestCleanup.emit(remote)">
             <span class="item-label">{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
           </button>
           <mat-divider></mat-divider>
@@ -247,7 +259,7 @@
         </button>
         <mat-divider></mat-divider>
         <button
-          class="menu-item danger"
+          class="menu-item danger-item"
           cdkMenuItem
           (click)="requestBookmarkRemoval.emit(bookmark)"
         >

@@ -8,6 +8,7 @@
 #
 # Environment variables:
 #   PUID / PGID           — Set container user/group ID (default: 1000)
+#   PGIDS                 — Supplementary group IDs, comma-separated (e.g. 1000,3000)
 #   RCLONE_MANAGER_HOST   — Bind address (default: 0.0.0.0)
 #   RCLONE_MANAGER_PORT   — Listen port (default: 8080)
 #   RCLONE_MANAGER_USER   — Basic auth username
@@ -71,7 +72,7 @@ LABEL maintainer="Zarestia-Dev" \
       org.opencontainers.image.source="https://github.com/Zarestia-Dev/rclone-manager"
 
 # Install runtime dependencies
-# Note: 'gosu' is used for privilege dropping in the entrypoint
+# Note: 'setpriv' (util-linux) is used for privilege dropping in the entrypoint
 # Note: 'xvfb' and 'dbus-x11' trick Tauri into running without a physical display
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -83,8 +84,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libwebkit2gtk-4.1-0 \
         openssl \
         unzip \
+        util-linux \
         xvfb \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && (sed -i 's/#\s*user_allow_other/user_allow_other/' /etc/fuse.conf 2>/dev/null || true)
 
 # Create the internal app user
 # The default UID/GID is 1000, but is dynamically overridden by PUID/PGID in entrypoint.sh
@@ -112,9 +115,9 @@ COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/l
 # Copy the built frontend assets
 # The destination path is critical: it must exactly match the `productName` defined in tauri.conf.headless.json
 COPY --from=builder \
-    ["/app/src-tauri/target/release/browser", "/usr/lib/RClone Manager Headless/browser/"]
+    ["/app/dist/rclone-manager/browser", "/usr/lib/RClone Manager Headless/browser/"]
 COPY --from=builder \
-    ["/app/src-tauri/target/release/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
+    ["/app/resources/i18n", "/usr/lib/RClone Manager Headless/i18n/"]
 
 # Copy and setup the runtime entrypoint script
 # Moving this to the end ensures that changes to entrypoint.sh don't invalidate
@@ -145,9 +148,7 @@ ENV DISPLAY=:99 \
     RCLONE_CONFIG=/config/rclone.conf \
     RCLONE_MANAGER_DATA_DIR=/data \
     RCLONE_MANAGER_LOG_DIR=/data/logs \
-    RCLONE_MANAGER_CACHE_DIR=/data/cache \
-    RCLONE_MANAGER_SECRET=${RCLONE_MANAGER_SECRET:-} \
-    RCLONE_MANAGER_SECRET_PATH=${RCLONE_MANAGER_SECRET_PATH:-}
+    RCLONE_MANAGER_CACHE_DIR=/data/cache
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []

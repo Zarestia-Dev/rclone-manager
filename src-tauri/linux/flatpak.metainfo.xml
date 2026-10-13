@@ -22,15 +22,18 @@
     </p>
     <p>Key features:</p>
     <ul>
-      <li>Built-in file manager: browse, copy, move, rename, delete, and preview files on remote storage</li>
-      <li>Preview support for images, videos, PDFs, audio, text, Markdown, and code files with syntax highlighting</li>
-      <li>Mount remote storage as a local drive</li>
-      <li>Schedule sync, copy, move, and bisync operations using cron expressions</li>
+      <li>Visual workflow builder: design multi-step automations with an interactive node-based canvas, triggers, logic, and notifications</li>
+      <li>Quick Runs &amp; Flow automation hub: one-click operation execution, CLI command import, and reusable templates</li>
+      <li>Built-in file manager (Nautilus): browse, copy, move, rename, delete, archive, and preview remote files</li>
+      <li>Rich media preview: support for images, videos, audio, PDFs, Markdown, and code with syntax highlighting</li>
+      <li>Mount cloud storage as a local drive with VFS cache controls</li>
+      <li>Automations: schedule operations using cron expressions or trigger transfers with real-time file system watchers</li>
       <li>Serve remote storage over HTTP or WebDAV</li>
-      <li>System tray integration for monitoring active transfers and jobs</li>
-      <li>Dark and light mode</li>
-      <li>Encrypted configuration storage and backup/restore support</li>
-      <li>Multiple remote backends and per-operation profiles</li>
+      <li>Power management: prevents automatic system sleep while active transfers, mounts, or servers are running</li>
+      <li>System tray integration and customizable keyboard shortcuts for quick control</li>
+      <li>Theme support: dark and light modes with automatic system theme synchronization</li>
+      <li>Encrypted configuration storage with full backup and restore support</li>
+      <li>Multi-backend management with customizable per-operation profiles</li>
     </ul>
     <p>
       Troubleshooting: If you encounter an "Invalid binary" error during setup, it is likely caused by an outdated system rclone binary. Go to Settings → Core, clear the rclone binary path, and click Save &amp; Reset Engine. When prompted, let the app download and install the latest rclone version automatically.
@@ -64,39 +67,256 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/desktop-ui.png</image>
       <caption>Dashboard with connected cloud remotes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/general-home.png</image>
-      <caption>Overview of connected cloud services</caption>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/workflow-builder.png</image>
+      <caption>Visual workflow builder and automation canvas</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/general-remote.png</image>
-      <caption>Add and configure cloud storage providers</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/serve-control.png</image>
-      <caption>Serve storage over HTTP or WebDAV</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/job-watcher.png</image>
-      <caption>Monitor active and scheduled operations</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/mount-control.png</image>
-      <caption>Mount cloud storage as a local drive</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/nautilus.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/nautilus.png</image>
       <caption>Browse and manage remote files</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.2/assets/file-viewer.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/general-home.png</image>
+      <caption>Overview of connected cloud services</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/general-remote.png</image>
+      <caption>Add and configure cloud storage providers</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/serve-control.png</image>
+      <caption>Serve storage over HTTP or WebDAV</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/job-watcher.png</image>
+      <caption>Monitor active and scheduled operations</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/mount-control.png</image>
+      <caption>Mount cloud storage as a local drive</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.3/assets/file-viewer.png</image>
       <caption>Preview images, PDFs, and text files</caption>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.3" date="2026-09-23">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Workflow Engine &amp; Visual Canvas UI: Introduced an interactive node-based canvas for automation, an in-process native Rust execution engine, comprehensive triggers, tasks, and logic nodes, pre-built recipes, and live execution logging.</li>
+          <li>Centralized Keyboard Shortcut Management System: Unified keyboard shortcut handling, contextual key bindings for global navigation, and visual shortcut viewer modal.</li>
+          <li>Power Management &amp; Fast Actions Modal: Added a quick power and lifecycle management modal (accessible via long-press on About) for safe app termination, relaunch, emergency stop, and host power actions.</li>
+          <li>Rclone Port Collision Detection &amp; Auto-Repair Flow: Automatic occupied TCP port detection before spawning local Rclone engines, with instant suggestion of available ports and one-click apply &amp; restart.</li>
+          <li>Smart Remote vs. Local Authentication Error Handling: Differentiated rclone_auth repair flow guiding users directly to backend settings for remote backends.</li>
+          <li>URL Preview Component &amp; Utilities: Real-time URL inspection, domain and protocol extraction, and destination path previewing across download and transfer dialogs.</li>
+          <li>Binary File Inspector &amp; MIME Sniffing: In-depth file header inspection, MIME signature detection, and hex/byte dumps for unknown files in Nautilus file browser.</li>
+          <li>Missing Remote Detection &amp; UI Alerts for Quick Runs: Automated detection and warning badges for unconfigured remotes referenced by Quick Run configurations.</li>
+          <li>System Theme Event Synchronization: Real-time native OS theme change listeners forwarding theme transition events for instant dark/light mode switching.</li>
+          <li>Linux NVIDIA WebKit Environment Auto-Configuration: Automatically configures WebKitGTK rendering environment variables at startup when an NVIDIA GPU is detected.</li>
+          <li>Graceful Unix SIGTERM Shutdown Handling: Added unified SIGTERM and SIGINT signal listeners on Unix systems to trigger a clean shutdown sequence before exit.</li>
+          <li>New Traditional Chinese language translations.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Decoupled Async Runtime from UI Framework: Migrated to an application-owned Tokio runtime for background tasks, improving stability.</li>
+          <li>Export Modal UI Overhaul: Redesigned with a Libadwaita-inspired selection list, item counters, and category-level selection controls.</li>
+          <li>Multi-Rename Modal Enhancements: Upgraded with multi-pattern search &amp; replace, prefix/suffix additions, automatic sequence numbering, and live preview table.</li>
+          <li>Dedicated Contributors section in the About modal under Credits.</li>
+          <li>Polished responsive layouts and type safety across jobs overview, logs, and core dialogs.</li>
+        </ul>
+        <p>Removed</p>
+        <ul>
+          <li>Removed deprecated PathValidationService in favor of centralized path resolution utilities and backend validation.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Resolved Linux shutdown deadlock and improved power inhibitor handling across all platforms: switched to idle-sleep inhibition to prevent automatic system sleep during active operations while ensuring clean shutdown.</li>
+          <li>Fixed Tray Quit action window restoration when active transfers or mounts are running with window destruction enabled.</li>
+          <li>Fixed blank page in Nautilus &amp; UI when accessing over non-secure HTTP / remote IP addresses by replacing direct crypto.randomUUID calls with generatePrefixedId.</li>
+          <li>Corrected preset flag definitions for macOS mounts (noappledouble, noapplexattr) and S3 backend (use_server_modtime).</li>
+          <li>Fixed Docker FUSE mount failures with --allow-other and non-root PUID/PGID by enabling user_allow_other in /etc/fuse.conf.</li>
+          <li>Various bug fixes and stability improvements.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.2" date="2026-08-24">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Flow Overlay &amp; Automation Hub: Dedicated Flow overlay system for streamlined automation, Quick Run execution, and template management.</li>
+          <li>Quick Run Execution &amp; Management: Launch one-click operations with real-time job tracking, comprehensive Quick Run editor, card organization, tagging, and CLI command import.</li>
+          <li>Modular Dashboard Overview Panels: Modular panels with sticky headers and toolbar layout customization controls (drag-and-drop ordering and visibility toggles).</li>
+          <li>Power Inhibitor Integration: Prevents system sleep and shutdown during active file transfers (Linux systemd logind, Windows, macOS).</li>
+          <li>Android Storage Access Framework (SAF): Added native SAF tree picker, DocumentsProvider, VFS mount bridge, and background keep-alive service.</li>
+          <li>Template Management: Support for managing and applying operation templates in Quick Run Editor and Remote Config.</li>
+          <li>Subdirectory-Scoped Real-time Monitoring: Synchronize only modified subdirectories when triggered by real-time file watcher events.</li>
+          <li>Theme-Aware System Tray Icon: Added configurable tray icon theme options (Color, System Auto Monochrome, Light, Dark).</li>
+          <li>Dedicated Remote Deletion Confirmation Modal with dependency awareness and warnings.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Optimized CLI command import and flag mapping parser across Quick Run and Remote Config modals.</li>
+          <li>Standardized backend command bridge with centralized error mapping and structured localization payloads.</li>
+          <li>Automatic snake_case flat option mapping for CLI flags across operations and profiles.</li>
+          <li>Native Rclone OAuth endpoint integration (Rclone v1.75+).</li>
+          <li>Updated minimum supported Rclone version to 1.75.0.</li>
+        </ul>
+        <p>Removed</p>
+        <ul>
+          <li>Removed legacy keyring migrations, legacy 7z/zip 1.0.0 backup format restore, and sevenz-rust2 dependency.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed File Browser freeze and missing drive lists on wakeup or encountering stale/hung mounts.</li>
+          <li>Fixed premature deletion of job stats groups on operation finish or stop.</li>
+          <li>Fixed Docker entrypoint privilege dropping and supplementary groups (PGIDS) for ZFS and NFSv4 ACL datasets.</li>
+          <li>Fixed dynamic reloading of remotes list on rclone configuration and backend settings changes.</li>
+          <li>Fixed reactive system theme detection and synchronization using native matchMedia listeners.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.1" date="2026-07-26">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Android Beta Release: Added separated Android Beta APK builds (arm64-v8a, armeabi-v7a, x86_64, x86) powered by in-process librclone FFI bindings. Tested on Samsung Galaxy S23 FE. iOS status is currently unverified</li>
+          <li>Nautilus Sidebar Drives &amp; Remotes Customization: Added ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated configuration modal.</li>
+          <li>Nautilus Context Menu System Clipboard Integration: Added support for pasting OS system clipboard file paths and URIs directly from the context menu, with automatic paste button visibility.</li>
+          <li>New Russian, Brazilian Portuguese and Japanese language translations.</li>
+          <li>System Default Viewer: Support for opening files directly in the OS system default viewer.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Nautilus Detached Dialogs &amp; Multi-Tasking: Configurable detached file browser windows and overlay modes.</li>
+          <li>Universal Interactive Remote Configuration: Enhanced remote creation wizard for all interactive rclone providers.</li>
+          <li>Preserve file modification dates on local rclone instance uploads.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed remote connection payload unmarshaling with boolean/numeric runtime overrides.</li>
+          <li>Fixed multi-select string option inputs (e.g., Google Drive scope).</li>
+          <li>Fixed Rclone auth error detection and HTTP 401 classification.</li>
+          <li>Fixed undecorated window resize handles on Linux.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-07-14">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Bot-less Telegram &amp; WhatsApp Alerts: Direct Telegram alerts via CallMeBot API and WhatsApp alert notification channel.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Resolved Linux zbus D-Bus panics.</li>
+          <li>Fixed encryption detection in non-librclone mode.</li>
+          <li>Fixed task state and status refreshing for automated watchers and scheduled jobs.</li>
+          <li>Fixed desktop remote file downloads to local PC filesystem.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.9" date="2026-07-11">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Context Menu Integration: Native context menu support across Windows, Linux, and macOS to upload files/folders directly from system file managers.</li>
+          <li>Operations Support: Added check, delete, copyurl, archivecreate, and cryptcheck operations with action selection modal and check results table.</li>
+          <li>Manual Obscure Support: Built-in Obscure Tool utility in remote config wizard to encrypt sensitive fields.</li>
+          <li>Librclone Support: Support for librclone (Beta feature for Android/iOS), including Android build/cross-compilation and DoH resolver.</li>
+          <li>Deeplink support: Mobile custom URI scheme handler (rclone-manager://oauth) for OAuth redirection (Needs Rclone 1.75 Beta and later.)</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Upgraded frontend dependencies to Angular v22, TypeScript v6.0, and ngx-translate v18.</li>
+          <li>Updated Rust backend crate constraints.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Strict ESLint compliance: Resolved all strict lint errors and removed unsafe assertions.</li>
+          <li>Fixed overloaded time for DirCacheTime to default rclone value.</li>
+          <li>Fixed issue where Rclone Flags modals did not save numbers.</li>
+          <li>Fixed path inputs handling in remote config wizard on Windows.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.8" date="2026-06-15">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Added Ukrainian language support.</li>
+          <li>Added a multi-OS GitHub Actions workflow (`ci.yml`) to automatically validate lints, formatting, and compilation checks across Linux, Windows, and macOS on push and pull request triggers. Rust code validating all linux, windows and macos platforms, frontend code validating is only linux platform.</li>
+          <li>Added PowerShell 7+ (pwsh) support for mount plugin installer. If pwsh is not available on Windows, default to Windows PowerShell (powershell.exe).</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Gate the application and Rclone update system behind "updater" feature.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Detached dialog and other dialog fixes.</li>
+          <li>Fixed restart problem after apply update the application</li>
+          <li>Fixed silent update crash for windows.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.7" date="2026-06-13">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Smart, OS-aware performance presets applied automatically during remote creation.</li>
+          <li>Local filesystem watchers for sync, copy, move, and bisync automations.</li>
+          <li>Net-change debounce window to suppress temporary and atomic save file transfers.</li>
+          <li>Support for detached dialog windows (progress, logs, etc.) that persist after closing the main window.</li>
+          <li>Cancel button support during update downloads.</li>
+          <li>Enhanced rclone binary version validation and minimum version enforcement.</li>
+          <li>French language translation from Crowdin.</li>
+        </ul>
+        <p>Security</p>
+        <ul>
+          <li>Transient random in-memory credentials for local Rclone engines when no credentials are configured.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Migrated scheduled tasks to the new Automations Manager system.</li>
+          <li>macOS dock icon visibility controls based on window visibility.</li>
+          <li>Profile configuration values aligned with native Rclone RC properties.</li>
+          <li>Moved temporary view preferences to client-side local storage to optimize disk I/O.</li>
+          <li>Removed Snap package support.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed missing localization values and cleaned up unused translation keys.</li>
+          <li>Fixed incorrect mapping of rclone flags on backends and sync types.</li>
+          <li>Workaround for VFS options being ignored during serve startup.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.6" date="2026-05-19">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Dry run toggle on Operation Control Panel for sync, copy, move, and bisync.</li>
+          <li>New component to map CLI rclone commands to application values.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Shortcut option to toggle window visibility, in addition to the tray menu.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Aligned JSON editor flag formats to PascalCase matching Rclone structures.</li>
+          <li>Fixed destination path loading on remote configuration modal.</li>
+          <li>Fixed ordering issues on UI remote list load.</li>
+          <li>Fixed UI thread freeze when updating the system tray menu.</li>
+          <li>Various update process bug fixes.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-05-16">
       <description>
         <p>Added</p>

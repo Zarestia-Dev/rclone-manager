@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
-import { Observable } from 'rxjs';
+import { Observable, Subject, share } from 'rxjs';
 import { ApiClientService, isHeadlessMode } from './api-client.service';
 import { SseClientService } from './sse-client.service';
 import { NotificationService } from '../../ui/notification.service';
@@ -19,6 +19,8 @@ export class TauriBaseService {
   private readonly sseClient = inject(SseClientService);
   protected readonly isTauri = !isHeadlessMode();
 
+  private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
+
   protected getCurrentTauriWindow(): Window | undefined {
     return this.isTauri ? getCurrentWindow() : undefined;
   }
@@ -28,39 +30,46 @@ export class TauriBaseService {
   }
 
   protected listenToEvent<T>(eventName: string): Observable<T> {
-    if (!this.isTauri) {
-      return this.sseClient.listen<T>(eventName);
+    let stream = this.tauriEventStreams.get(eventName);
+    if (!stream) {
+      if (!this.isTauri) {
+        stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
+      } else {
+        const subject = new Subject<T>();
+        void listen<T>(eventName, event => subject.next(event.payload));
+        stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      }
+      this.tauriEventStreams.set(eventName, stream);
     }
-
-    return new Observable(observer => {
-      const unlisten = listen<T>(eventName, event => observer.next(event.payload));
-      return () => void unlisten.then(f => f());
-    });
+    return stream as Observable<T>;
   }
 
   protected async invokeWithNotification<T>(
     command: string,
     args?: Record<string, unknown>,
-    options?: NotifyOptions
+    options?: NotifyOptions<T>
   ): Promise<T> {
     try {
       const result = await this.invokeCommand<T>(command, args);
 
-      if (options?.showSuccess !== false && options?.successKey) {
-        this.notificationService.showSuccess(
-          this.translate.instant(options.successKey, options.successParams)
-        );
+      if (options?.successKey) {
+        const params =
+          typeof options.successParams === 'function'
+            ? options.successParams(result)
+            : options.successParams;
+        this.notificationService.showSuccess(this.translate.instant(options.successKey, params));
       }
 
       return result;
     } catch (error) {
-      if (options?.showError !== false) {
-        const errorKey = options?.errorKey ?? 'common.error';
-        const translatedError = this.backendTranslation.translateBackendMessage(error);
-        this.notificationService.showError(
-          this.translate.instant(errorKey, { ...options?.errorParams, error: translatedError })
-        );
-      }
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      const message = options?.errorKey
+        ? this.translate.instant(options.errorKey, {
+            ...options?.errorParams,
+            error: translatedError,
+          })
+        : translatedError;
+      this.notificationService.showError(message);
       throw error;
     }
   }

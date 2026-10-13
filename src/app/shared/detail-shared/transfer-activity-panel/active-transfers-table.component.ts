@@ -1,184 +1,325 @@
-import { Component, input, ChangeDetectionStrategy } from '@angular/core';
-import { NgClass } from '@angular/common';
-import { MatTableModule } from '@angular/material/table';
+import {
+  Component,
+  input,
+  inject,
+  ChangeDetectionStrategy,
+  computed,
+  effect,
+  untracked,
+} from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FormatTimePipe } from '../../pipes/format-time.pipe';
+import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
-import { inject } from '@angular/core';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { TransferOperationsService } from './transfer-operations.service';
 
 @Component({
   selector: 'app-active-transfers-table',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [TransferOperationsService],
   imports: [
-    NgClass,
-    MatTableModule,
     MatProgressBarModule,
     MatIconModule,
-    MatTooltipModule,
-    TranslateModule,
+    MatButtonModule,
+    TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
   ],
   template: `
-    <div class="transfer-table-container">
-      @if (transfers().length > 0) {
-        <table mat-table [dataSource]="transfers()" [trackBy]="trackByName" class="transfer-table">
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.file' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="name-cell">
-              <div class="file-info">
-                <mat-icon svgIcon="file" class="file-icon" [matTooltip]="transfer.name"></mat-icon>
-                <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
+    <div class="card-list-container">
+      @if (enrichedTransfers().length > 0) {
+        @for (transfer of enrichedTransfers(); track transfer.uniqueId + '-' + $index) {
+          <div class="card-row-item">
+            <div class="card-header">
+              <div class="card-info-left">
+                <mat-icon
+                  svgIcon="file"
+                  class="card-primary-icon file-icon"
+                  [attr.title]="transfer.name"
+                ></mat-icon>
+                <span class="card-title-text file-name" [title]="transfer.name">{{
+                  transfer.name
+                }}</span>
                 @if (transfer.isError) {
                   <mat-icon
                     svgIcon="circle-exclamation"
-                    class="error-icon warn"
-                    [matTooltip]="'shared.transferActivity.status.transferError' | translate"
+                    class="error-badge-icon warn"
+                    [attr.title]="
+                      transfer.error || ('shared.transferActivity.status.transferError' | translate)
+                    "
                   ></mat-icon>
                 }
                 @if (transfer.isCompleted) {
                   <mat-icon
-                    svgIcon="circle-check"
-                    class="success-icon primary"
-                    [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
+                    svgIcon="check-circle"
+                    class="success-badge-icon primary"
+                    [attr.title]="'shared.transferActivity.status.transferCompleted' | translate"
                   ></mat-icon>
                 }
               </div>
-            </td>
-          </ng-container>
+              <div class="card-info-right progress-badge">
+                @if (transfer.isPreparing) {
+                  <span class="percentage-text preparing">{{
+                    'shared.transferActivity.status.preparing' | translate
+                  }}</span>
+                } @else if (transfer.percentage === 100) {
+                  <span class="percentage-text finalizing">{{
+                    'shared.transferActivity.status.finalizing' | translate
+                  }}</span>
+                } @else {
+                  <span class="percentage-text">{{ transfer.percentage }}%</span>
+                }
+              </div>
+            </div>
 
-          <ng-container matColumnDef="progress">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.progress' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="progress-cell">
-              <div class="progress-info">
-                <div class="progress-header">
-                  @if (isPreparing(transfer.percentage)) {
-                    <span class="progress-text">{{
-                      'shared.transferActivity.status.preparing' | translate
-                    }}</span>
-                  } @else if (transfer.percentage === 100) {
-                    <span class="progress-text">{{
-                      'shared.transferActivity.status.finalizing' | translate
-                    }}</span>
-                  } @else {
-                    <span class="progress-text">{{ transfer.percentage }}%</span>
+            @if (transfer.srcFs || transfer.dstFs) {
+              <div class="card-paths-v2">
+                <div class="path-group src">
+                  <code class="path-pill src" [title]="transfer.srcFs">{{
+                    transfer.srcFs || '?'
+                  }}</code>
+                  @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
+                  @let canDownloadSrc = ops.canDownloadSource(transfer, jobType());
+                  @let hasSrcActions = canCopySrc || canDownloadSrc;
+                  @if (hasSrcActions) {
+                    <div class="path-actions">
+                      @if (canCopySrc) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
+                          ops.isFeaturesLoading(transfer.srcFs);
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlSource(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon [svgIcon]="loading ? 'spinner' : 'link'"></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadSrc) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadSource(transfer, transfer.uniqueId);
+                            $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-src')
+                                ? 'spinner'
+                                : 'download'
+                            "
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
                   }
-                  <span class="size-text">
-                    {{ transfer.bytes ?? 0 | formatFileSize }} /
-                    {{ transfer.size | formatFileSize }}
-                  </span>
                 </div>
-                <mat-progress-bar
-                  [mode]="isPreparing(transfer.percentage) ? 'indeterminate' : 'determinate'"
-                  [value]="isPreparing(transfer.percentage) ? 0 : transfer.percentage"
-                ></mat-progress-bar>
-              </div>
-            </td>
-          </ng-container>
 
-          <ng-container matColumnDef="speed">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.speed' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="speed-cell">
-              <div class="speed-info">
+                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+
+                <div class="path-group dst">
+                  <code class="path-pill dst" [title]="transfer.dstFs">{{
+                    transfer.dstFs || '?'
+                  }}</code>
+                  @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
+                  @let canDownloadDst = ops.canDownloadDst(transfer, jobType());
+                  @let hasDstActions = canCopyDst || canDownloadDst;
+                  @if (hasDstActions) {
+                    <div class="path-actions">
+                      @if (canCopyDst) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
+                          ops.isFeaturesLoading(transfer.dstFs);
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
+                          ></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadDst) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-dst')
+                                ? 'spinner'
+                                : 'download'
+                            "
+                            class="colorful-spinner"
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            } @else if (remoteName()) {
+              <div class="card-paths-v2">
+                <div class="path-group dst">
+                  <code class="path-pill dst" [title]="remoteName()">{{ remoteName() }}</code>
+                  @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
+                  @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
+                  @let hasFbActions = canCopyFb || canDownloadFb;
+                  @if (hasFbActions) {
+                    <div class="path-actions">
+                      @if (canCopyFb) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
+                          ops.isFallbackFeaturesLoading(remoteName());
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
+                          ></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadFb) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
+                                ? 'spinner'
+                                : 'download'
+                            "
+                            class="colorful-spinner"
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="card-progress">
+              <mat-progress-bar
+                [mode]="transfer.isPreparing ? 'indeterminate' : 'determinate'"
+                [value]="transfer.isPreparing ? 0 : transfer.percentage"
+              ></mat-progress-bar>
+            </div>
+
+            <div class="card-footer">
+              <div class="card-footer-left">
+                <span class="size-text"
+                  >{{ transfer.bytes | formatFileSize }} /
+                  {{ transfer.size | formatFileSize }}</span
+                >
+              </div>
+              <div class="card-footer-right">
                 @if (transfer.speed > 0) {
-                  <span class="speed-value">{{ transfer.speed | formatFileSize }}/s</span>
-                  <div class="speed-indicator" [ngClass]="getSpeedClass(transfer.speed)"></div>
-                } @else {
-                  <span class="speed-idle">-</span>
+                  <span class="speed-text">
+                    <span class="speed-dot" [class]="transfer.speedClass"></span>
+                    {{ transfer.speed | formatFileSize }}/s
+                  </span>
+                }
+                @if (transfer.eta > 0 && !transfer.isCompleted) {
+                  <span class="eta-text">{{ transfer.eta | formatTime }}</span>
                 }
               </div>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="eta">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.eta' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="eta-cell">
-              @if (transfer.eta > 0 && !transfer.isCompleted) {
-                <span class="eta-value">{{ transfer.eta | formatTime }}</span>
-              } @else {
-                <span class="eta-complete">-</span>
-              }
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="path">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.path' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="path-cell">
-              <div class="path-info">
-                @if (transfer.srcFs || transfer.dstFs) {
-                  <span
-                    class="src"
-                    [matTooltip]="pathService.joinFsPath(transfer.srcFs, transfer.name)"
-                    >{{ transfer.srcFs || '?' }}</span
-                  >
-                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <span
-                    class="dst"
-                    [matTooltip]="pathService.joinFsPath(transfer.dstFs, transfer.name)"
-                    >{{ transfer.dstFs || '?' }}</span
-                  >
-                } @else {
-                  <span class="no-path">-</span>
-                }
-              </div>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: displayedColumns"
-            class="transfer-row"
-            [ngClass]="{
-              completed: row.isCompleted,
-              error: row.isError,
-              active: !row.isCompleted && !row.isError,
-            }"
-          ></tr>
-        </table>
+            </div>
+          </div>
+        }
+      } @else if (searchTerm()) {
+        <div class="empty-state">
+          <mat-icon svgIcon="search"></mat-icon>
+          <span>{{ 'shared.search.title' | translate }}</span>
+          <p>{{ 'shared.search.description' | translate }}</p>
+        </div>
       } @else {
         <div class="empty-state">
-          <mat-icon svgIcon="download" class="placeholder-icon"></mat-icon>
+          <mat-icon svgIcon="download"></mat-icon>
           <span>{{ 'shared.transferActivity.empty.noActive' | translate }}</span>
           <p>{{ 'shared.transferActivity.empty.activeHint' | translate }}</p>
         </div>
       }
     </div>
   `,
-  styleUrls: ['./transfer-tables.scss'],
 })
 export class ActiveTransfersTableComponent {
-  protected readonly pathService = inject(PathService);
-
   readonly transfers = input.required<TransferFile[]>();
+  readonly jobType = input<string>('sync');
+  readonly remoteName = input<string>('');
+  readonly searchTerm = input('');
 
-  readonly displayedColumns = ['name', 'path', 'progress', 'speed', 'eta'];
+  protected readonly ops = inject(TransferOperationsService);
 
-  trackByName(_index: number, transfer: TransferFile): string {
-    return transfer.name;
+  private readonly remotesList = computed(
+    () => {
+      const remotes = new Set<string>();
+      for (const t of this.transfers()) {
+        if (t.srcFs) remotes.add(t.srcFs);
+        if (t.dstFs) remotes.add(t.dstFs);
+      }
+      return Array.from(remotes).sort();
+    },
+    {
+      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
+    }
+  );
+
+  constructor() {
+    effect(() => {
+      const remotes = this.remotesList();
+      if (remotes.length > 0) {
+        untracked(() => this.ops.preloadFeatures(this.transfers()));
+      }
+    });
   }
-  getSpeedClass(speed: number): string {
-    if (speed > 10 * 1024 * 1024) return 'speed-fast';
-    if (speed > 1 * 1024 * 1024) return 'speed-medium';
-    return 'speed-slow';
-  }
-  isPreparing(percentage: number | undefined | null): boolean {
-    return percentage === undefined || percentage === null || isNaN(percentage);
-  }
+
+  protected readonly enrichedTransfers = computed(() => {
+    const search = this.searchTerm().toLowerCase().trim();
+    const items = this.transfers();
+
+    const filtered = search ? items.filter(t => t.name.toLowerCase().includes(search)) : items;
+
+    return filtered.map(transfer => ({
+      ...transfer,
+      isPreparing: transfer.percentage == null || isNaN(transfer.percentage),
+      speedClass:
+        transfer.speed > 10485760
+          ? 'speed-fast'
+          : transfer.speed > 1048576
+            ? 'speed-medium'
+            : 'speed-slow',
+      uniqueId: `${transfer.group || ''}-${transfer.name}`,
+    }));
+  });
 }

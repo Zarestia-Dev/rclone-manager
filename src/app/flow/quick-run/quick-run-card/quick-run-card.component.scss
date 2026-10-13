@@ -1,0 +1,65 @@
+:host {
+  display: block;
+  cursor: pointer;
+  box-sizing: border-box;
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+
+    .op-badge {
+      font-weight: 600;
+    }
+
+    .remote-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 4px;
+      border-radius: var(--radius-xs);
+      font-size: var(--font-size-md);
+      color: var(--dim-color);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      min-width: 0;
+
+      mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
+      }
+
+      .remote-name-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &:hover {
+        color: var(--primary-color);
+        background: rgba(var(--primary-color-rgb), 0.12);
+      }
+
+      &.is-missing {
+        color: var(--warn-color);
+        background: rgba(var(--warn-color-rgb), 0.1);
+
+        mat-icon {
+          color: var(--warn-color);
+        }
+      }
+    }
+  }
+
+  .description-text {
+    font-size: var(--font-size-sm);
+    padding: 0 var(--space-md) var(--space-xs);
+    color: var(--dim-color);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

@@ -1,10 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs/operators';
-import { firstValueFrom } from 'rxjs';
-import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
-import { ModalService } from '@app/services';
 import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
@@ -21,8 +17,6 @@ const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
 
 @Injectable({ providedIn: 'root' })
 export class AppUpdaterService extends TauriBaseService {
-  private readonly uiStateService = inject(UiStateService);
-  private readonly modalService = inject(ModalService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly appSettingsService = inject(AppSettingsService);
 
@@ -39,12 +33,14 @@ export class AppUpdaterService extends TauriBaseService {
   // State signals
   // ---------------------------------------------------------------------------
 
+  private readonly _isUpdaterEnabled = signal<boolean>(true);
   private readonly _buildType = signal<string | null>(null);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
   private readonly _isChecking = signal<boolean>(false);
 
   // Public readonly surface (Derived to prevent state tears)
+  public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
   public readonly buildType = this._buildType.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
@@ -70,7 +66,6 @@ export class AppUpdaterService extends TauriBaseService {
   constructor() {
     super();
     this.setupEventListeners();
-    void this.initialize();
   }
 
   // ---------------------------------------------------------------------------
@@ -110,7 +105,12 @@ export class AppUpdaterService extends TauriBaseService {
       if (checkId !== this._latestCheckId) return null;
 
       console.error('Failed to check for updates:', error);
-      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('updates.checkFailed', {
+          error: translatedError || this.translate.instant('common.error'),
+        })
+      );
       return null;
     } finally {
       if (checkId === this._latestCheckId) {
@@ -145,26 +145,11 @@ export class AppUpdaterService extends TauriBaseService {
     }
 
     try {
-      if (this.uiStateService.platform === 'windows') {
-        const confirmed = await firstValueFrom(
-          this.modalService
-            .openConfirm({
-              title: this.translate.instant('updates.confirmInstall.title'),
-              message: this.translate.instant('updates.confirmInstall.message'),
-              confirmText: this.translate.instant('updates.confirmInstall.confirm'),
-              cancelText: this.translate.instant('updates.confirmInstall.cancel'),
-            })
-            .afterClosed()
-        );
-        if (!confirmed) return;
-      }
-
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
       this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       await this.invokeWithNotification('install_update', undefined, {
         errorKey: 'updates.installFailed',
-        showSuccess: false,
       });
     } catch (error) {
       console.error('Failed to install update:', error);
@@ -183,7 +168,9 @@ export class AppUpdaterService extends TauriBaseService {
     if (!this.updateInProgress()) return;
 
     try {
-      await this.invokeCommand('cancel_app_update');
+      await this.invokeWithNotification('cancel_app_update', undefined, {
+        errorKey: 'updates.cancelFailed',
+      });
       this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
@@ -192,16 +179,22 @@ export class AppUpdaterService extends TauriBaseService {
       await this.syncUpdateStatus();
     } catch (error) {
       console.error('Failed to cancel app update:', error);
-      this.notificationService.showError(this.translate.instant('updates.cancelFailed'));
     }
   }
 
   /** Restarts the app and applies the staged update. */
   async finishUpdate(): Promise<void> {
     try {
+      const confirmed = await this.notificationService.confirmModal(
+        'updates.confirmApply.title',
+        'updates.confirmApply.message',
+        'updates.confirmApply.confirm',
+        'updates.confirmApply.cancel'
+      );
+      if (!confirmed) return;
+
       await this.invokeWithNotification('apply_app_update', undefined, {
         errorKey: 'updates.restartFailed',
-        showSuccess: false,
       });
     } catch (error) {
       console.error('Failed to apply update and restart:', error);
@@ -247,8 +240,13 @@ export class AppUpdaterService extends TauriBaseService {
     }
   }
 
-  private async initialize(): Promise<void> {
+  async initialize(): Promise<void> {
     try {
+      const enabled = await this.invokeCommand<boolean>('is_updater_enabled');
+      this._isUpdaterEnabled.set(enabled);
+      if (!enabled) {
+        return;
+      }
       await this.settings.initialize();
       this._buildType.set(await this.invokeCommand<string>('get_build_type'));
 
@@ -266,13 +264,10 @@ export class AppUpdaterService extends TauriBaseService {
 
   private setupEventListeners(): void {
     this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event.status === 'update_found' && !!event.data),
-        map(event => event.data as UpdateInfo)
-      )
+      .listenToAppUpdateFound()
+      .pipe(takeUntilDestroyed())
       .subscribe(metadata => {
+        if (!this.isUpdaterEnabled()) return;
         const current = this._updateState();
         if (current?.version === metadata.version) return;
 
@@ -288,13 +283,10 @@ export class AppUpdaterService extends TauriBaseService {
       });
 
     this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event.status === 'download_progress' && !!event.data),
-        map(event => event.data as DownloadStatus)
-      )
+      .listenToAppDownloadProgress()
+      .pipe(takeUntilDestroyed())
       .subscribe(status => {
+        if (!this.isUpdaterEnabled()) return;
         this._downloadStatus.set(status);
 
         if (status.state.status === DownloadStateStatus.Failed) {

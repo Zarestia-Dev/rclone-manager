@@ -1,7 +1,6 @@
 import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { EMPTY, firstValueFrom, from } from 'rxjs';
-import { catchError, exhaustMap, filter } from 'rxjs';
+import { EMPTY, firstValueFrom, from, catchError, exhaustMap, filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RepairSheetComponent } from '../../../features/components/repair-sheet/repair-sheet.component';
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
@@ -9,6 +8,7 @@ import { SystemInfoService } from '../system/system-info.service';
 import { InstallationService } from '../../settings/installation.service';
 import { RclonePasswordService } from '../../security/rclone-password.service';
 import { EventListenersService } from '../system/event-listeners.service';
+import { BackendService } from '../system/backend.service';
 
 export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
 
@@ -18,11 +18,15 @@ export class SystemHealthService {
   private readonly installationService = inject(InstallationService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly backendService = inject(BackendService);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
   private hasReportedRclonePathError = false;
+  private hasReportedRcloneVersionError = false;
+  private hasReportedRcloneAuthError = false;
+  private hasReportedRclonePortError = false;
   private onboardingCompleted = false;
 
   readonly rcloneInstalled = signal<boolean | null>(null);
@@ -204,6 +208,11 @@ export class SystemHealthService {
     this.showRepairSheet({ type: RepairSheetType.RCLONE_BINARY });
   }
 
+  handleRcloneVersionError(alreadyReported: boolean): void {
+    if (alreadyReported) return;
+    this.showRepairSheet({ type: RepairSheetType.RCLONE_VERSION });
+  }
+
   async handlePasswordRequired(isPromptInProgress: boolean): Promise<boolean> {
     if (isPromptInProgress || this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)) {
       return false;
@@ -265,7 +274,7 @@ export class SystemHealthService {
 
   private async recheckMountPluginStatus(): Promise<void> {
     try {
-      const ok = await this.installationService.isMountPluginInstalled(1);
+      const ok = await this.installationService.isMountPluginInstalled();
       if (ok) {
         this.markMountPluginInstalled();
         this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
@@ -284,16 +293,38 @@ export class SystemHealthService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.hasReportedRclonePathError = false;
-        this.closeSheetsByType(RepairSheetType.RCLONE_BINARY, RepairSheetType.RCLONE_PASSWORD);
+        this.hasReportedRcloneVersionError = false;
+        this.hasReportedRcloneAuthError = false;
+        this.hasReportedRclonePortError = false;
+        this.closeSheetsByType(
+          RepairSheetType.RCLONE_BINARY,
+          RepairSheetType.RCLONE_VERSION,
+          RepairSheetType.RCLONE_PASSWORD,
+          RepairSheetType.RCLONE_AUTH,
+          RepairSheetType.RCLONE_PORT
+        );
       });
 
     this.eventListenersService
       .listenToRcloneEnginePathError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(() => {
-        if (!this.onboardingCompleted) return;
         this.handleRclonePathError(this.hasReportedRclonePathError);
         this.hasReportedRclonePathError = true;
+      });
+
+    this.eventListenersService
+      .listenToRcloneEngineVersionError()
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.handleRcloneVersionError(this.hasReportedRcloneVersionError);
+        this.hasReportedRcloneVersionError = true;
       });
 
     this.eventListenersService
@@ -304,5 +335,39 @@ export class SystemHealthService {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+
+    this.eventListenersService
+      .listenToRcloneEngineAuthError()
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ message }) => {
+        if (this.hasReportedRcloneAuthError) return;
+        if (this.hasActiveSheetOfType(RepairSheetType.RCLONE_AUTH)) return;
+        this.hasReportedRcloneAuthError = true;
+        this.showRepairSheet({
+          type: RepairSheetType.RCLONE_AUTH,
+          authError: message,
+          isRemote: !this.backendService.isLocalBackend(),
+        });
+      });
+
+    this.eventListenersService
+      .listenToRcloneEnginePortError()
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ port, message }) => {
+        if (this.hasReportedRclonePortError) return;
+        if (this.hasActiveSheetOfType(RepairSheetType.RCLONE_PORT)) return;
+        this.hasReportedRclonePortError = true;
+        this.showRepairSheet({
+          type: RepairSheetType.RCLONE_PORT,
+          port,
+          portError: message,
+        });
+      });
   }
 }

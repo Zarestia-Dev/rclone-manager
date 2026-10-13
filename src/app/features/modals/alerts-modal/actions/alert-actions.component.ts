@@ -2,26 +2,24 @@ import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/cor
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
-import { AlertService, ModalService, NotificationService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertAction } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
+import { MatDialog } from '@angular/material/dialog';
+import { AlertActionEditorComponent } from './alert-action-editor/alert-action-editor.component';
 
 @Component({
   selector: 'app-alert-actions',
-  standalone: true,
   imports: [
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatSlideToggleModule,
-    MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `
@@ -29,14 +27,14 @@ import { SearchContainerComponent } from '@app/shared/components';
       <!-- Toolbar -->
       <div class="toolbar">
         <button
-          mat-icon-button
+          matIconButton
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button mat-flat-button (click)="createAction()">
+        <button matButton="filled" (click)="createAction()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createAction' | translate }}
         </button>
@@ -52,7 +50,7 @@ import { SearchContainerComponent } from '@app/shared/components';
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.actions().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="24"> </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 
@@ -74,7 +72,7 @@ import { SearchContainerComponent } from '@app/shared/components';
                 {{ 'alerts.action.kind' | translate }}
               </th>
               <td mat-cell *matCellDef="let action">
-                <span class="app-pill p-dim kind-pill">
+                <span class="app-pill p-dim">
                   <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
                   {{ 'alerts.action.' + action.kind | translate }}
                 </span>
@@ -101,7 +99,7 @@ import { SearchContainerComponent } from '@app/shared/components';
                 <mat-slide-toggle
                   [checked]="action.enabled"
                   (change)="toggleAction(action)"
-                  [matTooltip]="
+                  [attr.title]="
                     (action.enabled ? 'automation.status.enabled' : 'automation.status.disabled')
                       | translate
                   "
@@ -116,16 +114,13 @@ import { SearchContainerComponent } from '@app/shared/components';
                 <div class="row-actions">
                   <!-- Test -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="testAction(action)"
-                    [matTooltip]="'alerts.testAction' | translate"
+                    [attr.title]="'alerts.testAction' | translate"
                     [disabled]="alerts.testingActionIds().has(action.id)"
                   >
                     @if (alerts.testingActionIds().has(action.id)) {
-                      <mat-progress-spinner
-                        mode="indeterminate"
-                        diameter="24"
-                      ></mat-progress-spinner>
+                      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     } @else {
                       <mat-icon svgIcon="play"></mat-icon>
                     }
@@ -133,18 +128,18 @@ import { SearchContainerComponent } from '@app/shared/components';
 
                   <!-- Edit -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="editAction(action)"
-                    [matTooltip]="'common.edit' | translate"
+                    [attr.title]="'common.edit' | translate"
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
 
                   <!-- Delete -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="deleteAction(action)"
-                    [matTooltip]="'common.delete' | translate"
+                    [attr.title]="'common.delete' | translate"
                   >
                     <mat-icon svgIcon="trash"></mat-icon>
                   </button>
@@ -217,8 +212,9 @@ import { SearchContainerComponent } from '@app/shared/components';
       font-weight: 700;
       font-size: var(--font-size-xs);
       letter-spacing: 0.05em;
-      color: var(--text-muted);
+      color: var(--dim-color);
       white-space: nowrap;
+      padding: 0 var(--space-sm) !important;
     }
 
     .mat-mdc-cell {
@@ -252,16 +248,6 @@ import { SearchContainerComponent } from '@app/shared/components';
       width: 136px;
     }
 
-    .kind-pill {
-      width: fit-content;
-
-      mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
-      }
-    }
-
     .action-name {
       font-weight: 600;
       font-size: var(--font-size-md);
@@ -278,21 +264,27 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionsComponent {
-  readonly alerts = inject(AlertService);
-  private readonly modalService = inject(ModalService);
-  private readonly notifications = inject(NotificationService);
+  public readonly alerts = inject(AlertService);
+  private readonly dialog = inject(MatDialog);
+  private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
 
-  searchVisible = signal(false);
-  displayedColumns = ['kind', 'name', 'status', 'actions'];
+  readonly searchVisible = signal(false);
+  readonly displayedColumns = ['kind', 'name', 'status', 'actions'];
 
   onSearchChange(term: string): void {
     this.alerts.actionsSearchTerm.set(term);
   }
 
   createAction(): void {
-    this.modalService
-      .openAlertActionEditor()
+    this.dialog
+      .open(AlertActionEditorComponent, {
+        width: '600px',
+        maxHeight: '80vh',
+        disableClose: false,
+        data: { actionId: undefined },
+        panelClass: 'mobile-sheet-dialog',
+      })
       .afterClosed()
       .subscribe(async action => {
         if (action) await this.alerts.saveAlertAction(action);
@@ -300,26 +292,30 @@ export class AlertActionsComponent {
   }
 
   editAction(action: AlertAction): void {
-    this.modalService
-      .openAlertActionEditor(action)
+    this.dialog
+      .open(AlertActionEditorComponent, {
+        width: '600px',
+        maxHeight: '80vh',
+        disableClose: false,
+        data: { actionId: action.id },
+        panelClass: 'mobile-sheet-dialog',
+      })
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertAction(updated);
       });
   }
 
-  deleteAction(action: AlertAction): void {
-    this.modalService
-      .openConfirm({
-        title: 'common.delete',
-        message: 'alerts.deleteActionConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.deleteAlertAction(action.id);
-      });
+  async deleteAction(action: AlertAction): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'common.delete',
+      'alerts.deleteActionConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      await this.alerts.deleteAlertAction(action.id);
+    }
   }
 
   async toggleAction(action: AlertAction): Promise<void> {
@@ -330,15 +326,18 @@ export class AlertActionsComponent {
     try {
       const success = await this.alerts.testAlertAction(action.id);
       if (success) {
-        this.notifications.showSuccess(this.translate.instant('alerts.testActionSuccess'));
+        this.notificationService.showSuccess(this.translate.instant('alerts.testActionSuccess'));
       } else {
-        this.notifications.showError(
-          this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
+        this.notificationService.showError(
+          this.translate.instant('alerts.testActionFailed', {
+            error: this.translate.instant('common.error'),
+          })
         );
       }
     } catch (err) {
-      this.notifications.showError(
-        this.translate.instant('alerts.testActionError', { error: err })
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      this.notificationService.showError(
+        this.translate.instant('alerts.testActionError', { error: errorMsg })
       );
       console.error('Test failed', err);
     }

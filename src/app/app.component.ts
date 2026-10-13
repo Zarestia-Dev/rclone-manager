@@ -1,81 +1,47 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  OnInit,
-  signal,
-  Injector,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { Subject, Observable } from 'rxjs';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
-import { HomeComponent } from './home/home.component';
-import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { ShortcutHandlerDirective } from '@app/directives';
-import { BannerComponent } from './layout/banners/banner.component';
 import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
 
 // Services
-import {
-  AppSettingsService,
-  OnboardingStateService,
-  NautilusService,
-  BackendService,
-  IconService,
-  DebugService,
-  GlobalLoadingService,
-} from '@app/services';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { DebugService } from 'src/app/services/infrastructure/system/debug.service';
+import { GlobalLoadingService } from 'src/app/services/ui/global-loading.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
+import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
+import { AndroidShareService } from './services/ui/android-share.service';
+import { AndroidKeepAliveService } from './services/infrastructure/platform/android-keep-alive.service';
+import { FlowContainerComponent } from './flow/flow-container.component';
+import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
+import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
 
-class ChildDialogRef<R = any> {
-  constructor(public id: string) {}
+import { OpenerService } from 'src/app/services/infrastructure/platform/opener.service';
 
-  close(result?: R): void {
-    getCurrentWindow()
-      .emit(`dialog-result-${this.id}`, result)
-      .then(() => {
-        getCurrentWindow().close();
-      })
-      .catch(err => {
-        console.error('Failed to emit dialog result or close window:', err);
-        getCurrentWindow().close();
-      });
-  }
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { MainView } from '@app/types';
 
-  backdropClick(): Observable<MouseEvent> {
-    return new Subject<MouseEvent>().asObservable();
-  }
-
-  keydownEvents(): Observable<KeyboardEvent> {
-    return new Subject<KeyboardEvent>().asObservable();
-  }
-
-  updatePosition(): this {
-    return this;
-  }
-
-  updateSize(): this {
-    return this;
-  }
-}
+import { MainUiContainerComponent } from './layout/main-ui-container.component';
+import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [
-    TitlebarComponent,
+    MainUiContainerComponent,
     OnboardingComponent,
-    TabsButtonsComponent,
-    HomeComponent,
-    ShortcutHandlerDirective,
-    BannerComponent,
     NautilusComponent,
+    FlowContainerComponent,
     NgComponentOutlet,
+    ShortcutHandlerDirective,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -84,30 +50,45 @@ class ChildDialogRef<R = any> {
 export class AppComponent implements OnInit {
   readonly initializing = signal(true);
 
+  protected readonly modalService = inject(ModalService);
   protected readonly nautilusService = inject(NautilusService);
+  protected readonly flowOverlayService = inject(FlowOverlayService);
+  protected readonly mainUiOverlayService = inject(MainUiOverlayService);
+  protected readonly uiStateService = inject(UiStateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly onboardingStateService = inject(OnboardingStateService);
   private readonly backendService = inject(BackendService);
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
-  private readonly parentInjector = inject(Injector);
+  private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly androidShareService = inject(AndroidShareService);
+  private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
 
+  readonly selectedMainView = this.uiStateService.selectedMainView;
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
-
-  readonly isDialogStandalone = signal(false);
-  readonly dialogComponent = signal<any>(null);
-  dialogInjector?: Injector;
 
   constructor() {
     inject(IconService);
     inject(DebugService);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const isDialog = urlParams.get('standalone') === 'dialog';
-    this.isDialogStandalone.set(isDialog);
+    inject(AppLifecycleService).initialize();
+    inject(OpenerService).initializeGlobalLinkInterceptor();
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();
+
+    // Start listening for Android share intents (no-op on desktop/web).
+    this.androidShareService.initialize();
+    this.androidKeepAliveService.initialize();
+
+    // Wire overlay signals into UiStateService for mobile-sidebar computation.
+    this.uiStateService.setOverlaySignals({
+      mainOverlay: this.mainUiOverlayService.isMainUiOverlayOpen,
+      flowOverlay: this.flowOverlayService.isFlowOverlayOpen,
+      nautilusOverlay: this.nautilusService.isBrowserOverlayOpen,
+    });
+
+    this.setupDefaultViewListener();
   }
 
   ngOnInit(): void {
@@ -117,128 +98,77 @@ export class AppComponent implements OnInit {
     });
   }
 
-  private async resolveDialogWindow(): Promise<void> {
-    const urlParams = new URLSearchParams(window.location.search);
-    const dialogType = urlParams.get('dialogType');
-    const rawData = urlParams.get('data');
-
-    const componentsMap: Record<string, () => Promise<any>> = {
-      'quick-add-remote': () =>
-        import('./features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
-          m => m.QuickAddRemoteComponent
-        ),
-      'remote-config': () =>
-        import('./features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
-          m => m.RemoteConfigModalComponent
-        ),
-      logs: () =>
-        import('./features/modals/settings/logs-modal/logs-modal.component').then(
-          m => m.LogsModalComponent
-        ),
-      export: () =>
-        import('./features/modals/settings/export-modal/export-modal.component').then(
-          m => m.ExportModalComponent
-        ),
-      backend: () =>
-        import('./features/modals/settings/backend-modal/backend-modal.component').then(
-          m => m.BackendModalComponent
-        ),
-      preferences: () =>
-        import('./features/modals/settings/preferences-modal/preferences-modal.component').then(
-          m => m.PreferencesModalComponent
-        ),
-      'rclone-flags': () =>
-        import('./features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
-          m => m.RcloneFlagsModalComponent
-        ),
-      'job-detail': () =>
-        import('./features/modals/job-detail-modal/job-detail-modal.component').then(
-          m => m.JobDetailModalComponent
-        ),
-      properties: () =>
-        import('./features/modals/properties/properties-modal.component').then(
-          m => m.PropertiesModalComponent
-        ),
-      'remote-about': () =>
-        import('./features/modals/remote/remote-about-modal.component').then(
-          m => m.RemoteAboutModalComponent
-        ),
-      'keyboard-shortcuts': () =>
-        import('./features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component').then(
-          m => m.KeyboardShortcutsModalComponent
-        ),
-      about: () =>
-        import('./features/modals/settings/about-modal/about-modal.component').then(
-          m => m.AboutModalComponent
-        ),
-      'restore-preview': () =>
-        import('./features/modals/settings/restore-preview-modal/restore-preview-modal.component').then(
-          m => m.RestorePreviewModalComponent
-        ),
-      alerts: () =>
-        import('./features/modals/alerts-modal/alerts-modal.component').then(
-          m => m.AlertsModalComponent
-        ),
-      'alert-action-editor': () =>
-        import('./features/modals/alerts-modal/actions/alert-action-editor/alert-action-editor.component').then(
-          m => m.AlertActionEditorComponent
-        ),
-      'alert-rule-editor': () =>
-        import('./features/modals/alerts-modal/rules/alert-rules-editor/alert-rule-editor.component').then(
-          m => m.AlertRuleEditorComponent
-        ),
-    };
-
-    const loader = dialogType ? componentsMap[dialogType] : null;
-    if (!loader) {
-      console.error(`[AppComponent] Standalone dialog component not found for type: ${dialogType}`);
-      return;
-    }
-
-    try {
-      const componentClass = await loader();
-      this.dialogComponent.set(componentClass);
-    } catch (e) {
-      console.error('[AppComponent] Failed to load dialog component dynamically:', e);
-      return;
-    }
-
-    let parsedData: any = null;
-    if (rawData) {
-      try {
-        parsedData = JSON.parse(decodeURIComponent(rawData));
-      } catch (e) {
-        console.error('[AppComponent] Failed to parse query parameter data:', e);
-      }
-    }
-
-    const currentWindowLabel = getCurrentWindow().label;
-    const mockRef = new ChildDialogRef(currentWindowLabel);
-
-    this.dialogInjector = Injector.create({
-      providers: [
-        { provide: MAT_DIALOG_DATA, useValue: parsedData },
-        { provide: MatDialogRef, useValue: mockRef },
-      ],
-      parent: this.parentInjector,
-    });
-  }
-
   private async initializeApp(): Promise<void> {
     try {
       await this.appSettingsService.loadSettings();
       await this.appSettingsService.applySavedLanguage();
       this.nautilusService.openFromBrowseQueryParam();
 
-      if (this.isDialogStandalone()) {
-        await this.resolveDialogWindow();
-      } else if (!this.nautilusService.isStandaloneWindow()) {
+      if (this.modalService.isDialogStandalone()) {
+        await this.modalService.resolveDialogWindow();
+      } else if (
+        !this.nautilusService.isStandaloneWindow() &&
+        !this.flowOverlayService.isStandaloneWindow() &&
+        !this.mainUiOverlayService.isStandaloneWindow()
+      ) {
         this.backendService.runStartupChecks();
+        void this.appUpdaterService.initialize();
+        void this.rcloneUpdateService.initialize();
+        await this.applyDefaultView();
       }
     } catch (error) {
       console.error('App initialization failed:', error);
     } finally {
       this.initializing.set(false);
+    }
+  }
+
+  private setupDefaultViewListener(): void {
+    this.appSettingsService
+      .selectSetting('general.default_view')
+      .pipe(takeUntilDestroyed())
+      .subscribe(setting => {
+        if (!setting?.value) return;
+
+        if (
+          this.nautilusService.isStandaloneWindow() ||
+          this.flowOverlayService.isStandaloneWindow() ||
+          this.mainUiOverlayService.isStandaloneWindow()
+        ) {
+          return;
+        }
+
+        if (
+          this.nautilusService.targetPath() ||
+          this.nautilusService.selectedNautilusRemote() ||
+          this.androidShareService.pendingSharedPaths().length > 0
+        ) {
+          return;
+        }
+
+        const view = String(setting.value) as MainView;
+        if (view !== 'nautilus' && view !== 'flow' && view !== 'main_menu') return;
+
+        this.nautilusService.closeBrowserOverlay();
+        this.flowOverlayService.closeFlowOverlay();
+        this.mainUiOverlayService.closeMainUiOverlay();
+        this.uiStateService.setDefaultView(view);
+      });
+  }
+
+  private async applyDefaultView(): Promise<void> {
+    if (
+      this.nautilusService.targetPath() ||
+      this.nautilusService.selectedNautilusRemote() ||
+      this.androidShareService.pendingSharedPaths().length > 0
+    ) {
+      return;
+    }
+
+    const defaultView =
+      await this.appSettingsService.getSettingValue<string>('general.default_view');
+    if (defaultView === 'nautilus' || defaultView === 'flow' || defaultView === 'main_menu') {
+      this.uiStateService.setDefaultView(defaultView as MainView);
     }
   }
 
@@ -251,6 +181,7 @@ export class AppComponent implements OnInit {
   async finishOnboarding(): Promise<void> {
     try {
       await this.onboardingStateService.completeOnboarding();
+      await this.applyDefaultView();
     } catch (error) {
       console.error('Error saving onboarding status:', error);
       throw error;

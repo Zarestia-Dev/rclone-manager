@@ -1,24 +1,24 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
+import {
+  Entry,
+  FsInfo,
+  JobActionType,
+  Origin,
+  FsTransferItem,
+  FsDeleteItem,
+  ArchiveListResponse,
+  RenameItem,
+} from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
-/**
- * Service for remote file system operations
- * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
- */
 @Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
-    try {
-      return await this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
-    } catch (error) {
-      console.error('Error getting filesystem info:', error);
-      throw error;
-    }
+    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
   }
 
   async getDiskUsage(
@@ -26,7 +26,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path?: string,
     source?: Origin,
     group?: string
-  ): Promise<{ total: number; used: number; free: number }> {
+  ): Promise<{
+    total: number;
+    used: number;
+    free: number;
+  }> {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
@@ -42,10 +46,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
   async getStat(
     remote: string,
     path: string,
+    opt?: Record<string, unknown>,
     source?: Origin,
     group?: string
   ): Promise<{ item: Entry }> {
-    return this.invokeCommand('get_stat', { remote, path, origin: source, group });
+    return this.invokeCommand('get_stat', { remote, path, opt, origin: source, group });
   }
 
   async getHashsum(
@@ -109,12 +114,13 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   async transferItems(
-    items: { remote: string; path: string; name: string; isDir: boolean }[],
+    items: FsTransferItem[],
     dstRemote: string,
     dstPath: string,
     mode: 'copy' | 'move',
     source?: Origin,
-    group?: string
+    group?: string,
+    parentJobId?: number
   ): Promise<string> {
     return this.invokeCommand<string>('transfer', {
       items,
@@ -123,14 +129,11 @@ export class RemoteFileOperationsService extends TauriBaseService {
       mode,
       origin: source,
       group,
+      parentJobId,
     });
   }
 
-  async deleteItems(
-    items: { remote: string; path: string; isDir: boolean }[],
-    source?: Origin,
-    group?: string
-  ): Promise<string> {
+  async deleteItems(items: FsDeleteItem[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('delete', { items, origin: source, group });
   }
 
@@ -140,12 +143,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string
   ): Promise<string> {
-    return this.invokeCommand<string>('remove_empty_dirs', {
-      remote,
-      path,
-      origin: source,
-      group,
-    });
+    return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
   async rename(
@@ -156,11 +154,12 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string
   ): Promise<string> {
+    return this.renameBatch([{ remote, srcPath, dstPath, isDir }], source, group);
+  }
+
+  async renameBatch(items: RenameItem[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('rename', {
-      remote,
-      srcPath,
-      dstPath,
-      isDir,
+      items,
       origin: source,
       group,
     });
@@ -219,6 +218,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     name: string,
     content: Uint8Array
   ): Promise<string> {
+    // ⚠️ Performance issue (preserved for wire-format compatibility):
+    // `Array.from(content)` serializes every byte as a JSON number, multiplying
+    // payload size ~5x and amplifying memory pressure on large files.
+    // The proper fix is to switch to a base64-encoded payload + a backend
+    // handler that decodes it — but that requires a coordinated Rust-side
+    // change to `upload_file`. See refactor plan: switch both sides to
+    // base64 in a single PR, or route large uploads through `uploadFileStream`
+    // which already uses multipart FormData via HTTP.
     return this.invokeCommand<string>('upload_file', {
       remote,
       path,
@@ -238,25 +245,26 @@ export class RemoteFileOperationsService extends TauriBaseService {
     totalFiles?: number,
     jobId?: number
   ): Promise<string> {
-    const formData = new FormData();
-    formData.append('remote', remote);
-    formData.append('path', path);
-    if (source) formData.append('origin', JSON.stringify(source));
-    if (batchId) formData.append('batchId', batchId);
-    if (jobId !== undefined) formData.append('jobId', jobId.toString());
-    if (fileIndex !== undefined) formData.append('fileIndex', fileIndex.toString());
-    if (totalFiles !== undefined) formData.append('totalFiles', totalFiles.toString());
-    formData.append('file', file, overrideName || file.name);
+    const fd = new FormData();
+    fd.append('remote', remote);
+    fd.append('path', path);
+    if (source) fd.append('origin', JSON.stringify(source));
+    if (batchId) fd.append('batchId', batchId);
+    if (jobId !== undefined) fd.append('jobId', jobId.toString());
+    if (fileIndex !== undefined) fd.append('fileIndex', fileIndex.toString());
+    if (totalFiles !== undefined) fd.append('totalFiles', totalFiles.toString());
+    if (file.lastModified) fd.append('mtime', file.lastModified.toString());
+    fd.append('file', file, overrideName || file.name);
 
-    const uploadUrl = `${this.apiClient.getApiBase()}/upload`;
-    const response = await firstValueFrom(
-      this.http.post<{ success: boolean; data: string; error?: string }>(uploadUrl, formData, {
-        withCredentials: true,
-      })
+    const res = await firstValueFrom(
+      this.http.post<{ success: boolean; data: string; error?: string }>(
+        `${this.apiClient.getApiBase()}/upload`,
+        fd,
+        { withCredentials: true }
+      )
     );
-
-    if (response.success) return response.data;
-    throw new Error(response.error || 'Upload failed');
+    if (res.success) return res.data;
+    throw new Error(res.error || 'Upload failed');
   }
 
   async uploadWebFilesBatch(
@@ -265,17 +273,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     files: { file: File; relativePath: string }[],
     source?: Origin
   ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const batchId = Date.now().toString();
-    const jobId = Date.now();
-    const totalFiles = files.length;
-    const totalBytes = files.reduce((sum, f) => sum + f.file.size, 0);
-
+    const batchId = Date.now().toString(),
+      jobId = Date.now(),
+      totalFiles = files.length,
+      totalBytes = files.reduce((s, f) => s + f.file.size, 0);
     await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
 
-    let uploadedBytes = 0;
-    const completedItems: unknown[] = [];
-    const failedPaths: string[] = [];
     let successCount = 0;
+    const failedPaths: string[] = [];
 
     for (let i = 0; i < totalFiles; i++) {
       const { file, relativePath } = files[i];
@@ -292,26 +297,17 @@ export class RemoteFileOperationsService extends TauriBaseService {
           jobId
         );
         successCount++;
-        uploadedBytes += file.size;
-        completedItems.push({
-          name: relativePath,
-          size: file.size,
-          bytes: file.size,
-          completed_at: new Date().toISOString(),
-        });
-
-        await this.updateJobStats(jobId, {
-          totalBytes,
-          bytes: uploadedBytes,
-          transfers: successCount,
-          totalTransfers: totalFiles,
-          completed: completedItems,
-          transferring: [],
-          preparing: true,
-        });
       } catch (err) {
-        console.error(`Upload failed for ${relativePath}:`, err);
+        console.error('[RemoteFileOps] Upload stream error:', relativePath, err);
         failedPaths.push(relativePath);
+      }
+    }
+
+    if (successCount === 0 && totalFiles > 0) {
+      try {
+        await this.apiClient.invoke('delete_job', { jobid: jobId });
+      } catch {
+        /* ignore */
       }
     }
 
@@ -382,11 +378,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     plain?: boolean,
     filesOnly?: boolean,
     dirsOnly?: boolean
-  ): Promise<{
-    success: boolean;
-    items: { size: number; date: string; time: string; path: string; isDir: boolean }[];
-  }> {
-    return this.invokeCommand('archive_list', {
+  ): Promise<ArchiveListResponse> {
+    return this.invokeCommand<ArchiveListResponse>('archive_list', {
       source,
       long,
       plain,

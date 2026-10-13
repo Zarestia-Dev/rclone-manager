@@ -50,6 +50,11 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/assets",
+              {
+                "glob": "**/*",
+                "input": "resources/i18n",
+                "output": "assets/i18n"
+              },
               "src/favicon.ico",
               "src/manifest.webmanifest",
               "src/sw.js",
@@ -72,8 +77,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "20kb"
+                  "maximumWarning": "20kb",
+                  "maximumError": "40kb"
                 }
               ],
               "outputHashing": "all"
@@ -95,14 +100,16 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "port": 1420
+            "port": 1420,
+            "host": "0.0.0.0"
           },
           "configurations": {
             "production": {
               "buildTarget": "rclone-manager:build:production"
             },
             "development": {
-              "buildTarget": "rclone-manager:build:development"
+              "buildTarget": "rclone-manager:build:development",
+              "proxyConfig": "proxy.conf.json"
             },
             "headless": {
               "buildTarget": "rclone-manager:build:headless",
@@ -116,6 +123,14 @@
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest",
+            "include": ["**/*.spec.ts"]
           }
         }
       }

@@ -1,44 +1,36 @@
-use serde_json::json;
 use std::path::PathBuf;
+
+use serde_json::json;
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::utils::rclone::endpoints::{config, core};
-use crate::utils::types::rclone::RcloneCoreVersion;
-use crate::utils::types::state::RcloneState;
+use crate::{
+    core::bridge,
+    rclone::backend::BackendManager,
+    utils::rclone::endpoints::{config, core},
+};
 
-/// Fetch version information from Rclone
-pub async fn fetch_version_info(
-    backend: &crate::rclone::backend::types::Backend,
-    client: &reqwest::Client,
-) -> Result<RcloneCoreVersion, String> {
-    let json = backend
-        .post_json(client, core::VERSION, None)
-        .await
-        .map_err(|e| format!("Failed to get Rclone version: {e}"))?;
-
-    serde_json::from_value(json).map_err(|e| format!("Failed to parse version info: {e}"))
-}
-
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
-    let state = app.state::<RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let paths = backend
-        .post_json(&state.client, config::PATHS, Some(&json!({})))
+    let paths = crate::rclone::commands::common::transport(&app)
+        .rpc(config::PATHS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
 
-    let config_path = paths
+    let config_path_str = paths
         .get("config")
         .and_then(|v| v.as_str())
         .ok_or("No config path in response")?;
 
-    Ok(PathBuf::from(config_path))
+    let path = PathBuf::from(config_path_str);
+    if path.is_absolute() {
+        Ok(path)
+    } else {
+        let app_paths = crate::core::paths::AppPaths::from_app_handle(&app)?;
+        Ok(app_paths.config_dir.join(path))
+    }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -60,31 +52,30 @@ struct RcloneDiskUsageResponse {
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalDiskUsageResponse {
-    free: u64,
-    total: u64,
-    used: u64,
-    dir: String,
+    pub free: u64,
+    pub total: u64,
+    pub used: u64,
+    pub dir: String,
 }
 
 /// Get local disk usage for a directory using rclone's core/du endpoint
 /// This returns disk space info (Available, Free, Total) for a LOCAL directory,
 /// useful for checking space on mount points.
-#[tauri::command]
+#[bridge]
 pub async fn get_local_disk_usage(
     app: AppHandle,
     dir: Option<String>,
 ) -> Result<LocalDiskUsageResponse, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(ref d) = dir {
         payload["dir"] = json!(d);
     }
 
     // Use direct request instead of submit_job_and_wait to avoid creating tracked jobs for polling
-    let response_json = backend
-        .post_json(&app.state::<RcloneState>().client, core::DU, Some(&payload))
+    let response_json = crate::rclone::commands::common::transport(&app)
+        .rpc(core::DU, Some(&payload))
         .await
         .map_err(|e| format!("Failed to get local disk usage: {e}"))?;
 
@@ -92,10 +83,33 @@ pub async fn get_local_disk_usage(
     let response: RcloneDiskUsageResponse = serde_json::from_value(response_json)
         .map_err(|e| format!("Failed to parse rclone response: {e}"))?;
 
+    let total = response.info.total;
+    let used = response.info.total.saturating_sub(response.info.free);
+    let free = response.info.free;
+
     Ok(LocalDiskUsageResponse {
-        free: response.info.free,
-        total: response.info.total,
-        used: response.info.total.saturating_sub(response.info.free),
+        free,
+        total,
+        used,
         dir: response.dir,
     })
+}
+
+#[bridge]
+pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, String> {
+    let payload = json!({
+        "clear": clear,
+    });
+
+    let response_json = crate::rclone::commands::common::transport(&app)
+        .rpc(core::OBSCURE, Some(&payload))
+        .await
+        .map_err(|e| format!("Failed to obscure value: {e}"))?;
+
+    let obscured = response_json
+        .get("obscured")
+        .and_then(|v| v.as_str())
+        .ok_or("No obscured field in response")?;
+
+    Ok(obscured.to_string())
 }

@@ -1,9 +1,11 @@
 use crate::utils::github_client;
 use parking_lot::Mutex;
+#[cfg(feature = "updater")]
 use tauri_plugin_updater::Update;
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpdaterError {
+    #[cfg(feature = "updater")]
     #[error(transparent)]
     Tauri(#[from] tauri_plugin_updater::Error),
     #[error("GitHub API error: {0}")]
@@ -46,9 +48,13 @@ impl serde::Serialize for UpdaterError {
             Self::InvalidUrl(e) => {
                 crate::localized_error!("backendErrors.updater.invalidUrl", "error" => e)
             }
+            Self::GitHub(github_client::Error::RateLimitExceeded) => {
+                crate::localized_error!("backendErrors.updater.githubRateLimit")
+            }
             Self::GitHub(e) => {
                 crate::localized_error!("backendErrors.updater.github", "error" => e)
             }
+            #[cfg(feature = "updater")]
             Self::Tauri(e) => {
                 crate::localized_error!("backendErrors.updater.updateFailed", "error" => e)
             }
@@ -95,10 +101,12 @@ pub enum UpdateState {
 }
 
 /// Tracks the in-flight app self-update download and its staged payload.
+#[cfg(feature = "updater")]
 pub struct AppUpdaterState {
     pub data: Mutex<AppUpdaterData>,
 }
 
+#[cfg(feature = "updater")]
 #[derive(Default)]
 pub struct AppUpdaterData {
     pub state: UpdateState,
@@ -108,9 +116,10 @@ pub struct AppUpdaterData {
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
-    pub download_handle: Option<tauri::async_runtime::JoinHandle<()>>,
+    pub download_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
+#[cfg(feature = "updater")]
 impl Default for AppUpdaterState {
     fn default() -> Self {
         Self {

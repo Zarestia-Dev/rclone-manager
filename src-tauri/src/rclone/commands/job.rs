@@ -6,8 +6,11 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    core::automation::engine::get_next_run,
-    rclone::{backend::BackendManager, state::automations::AutomationsCache},
+    core::{automation::engine::get_next_run, bridge},
+    rclone::{
+        backend::{BackendError, BackendManager},
+        state::automations::AutomationsCache,
+    },
     utils::{
         app::notification::{AutomationStage, JobStage, NotificationEvent, notify},
         logging::log::log_operation,
@@ -21,6 +24,8 @@ use crate::{
     },
 };
 
+use super::common::redact_value;
+use super::job_parser::{JobOutcome, parse_job_response, resolve_job_outcome};
 use super::system::RcloneError;
 
 const JOB_POLL_INTERVAL_MS: u64 = 500;
@@ -31,7 +36,7 @@ const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 pub struct JobMetadata {
     pub remote_name: String,
     pub job_type: JobType,
-    pub source: String,
+    pub source: Vec<String>,
     pub destination: String,
     pub profile: Option<String>,
     pub origin: Option<Origin>,
@@ -40,9 +45,162 @@ pub struct JobMetadata {
     /// True when the job was submitted with `DryRun: true` (no actual changes).
     #[serde(default)]
     pub dry_run: bool,
+    #[serde(default)]
+    pub parent_job_id: Option<u64>,
+    #[serde(default)]
+    pub quick_run_id: Option<String>,
+    #[serde(default)]
+    pub execute_id: Option<String>,
+    #[serde(default)]
+    pub workflow_id: Option<String>,
+    #[serde(default)]
+    pub node_id: Option<String>,
 }
 
 impl JobMetadata {
+    #[must_use]
+    pub fn new(
+        remote_name: impl Into<String>,
+        job_type: JobType,
+        source: Vec<String>,
+        destination: impl Into<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source,
+            destination: destination.into(),
+            profile: None,
+            origin: None,
+            group: None,
+            no_cache: false,
+            dry_run: false,
+            parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_origin(mut self, origin: Option<Origin>) -> Self {
+        self.origin = origin;
+        self
+    }
+
+    #[must_use]
+    pub fn with_group(mut self, group: Option<String>) -> Self {
+        self.group = group;
+        self
+    }
+
+    #[must_use]
+    pub fn with_profile(mut self, profile: Option<String>) -> Self {
+        self.profile = profile;
+        self
+    }
+
+    #[must_use]
+    pub fn with_execute_id(mut self, execute_id: Option<String>) -> Self {
+        self.execute_id = execute_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
+        self.quick_run_id = quick_run_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_workflow_id(mut self, workflow_id: Option<String>) -> Self {
+        self.workflow_id = workflow_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_node_id(mut self, node_id: Option<String>) -> Self {
+        self.node_id = node_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
+        self
+    }
+
+    #[must_use]
+    pub fn with_no_cache(mut self, no_cache: bool) -> Self {
+        self.no_cache = no_cache;
+        self
+    }
+
+    #[must_use]
+    pub fn with_parent_job_id(mut self, parent_job_id: Option<u64>) -> Self {
+        self.parent_job_id = parent_job_id;
+        self
+    }
+
+    #[must_use]
+    pub fn for_query(
+        remote_name: impl Into<String>,
+        source: impl Into<String>,
+        job_type: JobType,
+        origin: Option<Origin>,
+        group: Option<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source: vec![source.into()],
+            destination: String::new(),
+            profile: None,
+            origin,
+            group,
+            no_cache: true,
+            dry_run: false,
+            parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+        }
+    }
+
+    /// Build a `JobMetadata` for a mutating operation (e.g. `mkdir`,
+    /// `cleanup`, `copyurl`, `delete`).
+    ///
+    /// Like [`JobMetadata::for_query`] but with `no_cache: false` so the
+    /// result is cached.
+    #[must_use]
+    pub fn for_mutation(
+        remote_name: impl Into<String>,
+        source: Vec<String>,
+        destination: impl Into<String>,
+        job_type: JobType,
+        origin: Option<Origin>,
+        group: Option<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source,
+            destination: destination.into(),
+            profile: None,
+            origin,
+            group,
+            no_cache: false,
+            dry_run: false,
+            parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+        }
+    }
+
     pub fn group_name(&self) -> String {
         let remote = self
             .remote_name
@@ -50,9 +208,15 @@ impl JobMetadata {
             .trim_end_matches('/')
             .to_string();
 
-        self.group.clone().unwrap_or_else(|| match &self.profile {
-            Some(profile) => format!("{}/{}/{}", self.job_type, remote, profile),
-            None => format!("{}/{}", self.job_type, remote),
+        self.group.clone().unwrap_or_else(|| {
+            let job_type_str = match self.job_type {
+                JobType::CopyUrl => "copyurl".to_string(),
+                _ => self.job_type.to_string(),
+            };
+            match &self.profile {
+                Some(profile) => format!("{}/{}/{}", job_type_str, remote, profile),
+                None => format!("{}/{}", job_type_str, remote),
+            }
         })
     }
 
@@ -78,7 +242,7 @@ impl JobMetadata {
             self.profile.clone(),
             self.job_type.clone(),
             self.resolved_origin(),
-            Some(self.source.clone()),
+            Some(self.source.join(", ")),
             Some(self.destination.clone()),
         ))
     }
@@ -141,24 +305,22 @@ pub struct SubmitJobOptions {
 
 pub async fn submit_job_with_options(
     app: AppHandle,
-    client: reqwest::Client,
-    request: reqwest::RequestBuilder,
+    endpoint: &str,
     payload: Value,
     metadata: JobMetadata,
     options: SubmitJobOptions,
 ) -> Result<(u64, Value, Option<String>), String> {
     let (jobid, backend_name, response_json, execute_id) =
-        initialize_and_register_job(&app, request, payload, metadata.clone()).await?;
+        initialize_and_register_job(&app, endpoint, payload, metadata.clone()).await?;
 
     if options.wait_for_completion {
-        monitor_job(backend_name, metadata, jobid, app.clone(), client.clone())
+        monitor_job(backend_name, metadata, jobid, app.clone())
             .await
             .map_err(|e| e.to_string())?;
     } else {
         let app = app.clone();
-        let client = client.clone();
-        tauri::async_runtime::spawn(async move {
-            let _ = monitor_job(backend_name, metadata, jobid, app, client).await;
+        crate::utils::spawn(async move {
+            let _ = monitor_job(backend_name, metadata, jobid, app).await;
         });
     }
 
@@ -167,7 +329,7 @@ pub async fn submit_job_with_options(
 
 async fn initialize_and_register_job(
     app: &AppHandle,
-    request: reqwest::RequestBuilder,
+    endpoint: &str,
     payload: Value,
     metadata: JobMetadata,
 ) -> Result<(u64, String, Value, Option<String>), String> {
@@ -182,22 +344,19 @@ async fn initialize_and_register_job(
         ));
     }
 
-    let (jobid, response_json, execute_id) = send_job_request(request, payload, &metadata).await?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
+
+    let (jobid, response_json) = send_job_request(app, endpoint, payload, &metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active().await.name;
 
     if !metadata.no_cache {
-        add_job_to_cache(
-            &backend_manager.job_cache,
-            jobid,
-            execute_id.clone(),
-            &metadata,
-            &backend_name,
-            Some(app),
-        )
-        .await;
-        if metadata.origin != Some(Origin::Automation) && (metadata.job_type != JobType::Mount) {
+        add_job_to_cache(&backend_manager.job_cache, jobid, &metadata, &backend_name).await;
+        if metadata.job_type != JobType::Mount {
             notify(app, metadata.started_event(backend_name.clone()));
         }
     }
@@ -206,42 +365,28 @@ async fn initialize_and_register_job(
 }
 
 async fn send_job_request(
-    client_builder: reqwest::RequestBuilder,
+    app: &AppHandle,
+    endpoint: &str,
     payload: Value,
     metadata: &JobMetadata,
-) -> Result<(u64, Value, Option<String>), String> {
+) -> Result<(u64, Value), String> {
     let mut payload = payload;
-    if let Some(obj) = payload.as_object_mut()
-        && !obj.contains_key("_group")
-    {
-        obj.insert("_group".to_string(), json!(metadata.group_name()));
-    }
+    let group = metadata.group_name();
+    crate::rclone::commands::common::ensure_group(&mut payload, &group);
 
-    let response = client_builder
-        .json(&payload)
-        .send()
+    let transport = crate::rclone::commands::common::transport(app);
+    let _ = transport
+        .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
+        .await;
+
+    let response_json = transport
+        .rpc(endpoint, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let status = response.status();
-    let body_text = response.text().await.unwrap_or_default();
+    let jobid = parse_job_response(&response_json)?;
 
-    if !status.is_success() {
-        let error = crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text);
-        log_operation(
-            LogLevel::Error,
-            Some(metadata.remote_name.clone()),
-            Some(metadata.job_type.to_string()),
-            format!("Failed to start {}: {error}", metadata.job_type),
-            Some(json!({"response": body_text})),
-        );
-        return Err(error);
-    }
-
-    let response_json: Value = serde_json::from_str(&body_text)
-        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
-
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    let redacted_payload = redact_value(&payload, app);
 
     log_operation(
         LogLevel::Info,
@@ -249,64 +394,35 @@ async fn send_job_request(
         Some(metadata.job_type.to_string()),
         format!(
             "{} started with ID {} (ExecuteID: {:?})",
-            metadata.job_type, jobid, execute_id
+            metadata.job_type, jobid, metadata.execute_id
         ),
-        Some(json!({"jobid": jobid, "executeId": execute_id})),
+        Some(json!({
+            "jobid": jobid,
+            "executeId": metadata.execute_id,
+            "arguments": redacted_payload,
+        })),
     );
 
-    Ok((jobid, response_json, execute_id))
-}
-
-fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), String> {
-    let jobid = response_json
-        .get("jobid")
-        .and_then(serde_json::Value::as_u64)
-        .or_else(|| {
-            response_json
-                .get("id")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u64>().ok())
-        })
-        .ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.serve.parseFailed",
-                "error" => "missing job id in response"
-            )
-        })?;
-
-    let execute_id = response_json
-        .get("executeId")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-
-    Ok((jobid, execute_id))
+    Ok((jobid, response_json))
 }
 
 async fn add_job_to_cache(
     job_cache: &JobCache,
     jobid: u64,
-    execute_id: Option<String>,
     metadata: &JobMetadata,
     backend_name: &str,
-    app: Option<&AppHandle>,
 ) {
     job_cache
-        .create_job(
-            jobid,
-            execute_id,
-            metadata.clone(),
-            backend_name.to_string(),
-            app,
-        )
+        .create_job(jobid, metadata.clone(), backend_name.to_string())
         .await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app.state::<BackendManager>().job_cache.get_jobs().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     info!("Deleting job with ID: {jobid}");
     app.state::<BackendManager>()
@@ -315,33 +431,14 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
         .await
 }
 
-#[tauri::command]
-pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
-    Ok(app.state::<BackendManager>().job_cache.get_job(jobid).await)
-}
-
-#[tauri::command]
-pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
-    Ok(app
-        .state::<BackendManager>()
-        .job_cache
-        .get_active_jobs()
-        .await)
-}
-
 pub async fn monitor_job(
     backend_name: String,
     metadata: JobMetadata,
     jobid: u64,
     app: AppHandle,
-    client: reqwest::Client,
 ) -> Result<Value, RcloneError> {
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-
-    let backend = backend_manager
-        .get(&backend_name)
-        .await
-        .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{backend_name}' not found")))?;
 
     let job_cache = &backend_manager.job_cache;
 
@@ -351,6 +448,13 @@ pub async fn monitor_job(
     );
 
     let mut consecutive_errors = 0u8;
+
+    let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
+    if !metadata.no_cache {
+        let group = metadata.group_name();
+        inputs.push(json!({ "_path": core::STATS, "group": group }));
+        inputs.push(json!({ "_path": core::TRANSFERRED, "group": group }));
+    }
 
     loop {
         if !metadata.no_cache {
@@ -373,15 +477,8 @@ pub async fn monitor_job(
             }
         }
 
-        let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
-        if !metadata.no_cache {
-            let group = metadata.group_name();
-            inputs.push(json!({ "_path": core::STATS, "group": group }));
-            inputs.push(json!({ "_path": core::TRANSFERRED, "group": group }));
-        }
-
-        let poll_result = backend
-            .post_json(&client, job::BATCH, Some(&json!({ "inputs": inputs })))
+        let poll_result = transport
+            .rpc(job::BATCH, Some(&json!({ "inputs": &inputs })))
             .await;
 
         match poll_result {
@@ -396,10 +493,8 @@ pub async fn monitor_job(
                         continue;
                     }
 
-                    // Result 0 is always job/status (returned directly, not wrapped)
                     let status_result = &results[0];
 
-                    // Check if status result is valid
                     if status_result.is_null() {
                         warn!("Job {jobid} status result is null");
                         consecutive_errors += 1;
@@ -407,7 +502,6 @@ pub async fn monitor_job(
                         continue;
                     }
 
-                    // Results 1 and 2 are stats and transferred (if not no_cache)
                     if !metadata.no_cache && results.len() >= 3 {
                         let stats_result = &results[1];
                         let trans_result = &results[2];
@@ -427,11 +521,7 @@ pub async fn monitor_job(
                         }
                     }
 
-                    if let Ok(job_status) = serde_json::from_value::<
-                        crate::utils::types::jobs::JobStatusResponse,
-                    >(status_result.clone())
-                        && job_status.finished
-                    {
+                    if status_result["finished"].as_bool().unwrap_or(false) {
                         return handle_job_completion(
                             backend_name.clone(),
                             jobid,
@@ -451,18 +541,26 @@ pub async fn monitor_job(
                 );
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                    let error_msg =
+                        format!("Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts: {e}");
+
                     if !metadata.no_cache {
-                        let _ = job_cache
-                            .complete_job(
-                                jobid,
-                                false,
-                                Some(format!(
-                                    "Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts"
-                                )),
-                                Some(&app),
-                            )
-                            .await;
+                        let dummy_status = json!({
+                            "finished": true,
+                            "success": false,
+                            "error": error_msg
+                        });
+                        let _ = handle_job_completion(
+                            backend_name.clone(),
+                            jobid,
+                            &metadata,
+                            dummy_status,
+                            &app,
+                            None,
+                        )
+                        .await;
                     }
+
                     return Err(RcloneError::JobError(
                         crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
                     ));
@@ -482,188 +580,184 @@ pub async fn handle_job_completion(
     app: &AppHandle,
     last_stats: Option<Value>,
 ) -> Result<Value, RcloneError> {
-    let job_cache = &app.state::<BackendManager>().job_cache;
-    let automations_cache = app.state::<AutomationsCache>();
-    let mut success = job_status
-        .get("success")
-        .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-    let stopped = job_status
-        .get("stopped")
-        .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-    let mut error_msg = job_status
-        .get("error")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .trim()
-        .to_string();
+    let outcome = resolve_job_outcome(&job_status, &metadata.job_type, &metadata.source);
 
-    // Special handling for rclone jobs where rclone reports success: true
-    // but individual items failed (batch) or the command failed (core/command).
-    if success && let Some(output) = job_status.get("output") {
-        // 1. Check for operations/batch results
-        if let Some(results) = output.get("results").and_then(|v| v.as_array()) {
-            for res in results {
-                let has_error = res.get("error").is_some()
-                    || res
-                        .get("status")
-                        .and_then(|v| v.as_i64())
-                        .is_some_and(|s| s >= 400)
-                    || res.get("success").and_then(|v| v.as_bool()) == Some(false);
-
-                if has_error {
-                    success = false;
-                    let err = res
-                        .get("error")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown error");
-                    if !err.is_empty() {
-                        let item_name = res
-                            .get("input")
-                            .and_then(|i| {
-                                i.get("srcRemote")
-                                    .or_else(|| i.get("remote"))
-                                    .or_else(|| i.get("dstRemote"))
-                                    .or_else(|| i.get("path1"))
-                                    .or_else(|| i.get("path2"))
-                            })
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(&metadata.source);
-
-                        let full_err = format!("{}: {}", item_name, err);
-                        if error_msg.is_empty() {
-                            error_msg = full_err;
-                        } else if !error_msg.contains(&full_err) {
-                            error_msg = format!("{}; {}", error_msg, full_err);
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Check for individual command error (e.g. core/command)
-        if success
-            && output
-                .get("error")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-        {
-            success = false;
-            if let Some(result) = output.get("result").and_then(|v| v.as_str())
-                && !result.trim().is_empty()
-            {
-                error_msg = result.trim().to_string();
-            }
-        }
+    if !metadata.no_cache {
+        persist_final_job_state(
+            app,
+            jobid,
+            metadata,
+            &outcome,
+            last_stats,
+            job_status.get("output"),
+        )
+        .await;
+    } else {
+        spawn_stats_cleanup(app, metadata);
     }
 
+    update_associated_automation(app, jobid, &outcome).await?;
+
+    dispatch_job_completion_effects(app, &backend_name, jobid, metadata, &outcome, &job_status)?;
+
+    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
+}
+
+async fn persist_final_job_state(
+    app: &AppHandle,
+    jobid: u64,
+    metadata: &JobMetadata,
+    outcome: &JobOutcome,
+    last_stats: Option<Value>,
+    raw_output: Option<&Value>,
+) {
+    let job_cache = &app.state::<BackendManager>().job_cache;
+    let mut final_stats = collect_final_stats(app, metadata, last_stats).await;
+    if final_stats.is_null() || final_stats == json!({}) {
+        final_stats = json!({});
+    }
+    if let Some(obj) = final_stats.as_object_mut() {
+        if metadata.job_type == JobType::Check
+            && let Some(output) = raw_output
+        {
+            obj.insert("checkOutput".to_string(), output.clone());
+        } else if metadata.job_type == JobType::CryptCheck
+            && let Some(parsed) = &outcome.cryptcheck_output
+        {
+            obj.insert("checkOutput".to_string(), parsed.clone());
+        }
+    }
+    if !final_stats.is_null() && final_stats != json!({}) {
+        let _ = job_cache.update_job_stats(jobid, final_stats).await;
+    }
+
+    let _ = job_cache
+        .complete_job(jobid, outcome.success, outcome.error_msg.clone())
+        .await;
+}
+
+async fn update_associated_automation(
+    app: &AppHandle,
+    jobid: u64,
+    outcome: &JobOutcome,
+) -> Result<(), RcloneError> {
+    let automations_cache = app.state::<AutomationsCache>();
     let automation = automations_cache
         .get_automation_by_job_id(jobid.to_string())
         .await;
+
+    let Some(automation) = automation else {
+        return Ok(());
+    };
+
     let next_run = automation
+        .cron_expression
         .as_ref()
-        .and_then(|t| get_next_run(&t.cron_expression).ok());
+        .and_then(|expr| get_next_run(expr).ok());
+    let automation_name = automation.log_name();
+    info!("Job {jobid} associated with automation '{automation_name}', updating status.");
 
-    if !metadata.no_cache {
-        let final_stats = collect_final_stats(app, metadata, last_stats).await;
-        if !final_stats.is_null() && final_stats != json!({}) {
-            let _ = job_cache.update_job_stats(jobid, final_stats).await;
-        }
+    if outcome.success {
+        automations_cache
+            .update_automation(&automation.id, |t| {
+                t.mark_success();
+                t.next_run = next_run;
+            })
+            .await
+            .map_err(RcloneError::JobError)?;
 
-        spawn_stats_cleanup(app, metadata);
-
-        let _ = job_cache
-            .complete_job(
-                jobid,
-                success,
-                (!error_msg.is_empty()).then(|| error_msg.clone()),
-                if stopped { None } else { Some(app) },
-            )
-            .await;
-    }
-
-    if let Some(automation) = automation {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Completed {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+            }),
         );
+    } else if outcome.stopped {
+        automations_cache
+            .update_automation(&automation.id, |t| {
+                t.mark_stopped();
+                t.next_run = next_run;
+            })
+            .await
+            .map_err(RcloneError::JobError)?;
 
-        info!("Job {jobid} associated with automation '{automation_name}', updating status.");
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Stopped {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+            }),
+        );
+    } else {
+        let err = outcome.error_msg.clone().unwrap_or_default();
+        automations_cache
+            .update_automation(&automation.id, |t| {
+                t.mark_failure(err.clone());
+                t.next_run = next_run;
+            })
+            .await
+            .map_err(RcloneError::JobError)?;
 
-        if success {
-            automations_cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.mark_success();
-                        t.next_run = next_run;
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?;
-
-            notify(
-                app,
-                NotificationEvent::Automation(AutomationStage::Completed {
-                    backend: automation.backend_name.clone(),
-                    remote: automation.remote_name.clone(),
-                    profile: automation.profile_name.clone(),
-                    automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
-                }),
-            );
-        } else {
-            automations_cache
-                .update_automation(
-                    &automation.id,
-                    |t| {
-                        t.mark_failure(error_msg.clone());
-                        t.next_run = next_run;
-                    },
-                    Some(app),
-                )
-                .await
-                .map_err(RcloneError::JobError)?;
-
-            notify(
-                app,
-                NotificationEvent::Automation(AutomationStage::Failed {
-                    backend: automation.backend_name.clone(),
-                    remote: automation.remote_name.clone(),
-                    profile: automation.profile_name.clone(),
-                    automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
-                    error: error_msg.clone(),
-                }),
-            );
-        }
+        notify(
+            app,
+            NotificationEvent::Automation(AutomationStage::Failed {
+                backend: automation.backend_name.clone(),
+                remote: automation.remote_name.clone(),
+                profile: automation.profile_name.clone(),
+                automation_name: automation.display_name(),
+                automation_type: automation.automation_type,
+                error: err,
+            }),
+        );
     }
 
-    if stopped {
+    Ok(())
+}
+
+fn dispatch_job_completion_effects(
+    app: &AppHandle,
+    backend_name: &str,
+    jobid: u64,
+    metadata: &JobMetadata,
+    outcome: &JobOutcome,
+    job_status: &Value,
+) -> Result<(), RcloneError> {
+    if outcome.stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
-        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
-            notify(app, metadata.stopped_event(backend_name.clone()));
+        if !metadata.no_cache {
+            notify(app, metadata.stopped_event(backend_name.to_string()));
         }
-        return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
+        return Ok(());
     }
 
-    if !success {
-        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
+    if !outcome.success {
+        let raw_err = outcome.error_msg.as_deref().unwrap_or("Job failed");
+        let error_for_notify = crate::rclone::engine::error_mapper::map_rclone_error(raw_err)
+            .unwrap_or_else(|| raw_err.to_string());
+        if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
                 Some(metadata.job_type.to_string()),
-                format!("{} Job {jobid} failed: {error_msg}", metadata.job_type),
+                format!("{} Job {jobid} failed: {raw_err}", metadata.job_type),
                 Some(json!({"jobid": jobid, "status": job_status})),
             );
-            notify(app, metadata.failed_event(backend_name.clone(), &error_msg));
+            notify(
+                app,
+                metadata.failed_event(backend_name.to_string(), &error_for_notify),
+            );
         }
-        return Err(RcloneError::JobError(error_msg));
+        return Err(RcloneError::JobError(raw_err.to_string()));
     }
 
-    if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
+    if !metadata.no_cache {
         log_operation(
             LogLevel::Info,
             Some(metadata.remote_name.clone()),
@@ -672,11 +766,11 @@ pub async fn handle_job_completion(
             Some(json!({"jobid": jobid, "status": job_status})),
         );
         if metadata.job_type != JobType::Mount {
-            notify(app, metadata.completed_event(backend_name.clone()));
+            notify(app, metadata.completed_event(backend_name.to_string()));
         }
     }
 
-    Ok(job_status.get("output").cloned().unwrap_or(json!({})))
+    Ok(())
 }
 
 async fn collect_final_stats(
@@ -684,44 +778,35 @@ async fn collect_final_stats(
     metadata: &JobMetadata,
     last_stats: Option<Value>,
 ) -> Value {
-    let backend = app.state::<BackendManager>().get_active().await;
-    let client = &app.state::<RcloneState>().client;
+    let transport = app.state::<RcloneState>().transport.clone();
     let group = metadata.group_name();
 
     let needs_stats_fetch = last_stats
         .as_ref()
         .is_none_or(|s| s.is_null() || s == &json!({}));
 
-    let stats_req = needs_stats_fetch.then(|| {
-        backend
-            .inject_auth(client.post(backend.url_for(core::STATS)))
-            .json(&json!({ "group": group }))
-    });
-    let transferred_req = backend
-        .inject_auth(client.post(backend.url_for(core::TRANSFERRED)))
-        .json(&json!({ "group": group }));
+    let stats_fut = async {
+        if needs_stats_fetch {
+            transport
+                .rpc(core::STATS, Some(&json!({ "group": group })))
+                .await
+                .ok()
+        } else {
+            None
+        }
+    };
+    let transferred_params = json!({ "group": group });
+    let transferred_fut = transport.rpc(core::TRANSFERRED, Some(&transferred_params));
 
-    let (stats_send_result, transferred_send_result) = tokio::join!(
-        async {
-            match stats_req {
-                Some(req) => req.send().await.ok(),
-                None => None,
-            }
-        },
-        transferred_req.send()
-    );
+    let (stats_result, transferred_result) = tokio::join!(stats_fut, transferred_fut);
 
     let mut final_stats = if needs_stats_fetch {
-        match stats_send_result {
-            Some(resp) => resp.json::<Value>().await.unwrap_or(json!({})),
-            None => json!({}),
-        }
+        stats_result.unwrap_or(json!({}))
     } else {
         last_stats.unwrap_or(json!({}))
     };
 
-    if let Ok(resp) = transferred_send_result
-        && let Ok(data) = resp.json::<Value>().await
+    if let Ok(data) = transferred_result
         && let Some(obj) = final_stats.as_object_mut()
     {
         obj.insert(
@@ -734,80 +819,47 @@ async fn collect_final_stats(
 }
 
 fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
-    let client = app.state::<RcloneState>().client.clone();
-    let group = metadata.group_name();
-    let app = app.clone();
-
-    tauri::async_runtime::spawn(async move {
-        let backend = app.state::<BackendManager>().get_active().await;
-        let delete_url = backend.url_for(core::STATS_DELETE);
-        let _ = backend
-            .inject_auth(client.post(&delete_url))
-            .json(&json!({ "group": group }))
-            .send()
-            .await;
-    });
+    crate::rclone::state::job::spawn_stats_cleanup_by_group(app, &metadata.group_name());
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
-    let automations_cache = app.state::<AutomationsCache>();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
     let job_cache = &backend_manager.job_cache;
-    let url = backend.url_for(job::STOP);
 
-    let response = backend
-        .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&json!({ "jobid": jobid }))
-        .send()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+    let stop_result = transport
+        .rpc_with_timeout(
+            job::STOP,
+            Some(&json!({ "jobid": jobid })),
+            Duration::from_secs(10),
+        )
+        .await;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if status.is_success() {
-        // accepted
-    } else if status.as_u16() == 500 && body.contains("\"job not found\"") {
-        log_operation(
-            LogLevel::Warn,
-            Some(remote_name.clone()),
-            Some("Stop job".to_string()),
-            format!("Job {jobid} not found in rclone, marking as stopped"),
-            None,
-        );
-        warn!("Job {jobid} not found in rclone, marking as stopped.");
-    } else {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("Failed to stop job {jobid}: {error}");
-        return Err(error);
+    match stop_result {
+        Ok(_) => {}
+        Err(BackendError::Rpc {
+            status: 500,
+            message,
+            ..
+        }) if message.contains("job not found") => {
+            log_operation(
+                LogLevel::Warn,
+                Some(remote_name.clone()),
+                Some("Stop job".to_string()),
+                format!("Job {jobid} not found in rclone, marking as stopped"),
+                None,
+            );
+            warn!("Job {jobid} not found in rclone, marking as stopped.");
+        }
+        Err(e) => {
+            let error = e.to_string();
+            error!("Failed to stop job {jobid}: {error}");
+            return Err(error);
+        }
     }
 
-    job_cache
-        .stop_job(jobid, Some(&app))
-        .await
-        .map_err(|e| e.clone())?;
-
-    if let Some(automation) = automations_cache
-        .get_automation_by_job_id(jobid.to_string())
-        .await
-    {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
-        info!("Job {jobid} associated with automation '{automation_name}', marking as stopped");
-        automations_cache
-            .update_automation(
-                &automation.id,
-                crate::utils::types::automation::Automation::mark_stopped,
-                Some(&app),
-            )
-            .await
-            .map_err(|e| format!("Failed to update automation state: {e}"))?;
-    }
+    job_cache.stop_job(jobid).await.map_err(|e| e.clone())?;
 
     log_operation(
         LogLevel::Info,
@@ -821,36 +873,36 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
     let job_cache = &backend_manager.job_cache;
-    let url = backend.url_for(job::STOPGROUP);
 
     info!("Stopping all jobs in group: {group}");
 
-    let response = backend
-        .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&json!({ "group": group }))
-        .send()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+    let stop_result = transport
+        .rpc_with_timeout(
+            job::STOPGROUP,
+            Some(&json!({ "group": group })),
+            Duration::from_secs(10),
+        )
+        .await;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() && !body.contains("no jobs in group") {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("Failed to stop jobs in group {group}: {error}");
-        return Err(error);
+    match stop_result {
+        Ok(_) => {}
+        Err(BackendError::Rpc { ref message, .. }) if message.contains("no jobs in group") => {}
+        Err(e) => {
+            let error = e.to_string();
+            error!("Failed to stop jobs in group {group}: {error}");
+            return Err(error);
+        }
     }
 
     let jobs = job_cache.get_jobs().await;
     for job in jobs {
         if job.group == group && job.status == JobStatus::Running {
-            let _ = job_cache.stop_job(job.jobid, Some(&app)).await;
+            let _ = job_cache.stop_job(job.jobid).await;
         }
     }
 
@@ -865,16 +917,14 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn submit_batch_job(
     app: AppHandle,
     inputs: Vec<Value>,
     metadata: JobMetadata,
 ) -> Result<String, String> {
-    let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(crate::utils::rclone::endpoints::job::BATCH);
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let mut metadata = metadata;
     let base_group = metadata.group_name();
@@ -893,11 +943,7 @@ pub async fn submit_batch_job(
     let modified_inputs: Vec<Value> = inputs
         .into_iter()
         .map(|mut inp| {
-            if let Some(obj) = inp.as_object_mut()
-                && !obj.contains_key("_group")
-            {
-                obj.insert("_group".to_string(), json!(batch_group));
-            }
+            crate::rclone::commands::common::ensure_group(&mut inp, &batch_group);
             inp
         })
         .collect();
@@ -907,46 +953,51 @@ pub async fn submit_batch_job(
         "inputs": modified_inputs,
     });
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let _ = transport
+        .rpc(core::STATS_DELETE, Some(&json!({ "group": &batch_group })))
+        .await;
+
+    let response_json: Value = transport
+        .rpc(job::BATCH, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let response_json: Value = response
-        .json()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
 
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    let jobid = parse_job_response(&response_json)?;
+
+    let backend_name = backend_manager.get_active_name().await;
 
     if !metadata.no_cache {
-        add_job_to_cache(
-            &backend_manager.job_cache,
-            jobid,
-            execute_id.clone(),
-            &metadata,
-            &backend.name,
-            Some(&app),
-        )
-        .await;
+        add_job_to_cache(&backend_manager.job_cache, jobid, &metadata, &backend_name).await;
 
-        if metadata.origin != Some(Origin::Automation) {
-            notify(&app, metadata.started_event(backend.name.clone()));
-        }
+        let redacted_payload = redact_value(&payload, &app);
+        log_operation(
+            LogLevel::Info,
+            Some(metadata.remote_name.clone()),
+            Some(metadata.job_type.to_string()),
+            format!(
+                "{} started with ID {} (ExecuteID: {:?})",
+                metadata.job_type, jobid, execute_id
+            ),
+            Some(redacted_payload),
+        );
+
+        notify(&app, metadata.started_event(backend_name.clone()));
     }
 
-    let client = state.client.clone();
-    let backend_name = backend.name.clone();
-    tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(backend_name, metadata, jobid, app, client).await;
+    let backend_name_for_monitor = backend_name;
+    crate::utils::spawn(async move {
+        let _ = monitor_job(backend_name_for_monitor, metadata, jobid, app).await;
     });
 
     Ok(jobid.to_string())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn register_preparing_job(
     app: tauri::AppHandle,
     jobid: u64,
@@ -960,21 +1011,15 @@ pub async fn register_preparing_job(
     let backend_name = backend_manager.get_active().await.name;
     let job_cache = &backend_manager.job_cache;
 
-    let metadata = JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Upload,
-        source: "preparing".to_string(),
+    let metadata = JobMetadata::new(
+        remote,
+        JobType::Upload,
+        vec!["preparing".to_string()],
         destination,
-        profile: None,
-        origin,
-        group: None,
-        no_cache: false,
-        dry_run: false,
-    };
+    )
+    .with_origin(origin);
 
-    job_cache
-        .create_job(jobid, None, metadata, backend_name, Some(&app))
-        .await;
+    job_cache.create_job(jobid, metadata, backend_name).await;
 
     let stats = json!({
         "totalBytes": total_bytes,
@@ -990,7 +1035,7 @@ pub async fn register_preparing_job(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_job_stats(
     app: tauri::AppHandle,
     jobid: u64,
@@ -1008,17 +1053,9 @@ mod tests {
     use super::*;
 
     fn make_meta(origin: Option<Origin>, profile: Option<&str>) -> JobMetadata {
-        JobMetadata {
-            remote_name: "gdrive:".to_string(),
-            job_type: JobType::Sync,
-            source: "src".to_string(),
-            destination: "dst".to_string(),
-            profile: profile.map(str::to_string),
-            origin,
-            group: None,
-            no_cache: false,
-            dry_run: false,
-        }
+        JobMetadata::new("gdrive:", JobType::Sync, vec!["src".to_string()], "dst")
+            .with_origin(origin)
+            .with_profile(profile.map(str::to_string))
     }
 
     #[test]
@@ -1087,27 +1124,5 @@ mod tests {
             }
             _ => panic!("expected JobStage::Failed"),
         }
-    }
-
-    #[test]
-    fn test_parse_job_response_numeric_and_execute() {
-        let v = json!({"jobid": 123, "executeId": "exec-1"});
-        let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 123);
-        assert_eq!(res.1, Some("exec-1".to_string()));
-    }
-
-    #[test]
-    fn test_parse_job_response_string_id() {
-        let v = json!({"id": "456"});
-        let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 456);
-        assert_eq!(res.1, None);
-    }
-
-    #[test]
-    fn test_parse_job_response_missing_id_returns_err() {
-        let v = json!({"executeId": "no-job"});
-        assert!(super::parse_job_response(&v).is_err());
     }
 }

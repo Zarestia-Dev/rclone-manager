@@ -1,4 +1,5 @@
 use crate::core::settings::AppSettingsManager;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -17,7 +18,7 @@ impl SafeEnvironmentManager {
 
     pub fn init_with_stored_credentials(&self, manager: &AppSettingsManager) -> Result<(), String> {
         match manager.sub_settings("connections") {
-            Ok(connections) => match connections.get_value("Local") {
+            Ok(connections) => match connections.get_value(LOCAL_BACKEND_NAME) {
                 Ok(local) => {
                     if let Some(password) = local.get("config_password").and_then(|v| v.as_str())
                         && !password.is_empty()
@@ -41,15 +42,22 @@ impl SafeEnvironmentManager {
         }
     }
 
+    #[allow(clippy::disallowed_methods)]
     pub fn set_config_password(&self, password: String) {
         if let Ok(mut lock) = self.config_password.lock() {
-            *lock = Some(password);
+            *lock = Some(password.clone());
+        }
+        unsafe {
+            std::env::set_var("RCLONE_CONFIG_PASS", &password);
         }
     }
 
     pub fn clear_config_password(&self) {
         if let Ok(mut lock) = self.config_password.lock() {
             *lock = None;
+        }
+        unsafe {
+            std::env::remove_var("RCLONE_CONFIG_PASS");
         }
     }
 

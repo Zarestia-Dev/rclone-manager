@@ -6,6 +6,7 @@ import { filter, switchMap, tap } from 'rxjs/operators';
 import { SystemInfoService } from '../system/system-info.service';
 import { BackendService } from '../system/backend.service';
 import { EventListenersService } from '../system/event-listeners.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 import {
   BandwidthLimitResponse,
   DEFAULT_JOB_STATS,
@@ -15,22 +16,28 @@ import {
   RcloneInfo,
   SystemStatusPayload,
 } from '@app/types';
+import { deepEqual } from 'src/app/shared/utils';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneStatusService {
   private systemInfoService = inject(SystemInfoService);
   private backendService = inject(BackendService);
   private eventListenersService = inject(EventListenersService);
+  private appSettingsService = inject(AppSettingsService);
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
-  readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: this.objectsEqual });
+  readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: deepEqual });
   readonly bandwidthLimit = signal<BandwidthLimitResponse | null>(null, {
-    equal: this.objectsEqual,
+    equal: deepEqual,
+  });
+  readonly savedBandwidthLimit = computed(() => {
+    const opts = this.appSettingsService.options();
+    return ((opts?.['core.bandwidth_limit']?.value as string) ?? '').trim();
   });
   readonly rcloneStatus = signal<RcloneStatus>('inactive');
   readonly rclonePID = signal<number | null>(null);
-  readonly jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
+  readonly jobStats = signal<GlobalStats>(structuredClone(DEFAULT_JOB_STATS));
   readonly memoryUsage = signal<MemoryStats | null>(null);
   readonly isLoading = signal(true);
   readonly uptime = computed(() => this.jobStats().elapsedTime || 0);
@@ -81,7 +88,7 @@ export class RcloneStatusService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(data => {
         if (data) {
-          this.bandwidthLimit.set(data as BandwidthLimitResponse);
+          this.bandwidthLimit.set(data);
         }
       });
 
@@ -166,9 +173,15 @@ export class RcloneStatusService {
         bytesPerSecondTx: -1,
         rate: 'off',
         loading: false,
-        error: `Failed: ${error}`,
+        error: `Failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
+  }
+
+  async setBandwidthLimit(rate: string): Promise<void> {
+    const persistedValue = rate === 'off' ? '' : rate;
+    await this.systemInfoService.bandwidthLimit(rate);
+    await this.appSettingsService.saveSetting('core', 'bandwidth_limit', persistedValue);
   }
 
   pausePolling(): void {
@@ -176,11 +189,5 @@ export class RcloneStatusService {
   }
   resumePolling(): void {
     this.isManuallyPaused.set(false);
-  }
-
-  private objectsEqual<T>(a: T, b: T): boolean {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    return JSON.stringify(a) === JSON.stringify(b);
   }
 }

@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Comprobar Archivo Remoto",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes."
+  },
+  "combined": {
+    "title": "Combinado",
+    "help": "Crear un informe combinado de cambios."
+  },
+  "missing_on_src": {
+    "title": "Faltante en Origen",
+    "help": "Reportar todos los archivos que faltan en el origen."
+  },
+  "missing_on_dst": {
+    "title": "Faltante en Destino",
+    "help": "Reportar todos los archivos que faltan en el destino."
+  },
+  "match": {
+    "title": "Coincidente",
+    "help": "Reportar todos los archivos coincidentes."
+  },
+  "differ": {
+    "title": "Diferente",
+    "help": "Reportar todos los archivos no coincidentes."
+  },
+  "error": {
+    "title": "Error",
+    "help": "Reportar todos los archivos con errores (de lectura o hash)."
+  },
   "addr": {
     "title": "Dirección",
     "help": "Direccion IP o puerto del servidor"
@@ -1154,5 +1182,161 @@
   "vfs_handle_caching": {
     "title": "Caché de manejadores VFS",
     "help": "Tiempo para mantener activos el manejador de archivos y los descargadores después del último cierre"
+  },
+  "mountType": {
+    "title": "Tipo de montaje",
+    "help": "Tipo de montaje a utilizar."
+  },
+  "type": {
+    "title": "Tipo de servidor",
+    "help": "Tipo de servidor a utilizar."
+  },
+  "mount_type_mount": {
+    "title": "Montaje estándar",
+    "help": "Montaje FUSE estándar"
+  },
+  "mount_type_cmount": {
+    "title": "Montaje FUSE de Windows/macOS",
+    "help": "Montaje FUSE usando cgofuse (predeterminado en Windows/macOS)"
+  },
+  "mount_type_mount2": {
+    "title": "Montaje nativo de Go",
+    "help": "Montaje FUSE nativo de Go usando go-fuse"
+  },
+  "mount_type_nfsmount": {
+    "title": "Montaje NFS",
+    "help": "Montaje usando protocolo NFS"
+  },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Montaje nativo de Android Storage Access Framework"
+  },
+  "serve_type_http": {
+    "title": "Servidor HTTP",
+    "help": "Servir el remoto a través de HTTP"
+  },
+  "serve_type_webdav": {
+    "title": "Servidor WebDAV",
+    "help": "Servir el remoto a través de WebDAV"
+  },
+  "serve_type_ftp": {
+    "title": "Servidor FTP",
+    "help": "Servir el remoto a través de FTP"
+  },
+  "serve_type_sftp": {
+    "title": "Servidor SFTP",
+    "help": "Servir el remoto a través de SFTP"
+  },
+  "serve_type_nfs": {
+    "title": "Servidor NFS",
+    "help": "Servir el remoto a través de NFS"
+  },
+  "serve_type_dlna": {
+    "title": "Servidor multimedia DLNA",
+    "help": "Servir el remoto a través de DLNA"
+  },
+  "serve_type_docker": {
+    "title": "Complemento de volumen Docker",
+    "help": "Servir el remoto como complemento de volumen Docker"
+  },
+  "serve_type_restic": {
+    "title": "Servidor REST de Restic",
+    "help": "Servir el remoto a través de la API REST de Restic"
+  },
+  "serve_type_s3": {
+    "title": "Servidor compatible con Amazon S3",
+    "help": "Servir el remoto a través de la API S3 de Amazon"
+  },
+  "check_file_hash": {
+    "title": "Comprobar hash de archivo",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes del tipo dado."
+  },
+  "check_file_fs": {
+    "title": "Comprobar sistema de archivos",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes."
+  },
+  "one_way": {
+    "title": "Comprobación unidireccional",
+    "help": "Realizar comprobación solo de una vía: buscar archivos en el origen que no existen en el destino."
+  },
+  "auto_filename": {
+    "title": "Nombre de archivo automático",
+    "help": "Obtener el nombre del archivo de la URL o de las cabeceras si el destino es un directorio."
+  },
+  "rmdirs": {
+    "title": "Eliminar directorios vacíos",
+    "help": "Eliminar directorios vacíos después de borrar archivos."
+  },
+  "format": {
+    "title": "Formato de archivo",
+    "help": "Formato de compresión del archivo (zip, tar, tgz, tbz, txz, etc.)"
+  },
+  "prefix": {
+    "title": "Prefijo de ruta",
+    "help": "Añadir un directorio de prefijo en el archivo"
+  },
+  "full_path": {
+    "title": "Ruta completa",
+    "help": "Usar la ruta completa de los archivos en el archivo comprimido"
+  },
+  "download": {
+    "title": "Descargar y comprobar",
+    "help": "Descargar archivos para verificar la integridad / comparar hashes."
+  },
+  "resync_mode": {
+    "title": "Modo de Resincronización",
+    "help": "Durante la resincronización, prefiere la versión que sea: path1, path2, más nueva, más antigua, más grande, más pequeña (por defecto: path1 si --resync, de lo contrario none para no resincronizar)"
+  },
+  "compare": {
+    "title": "Comparar",
+    "help": "Lista separada por comas de opciones de comparación específicas de bisync, ej. 'size,modtime,checksum' (por defecto: 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Descargar Hash",
+    "help": "Calcula el hash descargándolo cuando no esté disponible de otro modo. (¡advertencia: puede ser lento y usar muchos datos!)"
+  },
+  "max_lock": {
+    "title": "Bloqueo Máximo",
+    "help": "Considera los archivos de bloqueo más antiguos que esto como expirados (por defecto: 0 (nunca expira)) (mínimo: 2m)"
+  },
+  "no_slow_hash": {
+    "title": "Ignorar Hash Lento",
+    "help": "Ignora los hashes de listado solo en backends donde sean lentos"
+  },
+  "slow_hash_sync_only": {
+    "title": "Sincronizar Hash Lento Solo en Copia",
+    "help": "Ignora los hashes lentos para listados y deltas, pero los considera durante las llamadas de sincronización."
+  },
+  "recover": {
+    "title": "Recuperar",
+    "help": "Recupera automáticamente de interrupciones sin necesidad de --resync."
+  },
+  "workdir": {
+    "title": "Directorio de Trabajo",
+    "help": "Usa un directorio de trabajo personalizado - útil para pruebas."
+  },
+  "check_access": {
+    "title": "Comprobar Acceso",
+    "help": "Aborta si no se encuentran los archivos RCLONE_TEST en ambos sistemas de archivos."
+  },
+  "check_filename": {
+    "title": "Comprobar Nombre de Archivo",
+    "help": "Nombre de archivo para --check-access."
+  },
+  "check_sync": {
+    "title": "Comprobar Sincronización",
+    "help": "Controla la comparación de los listados finales."
+  },
+  "conflict_loser": {
+    "title": "Perdedor de Conflicto",
+    "help": "Acción a tomar con el perdedor de un conflicto de sincronización (cuando hay un ganador) o con ambos archivos (cuando no hay ganador): num, pathname, delete (por defecto: num)"
+  },
+  "conflict_resolve": {
+    "title": "Resolver Conflicto",
+    "help": "Resuelve automáticamente los conflictos prefiriendo la versión que sea: none, path1, path2, más nueva, más antigua, más grande, más pequeña (por defecto: none)"
+  },
+  "conflict_suffix": {
+    "title": "Sufijo de Conflicto",
+    "help": "Sufijo a usar al renombrar un archivo perdedor de conflicto. Puede ser una cadena o dos cadenas separadas por comas para asignar diferentes sufijos a Path1/Path2. (por defecto: 'conflict')"
   }
 }

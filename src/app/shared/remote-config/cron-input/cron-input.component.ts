@@ -13,7 +13,6 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,7 +20,6 @@ import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import {
   catchError,
-  debounceTime,
   distinctUntilChanged,
   filter,
   from,
@@ -32,35 +30,63 @@ import {
   tap,
 } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { AutomationService } from '@app/services';
+import { AutomationService } from 'src/app/services/operations/automation.service';
 import { CronValidationResponse } from '@app/types';
-import { toString as cronstrue } from 'cronstrue';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 
-type PresetKey =
-  | 'daily-9am'
-  | 'daily-6pm'
-  | 'weekday-9am'
-  | 'weekly-monday'
-  | 'every-6-hours'
-  | 'monthly-1st';
+export type PresetKey =
+  'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
+
+export interface PresetOption {
+  key: PresetKey;
+  cron: string;
+}
+
+export interface MonthOption {
+  value: string;
+  labelKey: string;
+}
+
+export const PRESET_OPTIONS: PresetOption[] = [
+  { key: 'daily-9am', cron: '0 9 * * *' },
+  { key: 'daily-6pm', cron: '0 18 * * *' },
+  { key: 'weekday-9am', cron: '0 9 * * 1-5' },
+  { key: 'weekly-monday', cron: '0 9 * * 1' },
+  { key: 'every-6-hours', cron: '0 */6 * * *' },
+  { key: 'monthly-1st', cron: '0 0 1 * *' },
+];
+
+export const MONTH_OPTIONS: MonthOption[] = [
+  { value: '1', labelKey: 'january' },
+  { value: '2', labelKey: 'february' },
+  { value: '3', labelKey: 'march' },
+  { value: '4', labelKey: 'april' },
+  { value: '5', labelKey: 'may' },
+  { value: '6', labelKey: 'june' },
+  { value: '7', labelKey: 'july' },
+  { value: '8', labelKey: 'august' },
+  { value: '9', labelKey: 'september' },
+  { value: '10', labelKey: 'october' },
+  { value: '11', labelKey: 'november' },
+  { value: '12', labelKey: 'december' },
+];
 
 @Component({
   selector: 'app-cron-input',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatTooltipModule,
     MatTabsModule,
     MatSelectModule,
     MatButtonModule,
     MatNativeDateModule,
     MatTimepickerModule,
-    TranslateModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './cron-input.component.html',
   styleUrls: ['./cron-input.component.scss'],
@@ -68,7 +94,7 @@ type PresetKey =
   providers: [provideNativeDateAdapter()],
 })
 export class CronInputComponent {
-  initialValue = input<string | null>();
+  initialValue = input<string | null>(null);
   automationName = input<string | null>(null);
   cronChange = output<string | null>();
   validationChange = output<CronValidationResponse>();
@@ -78,76 +104,53 @@ export class CronInputComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   private isUpdatingForms = false;
-  cronControl = new FormControl<string>('');
+  readonly cronControl = new FormControl<string>('', { nonNullable: true });
 
   readonly validationResponse = signal<CronValidationResponse | null>(null);
-  readonly validationError = signal('');
+  readonly validationError = signal<string>('');
   readonly selectedPreset = signal<PresetKey | null>(null);
 
+  readonly simpleForm = new FormGroup({
+    frequency: new FormControl<string>('daily', { nonNullable: true }),
+    time: new FormControl<Date | null>(new Date(1970, 0, 1, 9, 0, 0)),
+    dayOfWeek: new FormControl<string>('1', { nonNullable: true }),
+    dayOfMonth: new FormControl<number>(1, { nonNullable: true }),
+    intervalHours: new FormControl<number>(6, { nonNullable: true }),
+  });
+
+  readonly advancedForm = new FormGroup({
+    minute: new FormControl<string>('0', { nonNullable: true }),
+    hour: new FormControl<string>('0', { nonNullable: true }),
+    dayOfMonth: new FormControl<string>('*', { nonNullable: true }),
+    month: new FormControl<string>('*', { nonNullable: true }),
+    dayOfWeek: new FormControl<string>('*', { nonNullable: true }),
+  });
+
   readonly cronValue = toSignal(
-    this.cronControl.valueChanges.pipe(startWith(this.cronControl.value ?? '')),
+    this.cronControl.valueChanges.pipe(startWith(this.cronControl.value)),
     { initialValue: '' }
+  );
+
+  readonly simpleFrequency = toSignal(
+    this.simpleForm.controls.frequency.valueChanges.pipe(
+      startWith(this.simpleForm.controls.frequency.value)
+    ),
+    { initialValue: 'daily' }
   );
 
   readonly humanReadableSchedule = computed(() => {
     const cron = this.cronValue()?.trim();
     if (!cron) return '';
-    try {
-      const locale = getCronstrueLocale(this.translate.getCurrentLang());
-      return cronstrue(cron, { locale });
-    } catch {
-      return cron;
-    }
+    return formatCronHumanReadable(cron, this.translate.currentLang());
   });
 
-  userTimezone = this.getUserTimezoneOffset();
+  readonly userTimezone = this.getUserTimezoneFormatted();
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
-
-  simpleForm = new FormGroup({
-    frequency: new FormControl('daily', { nonNullable: true }),
-    time: new FormControl<Date | null>(new Date(1970, 0, 1, 9, 0, 0)),
-    dayOfWeek: new FormControl('1', { nonNullable: true }),
-    dayOfMonth: new FormControl<number>(1, { nonNullable: true }),
-    intervalHours: new FormControl<number>(6, { nonNullable: true }),
-  });
-
-  advancedForm = new FormGroup({
-    minute: new FormControl('0', { nonNullable: true }),
-    hour: new FormControl('0', { nonNullable: true }),
-    dayOfMonth: new FormControl('*', { nonNullable: true }),
-    month: new FormControl('*', { nonNullable: true }),
-    dayOfWeek: new FormControl('*', { nonNullable: true }),
-  });
-
-  readonly presetOptions: { key: PresetKey; cron: string }[] = [
-    {
-      key: 'daily-9am',
-      cron: '0 9 * * *',
-    },
-    {
-      key: 'daily-6pm',
-      cron: '0 18 * * *',
-    },
-    {
-      key: 'weekday-9am',
-      cron: '0 9 * * 1-5',
-    },
-    {
-      key: 'weekly-monday',
-      cron: '0 9 * * 1',
-    },
-    {
-      key: 'every-6-hours',
-      cron: '0 */6 * * *',
-    },
-    {
-      key: 'monthly-1st',
-      cron: '0 0 1 * *',
-    },
-  ];
+  readonly presetOptions = PRESET_OPTIONS;
+  readonly monthOptions = MONTH_OPTIONS;
 
   constructor() {
-    // 1. Initialize from Input Signal
+    // 1. Sync input signal updates to cron control
     effect(() => {
       const val = this.initialValue() || '';
       if (val !== this.cronControl.value) {
@@ -155,9 +158,10 @@ export class CronInputComponent {
       }
     });
 
-    // 2. Listen to Cron Control Changes (Source of Truth)
+    // 2. React to cron control changes (Source of Truth)
     this.cronControl.valueChanges
       .pipe(
+        startWith(this.cronControl.value),
         map(value => value?.trim() || ''),
         distinctUntilChanged(),
         tap(trimmed => {
@@ -170,12 +174,11 @@ export class CronInputComponent {
           }
         }),
         filter(trimmed => trimmed.length > 0),
-        debounceTime(250),
         switchMap(expression =>
           from(this.automationService.validateCron(expression)).pipe(
             map(result => ({ expression, result })),
             catchError(error => {
-              console.error('Validation failed', error);
+              console.error('Cron validation failed', error);
               return of({
                 expression,
                 result: {
@@ -192,7 +195,7 @@ export class CronInputComponent {
         this.applyValidationResult(expression, result);
       });
 
-    // 3. Listen to Sub-Forms
+    // 3. Sub-form change subscriptions
     this.simpleForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (!this.isUpdatingForms) this.updateFromSimpleForm();
     });
@@ -202,15 +205,10 @@ export class CronInputComponent {
     });
   }
 
-  // ===================================
-  // Core Logic
-  // ===================================
-
   private updateCronSourceOfTruth(newValue: string | null, emitEvent: boolean): void {
     const validValue = newValue || '';
     this.setCronControlValue(validValue, emitEvent);
 
-    // Sync downstream views
     if (!this.isUpdatingForms) {
       this.syncViewsFromCron(validValue);
     }
@@ -225,11 +223,11 @@ export class CronInputComponent {
   private syncViewsFromCron(cron: string): void {
     this.isUpdatingForms = true;
     try {
-      // 1. Match Preset
+      // Match preset option
       const preset = this.presetOptions.find(p => p.cron === cron);
       this.selectedPreset.set(preset ? preset.key : null);
 
-      // 2. Parse into Advanced Form (Standard 5-part cron)
+      // Parse standard 5-part cron syntax
       const parts = cron.split(' ');
       if (parts.length === 5) {
         this.advancedForm.setValue(
@@ -243,7 +241,6 @@ export class CronInputComponent {
           { emitEvent: false }
         );
 
-        // 3. Try to map to Simple Form
         this.mapCronToSimpleForm(parts);
       }
     } catch (e) {
@@ -252,10 +249,6 @@ export class CronInputComponent {
       this.isUpdatingForms = false;
     }
   }
-
-  // ===================================
-  // Form Generation Logic
-  // ===================================
 
   private updateFromSimpleForm(): void {
     this.selectedPreset.set(null);
@@ -294,22 +287,19 @@ export class CronInputComponent {
     this.setCronControlValue(cron);
   }
 
-  // ===================================
-  // Component Logic: Parsing & Mapping
-  // ===================================
-
   private mapCronToSimpleForm(parts: string[]): void {
     if (parts.length < 5) return;
     const [min, hour, dom, mon, dow] = parts;
-    const isNum = (s: string) => /^\d+$/.test(s);
+    const isNum = (s: string): boolean => /^\d+$/.test(s);
 
-    // Helper to set simple form without triggering events
-    const setSimple = (vals: Partial<typeof this.simpleForm.value>) =>
+    const setSimple = (vals: Partial<typeof this.simpleForm.value>): void => {
       this.simpleForm.patchValue(vals, { emitEvent: false });
+    };
 
     // 1. Interval (0 */n * * *)
     if (min === '0' && hour.startsWith('*/') && dom === '*' && mon === '*' && dow === '*') {
-      setSimple({ frequency: 'interval', intervalHours: parseInt(hour.split('/')[1], 10) });
+      const parsedHours = parseInt(hour.split('/')[1], 10);
+      setSimple({ frequency: 'interval', intervalHours: isNaN(parsedHours) ? 6 : parsedHours });
       return;
     }
 
@@ -353,16 +343,15 @@ export class CronInputComponent {
     return new Date(1970, 0, 1, hours, minutes, 0);
   }
 
-  private getUserTimezoneOffset(): string {
+  private getUserTimezoneFormatted(): string {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const offset = -new Date().getTimezoneOffset();
     const sign = offset >= 0 ? '+' : '-';
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+    const pad = (n: number): string => n.toString().padStart(2, '0');
+    const hours = pad(Math.floor(Math.abs(offset) / 60));
+    const mins = pad(Math.abs(offset) % 60);
+    return `${timeZone} (UTC${sign}${hours}:${mins})`;
   }
-
-  // ===================================
-  // Validation & Helpers
-  // ===================================
 
   private applyValidationResult(expression: string, result: CronValidationResponse): void {
     this.validationResponse.set(result);
@@ -386,11 +375,12 @@ export class CronInputComponent {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
 
-      const delta = (date.getTime() - new Date().getTime()) / 1000;
-      if (delta < 0)
+      const delta = (date.getTime() - Date.now()) / 1000;
+      if (delta < 0) {
         return this.translate.instant('wizards.appOperation.relativeTime.inPast', {
           date: date.toLocaleString(),
         });
+      }
 
       return (
         this.translate.instant('wizards.appOperation.relativeTime.in', {
@@ -409,7 +399,8 @@ export class CronInputComponent {
     const d = Math.floor(seconds / 86400);
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    const t = (key: string, count: number) => this.translate.instant(key, { count });
+
+    const t = (key: string, count: number): string => this.translate.instant(key, { count });
 
     const parts: string[] = [];
     if (d > 0) {
@@ -421,7 +412,7 @@ export class CronInputComponent {
           d
         )
       );
-      if (h > 0)
+      if (h > 0) {
         parts.push(
           t(
             h === 1
@@ -430,6 +421,7 @@ export class CronInputComponent {
             h
           )
         );
+      }
     } else if (h > 0) {
       parts.push(
         t(
@@ -439,7 +431,7 @@ export class CronInputComponent {
           h
         )
       );
-      if (m > 0)
+      if (m > 0) {
         parts.push(
           t(
             m === 1
@@ -448,6 +440,7 @@ export class CronInputComponent {
             m
           )
         );
+      }
     } else {
       parts.push(
         t(

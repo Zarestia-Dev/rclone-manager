@@ -1,11 +1,12 @@
 import {
+  ChangeDetectionStrategy,
   Component,
+  viewChild,
+  computed,
+  effect,
   inject,
   input,
   signal,
-  computed,
-  effect,
-  ViewChild,
   untracked,
 } from '@angular/core';
 
@@ -15,69 +16,64 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule, MatTable } from '@angular/material/table';
-import { MatBadgeModule } from '@angular/material/badge';
+import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSliderModule } from '@angular/material/slider';
-import { switchMap, filter, retry } from 'rxjs/operators';
-import { timer, from } from 'rxjs';
+import { filter, retry, switchMap } from 'rxjs/operators';
+import { timer } from 'rxjs';
 
-import {
-  VfsList,
-  VfsQueueItem,
-  VfsService,
-  VfsStats,
-} from 'src/app/services/operations/vfs.service';
-import { NotificationService } from '@app/services';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import {
-  FileSystemService,
-  MountManagementService,
-  ServeManagementService,
-  RemoteFacadeService,
-  RcloneValueMapperService,
-} from '@app/services';
+import { VfsList, VfsQueueItem, VfsService } from 'src/app/services/operations/vfs.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { FormatFileSizePipe } from '@app/pipes';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 
-interface VfsInstance {
-  name: string;
-  stats: VfsStats | null;
-  queue: VfsQueueItem[];
-  pollInterval: string;
-}
+import { VfsInstance } from '@app/types';
+
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 const POLL_INTERVAL_MS = 5000;
 const PRIORITY_EXPIRY = -999_999_999;
 const DELAY_EXPIRY = 999_999_999;
 const DELAY_SLIDER_DEFAULT = 60;
-
 const INDEXED_VFS_RE = /:\[\d+\]$/;
+
+interface VfsConfigOption {
+  key: string;
+  value: string;
+  rawValue: unknown;
+  isDuration: boolean;
+  isSize: boolean;
+  isPermission: boolean;
+  group: string;
+}
+
+interface QueueRow extends VfsQueueItem {
+  status: string;
+}
 
 @Component({
   selector: 'app-vfs-control-panel',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
     MatFormFieldModule,
-    MatTooltipModule,
     MatProgressBarModule,
-    MatExpansionModule,
     MatTableModule,
-    MatBadgeModule,
     MatSelectModule,
     FormsModule,
     FormatFileSizePipe,
     MatSliderModule,
-    MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',
@@ -91,22 +87,20 @@ export class VfsControlPanelComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
-  private readonly facade = inject(RemoteFacadeService);
   private readonly mapper = inject(RcloneValueMapperService);
 
-  readonly remote = computed(() =>
-    this.facade.activeRemotes().find(r => r.name === this.remoteName())
-  );
-  readonly changeNotify = computed(() => this.remote()?.features?.changeNotify ?? false);
+  readonly changeNotify = computed(() => this.selectedVfs()?.pollIntervalSupported !== false);
 
-  @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
+  readonly table = viewChild(MatTable<VfsQueueItem>);
 
   readonly vfsInstances = signal<VfsInstance[]>([]);
   readonly selectedVfs = signal<VfsInstance | null>(null);
   readonly loading = signal(false);
+  readonly pollIntervalLoading = signal(false);
   readonly vfsNotFound = signal(false);
   readonly pollIntervalInput = signal('');
   readonly delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
+  readonly delaySliderLabel = computed(() => this.formatSliderLabel(this.delaySliderValue()));
   readonly showDelaySlider = signal<number | null>(null);
   readonly showAdvancedConfig = signal(false);
   readonly configSearchTerm = signal('');
@@ -123,12 +117,12 @@ export class VfsControlPanelComponent {
   });
   readonly hasUsableVfs = computed(() => !!this.selectedVfs() && !this.isIndexedVfs());
 
-  readonly vfsConfigGroups = computed(() => {
+  readonly vfsConfigGroups = computed<{ name: string; items: VfsConfigOption[] }[]>(() => {
     const opts = this.selectedVfs()?.stats?.opt;
     if (!opts) return [];
 
     const searchTerm = this.configSearchTerm().toLowerCase();
-    const grouped = new Map<string, { key: string; value: string; rawValue: unknown }[]>();
+    const grouped = new Map<string, VfsConfigOption[]>();
     const groupOrder = ['Booleans', 'Durations', 'Sizes', 'Permissions', 'Numbers', 'Strings'];
 
     for (const [key, rawValue] of Object.entries(opts)) {
@@ -139,8 +133,20 @@ export class VfsControlPanelComponent {
       ) {
         continue;
       }
-      const group = this.getOptionGroup(key, rawValue);
-      const item = { key, value: this.formatOptionValue(key, rawValue), rawValue };
+      const isDuration = this.isDurationKey(key);
+      const isSize = this.isSizeKey(key);
+      const isPermission = this.isPermissionKey(key);
+      const group = this.getOptionGroup(key, rawValue, isDuration, isSize, isPermission);
+      const value = this.formatOptionValue(key, rawValue, isDuration, isSize, isPermission);
+      const item: VfsConfigOption = {
+        key,
+        value,
+        rawValue,
+        isDuration,
+        isSize,
+        isPermission,
+        group,
+      };
       const list = grouped.get(group) ?? [];
       list.push(item);
       grouped.set(group, list);
@@ -151,41 +157,45 @@ export class VfsControlPanelComponent {
       .map(name => ({ name, items: grouped.get(name) ?? [] }));
   });
 
+  readonly queueRows = computed<QueueRow[]>(() => {
+    const vfs = this.selectedVfs();
+    if (!vfs) return [];
+    return vfs.queue.map(item => ({ ...item, status: this.getQueueItemStatus(item) }));
+  });
+
   readonly displayedColumns: string[] = ['name', 'size', 'status'];
   readonly isDetailRow = (_: number, row: VfsQueueItem): boolean =>
     this.showDelaySlider() === row.id;
 
   constructor() {
-    // Reload when remote name changes.
     effect(() => {
       this.remoteName();
-      untracked(() => void this.loadAll());
-    });
-
-    // Reload when mount or serve state changes (VFS list may have changed).
-    effect(() => {
       this.mountService.mountedRemotes();
       this.serveService.runningServes();
       untracked(() => void this.loadAll());
     });
 
-    // Sync poll interval input field when selection changes.
+    // Sync poll interval input only when VFS name or interval changes — not on every stats refresh.
+    let syncedKey = '';
     effect(() => {
       const vfs = this.selectedVfs();
-      if (vfs) this.pollIntervalInput.set(vfs.pollInterval);
+      const key = `${vfs?.name ?? ''}|${vfs?.pollInterval ?? ''}`;
+      if (key !== syncedKey) {
+        syncedKey = key;
+        untracked(() => this.pollIntervalInput.set(vfs?.pollInterval ?? ''));
+      }
     });
 
-    // Force table re-render when delay slider row changes.
+    // Force MatTable to re-evaluate 'when' row predicates when delay slider state changes.
     effect(() => {
       this.showDelaySlider();
-      this.table?.renderRows();
+      this.table()?.renderRows();
     });
 
-    // Periodic stats/queue refresh while a usable VFS is selected.
     timer(POLL_INTERVAL_MS, POLL_INTERVAL_MS)
       .pipe(
         filter(() => !this.vfsNotFound() && this.hasUsableVfs()),
-        switchMap(() => from(this.refreshStatsAndQueue())),
+        switchMap(() => this.refreshStatsAndQueue()),
         retry({ delay: POLL_INTERVAL_MS }),
         takeUntilDestroyed()
       )
@@ -247,36 +257,58 @@ export class VfsControlPanelComponent {
         this.vfsService.getQueue(selected.name),
       ]);
 
-      const updated = { ...selected, stats, queue: queueData.queue || [] };
-      this.selectedVfs.set(updated);
-      this.vfsInstances.update(list => list.map(i => (i.name === selected.name ? updated : i)));
+      this.selectedVfs.update(v => {
+        if (!v || v.name !== selected.name) return v;
+        return { ...v, stats, queue: queueData.queue || [] };
+      });
+      this.vfsInstances.update(list =>
+        list.map(i =>
+          i.name === selected.name ? { ...i, stats, queue: queueData.queue || [] } : i
+        )
+      );
     } catch (err) {
       console.error('Poll failed', err);
     }
   }
 
   private async loadPollIntervals(): Promise<void> {
-    if (!this.changeNotify()) return;
+    this.pollIntervalLoading.set(true);
+    try {
+      const updated = await Promise.all(
+        this.vfsInstances().map(async inst => {
+          if (INDEXED_VFS_RE.test(inst.name)) return inst;
+          try {
+            const res = await this.vfsService.getPollInterval(inst.name);
+            return {
+              ...inst,
+              pollInterval: res?.interval?.string ?? '',
+              pollIntervalSupported: res?.supported ?? false,
+            };
+          } catch (e) {
+            console.error(`Failed to load poll interval for ${inst.name}`, e);
+            return { ...inst, pollIntervalSupported: false };
+          }
+        })
+      );
 
-    const updated = await Promise.all(
-      this.vfsInstances().map(async inst => {
-        if (INDEXED_VFS_RE.test(inst.name)) return inst;
-        try {
-          const res = await this.vfsService.getPollInterval(inst.name);
-          return res?.interval?.string ? { ...inst, pollInterval: res.interval.string } : inst;
-        } catch {
-          console.warn(`Failed to load poll interval for ${inst.name}`);
-          return inst;
+      this.vfsInstances.set(updated);
+
+      const selected = this.selectedVfs();
+      if (selected) {
+        const found = updated.find(i => i.name === selected.name);
+        if (found) {
+          this.selectedVfs.update(v => {
+            if (!v || v.name !== selected.name) return v;
+            return {
+              ...v,
+              pollInterval: found.pollInterval,
+              pollIntervalSupported: found.pollIntervalSupported,
+            };
+          });
         }
-      })
-    );
-
-    this.vfsInstances.set(updated);
-
-    const selected = this.selectedVfs();
-    if (selected) {
-      const found = updated.find(i => i.name === selected.name);
-      if (found) this.selectedVfs.set(found);
+      }
+    } finally {
+      this.pollIntervalLoading.set(false);
     }
   }
 
@@ -339,33 +371,46 @@ export class VfsControlPanelComponent {
   }
 
   async clearMetadataCache(): Promise<void> {
-    await this.performAction(async fs => {
-      const res = await this.vfsService.forget(fs);
-      return this.translate.instant('shared.vfsControl.actions.messages.cleared', {
-        count: res.forgotten?.length ?? 0,
+    this.loading.set(true);
+    try {
+      await this.performAction(async fs => {
+        const res = await this.vfsService.forget(fs);
+        return this.translate.instant('shared.vfsControl.actions.messages.cleared', {
+          count: res.forgotten?.length ?? 0,
+        });
       });
-    });
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async refreshDirectory(): Promise<void> {
     this.loading.set(true);
-    await this.performAction(async fs => {
-      await this.vfsService.refresh(fs, '', true);
-      return this.translate.instant('shared.vfsControl.actions.messages.directoryRefreshed');
-    });
-    this.loading.set(false);
+    try {
+      await this.performAction(async fs => {
+        await this.vfsService.refresh(fs, '', true);
+        return this.translate.instant('shared.vfsControl.actions.messages.directoryRefreshed');
+      });
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async updatePollInterval(): Promise<void> {
     const val = this.pollIntervalInput().trim();
     if (!val) return;
-    await this.performAction(async fs => {
-      const res = await this.vfsService.setPollInterval(fs, val);
-      if (res?.interval?.string) {
-        this.selectedVfs.update(v => (v ? { ...v, pollInterval: res.interval.string } : null));
-      }
-      return this.translate.instant('shared.vfsControl.actions.messages.intervalSet', { val });
-    });
+    this.pollIntervalLoading.set(true);
+    try {
+      await this.performAction(async fs => {
+        const res = await this.vfsService.setPollInterval(fs, val);
+        if (res?.interval?.string) {
+          this.selectedVfs.update(v => (v ? { ...v, pollInterval: res.interval.string } : null));
+        }
+        return this.translate.instant('shared.vfsControl.actions.messages.intervalSet', { val });
+      });
+    } finally {
+      this.pollIntervalLoading.set(false);
+    }
   }
 
   private async performAction(action: (fsName: string) => Promise<string>): Promise<void> {
@@ -421,50 +466,51 @@ export class VfsControlPanelComponent {
     void this.refreshStatsAndQueue();
   }
 
-  trackByFn(_: number, item: VfsQueueItem): number {
-    return item.id;
-  }
-  trackByVfsName(_: number, vfs: VfsInstance): string {
-    return vfs.name;
-  }
-  trackByCategory(_: number, category: { name: string }): string {
-    return category.name;
-  }
-  trackByConfigKey(_: number, item: { key: string }): string {
-    return item.key;
-  }
-
   // ============ Config Formatting ============
 
-  formatOptionValue(key: string, value: unknown): string {
+  formatOptionValue(
+    key: string,
+    value: unknown,
+    isDuration = this.isDurationKey(key),
+    isSize = this.isSizeKey(key),
+    isPermission = this.isPermissionKey(key)
+  ): string {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') {
       return value
         ? this.translate.instant('shared.vfsControl.advancedConfig.booleanEnabled')
         : this.translate.instant('shared.vfsControl.advancedConfig.booleanDisabled');
     }
-    if (this.isDurationKey(key)) return this.mapper.machineToHuman(value, 'Duration');
-    if (this.isSizeKey(key)) return this.mapper.machineToHuman(value, 'SizeSuffix');
-    if (this.isPermissionKey(key)) return this.mapper.machineToHuman(value, 'FileMode');
+    if (isDuration) return this.mapper.machineToHuman(value, 'Duration');
+    if (isSize) return this.mapper.machineToHuman(value, 'SizeSuffix');
+    if (isPermission) return this.mapper.machineToHuman(value, 'FileMode');
     return String(value);
   }
 
   private isDurationKey(key: string): boolean {
     return /(Time|Interval|Wait|Back|Age|Ahead)$/i.test(key);
   }
+
   private isSizeKey(key: string): boolean {
     return /(Size|Space)$/i.test(key);
   }
+
   private isPermissionKey(key: string): boolean {
     return /(Perms|UID|GID|Umask)$/i.test(key);
   }
 
-  private getOptionGroup(key: string, value: unknown): string {
+  private getOptionGroup(
+    key: string,
+    value: unknown,
+    isDuration = this.isDurationKey(key),
+    isSize = this.isSizeKey(key),
+    isPermission = this.isPermissionKey(key)
+  ): string {
     if (typeof value === 'boolean') return 'Booleans';
     if (typeof value === 'number') {
-      if (this.isDurationKey(key)) return 'Durations';
-      if (this.isSizeKey(key)) return 'Sizes';
-      if (this.isPermissionKey(key)) return 'Permissions';
+      if (isDuration) return 'Durations';
+      if (isSize) return 'Sizes';
+      if (isPermission) return 'Permissions';
       return 'Numbers';
     }
     return 'Strings';

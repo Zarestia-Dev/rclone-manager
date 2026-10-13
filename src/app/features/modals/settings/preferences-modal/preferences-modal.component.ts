@@ -5,9 +5,9 @@ import {
   ChangeDetectionStrategy,
   signal,
   computed,
-  OnDestroy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { map } from 'rxjs/operators';
 import {
   AbstractControl,
@@ -20,64 +20,87 @@ import {
   Validators,
 } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { NumberInputComponent } from '../../../../shared/components/number-input/number-input.component';
 
-import { ValidatorRegistryService, ModalService } from '@app/services';
-import { AppSettingsService, FileSystemService } from '@app/services';
-import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import {
+  SearchResult,
+  SettingMetadata,
+  SettingTab,
+  PendingChange,
+  PendingChangeDisplay,
+  ConfigValue,
+} from '@app/types';
 
-interface PendingChange {
-  category: string;
-  key: string;
+interface OptionViewModel {
   value: unknown;
-  metadata: SettingMetadata;
+  label: string;
 }
 
-interface PendingChangeDisplay {
-  displayName: string;
+interface ArrayItemViewModel {
+  control: FormControl;
+  isInvalid: boolean;
+  validationMessage: string;
+}
+
+interface SettingViewModel {
   category: string;
   key: string;
-  value: unknown;
+  meta: SettingMetadata | undefined;
+  control: FormControl | FormArray | undefined;
+  label: string;
+  description: string;
+  categoryDisplayName: string;
+  isModified: boolean;
+  isInvalid: boolean;
+  validationMessage: string;
+  arrayItemViewModels: ArrayItemViewModel[];
+  options: OptionViewModel[];
 }
 
 @Component({
   selector: 'app-preferences-modal',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatSlideToggleModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatTooltipModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     SearchContainerComponent,
-    TranslateModule,
+    TranslatePipe,
     NgTemplateOutlet,
+    NumberInputComponent,
   ],
   templateUrl: './preferences-modal.component.html',
-  styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: [
+    './preferences-modal.component.scss',
+    '../../../../styles/_shared-modal.scss',
+    '../../../../shared/components/setting-control/setting-control.component.scss',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreferencesModalComponent implements OnDestroy {
+export class PreferencesModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly localStorageService = inject(LocalStorageService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
 
   settingsForm: FormGroup = this.fb.group({});
@@ -91,6 +114,15 @@ export class PreferencesModalComponent implements OnDestroy {
   readonly searchVisible = signal(false);
   readonly pendingRestartChanges = signal<Map<string, PendingChange>>(new Map());
   readonly enrichedOptions = signal<Record<string, SettingMetadata>>({});
+
+  /**
+   * Monotonic counter bumped on every form state change (value, status,
+   * touched, pristine) and on language change. Read by the view-model
+   * `computed()` signals so cached per-setting fields like `isInvalid`,
+   * `validationMessage`, and `isModified` stay fresh without per-CD
+   * template method calls.
+   */
+  private readonly formStateVersion = signal(0);
 
   // Tabs are static; if they become dynamic, derive from a service instead.
   readonly tabs: SettingTab[] = [
@@ -132,6 +164,22 @@ export class PreferencesModalComponent implements OnDestroy {
     return group ? Object.keys(group.value ?? {}) : [];
   });
 
+  readonly selectedTabViewModels = computed<SettingViewModel[]>(() => {
+    this.formStateVersion(); // track form-state changes for cached derived fields
+    const category = this.selectedTabKey();
+    return this.selectedTabKeys().map(key => this.toSettingViewModel(category, key));
+  });
+
+  readonly searchResultViewModels = computed<SettingViewModel[]>(() => {
+    this.formStateVersion();
+    const vms: SettingViewModel[] = [];
+    for (const result of this.searchResults()) {
+      const vm = this.toSettingViewModel(result.category, result.key);
+      if (vm.control) vms.push(vm);
+    }
+    return vms;
+  });
+
   readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
   readonly hasSearchResults = computed(() => !!this.searchQuery());
   readonly hasPendingRestartChanges = computed(() => this.pendingRestartChanges().size > 0);
@@ -147,24 +195,6 @@ export class PreferencesModalComponent implements OnDestroy {
     }))
   );
 
-  private readonly HOLD_DELAY = 300;
-  private readonly HOLD_INTERVAL = 75;
-  private readonly ALLOWED_INTEGER_KEYS = new Set([
-    'Backspace',
-    'Delete',
-    'Tab',
-    'Escape',
-    'Enter',
-    'Home',
-    'End',
-    'ArrowLeft',
-    'ArrowRight',
-    'ArrowUp',
-    'ArrowDown',
-  ]);
-  private holdTimeout: ReturnType<typeof setTimeout> | null = null;
-  private holdInterval: ReturnType<typeof setInterval> | null = null;
-
   constructor() {
     this.appSettingsService.options$
       .pipe(
@@ -178,12 +208,16 @@ export class PreferencesModalComponent implements OnDestroy {
         this.isLoading.set(!hasData);
       });
 
+    this.settingsForm.events.pipe(takeUntilDestroyed()).subscribe((): void => {
+      this.formStateVersion.update(v => v + 1);
+    });
+
+    this.translate.onLangChange.pipe(takeUntilDestroyed()).subscribe((): void => {
+      this.formStateVersion.update(v => v + 1);
+    });
+
     this.populateSearchSuggestions();
     this.onResize();
-  }
-
-  ngOnDestroy(): void {
-    this.stopHold(undefined, undefined, false);
   }
 
   // ── Init Helpers ──────────────────────────────────────────────────────────
@@ -222,7 +256,7 @@ export class PreferencesModalComponent implements OnDestroy {
     if (meta.options?.length) return 'select';
     if (key.includes('bandwidth')) return 'bandwidth';
     if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]';
-    if (key.includes('path') || key.includes('file')) return 'file';
+    if (key.includes('path') || key.includes('file') || key.includes('binary')) return 'file';
     if (key.includes('folder') || key.includes('directory')) return 'folder';
 
     const def = meta.default;
@@ -327,12 +361,6 @@ export class PreferencesModalComponent implements OnDestroy {
         if (meta.min !== undefined) validators.push(Validators.min(meta.min));
         if (meta.max !== undefined) validators.push(Validators.max(meta.max));
         break;
-      case 'file':
-      case 'folder': {
-        const v = this.validatorRegistry.getValidator('crossPlatformPath');
-        if (v) validators.push(v);
-        break;
-      }
       case 'string[]':
         if (fullKey === 'core.connection_check_urls') {
           const v = this.validatorRegistry.getValidator('urlList');
@@ -350,7 +378,7 @@ export class PreferencesModalComponent implements OnDestroy {
 
   // ── Settings CRUD ─────────────────────────────────────────────────────────
 
-  updateSetting(category: string, key: string, value: unknown): void {
+  updateSetting(category: string, key: string, value: ConfigValue): void {
     const control = this.getFormControl(category, key);
     if (!control?.valid) return;
 
@@ -407,6 +435,7 @@ export class PreferencesModalComponent implements OnDestroy {
   async resetSettings(): Promise<void> {
     try {
       await this.appSettingsService.resetSettings();
+      this.localStorageService.clearAll();
     } catch (error) {
       console.error('Error resetting settings:', error);
     }
@@ -487,12 +516,6 @@ export class PreferencesModalComponent implements OnDestroy {
     return this.enrichedOptions()[`${category}.${key}`];
   }
 
-  /** Returns true for value types that render as a horizontal row (control beside label). */
-  isRowLayout(category: string, key: string): boolean {
-    const type = this.getMetadata(category, key)?.value_type;
-    return type === 'bool' || type === 'int';
-  }
-
   isControlInvalid(category: string, key: string, index?: number): boolean {
     const ctrl =
       index !== undefined
@@ -539,7 +562,7 @@ export class PreferencesModalComponent implements OnDestroy {
     if (!ctrl?.errors) return '';
 
     const meta = this.getMetadata(category, key);
-    const t = (k: string, p?: object) =>
+    const t = (k: string, p?: object): string =>
       this.translate.instant(`modals.preferences.validation.${k}`, p);
 
     if (ctrl.hasError('required')) return t('required');
@@ -551,6 +574,50 @@ export class PreferencesModalComponent implements OnDestroy {
     if (ctrl.hasError('urlArray')) return t('urlArray');
     if (ctrl.hasError('reserved')) return t('reserved', { value: ctrl.errors['reserved'].value });
     return t('invalid');
+  }
+
+  private toSettingViewModel(category: string, key: string): SettingViewModel {
+    const meta = this.enrichedOptions()[`${category}.${key}`];
+    const control = this.settingsForm.get(category)?.get(key) as
+      FormControl | FormArray | undefined;
+
+    const arrayItemViewModels: ArrayItemViewModel[] = [];
+    if (control instanceof FormArray) {
+      control.controls.forEach((child, index) => {
+        const itemControl = child as FormControl;
+        arrayItemViewModels.push({
+          control: itemControl,
+          isInvalid: !!itemControl && itemControl.invalid && itemControl.touched,
+          validationMessage: this.getValidationMessage(category, key, index),
+        });
+      });
+    }
+
+    const options: OptionViewModel[] = [];
+    if (meta?.options?.length) {
+      for (const option of meta.options) {
+        const opt = option as { label?: unknown; value?: unknown };
+        options.push({
+          value: opt?.value ?? option,
+          label: this.getOptionLabel(option),
+        });
+      }
+    }
+
+    return {
+      category,
+      key,
+      meta,
+      control,
+      label: meta ? this.getSettingLabel(category, key, meta) : key,
+      description: meta ? this.getSettingDescription(category, key, meta) : '',
+      categoryDisplayName: this.getCategoryDisplayName(category),
+      isModified: this.isModified(category, key),
+      isInvalid: this.isControlInvalid(category, key),
+      validationMessage: this.getValidationMessage(category, key),
+      arrayItemViewModels,
+      options,
+    };
   }
 
   scrollToPendingChanges(): void {
@@ -575,17 +642,6 @@ export class PreferencesModalComponent implements OnDestroy {
     this.searchQuery.set(searchText.toLowerCase());
   }
 
-  @HostListener('document:keydown.escape')
-  close(): void {
-    this.modalService.animatedClose(this.dialogRef);
-  }
-
-  @HostListener('document:keydown.control.f', ['$event'])
-  handleCtrlF(event: Event): void {
-    event.preventDefault();
-    this.toggleSearch();
-  }
-
   toggleSearch(): void {
     this.searchVisible.update(v => !v);
     if (!this.searchVisible()) this.onSearchTextChange('');
@@ -608,49 +664,7 @@ export class PreferencesModalComponent implements OnDestroy {
     if (result) this.getFormControl(category, key).setValue(result);
   }
 
-  // ── Integer Stepper ───────────────────────────────────────────────────────
-
-  onIntegerInput(event: KeyboardEvent): void {
-    if (this.ALLOWED_INTEGER_KEYS.has(event.key) || event.ctrlKey || event.metaKey) return;
-    if (!/^\d$/.test(event.key)) event.preventDefault();
-  }
-
-  startHold(
-    action: 'increment' | 'decrement',
-    category: string,
-    key: string,
-    meta: SettingMetadata
-  ): void {
-    this.stopHold(undefined, undefined, false);
-    const performAction = () => this.stepNumber(action, category, key, meta);
-    performAction();
-    this.holdTimeout = setTimeout(() => {
-      this.holdInterval = setInterval(performAction, this.HOLD_INTERVAL);
-    }, this.HOLD_DELAY);
-  }
-
-  stopHold(category?: string, key?: string, _commit = true): void {
-    if (this.holdTimeout) clearTimeout(this.holdTimeout);
-    if (this.holdInterval) clearInterval(this.holdInterval);
-    this.holdTimeout = null;
-    this.holdInterval = null;
-    if (_commit && category && key) this.commitSetting(category, key);
-  }
-
-  private stepNumber(
-    action: 'increment' | 'decrement',
-    category: string,
-    key: string,
-    meta: SettingMetadata
-  ): void {
-    const control = this.getFormControl(category, key) as FormControl;
-    const step = meta.step || 1;
-    const current = Number(control.value) || 0;
-    const newValue = action === 'increment' ? current + step : current - step;
-    const min = meta.min ?? -Infinity;
-    const max = meta.max ?? Infinity;
-    if (newValue >= min && newValue <= max) control.setValue(newValue);
-  }
+  // Array Actions
 
   addArrayItem(category: string, key: string): void {
     const control = this.getFormControl(category, key) as FormArray;
@@ -662,5 +676,9 @@ export class PreferencesModalComponent implements OnDestroy {
     const control = this.getFormControl(category, key) as FormArray;
     control.removeAt(index);
     this.updateSetting(category, key, control.value);
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }

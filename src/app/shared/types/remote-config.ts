@@ -1,33 +1,59 @@
+import { OPERATION_REGISTRY } from './operation-registry';
+import { PrimaryActionType } from './operations';
+import { ConfigValue } from './system';
+
+// Dynamic extraction of FlagTypes based on registry
 export type FlagType =
-  | 'mount'
-  | 'bisync'
-  | 'move'
-  | 'copy'
-  | 'sync'
+  | Extract<(typeof OPERATION_REGISTRY)[number], { isFlagType: true }>['key']
   | 'filter'
   | 'vfs'
-  | 'backend'
-  | 'serve';
-export const FLAG_TYPES: FlagType[] = [
-  'mount',
-  'serve',
-  'sync',
-  'bisync',
-  'move',
-  'copy',
+  | 'backend';
+
+// List is frozen
+export const FLAG_TYPES = Object.freeze([
+  ...OPERATION_REGISTRY.filter(op => op.isFlagType).map(op => op.key),
   'filter',
   'vfs',
   'backend',
-];
-export const DEFAULT_PROFILE_NAME = 'default';
+]) as readonly FlagType[];
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 
+export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
+  OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
+);
+
+export function isLinkedProfileType(type: string): type is SharedProfileType {
+  return LINKED_PROFILE_TYPES.has(type);
+}
+
+export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
+  mount: 'hard-drive',
+  sync: 'refresh',
+  copy: 'copy',
+  move: 'move',
+  bisync: 'right-left',
+  serve: 'satellite-dish',
+  check: 'search',
+  delete: 'trash',
+  copyurl: 'download',
+  archivecreate: 'compress',
+  cryptcheck: 'shield',
+  vfs: 'vfs',
+  filter: 'filter',
+  backend: 'database',
+  runtimeRemote: 'gear',
+} as Record<SharedProfileType, string>);
+
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
-  'onedrive',
-  'iclouddrive',
   'jottacloud',
+  'onedrive',
+  'zoho',
+  'seafile',
+  'sugarsync',
+  'iclouddrive',
+  'internxt',
 ]);
 
 // ─── Command Option types ───────────────────────────────────────────────────
@@ -39,7 +65,7 @@ export interface CommandOption {
   description?: string;
 }
 
-export const PREDEFINED_OPTIONS: CommandOption[] = [
+export const PREDEFINED_OPTIONS: readonly CommandOption[] = Object.freeze([
   {
     key: 'obscure',
     label: 'wizards.remoteConfig.predefinedOptions.obscure.label',
@@ -70,22 +96,37 @@ export const PREDEFINED_OPTIONS: CommandOption[] = [
     description: 'wizards.remoteConfig.predefinedOptions.noOutput.description',
     value: true,
   },
-];
+]);
 
-export const REMOTE_CONFIG_KEYS = {
-  mount: 'mountConfigs',
-  sync: 'syncConfigs',
-  copy: 'copyConfigs',
-  bisync: 'bisyncConfigs',
-  move: 'moveConfigs',
-  serve: 'serveConfigs',
+export interface RemoteConfigKeysRecord {
+  mount: 'mountConfigs';
+  sync: 'syncConfigs';
+  copy: 'copyConfigs';
+  bisync: 'bisyncConfigs';
+  move: 'moveConfigs';
+  serve: 'serveConfigs';
+  check: 'checkConfigs';
+  delete: 'deleteConfigs';
+  copyurl: 'copyurlConfigs';
+  archivecreate: 'archivecreateConfigs';
+  cryptcheck: 'cryptcheckConfigs';
+  filter: 'filterConfigs';
+  vfs: 'vfsConfigs';
+  backend: 'backendConfigs';
+  runtimeRemote: 'runtimeRemoteConfigs';
+}
+
+export const REMOTE_CONFIG_KEYS = Object.freeze({
+  ...Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.configKey).map(op => [op.key, op.configKey])
+  ),
   filter: 'filterConfigs',
   vfs: 'vfsConfigs',
   backend: 'backendConfigs',
   runtimeRemote: 'runtimeRemoteConfigs',
-} as const;
+}) as unknown as Readonly<RemoteConfigKeysRecord>;
 
-export type RemoteConfigKeyType = (typeof REMOTE_CONFIG_KEYS)[keyof typeof REMOTE_CONFIG_KEYS];
+export type RemoteConfigKeyType = RemoteConfigKeysRecord[keyof RemoteConfigKeysRecord];
 
 export interface UIOperationMetadata {
   label: string;
@@ -97,57 +138,21 @@ export interface UIOperationMetadata {
   supportsProfiles?: boolean;
 }
 
-export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
-  sync: {
-    label: 'dashboard.appDetail.syncSettings',
-    icon: 'refresh',
-    cssClass: 'primary',
-    description: 'dashboard.appDetail.syncDesc',
-    typeLabel: 'dashboard.appDetail.sync',
-    supportsProfiles: true,
-  },
-  bisync: {
-    label: 'dashboard.appDetail.bisyncSettings',
-    icon: 'right-left',
-    cssClass: 'purple',
-    description: 'dashboard.appDetail.bisyncDesc',
-    typeLabel: 'dashboard.appDetail.bisync',
-    supportsProfiles: true,
-  },
-  move: {
-    label: 'dashboard.appDetail.moveSettings',
-    icon: 'move',
-    cssClass: 'orange',
-    description: 'dashboard.appDetail.moveDesc',
-    typeLabel: 'dashboard.appDetail.move',
-    supportsProfiles: true,
-  },
-  copy: {
-    label: 'dashboard.appDetail.copySettings',
-    icon: 'copy',
-    cssClass: 'yellow',
-    description: 'dashboard.appDetail.copyDesc',
-    typeLabel: 'dashboard.appDetail.copy',
-    supportsProfiles: true,
-  },
-  mount: {
-    label: 'dashboard.appDetail.mountSettings',
-    icon: 'mount',
-    cssClass: 'accent',
-    description: 'dashboard.appDetail.mountBehave',
-    typeLabel: 'dashboard.appDetail.mount',
-    supportsVfs: true,
-    supportsProfiles: true,
-  },
-  serve: {
-    label: 'dashboard.appDetail.serveSettings',
-    icon: 'satellite-dish',
-    cssClass: 'accent',
-    description: 'dashboard.appDetail.serveBehave',
-    typeLabel: 'dashboard.appDetail.serving',
-    supportsVfs: true,
-    supportsProfiles: true,
-  },
+export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> = Object.freeze({
+  ...Object.fromEntries(
+    OPERATION_REGISTRY.map(op => [
+      op.key,
+      {
+        label: op.settingsLabel,
+        icon: op.icon,
+        cssClass: op.cssClass,
+        description: op.settingsDescription,
+        typeLabel: op.typeLabel,
+        supportsVfs: op.supportsVfs,
+        supportsProfiles: op.supportsProfiles,
+      },
+    ])
+  ),
   vfs: {
     label: 'dashboard.appDetail.vfsOptions',
     icon: 'vfs',
@@ -172,7 +177,7 @@ export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
     cssClass: 'accent',
     supportsProfiles: true,
   },
-};
+});
 
 export interface LoadingState {
   saving: boolean;
@@ -194,112 +199,194 @@ export interface RemoteConfigStepVisibility {
   commands?: boolean;
 }
 
-// Shared fields for all rclone operations
-interface RcloneBaseConfig {
+export interface AppConfig {
   autoStart: boolean;
-  options?: any;
-  name?: string;
+  showOnTray?: boolean;
+  cronEnabled?: boolean;
+  cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
+  watchChangedOnly?: boolean;
+  vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;
   runtimeRemoteProfile?: string;
-  [key: string]: any;
 }
 
-// For operations that support multiple sources (Sync, Copy, Move)
-export interface MultiSourceConfig extends RcloneBaseConfig {
-  cronEnabled?: boolean;
-  cronExpression?: string | null;
-  watchEnabled?: boolean;
-  watchDelay?: number;
-  source?: string[];
-  dest?: string;
+export interface ProfileConfig {
+  app?: AppConfig;
+  rclone?: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    path1?: string;
+    path2?: string;
+    fs?: string;
+    mountPoint?: string;
+    type?: string;
+    addr?: string;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-// For operations that are strictly 1:1 (Mount, Bisync)
-export interface SingleSourceConfig extends RcloneBaseConfig {
-  cronEnabled?: boolean;
-  cronExpression?: string | null;
-  watchEnabled?: boolean;
-  watchDelay?: number;
-  source?: string;
-  dest?: string;
+export interface MountConfig {
+  app: AppConfig;
+  rclone: {
+    fs?: string;
+    mountPoint?: string;
+    mountType?: string;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface MountConfig extends SingleSourceConfig {
-  type: string;
-  vfsProfile?: string;
+export interface CopyConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface CopyConfig extends MultiSourceConfig {
-  createEmptySrcDirs?: boolean;
+export interface SyncConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface SyncConfig extends MultiSourceConfig {
-  createEmptySrcDirs?: boolean;
+// Replaced Record<string, any>
+export type FilterConfig = Record<string, ConfigValue>;
+export type VfsConfig = Record<string, ConfigValue>;
+export type BackendConfig = Record<string, ConfigValue>;
+export type RuntimeRemoteConfig = Record<string, ConfigValue>;
+
+export interface MoveConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    deleteEmptySrcDirs?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface FilterConfig {
-  options?: any;
-  [key: string]: any;
+export interface BisyncConfig {
+  app: AppConfig;
+  rclone: {
+    path1?: string;
+    path2?: string;
+    dryRun?: boolean;
+    resync?: boolean;
+    resyncMode?: string;
+    checkAccess?: boolean;
+    checkFilename?: string;
+    maxDelete?: number;
+    force?: boolean;
+    checkSync?: boolean | 'only';
+    compare?: string;
+    conflictLoser?: string;
+    conflictResolve?: string;
+    conflictSuffix?: string;
+    createEmptySrcDirs?: boolean;
+    removeEmptyDirs?: boolean;
+    downloadHash?: boolean;
+    filtersFile?: string;
+    ignoreListingChecksum?: boolean;
+    maxLock?: string;
+    noSlowHash?: boolean;
+    slowHashSyncOnly?: boolean;
+    recover?: boolean;
+    resilient?: boolean;
+    workdir?: string;
+    backupDir1?: string;
+    backupDir2?: string;
+    noCleanup?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface VfsConfig {
-  options?: any;
-  [key: string]: any;
+export interface ServeConfig {
+  app: AppConfig;
+  rclone: {
+    fs?: string;
+    type?: string;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface BackendConfig {
-  options?: any;
-  [key: string]: any;
+export interface CheckConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    download?: boolean;
+    checkFileHash?: string;
+    checkFileFs?: string;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface MoveConfig extends MultiSourceConfig {
-  createEmptySrcDirs?: boolean;
-  deleteEmptySrcDirs?: boolean;
+export interface DeleteConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface BisyncConfig extends SingleSourceConfig {
-  dryRun?: boolean;
-  resync?: boolean;
-  checkAccess?: boolean;
-  checkFilename?: string;
-  maxDelete?: number;
-  force?: boolean;
-  checkSync?: boolean | 'only';
-  createEmptySrcDirs?: boolean;
-  removeEmptyDirs?: boolean;
-  filtersFile?: string;
-  ignoreListingChecksum?: boolean;
-  resilient?: boolean;
-  workdir?: string;
-  backupdir1?: string;
-  backupdir2?: string;
-  noCleanup?: boolean;
+export interface CopyurlConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    autoFilename?: boolean;
+    filenames?: string[];
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface RuntimeRemoteConfig {
-  options?: Record<string, unknown>;
-  [key: string]: any;
+export interface ArchivecreateConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    format?: string;
+    prefix?: string;
+    fullPath?: boolean;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
-export interface ServeConfig extends SingleSourceConfig {
-  type: string;
-  vfsProfile?: string;
+export interface CryptcheckConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    [key: string]: ConfigValue | undefined;
+  };
 }
 
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
-  [remoteName: string]: any; // keep permissive for now; UI accesses dynamic keys
+  [remoteName: string]: unknown;
 
-  // Multiple configs per type (profiles) - keyed by profile name
   mountConfigs?: Record<string, MountConfig>;
   copyConfigs?: Record<string, CopyConfig>;
   syncConfigs?: Record<string, SyncConfig>;
   moveConfigs?: Record<string, MoveConfig>;
   bisyncConfigs?: Record<string, BisyncConfig>;
   serveConfigs?: Record<string, ServeConfig>;
+  checkConfigs?: Record<string, CheckConfig>;
+  deleteConfigs?: Record<string, DeleteConfig>;
+  copyurlConfigs?: Record<string, CopyurlConfig>;
+  archivecreateConfigs?: Record<string, ArchivecreateConfig>;
+  cryptcheckConfigs?: Record<string, CryptcheckConfig>;
 
-  // Multiple configs for shared types - keyed by profile name
   filterConfigs?: Record<string, FilterConfig>;
   backendConfigs?: Record<string, BackendConfig>;
   vfsConfigs?: Record<string, VfsConfig>;
@@ -322,8 +409,8 @@ export interface RcConfigOption {
   Help: string;
   Provider?: string;
   Groups?: string;
-  Default?: any;
-  Value?: any;
+  Default?: ConfigValue;
+  Value?: ConfigValue;
   Examples?: RcConfigExample[];
   Hide?: number;
   Required?: boolean;
@@ -361,6 +448,7 @@ export interface Entry {
   Path: string;
   Size: number;
   Starred?: boolean;
+  Metadata?: Record<string, string>;
 }
 
 export interface LocalDrive {
@@ -386,3 +474,47 @@ export interface ExplorerRoot {
   fileSystem?: string;
   isRemovable?: boolean;
 }
+
+export const RCLONE_PATH_KEYS = [
+  'dstFs',
+  'path2',
+  'mountPoint',
+  'dest',
+  'srcFs',
+  'path1',
+  'fs',
+  'source',
+  'path',
+] as const;
+
+export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
+
+export const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
+
+export function isRclonePathKey(key: string): boolean {
+  return RCLONE_PATH_KEYS_SET.has(key);
+}
+
+export interface JobProfile {
+  autoStart?: boolean;
+  srcFs?: string | string[];
+  dstFs?: string;
+  path1?: string;
+  path2?: string;
+  fs?: string;
+  mountPoint?: string;
+}
+
+export type JobMap = Record<string, JobProfile>;
+
+export interface PendingRemoteData {
+  name: string;
+  type: string;
+  [key: string]: unknown;
+}
+
+export type WizardStep = 'setup' | 'operations' | 'interactive';
+// `OperationType` was previously a hand-maintained 11-literal union duplicating
+// `PrimaryActionType` from `operations.ts`. Now aliased to it so adding a new
+// operation to `OPERATION_REGISTRY` automatically extends this type.
+export type OperationType = PrimaryActionType;

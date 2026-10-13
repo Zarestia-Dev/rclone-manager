@@ -2,7 +2,6 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
   name: 'formatEta',
-  standalone: true,
   pure: true,
 })
 export class FormatEtaPipe implements PipeTransform {

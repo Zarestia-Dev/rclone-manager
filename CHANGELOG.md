@@ -4,21 +4,246 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [Unreleased]
+
+### Fixed
+- **Android Bisync Permission Denied on Workdir**: Fixed an issue where running `bisync` operations on Android failed immediately with `failed to create workdir: mkdir /data/local/tmp/rclone: permission denied`. In-process `librclone` now routes the default bisync working directory to the application's internal writable cache storage instead of defaulting to `/data/local/tmp`. Fixes #307
+
+## [v0.3.3] - 2026-09-23
 
 ### Added
+- **Workflow Engine & Visual Canvas UI**:
+  - **Interactive Node-Based Canvas**: Introduced a full-featured visual workflow canvas (`WorkflowCanvasComponent`) with drag-and-drop node placement, dynamic Bezier curve connection wires (`WorkflowWireComponent`), minimap navigation with viewport panning (`WorkflowMinimapComponent`), and a contextual node inspector (`WorkflowInspectorComponent`).
+  - **Native Rust Execution Engine**: Built an in-process, non-blocking workflow execution engine in Rust (`src-tauri/src/core/flow/workflow/engine.rs` & `executor.rs`) supporting conditional branching, parallel executions, loop iterations, configurable error recovery policies, and persistent execution state.
+  - **Comprehensive Node Taxonomy**:
+    - *Triggers*: Manual trigger, Cron Schedule (with dedicated visual `CronEditorModalComponent`), Webhook listeners, and File System Event monitoring.
+    - *Tasks*: Direct execution of native Rclone operations (Sync, Copy, Move, Mount, Serve, Check, Bisync, Delete, Purge) with real-time parameter inspection and an RC command editor modal (`RcEditorModalComponent`).
+    - *Logic*: Conditional branching (IF/ELSE conditions, step status checks), configurable delays and timers, concurrent branch execution, and loop iterators.
+    - *Actions*: Native desktop/OS notifications, external webhooks, custom shell scripts, and system/application power controls.
+  - **Pre-Built Workflow Recipes**: Integrated built-in workflow recipes for common synchronization, backup, and automation patterns (`workflow-recipes.ts`).
+  - **Execution Logging & Real-Time Monitoring**: Live execution log drawer (`WorkflowExecutionLogComponent`) with per-node status badges, step duration tracking, and detailed payload inspection data.
+- **Centralized Keyboard Shortcut Management System**:
+  - **Centralized Shortcut Architecture**: Unified keyboard shortcut handling via `ShortcutHandlerDirective`, `keyboard-utils.ts`, and a centralized registry (`shortcut-definitions.ts`) to eliminate fragmented listeners.
+  - **Visual Shortcut Viewer Modal**: Enhanced `KeyboardShortcutsModalComponent` with categorized shortcut groupings, platform-adaptive modifier glyphs (macOS Cmd vs Ctrl), and visual badge styling.
+  - **Contextual Key Bindings**: Added key bindings for global navigation, tab switching, file browsing actions, search filtering, and modal dismissals.
+- **Power Management & Fast Actions Modal**:
+  - **Quick Power Menu & Gestures**: Added a quick power and lifecycle management modal accessible via long-press (hold) gesture on "About RClone Manager" in the app hamburger menu on mobile and desktop.
+  - **Comprehensive Power Actions**: Supports safe application termination (`Shut Down App`), application relaunch (`Restart App`), immediate operation halt (`Emergency Stop` unmounting all remotes and stopping all serves), host power off (`Power Off System`), system suspend/sleep (`Suspend / Sleep`), and user session locking (`Lock Session`).
+  - **Cross-Platform Gating & Mobile Compliance**: Native Android and iOS builds automatically filter out unsupported OS-level device power actions (phone shutdown/sleep/lock). iOS builds exclude the app exit action for Apple App Store compliance (Guideline 2.5.4), while Android preserves background service termination. Remote headless web server sessions preserve full server power management.
+- **Rclone Port Collision Detection & Auto-Repair Flow**:
+  - Added automatic detection for occupied TCP ports prior to spawning local Rclone engines.
+  - Non-blocking startup error handling with instant child status reaping (`try_wait`) to eliminate startup timeout delays on port bind failures.
+  - Integrated port collision repair sheet with automatic next-available port suggestion, real-time TCP port availability testing via `<app-alert-banner>`, and one-click apply & restart.
+  - Added system error banner notification for port errors with dedicated translations across all 9 supported locales.
+- **Smart Remote vs. Local Authentication Error Handling**:
+  - Differentiated `rclone_auth` repair flow based on active backend type: local backends offer stale process termination and restart, while remote backends guide the user with a direct "Configure Backend" action opening the backend credentials settings modal.
+- **URL Preview Component & Utilities**:
+  - Added `UrlPreviewComponent` and accompanying `url.utils.ts` for real-time URL inspection, domain and protocol extraction, file name and extension inference, and destination path previewing across download and transfer dialogs.
+- **Binary File Inspector & MIME Sniffing**:
+  - Added `BinaryInspectorService` capable of inspecting binary file headers, parsing MIME signatures and magic numbers, and generating hex/byte dumps for unknown files in Nautilus file browser.
+- **Missing Remote Detection & UI Alerts for Quick Runs**:
+  - Added automated detection for unconfigured or missing remotes referenced by Quick Run configurations, showing visual warning badges and actionable alert banners to prevent failed job launches.
+- **Rclone-Specific Form Validation Suite**:
+  - Extended `ValidatorRegistryService` with rclone-specific validation rules: remote name validation, forbidden character filtering, port availability checking, and uniqueness guards.
+- **System Theme Event Synchronization**:
+  - Added real-time native OS theme change listeners in the Tauri backend, forwarding theme transition events to the frontend for instant dark/light mode switching without polling.
+- **Extended Backup & Export Options**:
+  - Extended `.rcman` backup format and export manager to include Workflows, Templates, and Quick Runs alongside Remotes, Automations, and Application Settings.
+- **Android Background Keep-Alive Service & Battery Optimization Integration**:
+  - **Dynamic Background Lifecycle Management**: Integrated `AndroidKeepAliveService` (`android-keep-alive.service.ts`) reacting to active mounts, background jobs, and serves to ensure uninterrupted background operations on Android devices.
+  - **Real-Time Persistent Notification**: Added status notification updates displaying active mount, serve, and transfer job counts directly in the Android system notification drawer.
+  - **Battery Optimization Exemption Request**: Added native battery optimization check (`isBatteryOptimizationIgnored`) and user prompt support (`requestIgnoreBatteryOptimizations`) to prevent Android OS Doze mode from killing active Rclone background processes.
+  - **App Settings Persistence**: Added `general.keep_alive` preference setting across backend schema and frontend settings, allowing users to toggle persistent background execution on Android.
+- **Linux NVIDIA WebKit Environment Auto-Configuration**: Automatically configures WebKitGTK rendering environment variables at startup when an NVIDIA GPU is detected on Linux desktop sessions, with session-aware and driver-version-aware logic: on **X11**, both `WEBKIT_DISABLE_DMABUF_RENDERER` and `WEBKIT_DISABLE_COMPOSITING_MODE` are applied to prevent blank windows and "Error 71" protocol errors; on **Wayland with NVIDIA 515+**, all quirks are skipped since modern drivers support DMABuf natively (previously, unconditionally disabling GPU compositing caused software-rendering fallback and severe animation lag); on **Wayland with NVIDIA < 515**, only `WEBKIT_DISABLE_DMABUF_RENDERER` is applied to guard against DMABuf instability without forcing software rendering. Thanks to [@nvandamme](https://github.com/nvandamme)! PR #300
+- **Graceful Unix SIGTERM Shutdown Handling**: Added unified SIGTERM and SIGINT (Ctrl+C) signal listeners on Unix systems to trigger the complete graceful shutdown sequence (releasing power inhibitor locks, unmounting active remotes, stopping jobs and serves, and stopping the engine) before terminating. Thanks to [@nvandamme](https://github.com/nvandamme)! PR #298
+- **New Traditional Chinese Translations**: Added support for Traditional Chinese language and translations. Thanks to [@DraftingDreamer](https://github.com/DraftingDreamer)!
+
+### Changed
+- **Decoupled Async Runtime from UI Framework**: Migrated to an application-owned Tokio runtime, eliminating dependency on Tauri's async task management. All background task spawning (`spawn`, `spawn_blocking`, `block_on`) now runs on a dedicated, framework-independent runtime, improving stability and removing edge-case "no reactor running" panics.
+- **Contributor Credits in About Modal & Documentation**:
+  - Added a dedicated Contributors section to the About modal under Credits, crediting all code, docs, and translation contributors with direct links to their GitHub profiles.
+- **Export Modal UI Overhaul**:
+  - Redesigned `ExportModalComponent` with a Libadwaita-inspired selection list, item counters, and category-level selection controls.
+- **Multi-Rename Modal Enhancements**:
+  - Upgraded `MultiRenameModalComponent` with multi-pattern search & replace, prefix/suffix additions, automatic sequence numbering, case transforms, and a real-time before-and-after preview table.
+- **Jobs Overview & Core Modal UI Polish**:
+  - Refactored `JobsOverviewPanelComponent` with cleaner layout hierarchy, responsive card formatting, and real-time execution status badges.
+  - Polished responsive layouts and type safety across `AboutModalComponent`, `BackendModalComponent`, `LogsModalComponent`, `JobDetailModalComponent`, and `RepairSheetComponent`.
+
+### Removed
+- **Obsolete Path Validation Service**: Removed deprecated `PathValidationService` in favor of centralized path resolution utilities and backend validation. Fixes #288
+
+### Fixed
+- **Cross-Platform Power Inhibitor Architecture & Linux Shutdown Deadlock**: Redesigned power inhibitor handling across all platforms to prevent automatic idle sleep during active operations while ensuring clean system shutdown:
+  - **Linux**: Switched to unprivileged idle-sleep inhibition (`what = "idle"`), allowing passwordless manual sleep and laptop lid-close sleep without Polkit prompts. Added a D-Bus `PrepareForShutdown` listener to cleanly unmount remotes and stop active jobs before power-off, resolving black-screen hangs on KDE Plasma 6 and systemd. Fixes #296
+  - **Windows**: Prevents automatic idle sleep (`ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED`) while preserving the native OS warning screen (`ShutdownBlockReasonCreate`) when shutting down with active operations.
+  - **macOS**: Prevents automatic idle sleep (`IdleSystemSleepDisabled`) while respecting manual sleep and lid closure.
+- **Tray Quit Action Window Restoration with Active Operations**: Fixed an issue where clicking "Quit" in the system tray while active transfers or mounts were running failed to exit and failed to restore or present the UI window when `destroy_window_on_close` was enabled. The application now recreates or reveals and focuses the main window, cleanly prompting the user with the active operations confirmation dialog.
+- **Blank Page in Nautilus & UI Over Non-Secure HTTP Contexts**: Resolved `TypeError: crypto.randomUUID is not a function` when accessing the application over non-secure HTTP / remote IP addresses. Replaced direct `crypto.randomUUID()` calls across Nautilus, File System, Quick Run, and User Template services with a robust, zero-dependency `generatePrefixedId` utility featuring base36 monotonic timestamping, sequence counting, and context prefixes. Fixes #292
+- **Canonical Rclone Preset Flag Mapping for macOS Mounts & S3 Backend**: Corrected preset flag definitions in `RemotePresetsService` to use upstream canonical Rclone flag names (`noappledouble`, `noapplexattr` instead of snake_case `no_apple_*` for macOS mounts, and `use_server_modtime` instead of `use_server_mod_time` for S3). Fixes #290
+- **Docker FUSE Mount Failures with `--allow-other` and Non-Root `PUID`/`PGID`**: Fixed an issue where mounting cloud remotes using the `--allow-other` flag inside Docker failed with `failed to mount FUSE fs: fusermount: exit status 1` when running as a non-root user via `PUID`/`PGID`. The container entrypoint and runtime image now automatically enable `user_allow_other` in `/etc/fuse.conf` upon startup, enabling non-root FUSE mounts with multi-user access out of the box. Fixes #303
+- Various bug fixes and stability improvements.
+
+
+## [v0.3.2] - 2026-08-24
+
+### Added
+- **Flow Overlay & Automation Hub**: Added a dedicated Flow overlay system accessible from the sidebar navigation for streamlined automation, Quick Run execution, and template management. Workflow editor is planned to be added in a future release.
+- **Quick Run Execution & Management System**:
+  - **One-Click Operation Execution**: Launch predefined or custom Rclone operations (Sync, Copy, Move, Mount, Serve, Bisync, Check, etc.) with a single click.
+  - **Real-Time Job Tracking & State Reflection**: Live progress indicators, execution status, and dynamic state updates on Quick Run cards with instant stop/cancellation controls.
+  - **Comprehensive Quick Run Editor**: Easily configure source/destination paths, operation parameters, advanced Rclone flags, and execution preferences.
+  - **CLI Command Import**: Import full CLI command strings (e.g. `rclone copy /src /dst --dry-run --bwlimit 10M`) directly into Quick Run configs and Remote configurations with automatic flag parsing and mapping.
+  - **Card Organization & Tagging**: Organize, tag, search, reorder, duplicate, and manage Quick Runs across custom categories.
+- **Modular Dashboard Overview Panels & Layout Management**: Refactored the dashboard overview into customizable modular panels (System Overview, Disk Usage, Remotes, Mounts, Serves, Operations) with sticky headers and centralized layout customization controls (drag-and-drop ordering and visibility toggles) directly in the header toolbar.
+- **Dedicated Remote Deletion Confirmation Modal**: Added a safety-first confirmation dialog for deleting remotes with clear warnings and dependency awareness.
+- **System Sleep/Shutdown Intercept**: Added OS-level power inhibitor integration on Linux (systemd logind), Windows (ShutdownBlockReasonCreate), and macOS (IOPMAssertionCreateWithName). The application now prevents the system from sleeping or shutting down while active file transfer operations are in progress.
+- **Android Storage Access Framework (SAF) Integration**: Added comprehensive Storage Access Framework (SAF) support for Android devices. #273
+  - **SAF Remote & Tree Picker**: Allows selecting and authorizing local directories, SD cards, and USB OTG drives via native Android SAF tree picker intents (`ACTION_OPEN_DOCUMENT_TREE`).
+  - **Android DocumentsProvider**: Added `RcloneDocumentsProvider` to expose mounted Rclone remotes to external Android apps and system file pickers.
+  - **SAF VFS Mount Bridge**: Integrated a SAF VFS mount bridge enabling in-process virtual filesystem access for Android storage providers.
+  - **Android Background Keep-Alive & Boot Receiver**: Added `RcloneKeepAliveService` for persistent background mounts and `ResumeUploadsBootReceiver` for boot initialization on Android.
+- **Template Management**: Added support for managing and using templates. Added in Quick run editor and Remote Config Modal. Releated #260.
+- **Subdirectory-Scoped Real-time Monitoring & File Watcher**: Added an option to synchronize only modified subdirectories instead of scanning the full root tree when triggered by real-time file monitoring events.
+  - **Scoped Sync Targets**: Computes scoped source and destination targets from detected filesystem changes and dispatches targeted batch operations.
+- **Monochrome & Theme-Aware System Tray Icon Management**: Added configurable tray icon theme options (Color, System Auto Monochrome, Monochrome Light, Monochrome Dark) in Preferences -> General. Automatically adapts tray icons to desktop dark/light themes with real-time reactive updates. Closes #286.
+
+### Changed
+- **CLI Import & Flag Mapping Optimization**: Optimized the CLI command parser and import workflow across Quick Run Editor and Remote Config modals. Enhanced tokenizer with intelligent hyphenated argument recognition (e.g. `--suffix -bak`, `--min-age -1d`), multi-operation flag resolution (preserving shared copy/sync flags such as `--backup-dir`, `--track-renames`, `--checksum`), inline bash comment stripping, unified path parsing, and zero-allocation key normalizations in the backend.
+- **Backend Command Bridge & Error Handling**: Migrated backend Tauri command invocations to a standardized bridge macro system with centralized error mapping and structured localization payloads.
+- **Non-Blocking CLI Flags & Automatic Flat Option Mapping**: Updated JSON editor to treat CLI-style arguments (e.g. `--value-of-rclone`, `--bwlimit`) as non-blocking warnings instead of hard validation errors. The backend payload builder now automatically normalizes CLI flags into snake_case flat options (`value_of_rclone`, `bwlimit`) across all Quick Runs, Profiles, and operations.
+- **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
+- **Minimum Supported Rclone Version**: Updated minimum supported Rclone version to `1.75.0`.
+
+### Removed
+- **Legacy Migrations & Legacy Config Support**: Removed legacy keyring credentials migration, legacy 7z/zip 1.0.0 backup format restore, legacy config conversion maps, legacy settings flattening migrators, legacy UI warning banners, and the `sevenz-rust2` crate dependency. Standard `.rcman` backup restore and preview remain fully supported.
+
+### Fixed
+- **File Browser Freeze & Missing Drives on Wakeup / Stale Mounts**: Fixed an issue where encountering hung or unresponsive drives (e.g. stale WinFsp mounts, disconnected network shares, sleeping HDDs on Windows) or waking up from sleep/systray caused the File Browser sidebar and sync settings drive selectors to freeze and drop both local and cloud remote lists. Disk enumeration in the Rust backend is now non-blocking with timeout protection and graceful root fallback, while frontend remote loading operates independently via `Promise.allSettled`. Fixes #263
+- **Job Stats Group Retention on Finish / Stop**: Fixed an issue where stopping or completing an operation immediately deleted the accounting stats group in rclone memory, causing UI check results, transfer metrics, and error summaries to disappear prematurely. Stats groups are now preserved in rclone memory while the job remains in the job list and are only deleted when the job is actually deleted from the cache, with new operations pre-clearing their group stats before execution. Fixes #211
+- **Docker Entrypoint Privilege Dropping & Supplementary Groups (`PGIDS`)**: Fixed permission denied errors (`EACCES`) when accessing ZFS datasets or directories formatted with NFSv4 ACLs in Docker by replacing `gosu` with `setpriv` in `entrypoint.sh`. Added support for the `PGIDS` environment variable to propagate supplementary group IDs to the daemon process. Fixes #282
+- Fix dynamic reloading of remotes list on rclone configuration and backend settings changes.
+- **Reactive System Theme Updates**: Fixed system theme detection and state synchronization by eliminating blocking CLI subprocess checks in favor of WebKit's native `matchMedia` color-scheme event listeners.
+
+## [0.3.1] - 2026-07-27
+
+### Added
+- **Android Beta Release (APKs for arm64-v8a, armeabi-v7a, x86_64, x86)**: Introduced Android Beta support with architecture-separated APK builds (`arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`). Powered by an in-process Go engine (`librclone`) via FFI bindings. Tested on Samsung Galaxy S23 FE. iOS status is currently unverified due to lack of testing devices. For more details, see the [Android Documentation](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android).
+- **Nautilus Sidebar Drives & Remotes Customization**: Added the ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated sidebar configuration modal. #233
+- **Nautilus Context Menu System Clipboard Integration**: Added support for pasting OS system clipboard file paths and URIs directly from the right-click context menu, with automatic paste button visibility based on clipboard contents.
+- **New Russian Translations**: Added support for Russian language and translations. Thanks to @korsun009! PR #266
+- **New Brazilian Portuguese Translations**: Added support for Brazilian Portuguese language and translations. Thanks to @eduardomozart! PR #269
+- **New Japanese Translations**: Added support for Japanese language and translations. Thanks to @fuannanyo! PR #270
+- **Nautilus File Viewer Open in System Default Viewer**: Added the ability to open files in the system default viewer. First download if its remote file.
+
+### Changed
+- **Change the mattoltip to title attribute**: Changed the mattooltip to title attribute for better performance and visuals.
+- **Nautilus Detached Dialogs & Multi-Tasking Integration**: Wired Nautilus file browser window creation to the `general.standalone_dialogs` ("Detached Dialogs") setting. Opening a remote or path now displays as an in-app modal overlay when detached dialogs are disabled, while spawning standalone OS windows when enabled. Added a dedicated "Open in New Window" (pop-out) action to the overlay toolbar for seamless multitasking.
+- **Generalized Item Order & Visibility Modal**: Renamed and refactored `ActionSelectionModalComponent` into a generic `ItemOrderVisibilityModalComponent` supporting both starred quick action button configuration and item visibility/ordering management across the application.
+- **Universal Interactive Remote Configuration**: Enhanced `interactive-config-step` and the remote creation orchestrator to generically support all rclone interactive configuration steps across any remote type (OneDrive, Google Drive, SFTP, Box, S3, Crypt, Mega, etc.). #243
+- UI improvements. #251 #252 #253 
+- **Remote Disk Usage Loader Optimization**: Optimized remote disk usage checking by eliminating redundant pre-flight `getFeatures()` RPC requests. Disk usage (`rclone about`) is now requested directly, dynamically mapping unsupported responses (such as `"doesn't support about"`) directly to the unsupported state in the UI. #259
+- **Uploaded files preserve the dates**: When uploading files to remote storages, the original file modification dates are now preserved. Only for local Rclone instances. #268
+- **Rclone Providers**: Remove the uptobox translation. 
+
+### Fixed
+- **Remote Connection Payload Unmarshaling with Runtime Overrides**: Fixed an issue where operations (Mount, Sync, Copy, Serve, etc.) using boolean or numeric runtime remote overrides (e.g., `onedrive.av_override: true`) failed with a Go unmarshal error (`key "fs": Reshape failed to Unmarshal: json: cannot unmarshal bool into Go value of type string`). Boolean and numeric values in the `fs` connection payload are now automatically stringified before being sent to rclone. #265
+- **Multi-Select Remote Configuration Options**: Fixed an issue where non-exclusive string options with predefined example lists (such as the `Scope` setting in Google Drive) were rendered as single-select dropdowns, preventing users from selecting multiple items. #262
+- **Rclone Auth Error Detection**: Fixed an HTTP status code formatting bug where formatting the `StatusCode` display string (e.g., `"401 Unauthorized"`) prevented parsing the status code numerically in the error classifier. This resulted in auth failures (HTTP 401) being misclassified as generic startup/connection failures, preventing the engine from triggering the Auth Required repair sheet in the UI. #256
+- **Linux Window Resize Handles**: Added custom HTML/CSS resize handle borders in the frontend shell layout to restore cursor and drag-to-resize functionality on undecorated Linux windows. #236
+- **Remote Configuration Flags Loading**: Fixed a bug where flag configs sometimes failed to load and cached failed/empty results in the `MemoizedLoader` until a UI reload. Also resolved a race condition during modal initialization by sequencing metadata and dependent flag fields loading. #264
+- **Detached Modal Backend Synchronization**: Fixed an issue where switching active backends (e.g., between Local and Remote) did not update path opening and file picker handlers in detached modal windows, causing system file manager or internal Nautilus actions to target the wrong backend until a UI reload.
+
+## [v0.3.0] - 2026-07-14
+
+### Added
+- **Bot-less Telegram & WhatsApp Alerts**: Added support for bot-less Telegram notifications (via CallMeBot API) and a dedicated WhatsApp alert action channel to the Alert & Notification system.
+  - **Telegram Bot-less Mode**: Allows sending Telegram alerts directly to your Telegram `@username` without needing to create a bot token via `@BotFather`.
+  - **WhatsApp Notification Channel**: Added a new `whatsapp` alert action type supporting CallMeBot (`https://api.callmebot.com/whatsapp.php`) for personal WhatsApp push notifications, as well as custom HTTP gateway URLs.
+
+### Fixed
+- Linux zbus panics across the app.
+- **Encryption Detection in Non-Librclone Mode**: Resolved an issue where non-librclone mode failed to correctly detect when an Rclone configuration file was encrypted.
+- **Task State & Status Refreshing**: Fixed an issue where active tasks, automated file watchers, and scheduled jobs failed to update their statuses and progress properly in the UI.
+- **Desktop Remote File Downloads**: Resolved a bug in desktop mode where downloading files or folders from remote storage directly to the local PC filesystem failed to execute.
+
+## [v0.2.9] - 2026-07-11
+
+### Added
+- **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80 (Check the wiki: https://hakanismail.info/zarestia/rclone-manager/docs/integrations)
+  - **Windows**: Creates a cascading "RClone Manager" right-click submenu ("Upload to [Remote]") and Send To folder shortcuts.
+  - **Linux**: Installs GNOME Nautilus Python extensions, Nautilus fallback shell scripts, KDE Dolphin service menus, and Nemo actions.
+  - **macOS**: Registers Finder Quick Actions (automator workflow services).
+  - **CLI Commands**: Added `--send-to-remote` and `--send-to-path` command line arguments to trigger uploads directly from system context menus and custom scripts. Added strict argument validation to require a destination remote when `--send-to-path` is used, and at least one source file/folder when `--send-to-remote` is specified.
+  - **Cleanup**: Automatically cleans up all custom integrations, registry entries, extensions, and shortcuts upon application uninstallation or manual path unregistration.
+- **Operations Support**: Expanded Rclone operations support by adding `check`, `delete`, `copyurl`, `archivecreate`, and `cryptcheck`.
+  - Added a new Action Selection Modal to choose and trigger these operations directly from the UI.
+  - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.
+  - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
+- **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality. #237
+  - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
+- New background for dmg installer.
+- **Librclone Support**: Added support for `librclone` (Beta testing feature for Android/iOS mobile targets). When `librclone` is enabled, application/rclone updates and local process management are disabled, while remote rclone instances and local servers remain supported.
+  - **Android Build & Cross-Compilation**: Added NDK target toolchain cross-compiler mappings for all architectures (`aarch64`, `armv7`, `x86_64`, `386`) and created a GitHub Actions build workflow.
+  - **DNS-over-HTTPS (DoH) Resolver**: Overrode the default Go network resolver on Android to proxy DNS queries through HTTPS (port 443) to Cloudflare/Google, bypassing Android's port 53 raw socket restriction. (Refer to platform docs: `https://hakanismail.info/zarestia/rclone-manager/docs/platform/configuration-android.md`)
+- **Deeplink support**: Added support for mobile custom URI scheme handler (`rclone-manager://oauth`) to automatically redirect and resume the application from web browsers during the OAuth process. (Needs Rclone 1.75 Beta and later.)
+
+### Changed
+- **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
+  - Migrated the translation system from `TranslateModule` to a standalone, signal-driven `TranslatePipe`.
+- **Tauri Backend**: Updated Rust cargo crate constraints (`tower-http`, `notify`), while pinning `sysinfo` and `keyring` for compatibility.
+- Static flags updated. #242
+
+### Fixed
+- **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.
+- Fix the overloaded time for DirCacheTime: '1000h' to default rclone value.
+- Fix the Rclone Flags modals not saves the numbers. Example: Transfers... #240
+- Fix for path inputs in remote config wizard. Windows paths handled correctly now. #238
+
+## [v0.2.8] - 2026-06-17
+
+### Added
+- **Language**: Added Ukrainian language support. (Thanks to @maksam07!) PR #230
+- **CI/CD Validation**: Added a multi-OS GitHub Actions workflow (`ci.yml`) to automatically validate lints, formatting, and compilation checks across Linux, Windows, and macOS on push and pull request triggers. Rust code validating all linux, windows and macos platforms, frontend code validating is only linux platform.
+- **PowerShell**: Added PowerShell 7+ (pwsh) support for mount plugin installer. If pwsh is not available on Windows, default to Windows PowerShell (powershell.exe). #229
+
+### Changed
+- **Updater Feature**: Gate the application and Rclone update system behind "updater" feature.
+- Sync tab renamed to Operations tab.
+
+### Fixed
+- Detached dialog and other dialog fixes. #228
+- Fixed silent update crash for windows.
+- Fixed restart problem after apply update the application.
+
+## [v0.2.7] - 2026-06-13
+
+### Added
+- **Predefined Performance Presets**: Added smart, OS-aware performance configuration presets automatically applied during initial remote creation (not triggered on edit or clone).
+  - Integrates optimized VFS defaults (`CacheMode: 'full'`, large cache limits, directory caching) and backend buffer properties for high-performance cross-platform remote usage.
+  - Automatically matches storage protocol families (e.g. S3-compatible, WebDAV) and host OS configurations (such as `NetworkMode` on Windows or `NoAppleXattr` on macOS).
 - Local filesystem watchers for sync, copy, move, and bisync automations. Sync, copy, and move require at least one local source path; bisync watches local paths from both sides.
 - Net-change debounce: create/delete pairs on the same path within the debounce window cancel each other out, suppressing temp files and atomic saves without explicit exclude rules.
 - Added support for detached windows for dialogs (like progress, logs etc.). If you close the main window, dialogs will stay open. Some helper dialogs not open as a new window.
-- Added a cancel support for While updates downloading.
+- Added a cancel support for While updates downloading. 
+- **Rclone Version Validation**: Enhanced rclone binary validation to support minimum version enforcement and version parsing (including pre-releases). 
+- French language added from Crowdin (https://crowdin.com/project/rclone-manger).
+
+### Security
+- **Secure-by-Default Local Engine Credentials**: Implemented a secure-by-default credential generation policy for the local Rclone engine. If no username or password is configured for a local backend, transient credentials are randomly generated in-memory at runtime. These transient credentials are never written to keyring and connections JSON. Every engine restart generates a fresh set of random credentials. Remote backends are unaffected.
 
 ### Changed
 - Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 
 - **macOS Dock Visibility Control**: Added functionality to control the macOS dock visibility based on the presence of visible windows. The dock icon will now hide when there are no visible windows and show when there is at least one visible window. This is the default behavior for macOS apps that don't have a dock icon. This is a macOS-specific change. #208
+- Profile setting changed into the default rclone RC values instead of parsing them to different values and after parsing them again rclone RC values. Settings auto migrated for old profiles. But if you have any special settings, you may need to reconfigure them. **Backup your settings before upgrading**!
+- **Client-Side Preference Storage**: Migrated transient view preferences and viewport states (Nautilus layout/sizes/sorting, split divider position, navigation sidebar state, dashboard accordion states, and selected profiles/operations per remote) from the backend settings database to client-side local storage. These keys only for frontend and no need the backend to access them. Reduced the I/O operations.
+- Remove the snap package support for now. Maybe will add it back in the future.
 
 ### Fixed
 - Fixed missing language values on some sections of the application and remove the non-used language keys.
 - Fixed the issue on wrong mapped rclone flags on backend and sync types.
+- **Serve VFS Options**: Fixed VFS options being silently ignored on serve startup by dynamically flattening and mapping PascalCase VFS option keys to flat, CLI-style snake_case keys (e.g. `vfs_cache_mode`). This is a temporary backend workaround until upstream [rclone/rclone#9492](https://github.com/rclone/rclone/issues/9492) is resolved.
+
 
 ## [v0.2.6] - 2026-05-19
 

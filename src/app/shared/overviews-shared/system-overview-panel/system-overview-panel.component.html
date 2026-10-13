@@ -1,0 +1,138 @@
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="hideToggle()"
+  class="system-info-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="core" class="orange" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.system' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <div class="status-indicator-small" [ngClass]="rcloneStatus()" aria-hidden="true"></div>
+      {{ 'generalOverview.system.' + rcloneStatus() | translate }}
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @if (isLoadingStats()) {
+    <div class="loading fade-in" aria-live="polite">
+      <mat-icon
+        svgIcon="spinner"
+        [attr.aria-label]="'generalOverview.system.aria.loading' | translate"
+      ></mat-icon>
+      <span>{{ 'generalOverview.system.loading' | translate }}</span>
+    </div>
+  } @else {
+    @let status = rcloneStatus();
+    @let info = rcloneInfo();
+    @let mem = memoryUsage();
+
+    <div class="info-grid" role="grid">
+      <div class="info-item" role="row" [title]="'generalOverview.system.' + status | translate">
+        <span class="label" role="gridcell">{{ 'generalOverview.system.status' | translate }}</span>
+        <span class="value" [ngClass]="status" role="gridcell">
+          <div class="status-indicator-small" [ngClass]="status" aria-hidden="true"></div>
+          <span class="value-text">{{ 'generalOverview.system.' + status | translate }}</span>
+        </span>
+      </div>
+
+      @if (info?.version) {
+        <div class="info-item" role="row" [title]="info?.version">
+          <span class="label" role="gridcell">{{
+            'generalOverview.system.version' | translate
+          }}</span>
+          <span class="value" role="gridcell">
+            <mat-icon svgIcon="tag" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">{{ info?.version }}</span>
+          </span>
+        </div>
+      }
+
+      @if (info?.os) {
+        <div class="info-item" role="row" [title]="platformDisplay()">
+          <span class="label" role="gridcell">{{
+            'generalOverview.system.platform' | translate
+          }}</span>
+          <span class="value" role="gridcell">
+            <mat-icon [svgIcon]="platformIcon()" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">{{ platformDisplay() }}</span>
+          </span>
+        </div>
+      }
+
+      @if (rclonePID(); as pid) {
+        <div class="info-item" role="row" [title]="'#' + pid">
+          <span class="label" role="gridcell">{{ 'generalOverview.system.pid' | translate }}</span>
+          <span class="value" role="gridcell">
+            <mat-icon svgIcon="terminal" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">#{{ pid }}</span>
+          </span>
+        </div>
+      }
+
+      @if (info?.goVersion) {
+        <div class="info-item" role="row" [title]="info?.goVersion">
+          <span class="label" role="gridcell">{{
+            'generalOverview.system.goVersion' | translate
+          }}</span>
+          <span class="value" role="gridcell">
+            <mat-icon svgIcon="code" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">{{ info?.goVersion }}</span>
+          </span>
+        </div>
+      }
+
+      <div
+        class="info-item"
+        role="row"
+        [title]="mem?.HeapAlloc ? (mem?.HeapAlloc | formatFileSize) : '-'"
+      >
+        <span class="label" role="gridcell">{{
+          'generalOverview.system.memoryUsage' | translate
+        }}</span>
+        <span class="value" role="gridcell">
+          <mat-icon svgIcon="memory" class="item-icon" aria-hidden="true"></mat-icon>
+          <span class="value-text">
+            @if (mem?.HeapAlloc; as alloc) {
+              {{ alloc | formatFileSize }}
+            } @else {
+              -
+            }
+          </span>
+        </span>
+      </div>
+
+      <div class="info-item" role="row" [title]="uptime() | formatTime">
+        <span class="label" role="gridcell">{{ 'generalOverview.system.uptime' | translate }}</span>
+        <span class="value" role="gridcell">
+          <mat-icon svgIcon="clock" class="item-icon" aria-hidden="true"></mat-icon>
+          <span class="value-text">{{ uptime() | formatTime }}</span>
+        </span>
+      </div>
+
+      @if (totalCount() !== undefined) {
+        <div class="info-item" role="row" [title]="totalCount()">
+          <span class="label" role="gridcell">{{ totalCountLabelKey() | translate }}</span>
+          <span class="value" role="gridcell">
+            <mat-icon svgIcon="cloud" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">{{ totalCount() }}</span>
+          </span>
+        </div>
+      }
+
+      @if (activeJobsCount() !== undefined) {
+        <div class="info-item" role="row" [title]="activeJobsCount()">
+          <span class="label" role="gridcell">{{
+            'generalOverview.system.activeJobs' | translate
+          }}</span>
+          <span class="value" [class.active]="(activeJobsCount() ?? 0) > 0" role="gridcell">
+            <mat-icon svgIcon="play" class="item-icon" aria-hidden="true"></mat-icon>
+            <span class="value-text">{{ activeJobsCount() }}</span>
+          </span>
+        </div>
+      }
+    </div>
+  }
+</mat-expansion-panel>

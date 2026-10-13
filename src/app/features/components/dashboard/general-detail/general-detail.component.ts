@@ -1,110 +1,72 @@
-import { Component, inject, signal, computed, output, effect, untracked } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  signal,
+  computed,
+  output,
+  effect,
+  untracked,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { CommonModule, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import {
   DiskUsage,
   JobsPanelConfig,
   PrimaryActionType,
-  Remote,
-  RemoteSettings,
   SettingsPanelConfig,
+  StopJobEvent,
+  StartJobEvent,
+  RemoteStatus,
+  RemoteOperationState,
+  RemoteServeState,
+  ActionViewModel,
+  ACTION_CONFIGS,
+  STANDARD_MODAL_SIZE,
+  MODE_DEFAULTS,
+  OPERATION_META,
+  OpenInFilesEvent,
+  isOperationActionInProgress,
 } from '@app/types';
+import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
+import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
+import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { AutomationService } from 'src/app/services/operations/automation.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { MatDialog } from '@angular/material/dialog';
 import {
-  DiskUsagePanelComponent,
-  JobsPanelComponent,
-  SettingsPanelComponent,
-  AutomationCardComponent,
-} from '../../../../shared/detail-shared';
-import { IconService, AutomationService, RemoteFacadeService, PathService } from '@app/services';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+  ItemOrderVisibilityModalComponent,
+  ItemOrderVisibilityResult,
+  buildActionOrderItems,
+} from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
-interface ActionConfig {
-  key: PrimaryActionType;
-  label: string;
-  icon: string;
-  getTooltip: (remote: Remote) => string;
-  getActiveState: (remote: Remote) => boolean;
-}
-
-interface ActionViewModel {
-  key: PrimaryActionType;
-  label: string;
-  icon: string;
-  isSelected: boolean;
-  isActive: boolean;
-  /** 1-based position in primaryActions, 0 when not selected. */
-  position: number;
-  /** False when max actions are selected and this action is not one of them. */
-  canInteract: boolean;
-  /** Already a translation key — apply | translate in template. */
-  tooltip: string;
-  /** Already translated — do NOT apply | translate in template. */
-  ariaLabel: string;
-}
-
-const ACTION_CONFIGS: ActionConfig[] = [
-  {
-    key: 'mount',
-    label: 'actions.mount',
-    icon: 'mount',
-    getTooltip: remote => (remote.status.mount.active ? 'mount.mounted' : 'mount.toggleAction'),
-    getActiveState: remote => remote.status.mount.active || false,
-  },
-  {
-    key: 'sync',
-    label: 'actions.sync',
-    icon: 'refresh',
-    getTooltip: remote => (remote.status.sync.active ? 'sync.syncing' : 'sync.toggleSync'),
-    getActiveState: remote => remote.status.sync.active || false,
-  },
-  {
-    key: 'copy',
-    label: 'actions.copy',
-    icon: 'copy',
-    getTooltip: remote => (remote.status.copy.active ? 'sync.copying' : 'sync.toggleCopy'),
-    getActiveState: remote => remote.status.copy.active || false,
-  },
-  {
-    key: 'move',
-    label: 'actions.move',
-    icon: 'move',
-    getTooltip: remote => (remote.status.move.active ? 'sync.moving' : 'sync.toggleMove'),
-    getActiveState: remote => remote.status.move.active || false,
-  },
-  {
-    key: 'bisync',
-    label: 'actions.bisync',
-    icon: 'right-left',
-    getTooltip: remote => (remote.status.bisync.active ? 'sync.bisyncActive' : 'sync.toggleBisync'),
-    getActiveState: remote => remote.status.bisync.active || false,
-  },
-  {
-    key: 'serve',
-    label: 'actions.serve',
-    icon: 'serve',
-    getTooltip: remote => (remote.status.serve.active ? 'serve.serving' : 'serve.toggleAction'),
-    getActiveState: remote => remote.status.serve.active || false,
-  },
-];
+import { QuickRunCardComponent } from '../../../../flow/quick-run/quick-run-card/quick-run-card.component';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { QuickRun } from '@app/types';
 
 @Component({
   selector: 'app-general-detail',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     TitleCasePipe,
     MatCardModule,
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,
-    TranslateModule,
+    TranslatePipe,
     AutomationCardComponent,
+    QuickRunCardComponent,
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
@@ -114,7 +76,14 @@ export class GeneralDetailComponent {
   private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly quickRunService = inject(QuickRunService);
   private readonly pathService = inject(PathService);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
+
+  // Inputs
+  readonly showStatusIndicators = input<boolean>(true);
+  readonly showQuickRuns = input<boolean>(false);
 
   // State
   protected readonly selectedRemote = computed(() => {
@@ -125,31 +94,60 @@ export class GeneralDetailComponent {
 
   readonly openRemoteConfigModal = output<{
     editTarget?: string;
-    existingConfig?: RemoteSettings;
   }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
+  readonly stopJob = output<StopJobEvent>();
+  readonly startJob = output<StartJobEvent>();
   readonly deleteJob = output<number>();
-  readonly togglePrimaryAction = output<PrimaryActionType>();
   readonly retryDiskUsage = output<void>();
+  readonly selectQuickRun = output<QuickRun>();
 
   // State
   private readonly allAutomations = this.automationService.automations;
   readonly currentAutomationCardIndex = signal(0);
 
-  protected readonly maxPrimaryActions = 3;
+  readonly remoteQuickRuns = computed(() =>
+    this.quickRunService.quickRuns().filter(qr => qr.remoteName === this.selectedRemote().name)
+  );
 
-  private static readonly DISPLAYED_COLUMNS = [
-    'type',
-    'profile',
-    'status',
-    'progress',
-    'startTime',
-    'actions',
-  ] as const;
+  isQuickRunRunning(id: string): boolean {
+    return this.quickRunService.runningIds().has(id);
+  }
+
+  onSelectQuickRunById(id: string): void {
+    const qr = this.remoteQuickRuns().find(q => q.id === id);
+    if (qr) {
+      this.selectQuickRun.emit(qr);
+    }
+  }
+
+  onStartQuickRun(qr: QuickRun): void {
+    void this.quickRunService.start(qr.id);
+  }
+
+  onStopQuickRun(qr: QuickRun): void {
+    void this.quickRunService.stop(qr.id);
+  }
+
+  onEditQuickRun(qr: QuickRun): void {
+    this.quickRunService.openEditor(qr);
+  }
+
+  onCreateQuickRunForRemote(): void {
+    this.quickRunService.openEditor(undefined, undefined, this.selectedRemote().name);
+  }
+
+  onOpenQuickRunInFiles(event: OpenInFilesEvent | string, qr?: QuickRun): void {
+    if (typeof event === 'string' && qr) {
+      void this.remoteFacade.openRemoteInFiles(qr.remoteName, event, undefined, qr.operationType);
+    } else if (typeof event !== 'string') {
+      void this.remoteFacade.openRemoteInFiles(
+        event.remoteName,
+        event.path,
+        event.profileName,
+        event.operationType
+      );
+    }
+  }
 
   // Derivations
   readonly jobs = computed(() =>
@@ -170,31 +168,41 @@ export class GeneralDetailComponent {
 
   readonly viewActionConfigs = computed<ActionViewModel[]>(() => {
     const remote = this.selectedRemote();
-    const selectedActions = remote.primaryActions ?? [];
-    const canSelectMore = selectedActions.length < this.maxPrimaryActions;
+    const selectedActions =
+      remote.primaryActions && remote.primaryActions.length > 0
+        ? remote.primaryActions
+        : MODE_DEFAULTS['general'];
 
-    return ACTION_CONFIGS.map(config => {
-      const isSelected = selectedActions.includes(config.key);
-      const position = isSelected ? selectedActions.indexOf(config.key) + 1 : 0;
-      const label = this.translate.instant(config.label);
+    const actions = this.remoteFacade.actionInProgress()[remote.name] ?? [];
 
-      return {
+    const models: ActionViewModel[] = [];
+    selectedActions.forEach((key, index) => {
+      const config = ACTION_CONFIGS.find(c => c.key === key);
+      const meta = OPERATION_META[key];
+      if (!config || !meta) return;
+
+      const position = index + 1;
+      const isActive = config.getActiveState(remote);
+      const tooltip = isActive ? meta.stopTooltip : meta.startTooltip;
+      const icon = isActive ? meta.stopIcon : meta.startIcon;
+      const ariaLabel = this.translate.instant(tooltip);
+
+      const isLoading = isOperationActionInProgress(actions, key);
+
+      models.push({
         key: config.key,
         label: config.label,
-        icon: config.icon,
-        isSelected,
-        isActive: config.getActiveState(remote),
+        icon,
+        isSelected: true,
+        isActive,
         position,
-        canInteract: isSelected || canSelectMore,
-        tooltip: config.getTooltip(remote),
-        ariaLabel: isSelected
-          ? this.translate.instant('dashboard.generalDetail.quickActionSelected', {
-              label,
-              position,
-            })
-          : this.translate.instant('dashboard.generalDetail.toggleQuickAction', { label }),
-      };
+        canInteract: !isLoading,
+        isLoading,
+        tooltip,
+        ariaLabel,
+      });
     });
+    return models;
   });
 
   readonly remoteConfigurationPanelConfig = computed<SettingsPanelConfig>(() => ({
@@ -211,34 +219,95 @@ export class GeneralDetailComponent {
 
   readonly jobsPanelConfig = computed<JobsPanelConfig>(() => ({
     jobs: this.jobs(),
-    displayedColumns: GeneralDetailComponent.DISPLAYED_COLUMNS,
   }));
 
-  constructor() {
-    void this.automationService
-      .getAutomations()
-      .catch(err => console.error('Error loading automations:', err));
+  private readonly selectedRemoteName = computed(() => this.selectedRemote().name);
 
+  constructor() {
     effect(() => {
-      this.selectedRemote();
+      this.selectedRemoteName();
       untracked(() => this.currentAutomationCardIndex.set(0));
     });
   }
 
   // --- Actions ---
 
+  onChipClick(vc: ActionViewModel): void {
+    if (vc.isLoading || !vc.canInteract) return;
+    this.onToggleAction(vc.key);
+  }
+
   onToggleAction(actionKey: PrimaryActionType): void {
-    const config = this.viewActionConfigs().find(c => c.key === actionKey);
-    if (config?.canInteract) {
-      this.togglePrimaryAction.emit(actionKey);
+    const remote = this.selectedRemote();
+    const status = remote.status[actionKey as keyof Omit<RemoteStatus, 'diskUsage'>] as
+      RemoteOperationState | RemoteServeState | undefined;
+    const isActive = !!status?.active;
+
+    if (isActive) {
+      const activeProfiles = status?.activeProfiles;
+      const profileName = activeProfiles ? (Object.keys(activeProfiles)[0] ?? '') : '';
+      if (!profileName) return;
+      this.stopJob.emit({
+        type: actionKey,
+        remoteName: remote.name,
+        profileName,
+      });
+    } else {
+      const configured = status?.configuredProfiles as string[] | undefined;
+      if (!configured || configured.length === 0) return;
+      if (configured.length === 1) {
+        this.startJob.emit({
+          type: actionKey,
+          remoteName: remote.name,
+          profileName: configured[0],
+        });
+      }
     }
   }
 
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
       editTarget: 'remote',
-      existingConfig: this.selectedRemote().config as unknown as RemoteSettings,
     });
+  }
+
+  onConfigureActions(): void {
+    const remote = this.selectedRemote();
+    if (!remote) return;
+
+    const currentPrimary = remote.primaryActions?.length
+      ? remote.primaryActions
+      : (MODE_DEFAULTS.general as PrimaryActionType[]);
+    const items = buildActionOrderItems(currentPrimary);
+    const defaultItems = buildActionOrderItems(MODE_DEFAULTS.general as PrimaryActionType[]);
+
+    this.dialog
+      .open(ItemOrderVisibilityModalComponent, {
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        data: {
+          title: 'modals.actionSelection.title',
+          description: 'modals.actionSelection.description',
+          descriptionParams: { name: remote.name, max: 3 },
+          mode: 'star',
+          maxVisible: 3,
+          items,
+          defaultItems,
+        },
+        panelClass: 'mobile-sheet-dialog',
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (result: ItemOrderVisibilityResult<PrimaryActionType> | undefined) => {
+        if (!result) return;
+        try {
+          await this.remoteFacade.updateRemoteSettings(remote.name, {
+            primaryActions: result.isReset ? [] : (result.orderedVisibleIds as PrimaryActionType[]),
+          });
+        } catch (error) {
+          console.error('Failed to update primary actions:', error);
+        }
+      });
   }
 
   // --- Automation Helpers ---

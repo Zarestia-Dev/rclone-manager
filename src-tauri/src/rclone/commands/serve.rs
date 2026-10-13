@@ -1,111 +1,97 @@
+use std::collections::HashMap;
+
 use log::{debug, info, warn};
 use serde_json::{Value, json};
-use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::paths::AppPaths,
-    rclone::{backend::BackendManager, state::watcher::force_check_serves},
+    core::{bridge, paths::AppPaths},
+    rclone::{backend::BackendManager, state::watcher::refresh_serves_quietly},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
-        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::serve,
-        types::{logs::LogLevel, remotes::ProfileParams, state::RcloneState},
+        types::{
+            logs::LogLevel,
+            remotes::{OperationType, ProfileParams},
+            state::RcloneState,
+        },
     },
 };
 
-use super::common::{
-    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
-};
+use super::common::{OperationContext, parse_common_config, redact_value};
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ServeParams {
     pub remote_name: String,
     pub source: String,
-    pub serve_options: Option<HashMap<String, Value>>,
+    pub rclone_config: Value,
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
-}
-
-/// Internal struct for Rclone API serialization
-#[derive(serde::Serialize)]
-struct RcloneServeBody {
-    #[serde(flatten)]
-    pub serve_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "vfsOpt", skip_serializing_if = "Option::is_none")]
-    pub vfs_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "_config", skip_serializing_if = "Option::is_none")]
-    pub config: Option<HashMap<String, Value>>,
-    #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
-    pub filter: Option<HashMap<String, Value>>,
+    pub serve_type: String,
+    pub origin: Option<crate::utils::types::origin::Origin>,
+    pub quick_run_id: Option<String>,
+    pub execute_id: Option<String>,
+    pub workflow_id: Option<String>,
+    pub node_id: Option<String>,
 }
 
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
         let common = parse_common_config(config, settings)?;
+        let rclone_config = config.get("rclone").unwrap_or(config);
+        let serve_type = rclone_config
+            .get("type")
+            .or_else(|| rclone_config.get("serveType"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("http")
+            .to_string();
 
         Some(Self {
             remote_name,
             source: common.first_source(),
-            serve_options: common.options,
+            rclone_config: common.rclone_config.clone(),
             backend_options: common.backend_options,
             filter_options: common.filter_options,
             vfs_options: common.vfs_options,
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
+            serve_type,
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
         })
     }
 
     pub fn to_rclone_body(&self) -> Value {
+        let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        );
+
         // Pre-process serve options to handle "addr" array issue
-        let processed_serve_opts = self
-            .serve_options
-            .clone()
-            .map(|mut opts| {
-                if let Some(addr_val) = opts.get("addr") {
-                    let final_val = match addr_val {
-                        Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                        _ => addr_val.clone(),
-                    };
-                    opts.insert("addr".to_string(), final_val);
-                }
-                // Use the explicit source as 'fs'
-                opts.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(
-                        &self.source,
-                        self.runtime_remote_options.as_ref(),
-                    ),
-                );
-                opts
-            })
-            .or_else(|| {
-                // If no serve_options, create one with at least 'fs'
-                let mut opts = HashMap::new();
-                opts.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(
-                        &self.source,
-                        self.runtime_remote_options.as_ref(),
-                    ),
-                );
-                Some(opts)
-            });
+        if let Some(Value::Array(arr)) = builder.get("addr")
+            && arr.len() == 1
+            && arr[0].is_string()
+        {
+            let single = arr[0].clone();
+            builder.insert("addr", single);
+        }
 
-        let body = RcloneServeBody {
-            serve_options: processed_serve_opts,
-            vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
-            config: self.backend_options.clone().map(unwrap_nested_options),
-            filter: self.filter_options.clone().map(unwrap_nested_options),
-        };
-
-        serde_json::to_value(body).unwrap_or(json!({}))
+        builder
+            .insert("fs", self.source.as_str())
+            .insert("type", self.serve_type.as_str())
+            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+            .with_vfs_options(self.vfs_options.as_ref())
+            .with_filter_options(self.filter_options.as_ref())
+            .with_backend_options(self.backend_options.as_ref())
+            .build()
     }
 }
 
@@ -124,36 +110,17 @@ pub async fn start_serve(
         return Err(crate::localized_error!("backendErrors.serve.remoteEmpty"));
     }
 
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
 
-    let serve_type = params
-        .serve_options
-        .as_ref()
-        .and_then(|opts| opts.get("type"))
-        .ok_or_else(|| crate::localized_error!("backendErrors.serve.typeRequired"))?;
+    let serve_type = &params.serve_type;
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
-
-    let log_context = json!({
-        "remote_name": params.remote_name,
-        "serve_options": redact_sensitive_values(&params.serve_options.clone().unwrap_or_default(), &app),
-    });
-
-    log_operation(
-        LogLevel::Info,
-        Some(params.remote_name.clone()),
-        Some("Start serve".to_string()),
-        format!("Attempting to start {serve_type} serve"),
-        Some(log_context),
-    );
 
     let mut payload = params.to_rclone_body();
 
     // Auto-inject our custom template for web-based protocols if not already specified
-    let serve_type_str = serve_type.as_str().unwrap_or("");
-    if serve_type_str == "http" || serve_type_str == "webdav" {
+    if serve_type == "http" || serve_type == "webdav" {
         let app_paths = app.state::<AppPaths>();
         let template_path = app_paths.serve_template_path();
 
@@ -172,21 +139,35 @@ pub async fn start_serve(
         }
     }
 
+    let log_context = json!({
+        "remote_name": params.remote_name,
+        "arguments": redact_value(&payload, &app),
+    });
+
+    log_operation(
+        LogLevel::Info,
+        Some(params.remote_name.clone()),
+        Some("Start serve".to_string()),
+        format!("Attempting to start {serve_type} serve"),
+        Some(log_context),
+    );
+
     debug!("📦 Serve request payload: {payload:#?}");
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    // Call serve/start directly
-    let response_json = backend
-        .post_json(&state.client, serve::START, Some(&payload))
+    // Call serve/start via the transport
+    let response_json = transport
+        .rpc(serve::START, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to start serve: {e}");
+            let mapped_error =
+                crate::rclone::engine::error_mapper::map_or_wrap_serve_error(&e.to_string());
             log_operation(
                 LogLevel::Error,
                 Some(params.remote_name.clone()),
                 Some("Start serve".to_string()),
-                error.clone(),
+                mapped_error.clone(),
                 None,
             );
             notify(
@@ -195,11 +176,11 @@ pub async fn start_serve(
                     backend: backend_name_for_err.clone(),
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
-                    protocol: serve_type.as_str().unwrap_or("unknown").to_string(),
-                    error: e.clone(),
+                    protocol: serve_type.clone(),
+                    error: mapped_error.clone(),
                 }),
             );
-            error
+            mapped_error
         })?;
 
     // Extract serve details
@@ -228,17 +209,25 @@ pub async fn start_serve(
             "Serve started with ID {} at {}",
             serve_response.id, serve_response.addr
         ),
-        Some(json!({ "id": serve_response.id, "addr": serve_response.addr })),
+        Some(response_json),
     );
 
-    // Refresh first so the entry exists in cache, then attach the profile to it.
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
+    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     backend_manager
         .remote_cache
-        .store_serve_profile(&serve_id, params.profile.clone())
+        .preseed_serve_metadata(
+            &serve_id,
+            &addr,
+            payload.clone(),
+            params.profile.clone(),
+            params.quick_run_id.clone(),
+            params.origin.clone(),
+            params.execute_id.clone(),
+            params.workflow_id.clone(),
+            params.node_id.clone(),
+        )
         .await;
+    refresh_serves_quietly(&app).await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
@@ -259,7 +248,7 @@ pub async fn start_serve(
 }
 
 /// Stop a specific serve instance by ID
-#[tauri::command]
+#[bridge]
 pub async fn stop_serve(
     app: AppHandle,
     server_id: String,
@@ -273,8 +262,8 @@ pub async fn stop_serve(
         None,
     );
 
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
 
     // Get serve details from cache before stopping
@@ -291,15 +280,13 @@ pub async fn stop_serve(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            serve::STOP,
-            Some(&payload),
-        )
+    let result = transport
+        .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to stop serve: {e}");
+            let err_str = e.to_string();
+            let error =
+                crate::localized_error!("backendErrors.serve.stopFailed", "error" => &err_str);
             log_operation(
                 LogLevel::Error,
                 Some(remote_name.clone()),
@@ -309,16 +296,21 @@ pub async fn stop_serve(
             );
             notify(
                 &app,
-                NotificationEvent::Serve(ServeStage::Failed {
+                NotificationEvent::Serve(ServeStage::StopFailed {
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: profile.clone(),
                     protocol: protocol.clone(),
-                    error: e.clone(),
+                    error: error.clone(),
                 }),
             );
             error
-        })?;
+        });
+
+    if let Err(err) = result {
+        refresh_serves_quietly(&app).await;
+        return Err(err);
+    }
 
     log_operation(
         LogLevel::Info,
@@ -328,9 +320,7 @@ pub async fn stop_serve(
         None,
     );
 
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
+    refresh_serves_quietly(&app).await;
     info!("✅ Serve {server_id} stopped successfully");
 
     let backend_name = backend_manager.get_active_name().await;
@@ -348,49 +338,29 @@ pub async fn stop_serve(
 }
 
 /// Stop all running serve instances
-#[tauri::command]
+#[bridge]
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
 
-    // If there are no active serves, skip the API call.
-    let serves = backend_manager.remote_cache.get_serves().await;
-    if serves.is_empty() || context.is_shutdown() {
-        debug!("No active serves to stop — skipping STOPALL");
-        if !context.is_shutdown()
-            && let Err(e) = force_check_serves(app.clone()).await
-        {
-            warn!("Failed to refresh serves: {e}");
-        }
-        // Silent no-op during shutdown
-        return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
-    }
-
-    if let Err(e) = backend
-        .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
-        .await
-    {
+    if let Err(e) = transport.rpc(serve::STOPALL, None).await {
         warn!("Failed to stop all serves: {e}");
     }
 
-    if !context.is_shutdown()
-        && let Err(e) = force_check_serves(app.clone()).await
-    {
-        warn!("Failed to refresh serves: {e}");
+    if !context.is_shutdown() {
+        refresh_serves_quietly(&app).await;
+        notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
     }
 
     info!("✅ All serves stopped successfully");
-
-    notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }
 
 /// Start a serve using a named profile
 /// Resolves all options (serve, vfs, filter, backend) from cached settings
-#[tauri::command]
+#[bridge]
 pub async fn start_serve_profile(
     app: AppHandle,
     params: ProfileParams,
@@ -399,20 +369,126 @@ pub async fn start_serve_profile(
         &app,
         &params.remote_name,
         &params.profile_name,
-        "serveConfigs",
+        OperationType::Serve.config_key(),
     )
     .await?;
 
     let mut serve_params = ServeParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.sync.configIncomplete",
+                "backendErrors.operations.configIncomplete",
                 "profile" => &params.profile_name
             )
         })?;
 
     // Ensure profile is set from the function parameter, not the config object
     serve_params.profile = Some(params.profile_name.clone());
+    serve_params.origin = params
+        .source
+        .or(Some(crate::utils::types::origin::Origin::Dashboard));
+    serve_params.quick_run_id = None;
+    serve_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
 
     start_serve(app, serve_params).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_serve_params_from_config() {
+        let config = json!({
+            "app": {
+                "vfsProfile": "vfs_profile",
+                "backendProfile": "backend_profile"
+            },
+            "rclone": {
+                "fs": "my_remote:bucket",
+                "serveType": "webdav",
+                "addr": ["127.0.0.1:8080"]
+            }
+        });
+
+        let settings = json!({
+            "vfsConfigs": {
+                "vfs_profile": {
+                    "vfs-cache-mode": "full"
+                }
+            },
+            "backendConfigs": {
+                "backend_profile": {
+                    "buffer-size": "16M"
+                }
+            }
+        });
+
+        let params = ServeParams::from_config("my_remote".to_string(), &config, &settings).unwrap();
+        assert_eq!(params.remote_name, "my_remote");
+        assert_eq!(params.source, "my_remote:bucket");
+        assert_eq!(params.serve_type, "webdav");
+        assert!(params.vfs_options.is_some());
+        assert_eq!(
+            params.vfs_options.unwrap().get("vfs-cache-mode").unwrap(),
+            "full"
+        );
+    }
+
+    #[test]
+    fn test_serve_to_rclone_body() {
+        let params = ServeParams {
+            remote_name: "my_remote".to_string(),
+            source: "my_remote:bucket".to_string(),
+            rclone_config: json!({
+                "addr": ["127.0.0.1:8080"],
+                "user": "admin"
+            }),
+            backend_options: Some(HashMap::from([
+                ("buffer-size".to_string(), json!("16M")),
+                ("BufferSize".to_string(), json!("32M")),
+            ])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!("secret/*")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            vfs_options: Some(HashMap::from([
+                ("vfs-cache-mode".to_string(), json!("full")),
+                ("CacheMode".to_string(), json!("off")),
+            ])),
+            runtime_remote_options: None,
+            profile: Some("serve_profile".to_string()),
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
+            workflow_id: None,
+            node_id: None,
+            serve_type: "webdav".to_string(),
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("fs").unwrap(), "my_remote:bucket");
+        assert_eq!(obj.get("type").unwrap(), "webdav");
+        assert_eq!(obj.get("user").unwrap(), "admin");
+
+        // Verify "addr" array unwrapping
+        assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
+
+        // Flat lowercase keys placed directly at root level (normalized)
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
+        assert_eq!(obj.get("exclude").unwrap(), "secret/*");
+        assert_eq!(obj.get("buffer_size").unwrap(), "16M");
+
+        // PascalCase nested options placed into their respective blocks
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "off");
+
+        let filter = obj.get("_filter").unwrap().as_object().unwrap();
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
+
+        let config = obj.get("_config").unwrap().as_object().unwrap();
+        assert_eq!(config.get("BufferSize").unwrap(), "32M");
+    }
 }

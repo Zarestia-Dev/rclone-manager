@@ -10,13 +10,12 @@ export type RuntimeStatus =
 export interface BackendInfo {
   name: string;
   isLocal: boolean;
+  isAuthGenerated: boolean;
   host: string;
-  oauthHost?: string;
   port: number;
   isActive: boolean;
   hasAuth: boolean;
   hasConfigPassword: boolean;
-  oauthPort?: number;
   username?: string;
   password?: string;
   version?: string;
@@ -35,7 +34,7 @@ export interface TestConnectionResult {
   config_path?: string;
 }
 
-export interface addBackendArgs {
+export interface AddBackendArgs {
   name: string;
   host: string;
   port: number;
@@ -44,35 +43,6 @@ export interface addBackendArgs {
   password?: string;
   configPassword?: string;
   configPath?: string;
-  oauthPort?: number;
-  oauthHost?: string;
   copyBackendFrom?: string | null;
   copyRemotesFrom?: string | null;
-}
-
-export interface SettingOption {
-  value: unknown;
-  label: string;
-  description?: string;
-}
-
-export interface BackendSettingMetadata {
-  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list' | 'object';
-  default: unknown;
-  value?: unknown;
-  constraints: {
-    text?: { pattern?: string };
-    number?: { min?: number; max?: number; step?: number };
-    options?: SettingOption[];
-    list?: { reserved?: string[] };
-  };
-  metadata: {
-    label?: string;
-    description?: string;
-    placeholder?: string;
-    input_type?: string;
-    group?: string;
-    order?: number;
-    [key: string]: unknown;
-  };
 }

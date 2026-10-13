@@ -1,33 +1,7 @@
-.modal {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  height: 100vh;
-  overflow: hidden;
-}
-
-// Loading Overlay
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-// Search Results Title
-.search-title {
-  flex: 1;
-  text-align: center;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
 // Floating Pending Indicator - Simplified GNOME style
 .floating-pending-indicator {
-  position: fixed;
-  top: var(--space-lg);
+  position: absolute;
+  bottom: var(--space-lg);
   right: var(--space-lg);
   display: flex;
   align-items: center;
@@ -38,6 +12,7 @@
   color: white;
   box-shadow: var(--shadow-popover);
   z-index: 9998;
+  cursor: pointer;
   transition: var(--transition-fast);
 
   &:hover {
@@ -63,7 +38,7 @@
   }
 
   @media (max-width: 540px) {
-    top: var(--space-sm);
+    bottom: var(--space-sm);
     right: var(--space-sm);
     padding: var(--space-xs) var(--space-sm);
   }
@@ -78,14 +53,15 @@
   justify-content: space-evenly;
 
   button {
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: var(--space-xxs);
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
     font-weight: 500;
+    color: var(--window-fg-color);
     transition: var(--transition-standard);
 
     &:hover {
@@ -101,9 +77,9 @@
 .desktop-tabs {
   gap: var(--space-xs);
   justify-content: center;
-  flex: 1;
 
   button {
+    flex-direction: row;
     gap: var(--space-xs);
   }
 }
@@ -112,158 +88,10 @@
   padding: var(--space-xs);
   background: var(--view-bg-color);
   box-shadow: 0 -1px 0 var(--card-shade-color);
-}
 
-// ============================================================================
-// Main Content Area
-// ============================================================================
-.modal-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-}
-
-.tab-content {
-  width: 100%;
-  margin: 0 auto;
-}
-
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-// ============================================================================
-// Setting Item
-// ============================================================================
-.setting-item {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  background: var(--view-bg-color);
-  padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius-md);
-  box-shadow: var(--box-shadow);
-  gap: var(--space-md);
-
-  &.layout-row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-
-    .setting-control {
-      max-width: 100%;
-      min-width: 0;
-    }
-
-    @media (max-width: 540px) {
-      flex-direction: column;
-      align-items: stretch;
-    }
+  button {
+    flex-direction: column;
   }
-}
-
-.setting-item-header {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.setting-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xxs);
-
-  strong {
-    font-weight: 500;
-    color: var(--window-fg-color);
-    line-height: 1.4;
-  }
-
-  p {
-    color: var(--dim-color);
-    font-size: var(--font-size-md);
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .setting-category {
-    margin-top: var(--space-xxs);
-  }
-}
-
-.reset-btn {
-  color: var(--orange);
-  background: rgba(var(--orange-rgb), 0.1);
-
-  &:hover {
-    background: rgba(var(--orange-rgb), 0.15);
-  }
-}
-
-.setting-control {
-  display: flex;
-  align-items: center;
-}
-
-// Control Wrapper
-.control-with-reset {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.control-field {
-  flex-grow: 1;
-  min-width: 0;
-}
-
-// Stepper Control
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-
-  .number-input.mat-mdc-form-field {
-    width: 120px;
-    flex-grow: 0;
-
-    input {
-      text-align: center;
-    }
-  }
-
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-}
-
-// Array Control
-.array-control-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  width: 100%;
-}
-
-.array-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.array-item {
-  display: flex;
-  align-items: center;
 }
 
 // ============================================================================
@@ -295,6 +123,11 @@
   gap: var(--space-xs);
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.array-error {
+  margin-top: var(--space-xxs);
+  font-size: var(--font-size-xs);
 }
 
 // ============================================================================
@@ -353,7 +186,7 @@
   padding: var(--space-sm) 0;
 
   &:not(:last-child) {
-    border-bottom: var(--row-separator);
+    border-bottom: 1px solid var(--card-shade-color);
   }
 }
 
@@ -369,8 +202,8 @@
     color: var(--window-fg-color);
   }
 
-  .change-category {
-    margin-bottom: var(--space-xxs);
+  .app-pill {
+    align-self: flex-start;
   }
 }
 
@@ -380,13 +213,17 @@
   flex-shrink: 0;
 
   .text-value {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
     color: var(--window-fg-color);
-    font-weight: 500;
-    max-width: 200px;
+    font-weight: 600;
+    background: var(--bg-elevated-2);
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--radius-sm);
+    max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-family: var(--font-mono);
   }
 }
 
@@ -395,7 +232,7 @@
   justify-content: flex-end;
   align-items: center;
   padding: var(--space-md);
-  background: rgba(var(--window-fg-color-rgb), 0.02);
+  background: var(--bg-elevated-1);
   border-top: 1px solid var(--card-shade-color);
   gap: var(--space-sm);
 

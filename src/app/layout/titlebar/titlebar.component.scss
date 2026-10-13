@@ -2,8 +2,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: var(--titlebar-height);
-  padding: var(--space-xxs) var(--title-bar-padding);
+  min-height: calc(var(--titlebar-height) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--space-xxs) + env(safe-area-inset-top, 0px));
+  padding-bottom: var(--space-xxs);
+  padding-left: var(--title-bar-padding);
+  padding-right: var(--title-bar-padding);
+  box-sizing: border-box;
 }
 
 .left-section {

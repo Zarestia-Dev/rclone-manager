@@ -1,18 +1,22 @@
-use log::{debug, error};
-use tauri::{AppHandle, Window, command};
+use log::debug;
+use tauri::{AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_opener::OpenerExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[command]
+use crate::core::bridge;
+
+#[bridge]
+#[cfg(desktop)]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
+    initial_path: Option<String>,
 ) -> Result<Option<String>, String> {
-    debug!("Opening folder picker dialog");
-
-    let folder = match app
-        .dialog()
-        .file()
+    let mut dialog = app.dialog().file();
+    if let Some(path) = initial_path {
+        dialog = dialog.set_directory(path);
+    }
+    let folder = match dialog
         .set_title("Select Folder")
         .blocking_pick_folder()
         .map(|p| p.to_string())
@@ -55,13 +59,13 @@ pub async fn get_folder_location(
                 }
                 Ok(_) => (), // Folder is empty
                 Err(e) => {
-                    error!("Error reading directory: {e}");
+                    log::error!("Error reading directory: {e}");
                     return Err(format!("Error checking folder: {e}"));
                 }
             },
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (), // Folder doesn't exist
             Err(e) => {
-                error!("Error accessing folder: {e}");
+                log::error!("Error accessing folder: {e}");
                 return Err(format!("Error accessing folder: {e}"));
             }
         }
@@ -71,7 +75,7 @@ pub async fn get_folder_location(
         if path.exists() {
             debug!("Removing existing empty folder on Windows");
             if let Err(e) = tokio::fs::remove_dir_all(path).await {
-                error!("Failed to remove folder: {}", e);
+                log::error!("Failed to remove folder: {}", e);
                 return Err(format!("Failed to prepare folder: {}", e));
             }
         }
@@ -80,38 +84,177 @@ pub async fn get_folder_location(
     Ok(Some(folder))
 }
 
-#[command]
-pub async fn open_in_files(
-    app: tauri::AppHandle,
-    path: std::path::PathBuf,
-) -> Result<String, String> {
-    if path.as_os_str().is_empty() {
+#[bridge]
+pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let clean_path = path.trim();
+    if clean_path.is_empty() {
         return Err(crate::localized_error!("backendErrors.file.invalidPath"));
     }
 
-    if !path.exists() {
-        return Err(crate::localized_error!(
-            "backendErrors.file.notFound",
-            "path" => path.display().to_string()
-        ));
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        if let Some(saf_target) = clean_path.strip_prefix("saf://") {
+            let remote = saf_target.split('/').next().unwrap_or("").trim_matches(':');
+            if remote.is_empty() {
+                return Err(crate::localized_error!("backendErrors.file.invalidPath"));
+            }
+            if crate::rclone::backend::saf_bridge::open_saf_remote(remote) {
+                return Ok(format!("Opened SAF remote {} in system files", remote));
+            } else {
+                return Err(crate::localized_error!(
+                    "backendErrors.file.failedToOpen",
+                    "error" => "SAF opener failed"
+                ));
+            }
+        }
+
+        if crate::rclone::backend::saf_bridge::open_local_path(clean_path) {
+            Ok(format!("Opened local path {} in file manager", clean_path))
+        } else {
+            Err(crate::localized_error!(
+                "backendErrors.file.failedToOpen",
+                "error" => "Failed to open local path in file manager"
+            ))
+        }
     }
 
-    let path_str = path
-        .to_str()
-        .ok_or_else(|| format!("Invalid path: {}", path.display()))?
-        .to_string();
-    match app.opener().open_path(path_str, None::<String>) {
-        Ok(_) => Ok(format!("Opened file manager at {}", path.display())),
-        Err(e) => Err(crate::localized_error!(
-            "backendErrors.file.failedToOpen",
-            "error" => e.to_string()
-        )),
+    #[cfg(not(target_os = "android"))]
+    {
+        use tauri_plugin_opener::OpenerExt;
+        let p = std::path::Path::new(clean_path);
+        if !p.exists() {
+            return Err(crate::localized_error!(
+                "backendErrors.file.notFound",
+                "path" => clean_path.to_string()
+            ));
+        }
+
+        match app.opener().open_path(clean_path, None::<String>) {
+            Ok(()) => Ok(format!("Opened file manager at {}", clean_path)),
+            Err(e) => Err(crate::localized_error!(
+                "backendErrors.file.failedToOpen",
+                "error" => e.to_string()
+            )),
+        }
     }
 }
 
-#[command]
+#[bridge]
+pub async fn open_file_natively(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    file_name: String,
+    is_local: bool,
+) -> Result<String, String> {
+    use tauri::Manager;
+
+    let clean_file_name = std::path::Path::new(&file_name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("document.pdf");
+
+    if is_local {
+        let mut full_path = std::path::PathBuf::from(&remote);
+        full_path.push(&path);
+
+        if !full_path.exists() {
+            return Err(crate::localized_error!(
+                "backendErrors.file.notFound",
+                "path" => full_path.display().to_string()
+            ));
+        }
+
+        let path_str = full_path
+            .to_str()
+            .ok_or_else(|| format!("Invalid path: {}", full_path.display()))?
+            .to_string();
+
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        {
+            use tauri_plugin_opener::OpenerExt;
+            app.opener()
+                .open_path(&path_str, None::<String>)
+                .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
+        }
+
+        return Ok(path_str);
+    }
+
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("Failed to get cache directory: {e}"))?
+        .join("temp_views");
+
+    tokio::fs::create_dir_all(&cache_dir)
+        .await
+        .map_err(|e| format!("Failed to create temp_views directory: {e}"))?;
+
+    let dest_path = cache_dir.join(clean_file_name);
+    let dest_str = dest_path
+        .to_str()
+        .ok_or_else(|| format!("Invalid target path: {}", dest_path.display()))?
+        .to_string();
+
+    let transport = crate::rclone::commands::common::transport(&app);
+
+    let mut reader = transport
+        .read_file(&remote, &path, None)
+        .await
+        .map_err(|e| format!("Failed to read remote file: {e}"))?;
+
+    let mut file = tokio::fs::File::create(&dest_path)
+        .await
+        .map_err(|e| format!("Failed to create temporary file: {e}"))?;
+
+    let mut buffer = vec![0; 65536];
+    loop {
+        let n = reader
+            .read(&mut buffer)
+            .await
+            .map_err(|e| format!("Error reading remote file stream: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])
+            .await
+            .map_err(|e| format!("Error writing temporary file: {e}"))?;
+    }
+    file.flush()
+        .await
+        .map_err(|e| format!("Error flushing temporary file: {e}"))?;
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        use tauri_plugin_opener::OpenerExt;
+        app.opener()
+            .open_path(&dest_str, None::<String>)
+            .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
+    }
+
+    Ok(dest_str)
+}
+
+/// Removes all temporary preview/viewer files cached in `app_cache_dir()/temp_views`.
+/// Called during app startup and shutdown.
+pub fn cleanup_temp_views(app: &AppHandle) {
+    use tauri::Manager;
+    if let Ok(cache_dir) = app.path().app_cache_dir() {
+        let temp_views_dir = cache_dir.join("temp_views");
+        if temp_views_dir.exists() {
+            if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
+                log::warn!("Failed to clean up temp_views directory: {e}");
+            } else {
+                debug!("Successfully cleaned up temp_views directory");
+            }
+        }
+    }
+}
+
+#[bridge]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");
 
     let file_location = window
@@ -125,9 +268,8 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
     Ok(file_location)
 }
 
-#[command]
+#[bridge]
 pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
-    use tauri_plugin_dialog::DialogExt;
     debug!("Opening multi-file picker dialog...");
 
     let file_locations = window.dialog().file().blocking_pick_files().map(|paths| {
@@ -140,4 +282,126 @@ pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, S
     debug!("File locations: {file_locations:?}");
 
     Ok(file_locations)
+}
+
+#[bridge]
+pub async fn get_save_file_location(
+    app: AppHandle,
+    default_name: Option<String>,
+) -> Result<Option<String>, String> {
+    let mut dialog = app.dialog().file();
+    if let Some(ref name) = default_name {
+        dialog = dialog.set_file_name(name);
+    }
+    let file_location = dialog.blocking_save_file().map(|path| path.to_string());
+    Ok(file_location)
+}
+
+#[bridge]
+pub async fn download_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    destination: String,
+    total_size: Option<u64>,
+    is_local: bool,
+) -> Result<(), String> {
+    let transport = crate::rclone::commands::common::transport(&app);
+
+    // Resolve target path and remote for rclone
+    let (remote_arg, path_arg) = if is_local {
+        let mut full_path = std::path::PathBuf::from(remote);
+        full_path.push(path);
+        ("".to_string(), full_path.to_string_lossy().into_owned())
+    } else {
+        (remote, path)
+    };
+
+    let mut reader = transport
+        .read_file(&remote_arg, &path_arg, None)
+        .await
+        .map_err(|e| format!("Failed to read file: {e}"))?;
+
+    #[cfg(target_os = "android")]
+    let mut file = if destination.starts_with("content://") {
+        use std::os::fd::FromRawFd;
+        let raw_fd = crate::rclone::backend::saf_bridge::open_content_uri_fd(&destination, "w")
+            .map_err(|e| format!("Failed to create destination file: {e}"))?;
+        let std_file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
+        tokio::fs::File::from_std(std_file)
+    } else {
+        if let Some(parent) = std::path::Path::new(&destination).parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        tokio::fs::File::create(&destination)
+            .await
+            .map_err(|e| format!("Failed to create destination file: {e}"))?
+    };
+
+    #[cfg(not(target_os = "android"))]
+    let mut file = {
+        if let Some(parent) = std::path::Path::new(&destination).parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        tokio::fs::File::create(&destination)
+            .await
+            .map_err(|e| format!("Failed to create destination file: {e}"))?
+    };
+
+    let mut buffer = vec![0; 65536]; // 64KB chunk
+    let mut downloaded_bytes: u64 = 0;
+
+    #[derive(serde::Serialize, Clone)]
+    struct DownloadProgressPayload {
+        destination: String,
+        downloaded: u64,
+        total: Option<u64>,
+        done: bool,
+    }
+
+    loop {
+        let n = reader
+            .read(&mut buffer)
+            .await
+            .map_err(|e| format!("Error reading source file: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])
+            .await
+            .map_err(|e| format!("Error writing destination file: {e}"))?;
+        downloaded_bytes += n as u64;
+
+        crate::core::bridge::emit(
+            "download-file-progress",
+            DownloadProgressPayload {
+                destination: destination.clone(),
+                downloaded: downloaded_bytes,
+                total: total_size,
+                done: false,
+            },
+        );
+    }
+
+    file.flush()
+        .await
+        .map_err(|e| format!("Error flushing destination file: {e}"))?;
+
+    crate::core::bridge::emit(
+        "download-file-progress",
+        DownloadProgressPayload {
+            destination: destination.clone(),
+            downloaded: downloaded_bytes,
+            total: total_size,
+            done: true,
+        },
+    );
+
+    Ok(())
 }

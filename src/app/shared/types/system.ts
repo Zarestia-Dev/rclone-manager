@@ -1,3 +1,7 @@
+export type PrimitiveValue = string | number | boolean | null;
+export type ConfigValue = PrimitiveValue | PrimitiveValue[] | { [key: string]: ConfigValue };
+
+// ── Rclone System Info ──────────────────────────────────────────────────────
 export interface RcloneInfo {
   version: string;
   decomposed: number[];
@@ -74,18 +78,13 @@ export const SENSITIVE_KEYS = [
   'client_id',
   'api_key',
   'drive_id',
-];
+] as const;
 
-// === Engine & App Events ===
-// Note: Engine events now use dedicated event constants with no payload
-// The event name itself indicates the state (ready, error, etc.)
-
-// App events have payloads with status and message
 export interface AppEventPayload {
   status: string;
   message?: string;
   language?: string;
-  data?: any;
+  data?: unknown; // Replaced any
 }
 
 export type AppEventPayloadType = AppEventPayload;
@@ -98,7 +97,6 @@ export enum BackendUpdateStatus {
   Available = 'available',
 }
 
-// === Update Info ===
 export interface UpdateInfo {
   version: string;
   currentVersion: string;
@@ -137,8 +135,6 @@ export interface UpdateResult {
   manual?: boolean;
 }
 
-// === Security / Passwords ===
-
 export interface LoadingStates {
   isValidating: boolean;
   isEncrypting: boolean;
@@ -175,14 +171,14 @@ export interface RcloneFlagMetadata {
   placeholder?: string;
 }
 
-export interface SettingMetadata {
+export interface SettingMetadata<T = ConfigValue> {
   value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
-  default: any;
-  value?: any;
+  default: T;
+  value?: T;
   min?: number;
   max?: number;
   step?: number;
-  options?: any[];
+  options?: ConfigValue[];
   metadata?: RcloneFlagMetadata;
   reserved?: string[];
 }
@@ -196,6 +192,9 @@ export enum RepairSheetType {
   MOUNT_PLUGIN = 'mount_plugin',
   RCLONE_PASSWORD = 'rclone_password',
   RCLONE_BINARY = 'rclone_binary',
+  RCLONE_VERSION = 'rclone_version',
+  RCLONE_AUTH = 'rclone_auth',
+  RCLONE_PORT = 'rclone_port',
 }
 
 export interface LocalDiskUsage {
@@ -204,3 +203,37 @@ export interface LocalDiskUsage {
   used: number;
   dir?: string;
 }
+
+export interface PendingChange {
+  category: string;
+  key: string;
+  value: ConfigValue; // Replaced unknown
+  metadata: SettingMetadata;
+}
+
+export interface PendingChangeDisplay {
+  displayName: string;
+  category: string;
+  key: string;
+  value: unknown;
+}
+
+export type ViewId =
+  | 'details'
+  | 'about-app'
+  | 'about-rclone'
+  | 'credits'
+  | 'legal'
+  | 'whats-new-app'
+  | 'whats-new-rclone'
+  | 'memory'
+  | 'debugging';
+
+export interface OverlayView {
+  id: ViewId;
+}
+
+/**
+ * Host system power actions supported by the native power bridge (`execute_system_power`).
+ */
+export type SystemPowerAction = 'shutdown' | 'sleep' | 'lock' | 'hibernate';

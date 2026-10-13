@@ -2,106 +2,83 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatDialogRef } from '@angular/material/dialog';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import { AlertHistoryComponent } from './history/alert-history.component';
 import { AlertRulesComponent } from './rules/alert-rules.component';
 import { AlertActionsComponent } from './actions/alert-actions.component';
 
 @Component({
   selector: 'app-alerts-modal',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
-    MatDialogModule,
-    TranslateModule,
+    TranslatePipe,
     AlertHistoryComponent,
     AlertRulesComponent,
     AlertActionsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="modal-header" data-tauri-drag-region>
-      <button>
+    <header data-tauri-drag-region>
+      <button tabindex="-1" aria-hidden="true">
         <mat-icon svgIcon="bell"></mat-icon>
       </button>
-      <p class="header-title">{{ 'alerts.title' | translate }}</p>
-      <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+      <p>{{ 'alerts.title' | translate }}</p>
+      <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
 
-    <div class="modal-container">
-      <mat-tab-group class="alerts-tabs" [animationDuration]="'150ms'">
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="bell" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.history' | translate }}</span>
-            @if (alerts.unacknowledged() > 0) {
-              <span class="tab-badge">{{ alerts.unacknowledged() }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-history></app-alert-history>
-          </div>
-        </mat-tab>
+    <mat-tab-group>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="bell" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.history' | translate }}</span>
+          @if (alerts.unacknowledged() > 0) {
+            <span class="tab-badge">{{ alerts.unacknowledged() }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-history></app-alert-history>
+        </div>
+      </mat-tab>
 
-        <!-- Rules -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="filter" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.rules' | translate }}</span>
-            @if (alerts.rules().length > 0) {
-              <span class="tab-count">{{ alerts.rules().length }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-rules></app-alert-rules>
-          </div>
-        </mat-tab>
+      <!-- Rules -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="filter" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.rules' | translate }}</span>
+          @if (alerts.rules().length > 0) {
+            <span class="tab-count">{{ alerts.rules().length }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-rules></app-alert-rules>
+        </div>
+      </mat-tab>
 
-        <!-- Actions -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="bolt" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.actions' | translate }}</span>
-            @if (alerts.actions().length > 0) {
-              <span class="tab-count">{{ alerts.actions().length }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-actions></app-alert-actions>
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    </div>
+      <!-- Actions -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="bolt" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.actions' | translate }}</span>
+          @if (alerts.actions().length > 0) {
+            <span class="tab-count">{{ alerts.actions().length }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-actions></app-alert-actions>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   `,
   styles: `
-    .alerts-tabs {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-
-      ::ng-deep .mat-mdc-tab-body-wrapper {
-        flex: 1;
-        min-height: 0;
-      }
-
-      ::ng-deep .mat-mdc-tab-body {
-        height: 100%;
-      }
-
-      ::ng-deep .mat-mdc-tab-body-content {
-        height: 100%;
-        overflow: hidden;
-      }
-    }
-
     .tab-content {
       height: 100%;
       overflow: hidden;
@@ -115,22 +92,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       opacity: 0.7;
     }
 
-    .tab-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-left: var(--space-xs);
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      border-radius: 9px;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
-      background: var(--warn-color);
-      color: #fff;
-    }
-
+    .tab-badge,
     .tab-count {
       display: inline-flex;
       align-items: center;
@@ -143,19 +105,26 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       font-size: 11px;
       font-weight: 700;
       line-height: 1;
-      background: rgba(var(--window-fg-color-rgb), 0.1);
+    }
+
+    .tab-badge {
+      background: var(--warn-color);
+      color: var(--accent-fg-color);
+    }
+
+    .tab-count {
+      background: var(--bg-elevated-4);
       color: var(--dim-color);
     }
   `,
   styleUrl: '../../../styles/_shared-modal.scss',
 })
 export class AlertsModalComponent {
-  private dialogRef = inject(MatDialogRef<AlertsModalComponent>);
-  private modalService = inject(ModalService);
+  private readonly dialogRef = inject(MatDialogRef<AlertsModalComponent>);
 
   readonly alerts = inject(AlertService);
 
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

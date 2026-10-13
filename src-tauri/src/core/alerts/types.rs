@@ -4,20 +4,19 @@
 //! (`utils::app::notification`). It defines the data model for alert rules,
 //! actions, and history records.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::utils::types::origin::Origin;
 
-// =============================================================================
-// SEVERITY
-// =============================================================================
-
 /// Alert severity levels, ordered from lowest to highest.
 /// Used to filter which events trigger a rule.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum AlertSeverity {
     #[default]
@@ -45,16 +44,11 @@ impl AlertSeverity {
         }
     }
 
-    /// Returns the numeric severity code.
-    /// Delegates to the enum discriminant — always in sync with variant order.
-    pub fn as_code(&self) -> u8 {
-        self.clone() as u8
+    /// Numeric severity code (delegates to the enum discriminant).
+    pub fn as_code(self) -> u8 {
+        self as u8
     }
 }
-
-// =============================================================================
-// EVENT KIND
-// =============================================================================
 
 /// The class of event that triggered an alert.
 /// Derived from `NotificationEvent` variants in the alert engine.
@@ -63,7 +57,7 @@ impl AlertSeverity {
 pub enum AlertEventKind {
     /// Manual rclone jobs (Sync, Copy, Move, Delete, etc.)
     Job,
-    /// Background server processes (DLNA, WebDAV, etc.)
+    /// Background server processes (DLNA, `WebDAV`, etc.)
     Serve,
     /// FUSE drive mounting operations
     Mount,
@@ -77,6 +71,8 @@ pub enum AlertEventKind {
     System,
     /// Export operations (credentials, profiles, settings, etc.)
     Export,
+    /// Visual workflow DAG executions
+    Workflow,
 }
 
 impl std::fmt::Display for AlertEventKind {
@@ -96,13 +92,10 @@ impl AlertEventKind {
             Self::Automation => "automation",
             Self::System => "system",
             Self::Export => "export",
+            Self::Workflow => "workflow",
         }
     }
 }
-
-// =============================================================================
-// ALERT RULE
-// =============================================================================
 
 /// A user-defined rule: "When this event fires under these conditions →
 /// execute these actions."
@@ -138,6 +131,11 @@ pub struct AlertRule {
     /// Which profile names to watch. Empty = all profiles.
     #[setting(label = "Profile Filter")]
     pub profile_filter: Vec<String>,
+
+    /// Which workflow IDs or names to watch. Empty = all workflows.
+    #[setting(label = "Workflow Filter")]
+    #[serde(default)]
+    pub workflow_filter: Vec<String>,
 
     /// IDs of `AlertAction` entries to execute when this rule fires.
     #[setting(label = "Actions")]
@@ -193,6 +191,7 @@ impl Default for AlertRule {
             origin_filter: vec![],
             backend_filter: vec![],
             profile_filter: vec![],
+            workflow_filter: vec![],
             action_ids: vec![],
             cooldown_secs: 0,
             max_fire_count: 0,
@@ -204,10 +203,6 @@ impl Default for AlertRule {
         }
     }
 }
-
-// =============================================================================
-// ALERT ACTIONS
-// =============================================================================
 
 /// Shared fields present on every action variant.
 /// Embed this in each concrete action struct so `AlertAction` accessor
@@ -222,54 +217,31 @@ pub struct ActionCommon {
 }
 
 /// A tagged-union of the different action types.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 #[serde(tag = "kind")]
 pub enum AlertAction {
+    #[cfg(feature = "tauri-plugin-notification")]
+    #[serde(rename = "os_toast")]
+    #[setting(label = "System Notification")]
+    OsToast(OsToastAction),
     #[serde(rename = "webhook")]
+    #[setting(label = "Webhook")]
     Webhook(WebhookAction),
     #[serde(rename = "script")]
+    #[setting(label = "Shell Script")]
     Script(ScriptAction),
-    #[serde(rename = "os_toast")]
-    OsToast(OsToastAction),
     #[serde(rename = "telegram")]
+    #[setting(label = "Telegram")]
     Telegram(TelegramAction),
+    #[serde(rename = "whatsapp")]
+    #[setting(label = "WhatsApp")]
+    Whatsapp(WhatsappAction),
     #[serde(rename = "mqtt")]
+    #[setting(label = "MQTT")]
     Mqtt(MqttAction),
     #[serde(rename = "email")]
+    #[setting(label = "Email")]
     Email(EmailAction),
-}
-
-impl rcman::SettingsSchema for AlertAction {
-    fn get_metadata() -> std::collections::HashMap<String, rcman::SettingMetadata> {
-        let mut meta = std::collections::HashMap::new();
-
-        // Merge schemas from all variants to satisfy rcman's strict schema validation.
-        meta.extend(<WebhookAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<ScriptAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<TelegramAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<EmailAction as rcman::SettingsSchema>::get_metadata());
-
-        // Add the enum tag field
-        meta.insert(
-            "kind".to_string(),
-            rcman::SettingMetadata::select(
-                "os_toast",
-                vec![
-                    rcman::opt("webhook", "Webhook"),
-                    rcman::opt("script", "Shell Script"),
-                    rcman::opt("os_toast", "System Notification"),
-                    rcman::opt("telegram", "Telegram"),
-                    rcman::opt("mqtt", "MQTT"),
-                    rcman::opt("email", "Email"),
-                ],
-            )
-            .meta_str("label", "Action Type"),
-        );
-
-        meta
-    }
 }
 
 impl std::fmt::Display for AlertAction {
@@ -280,7 +252,14 @@ impl std::fmt::Display for AlertAction {
 
 impl Default for AlertAction {
     fn default() -> Self {
-        Self::OsToast(OsToastAction::default())
+        #[cfg(feature = "tauri-plugin-notification")]
+        {
+            Self::OsToast(OsToastAction::default())
+        }
+        #[cfg(not(feature = "tauri-plugin-notification"))]
+        {
+            Self::Webhook(WebhookAction::default())
+        }
     }
 }
 
@@ -288,10 +267,12 @@ impl AlertAction {
     /// Returns a reference to the shared fields common to all action variants.
     pub fn common(&self) -> &ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &a.common,
             Self::Webhook(a) => &a.common,
             Self::Script(a) => &a.common,
-            Self::OsToast(a) => &a.common,
             Self::Telegram(a) => &a.common,
+            Self::Whatsapp(a) => &a.common,
             Self::Mqtt(a) => &a.common,
             Self::Email(a) => &a.common,
         }
@@ -300,10 +281,12 @@ impl AlertAction {
     /// Returns a mutable reference to the shared fields.
     pub fn common_mut(&mut self) -> &mut ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &mut a.common,
             Self::Webhook(a) => &mut a.common,
             Self::Script(a) => &mut a.common,
-            Self::OsToast(a) => &mut a.common,
             Self::Telegram(a) => &mut a.common,
+            Self::Whatsapp(a) => &mut a.common,
             Self::Mqtt(a) => &mut a.common,
             Self::Email(a) => &mut a.common,
         }
@@ -321,16 +304,19 @@ impl AlertAction {
         self.common().enabled
     }
 
+    #[cfg(feature = "tauri-plugin-notification")]
     pub fn set_enabled(&mut self, enabled: bool) {
         self.common_mut().enabled = enabled;
     }
 
     pub fn kind_str(&self) -> &'static str {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(_) => "os_toast",
             Self::Webhook(_) => "webhook",
             Self::Script(_) => "script",
-            Self::OsToast(_) => "os_toast",
             Self::Telegram(_) => "telegram",
+            Self::Whatsapp(_) => "whatsapp",
             Self::Mqtt(_) => "mqtt",
             Self::Email(_) => "email",
         }
@@ -429,23 +415,34 @@ impl Default for ScriptAction {
 /// Fires a system notification using `tauri-plugin-notification`.
 /// Enabled/disabled state is toggled directly when the user changes the
 /// `general.notifications` setting.
+#[cfg(feature = "tauri-plugin-notification")]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, DeriveSettingsSchema)]
 pub struct OsToastAction {
     #[serde(flatten)]
     pub common: ActionCommon,
 }
 
-/// Telegram bot notification action.
+fn default_telegram_mode() -> String {
+    "bot".to_string()
+}
+
+fn default_whatsapp_provider() -> String {
+    "callmebot".to_string()
+}
+
+/// Telegram notification action.
 ///
-/// Sends messages to Telegram using the Bot API.
+/// Supports Bot API ("bot" mode) and Bot-less Telegram via CallMeBot / Gateway ("botless" mode).
 /// The `body_template` supports Handlebars variables like webhook actions.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct TelegramAction {
     #[serde(flatten)]
     pub common: ActionCommon,
+    #[serde(default = "default_telegram_mode")]
+    pub mode: String,
     #[setting(secret, label = "Bot Token", input_type = "password")]
     pub bot_token: String,
-    #[setting(secret, label = "Chat ID", input_type = "password")]
+    #[setting(secret, label = "Chat ID / Username", input_type = "password")]
     pub chat_id: String,
     #[setting(label = "Message Template", input_type = "textarea")]
     pub body_template: String,
@@ -463,8 +460,53 @@ impl Default for TelegramAction {
                 name: String::new(),
                 enabled: true,
             },
+            mode: default_telegram_mode(),
             bot_token: String::new(),
             chat_id: String::new(),
+            body_template: String::new(),
+            timeout_secs: 30,
+            retry_count: 0,
+        }
+    }
+}
+
+/// WhatsApp notification action (via CallMeBot API or custom HTTP gateway).
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
+pub struct WhatsappAction {
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(
+        secret,
+        label = "Phone Number",
+        placeholder = "+1234567890",
+        input_type = "password"
+    )]
+    pub phone: String,
+    #[setting(secret, label = "API Key (CallMeBot)", input_type = "password")]
+    pub apikey: String,
+    #[serde(default = "default_whatsapp_provider")]
+    pub provider: String,
+    pub gateway_url: Option<String>,
+    #[setting(label = "Message Template", input_type = "textarea")]
+    pub body_template: String,
+    #[setting(label = "Timeout (s)", min = 1, max = 300)]
+    pub timeout_secs: u64,
+    #[setting(label = "Retry Count", min = 0, max = 3)]
+    pub retry_count: u8,
+}
+
+impl Default for WhatsappAction {
+    fn default() -> Self {
+        Self {
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
+            phone: String::new(),
+            apikey: String::new(),
+            provider: default_whatsapp_provider(),
+            gateway_url: None,
             body_template: String::new(),
             timeout_secs: 30,
             retry_count: 0,
@@ -576,10 +618,6 @@ impl Default for EmailAction {
     }
 }
 
-// =============================================================================
-// ALERT RECORD  (history)
-// =============================================================================
-
 /// Immutable record of one alert firing. Written to the in-memory history cache.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertRecord {
@@ -606,7 +644,7 @@ pub struct AlertRecord {
     pub ack_at: Option<DateTime<Utc>>,
 }
 
-/// Details of an alert firing, grouped to avoid clippy::too_many_arguments.
+/// Details of an alert firing, grouped to avoid `clippy::too_many_arguments`.
 #[derive(Debug, Clone)]
 pub struct AlertDetails {
     pub event_kind: AlertEventKind,
@@ -660,10 +698,6 @@ pub struct ActionResult {
     pub duration_ms: u64,
 }
 
-// =============================================================================
-// ALERT STATS
-// =============================================================================
-
 /// Aggregate statistics about the alert history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertStats {
@@ -672,10 +706,6 @@ pub struct AlertStats {
     pub by_severity: HashMap<AlertSeverity, usize>,
     pub by_rule: HashMap<String, usize>,
 }
-
-// =============================================================================
-// PAGINATED HISTORY QUERY
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlertHistoryFilter {

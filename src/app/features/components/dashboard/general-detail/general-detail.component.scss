@@ -1,10 +1,14 @@
 /* --- Main Container --- */
-.remote-details {
+:host {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
   margin: 0 auto;
   padding: var(--space-md);
+  width: 100%;
+  overflow: auto;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .header-content {
@@ -116,9 +120,11 @@
       color: white;
     }
 
-    // Type-specific active states
     &.serve,
-    &.mount {
+    &.mount,
+    &.check,
+    &.copyurl,
+    &.cryptcheck {
       background: rgba(var(--accent-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--accent-color);
@@ -127,7 +133,8 @@
         color: var(--accent-color);
       }
     }
-    &.sync {
+    &.sync,
+    &.archivecreate {
       background: rgba(var(--primary-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--primary-color);
@@ -163,24 +170,34 @@
         color: var(--purple);
       }
     }
-  }
-
-  // Hover effects
-  &:hover {
-    &:not(.active) {
-      background: var(--hover-bg-color);
-    }
-
-    &.active {
+    &.delete {
+      background: rgba(var(--warn-color-rgb), var(--active-opacity));
       .status-dot {
-        transform: scale(1.05);
+        background: var(--warn-color);
+      }
+      .status-label {
+        color: var(--warn-color);
       }
     }
   }
 
   &.disabled {
-    opacity: 0.5;
-    pointer-events: none;
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+
+    &:hover {
+      transform: none !important;
+    }
+  }
+}
+
+.configure-toggle-btn {
+  color: var(--dim-color);
+  &:hover {
+    mat-icon {
+      color: var(--primary-color);
+    }
   }
 }
 
@@ -191,7 +208,7 @@
   width: var(--icon-size-md);
   height: var(--icon-size-md);
   border-radius: 50%;
-  background: rgba(var(--window-fg-color-rgb), 0.06);
+  background: var(--bg-elevated-2);
   transition: var(--transition-fast);
 
   mat-icon {
@@ -215,14 +232,13 @@
   flex-direction: column;
   gap: var(--panel-gap);
   max-width: 1200px;
-  min-width: 320px;
   margin: 0 auto;
   width: 100%;
 }
 
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
-  .remote-details {
+  :host {
     padding: var(--header-gap);
     gap: var(--space-xs);
   }
@@ -254,13 +270,6 @@
 
 /* --- Automations Card --- */
 .automations-card {
-  .panel-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--window-fg-color);
-  }
-
   .carousel-indicators {
     display: flex;
     justify-content: center;
@@ -300,6 +309,38 @@
       &:disabled {
         opacity: 0.3;
       }
+    }
+  }
+}
+
+/* --- Quick Runs Card --- */
+.quick-runs-card {
+  mat-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--space-sm);
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      color: var(--window-fg-color);
+
+      mat-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  mat-card-content {
+    .quick-runs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-md);
+      align-items: start;
     }
   }
 }

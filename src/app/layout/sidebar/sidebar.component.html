@@ -1,124 +1,125 @@
-<div class="sidebar">
-  <!-- Header Section -->
-  <div
-    class="sidebar-header"
-    (click)="toggleSearch()"
-    [matTooltip]="'sidebar.toggleSearch' | translate"
-    [attr.aria-label]="'sidebar.toggleSearch' | translate"
-    matTooltipShowDelay="500"
-    role="button"
-    tabindex="0"
-  >
-    <h3>
-      <mat-icon svgIcon="server"></mat-icon>
-      {{ 'sidebar.remotes' | translate }}
-    </h3>
-  </div>
+<!-- Header Section -->
+<div
+  class="sidebar-header"
+  (click)="toggleSearch()"
+  [attr.title]="toggleSearchTitle() | translate"
+  [attr.aria-label]="toggleSearchTitle() | translate"
+  role="button"
+  tabindex="0"
+  (keydown.enter)="toggleSearch()"
+>
+  <h3>
+    <mat-icon [svgIcon]="icon()"></mat-icon>
+    <span>{{ title() | translate }}</span>
+  </h3>
+</div>
 
-  <!-- Search Container -->
-  <app-search-container
-    [visible]="searchVisible()"
-    [searchText]="searchTerm()"
-    (searchTextChange)="onSearchTextChange($event)"
-    [placeholder]="'sidebar.searchPlaceholder' | translate"
-    [ariaLabel]="'sidebar.searchAriaLabel' | translate"
-  >
-  </app-search-container>
+<!-- Search Container -->
+<app-search-container
+  [visible]="searchVisible()"
+  (searchToggle)="toggleSearch()"
+  [searchText]="searchTerm()"
+  (searchTextChange)="onSearchTextChange($event)"
+  [placeholder]="searchPlaceholder() | translate"
+  [ariaLabel]="searchAriaLabel() | translate"
+>
+</app-search-container>
 
-  <!-- Scrollable Content Area -->
-  <div class="content-area">
+<!-- Scrollable Content Area -->
+<div class="content-area">
+  @if (isLoading()) {
+    <div class="loading-state">
+      <mat-icon svgIcon="spinner" class="spinner"></mat-icon>
+      <span>{{ loadingText() | translate }}</span>
+    </div>
+  } @else if (!hasAny()) {
+    <div class="no-remotes">
+      <mat-icon [svgIcon]="emptyIcon()"></mat-icon>
+      <span>{{ emptyText() | translate }}</span>
+    </div>
+  } @else if (mode() === 'remotes') {
     @if (filteredRemotes().length > 0) {
-      <ul>
-        @for (remote of filteredRemotes(); track remote.name) {
-          <mat-card
-            class="remote-card"
-            (click)="selectRemote(remote)"
-            [class.selected]="selectedRemote()?.name === remote.name"
-            [class.is-hidden-on-dashboard]="hiddenRemotes().includes(remote.name)"
-          >
-            <mat-card-content class="card-content">
-              <!-- Remote Name with Status Indicators -->
-              <div class="remote-header">
-                <div class="remote-name-wrapper">
-                  <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
-                    {{ remote.name }}
-                  </h4>
-                  @if (hiddenRemotes().includes(remote.name)) {
-                    <mat-icon
-                      svgIcon="eye-slash"
-                      class="hidden-indicator"
-                      [matTooltip]="'sidebar.hiddenOnDashboard' | translate"
-                    ></mat-icon>
-                  }
-                </div>
-                <div class="status-indicators">
-                  @if (remote.status.mount) {
-                    <div
-                      class="status-dot mount"
-                      [class.active]="statusService.getMountProfileCount(remote) > 0"
-                      [matTooltip]="statusService.getMountTooltip(remote)"
-                      matTooltipShowDelay="500"
-                      [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
-                    >
-                      <mat-icon svgIcon="mount"></mat-icon>
-                      @if (statusService.getMountProfileCount(remote) > 1) {
-                        <span class="count-badge">{{
-                          statusService.getMountProfileCount(remote)
-                        }}</span>
-                      }
-                    </div>
-                  }
-
+      @for (remote of filteredRemotes(); track remote.name) {
+        @let isHidden = hiddenRemotesSet().has(remote.name);
+        @let mountCount = remote.status.mount ? statusService.getMountProfileCount(remote) : 0;
+        @let syncCount = statusService.getSyncProfileCount(remote);
+        @let activeSync = statusService.getActiveSyncOperationType(remote);
+        @let serveCount =
+          remote.status.serve.active ? statusService.getServeProfileCount(remote) : 0;
+        <mat-card
+          class="sidebar-card"
+          (click)="selectRemote(remote)"
+          [class.selected]="selectedRemote()?.name === remote.name"
+          [class.is-hidden-on-dashboard]="isHidden"
+        >
+          <mat-card-content class="card-content">
+            <div class="card-header">
+              <div class="name-wrapper">
+                <h4 [attr.title]="remote.name">
+                  {{ remote.name }}
+                </h4>
+                @if (isHidden) {
+                  <mat-icon
+                    svgIcon="eye-slash"
+                    class="hidden-indicator"
+                    [attr.title]="'sidebar.hiddenOnDashboard' | translate"
+                  ></mat-icon>
+                }
+              </div>
+              <div class="status-indicators">
+                @if (remote.status.mount) {
                   <div
-                    class="status-dot sync-operations"
-                    [class.active]="statusService.getSyncProfileCount(remote) > 0"
-                    [class.sync]="statusService.getActiveSyncOperationType(remote) === 'sync'"
-                    [class.copy]="statusService.getActiveSyncOperationType(remote) === 'copy'"
-                    [class.move]="statusService.getActiveSyncOperationType(remote) === 'move'"
-                    [class.bisync]="statusService.getActiveSyncOperationType(remote) === 'bisync'"
-                    [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
-                    matTooltipShowDelay="500"
-                    [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
+                    class="status-dot mount"
+                    [class.active]="mountCount > 0"
+                    [attr.title]="statusService.getMountTooltip(remote)"
+                    [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
                   >
-                    <mat-icon
-                      [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"
-                    ></mat-icon>
-                    @if (statusService.getSyncProfileCount(remote) > 1) {
-                      <span class="count-badge">{{
-                        statusService.getSyncProfileCount(remote)
-                      }}</span>
+                    <mat-icon svgIcon="mount"></mat-icon>
+                    @if (mountCount > 1) {
+                      <span class="count-badge">{{ mountCount }}</span>
                     }
                   </div>
+                }
 
-                  @if (remote.status.serve.active) {
-                    <div
-                      class="status-dot serve active"
-                      [matTooltip]="statusService.getServeTooltip(remote)"
-                      matTooltipShowDelay="500"
-                      [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
-                    >
-                      <mat-icon svgIcon="satellite-dish"></mat-icon>
-                      @if (statusService.getServeProfileCount(remote) > 1) {
-                        <span class="count-badge">{{
-                          statusService.getServeProfileCount(remote)
-                        }}</span>
-                      }
-                    </div>
+                <div
+                  class="status-dot sync-operations"
+                  [class.active]="syncCount > 0"
+                  [class.sync]="activeSync === 'sync'"
+                  [class.copy]="activeSync === 'copy'"
+                  [class.move]="activeSync === 'move'"
+                  [class.bisync]="activeSync === 'bisync'"
+                  [attr.title]="statusService.getSyncOperationsTooltip(remote)"
+                  [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
+                >
+                  <mat-icon [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"></mat-icon>
+                  @if (syncCount > 1) {
+                    <span class="count-badge">{{ syncCount }}</span>
                   }
                 </div>
-              </div>
 
-              <!-- Remote Type -->
-              <div class="remote-type">
-                <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-                {{ remote.type | titlecase }}
+                @if (remote.status.serve.active) {
+                  <div
+                    class="status-dot serve active"
+                    [attr.title]="statusService.getServeTooltip(remote)"
+                    [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
+                  >
+                    <mat-icon svgIcon="satellite-dish"></mat-icon>
+                    @if (serveCount > 1) {
+                      <span class="count-badge">{{ serveCount }}</span>
+                    }
+                  </div>
+                }
               </div>
-            </mat-card-content>
-          </mat-card>
-        }
-      </ul>
+            </div>
+
+            <div class="card-type">
+              <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              {{ remote.type | titlecase }}
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
     } @else {
-      <!-- No Remotes State -->
       <div class="no-remotes">
         <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm().trim()) {
@@ -128,5 +129,154 @@
         }
       </div>
     }
-  </div>
+  } @else if (mode() === 'flow') {
+    @if (filteredQuickRuns().length > 0 || filteredWorkflows().length > 0) {
+      @if (filteredQuickRuns().length > 0) {
+        <div class="flow-section-header" [class.active-section]="flowSubMode() === 'quick_run'">
+          <mat-icon svgIcon="quick-run" class="section-icon"></mat-icon>
+          <span class="section-title">{{ 'flow.tabs.quickRun' | translate }}</span>
+          <span class="count-badge">{{ filteredQuickRuns().length }}</span>
+        </div>
+        @for (qr of filteredQuickRuns(); track trackByQuickRunId($index, qr)) {
+          @let running = isQuickRunRunning(qr.id);
+          <mat-card
+            class="sidebar-card"
+            (click)="selectQuickRun(qr.id)"
+            [class.selected]="isQuickRunSelected(qr.id)"
+            [class.is-running]="running"
+          >
+            <mat-card-content class="card-content">
+              <div class="card-header">
+                <div class="name-wrapper">
+                  <mat-icon
+                    svgIcon="quick-run"
+                    class="item-kind-icon"
+                    [attr.title]="'flow.tabs.quickRun' | translate"
+                  ></mat-icon>
+                  <h4 [attr.title]="qr.name">{{ qr.name }}</h4>
+                </div>
+                <div class="status-indicators">
+                  @if (hasCron(qr)) {
+                    <mat-icon
+                      svgIcon="clock"
+                      class="feature-icon cron"
+                      [attr.title]="'flow.quickRun.badges.scheduled' | translate"
+                    ></mat-icon>
+                  }
+                  @if (hasWatcher(qr)) {
+                    <mat-icon
+                      svgIcon="eye"
+                      class="feature-icon watcher"
+                      [attr.title]="'flow.quickRun.badges.watcher' | translate"
+                    ></mat-icon>
+                  }
+                  @if (hasAutoStart(qr)) {
+                    <mat-icon
+                      svgIcon="bolt"
+                      class="feature-icon autostart"
+                      [attr.title]="'flow.quickRun.badges.autostart' | translate"
+                    ></mat-icon>
+                  }
+                  @if (running) {
+                    <span
+                      class="status-dot-mini running"
+                      [attr.title]="'flow.quickRun.status.running' | translate"
+                    ></span>
+                  }
+                </div>
+              </div>
+
+              <div class="card-type">
+                <mat-icon [svgIcon]="getQuickRunIcon(qr)"></mat-icon>
+                <span>{{ getQuickRunActionLabel(qr) | translate }}</span>
+                <span class="separator">·</span>
+                <span class="remote-name">{{ qr.remoteName }}</span>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      }
+
+      @if (filteredWorkflows().length > 0) {
+        <div class="flow-section-header" [class.active-section]="flowSubMode() === 'builder'">
+          <mat-icon svgIcon="workflow" class="section-icon"></mat-icon>
+          <span class="section-title">{{ 'flow.tabs.workflow' | translate }}</span>
+          <span class="count-badge">{{ filteredWorkflows().length }}</span>
+        </div>
+        @for (wf of filteredWorkflows(); track trackByWorkflowId($index, wf)) {
+          @let running = isWorkflowRunning(wf.id);
+          <mat-card
+            class="sidebar-card"
+            (click)="selectWorkflow(wf)"
+            [class.selected]="isWorkflowSelected(wf.id)"
+            [class.is-running]="running"
+          >
+            <mat-card-content class="card-content">
+              <div class="card-header">
+                <div class="name-wrapper">
+                  <mat-icon
+                    svgIcon="workflow"
+                    class="item-kind-icon"
+                    [attr.title]="'flow.tabs.workflow' | translate"
+                  ></mat-icon>
+                  <h4 [attr.title]="wf.name">{{ wf.name }}</h4>
+                </div>
+                <div class="status-indicators">
+                  @if (getWorkflowCron(wf); as cronExpr) {
+                    <mat-icon
+                      svgIcon="clock"
+                      class="feature-icon cron"
+                      [attr.title]="getWorkflowTriggerTooltip(wf)"
+                    ></mat-icon>
+                  }
+                  @if (hasWatcherNode(wf)) {
+                    <mat-icon
+                      svgIcon="eye"
+                      class="feature-icon watcher"
+                      [attr.title]="'flow.quickRun.badges.watcher' | translate"
+                    ></mat-icon>
+                  }
+                  @if (hasAutoStartNode(wf)) {
+                    <mat-icon
+                      svgIcon="bolt"
+                      class="feature-icon autostart"
+                      [attr.title]="'flow.quickRun.badges.autostart' | translate"
+                    ></mat-icon>
+                  }
+                  @if (running) {
+                    <span
+                      class="status-dot-mini running"
+                      [attr.title]="'flow.workflow.status.running' | translate"
+                    ></span>
+                  }
+                </div>
+              </div>
+
+              <div class="card-type">
+                <mat-icon
+                  [svgIcon]="getWorkflowTriggerIcon(wf)"
+                  [attr.title]="getWorkflowTriggerTooltip(wf)"
+                ></mat-icon>
+                <span
+                  >{{ wf.nodes.length }}
+                  {{ 'flow.workflow.stats.nodes' | translate | lowercase }}</span
+                >
+                @if (getWorkflowTriggerSummary(wf); as trigger) {
+                  <span class="separator">·</span>
+                  <span class="remote-name" [attr.title]="getWorkflowTriggerTooltip(wf)">{{
+                    trigger
+                  }}</span>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      }
+    } @else {
+      <div class="no-remotes">
+        <mat-icon svgIcon="search"></mat-icon>
+        <span>{{ 'flow.noResults' | translate }}</span>
+      </div>
+    }
+  }
 </div>

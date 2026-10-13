@@ -6,7 +6,6 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 
-/// Send an email notification.
 pub async fn dispatch(action: &EmailAction, ctx: &TemplateContext) -> Result<(), String> {
     if action.smtp_server.is_empty() {
         return Err(format!(

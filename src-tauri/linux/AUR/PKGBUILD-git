@@ -1,7 +1,7 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager-git
 appname='RClone.Manager'
-pkgver=0.2.6
+pkgver=0.3.3
 pkgrel=1
 pkgdesc="User-friendly GUI for Rclone"
 arch=('x86_64' 'aarch64')
@@ -74,6 +74,20 @@ post_upgrade() {
 }
 
 post_remove() {
-  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor
-  update-desktop-database -q
+  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor 2>/dev/null || true
+  update-desktop-database -q 2>/dev/null || true
+
+  # Clean up user context menu registrations
+  for user_home in /root /home/*; do
+    if [ -d "$user_home" ]; then
+      # Nautilus scripts
+      rm -f "$user_home/.local/share/nautilus/scripts/"*" (RClone Manager)"
+      # Nautilus Python extensions
+      rm -f "$user_home/.local/share/nautilus-python/extensions/"*"_rclone_manager.py"
+      # Dolphin service menus
+      rm -f "$user_home/.local/share/kio/servicemenus/"*" (RClone Manager).desktop"
+      # Nemo actions
+      rm -f "$user_home/.local/share/nemo/actions/"*" (RClone Manager).nemo_action"
+    fi
+  done
 }

@@ -1802,28 +1802,16 @@
         "help": "Token de https://www.linkbox.to/admin/account"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "Correo electrónico",
+        "help": "Correo electrónico para iniciar sesión"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "Contraseña",
+        "help": "Contraseña para iniciar sesión"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
-      },
-      "upload_concurrency": {
-        "title": "Concurrencia de subida",
-        "help": "Concurrencia para subidas multiparte.\n\nEste es el número de fragmentos del mismo archivo que se suben simultáneamente.\n\nTenga en cuenta que cada fragmento se almacena en búfer en la memoria."
-      },
-      "upload_cutoff": {
-        "title": "Límite de subida",
-        "help": "Límite para cambiar a la subida multiparte.\n\nCualquier archivo más grande que este se subirá en fragmentos de chunk_size. El mínimo es 100 MiB y el máximo es 5 GiB."
-      },
-      "chunk_size": {
-        "title": "Tamaño del fragmento",
-        "help": "Tamaño de fragmento para subidas multiparte.\n\nLos archivos más grandes que upload_cutoff se subirán en fragmentos de este tamaño.\n\nEl uso de memoria es aproximadamente chunk_size * upload_concurrency."
+        "title": "Token web",
+        "help": "Token de inicio de sesión de la API web: se establece automáticamente."
       }
     },
     "local": {
@@ -1901,7 +1889,15 @@
       },
       "zero_size_links": {
         "title": "Enlaces de tamaño cero",
-        "help": "Asumir que el tamaño estadístico de los enlaces es cero (y leerlos en su lugar) (obsoleto).\n\nRclone solía usar el tamaño estadístico de los enlaces como tamaño del enlace, pero esto falla en bastantes casos:\n\n- Windows\n- En algunos sistemas de archivos virtuales (como ash LucidLink)\n- Android\n\nPor lo tanto, rclone ahora siempre lee el enlace.\n"
+        "help": "Asumir que el tamaño Stat de los enlaces es cero (depreciado)."
+      },
+      "metadata_restore_special_bits": {
+        "title": "Restaurar bits especiales de metadatos",
+        "help": "Restaura los bits setuid, setgid y sticky de los metadatos.\n\nAl restaurar metadatos con --metadata, rclone aplica el \"modo\" desde la fuente. Por defecto, rclone aplica solo los bits de permiso y elimina los bits setuid, setgid y sticky.\n\nEl \"modo\" proviene del remoto de origen, que puede no ser de confianza. Restaurar un bit setuid o setgid puede ser peligroso, especialmente al ejecutar como root desde una fuente no confiable. Por esta razón, estos bits no se restauran por defecto.\n\nSi confía en la fuente y desea restaurar estos bits especiales, active esta opción."
+      },
+      "fatal_if_no_space": {
+        "title": "Error fatal si no hay espacio",
+        "help": "Hace que los errores de falta de espacio sean fatales durante las transferencias.\n\nCuando se activa, un error ENOSPC durante una escritura devuelve un error fatal para que rclone se anule en lugar de reintentar la operación. Útil para scripts de respaldo que deben detenerse inmediatamente con un disco lleno en lugar de girar reintentando."
       }
     },
     "mailru": {
@@ -3574,24 +3570,6 @@
         "help": "Lista de servidores ascendentes separados por espacio.\n\nPuede ser 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', etc.."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Token de acceso",
-        "help": "Tu token de acceso.\n\nConsíguelo en https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Descripción",
-        "help": "Descripción del control remoto."
-      },
-      "encoding": {
-        "title": "Codificación",
-        "help": "La codificación del servidor.\n\nVer [sección de codificación en ayuda] para mas informacion."
-      },
-      "private": {
-        "title": "Privado",
-        "help": "Configurar para que los archivos subidos sean privados"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Redirección de autenticación",
@@ -3894,24 +3872,16 @@
         "help": "Descripción del control remoto."
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "Concurrencia de subida",
+        "help": "Concurrencia para subidas multiparte.\n\nEste es el número de fragmentos del mismo archivo que se suben simultáneamente.\n\nTenga en cuenta que cada fragmento se almacena en búfer en la memoria."
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "Límite de subida",
+        "help": "Límite para cambiar a subida multiparte.\n\nCualquier archivo más grande que este se subirá en fragmentos de chunk_size.\nEl mínimo es 100 MiB y el máximo es 5 GiB."
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
-      },
-      "password": {
-        "title": "Contraseña",
-        "help": "Contraseña para el inicio de sesión."
-      },
-      "web_token": {
-        "title": "Token web",
-        "help": "Token de inicio de sesión de la API web - establecido automáticamente."
+        "title": "Tamaño del fragmento",
+        "help": "Tamaño del fragmento para subidas multiparte.\n\nLos archivos más grandes que upload_cutoff se subirán en fragmentos de este tamaño.\n\nEl uso de memoria es aproximadamente chunk_size * upload_concurrency."
       }
     },
     "huaweidrive": {

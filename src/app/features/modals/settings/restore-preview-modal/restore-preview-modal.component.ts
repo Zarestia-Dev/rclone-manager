@@ -1,35 +1,30 @@
 import { Component, inject, signal, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
-import { BackupAnalysis, BackupRestoreService, ModalService } from '@app/services';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
-const MIN_PASSWORD_LENGTH = 4;
+import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
+import { BackupAnalysis } from '@app/types';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restore-preview-modal',
-  standalone: true,
   imports: [
-    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
     MatRadioModule,
     MatSelectModule,
     FormsModule,
     DatePipe,
     UpperCasePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -39,7 +34,6 @@ export class RestorePreviewModalComponent {
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   readonly analysis: BackupAnalysis = this.data.analysis;
@@ -47,7 +41,6 @@ export class RestorePreviewModalComponent {
 
   // Static derived data — plain properties since `analysis` is not a signal
   readonly isEncrypted = this.analysis.isEncrypted;
-  readonly isLegacy = this.analysis.isLegacy === true;
   readonly hasContents = !!this.analysis.contents;
   readonly hasUserNote = !!this.analysis.userNote;
   readonly profiles = this.analysis.contents?.profiles ?? [];
@@ -92,11 +85,6 @@ export class RestorePreviewModalComponent {
         this.passwordError.set(this.translate.instant(key));
         return;
       }
-
-      if (trimmed.length < MIN_PASSWORD_LENGTH) {
-        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordLength'));
-        return;
-      }
     }
 
     this.isVerifying.set(true);
@@ -108,7 +96,7 @@ export class RestorePreviewModalComponent {
 
     try {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
-      this.modalService.animatedClose(this.dialogRef, true);
+      this.dialogRef.close(true);
     } catch (error) {
       this.#handleRestoreError(error);
     } finally {
@@ -119,7 +107,7 @@ export class RestorePreviewModalComponent {
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isVerifying()) {
-      this.modalService.animatedClose(this.dialogRef, false);
+      this.dialogRef.close(false);
     }
   }
 

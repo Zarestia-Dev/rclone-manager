@@ -1,31 +1,33 @@
 import {
   Component,
   afterNextRender,
-  effect,
   inject,
   signal,
   computed,
-  untracked,
   DestroyRef,
+  linkedSignal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   OperationTab,
   PrimaryActionType,
+  JobActionType,
   Remote,
   RemoteSettings,
   SyncOperationType,
+  SYNC_TYPES,
 } from '@app/types';
 
 import { RemoteFacadeService } from '../services/facade/remote-facade.service';
@@ -34,24 +36,23 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-import {
-  NotificationService,
-  UiStateService,
-  AppSettingsService,
-  ModalService,
-  BackendService,
-  RcloneStatusService,
-} from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-home',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatSidenavModule,
     MatDividerModule,
     MatChipsModule,
     MatCardModule,
-    MatTooltipModule,
     MatCheckboxModule,
     MatIconModule,
     MatButtonModule,
@@ -62,7 +63,7 @@ import {
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -79,6 +80,7 @@ export class HomeComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeBackend = this.backendService.activeBackend;
+  readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
   readonly currentTab = this.uiStateService.currentTab;
   readonly remotes = this.remoteFacadeService.orderedRemotes;
   readonly jobs = this.remoteFacadeService.jobs;
@@ -100,58 +102,45 @@ export class HomeComponent {
     return tab === 'general' ? 'mount' : tab;
   });
 
-  readonly isSidebarOpen = signal(false);
+  private readonly localStorage = inject(LocalStorageService);
+  readonly isSidebarOpen = signal(this.localStorage.get('ui.sidebarOpen', false));
   readonly sidebarMode = signal<MatDrawerMode>('side');
-  readonly selectedSyncOperation = signal<SyncOperationType>('sync');
+  readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
+  readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
+    const remote = this.selectedRemote();
+    if (!remote) return 'sync';
+    const val = this.localStorage.getScoped<SyncOperationType>(
+      `remote.${remote.name}`,
+      'selectedSyncOperation',
+      'sync'
+    );
+    return SYNC_TYPES.includes(val) ? val : 'sync';
+  });
 
-  private readonly _isLoading = signal(false);
-  readonly isLoading = this._isLoading.asReadonly();
-
-  private resizeObserver?: ResizeObserver;
+  readonly isLoading = this.remoteFacadeService.loading;
 
   constructor() {
-    effect(() => {
-      const settings = this.selectedRemoteSettings();
-      if (this.selectedRemote()) {
-        const saved = (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
-        untracked(() => this.selectedSyncOperation.set(saved));
-      }
+    afterNextRender(() => {
+      syncResponsiveSidebar(768, this.sidebarMode, undefined, this.destroyRef);
     });
 
-    afterNextRender(() => this.setupResponsiveLayout());
-
-    void this.loadInitialData();
+    this.uiStateService.registerMobileSidebar({
+      view: 'main_menu',
+      isOver: this.isSidebarOver,
+      isOpen: this.isSidebarOpen,
+    });
 
     this.destroyRef.onDestroy(() => {
-      this.resizeObserver?.disconnect();
       this.uiStateService.resetSelectedRemote();
+      this.uiStateService.unregisterMobileSidebar('main_menu');
     });
   }
 
   // --- Layout ---
 
-  private setupResponsiveLayout(): void {
-    this.updateSidebarMode();
-    this.resizeObserver = new ResizeObserver(() => this.updateSidebarMode());
-    this.resizeObserver.observe(document.body);
-  }
-
-  private updateSidebarMode(): void {
-    const next: MatDrawerMode = window.innerWidth < 900 ? 'over' : 'side';
-    if (next !== this.sidebarMode()) this.sidebarMode.set(next);
-  }
-
-  // --- Data ---
-
-  private async loadInitialData(): Promise<void> {
-    this._isLoading.set(true);
-    try {
-      await this.remoteFacadeService.refreshAll();
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
-    } finally {
-      this._isLoading.set(false);
-    }
+  setSidebarOpen(open: boolean): void {
+    this.isSidebarOpen.set(open);
+    this.localStorage.set('ui.sidebarOpen', open);
   }
 
   // --- Remote Selection ---
@@ -166,45 +155,28 @@ export class HomeComponent {
     this.selectedSyncOperation.set(operation);
     const remote = this.selectedRemote();
     if (remote?.name) {
-      void this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
+      this.localStorage.setScoped(`remote.${remote.name}`, 'selectedSyncOperation', operation);
     }
   }
-
-  // --- Primary Actions ---
-
-  async togglePrimaryAction(type: PrimaryActionType): Promise<void> {
-    const remote = this.selectedRemote();
-    if (!remote) return;
-
-    const current = remote.primaryActions ?? [];
-    const next = current.includes(type) ? current.filter(a => a !== type) : [...current, type];
-
-    try {
-      await this.saveRemoteSettings(remote.name, { primaryActions: next });
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.updateActionsFailed'), error);
-    }
-  }
-
   // --- Jobs ---
 
   async startJob(
     operationType: PrimaryActionType,
     remoteName: string,
-    profileName?: string
+    profileName: string
   ): Promise<void> {
     try {
       await this.remoteFacadeService.startJob(remoteName, operationType, profileName, 'dashboard');
     } catch (error) {
-      this.handleError('Start job failed', error);
+      console.error('Start job failed:', error);
     }
   }
 
   async stopJob(
-    type: PrimaryActionType,
+    type: JobActionType,
     remoteName: string,
-    serveId?: string,
-    profileName?: string
+    serveId: string | undefined,
+    profileName: string | undefined
   ): Promise<void> {
     try {
       await this.remoteFacadeService.stopJob(remoteName, type, serveId, profileName);
@@ -225,37 +197,35 @@ export class HomeComponent {
 
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
+
+    const dialogRef = this.modalService.openDeleteRemote<boolean>(remoteName);
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    if (!confirmed) return;
+
     try {
-      this.notificationService
-        .confirmModal(
-          this.translate.instant('home.deleteRemote.title'),
-          this.translate.instant('home.deleteRemote.message', { name: remoteName }),
-          this.translate.instant('common.delete'),
-          this.translate.instant('common.cancel'),
-          {
-            icon: 'trash',
-            color: 'warn',
-          }
-        )
-        .then(async confirmed => {
-          if (!confirmed) return;
-          await this.remoteFacadeService.deleteRemote(remoteName);
-          this.remoteFacadeService.loadRemotes();
-          if (this.selectedRemote()?.name === remoteName) {
-            this.uiStateService.resetSelectedRemote();
-          }
-        });
+      await this.remoteFacadeService.deleteRemote(remoteName);
+      if (this.selectedRemote()?.name === remoteName) {
+        this.uiStateService.resetSelectedRemote();
+      }
     } catch (error) {
       console.error('Delete remote failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
   async openRemoteInFiles(
     remoteName: string,
-    pathOrOperation?: string | PrimaryActionType
+    pathOrOperation?: string | PrimaryActionType,
+    profileName?: string,
+    operationType?: PrimaryActionType
   ): Promise<void> {
     try {
-      await this.remoteFacadeService.openRemoteInFiles(remoteName, pathOrOperation);
+      await this.remoteFacadeService.openRemoteInFiles(
+        remoteName,
+        pathOrOperation,
+        profileName,
+        operationType
+      );
     } catch (error) {
       console.error('Open remote failed:', error);
     }
@@ -271,6 +241,18 @@ export class HomeComponent {
     );
   }
 
+  openRemoteAbout(remote: Remote): void {
+    this.remoteFacadeService.openRemoteAbout(remote);
+  }
+
+  hasCleanUpFeature(remote: Remote): boolean {
+    return this.remoteFacadeService.canEmptyTrash(remote);
+  }
+
+  async emptyTrash(remote: Remote): Promise<void> {
+    await this.remoteFacadeService.emptyTrash(remote, 'dashboard');
+  }
+
   // --- Settings ---
 
   getRemoteSettingValue(
@@ -281,72 +263,58 @@ export class HomeComponent {
   }
 
   async saveRemoteSettings(remoteName: string, settings: Partial<RemoteSettings>): Promise<void> {
-    const merged = { ...this.remoteFacadeService.getRemoteSettings(remoteName), ...settings };
-    await this.appSettingsService.saveRemoteSettings(remoteName, merged);
-    await this.remoteFacadeService.loadRemotes();
+    await this.remoteFacadeService.updateRemoteSettings(remoteName, settings);
   }
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
     if (!remoteName) return;
+
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('home.resetRemote.title'),
+      this.translate.instant('home.resetRemote.message', { name: remoteName }),
+      'common.yes',
+      'common.no',
+      { icon: 'rotate-right', color: 'warn' }
+    );
+    if (!confirmed) return;
+
     try {
-      const confirmed = await this.notificationService.confirmModal(
-        this.translate.instant('home.resetRemote.title'),
-        this.translate.instant('home.resetRemote.message', { name: remoteName }),
-        undefined,
-        undefined,
-        {
-          icon: 'rotate-right',
-          color: 'warn',
-        }
-      );
-      if (!confirmed) return;
+      // Backend 'delete_remote_settings' deletes settings, unschedules automations,
+      // and emits REMOTE_SETTINGS_CHANGED & AUTOMATIONS_CACHE_CHANGED.
+      // RemoteFacadeService and AutomationService listen to these events and update reactively.
+      // AppSettingsService.resetRemoteSettings also handles the success toast notification.
       await this.appSettingsService.resetRemoteSettings(remoteName);
-      await this.remoteFacadeService.loadRemotes();
-      this.notificationService.showSuccess(
-        this.translate.instant('home.notifications.settingsReset', { name: remoteName })
-      );
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.resetSettingsFailed'), error);
+      console.error('Reset settings failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
   // --- Modals ---
 
   openQuickAddRemoteModal(): void {
-    this.modalService
-      .openQuickAddRemote()
-      .afterClosed()
-      .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
-      });
+    // Note: Remote creation emits REMOTE_CACHE_CHANGED, automatically updating
+    // RemoteFacadeService.orderedRemotes without requiring manual refreshAll().
+    this.modalService.openQuickAddRemote();
   }
 
   openRemoteConfigModal(
     editTarget?: string,
-    existingConfig?: RemoteSettings,
     initialSection?: string,
     targetProfile?: string,
     remoteType?: string,
     autoAddProfile?: boolean
   ): void {
-    this.modalService
-      .openRemoteConfig({
-        remoteName: this.selectedRemote()?.name,
-        remoteType,
-        editTarget,
-        existingConfig,
-        initialSection,
-        targetProfile,
-        autoAddProfile,
-      })
-      .afterClosed()
-      .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
-      });
+    // Note: Config changes emit REMOTE_CACHE_CHANGED / REMOTE_SETTINGS_CHANGED,
+    // which automatically updates RemoteFacadeService reactively.
+    this.modalService.openRemoteConfig({
+      remoteName: this.selectedRemote()?.name,
+      remoteType,
+      editTarget,
+      initialSection,
+      targetProfile,
+      autoAddProfile,
+    });
   }
 
   openLogsModal(remoteName: string): void {
@@ -354,21 +322,13 @@ export class HomeComponent {
   }
 
   async cloneRemote(remoteName: string): Promise<void> {
-    const config = await this.remoteFacadeService.cloneRemote(remoteName);
-    if (!config) return;
-    const remoteConfig = config as RemoteSettings & { name?: string };
-    this.modalService
-      .openRemoteConfig({
-        remoteName: remoteConfig['name'],
-        cloneTarget: true,
-        existingConfig: remoteConfig,
-      })
-      .afterClosed()
-      .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
-      });
+    const remote = this.remoteFacadeService.activeRemotes().find(r => r.name === remoteName);
+    if (!remote) return;
+    // Note: Cloned remote creation emits REMOTE_CACHE_CHANGED which updates RemoteFacadeService.
+    this.modalService.openRemoteConfig({
+      cloneFrom: remoteName,
+      remoteType: remote.type,
+    });
   }
 
   openExportModal(remoteName: string): void {
@@ -377,13 +337,5 @@ export class HomeComponent {
 
   openBackendModal(): void {
     this.modalService.openBackend();
-  }
-
-  // --- Error Handling ---
-
-  private handleError(message: string, error: unknown): void {
-    console.error(`${message}:`, error);
-    const detail = error instanceof Error ? error.message : String(error);
-    this.notificationService.showError(`${message}: ${detail}`);
   }
 }

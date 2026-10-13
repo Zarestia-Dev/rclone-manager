@@ -1,56 +1,70 @@
-// Event constants for emit/listen operations
-
-import { GlobalStats } from './jobs';
+import { GlobalStats, JobStatus } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
-// Core engine events
-export const ENGINE_RESTARTED = 'engine_restarted';
+import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
 
-// Dedicated engine state events (no payload needed - event name indicates state)
-export const RCLONE_ENGINE_READY = 'rclone_engine_ready';
-export const RCLONE_ENGINE_ERROR = 'rclone_engine_error';
-export const RCLONE_ENGINE_PASSWORD_ERROR = 'rclone_engine_password_error';
-export const RCLONE_ENGINE_PATH_ERROR = 'rclone_engine_path_error';
-export const RCLONE_ENGINE_UPDATING = 'rclone_engine_updating';
-export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
+export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
+export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
+export const BACKEND_SWITCHED = 'backend_switched' as const;
+export const REMOTE_CACHE_CHANGED = 'remote_cache_changed' as const;
+export const RCLONE_OAUTH_URL = 'rclone_oauth_url' as const;
+export const ALERT_FIRED = 'alert_fired' as const;
+export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed' as const;
+export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed' as const;
+export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed' as const;
+export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked' as const;
+export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
+export const SYSTEM_THEME_CHANGED = 'system_theme_changed' as const;
+export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
+export const JOB_STATS_UPDATED = 'job_stats_updated' as const;
+export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;
+export const SERVE_STATE_CHANGED = 'serve_state_changed' as const;
+export const SYSTEM_STATUS = 'system_status' as const;
+export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed' as const;
+export const PROVISION_PROGRESS = 'provision_progress' as const;
+export const NETWORK_STATUS_CHANGED = 'network_status_changed' as const;
+export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
+export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
+export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
+export const APP_EVENT = 'app_event' as const;
+export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
+export const BROWSE = 'browse' as const;
+export const FILE_DOWNLOAD_PROGRESS = 'file_download_progress' as const;
 
-// Remote management events
-export const REMOTE_CACHE_CHANGED = 'remote_cache_changed';
-export const RCLONE_OAUTH_URL = 'rclone_oauth_url';
+export interface FileDownloadProgressPayload {
+  destination: string;
+  downloaded: number;
+  total?: number;
+  percentage?: number;
+}
 
-// Alert events
-export const ALERT_FIRED = 'alert_fired';
+export interface WorkflowNodeStatePayload {
+  workflowId: string;
+  nodeId: string;
+  state: WorkflowNodeExecutionState;
+  errorMessage?: string;
+  durationMs?: number;
+  output?: unknown;
+}
 
-// System and settings events
-export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed';
-export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed';
-export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed';
-export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked';
+export interface WorkflowExecutionStatePayload {
+  workflowId: string;
+  state: 'started' | 'running' | 'completed' | 'failed' | 'cancelled';
+  progress?: {
+    total: number;
+    completed: number;
+    currentStepTitle: string;
+  };
+  message?: string;
+}
 
-// UI and cache events
-export const UPDATE_TRAY_MENU = 'tray_menu_updated';
-export const JOB_CACHE_CHANGED = 'job_cache_changed';
-export const MOUNT_STATE_CHANGED = 'mount_state_changed';
-export const SERVE_STATE_CHANGED = 'serve_state_changed';
-export const SYSTEM_STATUS = 'system_status';
+export interface ActiveOperationsSummary {
+  hasActiveOperations: boolean;
+  activeJobsCount: number;
+  activeMountsCount: number;
+  activeServesCount: number;
+}
 
-// Plugin and installation events
-export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
-
-// Network events
-export const NETWORK_STATUS_CHANGED = 'network_status_changed';
-
-// Automation event
-export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed';
-
-// Application events
-export const APP_EVENT = 'app_event';
-export const BROWSE = 'browse';
-
-/**
- * Strongly typed payload for settings change events
- * Matches the Rust backend's SettingsChangeEvent struct
- */
 export interface SettingsChangeEvent {
   category: string;
   key: string;
@@ -63,11 +77,21 @@ export interface OAuthUrlEvent {
 
 export interface JobChangeEvent {
   jobId: string;
-  status: 'Running' | 'Completed' | 'Failed' | 'Stopped';
+  status: JobStatus;
   remote?: string;
   source?: string;
   destination?: string;
+  profile?: string;
+  quickRunId?: string;
+  workflowId?: string;
+  nodeId?: string;
 }
+
+export interface JobStatsUpdatedEvent {
+  jobId: number;
+  stats: GlobalStats;
+}
+
 export interface SystemStatusPayload {
   rcloneInfo: RcloneInfo | null;
   pid: number | null;
@@ -76,3 +100,16 @@ export interface SystemStatusPayload {
   status: RcloneStatus;
   hasActiveJobs: boolean;
 }
+
+export type EngineStatus =
+  | { status: 'ready' }
+  | { status: 'error'; payload: { message: string } }
+  | { status: 'passwordError' }
+  | { status: 'authError'; payload: { message: string } }
+  | { status: 'pathError' }
+  | { status: 'versionError'; payload: { version: string; required: string } }
+  | { status: 'portError'; payload: { port: number; message: string } }
+  | { status: 'updating' }
+  | { status: 'restarted'; payload: { reason: string } };
+
+export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'port' | 'generic' | null;

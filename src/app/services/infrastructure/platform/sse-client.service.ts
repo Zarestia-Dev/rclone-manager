@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
-import { RCLONE_ENGINE_READY } from '@app/types';
+import { RCLONE_ENGINE_STATUS_CHANGED } from '@app/types';
 import { ApiClientService } from './api-client.service';
 
 export interface SseEvent {
@@ -32,7 +32,7 @@ export class SseClientService {
     try {
       await this.apiClient.invoke('auth_session', {});
     } catch {
-      console.log('Auth session failed');
+      /* auth session is optional - continue to event source */
     }
     this.openSource(`${this.apiClient.getApiBase()}/events`);
   }
@@ -62,7 +62,7 @@ export class SseClientService {
 
     this.source.onopen = (): void => {
       this.reconnectAttempt = 0;
-      this.events$.next({ event: RCLONE_ENGINE_READY, payload: null });
+      this.events$.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: { status: 'ready' } });
     };
 
     this.source.onerror = (): void => {
@@ -71,7 +71,7 @@ export class SseClientService {
 
       if (this.reconnectAttempt >= this.maxReconnectAttempts) return;
 
-      const delay = 1000 * Math.pow(2, this.reconnectAttempt++);
+      const delay = Math.min(5000, 1000 * Math.pow(1.5, Math.min(this.reconnectAttempt++, 10)));
       this.reconnectTimer = setTimeout(() => this.openSource(url), delay);
     };
 

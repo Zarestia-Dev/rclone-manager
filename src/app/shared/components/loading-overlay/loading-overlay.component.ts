@@ -1,12 +1,9 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
-
-import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-loading-overlay',
-  standalone: true,
-  imports: [MatIconModule, TranslateModule],
+  imports: [TranslatePipe],
   templateUrl: './loading-overlay.component.html',
   styleUrls: ['./loading-overlay.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -14,5 +11,4 @@ import { TranslateModule } from '@ngx-translate/core';
 export class LoadingOverlayComponent {
   title = input('shared.loadingOverlay.defaultTitle');
   message = input('shared.loadingOverlay.defaultMessage');
-  icon = input('rotate');
 }

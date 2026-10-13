@@ -1,5 +1,6 @@
-import type { JobInfo, TransferFile } from './jobs';
+import type { JobInfo, TransferFile, CompletedTransfer } from './jobs';
 import type { PrimaryActionType, RemoteAction } from './operations';
+import { OPERATION_REGISTRY } from './operation-registry';
 
 // ── Shared color tokens used across operation UI ───────────────────────────
 export type OperationColor = 'primary' | 'accent' | 'yellow' | 'orange' | 'purple' | 'warn';
@@ -15,6 +16,18 @@ export interface SettingsPanelConfig {
   section: SettingsSection;
   settings: Record<string, unknown>;
   buttonLabel?: string;
+}
+
+export interface SettingEntry {
+  key: string;
+  display: string;
+  tooltip: string;
+  isSensitive?: boolean;
+}
+
+export interface GroupedSettings {
+  category: string;
+  entries: SettingEntry[];
 }
 
 // ── Stats Panel ─────────────────────────────────────────────────────────────
@@ -44,12 +57,12 @@ export interface PathDisplayConfig {
   actionInProgress?: RemoteAction;
   hasSource?: boolean;
   hasDestination?: boolean;
+  hideDestination?: boolean;
 }
 
 // ── Jobs Panel ──────────────────────────────────────────────────────────────
 export interface JobsPanelConfig {
   jobs: JobInfo[];
-  displayedColumns: readonly string[];
 }
 
 // ── Profile selector ────────────────────────────────────────────────────────
@@ -91,38 +104,27 @@ export interface OperationControlConfig {
 }
 
 // ── Transfer Activity Panel ─────────────────────────────────────────────────
-export interface CompletedTransfer {
-  name: string;
-  size: number;
-  bytes: number;
-  checked: boolean;
-  error: string;
-  jobid: number;
-  startedAt?: string;
-  completedAt?: string;
-  srcFs?: string;
-  dstFs?: string;
-  group?: string;
-  status: 'completed' | 'checked' | 'failed' | 'partial';
-}
-
 export interface TransferActivityPanelConfig {
   activeTransfers: TransferFile[];
   completedTransfers: CompletedTransfer[];
   remoteName: string;
   showHistory: boolean;
+  jobType?: string;
 }
 
 // ── Installation wizard ─────────────────────────────────────────────────────
+export type LocationType = 'default' | 'custom' | 'existing';
+export type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+
 export interface InstallationOptionsData {
-  installLocation: 'default' | 'custom' | 'existing';
+  installLocation: LocationType;
   customPath: string;
   existingBinaryPath: string;
-  binaryTestResult: 'untested' | 'testing' | 'valid' | 'invalid';
+  binaryTestResult: BinaryStatus;
 }
 
 export interface InstallationTabOption {
-  key: 'default' | 'custom' | 'existing';
+  key: LocationType;
   label: string;
   icon: string;
 }
@@ -135,23 +137,20 @@ export type CardDisplayMode = 'compact' | 'detailed';
  * Global mapping of operation types to their corresponding animation classes.
  * These classes are defined in src/animations.scss.
  */
-export const ACTION_ANIMATION_CLASS: Record<PrimaryActionType, string> = {
-  sync: 'animate-spin',
-  copy: 'animate-copy',
-  move: 'animate-move',
-  bisync: 'animate-breathing',
-  serve: 'animate-pulse-blue',
-  mount: 'animate-breathing',
-};
+export const ACTION_ANIMATION_CLASS = Object.freeze(
+  Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [op.key, op.animationClass])
+  )
+) as Readonly<Record<PrimaryActionType, string>>;
 
 /**
  * Mapping of operation colors to their corresponding CSS variable names.
  */
-export const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
+export const OPERATION_COLOR_VAR: Readonly<Record<OperationColor, string>> = Object.freeze({
   primary: 'var(--primary-color)',
   accent: 'var(--accent-color)',
   yellow: 'var(--yellow)',
   orange: 'var(--orange)',
   purple: 'var(--purple)',
   warn: 'var(--warn-color)',
-};
+});

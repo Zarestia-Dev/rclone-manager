@@ -1,43 +1,79 @@
-<div class="chips-row" aria-label="Config fields overview">
-  @if (chips().length === 0) {
-    <span class="chips-empty">
-      {{ 'shared.jsonEditor.noFields' | translate }}
-    </span>
-  }
+@if (infoBanner(); as banner) {
+  <app-alert-banner severity="info" [description]="banner | translate" />
+}
 
-  @for (chip of chips(); track chip.controlKey) {
-    <span
-      class="app-pill interactive"
-      [class.p-primary]="chip.isActive"
-      [class.p-accent]="chip.isChanged"
-      [class.p-dim]="!chip.isActive"
-      [matTooltip]="
-        chip.field.Name
-          | rcloneOptionTranslate
-            : 'help'
-            : chip.field.Help || chip.displayKey + ': ' + chip.fullValue
-            : provider() || chip.field.Provider
-      "
-      matTooltipShowDelay="700"
-      matTooltipPosition="above"
-      (click)="toggleChip(chip)"
-      role="button"
-      tabindex="0"
-      (keydown.enter)="toggleChip(chip)"
-      (keydown.space)="toggleChip(chip); $event.preventDefault()"
-    >
-      <span>{{ chip.displayKey }}</span>
-    </span>
-  }
+<div class="editor-card">
+  <div class="chips-row" aria-label="Config fields overview">
+    @if (chips().length === 0) {
+      <span class="chips-empty">
+        {{ 'shared.jsonEditor.noFields' | translate }}
+      </span>
+    }
+
+    @for (chip of chips(); track chip.controlKey) {
+      <span
+        class="app-pill interactive"
+        [class.p-primary]="chip.isActive"
+        [class.p-accent]="chip.isChanged"
+        [class.p-dim]="!chip.isActive"
+        [attr.title]="
+          chip.field.Name
+            | rcloneOptionTranslate
+              : 'help'
+              : chip.field.Help || chip.displayKey + ': ' + chip.fullValue
+              : provider() || chip.field.Provider
+              : currentLang()
+        "
+        (click)="toggleChip(chip)"
+        role="button"
+        tabindex="0"
+        (keydown.enter)="toggleChip(chip)"
+        (keydown.space)="toggleChip(chip); $event.preventDefault()"
+      >
+        <span>{{ chip.displayKey }}</span>
+      </span>
+    }
+  </div>
+
+  <div #editorContainer class="code-mirror"></div>
 </div>
 
-<div class="editor-wrapper">
-  <div #editorContainer class="editor-container"></div>
+<div
+  class="cdk-menu-anchor"
+  [style.left.px]="menuAnchorPos().x"
+  [style.top.px]="menuAnchorPos().y"
+  [style.width.px]="menuAnchorPos().width"
+  [style.height.px]="menuAnchorPos().height"
+  [cdkMenuTriggerFor]="exampleMenu"
+  (cdkMenuClosed)="activeExampleMenu.set(null)"
+></div>
 
-  @if (parseError()) {
-    <div class="parse-error" role="alert" aria-live="polite">
-      <mat-icon svgIcon="circle-xmark" />
-      <span>{{ parseError() | translate }}</span>
+<ng-template #exampleMenu>
+  @if (activeExampleMenu(); as menu) {
+    <div class="material-context-menu limited examples-menu" cdkMenu appCdkOverlayAutopos>
+      <div class="menu-group-label">{{ menu.keyText }}</div>
+      <mat-divider />
+      @for (ex of menu.examples; track ex.Value) {
+        <button
+          type="button"
+          cdkMenuItem
+          class="menu-item space-between"
+          (cdkMenuItemTriggered)="selectExample(ex.Value)"
+        >
+          <span class="item-label">{{ ex.Help || ex.Value | translate }}</span>
+          @if (ex.Help && ex.Help !== ex.Value) {
+            <span class="app-pill p-accent">{{ ex.Value }}</span>
+          }
+        </button>
+      }
     </div>
   }
-</div>
+</ng-template>
+
+@if (parseError(); as err) {
+  <app-alert-banner severity="error" [description]="err.key | translate: err.params" />
+}
+
+@if (parseWarning(); as warn) {
+  <app-alert-banner severity="warning" [description]="warn.key | translate: warn.params" />
+}

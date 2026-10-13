@@ -1,3 +1,4 @@
+import { Origin } from './origin';
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
@@ -28,14 +29,41 @@ export interface MountedRemote {
   fs: string;
   mount_point: string;
   profile?: string;
+  quick_run_id?: string;
+  execute_id?: string;
+  origin?: Origin;
+  workflow_id?: string;
+  node_id?: string;
+}
+
+/**
+ * Unified response returned when starting any operation (mount, serve, sync, etc.)
+ */
+export interface OperationExecutionResult {
+  executeId: string;
+  origin: Origin;
+  operationType: PrimaryActionType;
+  remoteName: string;
+  quickRunId?: string;
+  profile?: string;
+  success: boolean;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  error?: string;
+  startTime: string;
+  jobId?: number;
+  serveId?: string;
+  serveAddr?: string;
+  mountPoint?: string;
 }
 
 // ── Remote runtime state ────────────────────────────────────────────────────
 
+export type DiskUsageSeverity = 'healthy' | 'warning' | 'high' | 'critical';
+
 export interface DiskUsage {
-  total_space?: number;
-  used_space?: number;
-  free_space?: number;
+  total?: number;
+  used?: number;
+  free?: number;
   loading?: boolean;
   error?: boolean;
   errorMessage?: string;
@@ -68,18 +96,44 @@ export interface RemoteStatus {
   copy: RemoteOperationState;
   bisync: RemoteOperationState;
   move: RemoteOperationState;
+  check: RemoteOperationState;
+  delete: RemoteOperationState;
+  copyurl: RemoteOperationState;
+  archivecreate: RemoteOperationState;
+  cryptcheck: RemoteOperationState;
   serve: RemoteServeState;
 }
 
 export interface RemoteFeatures {
-  isLocal: boolean;
-  hasAbout: boolean;
-  hasBucket: boolean;
-  hasCleanUp: boolean;
-  hasPublicLink: boolean;
-  changeNotify: boolean;
-  hashes: string[];
-  error?: string;
+  IsLocal: boolean;
+  About: boolean;
+  BucketBased: boolean;
+  CleanUp: boolean;
+  PublicLink: boolean;
+  ChangeNotify: boolean;
+  Purge?: boolean;
+  Copy?: boolean;
+  Move?: boolean;
+  DirMove?: boolean;
+  UserMetadata?: boolean;
+  CanHaveEmptyDirectories?: boolean;
+  Hashes: string[];
+  Error?: string;
+  loading?: boolean;
+  [feature: string]: unknown;
+}
+
+export function createDefaultRemoteFeatures(isLocal = false, loading = false): RemoteFeatures {
+  return {
+    IsLocal: isLocal,
+    About: false,
+    BucketBased: false,
+    CleanUp: false,
+    PublicLink: false,
+    ChangeNotify: false,
+    Hashes: [],
+    loading,
+  };
 }
 
 export interface Remote {
@@ -89,6 +143,7 @@ export interface Remote {
   status: RemoteStatus;
   features: RemoteFeatures;
   primaryActions: PrimaryActionType[];
+  syncActions: PrimaryActionType[];
 }
 
 // ── Remote layout ───────────────────────────────────────────────────────────
@@ -100,3 +155,5 @@ export interface RemotesLayout {
 
 /** Keyed by backend name */
 export type BackendsRemotesLayout = Record<string, RemotesLayout>;
+
+export type ProfileConfigMap = Record<string, Record<string, unknown>>;

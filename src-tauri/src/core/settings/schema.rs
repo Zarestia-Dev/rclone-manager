@@ -9,11 +9,11 @@ use serde_json::Value;
 
 // List of supported BCP-47 language tags
 // When adding a new language, add its BCP-47 code here and create the translation file
-const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN"];
+const SUPPORTED_LANGUAGES: &[&str] = &[
+    "en-US", "tr-TR", "es-ES", "zh-CN", "zh-TW", "fr-FR", "uk-UA", "ru-RU", "pt-BR", "ja-JP",
+];
 
-// =============================================================================
 // Struct Definitions with Derive Macro
-// =============================================================================
 
 /// General settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
@@ -26,10 +26,27 @@ pub struct GeneralSettings {
             ("en-US", "English (US)"),
             ("tr-TR", "Türkçe (Türkiye)"),
             ("es-ES", "Español (España)"),
-            ("zh-CN", "中文 (简体)")
+            ("zh-CN", "中文 (简体)"),
+            ("zh-TW", "繁體中文 (台灣)"),
+            ("fr-FR", "Français (France)"),
+            ("uk-UA", "Українська (Україна)"),
+            ("ru-RU", "Русский (Россия)"),
+            ("ja-JP", "日本語 (日本)"),
+            ("pt-BR", "Português (Brasil)")
         )
     )]
     pub language: String,
+
+    #[setting(
+        label = "settings.general.default_view.label",
+        description = "settings.general.default_view.description",
+        options(
+            ("main_menu", "settings.general.default_view.options.main_menu"),
+            ("nautilus", "settings.general.default_view.options.nautilus"),
+            ("flow", "settings.general.default_view.options.flow")
+        )
+    )]
+    pub default_view: String,
 
     #[setting(
         label = "settings.general.tray_enabled.label",
@@ -39,15 +56,30 @@ pub struct GeneralSettings {
     pub tray_enabled: bool,
 
     #[setting(
+        label = "settings.general.tray_icon_theme.label",
+        description = "settings.general.tray_icon_theme.description",
+        options(
+            ("system", "settings.general.tray_icon_theme.options.system"),
+            ("color", "settings.general.tray_icon_theme.options.color"),
+            ("monochrome_light", "settings.general.tray_icon_theme.options.monochrome_light"),
+            ("monochrome_dark", "settings.general.tray_icon_theme.options.monochrome_dark")
+        )
+    )]
+    #[cfg(feature = "tray")]
+    pub tray_icon_theme: String,
+
+    #[setting(
         label = "settings.general.start_on_startup.label",
         description = "settings.general.start_on_startup.description"
     )]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub start_on_startup: bool,
 
     #[setting(
         label = "settings.general.notifications.label",
         description = "settings.general.notifications.description"
     )]
+    #[cfg(feature = "tauri-plugin-notification")]
     pub notifications: bool,
 
     #[setting(
@@ -60,13 +92,27 @@ pub struct GeneralSettings {
         label = "settings.general.standalone_dialogs.label",
         description = "settings.general.standalone_dialogs.description"
     )]
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(all(desktop, not(feature = "web-server")))]
     pub standalone_dialogs: bool,
+
+    #[setting(
+        label = "settings.general.prevent_sleep.label",
+        description = "settings.general.prevent_sleep.description"
+    )]
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    pub prevent_sleep: bool,
+
+    #[setting(
+        label = "settings.general.keep_alive.label",
+        description = "settings.general.keep_alive.description"
+    )]
+    #[cfg(target_os = "android")]
+    pub keep_alive: bool,
 }
 
 impl Default for GeneralSettings {
     fn default() -> Self {
-        let system_locale = tauri_plugin_os::locale().unwrap_or_else(|| "en-US".to_string());
+        let system_locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
 
         let language = if SUPPORTED_LANGUAGES.contains(&system_locale.as_str()) {
             system_locale
@@ -77,12 +123,21 @@ impl Default for GeneralSettings {
         Self {
             #[cfg(feature = "tray")]
             tray_enabled: true,
-            language,
-            start_on_startup: false,
+            #[cfg(feature = "tray")]
+            tray_icon_theme: "color".to_string(),
+            #[cfg(feature = "tauri-plugin-notification")]
             notifications: true,
-            restrict: true,
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            start_on_startup: false,
+            #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            prevent_sleep: true,
+            #[cfg(target_os = "android")]
+            keep_alive: true,
+            language,
+            default_view: "main_menu".to_string(),
+            restrict: true,
         }
     }
 }
@@ -102,16 +157,11 @@ pub struct CoreSettings {
     pub max_tray_items: usize,
 
     #[setting(
-        label = "settings.core.connection_check_urls.label",
-        description = "settings.core.connection_check_urls.description"
-    )]
-    pub connection_check_urls: Vec<String>,
-
-    #[setting(
         label = "settings.core.rclone_binary.label",
         description = "settings.core.rclone_binary.description",
         engine_restart = true
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_binary: String,
 
     #[setting(
@@ -129,11 +179,28 @@ pub struct CoreSettings {
             "--rc-user",
             "--rc-pass",
             "--rc-no-auth",
+            "--rc-template",
             "--log-file-max-size",
             "--log-file-max-backups",
         )
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_additional_flags: Vec<String>,
+
+    #[setting(
+        label = "settings.core.rclone_env_vars.label",
+        description = "settings.core.rclone_env_vars.description",
+        engine_restart = true
+    )]
+    #[cfg(not(feature = "librclone"))]
+    pub rclone_env_vars: Vec<String>,
+
+    #[setting(
+        label = "settings.core.connection_check_urls.label",
+        description = "settings.core.connection_check_urls.description"
+    )]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    pub connection_check_urls: Vec<String>,
 
     #[setting(
         label = "settings.core.bandwidth_limit.label",
@@ -141,13 +208,6 @@ pub struct CoreSettings {
         placeholder = "settings.core.bandwidth_limit.placeholder"
     )]
     pub bandwidth_limit: String,
-
-    #[setting(
-        label = "settings.core.rclone_env_vars.label",
-        description = "settings.core.rclone_env_vars.description",
-        engine_restart = true
-    )]
-    pub rclone_env_vars: Vec<String>,
 
     #[setting(
         label = "settings.core.completed_onboarding.label",
@@ -161,15 +221,19 @@ impl Default for CoreSettings {
         Self {
             #[cfg(feature = "tray")]
             max_tray_items: 5,
+            #[cfg(not(feature = "librclone"))]
+            rclone_binary: String::new(),
+            #[cfg(not(feature = "librclone"))]
+            rclone_additional_flags: vec![],
+            #[cfg(not(feature = "librclone"))]
+            rclone_env_vars: vec![],
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
                 "https://www.dropbox.com".to_string(),
                 "https://onedrive.live.com".to_string(),
             ],
             bandwidth_limit: String::new(),
-            rclone_binary: String::new(),
-            rclone_additional_flags: vec![],
-            rclone_env_vars: vec![],
             completed_onboarding: false,
         }
     }
@@ -195,7 +259,7 @@ pub struct DeveloperSettings {
         label = "settings.developer.destroy_window_on_close.label",
         description = "settings.developer.destroy_window_on_close.description"
     )]
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(all(not(feature = "web-server"), desktop))]
     pub destroy_window_on_close: bool,
 }
 
@@ -203,7 +267,7 @@ impl Default for DeveloperSettings {
     fn default() -> Self {
         Self {
             log_level: "info".to_string(),
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(not(feature = "web-server"), desktop))]
             destroy_window_on_close: true,
         }
     }
@@ -220,33 +284,40 @@ pub struct RuntimeSettings {
         label = "settings.runtime.app_auto_check_updates.label",
         description = "settings.runtime.app_auto_check_updates.description"
     )]
+    #[cfg(feature = "updater")]
     pub app_auto_check_updates: bool,
 
     #[setting(
         label = "settings.runtime.app_skipped_updates.label",
         description = "settings.runtime.app_skipped_updates.description"
     )]
+    #[cfg(feature = "updater")]
     pub app_skipped_updates: Vec<String>,
 
     #[setting(label = "settings.runtime.app_update_channel.label", options(("stable", "settings.runtime.app_update_channel.options.stable"), ("beta", "settings.runtime.app_update_channel.options.beta")))]
+    #[cfg(feature = "updater")]
     pub app_update_channel: String,
 
     #[setting(
         label = "settings.runtime.rclone_auto_check_updates.label",
         description = "settings.runtime.rclone_auto_check_updates.description"
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_auto_check_updates: bool,
 
     #[setting(
         label = "settings.runtime.rclone_skipped_updates.label",
         description = "settings.runtime.rclone_skipped_updates.description"
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_skipped_updates: Vec<String>,
 
     #[setting(label = "settings.runtime.rclone_update_channel.label", options(("stable", "settings.runtime.rclone_update_channel.options.stable"), ("beta", "settings.runtime.rclone_update_channel.options.beta")))]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_update_channel: String,
 
     #[setting(label = "settings.runtime.flatpak_warn.label")]
+    #[cfg(feature = "flatpak")]
     pub flatpak_warn: bool,
 
     #[setting(
@@ -254,6 +325,12 @@ pub struct RuntimeSettings {
         description = "settings.runtime.dashboard_layout.description"
     )]
     pub dashboard_layout: Value,
+
+    #[setting(
+        label = "settings.runtime.quick_run_layout.label",
+        description = "settings.runtime.quick_run_layout.description"
+    )]
+    pub quick_run_layout: Value,
 
     #[setting(
         label = "settings.runtime.remote_layouts.label",
@@ -273,14 +350,22 @@ impl Default for RuntimeSettings {
     fn default() -> Self {
         Self {
             theme: "system".to_string(),
+            #[cfg(feature = "updater")]
             app_auto_check_updates: true,
+            #[cfg(feature = "updater")]
             app_skipped_updates: vec![],
+            #[cfg(feature = "updater")]
             app_update_channel: "stable".to_string(),
+            #[cfg(not(feature = "librclone"))]
             rclone_auto_check_updates: true,
+            #[cfg(not(feature = "librclone"))]
             rclone_skipped_updates: vec![],
+            #[cfg(not(feature = "librclone"))]
             rclone_update_channel: "stable".to_string(),
+            #[cfg(feature = "flatpak")]
             flatpak_warn: true,
             dashboard_layout: Value::Object(Default::default()),
+            quick_run_layout: Value::Object(Default::default()),
             remote_layouts: Value::Object(Default::default()),
             dashboard_card_variant: "compact".to_string(),
         }
@@ -288,44 +373,9 @@ impl Default for RuntimeSettings {
 }
 
 /// Nautilus (file browser) specific preferences
-#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]
 #[schema(category = "nautilus")]
 pub struct NautilusSettings {
-    #[setting(label = "settings.nautilus.default_layout.label", description = "settings.nautilus.default_layout.description", options(("grid", "settings.nautilus.default_layout.options.grid"), ("list", "settings.nautilus.default_layout.options.list")))]
-    pub default_layout: String,
-
-    #[setting(
-        label = "settings.nautilus.grid_icon_size.label",
-        description = "settings.nautilus.grid_icon_size.description",
-        min = 16,
-        max = 512
-    )]
-    pub grid_icon_size: i32,
-
-    #[setting(
-        label = "settings.nautilus.list_icon_size.label",
-        description = "settings.nautilus.list_icon_size.description",
-        min = 16,
-        max = 256
-    )]
-    pub list_icon_size: i32,
-
-    #[setting(
-        label = "settings.nautilus.show_hidden_items.label",
-        description = "settings.nautilus.show_hidden_items.description"
-    )]
-    pub show_hidden_items: bool,
-
-    #[setting(label = "settings.nautilus.sort_key.label", options(
-        ("name-asc", "settings.nautilus.sort_key.options.name-asc"),
-        ("name-desc", "settings.nautilus.sort_key.options.name-desc"),
-        ("size-asc", "settings.nautilus.sort_key.options.size-asc"),
-        ("size-desc", "settings.nautilus.sort_key.options.size-desc"),
-        ("date-asc", "settings.nautilus.sort_key.options.date-asc"),
-        ("date-desc", "settings.nautilus.sort_key.options.date-desc")
-    ))]
-    pub sort_key: String,
-
     #[setting(
         label = "settings.nautilus.starred.label",
         description = "settings.nautilus.starred.description"
@@ -337,34 +387,9 @@ pub struct NautilusSettings {
         description = "settings.nautilus.bookmarks.description"
     )]
     pub bookmarks: Vec<Value>,
-
-    #[setting(
-        label = "settings.nautilus.split_divider_pos.label",
-        description = "settings.nautilus.split_divider_pos.description",
-        min = 10,
-        max = 90
-    )]
-    pub split_divider_pos: i32,
 }
 
-impl Default for NautilusSettings {
-    fn default() -> Self {
-        Self {
-            default_layout: "grid".to_string(),
-            grid_icon_size: 96,
-            list_icon_size: 32,
-            show_hidden_items: false,
-            sort_key: "name-asc".to_string(),
-            starred: vec![],
-            bookmarks: vec![],
-            split_divider_pos: 50,
-        }
-    }
-}
-
-// =============================================================================
 // Main AppSettings - Uses nested struct flattening
-// =============================================================================
 
 /// The complete settings model
 #[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]
@@ -374,4 +399,43 @@ pub struct AppSettings {
     pub developer: DeveloperSettings,
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
+}
+
+/// User preset template schema for `rcman`
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[schema(category = "templates")]
+pub struct UserPresetTemplate {
+    #[setting(label = "templates.id.label", description = "templates.id.description")]
+    pub id: String,
+
+    #[setting(
+        label = "templates.name.label",
+        description = "templates.name.description"
+    )]
+    pub name: String,
+
+    #[setting(
+        label = "templates.description.label",
+        description = "templates.description.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    #[setting(
+        label = "templates.values.label",
+        description = "templates.values.description"
+    )]
+    #[serde(default)]
+    pub values: Value,
+}
+
+impl Default for UserPresetTemplate {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            description: None,
+            values: Value::Object(Default::default()),
+        }
+    }
 }

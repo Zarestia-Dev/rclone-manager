@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -26,7 +26,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
@@ -34,13 +34,64 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
 import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
-import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { LineBreaksPipe, RcloneOptionTranslatePipe } from '@app/pipes';
+import { NumberInputComponent } from '../number-input/number-input.component';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 import {
-  RcloneValueMapperService,
-  AppSettingsService,
-  ValidatorRegistryService,
-} from '@app/services';
+  isConvertibleType,
+  isJsonArrayType,
+  isMultiselectType,
+  isArrayType,
+  isIntType,
+  isFloatType,
+} from 'src/app/shared/utils';
+import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
+
+const DUMP_FLAGS_FALLBACK: readonly string[] = [
+  'headers',
+  'bodies',
+  'requests',
+  'responses',
+  'auth',
+  'filters',
+  'goroutines',
+  'openfiles',
+  'mapper',
+];
+
+const ENCODING_FLAGS: readonly string[] = [
+  'Slash',
+  'BackSlash',
+  'Del',
+  'Ctl',
+  'InvalidUtf8',
+  'Dot',
+  'LeftSpace',
+  'RightSpace',
+  'LeftCrLfHtVt',
+  'RightCrLfHtVt',
+  'LeftPeriod',
+  'LeftTilde',
+  'LtGt',
+  'DoubleQuote',
+  'SingleQuote',
+  'BackQuote',
+  'Dollar',
+  'Colon',
+  'Question',
+  'Asterisk',
+  'Pipe',
+  'Hash',
+  'Percent',
+  'CrLf',
+  'SquareBracket',
+  'Semicolon',
+  'Exclamation',
+].sort();
 
 @Component({
   selector: 'app-setting-control',
@@ -50,16 +101,17 @@ import {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatSlideToggleModule,
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
     MatTimepickerModule,
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
-    TranslateModule,
+    TranslatePipe,
+    NumberInputComponent,
   ],
   templateUrl: './setting-control.component.html',
   styleUrl: './setting-control.component.scss',
@@ -72,14 +124,43 @@ import {
 export class SettingControlComponent implements ControlValueAccessor {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
-  private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly remoteService = inject(RemoteManagementService);
+  private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
+  private readonly translate = inject(TranslateService);
+  readonly currentLang = this.translate.currentLang;
 
   // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
+  readonly showFlag = input(true);
+
+  readonly flagNames = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return [];
+
+    // Exclude internal subcommand selection fields from displaying flags
+    if (opt.Name === 'mountType' || opt.Name === 'type') {
+      return [];
+    }
+
+    const optName = opt.Name.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/_/g, '-')
+      .toLowerCase();
+    const flags: string[] = [];
+
+    const providerVal = this.provider();
+    if (providerVal && !opt.NoPrefix) {
+      const providerLower = providerVal.toLowerCase().trim();
+      flags.push(`--${providerLower}-${optName}`);
+    } else {
+      flags.push(`--${optName}`);
+    }
+
+    return flags;
+  });
 
   readonly valueCommit = output<void>();
   readonly valueChanged = output<boolean>();
@@ -89,11 +170,19 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly control = signal<AbstractControl | null>(null);
   readonly dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
   readonly timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
+  readonly isObscuring = signal(false);
 
   // Signal-backed list of FormArray controls — zoneless CD picks up add/remove.
   readonly formArrayControls = signal<FormControl[]>([]);
 
-  readonly isValueChanged = signal(false);
+  readonly isValueChanged = computed(() => {
+    const ctrl = this.control();
+    this.controlValueVersion();
+    if (!ctrl) return false;
+    return !this.valuesEqual(ctrl.value, this.uiDefaultValue());
+  });
+
+  private readonly controlValueVersion = signal(0);
 
   readonly isSensitiveField = computed(() => {
     if (!this.restrictMode()) return false;
@@ -102,6 +191,43 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.IsPassword || opt.Sensitive) return true;
     const name = opt.Name.toLowerCase();
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
+  readonly isPasswordField = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return false;
+    if (opt.IsPassword || opt.Sensitive) return true;
+    const name = opt.Name.toLowerCase();
+    return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
+  readonly showObscureButton = computed(() => {
+    if (!this.isPasswordField()) return false;
+    if (this.remoteState) {
+      const activeStep = this.remoteState.activeStepType();
+      if (activeStep === 'runtimeRemote' || this.remoteState.editTarget()) {
+        return true;
+      }
+      const opts = this.remoteState.commandOptions();
+      const obscureOpt = opts.find(o => o.key === 'obscure');
+      const noObscureOpt = opts.find(o => o.key === 'noObscure');
+      const isObscureActive = obscureOpt?.value === true && !(noObscureOpt?.value === true);
+      if (isObscureActive) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  readonly hasObscurableValue = computed(() => {
+    const ctrl = this.control();
+    this.controlValueVersion(); // track reactive updates
+    if (!ctrl) return false;
+    const val = ctrl.value;
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'string') return val.trim().length > 0;
+    if (Array.isArray(val)) return val.length > 0 && val.some(v => String(v).trim().length > 0);
+    return Boolean(val);
   });
 
   readonly displayDefault = computed(() => {
@@ -118,46 +244,31 @@ export class SettingControlComponent implements ControlValueAccessor {
     max_age: { DefaultStr: '0s', Default: 0 },
   };
 
-  private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
-  private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
-
-  readonly encodingFlags = [
-    'Slash',
-    'BackSlash',
-    'Del',
-    'Ctl',
-    'InvalidUtf8',
-    'Dot',
-    'LeftSpace',
-    'RightSpace',
-    'LeftCrLfHtVt',
-    'RightCrLfHtVt',
-    'LeftPeriod',
-    'LeftTilde',
-    'LtGt',
-    'DoubleQuote',
-    'SingleQuote',
-    'BackQuote',
-    'Dollar',
-    'Colon',
-    'Question',
-    'Asterisk',
-    'Pipe',
-    'Hash',
-    'Percent',
-    'CrLf',
-    'SquareBracket',
-    'Semicolon',
-    'Exclamation',
-  ].sort();
+  readonly DUMP_FLAGS_FALLBACK = DUMP_FLAGS_FALLBACK;
+  readonly encodingFlags = ENCODING_FLAGS;
 
   // Computed
-  readonly mergedOption = computed(() => {
-    const opt = this.option();
-    if (!opt) return null;
-    const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
-    const caller = this.optionOverrides()[opt.Name] ?? {};
-    return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+  readonly mergedOption = computed(
+    () => {
+      const opt = this.option();
+      if (!opt) return null;
+      const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
+      const caller = this.optionOverrides()[opt.Name] ?? {};
+      return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+    },
+    {
+      equal: (a, b) => a?.Name === b?.Name && a?.Type === b?.Type && a?.Value === b?.Value,
+    }
+  );
+
+  readonly isMultiselectOption = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return false;
+    if (isMultiselectType(opt.Type)) return true;
+    return (
+      (opt.Name === 'scope' || opt.Help?.toLowerCase().includes('comma separated list')) &&
+      !!opt.Examples?.length
+    );
   });
 
   readonly uiDefaultValue = computed(() => {
@@ -165,11 +276,120 @@ export class SettingControlComponent implements ControlValueAccessor {
     return opt ? this.calculateDefaultValue(opt) : '';
   });
 
-  // Hold (stepper long-press)
-  private holdInterval: ReturnType<typeof setInterval> | null = null;
-  private holdTimeout: ReturnType<typeof setTimeout> | null = null;
-  private readonly HOLD_DELAY = 400;
-  private readonly HOLD_INTERVAL = 80;
+  readonly controlError = computed<string | null>(() => {
+    const ctrl = this.control();
+    this.controlValueVersion(); // track value changes (validator re-runs)
+    const errors = ctrl?.errors as Record<string, { message?: string }> | undefined;
+    if (!errors) return null;
+    const keys = [
+      'required',
+      'integer',
+      'float',
+      'duration',
+      'sizeSuffix',
+      'bwTimetable',
+      'fileMode',
+      'time',
+      'enum',
+    ];
+    for (const key of keys) {
+      const message = errors[key]?.message;
+      if (message) return message;
+    }
+    return this.translate.instant('shared.settingControl.errors.invalidValue');
+  });
+
+  readonly controlOptionsList = computed<({ Value?: string; Help?: string } | string)[]>(() => {
+    const opt = this.mergedOption();
+    if (!opt) return [];
+    const examples = resolveOptionExamples(opt);
+    if (examples.length) return examples;
+    if (opt.Type === 'Encoding') return ENCODING_FLAGS as string[];
+    if (opt.Type === 'DumpFlags') return DUMP_FLAGS_FALLBACK as string[];
+    return [];
+  });
+
+  readonly controlType = computed<
+    | 'numeric'
+    | 'bool'
+    | 'time'
+    | 'tristate'
+    | 'multiSelect'
+    | 'autocomplete'
+    | 'select'
+    | 'array'
+    | 'input'
+  >(() => {
+    const opt = this.mergedOption();
+    if (!opt) return 'input';
+
+    if (this.isNumericType()) return 'numeric';
+
+    switch (opt.Type) {
+      case 'bool':
+        return 'bool';
+      case 'Time':
+        return 'time';
+      case 'Tristate':
+        return 'tristate';
+    }
+
+    const options = this.controlOptionsList();
+    const isMulti = this.isMultiselectOption();
+
+    if (this.hasBitsComboExamples()) {
+      return 'select';
+    }
+
+    if (options.length > 0) {
+      if (isMulti || opt.Type === 'Encoding' || opt.Type === 'DumpFlags') {
+        return 'multiSelect';
+      }
+      if (opt.Exclusive === false || isConvertibleType(opt.Type)) {
+        return 'autocomplete';
+      }
+      return 'select';
+    }
+
+    if (isMulti) {
+      return 'array';
+    }
+
+    return 'input';
+  });
+
+  readonly selectedLabel = computed<string>(() => {
+    const ctrl = this.control();
+    const opt = this.mergedOption();
+    this.controlValueVersion(); // track value changes
+    if (!ctrl || !opt) return '';
+
+    const rawValue = ctrl.value;
+    let value: unknown;
+    if (Array.isArray(rawValue)) {
+      if (rawValue.length === 0) return '';
+      value = rawValue[0];
+    } else {
+      value = rawValue;
+    }
+
+    if (value === null || value === undefined) return '';
+
+    const examples = this.controlOptionsList();
+    for (const e of examples) {
+      const eObj =
+        typeof e === 'object' && e !== null ? (e as { Value?: unknown; Help?: string }) : null;
+      const eValue = eObj ? (eObj.Value ?? '') : e;
+      if (eValue === value) {
+        if (eObj) {
+          const text = eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
+          return text ? this.translate.instant(text) : '';
+        }
+        return String(e);
+      }
+    }
+    return value === '' ? '' : String(value);
+  });
 
   // ControlValueAccessor
   private onChange: (value: unknown) => void = () => {
@@ -197,18 +417,23 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     this.destroyRef.onDestroy(() => {
       this.controlSubscriptions.unsubscribe();
-      this.stopHold(false);
     });
   }
 
   // Core logic
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
+    if (this.isMultiselectOption()) {
+      const delimiter = option.Type === 'SpaceSepList' ? /\s+/ : ',';
+      return this.splitToArray(option.DefaultStr, delimiter);
+    }
     switch (option.Type) {
-      case 'bool':
-        return option.Default === true || String(option.Default).toLowerCase() === 'true';
+      case 'bool': {
+        const def = option.Default ?? option.DefaultStr;
+        return def === true || String(def).toLowerCase() === 'true';
+      }
       case 'Tristate':
-        return this.valueMapper.parseTristate(option.Default);
+        return this.valueMapper.parseTristate(option.Default ?? option.DefaultStr);
       case 'Bits':
         if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
         if (!option.Examples?.length) return option.DefaultStr ?? '';
@@ -219,6 +444,8 @@ export class SettingControlComponent implements ControlValueAccessor {
         return this.splitToArray(option.DefaultStr, ',');
       case 'SpaceSepList':
         return this.splitToArray(option.DefaultStr, /\s+/);
+      case '[]string':
+      case 'List':
       case 'stringArray':
         return Array.isArray(option.Default) && option.Default.length > 0
           ? option.Default.map(v => v ?? '')
@@ -231,30 +458,51 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private splitToArray(str: string | undefined, delimiter: string | RegExp): string[] {
-    if (!str) return [];
+    if (!str || str === '[]' || str === 'null') return [];
     return str
       .split(delimiter)
       .map(v => v.trim())
-      .filter(Boolean);
+      .filter(v => Boolean(v) && v !== '[]' && v !== 'null');
   }
 
   private valuesEqual(current: unknown, defaultVal: unknown): boolean {
-    if (Array.isArray(current) || Array.isArray(defaultVal)) {
-      const currArr = Array.isArray(current) ? current : [];
-      const defArr = Array.isArray(defaultVal) ? defaultVal : [];
+    const optType = this.mergedOption()?.Type;
+
+    if (optType === 'Tristate') {
+      return current === defaultVal;
+    }
+
+    if (this.isMultiselectOption() || isArrayType(optType ?? '')) {
+      const toArray = (v: unknown): string[] => {
+        if (Array.isArray(v))
+          return v
+            .map(String)
+            .map(s => s.trim())
+            .filter(s => Boolean(s) && s !== '[]');
+        if (typeof v === 'string') {
+          const delimiter = optType === 'SpaceSepList' ? /\s+/ : ',';
+          return this.splitToArray(v, delimiter);
+        }
+        if (v === null || v === undefined) return [];
+        return [String(v)].filter(s => Boolean(s) && s !== '[]');
+      };
+
+      const currArr = toArray(current);
+      const defArr = toArray(defaultVal);
       if (currArr.length !== defArr.length) return false;
       const sortedCurr = [...currArr].sort();
       const sortedDef = [...defArr].sort();
       return sortedCurr.every((val, idx) => val === sortedDef[idx]);
     }
 
-    const isEmpty = (v: unknown): boolean => v === null || v === undefined || v === '';
-    if (isEmpty(current) && isEmpty(defaultVal)) return true;
-
-    if (typeof current === 'boolean' || typeof defaultVal === 'boolean') {
+    if (optType === 'bool') {
       const toBool = (v: unknown): boolean => v === true || String(v).toLowerCase() === 'true';
       return toBool(current) === toBool(defaultVal);
     }
+
+    const isEmpty = (v: unknown): boolean =>
+      v === null || v === undefined || String(v).trim() === '';
+    if (isEmpty(current) && isEmpty(defaultVal)) return true;
 
     return String(current).toLowerCase() === String(defaultVal).toLowerCase();
   }
@@ -271,7 +519,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       defaultArr.forEach(val => ctrl.push(new FormControl(val), { emitEvent: false }));
       this.syncFormArrayControls(ctrl);
       this.onChange(this.prepareValueForBackend(ctrl.value));
-      this.isValueChanged.set(false);
+      this.controlValueVersion.update(v => v + 1);
       this.valueChanged.emit(false);
       this.commitValue();
       return;
@@ -313,20 +561,24 @@ export class SettingControlComponent implements ControlValueAccessor {
         this.updateSplitFromControl(internalValue);
       }
     }
-    this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
+    this.controlValueVersion.update(v => v + 1);
   }
 
   private prepareValueForControl(value: unknown): unknown {
     const opt = this.mergedOption();
     if (!opt) return value;
 
-    if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
+    if ((value === null || value === undefined) && opt.Type !== 'Tristate') {
+      value = this.uiDefaultValue();
+    }
+
+    if (isConvertibleType(opt.Type)) {
       return typeof value === 'number'
         ? this.valueMapper.machineToHuman(value, opt.Type, opt.ValueStr)
         : value || opt.ValueStr || opt.DefaultStr || '';
     }
 
-    if (this.COMMA_ARRAY_TYPES.includes(opt.Type)) {
+    if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
@@ -334,20 +586,13 @@ export class SettingControlComponent implements ControlValueAccessor {
         if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
-      // rclone may return an integer bitmask — use ValueStr (always human-readable).
       if (typeof value === 'number') {
-        return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', ',');
+        const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
+        return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', delimiter);
       }
+      const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
       return typeof value === 'string'
-        ? this.splitToArray(value, ',')
-        : Array.isArray(value)
-          ? value
-          : [];
-    }
-
-    if (opt.Type === 'SpaceSepList') {
-      return typeof value === 'string'
-        ? this.splitToArray(value, /\s+/)
+        ? this.splitToArray(value, delimiter)
         : Array.isArray(value)
           ? value
           : [];
@@ -355,7 +600,13 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (opt.Type === 'bool') return value === true || String(value).toLowerCase() === 'true';
     if (opt.Type === 'Tristate') return this.valueMapper.parseTristate(value);
-    if (opt.Type === 'stringArray') return Array.isArray(value) ? value : [];
+    if (isJsonArrayType(opt.Type)) {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.trim()) {
+        return this.splitToArray(value, ',');
+      }
+      return [];
+    }
     if (typeof value === 'number' && opt.Examples?.length) {
       return opt.ValueStr || opt.DefaultStr || '';
     }
@@ -384,7 +635,9 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (!opt) return;
 
     const validators = this.getValidators(opt);
-    const isArray = ['stringArray', 'CommaSepList', 'SpaceSepList'].includes(opt.Type);
+    const isArray =
+      !opt.Examples?.length &&
+      (isJsonArrayType(opt.Type) || opt.Type === 'CommaSepList' || opt.Type === 'SpaceSepList');
 
     if (isArray) {
       const initial = this.getInitialArrayValue(opt);
@@ -406,10 +659,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       this.pendingWriteValue = undefined;
     }
 
-    const ctrl = this.control();
-    if (ctrl) {
-      this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
-    }
+    // Bump version so isValueChanged computed re-evaluates for the new control.
+    this.controlValueVersion.update(v => v + 1);
   }
 
   private syncFormArrayControls(ctrl: FormArray): void {
@@ -428,10 +679,12 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private getInitialValue(opt: RcConfigOption): unknown {
-    if (opt.Type === 'bool')
-      return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
+    if (opt.Type === 'bool') {
+      const val = opt.Value ?? opt.Default ?? opt.DefaultStr;
+      return val === true || String(val).toLowerCase() === 'true';
+    }
 
-    if (opt.Type === 'Encoding' || opt.Type === 'Bits' || opt.Type === 'DumpFlags') {
+    if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return opt.ValueStr || opt.DefaultStr || '';
       }
@@ -440,14 +693,19 @@ export class SettingControlComponent implements ControlValueAccessor {
           ? opt.ValueStr || opt.DefaultStr || ''
           : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
       }
-      const str =
+      const raw =
         typeof opt.Value === 'number'
           ? opt.ValueStr || opt.DefaultStr || ''
-          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
-      return this.splitToArray(str, ',');
+          : opt.Value !== undefined && opt.Value !== null && opt.Value !== ''
+            ? opt.Value
+            : opt.ValueStr || opt.DefaultStr || '';
+
+      if (Array.isArray(raw)) return raw.map(String);
+      const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
+      return this.splitToArray(String(raw), delimiter);
     }
 
-    if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
+    if (isConvertibleType(opt.Type)) {
       return typeof opt.Value === 'number'
         ? this.valueMapper.machineToHuman(opt.Value, opt.Type, opt.ValueStr)
         : opt.ValueStr || opt.DefaultStr || '';
@@ -462,16 +720,31 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   readonly hasBitsComboExamples = computed(() => this.isBitsWithCombos(this.mergedOption()));
 
+  readonly isNumericType = computed(() => {
+    const t = this.mergedOption()?.Type;
+    return !!t && (isIntType(t) || isFloatType(t));
+  });
+
+  /**
+   * The HTML <input step> value for the stepper input: 1 for integer types,
+   * 'any' for floats. Read by the template's stepperInput context.
+   */
+  readonly numericInputStep = computed<number | 'any'>(() => {
+    const t = this.mergedOption()?.Type ?? '';
+    return t.startsWith('float') ? 'any' : 1;
+  });
+
   private subscribeToChanges(): void {
     const ctrl = this.control();
     if (!ctrl) return;
 
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
+        this.controlValueVersion.update(v => v + 1);
+        if (this.remoteState?.isPopulatingForm()) return;
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
-        this.isValueChanged.set(changed);
         this.valueChanged.emit(changed);
         if (this.mergedOption()?.Type === 'Time') this.updateSplitFromControl(value);
       })
@@ -527,72 +800,26 @@ export class SettingControlComponent implements ControlValueAccessor {
     const opt = this.mergedOption();
     if (!opt) return value;
 
-    let machineValue = this.valueMapper.humanToMachine(value, opt.Type);
-
-    if (opt.Type === 'FileMode' && typeof machineValue === 'string') {
-      const parsed = parseInt(machineValue, 8);
-      if (!isNaN(parsed)) machineValue = parsed;
+    if (Array.isArray(value)) {
+      if (isJsonArrayType(opt.Type)) {
+        return value
+          .map(String)
+          .map(s => s.trim())
+          .filter(Boolean);
+      }
+      const delimiter = opt.Type === 'SpaceSepList' ? ' ' : ',';
+      return value.join(delimiter);
     }
 
-    return machineValue;
-  }
-
-  // Stepper
-
-  stepChange(direction: 1 | -1, step: number | 'any' = 1, commit = true): void {
-    const ctrl = this.control();
-    if (!ctrl) return;
-    const isFloat = this.mergedOption()?.Type === 'float64';
-    const current = isFloat ? parseFloat(ctrl.value) : parseInt(ctrl.value, 10);
-    const num = isNaN(current) ? 0 : current;
-    const next = num + (step === 'any' ? 1.0 : step) * direction;
-    ctrl.setValue(isFloat ? parseFloat(next.toPrecision(15)) : next);
-    if (commit) this.commitValue();
-  }
-
-  onIntegerInput(event: KeyboardEvent): void {
-    const type = this.mergedOption()?.Type;
-    if (!type || !['int', 'int64', 'int32', 'uint', 'uint32', 'uint64'].includes(type)) return;
-
-    const navigationKeys = [
-      'Backspace',
-      'Delete',
-      'Tab',
-      'Escape',
-      'Enter',
-      'Home',
-      'End',
-      'ArrowLeft',
-      'ArrowRight',
-      'ArrowUp',
-      'ArrowDown',
-    ];
-    if (navigationKeys.includes(event.key) || event.ctrlKey || event.metaKey) return;
-
-    if (event.key === '-' && !type.startsWith('uint')) {
-      const input = event.target as HTMLInputElement;
-      if (input.selectionStart === 0 && !input.value.includes('-')) return;
+    if (isJsonArrayType(opt.Type)) {
+      if (typeof value === 'string' && value.trim()) {
+        return this.splitToArray(value, ',');
+      }
+      if (value === null || value === undefined || value === '') return [];
     }
 
-    if (!/^\d$/.test(event.key)) event.preventDefault();
+    return this.valueMapper.humanToMachine(value, opt.Type);
   }
-
-  startHold(action: 'increment' | 'decrement', step: number | 'any'): void {
-    this.stopHold(false);
-    const dir = action === 'increment' ? 1 : -1;
-    this.stepChange(dir, step, false);
-    this.holdTimeout = setTimeout(() => {
-      this.holdInterval = setInterval(() => this.stepChange(dir, step, false), this.HOLD_INTERVAL);
-    }, this.HOLD_DELAY);
-  }
-
-  stopHold(commit = true): void {
-    if (this.holdTimeout) clearTimeout(this.holdTimeout);
-    if (this.holdInterval) clearInterval(this.holdInterval);
-    this.holdTimeout = this.holdInterval = null;
-    if (commit) this.commitValue();
-  }
-
   // Array controls
 
   addArrayItem(): void {
@@ -616,73 +843,63 @@ export class SettingControlComponent implements ControlValueAccessor {
     const validators: ValidatorFn[] = [];
     if (opt.Required) validators.push(Validators.required);
 
-    const r = this.validatorRegistry;
-    const vMap: Record<string, () => ValidatorFn> = {
-      stringArray: () => r.arrayValidator(),
-      CommaSepList: () => r.arrayValidator(),
-      SpaceSepList: () => r.arrayValidator(),
-      int: () => r.integerValidator(opt.DefaultStr),
-      int64: () => r.integerValidator(opt.DefaultStr),
-      int32: () => r.integerValidator(opt.DefaultStr),
-      uint: () => r.integerValidator(opt.DefaultStr),
-      uint32: () => r.integerValidator(opt.DefaultStr),
-      uint64: () => r.integerValidator(opt.DefaultStr),
-      float: () => r.floatValidator(opt.DefaultStr),
-      float32: () => r.floatValidator(opt.DefaultStr),
-      float64: () => r.floatValidator(opt.DefaultStr),
-      Duration: () => r.durationValidator(opt.DefaultStr),
-      SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr),
-      BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
-      FileMode: () => r.fileModeValidator(opt.DefaultStr),
-      Time: () => r.timeValidator(opt.DefaultStr),
-      Bits: () =>
-        opt.Examples?.length && !this.isBitsWithCombos(opt)
-          ? r.arrayValidator()
-          : Validators.nullValidator,
-      Encoding: () => r.arrayValidator(),
-      Tristate: () => r.tristateValidator(),
-    };
+    const isMultiSelect = this.isMultiselectOption();
+    const isSingleSelect =
+      this.hasBitsComboExamples() ||
+      (!!opt.Examples?.length && !isMultiSelect && opt.Exclusive !== false);
 
-    if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
-
-    const isMultiSelect = [
-      'DumpFlags',
-      'Encoding',
-      'Bits',
-      'stringArray',
-      'CommaSepList',
-      'SpaceSepList',
-    ].includes(opt.Type);
-    if (opt.Examples && !isMultiSelect) {
-      validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
+    if (!isSingleSelect) {
+      const r = this.validatorRegistry;
+      const examples = this.controlOptionsList();
+      if (isMultiSelect || isJsonArrayType(opt.Type)) {
+        validators.push(r.arrayValidator());
+      } else {
+        const vMap: Record<string, () => ValidatorFn> = {
+          int: () => r.integerValidator(opt.DefaultStr, examples),
+          int64: () => r.integerValidator(opt.DefaultStr, examples),
+          int32: () => r.integerValidator(opt.DefaultStr, examples),
+          uint: () => r.integerValidator(opt.DefaultStr, examples),
+          uint32: () => r.integerValidator(opt.DefaultStr, examples),
+          uint64: () => r.integerValidator(opt.DefaultStr, examples),
+          float: () => r.floatValidator(opt.DefaultStr, examples),
+          float32: () => r.floatValidator(opt.DefaultStr, examples),
+          float64: () => r.floatValidator(opt.DefaultStr, examples),
+          Duration: () => r.durationValidator(opt.DefaultStr, examples),
+          SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr, examples),
+          BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr, examples),
+          FileMode: () => r.fileModeValidator(opt.DefaultStr, examples),
+          Time: () => r.timeValidator(opt.DefaultStr, examples),
+          Tristate: () => r.tristateValidator(),
+        };
+        if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
+      }
     }
 
     return validators;
   }
 
-  getControlError(): string | null {
-    const errors = this.control()?.errors as Record<string, { message?: string }>;
-    if (!errors) return null;
-    const keys = [
-      'required',
-      'integer',
-      'float',
-      'duration',
-      'sizeSuffix',
-      'bwTimetable',
-      'fileMode',
-      'time',
-      'enum',
-    ];
-    for (const key of keys) {
-      if (errors[key]?.message) return errors[key].message!;
-    }
-    return this.translate.instant('shared.settingControl.errors.invalidValue');
-  }
+  async obscureFieldValue(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    event.preventDefault();
+    const ctrl = this.control();
+    if (!ctrl || !this.hasObscurableValue()) return;
 
-  getSelectedLabel(value: unknown, examples?: any[]): string {
-    if (value === null || value === undefined || value === '') return '';
-    const example = examples?.find(e => (e.Value ?? e) === value);
-    return example?.Help || example?.Value || String(value);
+    const rawVal = ctrl.value;
+    const strVal = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal);
+    const val = strVal.trim();
+    if (!val) return;
+
+    this.isObscuring.set(true);
+    try {
+      const res = await this.remoteService.obscureValue(val);
+      ctrl.setValue(res);
+      ctrl.markAsDirty();
+      ctrl.markAsTouched();
+      this.commitValue();
+    } catch (e) {
+      console.error('Failed to obscure password field:', e);
+    } finally {
+      this.isObscuring.set(false);
+    }
   }
 }

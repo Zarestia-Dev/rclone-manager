@@ -6,18 +6,18 @@ import {
   output,
   viewChild,
   ChangeDetectionStrategy,
+  HostListener,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-search-container',
-  standalone: true,
-  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslateModule],
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslatePipe],
   template: `
     <div class="search-container" [class.visible]="visible()">
       <mat-form-field subscriptSizing="dynamic">
@@ -27,6 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
           matInput
           [ngModel]="searchText()"
           (ngModelChange)="searchTextChange.emit($event)"
+          [ngModelOptions]="{ standalone: true }"
           [placeholder]="placeholder() | translate"
           [attr.aria-label]="ariaLabel() | translate"
         />
@@ -41,23 +42,37 @@ export class SearchContainerComponent {
   placeholder = input('shared.search.placeholder');
   ariaLabel = input('shared.search.ariaLabel');
   searchText = input('');
+  enableShortcut = input(true);
 
   searchTextChange = output<string>();
+  searchToggle = output<void>();
+  visibleChange = output<boolean>();
 
   searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   constructor() {
     effect(() => {
       if (this.visible()) {
-        this.focus();
+        requestAnimationFrame(() => this.focus());
       }
     });
   }
 
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    if (
+      this.enableShortcut() &&
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === 'f'
+    ) {
+      event.preventDefault();
+      this.searchToggle.emit();
+      this.visibleChange.emit(!this.visible());
+    }
+  }
+
   focus(): void {
-    setTimeout(() => {
-      this.searchInput()?.nativeElement?.focus();
-    }, 150);
+    this.searchInput()?.nativeElement?.focus();
   }
 
   clear(): void {

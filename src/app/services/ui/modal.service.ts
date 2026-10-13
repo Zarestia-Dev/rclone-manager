@@ -1,67 +1,55 @@
-import { Injectable, inject, Injector } from '@angular/core';
-import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
-import { TranslateService } from '@ngx-translate/core';
-import { Subject, Observable } from 'rxjs';
-import { Window } from '@tauri-apps/api/window';
+import { Injectable, inject, Injector, signal, Type } from '@angular/core';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
+import { Subject, Observable, from, switchMap } from 'rxjs';
+import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
-import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
-import { BackendModalComponent } from '../../features/modals/settings/backend-modal/backend-modal.component';
-import { LogsModalComponent } from '../../features/modals/settings/logs-modal/logs-modal.component';
-import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
-import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
-import { RcloneFlagsModalComponent } from '../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component';
-import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
-import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
-import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
-import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
-import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
-import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
-import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor/alert-action-editor.component';
-import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rules-editor/alert-rule-editor.component';
 import {
-  InputModalComponent,
-  InputModalData,
-} from '../../shared/modals/input-modal/input-modal.component';
-import { ArchiveCreateModalComponent } from '../../shared/modals/archive-create-modal/archive-create-modal.component';
-import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
-import {
-  AlertAction,
-  AlertRule,
-  RemoteSettings,
   RemoteFeatures,
   STANDARD_MODAL_SIZE,
   CONFIG_MODAL_SIZE,
   ABOUT_MODAL_SIZE,
-  ConfirmDialogData,
+  BackupAnalysis,
+  JobInfo,
+  QuickRun,
+  QuickRunInput,
+  TemplateCategory,
+  PrimaryActionType,
+  WorkflowNode,
+  FileBrowserItem,
+  ExplorerRoot,
+  ExportType,
+  ExportModalData,
 } from '@app/types';
-import { JobInfo } from '../../shared/types/jobs';
-import { BackupAnalysis } from '../settings/backup-restore.service';
-import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
+import { isMobile } from '../infrastructure/platform/api-client.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
   remoteName?: string;
   remoteType?: string;
   editTarget?: string;
-  existingConfig?: RemoteSettings;
   initialSection?: string;
   targetProfile?: string;
-  cloneTarget?: boolean;
   autoAddProfile?: boolean;
+  cloneFrom?: string;
 }
 
 export interface ExportModalOptions {
   remoteName?: string;
-  defaultExportType?: 'FullBackup' | 'AllConfigs' | 'SpecificRemote';
+  defaultExportType?: ExportType;
 }
 
 export interface PropertiesModalOptions {
   remoteName?: string;
   path?: string;
   isLocal?: boolean;
-  item?: any;
+  item?: unknown;
   remoteType?: string;
   features?: RemoteFeatures;
   height?: string;
@@ -81,321 +69,600 @@ export interface RestorePreviewOptions {
   analysis: BackupAnalysis;
 }
 
-class MockDialogRef<R = any> {
-  private readonly afterClosedSubject = new Subject<R | undefined>();
+export interface TemplateManagerModalOptions {
+  mode: 'save' | 'manage';
+  currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+}
 
-  constructor(public id: string) {}
+export interface QuickRunEditorModalOptions {
+  quickRun?: QuickRun;
+  cloneData?: QuickRunInput | QuickRun;
+  initialOpType?: PrimaryActionType;
+  initialRemoteName?: string;
+  workflowNode?: WorkflowNode;
+}
+
+const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+interface StandaloneOpts<D = any> {
+  type: string;
+  title: string;
+  data?: D | null;
+  width?: number;
+  height?: number;
+  suffix?: string;
+}
+
+export interface DialogRefLike<R = any> {
+  afterClosed(): Observable<R | undefined>;
+  close?(result?: R): void;
+}
+
+export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
+  constructor(private readonly promise: Promise<MatDialogRef<unknown, R>>) {}
 
   afterClosed(): Observable<R | undefined> {
-    return this.afterClosedSubject.asObservable();
+    return from(this.promise).pipe(switchMap(ref => ref.afterClosed()));
   }
 
   close(result?: R): void {
-    this.afterClosedSubject.next(result);
-    this.afterClosedSubject.complete();
-  }
-
-  backdropClick(): Observable<MouseEvent> {
-    return new Subject<MouseEvent>().asObservable();
-  }
-
-  keydownEvents(): Observable<KeyboardEvent> {
-    return new Subject<KeyboardEvent>().asObservable();
-  }
-
-  updatePosition(): this {
-    return this;
-  }
-
-  updateSize(): this {
-    return this;
+    this.promise.then(ref => ref.close(result));
   }
 }
 
-/**
- * Centralized service for opening modal dialogs.
- * Reduces boilerplate in components and provides consistent modal configuration.
- */
-@Injectable({
-  providedIn: 'root',
-})
-export class ModalService {
+class ChildWindowRef<R = any> {
+  constructor(private readonly windowLabel: string) {}
+
+  close(result?: R): void {
+    const win = getCurrentWindow();
+    win
+      .emit(`dialog-result-${this.windowLabel}`, result)
+      .catch(console.error)
+      .finally(() => win.close());
+  }
+}
+
+export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
+  private readonly closed$ = new Subject<R | undefined>();
+
+  afterClosed(): Observable<R | undefined> {
+    return this.closed$.asObservable();
+  }
+
+  resolve(result?: R): void {
+    this.closed$.next(result);
+    this.closed$.complete();
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class ModalService extends TauriBaseService {
   private readonly dialog = inject(MatDialog);
-  private readonly translate = inject(TranslateService);
-  private readonly apiClient = inject(ApiClientService);
+  private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
 
-  private shouldOpenStandalone(): boolean {
-    if (isHeadlessMode()) {
-      return false;
-    }
-    const appSettingsService = this.injector.get(AppSettingsService);
-    const options = appSettingsService.options();
-    return options ? options['general.standalone_dialogs']?.value === true : false;
-  }
+  readonly isDialogStandalone = signal<boolean>(
+    new URLSearchParams(window.location.search).get('standalone') === 'dialog'
+  ).asReadonly();
 
-  private openStandaloneDialog<T, R = any>(
-    dialogType: string,
-    title: string,
-    data: any,
-    width?: number,
-    height?: number
-  ): MatDialogRef<T, R> {
-    const label = `dialog-${dialogType}`;
-    const mockRef = new MockDialogRef<R>(label);
+  private readonly _dialogComponent = signal<Type<unknown> | null>(null);
+  readonly dialogComponent = this._dialogComponent.asReadonly();
 
-    let url = `index.html?standalone=dialog&dialogType=${dialogType}`;
-    if (data) {
-      url += `&data=${encodeURIComponent(JSON.stringify(data))}`;
-    }
+  dialogInjector?: Injector;
 
-    // Call Rust to create the window
-    this.apiClient
-      .invoke('new_window', {
-        opts: {
-          label,
-          url,
-          title,
-          width,
-          height,
-        },
-      })
-      .catch(err => {
-        console.error('Failed to open standalone dialog window:', err);
-      });
+  constructor() {
+    super();
+    if (!isMobile()) return;
 
-    const targetWin = new Window(label);
+    window.addEventListener('popstate', () => {
+      if (this.dialog.openDialogs.length > 0) {
+        const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
+        topmostDialog.close();
 
-    let resultReceived = false;
-    let unlistenResult: (() => void) | undefined;
-    let unlistenDestroyed: (() => void) | undefined;
+        topmostDialog.afterClosed().subscribe(() => {
+          if (this.dialog.openDialogs.length > 0) {
+            window.history.pushState({ modal: true }, '');
+          }
+        });
+      }
+    });
 
-    const cleanup = () => {
-      if (unlistenResult) unlistenResult();
-      if (unlistenDestroyed) unlistenDestroyed();
-    };
+    this.dialog.afterOpened.subscribe(dialogRef => {
+      if (this.dialog.openDialogs.length === 1) {
+        window.history.pushState({ modal: true }, '');
+      }
 
-    targetWin
-      .listen<R>(`dialog-result-${label}`, event => {
-        resultReceived = true;
-        mockRef.close(event.payload);
-        cleanup();
-      })
-      .then(u => {
-        unlistenResult = u;
-      });
+      const originalClose = dialogRef.close.bind(dialogRef);
+      dialogRef.close = (dialogResult?: unknown): void => {
+        const container = dialogRef.id ? document.getElementById(dialogRef.id) : null;
+        const overlayElement = container?.closest('.cdk-overlay-pane');
 
-    targetWin
-      .once('tauri://destroyed', () => {
-        cleanup();
-        if (!resultReceived) {
-          mockRef.close();
+        if (overlayElement?.classList.contains('mobile-sheet-dialog') && window.innerWidth <= 450) {
+          if (container) {
+            if (container.classList.contains('closing')) return;
+            container.classList.add('closing');
+          }
+          const backdrop = overlayElement.parentElement?.querySelector('.cdk-overlay-backdrop');
+          if (backdrop) {
+            backdrop.classList.add('closing');
+          }
+          setTimeout(() => {
+            originalClose(dialogResult);
+          }, 200);
+        } else {
+          originalClose(dialogResult);
         }
-      })
-      .then(u => {
-        unlistenDestroyed = u;
-      });
+      };
+    });
 
-    return mockRef as unknown as MatDialogRef<T, R>;
-  }
-
-  // ============================================================================
-  // Remote Management Modals
-  // ============================================================================
-
-  openQuickAddRemote(): MatDialogRef<QuickAddRemoteComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<QuickAddRemoteComponent>(
-        'quick-add-remote',
-        this.translate.instant('titlebar.menu.quickRemote'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(QuickAddRemoteComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
+    this.dialog.afterAllClosed.subscribe(() => {
+      if (window.history.state?.modal) {
+        window.history.back();
+      }
     });
   }
 
-  openRemoteConfig(
-    options: RemoteConfigModalOptions = {}
-  ): MatDialogRef<RemoteConfigModalComponent> {
+  private readonly loaders: Record<string, () => Promise<Type<unknown>>> = {
+    'quick-add-remote': () =>
+      import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
+        m => m.QuickAddRemoteComponent
+      ),
+    'remote-config': () =>
+      import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
+        m => m.RemoteConfigModalComponent
+      ),
+    logs: () =>
+      import('../../features/modals/settings/logs-modal/logs-modal.component').then(
+        m => m.LogsModalComponent
+      ),
+    export: () =>
+      import('../../features/modals/settings/export-modal/export-modal.component').then(
+        m => m.ExportModalComponent
+      ),
+    backend: () =>
+      import('../../features/modals/settings/backend-modal/backend-modal.component').then(
+        m => m.BackendModalComponent
+      ),
+    preferences: () =>
+      import('../../features/modals/settings/preferences-modal/preferences-modal.component').then(
+        m => m.PreferencesModalComponent
+      ),
+    'rclone-flags': () =>
+      import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
+        m => m.RcloneFlagsModalComponent
+      ),
+    'job-detail': () =>
+      import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
+        m => m.JobDetailModalComponent
+      ),
+    properties: () =>
+      import('../../features/modals/properties/properties-modal.component').then(
+        m => m.PropertiesModalComponent
+      ),
+    'remote-about': () =>
+      import('../../features/modals/remote-about/remote-about-modal.component').then(
+        m => m.RemoteAboutModalComponent
+      ),
+    'keyboard-shortcuts': () =>
+      import('../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component').then(
+        m => m.KeyboardShortcutsModalComponent
+      ),
+    about: () =>
+      import('../../features/modals/settings/about-modal/about-modal.component').then(
+        m => m.AboutModalComponent
+      ),
+    'restore-preview': () =>
+      import('../../features/modals/settings/restore-preview-modal/restore-preview-modal.component').then(
+        m => m.RestorePreviewModalComponent
+      ),
+    alerts: () =>
+      import('../../features/modals/alerts-modal/alerts-modal.component').then(
+        m => m.AlertsModalComponent
+      ),
+    'archive-create': () =>
+      import('../../shared/modals/archive-create-modal/archive-create-modal.component').then(
+        m => m.ArchiveCreateModalComponent
+      ),
+    'quick-run-editor': () =>
+      import('../../flow/quick-run/quick-run-editor/quick-run-editor.component').then(
+        m => m.QuickRunEditorComponent
+      ),
+    'template-manager': () =>
+      import('../../shared/remote-config/template-manager-modal/template-manager-modal.component').then(
+        m => m.TemplateManagerModalComponent
+      ),
+    'delete-remote': () =>
+      import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
+        m => m.DeleteRemoteModalComponent
+      ),
+    'workflow-cron-editor': () =>
+      import('../../flow/workflow/modals/cron-editor-modal/cron-editor-modal.component').then(
+        m => m.CronEditorModalComponent
+      ),
+    'workflow-rc-editor': () =>
+      import('../../flow/workflow/modals/rc-editor-modal/rc-editor-modal.component').then(
+        m => m.RcEditorModalComponent
+      ),
+    'multi-rename': () =>
+      import('../../shared/modals/multi-rename-modal/multi-rename-modal.component').then(
+        m => m.MultiRenameModalComponent
+      ),
+    'power-menu': () =>
+      import('../../features/modals/power-menu-modal/power-menu-modal.component').then(
+        m => m.PowerMenuModalComponent
+      ),
+  };
+
+  async resolveDialogWindow(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const dialogType = params.get('dialogType') ?? '';
+    const loader = this.loaders[dialogType];
+
+    if (!loader) {
+      console.error(`[ModalService] Unknown standalone dialog type: "${dialogType}"`);
+      return;
+    }
+
+    this._dialogComponent.set(await loader());
+
+    let data: unknown = null;
+    const raw = params.get('dialogData');
+    if (raw) {
+      try {
+        data = JSON.parse(decodeURIComponent(raw));
+      } catch (e) {
+        console.error('[ModalService] Failed to parse dialogData:', e);
+      }
+    }
+
+    this.dialogInjector = Injector.create({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: new ChildWindowRef(getCurrentWindow().label) },
+      ],
+      parent: this.injector,
+    });
+  }
+
+  private get standaloneEnabled(): boolean {
+    return (
+      this.isTauri &&
+      !isMobile() &&
+      this.appSettings.options()?.['general.standalone_dialogs']?.value === true
+    );
+  }
+
+  private openModal<TData = any, TResult = any>(
+    type: string,
+    config: MatDialogConfig<TData>,
+    standalone?: Omit<StandaloneOpts<TData>, 'type' | 'data'>
+  ): DialogRefLike<TResult> {
+    if (standalone && this.standaloneEnabled) {
+      return this.spawnStandaloneWindow<TData, TResult>({
+        type,
+        data: config.data,
+        ...standalone,
+      });
+    }
+    if (config.height && !config.panelClass) {
+      config.panelClass = 'mobile-sheet-dialog';
+    }
+    const dialogPromise = this.loaders[type]().then(comp =>
+      this.dialog.open<unknown, TData, TResult>(comp, config)
+    );
+    return new AsyncDialogRef<TResult>(dialogPromise);
+  }
+
+  private spawnStandaloneWindow<TData = any, TResult = any>(
+    opts: StandaloneOpts<TData>
+  ): StandaloneWindowRef<TResult> {
+    const suffix = opts.suffix ? `-${sanitizeLabel(opts.suffix)}` : '';
+    const label = `dialog-${opts.type}${suffix}`;
+    const ref = new StandaloneWindowRef<TResult>();
+
+    const encoded = opts.data ? encodeURIComponent(JSON.stringify(opts.data)) : '';
+    const url = `index.html?standalone=dialog&dialogType=${opts.type}${encoded ? `&dialogData=${encoded}` : ''}`;
+
+    void this.openWindowAndBind(label, url, opts.title, opts.width, opts.height, ref);
+    return ref;
+  }
+
+  private async openWindowAndBind<TResult = any>(
+    label: string,
+    url: string,
+    title: string,
+    width: number | undefined,
+    height: number | undefined,
+    ref: StandaloneWindowRef<TResult>
+  ): Promise<void> {
+    try {
+      const created = await this.apiClient.invoke<boolean>('new_window', {
+        opts: { label, url, title, width, height },
+      });
+      if (!created) return;
+
+      const win = new Window(label);
+      let resultReceived = false;
+
+      const unlistenResult = await win.listen(`dialog-result-${label}`, ({ payload }) => {
+        resultReceived = true;
+        ref.resolve(payload as TResult);
+        unlistenResult();
+        unlistenDestroyed();
+      });
+
+      const unlistenDestroyed = await win.once('tauri://destroyed', () => {
+        unlistenResult();
+        unlistenDestroyed();
+        if (!resultReceived) ref.resolve();
+      });
+    } catch (err) {
+      console.error('[ModalService] Failed to bind standalone window:', err);
+    }
+  }
+
+  openQuickRunEditor<TResult = any>(
+    optionsOrTarget?: QuickRun | QuickRunEditorModalOptions,
+    initialOpType?: PrimaryActionType,
+    initialRemoteName?: string
+  ): DialogRefLike<TResult> {
+    let data: QuickRunEditorModalOptions;
+    if (optionsOrTarget && ('name' in optionsOrTarget || 'id' in optionsOrTarget)) {
+      const isExisting = 'id' in optionsOrTarget && !!optionsOrTarget.id;
+      data = {
+        quickRun: isExisting ? (optionsOrTarget as QuickRun) : undefined,
+        cloneData: !isExisting ? (optionsOrTarget as QuickRunInput) : undefined,
+        initialOpType,
+        initialRemoteName,
+      };
+    } else if (optionsOrTarget) {
+      data = optionsOrTarget as QuickRunEditorModalOptions;
+    } else {
+      data = { initialOpType, initialRemoteName };
+    }
+
+    const title = data.workflowNode
+      ? data.workflowNode.title ||
+        this.translate.instant('flow.workflow.editor.configureNode', {
+          type: data.initialOpType ?? data.workflowNode.type,
+        })
+      : data.quickRun
+        ? this.translate.instant('flow.quickRun.editor.editTitle')
+        : this.translate.instant('flow.quickRun.editor.createTitle');
+
+    const suffix = data.workflowNode?.id ?? data.quickRun?.id ?? 'new';
+
+    return this.openModal(
+      'quick-run-editor',
+      { ...CONFIG_MODAL_SIZE, disableClose: true, data },
+      {
+        title,
+        width: 1024,
+        height: 860,
+        suffix,
+      }
+    );
+  }
+
+  openWorkflowCronEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    const titleKey =
+      node.titleKey ??
+      (node.type === 'schedule_wait'
+        ? 'flow.workflow.nodes.scheduleWait'
+        : 'flow.workflow.nodes.cronSchedule');
+    return this.openModal(
+      'workflow-cron-editor',
+      {
+        width: '640px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant(titleKey),
+        width: 640,
+        height: 600,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowRcEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    return this.openModal(
+      'workflow-rc-editor',
+      {
+        width: '780px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        disableClose: true,
+        data: { node },
+      },
+      {
+        title: this.translate.instant('flow.workflow.nodes.rcCommand'),
+        width: 780,
+        height: 700,
+        suffix: node.id,
+      }
+    );
+  }
+
+  openWorkflowNodeEditor<TResult = unknown>(node: WorkflowNode): DialogRefLike<TResult> {
+    if (node.type === 'cron' || node.type === 'schedule_wait') {
+      return this.openWorkflowCronEditor(node);
+    }
+    if (node.type === 'rc_command') {
+      return this.openWorkflowRcEditor(node);
+    }
+    const remoteName = (node.config['remote'] ?? node.config['remoteName'] ?? '') as string;
+    return this.openQuickRunEditor({
+      workflowNode: node,
+      initialOpType: node.type as PrimaryActionType,
+      initialRemoteName: remoteName,
+    });
+  }
+
+  openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {
     const data = {
       name: options.remoteName,
       remoteType: options.remoteType,
       editTarget: options.editTarget,
-      existingConfig: options.existingConfig,
       initialSection: options.initialSection,
       targetProfile: options.targetProfile,
-      cloneTarget: options.cloneTarget,
       autoAddProfile: options.autoAddProfile,
+      cloneFrom: options.cloneFrom,
     };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RemoteConfigModalComponent>(
-        'remote-config',
-        this.translate.instant('titlebar.menu.detailedRemote'),
-        data,
-        1024,
-        768
-      );
-    }
-    return this.dialog.open(RemoteConfigModalComponent, {
-      ...CONFIG_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+    return this.openModal(
+      'remote-config',
+      { ...CONFIG_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('titlebar.menu.detailedRemote'),
+        width: 1024,
+        height: 768,
+        suffix:
+          [options.remoteName, options.targetProfile, options.editTarget]
+            .filter(Boolean)
+            .join('-') || 'new',
+      }
+    );
   }
 
-  // ============================================================================
-  // Settings Modals
-  // ============================================================================
-
-  openLogs(remoteName: string): MatDialogRef<LogsModalComponent> {
+  openLogs<TResult = any>(remoteName: string): DialogRefLike<TResult> {
     const data = { remoteName };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<LogsModalComponent>(
-        'logs',
-        this.translate.instant('settings.logs.remoteLogs', { name: remoteName }),
-        data,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(LogsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
-  }
-
-  openExport(options: ExportModalOptions = {}): MatDialogRef<ExportModalComponent> {
-    const data = {
-      remoteName: options.remoteName,
-      defaultExportType: options.defaultExportType ?? 'FullBackup',
-    };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<ExportModalComponent>(
-        'export',
-        this.translate.instant('titlebar.menu.export'),
-        data,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(ExportModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
-  }
-
-  openBackend(): MatDialogRef<BackendModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<BackendModalComponent>(
-        'backend',
-        this.translate.instant('settings.backend.title') || 'Backend Management',
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(BackendModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: false,
-    });
-  }
-
-  openPreferences(): MatDialogRef<PreferencesModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<PreferencesModalComponent>(
-        'preferences',
-        this.translate.instant('settings.preferences.title'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(PreferencesModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
-  }
-
-  openRcloneFlags(): MatDialogRef<RcloneFlagsModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RcloneFlagsModalComponent>(
-        'rclone-flags',
-        this.translate.instant('titlebar.menu.flags'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(RcloneFlagsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
-  }
-
-  /**
-   * Open the Job Detail modal for a given job info object.
-   * Uses the standard modal sizing and provides a default panelClass for styling.
-   */
-  openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<JobDetailModalComponent>(
-        'job-detail',
-        this.translate.instant('settings.jobDetail.title', { id: job.jobid }),
-        job,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(JobDetailModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data: job,
-    });
-  }
-
-  openProperties(options: PropertiesModalOptions): MatDialogRef<PropertiesModalComponent> {
-    const data = {
-      remoteName: options.remoteName,
-      path: options.path,
-      isLocal: options.isLocal,
-      item: options.item,
-      remoteType: options.remoteType,
-      features: options.features,
-    };
-    if (this.shouldOpenStandalone()) {
-      let width = 680;
-      if (options.width) {
-        if (options.width.endsWith('px')) {
-          width = parseInt(options.width);
-        } else if (options.width.endsWith('vw')) {
-          width = Math.round((parseInt(options.width) / 100) * window.innerWidth);
-        }
+    return this.openModal(
+      'logs',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('modals.logs.remoteLogs', { name: remoteName }),
+        width: 680,
+        height: 600,
+        suffix: remoteName,
       }
-      let height = 600;
-      if (options.height) {
-        if (options.height.endsWith('px')) {
-          height = parseInt(options.height);
-        } else if (options.height.endsWith('vh')) {
-          height = Math.round((parseInt(options.height) / 100) * window.innerHeight);
-        }
+    );
+  }
+
+  openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
+    const data: ExportModalData = {
+      remoteName: options.remoteName,
+      defaultExportType:
+        options.defaultExportType ??
+        (options.remoteName ? ExportType.SpecificRemote : ExportType.All),
+    };
+    return this.openModal(
+      'export',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('titlebar.menu.export'),
+        width: 680,
+        height: 600,
+        suffix: options.remoteName ?? 'full',
       }
-      return this.openStandaloneDialog<PropertiesModalComponent>(
-        'properties',
-        this.translate.instant('properties.title') || 'Properties',
-        data,
-        width,
-        height
-      );
-    }
-    return this.dialog.open(PropertiesModalComponent, {
-      data,
+    );
+  }
+
+  openJobDetail<TResult = any>(job: JobInfo): DialogRefLike<TResult> {
+    const data = { ...job };
+    return this.openModal(
+      'job-detail',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('modals.jobDetail.title', { id: job.jobid }),
+        width: 680,
+        height: 600,
+        suffix: String(job.jobid),
+      }
+    );
+  }
+
+  openRestorePreview<TResult = any>(options: RestorePreviewOptions): DialogRefLike<TResult> {
+    const data = { backupPath: options.backupPath, analysis: options.analysis };
+    return this.openModal(
+      'restore-preview',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('backup.restore.title'),
+        width: 680,
+        height: 600,
+        suffix: options.backupPath,
+      }
+    );
+  }
+
+  openQuickAddRemote<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'quick-add-remote',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('titlebar.menu.quickRemote'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openBackend<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'backend',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('modals.backend.title'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openPreferences<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'preferences',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('modals.preferences.title'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openRcloneFlags<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'rclone-flags',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('titlebar.menu.flags'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openAlerts<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'alerts',
+      {
+        width: '90vw',
+        maxWidth: '1200px',
+        height: '85vh',
+        disableClose: true,
+      },
+      {
+        title: this.translate.instant('alerts.title'),
+        width: 1200,
+        height: 800,
+      }
+    );
+  }
+
+  openProperties<TResult = any>(options: PropertiesModalOptions): DialogRefLike<TResult> {
+    return this.openModal('properties', {
+      data: {
+        remoteName: options.remoteName,
+        path: options.path,
+        isLocal: options.isLocal,
+        item: options.item,
+        remoteType: options.remoteType,
+        features: options.features,
+      },
       height: options.height ?? '60vh',
       maxHeight: options.maxHeight ?? '800px',
       width: options.width ?? '60vw',
@@ -403,203 +670,86 @@ export class ModalService {
     });
   }
 
-  openRemoteAbout(options: RemoteAboutModalOptions): MatDialogRef<RemoteAboutModalComponent> {
-    const data = {
-      remote: {
-        displayName: options.displayName,
-        normalizedName: options.normalizedName,
-        type: options.type,
+  openRemoteAbout<TResult = any>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
+    return this.openModal('remote-about', {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: {
+        remote: {
+          displayName: options.displayName,
+          normalizedName: options.normalizedName,
+          type: options.type,
+        },
       },
-    };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RemoteAboutModalComponent>(
-        'remote-about',
-        options.displayName,
-        data,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(RemoteAboutModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
     });
   }
 
-  openKeyboardShortcuts(data?: {
+  openKeyboardShortcuts<TResult = any>(data?: {
+    context?: ShortcutContext;
     nautilus?: boolean;
-  }): MatDialogRef<KeyboardShortcutsModalComponent> {
-    return this.dialog.open(KeyboardShortcutsModalComponent, {
+  }): DialogRefLike<TResult> {
+    return this.openModal('keyboard-shortcuts', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
       data,
     });
   }
 
-  openAbout(): MatDialogRef<AboutModalComponent> {
-    return this.dialog.open(AboutModalComponent, {
-      ...ABOUT_MODAL_SIZE,
-      disableClose: true,
-    });
+  openAbout<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openRestorePreview(options: RestorePreviewOptions): MatDialogRef<RestorePreviewModalComponent> {
-    const data = {
-      backupPath: options.backupPath,
-      analysis: options.analysis,
-    };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RestorePreviewModalComponent>(
-        'restore-preview',
-        this.translate.instant('settings.restore.title') || 'Restore Backup',
-        data,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(RestorePreviewModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+  openPowerMenu<TResult = any>(): DialogRefLike<TResult> {
+    return this.openModal('power-menu', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openAlerts(): MatDialogRef<AlertsModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<AlertsModalComponent>(
-        'alerts',
-        this.translate.instant('alerts.title') || 'Alerts & Notifications',
-        null,
-        1200,
-        800
-      );
-    }
-    return this.dialog.open(AlertsModalComponent, {
-      width: '90vw',
-      maxWidth: '1200px',
-      height: '85vh',
-      disableClose: false,
-      panelClass: 'alerts-modal-panel',
-    });
-  }
-
-  openAlertActionEditor(data?: AlertAction): MatDialogRef<AlertActionEditorComponent, AlertAction> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<AlertActionEditorComponent, AlertAction>(
-        'alert-action-editor',
-        'Alert Action Editor',
-        data,
-        600,
-        500
-      );
-    }
-    return this.dialog.open(AlertActionEditorComponent, {
-      width: '600px',
-      disableClose: false,
-      data,
-    });
-  }
-
-  openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<AlertRuleEditorComponent, AlertRule>(
-        'alert-rule-editor',
-        'Alert Rule Editor',
-        data,
-        600,
-        500
-      );
-    }
-    return this.dialog.open(AlertRuleEditorComponent, {
-      width: '600px',
-      disableClose: true,
-      data,
-    });
-  }
-
-  openArchiveCreate(data: {
+  openArchiveCreate<TResult = any>(data: {
     items: any[];
     defaultName: string;
-  }): MatDialogRef<ArchiveCreateModalComponent> {
-    return this.dialog.open(ArchiveCreateModalComponent, {
+  }): DialogRefLike<TResult> {
+    return this.openModal('archive-create', {
       width: '450px',
+      height: '600px',
       disableClose: true,
       data,
     });
   }
 
-  // ============================================================================
-  // Shared / Generic Modals
-  // ============================================================================
-
-  /**
-   * Open a generic confirm dialog with a message and confirm/cancel buttons.
-   */
-  openConfirm(
-    data: ConfirmDialogData,
-    config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
-  ): MatDialogRef<ConfirmModalComponent, boolean> {
-    return this.dialog.open(ConfirmModalComponent, {
-      maxWidth: '480px',
+  openTemplateManager<TResult = any>(options: TemplateManagerModalOptions): DialogRefLike<TResult> {
+    return this.openModal('template-manager', {
+      ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data,
-      ...config,
+      data: {
+        mode: options.mode,
+        currentValues: options.currentValues,
+      },
     });
   }
 
-  /**
-   * Open a generic input dialog for single or multiple text inputs.
-   */
-  openInput<T = any>(
-    data: InputModalData,
-    config: Partial<MatDialogConfig<InputModalData>> = {}
-  ): MatDialogRef<InputModalComponent, T> {
-    return this.dialog.open(InputModalComponent, {
-      minWidth: '362px',
-      disableClose: true,
-      data,
-      ...config,
-    });
-  }
-
-  // ============================================================================
-  // Animated Close Utility
-  // ============================================================================
-
-  /**
-   * Close a dialog with a slide-down animation.
-   * Use this instead of dialogRef.close() for animated closing on mobile.
-   *
-   * @param dialogRef - The MatDialogRef to close
-   * @param result - Optional result to pass to afterClosed()
-   * @param animationDuration - Duration of the close animation in ms (default: 200)
-   */
-  animatedClose<T, R = unknown>(
-    dialogRef: MatDialogRef<T>,
-    result?: R,
-    animationDuration = 200
-  ): void {
-    // Only apply animation on mobile widths where bottom sheet behavior is active
-    const isMobile = window.innerWidth <= 450;
-
-    if (isMobile) {
-      const dialogContainer = document.getElementById(dialogRef.id);
-
-      if (dialogContainer) {
-        dialogContainer.classList.add('closing');
-
-        // Wait for animation to complete, then close
-        setTimeout(() => {
-          dialogRef.close(result);
-        }, animationDuration);
-      } else {
-        // Fallback if container not found
-        dialogRef.close(result);
+  openDeleteRemote<TResult = boolean>(remoteName: string): DialogRefLike<TResult> {
+    const data = { remoteName };
+    return this.openModal(
+      'delete-remote',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('home.deleteRemote.title'),
+        width: 580,
+        height: 520,
+        suffix: remoteName,
       }
-    } else {
-      // Desktop - close immediately
-      dialogRef.close(result);
-    }
+    );
+  }
+
+  openMultiRename<TResult = boolean>(data: {
+    items: FileBrowserItem[];
+    remote: ExplorerRoot;
+  }): DialogRefLike<TResult> {
+    return this.openModal('multi-rename', {
+      ...STANDARD_MODAL_SIZE,
+      maxWidth: '780px',
+      maxHeight: '850px',
+      disableClose: true,
+      data,
+    });
   }
 }

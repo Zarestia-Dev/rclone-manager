@@ -4,7 +4,7 @@ members = [".", "rman-file-provider"]
 
 [package]
 name = "rclone-manager"
-version = "0.2.7"
+version = "0.3.3"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -23,16 +23,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+bridge-macro = { path = "crates/bridge-macro" }
 tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
-tauri-plugin-updater = { version = "2", features = ["rustls-tls"] }
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full", "process"] }
-tauri-plugin-os = "2"
+async-trait = "0.1"
 zip = "8"
 reqwest = { version = "0.13", default-features = false, features = ["json", "blocking", "rustls", "multipart", "stream", "query"] }
-tauri-plugin-notification = "2"
 once_cell = "1"
 log = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
@@ -43,41 +42,45 @@ tempfile = "3"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
 netstat2 = "0.11"
-sysinfo = "0.38"
+sysinfo = "0.39"
 tokio-cron-scheduler = "0.15"
-croner = "3"
-sevenz-rust2 = "0.21"
+croner = "4"
 clap = { version = "4", features = ["derive", "env"] }
-lofty = "0.24"
-base64 = "0.22"
+lofty = "0.25"
+base64 = "0.23"
 url = "2"
 handlebars = "6"
 rumqttc = "0.25"
 rustls-native-certs = "0.8"
 rustls = { version = "0.23", features = ["ring"] }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
+sys-locale = "0.3"
 
 
-tauri-plugin-shell = { version = "2", optional = true }
-tauri-plugin-window-state = { version = "2", optional = true }
-tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
+tauri-plugin-clipboard-manager = { version = "2", optional = true, default-features = false }
+tauri-plugin-notification = { version = "2", optional = true, default-features = false }
+tauri-plugin-deep-link = { version = "2", optional = true, default-features = false }
+tauri-plugin-os = { version = "2", optional = true, default-features = false }
+tauri-plugin-opener = { version = "2", optional = true, default-features = false }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2"
-futures = { version = "0.3" }
+futures = "0.3"
+http = "1"
 
 # Web server dependencies (optional)
 axum = { version = "0.8", features = ["multipart"], optional = true }
-tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
+tower-http = { version = "0.7", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
 anyhow = {version = "1", optional = true}
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
 parking_lot = "0.12"
-notify = "8.2.0"
+notify = "8"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"
@@ -86,41 +89,67 @@ nix = "0.31"
 objc2 = { version = "0.6", features = ["std"] }
 objc2-foundation = { version = "0.3", features = [
     "NSArray", "NSData", "NSDate", "NSDictionary", "NSError", "NSFileManager",
-    "NSEnumerator", "NSObject", "NSProgress", "NSString", "NSURL",
-    "NSValue", "NSRunLoop"
+    "NSEnumerator", "NSObject", "NSProgress", "NSString", "NSURL", "NSValue",
+    "NSRunLoop", "NSProcessInfo"
 ] }
 objc2-file-provider = { version = "0.3", features = [
-    "Extension", "NSFileProviderDomain", "NSFileProviderEnumerating",
+    "Extension", "NSFileProviderDomain", "NSFileProviderEnumerating"
 ] }
 block2 = "0.6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-zbus = "5"
-futures-lite = "2"
+zbus = { version = "5", optional = true }
+futures-lite = { version = "2", optional = true }
+notify-rust = { version = "4", optional = true }
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-context = "0.1"
+jni = "0.22"
+
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
-shellexpand = "3"
+winreg = "0.56"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
+tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
+updater = ["dep:tauri-plugin-updater"]
+tauri-plugin-notification = ["dep:tauri-plugin-notification"]
+tauri-plugin-deep-link = ["dep:tauri-plugin-deep-link"]
+
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "updater"]
 
 # Container
 container = ["web-server"]
 
+shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
+
 # For GUI features
+desktop = [
+    "tauri-plugin-window-state",
+    "tauri/devtools",
+    "updater",
+    "shared-tauri",
+    "dep:zbus",
+    "dep:futures-lite",
+    "dep:notify-rust",
+]
+tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
 default = ["desktop", "tray"]
-desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools"]
-tray = ["tauri/tray-icon", "tauri/image-png"]
 
 # Managed by package managers or not compatible with updater
 portable = ["desktop", "tray"]
 flatpak = ["desktop", "tray"]
+
+# In-process rclone via librclone FFI (mobile target).
+librclone = []
+mobile = ["librclone", "shared-tauri"]
 
 
 [dev-dependencies]

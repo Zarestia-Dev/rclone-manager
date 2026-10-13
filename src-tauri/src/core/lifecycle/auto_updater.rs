@@ -1,6 +1,7 @@
-use log::{info, warn};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+
+use log::{info, warn};
 use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
@@ -25,7 +26,7 @@ pub fn init_auto_updater(app: AppHandle) {
         UPDATE_CHECK_INTERVAL.as_secs() / 3600
     );
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         // Run initial check immediately on startup
         run_update_checks(&app).await;
 
@@ -56,7 +57,6 @@ async fn run_update_checks(app: &AppHandle) {
         .get_all()
         .unwrap_or_default();
 
-    #[cfg(desktop)]
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
         info!("Checking for app updates (channel: {channel})...");
@@ -65,6 +65,7 @@ async fn run_update_checks(app: &AppHandle) {
         }
     }
 
+    #[cfg(not(feature = "librclone"))]
     if config.runtime.rclone_auto_check_updates {
         let channel = config.runtime.rclone_update_channel.clone();
         info!("Checking for rclone updates (channel: {channel})...");
@@ -76,9 +77,8 @@ async fn run_update_checks(app: &AppHandle) {
     }
 }
 
-#[cfg(desktop)]
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
-    crate::utils::app::updater::app_updates::fetch_update(app.clone(), channel.to_string())
+    crate::utils::app::updater::fetch_update(app.clone(), channel.to_string())
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())

@@ -5,7 +5,6 @@
       <span>{{ 'shared.vfsControl.title' | translate }}</span>
     </mat-card-title>
   </mat-card-header>
-
   <mat-card-content>
     @if (vfsNotFound()) {
       <div class="empty-state">
@@ -13,54 +12,38 @@
         <span>{{ 'shared.vfsControl.noVfsFound' | translate }}</span>
         <p>{{ 'shared.vfsControl.noVfsRunning' | translate }}</p>
       </div>
-    } @else if (loading() && vfsInstances().length === 0) {
-      <div class="loading-state">
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        <p>{{ 'shared.vfsControl.loading' | translate }}</p>
-      </div>
     } @else if (vfsInstances().length > 0) {
       @if (vfsInstances().length > 1) {
-        <div class="vfs-selector">
-          <mat-form-field class="no-subscript">
-            <mat-label>{{ 'shared.vfsControl.vfsInstance' | translate }}</mat-label>
-            <mat-select
-              [ngModel]="selectedVfs()"
-              (ngModelChange)="onVfsSelectionChange($event)"
-              [compareWith]="compareVfs"
-            >
-              @for (vfs of vfsInstances(); track trackByVfsName($index, vfs)) {
-                <mat-option [value]="vfs">
-                  {{ vfs.name }}
-                  @if (vfs.queue.length > 0) {
-                    <span class="option-badge"
-                      >({{ vfs.queue.length }} {{ 'shared.vfsControl.queued' | translate }})</span
-                    >
-                  }
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
+        <mat-form-field>
+          <mat-label>{{ 'shared.vfsControl.vfsInstance' | translate }}</mat-label>
+          <mat-select
+            [ngModel]="selectedVfs()"
+            (ngModelChange)="onVfsSelectionChange($event)"
+            [compareWith]="compareVfs"
+          >
+            @for (vfs of vfsInstances(); track vfs.name) {
+              <mat-option [value]="vfs">
+                {{ vfs.name }}
+                @if (vfs.queue.length > 0) {
+                  <span class="option-badge"
+                    >({{ vfs.queue.length }} {{ 'shared.vfsControl.queued' | translate }})</span
+                  >
+                }
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
       }
 
       <!-- Warning for indexed VFS entries -->
       @if (isIndexedVfs()) {
-        <div class="indexed-vfs-warning">
-          <mat-icon svgIcon="warning" class="warn"></mat-icon>
-          <div class="warning-content">
-            <strong>{{ 'shared.vfsControl.controlsUnavailable' | translate }}</strong>
-            <p>
-              {{ 'shared.vfsControl.indexedWarning' | translate: { suffix: ':[0]' } }}
-            </p>
-            <a
-              href="https://github.com/rclone/rclone/issues/9120"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              #9120
-            </a>
-          </div>
-        </div>
+        <app-alert-banner
+          [title]="'shared.vfsControl.controlsUnavailable' | translate"
+          [description]="'shared.vfsControl.indexedWarning' | translate: { suffix: ':[0]' }"
+          severity="warning"
+          linkUrl="https://github.com/rclone/rclone/issues/9120"
+          linkText="#9120"
+        />
       }
 
       @if (selectedVfs(); as vfs) {
@@ -124,8 +107,8 @@
               </div>
             </div>
           } @else {
-            <div class="loading-shade">
-              <mat-spinner diameter="48" mode="indeterminate"></mat-spinner>
+            <div class="loading-container">
+              <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
               <p>{{ 'shared.vfsControl.loadingStats' | translate }}</p>
             </div>
           }
@@ -154,18 +137,18 @@
               @if (vfs.queue.length === 0) {
                 @if (!vfs.stats) {
                   <div class="empty-state">
-                    <mat-spinner diameter="36"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     <span>{{ 'shared.vfsControl.fetchingQueue' | translate }}</span>
                   </div>
                 } @else {
                   <div class="empty-state">
-                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    <mat-icon svgIcon="check-circle"></mat-icon>
                     <span>{{ 'shared.vfsControl.queue.empty' | translate }}</span>
                     <p>{{ 'shared.vfsControl.queue.emptyHint' | translate }}</p>
                   </div>
                 }
               } @else {
-                <table mat-table [dataSource]="vfs.queue" multiTemplateDataRows>
+                <table mat-table [dataSource]="queueRows()" multiTemplateDataRows>
                   <ng-container matColumnDef="name">
                     <th mat-header-cell *matHeaderCellDef>
                       {{ 'shared.vfsControl.queue.name' | translate }}
@@ -192,7 +175,7 @@
                       <div class="status-cell">
                         <div class="status-left">
                           <span class="status-text" [class.uploading]="item.uploading">
-                            {{ getQueueItemStatus(item) }}
+                            {{ item.status }}
                           </span>
                           @if (item.tries > 0) {
                             <span class="tries-badge"
@@ -204,9 +187,9 @@
                         <div class="status-right">
                           @if (!item.uploading && item.expiry > 5) {
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="prioritizeUpload(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 'shared.vfsControl.queue.tooltips.uploadNext' | translate
                               "
                             >
@@ -215,18 +198,18 @@
                           }
                           @if (!item.uploading) {
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="delayUpload(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 'shared.vfsControl.queue.tooltips.delayLong' | translate
                               "
                             >
                               <mat-icon svgIcon="stop" class="warn"></mat-icon>
                             </button>
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="toggleDelaySlider(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 showDelaySlider() === item.id
                                   ? ('shared.vfsControl.queue.tooltips.hideSlider' | translate)
                                   : ('shared.vfsControl.queue.tooltips.setDelay' | translate)
@@ -243,42 +226,40 @@
 
                   <ng-container matColumnDef="expandedDetail">
                     <td mat-cell *matCellDef="let item" [attr.colspan]="displayedColumns.length">
-                      <div class="element-detail">
-                        <div class="delay-slider-container">
-                          <div class="slider-header">
-                            <mat-icon svgIcon="clock"></mat-icon>
-                            <span>{{ 'shared.vfsControl.queue.slider.title' | translate }}</span>
+                      <div class="delay-slider-container">
+                        <div class="slider-header">
+                          <mat-icon svgIcon="clock"></mat-icon>
+                          <span>{{ 'shared.vfsControl.queue.slider.title' | translate }}</span>
+                        </div>
+                        <div class="slider-content">
+                          <mat-slider
+                            [min]="10"
+                            [max]="86400"
+                            [step]="10"
+                            [displayWith]="formatSliderLabel"
+                            discrete
+                          >
+                            <input
+                              matSliderThumb
+                              [ngModel]="delaySliderValue()"
+                              (ngModelChange)="delaySliderValue.set($event)"
+                            />
+                          </mat-slider>
+                          <div class="slider-value">
+                            {{ delaySliderLabel() }}
                           </div>
-                          <div class="slider-content">
-                            <mat-slider
-                              [min]="10"
-                              [max]="86400"
-                              [step]="10"
-                              [displayWith]="formatSliderLabel"
-                              discrete
-                            >
-                              <input
-                                matSliderThumb
-                                [ngModel]="delaySliderValue()"
-                                (ngModelChange)="delaySliderValue.set($event)"
-                              />
-                            </mat-slider>
-                            <div class="slider-value">
-                              {{ formatSliderLabel(delaySliderValue()) }}
-                            </div>
-                          </div>
-                          <div class="slider-actions">
-                            <button mat-button (click)="showDelaySlider.set(null)">
-                              {{ 'shared.vfsControl.queue.slider.cancel' | translate }}
-                            </button>
-                            <button
-                              mat-raised-button
-                              class="primary"
-                              (click)="setCustomDelay(item)"
-                            >
-                              {{ 'shared.vfsControl.queue.slider.apply' | translate }}
-                            </button>
-                          </div>
+                        </div>
+                        <div class="slider-actions">
+                          <button matButton="text" (click)="showDelaySlider.set(null)">
+                            {{ 'shared.vfsControl.queue.slider.cancel' | translate }}
+                          </button>
+                          <button
+                            matButton="elevated"
+                            class="primary"
+                            (click)="setCustomDelay(item)"
+                          >
+                            {{ 'shared.vfsControl.queue.slider.apply' | translate }}
+                          </button>
                         </div>
                       </div>
                     </td>
@@ -317,9 +298,9 @@
                     <code
                       >{{ diskCache.path }}
                       <button
-                        mat-icon-button
+                        matIconButton
                         (click)="openFolder(diskCache.path)"
-                        [matTooltip]="'shared.vfsControl.cacheInfo.openFolder' | translate"
+                        [attr.title]="'shared.vfsControl.cacheInfo.openFolder' | translate"
                         class="folder-button"
                       >
                         <mat-icon svgIcon="folder"></mat-icon>
@@ -335,9 +316,9 @@
                     <code
                       >{{ diskCache.pathMeta }}
                       <button
-                        mat-icon-button
+                        matIconButton
                         (click)="openFolder(diskCache.pathMeta)"
-                        [matTooltip]="'shared.vfsControl.cacheInfo.openMetaFolder' | translate"
+                        [attr.title]="'shared.vfsControl.cacheInfo.openMetaFolder' | translate"
                         class="folder-button"
                       >
                         <mat-icon svgIcon="folder"></mat-icon></button
@@ -393,10 +374,10 @@
                       <mat-icon matPrefix svgIcon="search"></mat-icon>
                       @if (configSearchTerm()) {
                         <button
-                          mat-icon-button
+                          matIconButton
                           matSuffix
                           (click)="configSearchTerm.set('')"
-                          [matTooltip]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
+                          [attr.title]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
                         >
                           <mat-icon svgIcon="close"></mat-icon>
                         </button>
@@ -410,7 +391,7 @@
                       <span>{{ 'shared.vfsControl.advancedConfig.noResults' | translate }}</span>
                     </div>
                   } @else {
-                    @for (group of vfsConfigGroups(); track trackByCategory($index, group)) {
+                    @for (group of vfsConfigGroups(); track group.name) {
                       <div class="config-group">
                         <h4 class="group-title">
                           <mat-icon svgIcon="folder"></mat-icon>
@@ -419,10 +400,10 @@
                           }}
                         </h4>
                         <div class="config-table">
-                          @for (item of group.items; track trackByConfigKey($index, item)) {
+                          @for (item of group.items; track item.key) {
                             <div class="config-row">
-                              <div class="config-key" [matTooltip]="item.key">{{ item.key }}</div>
-                              <div class="config-value" [matTooltip]="'Raw: ' + item.rawValue">
+                              <div class="config-key" [attr.title]="item.key">{{ item.key }}</div>
+                              <div class="config-value" [attr.title]="'Raw: ' + item.rawValue">
                                 {{ item.value }}
                               </div>
                             </div>
@@ -437,63 +418,88 @@
           }
         }
       }
+    } @else if (loading()) {
+      <div class="loading-shade">
+        <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+        <p>{{ 'shared.vfsControl.loading' | translate }}</p>
+      </div>
     }
   </mat-card-content>
 
   @if (selectedVfs(); as vfs) {
     <mat-card-actions>
-      <mat-form-field class="no-subscript">
-        <mat-label>{{ 'shared.vfsControl.actions.pollInterval' | translate }}</mat-label>
-        <input
-          matInput
-          [ngModel]="
-            !changeNotify()
-              ? ('shared.vfsControl.actions.pollIntervalNotSupported' | translate)
-              : pollIntervalInput()
-          "
-          (ngModelChange)="pollIntervalInput.set($event)"
-          [placeholder]="'shared.vfsControl.pollIntervalPlaceholder' | translate"
-          [disabled]="!hasUsableVfs() || loading() || !changeNotify()"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          (click)="updatePollInterval()"
-          [matTooltip]="'shared.vfsControl.actions.updateInterval' | translate"
-          [disabled]="
-            !hasUsableVfs() || !pollIntervalInput().trim() || loading() || !changeNotify()
-          "
-        >
-          <mat-icon svgIcon="bolt"></mat-icon>
-        </button>
-      </mat-form-field>
+      @if (!changeNotify()) {
+        <div class="poll-interval-container">
+          <mat-icon svgIcon="circle-info"></mat-icon>
+          <span>{{ 'shared.vfsControl.actions.pollIntervalNotSupported' | translate }}</span>
+        </div>
+      } @else if (pollIntervalLoading()) {
+        <div class="poll-interval-container">
+          <mat-icon svgIcon="spinner"></mat-icon>
+          <span>{{ 'common.loading' | translate }}</span>
+        </div>
+      } @else {
+        <mat-form-field class="no-subscript">
+          <mat-label>{{ 'shared.vfsControl.actions.pollInterval' | translate }}</mat-label>
+          <input
+            matInput
+            [ngModel]="pollIntervalInput()"
+            (ngModelChange)="pollIntervalInput.set($event)"
+            [placeholder]="'shared.vfsControl.pollIntervalPlaceholder' | translate"
+            [disabled]="!hasUsableVfs() || loading()"
+          />
+          <button
+            matIconButton
+            matSuffix
+            (click)="updatePollInterval()"
+            [attr.title]="'shared.vfsControl.actions.updateInterval' | translate"
+            [disabled]="!hasUsableVfs() || !pollIntervalInput().trim() || loading()"
+          >
+            <mat-icon svgIcon="bolt"></mat-icon>
+          </button>
+        </mat-form-field>
+      }
       <button
-        mat-icon-button
+        matIconButton
         (click)="refreshDirectory()"
-        [matTooltip]="'shared.vfsControl.actions.refreshMetadata' | translate"
+        [attr.title]="'shared.vfsControl.actions.refreshMetadata' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
-        <mat-icon svgIcon="sync"></mat-icon>
+        @if (loading()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="refresh" class="purple"></mat-icon>
+        }
       </button>
 
       <button
-        mat-icon-button
-        class="warn"
+        matIconButton
         (click)="clearMetadataCache()"
-        [matTooltip]="'shared.vfsControl.actions.clearCache' | translate"
+        [attr.title]="'shared.vfsControl.actions.clearCache' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
-        <mat-icon svgIcon="trash"></mat-icon>
+        <mat-icon svgIcon="trash" class="warn"></mat-icon>
       </button>
 
       <button
-        mat-icon-button
+        matIconButton
         (click)="loadAll()"
-        [matTooltip]="'shared.vfsControl.actions.refreshAll' | translate"
+        [attr.title]="'shared.vfsControl.actions.refreshAll' | translate"
         [disabled]="loading()"
       >
-        <mat-icon [class.spin]="loading()" svgIcon="refresh"></mat-icon>
+        @if (loading()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="refresh" class="accent"></mat-icon>
+        }
       </button>
     </mat-card-actions>
+  }
+
+  @if (loading() && vfsInstances().length > 0) {
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+      <span>{{ 'shared.vfsControl.loading' | translate }}</span>
+    </div>
   }
 </mat-card>

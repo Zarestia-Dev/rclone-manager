@@ -2,19 +2,16 @@
 //!
 //! This module provides backup and analysis commands using the rcman library.
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::rclone::queries::get_rclone_config_file;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
-use std::{fs::File, io::BufReader, path::PathBuf};
+use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use zip::ZipArchive;
 
-// =============================================================================
 // BACKUP COMMAND
-// =============================================================================
 
-#[tauri::command]
+#[bridge]
 #[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
     app_handle: AppHandle,
@@ -54,8 +51,8 @@ pub async fn backup_settings(
 
     if let ExportType::Category(ref category) = export_type {
         if category == "alerts" {
-            options = options.include_sub_settings("alerts/rules");
-            options = options.include_sub_settings("alerts/actions");
+            options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_RULES);
+            options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS);
         } else {
             options = options.include_sub_settings(category);
         }
@@ -68,12 +65,15 @@ pub async fn backup_settings(
 
     if matches!(export_type, ExportType::All) {
         register_rclone_config_provider(&app_handle, &manager).await?;
-        options = options.include_sub_settings("remotes");
         options = options.include_external("rclone.conf");
-        options = options.include_sub_settings("backend");
-        options = options.include_sub_settings("connections");
-        options = options.include_sub_settings("alerts/rules");
-        options = options.include_sub_settings("alerts/actions");
+        options = options.include_sub_settings(crate::utils::constants::SUB_REMOTES);
+        options = options.include_sub_settings(crate::utils::constants::SUB_BACKEND);
+        options = options.include_sub_settings(crate::utils::constants::SUB_CONNECTIONS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_RULES);
+        options = options.include_sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_QUICK_RUNS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_WORKFLOWS);
+        options = options.include_sub_settings(crate::utils::constants::SUB_TEMPLATES);
     }
 
     if matches!(export_type, ExportType::SpecificRemote)
@@ -103,10 +103,7 @@ pub async fn backup_settings(
     let include_secrets_flag = include_secrets.unwrap_or(false);
     if include_secrets_flag {
         // If user requested including secrets, require a valid password to avoid plaintext secrets
-        let pw_ok = password
-            .as_ref()
-            .map(|s| s.trim().len() >= 4)
-            .unwrap_or(false);
+        let pw_ok = password.as_ref().is_some_and(|s| s.trim().len() >= 4);
         if !pw_ok {
             return Err(crate::localized_error!(
                 "backendErrors.backup.secretRequirePassword"
@@ -151,11 +148,9 @@ pub(super) async fn register_rclone_config_provider(
     Ok(())
 }
 
-// =============================================================================
 // BACKUP ANALYSIS
-// =============================================================================
 
-#[tauri::command]
+#[bridge]
 pub async fn analyze_backup_file(
     app_handle: AppHandle,
     path: PathBuf,
@@ -173,11 +168,9 @@ pub async fn analyze_backup_file(
         ));
     }
 
-    if let Ok(analysis) = manager.backup().analyze(&path)
-        && analysis.format_version.parse::<u64>().unwrap_or(0) >= 1
-    {
-        let contents =
-            BackupContentsInfo {
+    match manager.backup().analyze(&path) {
+        Ok(analysis) => {
+            let contents = BackupContentsInfo {
                 settings: analysis.manifest.contents.settings,
                 backend_config: analysis
                     .manifest
@@ -238,57 +231,23 @@ pub async fn analyze_backup_file(
                     }),
             };
 
-        return Ok(BackupAnalysis {
-            is_encrypted: analysis.is_encrypted,
-            archive_type: if analysis.requires_password {
-                "zip-aes".into()
-            } else {
-                "zip".into()
-            },
-            format_version: analysis.format_version,
-            created_at: Some(analysis.created_at),
-            backup_type: Some(analysis.backup_type),
-            user_note: analysis.user_note,
-            contents: Some(contents),
-            is_legacy: Some(false),
-        });
+            Ok(BackupAnalysis {
+                is_encrypted: analysis.is_encrypted,
+                archive_type: if analysis.requires_password {
+                    "zip-aes".into()
+                } else {
+                    "zip".into()
+                },
+                format_version: analysis.format_version,
+                created_at: Some(analysis.created_at),
+                backup_type: Some(analysis.backup_type),
+                user_note: analysis.user_note,
+                contents: Some(contents),
+            })
+        }
+        Err(e) => Err(crate::localized_error!(
+            "backendErrors.backup.invalidArchive",
+            "error" => e
+        )),
     }
-
-    let file = File::open(&path)
-        .map_err(|e| crate::localized_error!("backendErrors.backup.openFailed", "error" => e))?;
-    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(
-        |e| crate::localized_error!("backendErrors.backup.invalidArchive", "error" => e),
-    )?;
-
-    let manifest_file = archive
-        .by_name("manifest.json")
-        .map_err(|_| crate::localized_error!("backendErrors.backup.missingManifest"))?;
-
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    use super::legacy_restore::BackupManifest;
-
-    let manifest: BackupManifest = serde_json::from_value(manifest_json).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    Ok(BackupAnalysis {
-        is_encrypted: manifest.backup.encrypted,
-        archive_type: manifest.backup.compression,
-        format_version: manifest.format.version,
-        created_at: Some(manifest.backup.created_at),
-        backup_type: Some(manifest.backup.backup_type),
-        user_note: manifest.metadata.and_then(|m| m.user_note),
-        contents: Some(BackupContentsInfo {
-            settings: manifest.contents.settings,
-            backend_config: manifest.contents.backend_config,
-            rclone_config: manifest.contents.rclone_config,
-            remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
-            remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
-            profiles: Some(vec!["default".to_string()]),
-        }),
-        is_legacy: Some(true),
-    })
 }

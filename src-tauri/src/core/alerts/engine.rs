@@ -1,20 +1,23 @@
+use std::sync::OnceLock;
+
 use chrono::{Duration, Utc};
 use futures::future::join_all;
 use log::{debug, error, warn};
 use tauri::{AppHandle, Manager};
-
-use crate::core::alerts::{
-    cache::{self, AlertHistoryCache},
-    dispatch::{self, DispatchContext},
-    event_ext::NotificationEventExt,
-    template::TemplateContext,
-    types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
-};
-use crate::core::settings::AppSettingsManager;
-use crate::utils::app::notification::NotificationEvent;
-
-use std::sync::OnceLock;
 use tokio::sync::mpsc;
+
+use crate::{
+    core::{
+        alerts::{
+            cache::{self, AlertHistoryCache},
+            dispatch::{self, DispatchContext},
+            template::TemplateContext,
+            types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
+        },
+        settings::AppSettingsManager,
+    },
+    utils::app::notification::NotificationEvent,
+};
 
 struct AlertRequest {
     app: AppHandle,
@@ -33,7 +36,7 @@ pub fn init(app: AppHandle) {
         return;
     }
 
-    tauri::async_runtime::spawn(async move {
+    crate::utils::spawn(async move {
         debug!("Alert engine worker started");
         let ctx = app.state::<DispatchContext>().inner().clone();
         while let Some(req) = rx.recv().await {
@@ -53,10 +56,10 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
         };
 
         if let Err(e) = tx.try_send(req) {
-            warn!("Alert queue full, dropping alert: {}. Error: {}", title, e);
+            warn!("Alert queue full, dropping alert: {title}. Error: {e}");
         }
     } else {
-        warn!("Alert engine not initialized, dropping alert: {}", title);
+        warn!("Alert engine not initialized, dropping alert: {title}");
     }
 }
 
@@ -132,6 +135,15 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             }
         }
 
+        if !rule.workflow_filter.is_empty() {
+            let matches = profile
+                .as_deref()
+                .is_some_and(|wf| rule.workflow_filter.iter().any(|f| f == wf));
+            if !matches {
+                continue;
+            }
+        }
+
         if let Some(body_filter) = &rule.body_filter
             && !body.contains(body_filter.as_str())
         {
@@ -166,7 +178,6 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         let source = event.alert_source();
         let destination = event.alert_destination();
 
-        // Prepare context
         let ctx = TemplateContext {
             title: title.clone(),
             body: body.clone(),
@@ -174,7 +185,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             severity_code: severity.as_code(),
             event_kind: kind.as_str().to_string(),
             remote: remote.clone().unwrap_or_default(),
-            profile: profile.clone().unwrap_or_else(|| "Default".to_string()),
+            profile: profile.clone().unwrap_or_default(),
             backend: backend.clone().unwrap_or_default(),
             operation: operation.clone().unwrap_or_default(),
             origin: origin.clone(),
@@ -192,12 +203,12 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
                 Some(a) if a.is_enabled() => a.clone(),
                 Some(_) => continue,
                 None => {
-                    warn!("Action '{}' in rule '{}' not found", action_id, rule.name);
+                    debug!("Action '{}' in rule '{}' not found", action_id, rule.name);
                     continue;
                 }
             };
 
-            action_futures.push(tokio::spawn({
+            action_futures.push(crate::utils::spawn({
                 let action_app = app.clone();
                 let action_ctx = ctx.clone();
                 let action_dispatch_ctx = dispatch_ctx.clone();
@@ -251,7 +262,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             &rule,
             AlertDetails {
                 event_kind: kind.clone(),
-                severity: severity.clone(),
+                severity,
                 title: title.clone(),
                 body: body.clone(),
                 remote: remote.clone(),
@@ -266,24 +277,24 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         record.action_results = action_results;
 
         let history_cache = app.state::<AlertHistoryCache>();
-        history_cache.push(record, Some(&app)).await;
+        history_cache.push(record).await;
     }
 }
 
-async fn execute_action(
-    app: &AppHandle,
+pub async fn execute_action(
+    _app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,
     client: &reqwest::Client,
     dispatch_ctx: &DispatchContext,
 ) -> Result<(), String> {
     match action {
-        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(app, ctx),
+        #[cfg(feature = "tauri-plugin-notification")]
+        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(_app, ctx),
         AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx, client).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
-        AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client)
-            .await
-            .map(|_| ()),
+        AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client).await,
+        AlertAction::Whatsapp(a) => dispatch::whatsapp::dispatch(a, ctx, client).await,
         AlertAction::Mqtt(a) => dispatch::mqtt::dispatch(a, ctx, dispatch_ctx).await,
         AlertAction::Email(a) => dispatch::email::dispatch(a, ctx).await,
     }

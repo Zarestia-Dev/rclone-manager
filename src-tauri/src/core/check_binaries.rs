@@ -3,22 +3,83 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
-use crate::utils::rclone::util::RCLONE_EXECUTABLE;
+use crate::{
+    core::bridge,
+    utils::{
+        rclone::util::RCLONE_EXECUTABLE,
+        types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+    },
+};
+
+pub const MIN_RCLONE_VERSION: &str = "1.75.0";
+
+fn resolve_path(path: &std::path::Path) -> PathBuf {
+    if path.is_file() {
+        return path.to_path_buf();
+    }
+
+    let executable = path.join(RCLONE_EXECUTABLE);
+    if path.is_dir() || executable.exists() {
+        return executable;
+    }
+
+    path.to_path_buf()
+}
 
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
     if let Some(path) = override_path
         .filter(|p| !p.to_string_lossy().is_empty() && *p != std::path::Path::new("system"))
     {
-        let path = PathBuf::from(path);
-        if !path.to_string_lossy().ends_with(RCLONE_EXECUTABLE) {
-            return path.join(RCLONE_EXECUTABLE);
-        }
-        return path;
+        return resolve_path(path);
     }
+
     read_rclone_binary(app)
 }
 
-#[tauri::command]
+pub async fn get_rclone_version(rclone_binary: &std::path::Path) -> Option<String> {
+    match crate::utils::process::command::Command::new(rclone_binary)
+        .arg("version")
+        .output()
+        .await
+    {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            stdout.lines().next().and_then(|line| {
+                line.split_whitespace()
+                    .nth(1)
+                    .map(|v| v.trim_start_matches('v').to_string())
+            })
+        }
+        _ => None,
+    }
+}
+
+pub fn is_version_at_least(current: &str, required: &str) -> bool {
+    let parse_parts = |v: &str| -> Vec<u32> {
+        let main_part = v.split(['-', '+', '_']).next().unwrap_or(v);
+        main_part
+            .split('.')
+            .map(|s| s.parse::<u32>().unwrap_or(0))
+            .collect()
+    };
+
+    let curr_parts = parse_parts(current);
+    let req_parts = parse_parts(required);
+
+    for i in 0..std::cmp::max(curr_parts.len(), req_parts.len()) {
+        let curr = curr_parts.get(i).copied().unwrap_or(0);
+        let req = req_parts.get(i).copied().unwrap_or(0);
+        if curr > req {
+            return true;
+        }
+        if curr < req {
+            return false;
+        }
+    }
+    true
+}
+
+#[bridge]
 pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool, String> {
     let rclone_binary = resolve_rclone_binary(
         &app,
@@ -31,23 +92,30 @@ pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool
     debug!("Checking rclone at: {}", rclone_binary.display());
 
     if rclone_binary.exists() && rclone_binary.is_file() {
-        match crate::utils::process::command::Command::new(rclone_binary)
-            .arg("--version")
-            .output()
-            .await
-        {
-            Ok(output) => Ok(output.status.success()),
-            Err(e) => Err(crate::localized_error!(
+        match get_rclone_version(&rclone_binary).await {
+            Some(version) => {
+                if is_version_at_least(&version, MIN_RCLONE_VERSION) {
+                    Ok(true)
+                } else {
+                    Err(crate::localized_error!(
+                        "backendErrors.rclone.versionTooOld",
+                        "version" => version,
+                        "required" => MIN_RCLONE_VERSION
+                    ))
+                }
+            }
+            None => Err(crate::localized_error!(
                 "backendErrors.rclone.executionFailed",
-                "error" => e
+                "error" => "Could not determine rclone version"
             )),
         }
+    } else if path.is_empty() {
+        crate::core::bridge::emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError);
+        Err(crate::localized_error!(
+            "backendErrors.rclone.notFound",
+            "path" => rclone_binary.display()
+        ))
     } else {
-        use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
-        use tauri::Emitter;
-        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-            error!("Failed to emit path error event: {e}");
-        }
         Err(crate::localized_error!(
             "backendErrors.rclone.notFound",
             "path" => rclone_binary.display()
@@ -91,24 +159,37 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
 
     debug!("Configured rclone binary: {}", configured.to_string_lossy());
 
-    let configured = if configured.to_string_lossy() != "system"
-        && !configured.to_string_lossy().is_empty()
-        && !configured.to_string_lossy().ends_with(RCLONE_EXECUTABLE)
-    {
-        configured.join(RCLONE_EXECUTABLE)
-    } else {
-        configured
-    };
+    let configured =
+        if configured.to_string_lossy() != "system" && !configured.to_string_lossy().is_empty() {
+            resolve_path(&configured)
+        } else {
+            configured
+        };
 
     if configured.to_string_lossy() != "system" && configured.is_file() {
         return configured;
     }
 
-    if let Ok(p) = which::which("rclone") {
+    if let Ok(p) = which::which(RCLONE_EXECUTABLE) {
         info!("Using system rclone at {}", p.display());
         p
     } else {
         error!("rclone binary not found in PATH or at configured location");
-        PathBuf::from("rclone")
+        PathBuf::from(RCLONE_EXECUTABLE)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_version_at_least() {
+        assert!(is_version_at_least("1.70.0", "1.70.0"));
+        assert!(is_version_at_least("1.70.1", "1.70.0"));
+        assert!(is_version_at_least("1.71.0", "1.70.0"));
+        assert!(is_version_at_least("1.70.0-DEV", "1.70.0"));
+        assert!(!is_version_at_least("1.69.9", "1.70.0"));
+        assert!(!is_version_at_least("1.66.0", "1.70.0"));
     }
 }

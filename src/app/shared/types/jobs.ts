@@ -1,6 +1,37 @@
 import { JobActionType } from './operations';
+import { OPERATION_REGISTRY } from './operation-registry';
+import { Origin } from './origin';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
+
+export interface ResolveState {
+  status: string;
+  percentage: number;
+  isPreparing: boolean;
+  bytes: number;
+  size: number;
+  speed: number;
+  eta: number;
+  error?: string;
+}
+
+export interface CompletedTransfer {
+  name: string;
+  size: number;
+  bytes: number;
+  checked: boolean;
+  error: string;
+  jobid: number;
+  startedAt?: string;
+  completedAt?: string;
+  srcFs?: string;
+  dstFs?: string;
+  group?: string;
+  status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
+  uniqueId?: string;
+  resolveJobId?: number;
+  resolveState?: ResolveState;
+}
 
 export interface TransferFile {
   bytes: number;
@@ -42,10 +73,21 @@ export interface GlobalStats {
   transferring: TransferFile[];
   transfers: number;
   listed: number;
+  completed?: CompletedTransfer[];
   startTime?: string;
+  checkOutput?: {
+    differ?: string[];
+    missingOnDst?: string[];
+    missingOnSrc?: string[];
+    error?: string[];
+    status?: string;
+    success?: boolean;
+    hashType?: string;
+  };
 }
 
-export const DEFAULT_JOB_STATS: GlobalStats = {
+// Frozen to prevent accidental mutation of the default state
+export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
   bytes: 0,
   totalBytes: 0,
   speed: 0,
@@ -69,14 +111,14 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   transferTime: 0,
   transferring: [],
   listed: 0,
-};
-
-import { Origin } from './origin';
+  completed: [],
+});
 
 export interface JobInfo {
   jobid: number;
+  execute_id: string;
   job_type: JobActionType;
-  source: string;
+  source: string | string[];
   destination: string;
   start_time: string;
   end_time?: string;
@@ -84,15 +126,18 @@ export interface JobInfo {
   error?: string;
   remote_name: string;
   stats: GlobalStats;
-  uploaded_files?: string[];
   group?: string;
   profile?: string;
+  quick_run_id?: string;
+  workflow_id?: string;
+  node_id?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
   backend_name?: string;
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
+  parent_job_id?: number;
 }
 
 export interface BatchMasterJob {
@@ -107,3 +152,17 @@ export interface BatchMasterJob {
   origin?: Origin;
   group?: string;
 }
+
+export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
+  completed: 'p-primary',
+  failed: 'p-warn',
+  stopped: 'p-orange',
+});
+
+export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
+  ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
+  rename: 'pen',
+  cleanup: 'broom',
+  rmdirs: 'broom',
+  upload: 'file-arrow-up',
+});

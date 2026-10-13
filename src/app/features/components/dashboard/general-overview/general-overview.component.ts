@@ -1,4 +1,3 @@
-import { NgClass, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,127 +6,60 @@ import {
   computed,
   output,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { MatCardModule } from '@angular/material/card';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 import {
-  JobInfo,
-  PrimaryActionType,
   Remote,
   Automation,
   ServeListItem,
-  CardDisplayMode,
+  StartJobEvent,
+  StopJobEvent,
+  PanelConfig,
+  DashboardPanel,
+  SCROLL_DELAY_MS,
+  ALL_PANELS,
+  OpenInFilesEvent,
 } from '@app/types';
 
-import {
-  FormatTimePipe,
-  FormatEtaPipe,
-  FormatMemoryUsagePipe,
-  FormatRateValuePipe,
-  FormatBytes,
-} from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
-import {
-  AutomationService,
-  UiStateService,
-  RcloneStatusService,
-  AppSettingsService,
-  BackendService,
-  RemoteFacadeService,
-  IconService,
-  PathService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
-
-const SCROLL_DELAY_MS = 60;
-
-import { AutomationCardComponent } from '../../../../shared/detail-shared';
-
-const JOB_ICON_MAP: Record<string, string> = {
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  copy_url: 'copy',
-  delete: 'trash',
-  rename: 'pen',
-  cleanup: 'broom',
-  rmdirs: 'broom',
-  upload: 'file-arrow-up',
-};
-
-export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves';
-
-interface PanelConfig {
-  id: PanelId;
-  title: string;
-  defaultVisible: boolean;
-}
-
-export interface DashboardPanel extends PanelConfig {
-  visible: boolean;
-}
-
-interface BandwidthDetailItem {
-  labelKey: string;
-  bytesPerSec: number | undefined;
-}
-
-interface JobStatItem {
-  labelKey: string;
-  value: string | number;
-  error?: boolean;
-  formatAsBytes?: boolean;
-}
-
-const ALL_PANELS: PanelConfig[] = [
-  { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
-  { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
-  { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
-  { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
-  { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
-  { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
-];
+import { BandwidthOverviewPanelComponent } from '../../../../shared/overviews-shared/bandwidth-overview-panel/bandwidth-overview-panel.component';
+import { SystemOverviewPanelComponent } from '../../../../shared/overviews-shared/system-overview-panel/system-overview-panel.component';
+import { JobsOverviewPanelComponent } from '../../../../shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
+import { ServesOverviewPanelComponent } from '../../../../shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
+import { AutomationsOverviewPanelComponent } from '../../../../shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
+import { AutomationService } from 'src/app/services/operations/automation.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-general-overview',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
-    DecimalPipe,
-    MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
-    MatExpansionModule,
-    MatProgressBarModule,
-    MatTooltipModule,
     MatSnackBarModule,
     MatSlideToggleModule,
     DragDropModule,
-    FormatTimePipe,
-    FormatEtaPipe,
-    FormatMemoryUsagePipe,
     RemotesPanelComponent,
-    ServeCardComponent,
-    FormatRateValuePipe,
-    FormatBytes,
     OverviewHeaderComponent,
-    TranslateModule,
-    CopyToClipboardDirective,
-    AutomationCardComponent,
+    BandwidthOverviewPanelComponent,
+    SystemOverviewPanelComponent,
+    JobsOverviewPanelComponent,
+    ServesOverviewPanelComponent,
+    AutomationsOverviewPanelComponent,
+    TranslatePipe,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -135,122 +67,61 @@ const ALL_PANELS: PanelConfig[] = [
 export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly automationService = inject(AutomationService);
-  private readonly uiStateService = inject(UiStateService);
   private readonly appSettingsService = inject(AppSettingsService);
-  private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly translate = inject(TranslateService);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly navigationDispatcher = inject(NavigationDispatcherService);
+  private readonly uiStateService = inject(UiStateService);
 
-  readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
   readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
 
   // --- Outputs ---
   readonly selectRemote = output<Remote>();
-  readonly startJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    serveId?: string;
-    profileName?: string;
-  }>();
-  readonly browseRemote = output<{ remoteName: string; path?: string }>();
+  readonly startJob = output<StartJobEvent>();
+  readonly stopJob = output<StopJobEvent>();
+  readonly browseRemote = output<OpenInFilesEvent>();
   readonly openBackendModal = output<void>();
 
   // --- State ---
-  readonly isEditingLayout = signal(false);
-  readonly cardDisplayMode = signal<CardDisplayMode>('compact');
-  readonly panelOpenStates = signal<Record<string, boolean>>({
-    bandwidth: false,
-    system: false,
-    jobs: false,
-    automations: false,
-    serves: false,
-  });
+  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview('general'));
+  readonly cardDisplayMode = this.uiStateService.cardDisplayMode;
+  readonly panelOpenStates = signal<Record<string, boolean>>(
+    this.localStorage.get<Record<string, boolean>>('dashboard.panelOpenStates', {
+      remotes: true,
+      bandwidth: false,
+      system: false,
+      jobs: false,
+      automations: false,
+      serves: false,
+    })
+  );
   readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
-  readonly isLoadingAutomations = signal(false);
+  readonly displayPanels = computed(() =>
+    this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
+  );
 
-  readonly automations = this.automationService.automations;
-
-  // --- Service signals re-exposed for the template ---
-  readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
-  readonly jobStats = this.rcloneStatusService.jobStats;
-  readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
-  readonly isLoadingStats = this.rcloneStatusService.isLoading;
-  readonly memoryUsage = this.rcloneStatusService.memoryUsage;
-  readonly uptime = this.rcloneStatusService.uptime;
-
-  // --- Computed ---
+  // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
-  readonly activeJobsCount = computed(
-    () => this.remoteFacade.jobs().filter(j => j.status === 'Running').length
-  );
   readonly runningJobs = computed(() =>
-    this.remoteFacade.jobs().filter(j => j.status === 'Running')
+    this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id)
   );
-  readonly allRunningServes = computed(() =>
-    this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
-  );
-
-  readonly jobCompletionPercentage = computed(() => {
-    const { totalBytes = 0, bytes = 0 } = this.jobStats();
-    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
-  });
-
-  readonly isBandwidthLimited = computed(() => {
-    const limit = this.bandwidthLimit();
-    return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
-  });
-
-  readonly activeAutomationsCount = computed(
-    () => this.automations().filter(t => t.status === 'enabled' || t.status === 'running').length
-  );
-
-  readonly totalAutomationsCount = computed(() => this.automations().length);
-
-  readonly bandwidthDetails = computed((): BandwidthDetailItem[] => {
-    const limit = this.bandwidthLimit();
-    return [
-      { labelKey: 'generalOverview.bandwidth.upload', bytesPerSec: limit?.bytesPerSecondTx },
-      { labelKey: 'generalOverview.bandwidth.download', bytesPerSec: limit?.bytesPerSecondRx },
-      { labelKey: 'generalOverview.bandwidth.total', bytesPerSec: limit?.bytesPerSecond },
-    ];
-  });
-
-  readonly jobStatsItems = computed((): JobStatItem[] => {
-    const s = this.jobStats();
-    return [
-      { labelKey: 'generalOverview.jobs.speed', value: s.speed, formatAsBytes: true },
-      { labelKey: 'generalOverview.jobs.transfers', value: `${s.transfers} / ${s.totalTransfers}` },
-      { labelKey: 'generalOverview.jobs.checks', value: `${s.checks} / ${s.totalChecks}` },
-      { labelKey: 'generalOverview.jobs.errors', value: s.errors, error: s.errors > 0 },
-      { labelKey: 'generalOverview.jobs.deletes', value: s.deletes },
-      { labelKey: 'generalOverview.jobs.renames', value: s.renames },
-      { labelKey: 'generalOverview.jobs.serverCopies', value: s.serverSideCopies },
-      { labelKey: 'generalOverview.jobs.serverMoves', value: s.serverSideMoves },
-    ];
-  });
+  readonly activeJobsCount = computed(() => this.runningJobs().length);
 
   constructor() {
     void this.loadLayoutSettings();
-    void this.loadAutomations();
   }
 
   // --- Layout management ---
-
   toggleEditLayout(): void {
-    this.isEditingLayout.update(v => !v);
-  }
-
-  toggleCardDisplayMode(): void {
-    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
-    this.persistLayout();
+    this.uiStateService.toggleLayoutEdit({
+      overviewId: 'general',
+      hasViewToggle: true,
+      onReset: () => this.resetLayout(),
+    });
   }
 
   resetLayout(): void {
@@ -260,7 +131,6 @@ export class GeneralOverviewComponent {
     });
     void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
-    this.cardDisplayMode.set('compact');
     void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
@@ -286,16 +156,10 @@ export class GeneralOverviewComponent {
     this.persistLayout();
   }
 
-  loadBandwidthLimit(): Promise<void> {
-    return this.rcloneStatusService.loadBandwidthLimit();
-  }
-
   protected setPanelOpenState(id: string, isOpen: boolean): void {
-    this.panelOpenStates.update(states => ({ ...states, [id]: isOpen }));
-  }
-
-  protected getPanelOpenState(id: string): boolean {
-    return this.panelOpenStates()[id] ?? false;
+    const updated = { ...this.panelOpenStates(), [id]: isOpen };
+    this.panelOpenStates.set(updated);
+    this.localStorage.set('dashboard.panelOpenStates', updated);
   }
 
   private persistLayout(): void {
@@ -304,32 +168,24 @@ export class GeneralOverviewComponent {
       .filter(p => !p.visible)
       .map(p => p.id);
     void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', { order, hidden });
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'dashboard_card_variant',
-      this.cardDisplayMode()
-    );
   }
 
-  // --- Serve actions ---
-
+  // --- Actions ---
   stopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
-    if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
+    if (remoteName)
+      this.stopJob.emit({
+        type: 'serve',
+        remoteName,
+        serveId: serve.id,
+        profileName: serve.profile || '',
+      });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
-    if (!remoteName) return;
-    const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-    if (remote) {
-      this.uiStateService.setTab('serve');
-      this.uiStateService.setSelectedRemote(remote);
-      setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
-    }
+    this.navigationDispatcher.navigateToServe(serve);
+    setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
   }
-
-  // --- Automation actions ---
 
   async toggleAutomation(automationId: string): Promise<void> {
     try {
@@ -341,11 +197,7 @@ export class GeneralOverviewComponent {
   }
 
   onAutomationClick(automation: Automation): void {
-    const remoteName = automation.args.remoteName;
-    if (remoteName) {
-      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-      if (remote) this.selectRemote.emit(remote);
-    }
+    this.navigationDispatcher.navigateToAutomation(automation);
   }
 
   onOpenAutomationInFiles(path: string): void {
@@ -353,29 +205,14 @@ export class GeneralOverviewComponent {
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 
-  getJobTypeIcon(job: JobInfo): string {
-    return JOB_ICON_MAP[job.job_type] ?? 'folder';
-  }
-
-  getJobLabel(job: JobInfo): string {
-    const key = `fileBrowser.operations.types.${job.job_type}`;
-    const translated = this.translate.instant(key);
-    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
-  }
-
   // --- Private helpers ---
-
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const [savedLayout, savedVariant] = await Promise.all([
-        this.appSettingsService.getSettingValue<{ order: string[]; hidden: string[] } | string[]>(
-          'runtime.dashboard_layout'
-        ),
-        this.appSettingsService.getSettingValue<CardDisplayMode>('runtime.dashboard_card_variant'),
-      ]);
+      const savedLayout = await this.appSettingsService.getSettingValue<
+        { order: string[]; hidden: string[] } | string[]
+      >('runtime.dashboard_layout');
 
       if (savedLayout) {
-        // Support both the new {order, hidden} shape and the legacy string[] shape
         const order: string[] = Array.isArray(savedLayout)
           ? savedLayout
           : (savedLayout.order ?? []);
@@ -389,7 +226,6 @@ export class GeneralOverviewComponent {
             .filter((p): p is PanelConfig => !!p)
             .map(p => ({ ...p, visible: !hiddenIds.has(p.id) }));
 
-          // Append any panels not present in the saved order (e.g. newly added panels)
           const seenIds = new Set(order);
           const appended = ALL_PANELS.filter(p => !seenIds.has(p.id)).map(p => ({
             ...p,
@@ -399,21 +235,8 @@ export class GeneralOverviewComponent {
           this.dashboardPanels.set([...ordered, ...appended]);
         }
       }
-
-      if (savedVariant) this.cardDisplayMode.set(savedVariant);
     } catch {
       console.debug('Failed to load layout settings, using defaults');
-    }
-  }
-
-  private async loadAutomations(): Promise<void> {
-    this.isLoadingAutomations.set(true);
-    try {
-      await this.automationService.getAutomations();
-    } catch (error) {
-      console.error('Error loading automations:', error);
-    } finally {
-      this.isLoadingAutomations.set(false);
     }
   }
 

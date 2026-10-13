@@ -1,6 +1,7 @@
 use super::rclone::RcloneCoreVersion;
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(target_os = "ios"))]
 #[derive(Clone, Serialize)]
 pub struct NetworkStatusPayload {
     #[serde(rename = "isMetered")]
@@ -34,6 +35,7 @@ pub struct SystemStatusPayload {
 }
 
 impl SystemStatusPayload {
+    #[must_use]
     pub fn inactive() -> Self {
         Self {
             rclone_info: None,
@@ -45,6 +47,7 @@ impl SystemStatusPayload {
         }
     }
 
+    #[must_use]
     pub fn error() -> Self {
         Self {
             rclone_info: None,

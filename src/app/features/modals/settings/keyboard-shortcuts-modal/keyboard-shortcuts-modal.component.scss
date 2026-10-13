@@ -1,127 +1,170 @@
-.modal-container {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-  position: relative;
+.shortcut-table {
+  width: 100%;
 
-  .modal-content {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+  .mat-mdc-row {
+    transition: var(--transition-fast);
     position: relative;
-    z-index: 1;
 
-    .shortcut-table {
-      border-radius: 0;
-      overflow: hidden;
+    &:hover {
+      background: var(--hover-bg-color);
 
-      .mat-mdc-row {
+      .key {
+        animation: keyPress 0.2s ease-out;
+      }
+    }
+
+    &.shortcut-hit {
+      animation: cloudGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: var(--radius-sm);
+      z-index: 2;
+
+      .key {
+        background: var(--accent-color) !important;
+        color: #ffffff !important;
+        box-shadow:
+          0 0 16px rgba(var(--accent-color-rgb), 0.75),
+          0 0 32px rgba(var(--accent-color-rgb), 0.4),
+          inset 0 1px 2px rgba(255, 255, 255, 0.5) !important;
+        transform: scale(0.94);
+      }
+
+      .key-separator,
+      .combo-separator {
+        color: var(--accent-color);
+        font-weight: 600;
+      }
+
+      .shortcut-desc {
+        color: var(--window-fg-color);
+      }
+    }
+  }
+
+  .mat-mdc-cell {
+    padding: var(--space-lg) var(--space-xl);
+    border: none;
+
+    &.shortcut-key {
+      width: 42%;
+
+      .key-combo {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .combo-separator {
+        display: inline-flex;
+        align-items: center;
+        margin: 0 var(--space-sm);
+        font-size: var(--font-size-sm);
+        color: var(--dim-color);
+      }
+
+      .key {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        min-width: 28px;
+        padding: 0 var(--space-sm);
+        background: var(--view-bg-color);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+        color: var(--window-fg-color);
+        text-transform: uppercase;
+        box-shadow: var(--shadow-gnome);
         transition: var(--transition-fast);
 
-        &:hover {
-          background: var(--hover-bg-color);
-
-          .key {
-            animation: keyPress 0.2s ease-out;
-          }
-        }
-      }
-
-      .mat-mdc-cell {
-        padding: var(--space-lg) var(--space-xl);
-        border: none;
-        vertical-align: middle;
-
-        &.shortcut-key {
-          width: 45%;
-
-          .key {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: 28px;
-            min-width: 28px;
-            padding: 0 var(--space-sm);
-            background: var(--view-bg-color);
-            border-radius: var(--radius-sm);
-            font-family: var(--font-mono);
-            font-weight: 600;
-            font-size: var(--font-size-sm);
-            color: var(--window-fg-color);
-            text-transform: uppercase;
-            box-shadow: var(--shadow-gnome);
-            transition: var(--transition-fast);
-
-            &:last-child {
-              margin-right: 0;
-            }
-
-            // Modifier keys
-            &[data-key*="Ctrl"],
-            &[data-key*="Alt"],
-            &[data-key*="Cmd"],
-            &[data-key*="Shift"] {
-              background: rgba(var(--primary-color-rgb), 0.1);
-              color: var(--primary-color);
-            }
-
-            // Function keys
-            &[data-key^="F"] {
-              background: rgba(var(--accent-color-rgb), 0.1);
-              color: var(--accent-color);
-            }
-
-            // Action keys
-            &[data-key="Enter"],
-            &[data-key="Space"],
-            &[data-key="Tab"],
-            &[data-key="Escape"],
-            &[data-key="Delete"] {
-              background: rgba(var(--accent-color-rgb), 0.08);
-              color: var(--accent-color);
-            }
-          }
+        // Modifier keys
+        &[data-key*="Ctrl"],
+        &[data-key*="Alt"],
+        &[data-key*="Cmd"],
+        &[data-key*="Shift"] {
+          background: rgba(var(--primary-color-rgb), 0.1);
+          color: var(--primary-color);
         }
 
-        &.shortcut-desc {
-          width: 60%;
-          font-weight: 400;
-          color: var(--dim-color);
-          line-height: 1.5;
+        // Function keys
+        &[data-key^="F"] {
+          background: rgba(var(--accent-color-rgb), 0.1);
+          color: var(--accent-color);
+        }
+
+        // Action keys
+        &[data-key="Enter"],
+        &[data-key="Space"],
+        &[data-key="Tab"],
+        &[data-key="Escape"],
+        &[data-key="Delete"],
+        &[data-key="Backspace"] {
+          background: rgba(var(--accent-color-rgb), 0.08);
+          color: var(--accent-color);
         }
       }
     }
 
-    .key-separator {
-      display: inline-flex;
-      align-items: center;
-      margin: 0 var(--space-xs);
-      font-size: var(--font-size-sm);
+    &.shortcut-desc {
+      width: 58%;
       color: var(--dim-color);
-      font-weight: 400;
+      line-height: 1.5;
     }
+  }
+}
+
+.key-separator {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}
+
+@keyframes cloudGlow {
+  0% {
+    background: rgba(var(--accent-color-rgb), 0.25);
+    box-shadow:
+      0 0 0 0 rgba(var(--accent-color-rgb), 0.7),
+      0 0 20px 4px rgba(var(--accent-color-rgb), 0.4);
+    transform: scale(1.01);
+  }
+  40% {
+    background: rgba(var(--accent-color-rgb), 0.14);
+    box-shadow:
+      0 0 35px 12px rgba(var(--accent-color-rgb), 0.25),
+      0 0 70px 24px rgba(var(--accent-color-rgb), 0.1);
+    transform: scale(1.015);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
   }
 }
 
 // Responsive
 @media (max-width: 540px) {
-  .modal-container {
-    .modal-content .shortcut-table {
-      .mat-mdc-cell {
-        padding: var(--space-md) var(--space-lg);
+  .shortcut-table {
+    .mat-mdc-cell {
+      padding: var(--space-md) var(--space-lg);
 
-        &.shortcut-key .key {
+      &.shortcut-key {
+        .key {
           height: 24px;
           min-width: 24px;
           padding: 0 var(--space-xs);
           font-size: var(--font-size-xs);
         }
 
-        &.shortcut-desc {
-          font-size: var(--font-size-sm);
+        .combo-separator {
+          margin: 0 var(--space-xs);
+          font-size: var(--font-size-xs);
         }
+      }
+
+      &.shortcut-desc {
+        font-size: var(--font-size-sm);
       }
     }
   }

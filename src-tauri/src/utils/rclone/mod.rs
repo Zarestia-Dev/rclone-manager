@@ -1,8 +1,16 @@
-mod downloader;
 pub mod endpoints;
-mod extractor;
 pub mod mount;
-pub mod process_common;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod downloader;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod extractor;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod provision;
-pub mod updater;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod util;
+
+#[cfg(not(feature = "librclone"))]
+pub mod process_common;
+#[cfg(not(feature = "librclone"))]
+pub mod updater;

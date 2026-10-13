@@ -1,0 +1,235 @@
+:host {
+  position: relative;
+  transition: var(--transition-standard);
+  background: var(--window-bg-color);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--card-border-radius-large);
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+
+  // Operation & State colors
+  &.mounted,
+  &.serving,
+  &.op-mount,
+  &.op-serve {
+    --state-color: var(--accent-color);
+    --state-color-rgb: var(--accent-color-rgb);
+  }
+  &.syncing,
+  &.op-sync {
+    --state-color: var(--primary-color);
+    --state-color-rgb: var(--primary-color-rgb);
+  }
+  &.copying,
+  &.op-copy {
+    --state-color: var(--yellow);
+    --state-color-rgb: var(--yellow-rgb);
+  }
+  &.moving,
+  &.op-move {
+    --state-color: var(--orange);
+    --state-color-rgb: var(--orange-rgb);
+  }
+  &.bisyncing,
+  &.op-bisync {
+    --state-color: var(--purple);
+    --state-color-rgb: var(--purple-rgb);
+  }
+  &.op-delete {
+    --state-color: var(--warn-color);
+    --state-color-rgb: var(--warn-color-rgb);
+  }
+
+  // Active border ring and icon container highlight
+  &.mounted,
+  &.serving,
+  &.syncing,
+  &.copying,
+  &.moving,
+  &.bisyncing,
+  &.is-running {
+    box-shadow: 0 0 0 1px rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.2);
+
+    .card-info .icon-container {
+      background: rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.1);
+      box-shadow: 0 0 0 1px rgba(var(--state-color-rgb, var(--accent-color-rgb)), 0.2);
+
+      .card-type-icon {
+        color: var(--state-color, var(--accent-color));
+      }
+    }
+  }
+
+  &.inactive-remote .card-info .icon-container {
+    background: var(--bg-elevated-4);
+    .card-type-icon {
+      color: rgba(var(--window-fg-color-rgb), 0.5);
+    }
+  }
+}
+
+:host(.sidebar-variant) {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+// ── Card Header & Info ────────────────────────────────────────────────────────
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+}
+
+.card-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex: 1;
+  min-width: 0;
+
+  .icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
+    border-radius: var(--card-border-radius);
+    background: var(--bg-elevated-4);
+    transition: var(--transition-standard);
+    flex-shrink: 0;
+
+    .card-type-icon {
+      color: var(--state-color, var(--primary-color));
+    }
+  }
+
+  .card-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    min-width: 0;
+    flex: 1;
+
+    .card-name {
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      margin: 0;
+      color: var(--window-fg-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-meta {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+// ── Status Indicators ─────────────────────────────────────────────────────────
+
+.card-status-indicators {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  flex-shrink: 0;
+
+  .app-pill {
+    min-height: 24px;
+    padding: 2px 8px;
+
+    mat-icon {
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
+      font-size: var(--icon-size-xs);
+    }
+  }
+}
+
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+
+.quick-actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow: visible;
+  padding: var(--space-xs) var(--space-md) var(--space-md);
+
+  button[matMiniFab] {
+    transition: var(--transition-fast);
+
+    mat-icon {
+      font-size: var(--icon-size-sm);
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+    }
+
+    &:hover {
+      transform: scale(var(--action-btn-scale-hover));
+    }
+    &:disabled {
+      transform: scale(var(--action-btn-scale-disabled));
+    }
+  }
+}
+
+.folder-badge {
+  position: absolute;
+  top: var(--space-xxs);
+  right: calc(var(--space-md) * -1);
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+// ── Responsive Breakpoints ───────────────────────────────────────────────────
+
+@media (max-width: 768px) {
+  :host {
+    .card-header {
+      padding: var(--space-md);
+    }
+    .quick-actions {
+      padding: var(--space-xs) var(--space-md) var(--space-md);
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  :host {
+    .card-header {
+      padding: var(--space-sm);
+    }
+    .quick-actions {
+      padding: var(--space-xxs) var(--space-sm) var(--space-sm);
+    }
+  }
+}

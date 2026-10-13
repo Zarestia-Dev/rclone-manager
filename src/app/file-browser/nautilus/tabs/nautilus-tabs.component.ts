@@ -4,51 +4,43 @@ import {
   output,
   viewChild,
   afterRenderEffect,
-  afterNextRender,
   ElementRef,
   ChangeDetectionStrategy,
   signal,
+  computed,
   inject,
-  DestroyRef,
+  OnDestroy,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { NautilusService } from '@app/services';
-import { ScrollShadowDirective } from '@app/directives';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
-export interface TabItem {
-  id: number;
-  title: string;
-  path: string;
-  remote: { name: string; label: string } | null;
+import { NautilusTabItem } from '@app/types';
+
+interface TabViewModel {
+  tab: NautilusTabItem;
+  index: number;
+  transform: string;
+  tooltip: string;
 }
 
 @Component({
   selector: 'app-nautilus-tabs',
-  standalone: true,
-  imports: [
-    MatIconModule,
-    MatTooltipModule,
-    MatDividerModule,
-    CdkMenuModule,
-    TranslateModule,
-    ScrollShadowDirective,
-  ],
+  imports: [MatIconModule, MatDividerModule, CdkMenuModule, TranslatePipe, ScrollShadowDirective],
   templateUrl: './nautilus-tabs.component.html',
   styleUrl: './nautilus-tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NautilusTabsComponent {
+export class NautilusTabsComponent implements OnDestroy {
   // --- Services ---
   private readonly translate = inject(TranslateService);
   private readonly nautilusService = inject(NautilusService);
-  private readonly destroyRef = inject(DestroyRef);
 
   // --- Inputs ---
-  readonly tabs = input.required<TabItem[]>();
+  readonly tabs = input.required<NautilusTabItem[]>();
   readonly activeTabIndex = input.required<number>();
   readonly isDragging = input<boolean>(false);
   readonly hoveredTabIndex = input<number | null>(null);
@@ -73,6 +65,15 @@ export class NautilusTabsComponent {
   protected readonly showLeft = signal(false);
   protected readonly showRight = signal(false);
 
+  readonly tabViewModels = computed<TabViewModel[]>(() =>
+    this.tabs().map((tab, index) => ({
+      tab,
+      index,
+      transform: this.getTabTransform(index),
+      tooltip: this.getTabTooltip(tab),
+    }))
+  );
+
   private readonly tabsScrollContainer =
     viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');
 
@@ -82,14 +83,10 @@ export class NautilusTabsComponent {
       this.tabs();
       this.scrollToActiveTab(activeIndex);
     });
+  }
 
-    afterNextRender(() => {
-      window.addEventListener('dragover', this.onGlobalDragOver);
-
-      this.destroyRef.onDestroy(() => {
-        window.removeEventListener('dragover', this.onGlobalDragOver);
-      });
-    });
+  ngOnDestroy(): void {
+    window.removeEventListener('dragover', this.onGlobalDragOver);
   }
 
   // ---------------------------------------------------------------------------
@@ -141,7 +138,7 @@ export class NautilusTabsComponent {
     }
   }
 
-  protected onNativeDragStart(event: DragEvent, tab: TabItem, index: number): void {
+  protected onNativeDragStart(event: DragEvent, tab: NautilusTabItem, index: number): void {
     this._draggedTabIndex.set(index);
     this._insertAtIndex.set(index);
     this._isDraggedOutside.set(false);
@@ -220,7 +217,11 @@ export class NautilusTabsComponent {
     this._insertAtIndex.set(null);
   }
 
-  protected async onNativeDragEnd(event: DragEvent, tab: TabItem, index: number): Promise<void> {
+  protected async onNativeDragEnd(
+    event: DragEvent,
+    tab: NautilusTabItem,
+    index: number
+  ): Promise<void> {
     window.removeEventListener('dragover', this.onGlobalDragOver);
 
     const succeeded = this._dropSucceeded;
@@ -256,7 +257,7 @@ export class NautilusTabsComponent {
     }
   }
 
-  protected getTabTooltip(t: TabItem): string {
+  protected getTabTooltip(t: NautilusTabItem): string {
     const prefix = t.remote ? `${this.translate.instant(t.remote.label)}:` : '';
     return `${prefix}${t.path}`;
   }
@@ -295,7 +296,7 @@ export class NautilusTabsComponent {
     }
   }
 
-  private buildTabDragGhost(tab: TabItem): HTMLElement {
+  private buildTabDragGhost(tab: NautilusTabItem): HTMLElement {
     const ghost = document.createElement('div');
     Object.assign(ghost.style, {
       position: 'fixed',

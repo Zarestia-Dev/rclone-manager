@@ -1,0 +1,212 @@
+import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { WorkflowNode, WorkflowPort } from '../../../types/workflow.types';
+import { getNodeStyleMeta, getNotificationIcon } from '../../../utils/node-style.util';
+import { formatCronHumanReadable } from '../../../../../services/i18n/cron-locale.mapper';
+import { MountManagementService } from '../../../../../services/operations/mount-management.service';
+import { ServeManagementService } from '../../../../../services/operations/serve-management.service';
+import { JobManagementService } from '../../../../../services/operations/job-management.service';
+import { WorkflowStateService } from '../../../../../services/flow/workflow-state.service';
+import { ModalService } from '../../../../../services/ui/modal.service';
+import { JobInfo } from '@app/types';
+
+export interface NodePortRow {
+  inputPort?: WorkflowPort;
+  outputPort?: WorkflowPort;
+}
+
+@Component({
+  selector: 'app-workflow-node',
+  imports: [CommonModule, MatIconModule, TranslatePipe],
+  templateUrl: './workflow-node.component.html',
+  styleUrl: './workflow-node.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    // Note: Host .selected elevates the node's z-index stacking layer on the canvas (.workflow-node-positioned.selected { z-index: 10 }).
+    // The inner template .workflow-node-card.selected handles card-level border, shadow, and accent highlights.
+    '[class.selected]': 'isSelected()',
+  },
+})
+export class WorkflowNodeComponent {
+  private readonly mountService = inject(MountManagementService);
+  private readonly serveService = inject(ServeManagementService);
+  private readonly jobService = inject(JobManagementService);
+  private readonly modalService = inject(ModalService);
+  private readonly stateService = inject(WorkflowStateService);
+  private readonly translate = inject(TranslateService);
+  private readonly langChange = toSignal(this.translate.onLangChange);
+
+  readonly node = input.required<WorkflowNode>();
+  readonly isSelected = input<boolean>(false);
+
+  readonly displayTitle = computed(() => {
+    this.langChange();
+    const n = this.node();
+    if (n.titleKey) {
+      return this.translate.instant(n.titleKey);
+    }
+    return n.title;
+  });
+
+  readonly nodeJob = computed<JobInfo | null>(() => {
+    const n = this.node();
+    const currentWfId = this.stateService.currentWorkflow()?.id;
+    if (!currentWfId) return null;
+    const qrId = n.config?.['quickRunId'] as string | undefined;
+    return this.jobService.getLatestJobForWorkflowNode(currentWfId, n.id, qrId);
+  });
+
+  readonly displaySubtitle = computed(() => {
+    this.langChange();
+    const n = this.node();
+    if (n.subtitle) return n.subtitle;
+    if (n.type === 'cron') {
+      const expr = String(n.config?.['cronExpression'] || '').trim();
+      if (expr) {
+        return formatCronHumanReadable(expr, this.translate.getCurrentLang() ?? 'en-US');
+      }
+    }
+    return '';
+  });
+
+  readonly selectNode = output<string>();
+  readonly deleteNode = output<string>();
+  readonly duplicateNode = output<string>();
+  readonly inspectNode = output<string>();
+  readonly startConnecting = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
+  readonly portMouseUp = output<{ portId: string; isOutput: boolean; event: MouseEvent }>();
+
+  readonly styleMeta = computed(() => getNodeStyleMeta(this.node().type));
+  readonly nodeIcon = computed(() => {
+    const n = this.node();
+    if (n.type === 'notification') {
+      const kind = n.config?.['actionKind'] as string | undefined;
+      if (kind) {
+        return getNotificationIcon(kind);
+      }
+    }
+    return this.styleMeta().icon;
+  });
+  readonly nodePillClass = computed(() => this.styleMeta().pillClass);
+  readonly nodeCssClass = computed(() => this.styleMeta().cssClass);
+  readonly categoryPillClass = computed(() => this.nodePillClass());
+
+  readonly isLiveMounted = computed(() => {
+    const n = this.node();
+    if (n.type !== 'mount') return false;
+    const currentWfId = this.stateService.currentWorkflow()?.id;
+    if (!currentWfId) return false;
+
+    const mounts = this.mountService.mountedRemotes();
+    return mounts.some(m => m.workflow_id === currentWfId && m.node_id === n.id);
+  });
+
+  readonly isLiveServing = computed(() => {
+    const n = this.node();
+    if (n.type !== 'serve') return false;
+    const currentWfId = this.stateService.currentWorkflow()?.id;
+    if (!currentWfId) return false;
+
+    const serves = this.serveService.runningServes();
+    return serves.some(s => s.workflow_id === currentWfId && s.node_id === n.id);
+  });
+
+  readonly isLiveActive = computed(() => this.isLiveMounted() || this.isLiveServing());
+
+  readonly liveStatusLabelKey = computed(() => {
+    if (this.isLiveMounted()) return 'flow.workflow.liveStatus.mounted';
+    if (this.isLiveServing()) return 'flow.workflow.liveStatus.serving';
+    return '';
+  });
+
+  readonly statusClass = computed(() => {
+    const s = this.node().state || 'idle';
+    return `status-${s}`;
+  });
+
+  readonly portRows = computed<NodePortRow[]>(() => {
+    const inputs = this.node().inputs || [];
+    const outputs = this.node().outputs || [];
+    const maxRows = Math.max(inputs.length, outputs.length);
+    const rows: NodePortRow[] = [];
+    for (let i = 0; i < maxRows; i++) {
+      rows.push({
+        inputPort: inputs[i],
+        outputPort: outputs[i],
+      });
+    }
+    return rows;
+  });
+
+  onCardClick(event?: Event): void {
+    event?.stopPropagation();
+    this.selectNode.emit(this.node().id);
+  }
+
+  onDelete(event: MouseEvent): void {
+    event.stopPropagation();
+    this.deleteNode.emit(this.node().id);
+  }
+
+  onDuplicate(event: MouseEvent): void {
+    event.stopPropagation();
+    this.duplicateNode.emit(this.node().id);
+  }
+
+  onInspect(event: MouseEvent): void {
+    event.stopPropagation();
+    this.inspectNode.emit(this.node().id);
+  }
+
+  onInspectJob(event: Event): void {
+    event.stopPropagation();
+    const job = this.nodeJob();
+    if (job) {
+      this.modalService.openJobDetail(job);
+    }
+  }
+
+  onBadgeClick(event: Event): void {
+    if (this.nodeJob()) {
+      this.onInspectJob(event);
+    }
+  }
+
+  onPortTouchStart(port: WorkflowPort, isOutput: boolean, event: TouchEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    if (event.touches.length !== 1) return;
+    if (this.stateService.isConnecting()) {
+      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
+      return;
+    }
+    const touch = event.touches[0];
+    const mouseLikeEvent = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0,
+      stopPropagation: () => event.stopPropagation(),
+      preventDefault: () => event.preventDefault(),
+    } as unknown as MouseEvent;
+    this.startConnecting.emit({ portId: port.id, isOutput, event: mouseLikeEvent });
+  }
+
+  onPortMouseDown(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    if (this.stateService.isConnecting()) {
+      this.stateService.finishConnecting(this.node().id, port.id, isOutput);
+      return;
+    }
+    this.startConnecting.emit({ portId: port.id, isOutput, event });
+  }
+
+  onPortMouseUp(port: WorkflowPort, isOutput: boolean, event: MouseEvent): void {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    this.portMouseUp.emit({ portId: port.id, isOutput, event });
+  }
+}

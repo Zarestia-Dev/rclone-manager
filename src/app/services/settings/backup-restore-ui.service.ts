@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { BackupRestoreService } from './backup-restore.service';
-import { NotificationService, ModalService } from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({

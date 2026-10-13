@@ -1,28 +1,23 @@
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertHistoryFilter, AlertSeverity } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
 
 @Component({
   selector: 'app-alert-history',
-  standalone: true,
   imports: [
     DatePipe,
-    NgClass,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatTableModule,
-    MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `
@@ -30,6 +25,7 @@ import { SearchContainerComponent } from '@app/shared/components';
       <div class="toolbar">
         <div class="quick-filters">
           <button
+            type="button"
             class="app-pill interactive"
             [style]="getFilterStyle(undefined)"
             (click)="setSeverityFilter(undefined)"
@@ -39,6 +35,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 
           @for (sev of severities; track sev) {
             <button
+              type="button"
               class="app-pill interactive"
               [style]="getFilterStyle(sev)"
               (click)="setSeverityFilter(sev)"
@@ -57,28 +54,34 @@ import { SearchContainerComponent } from '@app/shared/components';
         <div class="spacer"></div>
 
         <button
-          mat-icon-button
+          type="button"
+          matIconButton
           [class.search-open]="searchVisible()"
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
+          [attr.aria-label]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
         <button
-          mat-icon-button
+          type="button"
+          matIconButton
           (click)="acknowledgeAll()"
           [disabled]="alerts.unacknowledged() === 0"
-          [matTooltip]="'alerts.acknowledgeAll' | translate"
+          [attr.title]="'alerts.acknowledgeAll' | translate"
+          [attr.aria-label]="'alerts.acknowledgeAll' | translate"
         >
           <mat-icon svgIcon="done-all"></mat-icon>
         </button>
 
         <button
-          mat-icon-button
+          type="button"
+          matIconButton
           (click)="clearHistory()"
           [disabled]="alerts.history().length === 0"
-          [matTooltip]="'alerts.clearHistory' | translate"
+          [attr.title]="'alerts.clearHistory' | translate"
+          [attr.aria-label]="'alerts.clearHistory' | translate"
         >
           <mat-icon svgIcon="trash"></mat-icon>
         </button>
@@ -94,27 +97,51 @@ import { SearchContainerComponent } from '@app/shared/components';
       @if (hasActiveFilters()) {
         <div class="active-filter-tags">
           @if (alerts.filter().remote) {
-            <button class="app-pill p-accent" (click)="clearFilter('remote')">
+            <button
+              type="button"
+              class="app-pill interactive p-accent"
+              (click)="clearFilter('remote')"
+              [attr.title]="alerts.filter().remote"
+              [attr.aria-label]="alerts.filter().remote"
+            >
               <mat-icon svgIcon="server"></mat-icon>
               {{ alerts.filter().remote }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
           @if (alerts.filter().profile) {
-            <button class="app-pill p-primary" (click)="clearFilter('profile')">
+            <button
+              type="button"
+              class="app-pill interactive p-primary"
+              (click)="clearFilter('profile')"
+              [attr.title]="alerts.filter().profile"
+              [attr.aria-label]="alerts.filter().profile"
+            >
               <mat-icon svgIcon="user"></mat-icon>
               {{ alerts.filter().profile }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
           @if (alerts.filter().backend) {
-            <button class="app-pill p-dim" (click)="clearFilter('backend')">
+            <button
+              type="button"
+              class="app-pill interactive p-dim"
+              (click)="clearFilter('backend')"
+              [attr.title]="alerts.filter().backend"
+              [attr.aria-label]="alerts.filter().backend"
+            >
               <mat-icon svgIcon="database"></mat-icon>
               {{ alerts.filter().backend }}
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
-          <button mat-button (click)="clearFilters()">
+          <button
+            type="button"
+            matButton="text"
+            (click)="clearFilters()"
+            [attr.title]="'common.clearAll' | translate"
+            [attr.aria-label]="'common.clearAll' | translate"
+          >
             {{ 'common.clearAll' | translate }}
           </button>
         </div>
@@ -125,8 +152,7 @@ import { SearchContainerComponent } from '@app/shared/components';
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.history().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="32" strokeWidth="2">
-            </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 
@@ -183,24 +209,24 @@ import { SearchContainerComponent } from '@app/shared/components';
             <ng-container matColumnDef="meta">
               <th mat-header-cell *matHeaderCellDef>{{ 'common.context' | translate }}</th>
               <td mat-cell *matCellDef="let alert">
-                <div class="meta-item" [matTooltip]="'alerts.ruleLabel' | translate">
+                <div class="meta-item" [attr.title]="'alerts.ruleLabel' | translate">
                   <mat-icon svgIcon="check-list"></mat-icon>
                   <span>{{ alert.rule_name }}</span>
                 </div>
                 @if (alert.profile) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.profile">
                     <mat-icon svgIcon="user"></mat-icon>
                     <span>{{ alert.profile }}</span>
                   </div>
                 }
                 @if (alert.remote) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.remote">
                     <mat-icon svgIcon="server"></mat-icon>
                     <span>{{ alert.remote }}</span>
                   </div>
                 }
                 @if (alert.backend) {
-                  <div class="meta-item">
+                  <div class="meta-item" [attr.title]="alert.backend">
                     <mat-icon svgIcon="database"></mat-icon>
                     <span>{{ alert.backend }}</span>
                   </div>
@@ -221,22 +247,24 @@ import { SearchContainerComponent } from '@app/shared/components';
                     <div class="action-results">
                       @for (res of alert.action_results; track res.action_id) {
                         <mat-icon
-                          [svgIcon]="res.success ? 'circle-check' : 'circle-xmark'"
+                          [svgIcon]="res.success ? 'check-circle' : 'circle-xmark'"
                           [class]="res.success ? 'primary' : 'warn'"
-                          [matTooltip]="res.action_name + (res.error ? ': ' + res.error : '')"
+                          [attr.title]="res.action_name + (res.error ? ': ' + res.error : '')"
                         ></mat-icon>
                       }
                     </div>
                   }
 
                   <button
-                    mat-icon-button
+                    type="button"
+                    matIconButton
                     [class.btn-acked]="alert.acknowledged"
                     [disabled]="alert.acknowledged"
                     (click)="acknowledge(alert.id)"
-                    [matTooltip]="'common.acknowledge' | translate"
+                    [attr.title]="'common.acknowledge' | translate"
+                    [attr.aria-label]="'common.acknowledge' | translate"
                   >
-                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    <mat-icon svgIcon="check-circle"></mat-icon>
                   </button>
                 </div>
               </td>
@@ -246,7 +274,7 @@ import { SearchContainerComponent } from '@app/shared/components';
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
-              [ngClass]="{ 'row-acked': row.acknowledged }"
+              [class.row-acked]="row.acknowledged"
               [style.--row-accent]="alerts.getSeverityStyle(row.severity).color"
             ></tr>
           </table>
@@ -280,8 +308,8 @@ import { SearchContainerComponent } from '@app/shared/components';
     }
 
     .search-open {
-      background: rgba(var(--accent-color-rgb), 0.1) !important;
-      color: var(--accent-color) !important;
+      background: rgba(var(--accent-color-rgb), 0.1);
+      color: var(--accent-color);
     }
 
     .quick-filters {
@@ -295,21 +323,18 @@ import { SearchContainerComponent } from '@app/shared/components';
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
-      padding: 3px 10px;
+      padding: var(--space-xxs) var(--space-sm);
       font-size: var(--font-size-sm);
       color: var(--dim-color);
-      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
+      background: var(--bg-elevated-1);
       border-radius: var(--radius-md);
-      box-shadow: 0 0 0 1px var(--border-color);
-      transition:
-        color 0.2s,
-        background 0.2s,
-        box-shadow 0.2s;
+      box-shadow: var(--ring-border);
+      transition: var(--transition-fast);
 
       mat-icon {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
       }
 
       strong {
@@ -319,7 +344,7 @@ import { SearchContainerComponent } from '@app/shared/components';
       &.has-unread {
         color: var(--warn-color);
         background: rgba(var(--warn-color-rgb), 0.1);
-        box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.4);
+        box-shadow: var(--ring-warn);
       }
     }
 
@@ -469,7 +494,7 @@ import { SearchContainerComponent } from '@app/shared/components';
     .meta-item {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: var(--space-xs);
       font-size: var(--font-size-sm);
       color: var(--dim-color);
       line-height: 1.6;
@@ -490,16 +515,16 @@ import { SearchContainerComponent } from '@app/shared/components';
       padding: var(--space-xs) 0;
     }
 
-    .event-pill {
-      font-size: var(--font-size-xs) !important;
-      padding: 1px 6px !important;
-      min-height: unset !important;
+    .event-pill.app-pill {
+      font-size: var(--font-size-xs);
+      padding: 1px 6px;
+      min-height: unset;
     }
 
     .action-results {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: var(--space-xxs);
 
       mat-icon {
         width: var(--icon-size-sm);
@@ -516,8 +541,8 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertHistoryComponent {
-  readonly alerts = inject(AlertService);
-  private modalService = inject(ModalService);
+  public readonly alerts = inject(AlertService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly searchVisible = signal(false);
   readonly displayedColumns = ['severity', 'time', 'content', 'meta', 'actions'];
@@ -543,7 +568,15 @@ export class AlertHistoryComponent {
   }
 
   setSeverityFilter(severity: AlertSeverity | undefined): void {
-    this.alerts.filter.update(f => ({ ...f, severity: severity }));
+    this.alerts.filter.update(f => {
+      const u = { ...f };
+      if (severity) {
+        u.severity = severity;
+      } else {
+        delete u.severity;
+      }
+      return u;
+    });
     this.alerts.fetchHistory();
   }
 
@@ -563,24 +596,34 @@ export class AlertHistoryComponent {
   }
 
   async acknowledge(id: string): Promise<void> {
-    await this.alerts.acknowledgeAlert(id);
+    try {
+      await this.alerts.acknowledgeAlert(id);
+    } catch (error) {
+      this.notificationService.showError(error);
+    }
   }
 
   async acknowledgeAll(): Promise<void> {
-    await this.alerts.acknowledgeAllAlerts();
+    try {
+      await this.alerts.acknowledgeAllAlerts();
+    } catch (error) {
+      this.notificationService.showError(error);
+    }
   }
 
-  clearHistory(): void {
-    this.modalService
-      .openConfirm({
-        title: 'alerts.clearHistory',
-        message: 'alerts.clearHistoryConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.clearAlertHistory();
-      });
+  async clearHistory(): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'alerts.clearHistory',
+      'alerts.clearHistoryConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      try {
+        await this.alerts.clearAlertHistory();
+      } catch (error) {
+        this.notificationService.showError(error);
+      }
+    }
   }
 }

@@ -1,14 +1,23 @@
 pub mod alerts;
 pub mod automation;
-pub mod check_binaries;
+pub mod bridge;
+pub use bridge::bridge;
+pub mod cli;
+pub mod commands;
 pub mod debug;
 pub mod event_listener;
+pub mod flow;
 pub mod initialization;
 pub mod lifecycle;
 pub mod paths;
 pub mod security;
 pub mod settings;
+
+#[cfg(all(desktop, feature = "tray"))]
 pub mod tray;
 
-pub mod cli;
-pub mod commands;
+#[cfg(not(feature = "librclone"))]
+pub mod check_binaries;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod power;

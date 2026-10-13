@@ -1,29 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ExportType } from '../../shared/types/ui';
+import { ExportType, BackupAnalysis } from '@app/types';
 import { FileSystemService } from '../operations/file-system.service';
-
-// Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
-export interface BackupAnalysis {
-  isEncrypted: boolean;
-  archiveType: string;
-  formatVersion: string;
-  isLegacy?: boolean;
-  createdAt?: string;
-  backupType?: string;
-  userNote?: string;
-  contents?: BackupContentsInfo;
-}
-
-// Matches the `BackupContentsInfo` struct
-export interface BackupContentsInfo {
-  settings: boolean;
-  backendConfig: boolean;
-  rcloneConfig: boolean;
-  remoteCount?: number;
-  remoteNames?: string[];
-  profiles?: string[];
-}
 
 // Matches ExportCategoryResponse from backend
 export interface ExportCategory {
@@ -69,6 +47,7 @@ export class BackupRestoreService extends TauriBaseService {
       },
       {
         successKey: 'backup.backupSuccess',
+        errorKey: 'backup.backupFailed',
       }
     );
   }
@@ -93,6 +72,7 @@ export class BackupRestoreService extends TauriBaseService {
       },
       {
         successKey: 'backup.restoreSuccess',
+        errorKey: 'backup.restoreFailed',
       }
     );
   }
@@ -102,14 +82,17 @@ export class BackupRestoreService extends TauriBaseService {
    * Returns null if no file selected or analysis failed
    */
   async selectAndAnalyzeBackup(): Promise<{ path: string; analysis: BackupAnalysis } | null> {
-    const path = await this.fileSystemService.selectFile();
-    if (!path) return null;
-
     try {
+      const path = await this.fileSystemService.selectFile();
+      if (!path) return null;
+
       const analysis = await this.analyzeBackupFile(path);
       if (!analysis) return null;
       return { path, analysis };
     } catch (error) {
+      if (error instanceof Error && error.message === 'File selection cancelled') {
+        return null;
+      }
       console.error('Failed to analyze backup:', error);
       this.notificationService.showError(this.translate.instant('backup.analyzeFailed'));
       return null;
@@ -123,10 +106,11 @@ export class BackupRestoreService extends TauriBaseService {
     try {
       return await this.invokeCommand<BackupAnalysis>('analyze_backup_file', { path });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',

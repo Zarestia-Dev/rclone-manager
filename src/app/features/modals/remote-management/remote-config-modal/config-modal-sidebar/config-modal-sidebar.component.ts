@@ -3,21 +3,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
-import { EditTarget } from '@app/types';
-import { RemoteConfigStateService } from '@app/services';
+import { TranslatePipe } from '@ngx-translate/core';
+import { EditTarget, TemplateCategory } from '@app/types';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
+import {
+  PresetTemplateBarComponent,
+  ApplyTemplateEvent,
+} from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
 
 @Component({
   selector: 'app-config-modal-sidebar',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatDividerModule,
     MatIconModule,
     MatListModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
+    PresetTemplateBarComponent,
   ],
   templateUrl: './config-modal-sidebar.component.html',
   styleUrl: './config-modal-sidebar.component.scss',
@@ -31,6 +33,7 @@ export class ConfigModalSidebarComponent {
   readonly remoteEditCategories = input<readonly { id: string; label: string; icon: string }[]>([]);
   readonly visibleSections = input<Set<string>>(new Set());
   readonly profileIcons = input<Readonly<Record<string, string>>>({});
+  readonly currentValues = input<Partial<Record<TemplateCategory, Record<string, unknown>>>>({});
 
   // ── Outputs ───────────────────────────────────────────────────────────────
 
@@ -39,12 +42,15 @@ export class ConfigModalSidebarComponent {
   readonly profileSelected = output<{ type: EditTarget; name: string }>();
   readonly sharedNavigated = output<EditTarget>();
   readonly returnFromShared = output<void>();
+  readonly searchToggled = output<void>();
   readonly cliImportToggled = output<void>();
+  readonly obscureToolToggled = output<void>();
+  readonly presetsApplied = output<void>();
+  readonly templateApplied = output<ApplyTemplateEvent>();
 
   // ── Template helpers ──────────────────────────────────────────────────────
 
   isStepDisabled(step: number): boolean {
-    if (this.state.isStepNavigationLocked()) return true;
-    return !this.state.editTarget() && step > 1 && this.state.remoteFormStatus?.() === 'INVALID';
+    return !this.state.isStepClickable(step);
   }
 }

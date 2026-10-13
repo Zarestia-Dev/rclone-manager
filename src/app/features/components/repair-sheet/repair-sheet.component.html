@@ -1,6 +1,6 @@
-<mat-nav-list class="repair-sheet" [class.repairing]="installing()">
+<form (submit)="repair(); $event.preventDefault()">
   <div class="sheet-header">
-    <div class="repair-header-top">
+    <div class="repair-header-top" data-tauri-drag-region>
       <div class="repair-icon">
         <mat-icon [svgIcon]="repairIcon()"></mat-icon>
       </div>
@@ -8,6 +8,11 @@
       <div class="repair-content">
         <h3>{{ displayTitle() }}</h3>
         <p>{{ displayMessage() }}</p>
+        @if (data.authError || data.portError) {
+          <div class="error-detail">
+            {{ data.authError || data.portError }}
+          </div>
+        }
       </div>
     </div>
 
@@ -18,7 +23,10 @@
             <mat-icon [svgIcon]="detail.icon"></mat-icon>
             <span>
               <strong>{{ detail.labelKey | translate }}:</strong>
-              {{ detail.valueKey | translate }}
+              {{
+                detail.valueKey
+                  | translate: { required: minRcloneVersion(), port: data.port ?? selectedPort() }
+              }}
             </span>
           </div>
         }
@@ -26,37 +34,32 @@
     }
 
     @if (requiresPassword()) {
-      <div class="password-row">
-        <app-password-manager
-          [password]="password()"
-          [storePassword]="storePassword()"
-          [isSubmitting]="isSubmittingPassword()"
-          [hasError]="hasPasswordError()"
-          [errorMessage]="passwordErrorMessage()"
-          [showStoreOption]="!!data.showStoreOption"
-          [disabled]="installing() || showConfigOptions()"
-          (passwordChange)="password.set($event)"
-          (storePasswordChange)="storePassword.set($event)"
-          (unlock)="submitPassword()"
-        ></app-password-manager>
-      </div>
+      <app-password-manager
+        [password]="password()"
+        [storePassword]="storePassword()"
+        [isSubmitting]="isSubmittingPassword()"
+        [hasError]="hasPasswordError()"
+        [errorMessage]="passwordErrorMessage()"
+        [showStoreOption]="!!data.showStoreOption"
+        [disabled]="installing() || showConfigOptions()"
+        (passwordChange)="password.set($event)"
+        (storePasswordChange)="storePassword.set($event)"
+        (unlock)="submitPassword()"
+      ></app-password-manager>
 
-      <div class="config-toggle-container">
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="toggleConfigOptions()"
-          [disabled]="installing() || isSubmittingPassword()"
-        >
-          <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
-          {{
-            (showConfigOptions()
-              ? 'repairSheet.hideConfigOptions'
-              : 'repairSheet.useDifferentConfig'
-            ) | translate
-          }}
-        </button>
-      </div>
+      <button
+        type="button"
+        matButton="filled"
+        class="accent"
+        (click)="toggleConfigOptions()"
+        [disabled]="installing() || isSubmittingPassword()"
+      >
+        <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
+        {{
+          (showConfigOptions() ? 'repairSheet.hideConfigOptions' : 'repairSheet.useDifferentConfig')
+            | translate
+        }}
+      </button>
 
       @if (showConfigOptions()) {
         <app-installation-options
@@ -70,19 +73,16 @@
     }
 
     @if (isRcloneBinaryRepair()) {
-      <div>
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="toggleInstallOptions()"
-          [disabled]="installing()"
-        >
-          <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
-          {{
-            (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate
-          }}
-        </button>
-      </div>
+      <button
+        type="button"
+        matButton="filled"
+        class="accent"
+        (click)="toggleInstallOptions()"
+        [disabled]="installing()"
+      >
+        <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
+        {{ (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate }}
+      </button>
 
       @if (showAdvanced()) {
         <app-installation-options
@@ -93,23 +93,98 @@
         ></app-installation-options>
       }
     }
+
+    @if (isRclonePortRepair()) {
+      <div class="port-config-container">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>{{ 'repairSheet.portConfig.portLabel' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            [min]="1024"
+            [max]="65535"
+            [value]="selectedPort()"
+            (input)="onPortChange($event)"
+            [disabled]="installing()"
+          />
+          @if (portInputError()) {
+            <mat-error>{{ portInputError() | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="port-buttons-row">
+          <button
+            type="button"
+            matButton="outlined"
+            (click)="testPort()"
+            [disabled]="installing() || isTestingPort() || isSuggestingPort() || !!portInputError()"
+            [attr.title]="'repairSheet.portConfig.testPortTooltip' | translate"
+          >
+            <mat-icon
+              [svgIcon]="isTestingPort() ? 'spinner' : 'globe'"
+              [class.colorful-spinner]="isTestingPort()"
+            ></mat-icon>
+            {{ 'repairSheet.portConfig.testPort' | translate }}
+          </button>
+
+          <button
+            type="button"
+            matButton="filled"
+            class="accent"
+            (click)="suggestNextPort()"
+            [disabled]="installing() || isSuggestingPort() || isTestingPort()"
+            [attr.title]="'repairSheet.portConfig.suggestPortTooltip' | translate"
+          >
+            <mat-icon
+              [svgIcon]="isSuggestingPort() ? 'spinner' : 'wand'"
+              [class.colorful-spinner]="isSuggestingPort()"
+            ></mat-icon>
+            {{ 'repairSheet.portConfig.suggestPort' | translate }}
+          </button>
+        </div>
+
+        @if (portTestResult() === 'available') {
+          <app-alert-banner
+            severity="success"
+            [description]="
+              'repairSheet.portConfig.portAvailable' | translate: { port: selectedPort() }
+            "
+          ></app-alert-banner>
+        } @else if (portTestResult() === 'occupied') {
+          <app-alert-banner
+            severity="error"
+            [description]="
+              'repairSheet.portConfig.portOccupied' | translate: { port: selectedPort() }
+            "
+          ></app-alert-banner>
+        }
+      </div>
+    }
+
+    @if (installing()) {
+      <app-provision-progress [progress]="activeProgress()"></app-provision-progress>
+    }
   </div>
 
   <div class="sheet-actions">
+    @if (installing() && activeProgress()) {
+      <button type="button" matButton="outlined" (click)="cancelRepair()">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+        {{ 'common.cancel' | translate }}
+      </button>
+    }
+
     <button
+      type="submit"
       matButton="filled"
       [disabled]="!canRepair()"
-      (click)="void repair()"
       [attr.aria-label]="
         (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
       "
-      [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
+      [attr.title]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
       {{ repairActionTextKey() | translate }}
-      <mat-icon
-        [svgIcon]="repairButtonIcon()"
-        [class.animate-spin]="installing() || isSubmittingPassword()"
-      ></mat-icon>
+      <mat-icon [svgIcon]="repairButtonIcon()"></mat-icon>
     </button>
   </div>
-</mat-nav-list>
+</form>

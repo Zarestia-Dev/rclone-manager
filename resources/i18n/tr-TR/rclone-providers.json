@@ -1802,28 +1802,16 @@
         "help": "https://www.linkbox.to/admin/account adresinden alınan jeton"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "E-posta",
+        "help": "Giriş için e-posta adresi"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "Parola",
+        "help": "Giriş için parola"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
-      },
-      "upload_concurrency": {
-        "title": "Yükleme Eşzamanlılığı",
-        "help": "Çok parçalı yüklemeler için eşzamanlılık.\n\nBu, aynı dosyanın eşzamanlı olarak yüklenen parça sayısıdır.\n\nHer parçanın bellekte arabelleğe alındığını unutmayın."
-      },
-      "upload_cutoff": {
-        "title": "Yükleme Sınırı",
-        "help": "Çok parçalı yüklemeye geçiş sınırı.\n\nBu değerden büyük olan dosyalar chunk_size boyutunda parçalar halinde yüklenecektir. Minimum 100 MiB, maksimum 5 GiB'dir."
-      },
-      "chunk_size": {
-        "title": "Parça Boyutu",
-        "help": "Çok parçalı yüklemeler için parça boyutu.\n\nupload_cutoff değerinden büyük dosyalar bu boyuttaki parçalar halinde yüklenecektir.\n\nBellek kullanımı yaklaşık olarak chunk_size * upload_concurrency kadardır."
+        "title": "Web Jetonu",
+        "help": "Web API giriş belirteci - otomatik olarak ayarlanır."
       }
     },
     "local": {
@@ -1902,6 +1890,14 @@
       "zero_size_links": {
         "title": "Sıfır Boyutlu Bağlantılar",
         "help": "Bağlantıların Stat boyutunun sıfır olduğunu varsayalım (ve bunun yerine onları okuyalım) (artık kullanılmıyor).\n\nrclone eskiden bağlantıların Stat boyutunu bağlantı boyutu olarak kullanırdı, ancak bu birkaç yerde başarısız olur:\n\n- Windows\n- Bazı sanal dosya sistemlerinde (ash LucidLink gibi)\n- Android\n\nBu yüzden rclone artık her zaman bağlantıyı okur.\n"
+      },
+      "metadata_restore_special_bits": {
+        "title": "Özel İzin Bitlerini Geri Yükle (Setuid/Setgid/Sticky)",
+        "help": "Metadatlardan setuid, setgid ve sticky izin bitlerini geri yükler.\n\n--metadata ile metadataları geri yüklerken rclone kaynaktaki \"mode\" değerini uygular. Varsayılan olarak rclone yalnızca izin bitlerini uygular ve setuid, setgid ile sticky bitlerini temizler.\n\n\"mode\" güvenilmeyen bir kaynak depodan gelebilir. Taze yazılmış dosyalara setuid veya setgid biti koymak zararlı bir ikili dosya yerleştirebilir (özellikle root olarak çalışırken güvenilmeyen bir kaynaktan geri yükleme yapıyorsanız tehlikelidir). Bu nedenle bu bitler varsayılan olarak geri yüklenmez.\n\nKaynağa güveniyorsanız ve bu özel bitlerin geri yüklenmesini istiyorsanız bu seçeneği etkinleştirin."
+      },
+      "fatal_if_no_space": {
+        "title": "Yetersiz Alanı Kritik Hata Say",
+        "help": "Aktarım sırasında alan tükenmesi hatalarını ölümcül/kritik hata sayar.\n\nEtkinleştirildiğinde, yazma sırasındaki ENOSPC (alansızlık) hatası rclone'un işlemi tekrar tekrar denemek yerine hemen pes edip durdurmasını sağlar. Dolu bir diskte sürekli tekrar denemek yerine net şekilde durması gereken yedekleme komut dosyaları için kullanışlıdır."
       }
     },
     "mailru": {
@@ -3440,6 +3436,7 @@
         "help": "True ise başarısızlık durumunda yüklemeyi iptal etme (abort upload) çağrısı yapmaktan kaçın.\n\nFarklı oturumlar arasında yüklemelere devam etmek için true olarak ayarlanmalıdır."
       },
       "no_chunk": {
+        "title": "Parçalama Yapma",
         "help": "Akışla yükleme (streaming upload) sırasında dosyaları parçalama.\n\nAkışla yükleme yaparken (örn. `rcat` veya `--vfs-cache-mode off` ile `mount` kullanarak) bu bayrağı ayarlamak, swift arka ucunun parçalanmış dosyalar yüklememesine neden olur.\n\nBu, akışla yüklenen maksimum boyutu 5 GiB ile sınırlayacaktır. Bu yararlıdır çünkü parçalanmamış dosyalarla çalışmak daha kolaydır ve bir MD5SUM değerine sahiptirler.\n\nrclone, normal kopyalama işlemleri yaparken `chunk_size` değerinden büyük dosyaları yine de parçalayacaktır."
       },
       "no_large_objects": {
@@ -3571,24 +3568,6 @@
       "upstreams": {
         "title": "Üst Kaynaklar (Upstreams)",
         "help": "Boşlukla ayrılmış üst kaynakların listesi.\n\n'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', vb. olabilir."
-      }
-    },
-    "uptobox": {
-      "access_token": {
-        "title": "Erişim Jetonu",
-        "help": "Erişim jetonunuz.\n\nhttps://uptobox.com/my_account adresinden alabilirsiniz."
-      },
-      "description": {
-        "title": "Açıklama",
-        "help": "Uzak bağlantı açıklaması."
-      },
-      "encoding": {
-        "title": "Kodlama",
-        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
-      },
-      "private": {
-        "title": "Özel",
-        "help": "Yüklenen dosyaları özel yapmak için ayarlayın."
       }
     },
     "webdav": {
@@ -3893,24 +3872,16 @@
         "help": "Uzak bağlantı açıklaması."
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "Yükleme Eşzamanlılığı",
+        "help": "Çok parçalı yüklemeler için eşzamanlılık.\n\nBu, aynı dosyanın aynı anda yüklenen parça sayısıdır.\n\nHer parçanın bellekte arabelleğe alındığını unutmayın."
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "Yükleme Kesme Sınırı",
+        "help": "Çok parçalı yüklemeye geçiş sınırı.\n\nBu boyuttan büyük tüm dosyalar parça boyutu (chunk_size) kadar parçalar halinde yüklenecektir.\nMinimum 100 MiB, maksimum 5 GiB'dir."
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
-      },
-      "password": {
-        "title": "Şifre",
-        "help": "Giriş için şifre."
-      },
-      "web_token": {
-        "title": "Web Token",
-        "help": "Web API giriş belirteci - otomatik olarak ayarlanır."
+        "title": "Parça Boyutu",
+        "help": "Çok parçalı yüklemeler için parça boyutu.\n\nYükleme kesme sınırından büyük dosyalar bu boyuttaki parçalar halinde yüklenecektir.\n\nBellek kullanımı yaklaşık olarak parça boyutu * yükleme eşzamanlılığı kadardır."
       }
     },
     "huaweidrive": {

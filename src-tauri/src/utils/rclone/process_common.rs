@@ -7,7 +7,6 @@ use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::CoreSettings;
 use crate::utils::security::is_sensitive_field;
-use crate::utils::types::rclone::ProcessKind;
 use rcman::SettingsSchema;
 
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
@@ -123,24 +122,9 @@ fn append_user_flags_from_app(
     Ok(())
 }
 
-fn append_auth_args(args: &mut Vec<String>, username: Option<String>, password: Option<String>) {
-    match (username, password) {
-        (Some(user), Some(pass)) if !user.is_empty() => {
-            debug!("Starting rclone with authentication");
-            args.push(format!("--rc-user={user}"));
-            args.push(format!("--rc-pass={pass}"));
-        }
-        _ => {
-            debug!("Starting rclone with no authentication");
-            args.push("--rc-no-auth".to_string());
-        }
-    }
-}
-
-/// Build the rclone command for the main engine or the OAuth process.
+/// Build the rclone `rcd` command for the main engine.
 pub async fn build_rclone_process_command(
     app: &AppHandle,
-    kind: ProcessKind,
 ) -> Result<crate::utils::process::command::Command, crate::rclone::engine::error::EngineError> {
     use crate::rclone::backend::BackendManager;
     use std::path::PathBuf;
@@ -154,48 +138,56 @@ pub async fn build_rclone_process_command(
         }
     };
 
-    let backend = backend_manager_state.get_active().await;
+    let mut backend = backend_manager_state.get_active().await;
 
-    let port = match kind {
-        ProcessKind::Engine => backend.port,
-        ProcessKind::OAuth => backend.oauth_port,
-    };
+    if backend.is_local && !backend.has_valid_auth() {
+        let user = format!("user_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let pass = uuid::Uuid::new_v4().to_string().replace("-", "");
 
-    let command = build_rclone_command(app, None, config_path.as_deref(), None);
-    let mut args = build_rclone_base_args(&backend.host, port);
+        backend.username = Some(user);
+        backend.password = Some(pass);
+        backend.is_auth_generated = true;
 
-    if let ProcessKind::Engine = kind {
-        let log_file_path = crate::core::paths::AppPaths::from_app_handle(app).map_or_else(
-            |_| PathBuf::from("main_engine.log"),
-            |paths| paths.get_rclone_log_dir().join("main_engine.log"),
-        );
-
-        args.extend([
-            "--log-file".to_string(),
-            log_file_path.to_string_lossy().to_string(),
-            "--log-file-max-size".to_string(),
-            "5M".to_string(),
-            "--log-file-max-backups".to_string(),
-            "5".to_string(),
-        ]);
-
-        append_user_flags_from_app(app, &mut args)?;
+        let settings_manager = app.state::<AppSettingsManager>();
+        let _ = backend_manager_state
+            .update(&settings_manager, &backend.name, backend.clone())
+            .await;
     }
 
-    let auth_args = if backend.has_valid_auth() {
-        Some((
-            backend.username.clone().unwrap(),
-            backend.password.clone().unwrap_or_default(),
-        ))
-    } else {
-        None
-    };
+    let command = build_rclone_command(app, None, config_path.as_deref(), None);
+    let mut args = build_rclone_base_args(&backend.host, backend.port);
 
-    append_auth_args(
-        &mut args,
-        auth_args.as_ref().map(|(u, _)| u.clone()),
-        auth_args.map(|(_, p)| p),
+    let log_file_path = crate::core::paths::AppPaths::from_app_handle(app).map_or_else(
+        |_| PathBuf::from("main_engine.log"),
+        |paths| paths.get_rclone_log_dir().join("main_engine.log"),
     );
+
+    args.extend([
+        "--log-file".to_string(),
+        log_file_path.to_string_lossy().to_string(),
+        "--log-file-max-size".to_string(),
+        "5M".to_string(),
+        "--log-file-max-backups".to_string(),
+        "5".to_string(),
+    ]);
+
+    if let Ok(paths) = crate::core::paths::AppPaths::from_app_handle(app) {
+        let template_path = paths.serve_template_path();
+        if template_path.exists() {
+            args.extend([
+                "--rc-template".to_string(),
+                template_path.to_string_lossy().to_string(),
+            ]);
+        }
+    }
+
+    append_user_flags_from_app(app, &mut args)?;
+
+    if let (Some(user), Some(pass)) = (&backend.username, &backend.password) {
+        debug!("Starting rclone with authentication");
+        args.push(format!("--rc-user={user}"));
+        args.push(format!("--rc-pass={pass}"));
+    }
 
     apply_rclone_environment(app, command.args(args)).await
 }
@@ -209,7 +201,7 @@ pub async fn graceful_shutdown(
     info!("Attempting graceful shutdown (PID {pid:?})");
 
     // Fire the quit request without waiting on the response — we watch the child instead.
-    tokio::spawn(async move {
+    crate::utils::spawn(async move {
         let _ = quit_request.timeout(Duration::from_secs(2)).send().await;
     });
 

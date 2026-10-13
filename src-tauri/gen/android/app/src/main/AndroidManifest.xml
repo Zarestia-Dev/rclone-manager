@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- AndroidTV support -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.document/root" />
+        </intent>
+        <intent>
+            <action android:name="android.provider.action.BROWSE" />
+        </intent>
+        <package android:name="com.google.android.documentsui" />
+        <package android:name="com.android.documentsui" />
+    </queries>
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.rclone_manager"
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
+        <service
+            android:name=".RcloneKeepAliveService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse|dataSync">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains active rclone virtual file system streaming and background transfers for Storage Access Framework" />
+        </service>
+
+        <receiver
+            android:name=".SafBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:launchMode="singleTask"
+            android:label="@string/main_activity_title"
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <!-- AndroidTV support -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+
+            <!-- Share Receiver: single file/text from other apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+
+            <!-- Share Receiver: multiple files from other apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- DEEP LINK PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
+            <intent-filter >
+                <action android:name="android.intent.action.VIEW" />
+                <!-- ChromeOS ARC++ uses a different action for deep links -->
+                <action android:name="org.chromium.arc.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rclone-manager" />
+                
+                
+                
+                
+                
+            </intent-filter>
+            <!-- DEEP LINK PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
+        </activity>
+
+        <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="${applicationId}.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+        </provider>
+
+        <provider
+            android:name=".RcloneDocumentsProvider"
+            android:authorities="${applicationId}.documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+    </application>
+</manifest>

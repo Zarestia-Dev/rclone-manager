@@ -1,21 +1,23 @@
 name: ⭐ Feature Request
-description: Suggest an idea or improvement for the RClone Manager
+description: Suggest an idea or enhancement for RClone Manager
+title: '[Feature]: '
+labels: ['enhancement']
 body:
   - type: checkboxes
     attributes:
-      label: Pre-submission checks
-      description: Please verify these items before submitting
+      label: Pre-submission Checks
+      description: Please verify these items before submitting.
       options:
-        - label: I have searched both open and closed issues and confirmed this doesn't already exist
+        - label: I have searched open and closed issues to confirm this feature hasn't been requested before.
           required: true
-        - label: I have checked the roadmap and this isn't already planned
-        - label: This feature aligns with the project's scope (RClone management)
+        - label: I have checked the project roadmap / open PRs.
+        - label: This feature aligns with RClone Manager's scope (Rclone management & file operations).
 
   - type: markdown
     attributes:
       value: |
         ### Thank you for suggesting a feature!
-        Please provide as much detail as possible to help us understand and evaluate your request.
+        Detailed feature requests help us evaluate feasibility and design effective user experiences.
 
   - type: textarea
     id: feature-description
@@ -23,13 +25,13 @@ body:
       label: Feature Description
       description: |
         A clear and concise description of:
-        - What problem this would solve
-        - Who would benefit from this feature
+        - What problem this feature solves
+        - Who would benefit from it
         - Current workarounds (if any)
       placeholder: |
         Example:
-        Currently, users have to manually edit rclone.conf for advanced configurations.
-        This makes it difficult for non-technical users to set up complex remotes.
+        Currently, on Android mobile devices, sharing a file directly into RClone Manager to upload to a remote requires several manual steps.
+        Adding a system share target would allow 1-tap uploads to remote storage.
     validations:
       required: true
 
@@ -38,70 +40,63 @@ body:
     attributes:
       label: Proposed Solution
       description: |
-        How you think this should be implemented:
-        - Specific UI changes needed
-        - Technical considerations
-        - Alternative solutions you've considered
+        How you envision this feature working:
+        - UI / UX changes
+        - Expected behavior
+        - Alternatives considered
       placeholder: |
-        A GUI form for advanced configuration options with:
-        - Dropdown for common advanced settings
-        - Validation for complex parameters
-        - Help tooltips explaining each option
+        Add an option in Android system share sheet for RClone Manager, opening a dialog to pick destination remote and path.
     validations:
       required: true
 
   - type: dropdown
-    id: feature-type
+    id: feature-category
     attributes:
       label: Feature Category
       options:
         - 'UI/UX Improvement'
         - 'New Remote Configuration'
-        - 'File Management'
+        - 'File Management & Nautilus'
         - 'Sync/Copy Operations'
-        - 'Performance'
+        - 'Mount & Serve (FUSE / WebDAV / SFTP / HTTP)'
+        - 'Mobile / Android Specific'
+        - 'Performance & System'
         - 'Security'
         - 'Other'
     validations:
       required: true
 
   - type: checkboxes
-    id: applicable-versions
+    id: applicable-platforms
     attributes:
-      label: Applicable Versions
-      description: Which version(s) of the app would this feature apply to?
+      label: Applicable Platforms / Versions
+      description: Which platform(s) or app modes would this feature apply to?
       options:
-        - label: Desktop (GUI application with window)
-        - label: Headless (Web server accessed via browser)
+        - label: Desktop (Windows, macOS, Linux)
+        - label: Android (Mobile)
+        - label: Headless (Web server / NAS / VPS)
         - label: Portable (Standalone executable)
-        - label: All versions
+        - label: All platforms
 
   - type: textarea
     id: mockups
     attributes:
-      label: Mockups/Screenshots
-      description: |
-        Visual examples help tremendously:
-        - Sketch or screenshot annotations
-        - Links to design tools (Figma, Excalidraw)
-        - Before/after comparisons if improving existing UI
+      label: Mockups / Screenshots
+      description: Visual sketches, Figma/Excalidraw links, or UI comparisons.
 
   - type: textarea
     id: technical-details
     attributes:
       label: Technical Considerations
       description: |
-        Any relevant technical information:
-        - RClone features this would utilize
-        - Platform-specific requirements
-        - Potential performance impacts
+        Any technical details:
+        - Rclone flags or features required
+        - Platform APIs or permissions (e.g. Android permissions, FUSE driver)
+        - Performance or security considerations
 
   - type: textarea
     id: additional-context
     attributes:
       label: Additional Context
       description: |
-        Anything else that might help:
-        - Similar features in other apps
-        - User research or feedback
-        - Priority/urgency level
+        Anything else that might be helpful (similar apps, priority, links).

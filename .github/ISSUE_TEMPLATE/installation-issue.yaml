@@ -1,130 +1,152 @@
-name: '💻 Installation Issue'
-description: 'Report problems installing the RClone Manager'
-title: '[Install] '
+name: 💻 Installation Issue
+description: Report problems installing or setting up RClone Manager
+title: '[Install]: '
 labels: ['installation']
 body:
   - type: checkboxes
     attributes:
-      label: 'Pre-Submission Checklist'
+      label: Pre-Submission Checklist
+      description: Please verify these before submitting.
       options:
-        - label: "I've verified this isn't a duplicate issue"
+        - label: I have verified this isn't a duplicate issue.
           required: true
-        - label: "I've checked the troubleshooting guide (not available yet)"
-        - label: "I've included all requested information"
+        - label: I have checked the wiki / documentation installation guide.
+        - label: I have included all required diagnostic information.
           required: true
 
   - type: dropdown
+    id: os
     attributes:
-      label: 'Operating System'
-      description: 'Select your operating system'
+      label: Operating System
+      description: Select your operating system.
       options:
-        - 'Windows'
-        - 'macOS'
-        - 'Linux'
-        - 'Other'
+        - Windows
+        - macOS
+        - Linux
+        - Android
+        - Other
     validations:
       required: true
 
   - type: input
+    id: os-version
     attributes:
-      label: 'OS Version'
-      description: 'Example: Windows 11 23H2, macOS 14.4, Ubuntu 22.04'
-      placeholder: 'Enter your OS version'
+      label: OS Version
+      description: Exact version of your operating system.
+      placeholder: e.g., Windows 11 23H2, macOS 14.4, Ubuntu 24.04, Android 14
     validations:
       required: true
 
   - type: dropdown
+    id: architecture
     attributes:
-      label: 'Installation Method'
+      label: Architecture / CPU
+      description: CPU architecture of the target device.
       options:
-        - 'Pre-built package (.deb/.rpm/.exe/.dmg)'
-        - 'Building from source'
-        - 'AppImage/Flatpak/Snap'
-        - 'Other'
+        - x86_64 (64-bit Intel/AMD)
+        - arm64 / aarch64 (Apple Silicon / ARM64 Android)
+        - armv7 (32-bit ARM)
+        - x86 (32-bit Intel/AMD)
+        - Other / Unknown
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation Method
+      description: How did you install or attempt to install RClone Manager?
+      options:
+        - Pre-built binary / package (.deb, .rpm, .exe, .dmg)
+        - Android APK (Direct Release / F-Droid / Sideload)
+        - AppImage / Flatpak / Snap
+        - Package Manager (Homebrew, AUR, Winget, Chocolatey, Scoop)
+        - Building from source
+        - Other
     validations:
       required: true
 
   - type: dropdown
+    id: app-version-type
     attributes:
-      label: 'App Version Type'
-      description: 'Which version of RClone Manager are you installing?'
+      label: App Version Type
       options:
-        - 'Desktop (GUI application with window)'
-        - 'Headless (Web server accessed via browser)'
-        - 'Portable (Standalone executable)'
+        - Desktop (GUI application window)
+        - Android (Mobile APK)
+        - Headless (Web server / NAS)
+        - Portable (Standalone binary)
     validations:
       required: true
 
   - type: input
+    id: app-version
     attributes:
-      label: 'App Version Number'
-      description: "The version of RClone Manager you're trying to install"
-      placeholder: 'Example: 1.0.0'
+      label: App Version Number
+      placeholder: e.g., 1.2.0
     validations:
       required: true
 
   - type: input
+    id: rclone-version
     attributes:
-      label: 'RClone Version'
-      description: 'If applicable'
-      placeholder: "Run 'rclone version' to find this"
+      label: RClone Version
+      description: If already installed on system
+      placeholder: Run 'rclone version' in terminal
 
   - type: input
+    id: node-version
     attributes:
-      label: 'Node Version'
-      description: 'If building from source'
-      placeholder: "Run 'node --version' to find this"
-
-  - type: input
-    attributes:
-      label: 'Rust Version'
-      description: 'If building from source'
-      placeholder: "Run 'rustc --version' to find this"
+      label: Node.js / Rust / NDK Version
+      description: If building from source or debugging build scripts.
+      placeholder: e.g., Node v20.11.0, Rust 1.77.0, NDK r26b
 
   - type: textarea
+    id: expected-behavior
     attributes:
-      label: 'Expected Behavior'
-      description: 'What should have happened during installation?'
-      placeholder: 'The package should install without errors...'
+      label: Expected Behavior
+      description: What should have happened during installation?
+      placeholder: The package/APK should install successfully without errors.
     validations:
       required: true
 
   - type: textarea
+    id: actual-behavior
     attributes:
-      label: 'Actual Behavior'
-      description: 'What actually happened? Include any error messages.'
-      placeholder: "Got error 'Failed to install dependencies...'"
+      label: Actual Behavior
+      description: What actually happened? Include error messages.
+      placeholder: Installation failed with error code...
     validations:
       required: true
 
   - type: textarea
+    id: steps-to-reproduce
     attributes:
-      label: 'Steps to Reproduce'
-      description: 'How can we reproduce this issue?'
+      label: Steps to Reproduce
+      description: Exact steps to reproduce the installation failure.
       placeholder: |
-        1. Downloaded the .deb package
-        2. Ran 'sudo apt install ./package.deb'
-        3. Got error message
+        1. Downloaded .deb / APK package
+        2. Installed via package manager / package installer
+        3. Encountered error...
     validations:
       required: true
 
   - type: textarea
+    id: error-output
     attributes:
-      label: 'Error Output'
-      description: 'Paste any terminal output or error messages'
+      label: Error Output / Terminal Logs
+      description: Paste relevant terminal commands, installation logs, or error stack traces.
       render: shell
 
   - type: textarea
+    id: troubleshooting-attempts
     attributes:
-      label: 'Additional Information'
-      description: 'Anything else that might help diagnose the issue'
-      placeholder: 'Special system configurations, antivirus software, etc.'
+      label: Troubleshooting Attempts
+      description: What steps have you already tried to resolve this issue?
+      placeholder: |
+        - Verified checksums
+        - Tried installing missing dependencies (e.g., FUSE, WinFsp)
+        - Checked system permissions
 
   - type: textarea
+    id: additional-information
     attributes:
-      label: 'Troubleshooting Attempts'
-      description: 'What have you already tried to resolve this issue?'
-      placeholder: |
-        - Tried reinstalling the package
-        - Verified checksums
-        - Checked system requirements
+      label: Additional Information
+      description: Antivirus software, custom system setup, container environments, etc.

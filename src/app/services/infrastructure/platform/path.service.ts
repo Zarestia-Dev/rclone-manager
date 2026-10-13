@@ -1,10 +1,13 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { BackendService } from '../system/backend.service';
 
 export interface PathSegment {
   name: string;
   path: string;
 }
+
+export type PathStyle = 'posix' | 'windows';
 
 export type PathGroupType = 'local' | 'currentRemote' | `otherRemote:${string}`;
 
@@ -14,8 +17,29 @@ export interface PathGroup {
   remote: string;
 }
 
+export type { DefaultPathOp, PathInspectionStatus } from './path-inspection.service';
+
 @Injectable({ providedIn: 'root' })
 export class PathService {
+  private readonly remoteNames = new Set<string>();
+  private readonly backendService = inject(BackendService);
+
+  setRemoteNames(names: string[]): void {
+    this.remoteNames.clear();
+    for (const name of names) {
+      this.remoteNames.add(this.normalizeRemoteName(name));
+    }
+  }
+
+  enginePathStyle(): PathStyle {
+    return this.backendService.isWindows() ? 'windows' : 'posix';
+  }
+
+  pathStyleForRemote(remote: { isLocal: boolean } | null | undefined): PathStyle {
+    if (!remote || remote.isLocal) return this.enginePathStyle();
+    return 'posix';
+  }
+
   normalizePath(p: string): string {
     if (!p) return '';
     const normalized = p.replace(/\\/g, '/');
@@ -32,6 +56,14 @@ export class PathService {
     }
 
     return (isAbsolute ? '/' : '') + stack.join('/');
+  }
+
+  normalizeForPlatform(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
+    if (!path) return '';
+    if (pathStyle === 'windows') {
+      return path.replace(/\//g, '\\').replace(/([^:\\])\\+/g, '$1\\');
+    }
+    return path.replace(/\\/g, '/').replace(/\/+/g, '/');
   }
 
   joinPath(...segments: string[]): string {
@@ -51,11 +83,11 @@ export class PathService {
     return normalized.substring(0, lastSlash);
   }
 
-  getParentPath(path: string): string {
-    if (!path || path === '/' || /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
+  getParentPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
+    if (!path || path === '/') return '';
+    if (pathStyle === 'windows' && /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
 
-    const normalized = path.replace(/\\/g, '/');
-    const segments = this.splitSegments(normalized);
+    const segments = this.splitSegments(path);
     if (segments.length <= 1) return path.startsWith('/') ? '/' : '';
 
     segments.pop();
@@ -68,16 +100,28 @@ export class PathService {
     return parts.map((name, i) => ({ name, path: parts.slice(0, i + 1).join('/') }));
   }
 
-  normalizeRemoteForRclone(remoteName?: string): string {
+  normalizeRemoteForRclone(
+    remoteName?: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): string {
     if (!remoteName) return '';
-    if (remoteName.startsWith('/')) return remoteName;
-    if (/^[A-Za-z]:[\\/]/.test(remoteName)) return remoteName;
+    const isAbsoluteLocal =
+      pathStyle === 'windows' ? /^[A-Za-z]:[\\/]/.test(remoteName) : remoteName.startsWith('/');
+
+    if (isAbsoluteLocal) return remoteName;
     return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 
-  normalizeRemoteName(remoteName?: string, isLocal = false): string {
+  normalizeExplorerRoot(remote?: ExplorerRoot | null): string {
+    if (!remote) return '';
+    return remote.isLocal ? remote.name : this.normalizeRemoteForRclone(remote.name);
+  }
+
+  normalizeRemoteName(remoteName?: string, pathStyle: PathStyle = this.enginePathStyle()): string {
     if (!remoteName) return '';
-    if (isLocal && /^[a-zA-Z]:$/.test(remoteName)) return remoteName;
+    if (pathStyle === 'windows' && /^[a-zA-Z]:$/.test(remoteName)) {
+      return remoteName;
+    }
     return remoteName
       .trim()
       .replace(/:$/, '')
@@ -88,25 +132,23 @@ export class PathService {
     const p = Array.isArray(path) ? path[0] : path;
     if (!p) return false;
 
-    // If there is no colon, it's definitely a local path
     const colonIdx = p.indexOf(':');
-    if (colonIdx === -1) {
-      return true;
-    }
+    const remotePart = colonIdx > -1 ? p.substring(0, colonIdx) : p;
+    const normalized = this.normalizeRemoteName(remotePart);
 
-    // If the colon is at index 1 (like C: or C:\), it's a drive letter (local path)
-    if (colonIdx === 1) {
-      return true;
-    }
+    return !this.remoteNames.has(normalized);
+  }
 
-    // If there is a path separator before the first colon, the colon is part of the path (local path)
-    const remotePart = p.substring(0, colonIdx);
-    if (remotePart.includes('/') || remotePart.includes('\\')) {
-      return true;
+  isTrulyLocalPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): boolean {
+    if (!path) return false;
+    const colonIdx = path.indexOf(':');
+    if (colonIdx > -1) {
+      if (pathStyle === 'windows' && /^[a-zA-Z]:/.test(path)) {
+        return this.isLocalPath(path);
+      }
+      return false;
     }
-
-    // Otherwise, it starts with a remote name (e.g., "remote:path"), so it's not a local path
-    return false;
+    return this.isLocalPath(path);
   }
 
   splitFsPath(fullPath: string | string[]): { remote: string; path: string } {
@@ -122,13 +164,33 @@ export class PathService {
     };
   }
 
-  splitLocalPath(path: string): { remote: string; remainder: string } {
-    if (path.startsWith('/')) return { remote: '/', remainder: path.substring(1) };
-
-    const match = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
-    if (match) return { remote: match[1] + (match[2] ?? '\\'), remainder: match[3] };
-
+  splitLocalPath(
+    path: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): { remote: string; remainder: string } {
+    if (pathStyle === 'windows') {
+      const match = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
+      if (match) return { remote: match[1] + (match[2] ?? '\\'), remainder: match[3] };
+    } else if (path.startsWith('/')) {
+      return { remote: '/', remainder: path.substring(1) };
+    }
     return { remote: path, remainder: '' };
+  }
+
+  splitLocalForStat(
+    path: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): { root: string; relative: string } {
+    if (pathStyle === 'windows') {
+      const match = path.match(/^([A-Za-z]:)(.*)$/);
+      const root = match ? match[1] + '/' : 'C:/';
+      const remainder = match ? match[2] : path;
+      let relative = remainder.replace(/\\/g, '/');
+      if (relative.startsWith('/')) relative = relative.substring(1);
+      return { root, relative };
+    }
+    const relative = path.startsWith('/') ? path.substring(1) : path;
+    return { root: '/', relative };
   }
 
   normalizeFs(fs: unknown): string {
@@ -172,13 +234,6 @@ export class PathService {
     }
   }
 
-  joinFsPath(fs: string | undefined, path: string): string {
-    if (!fs) return path;
-    return fs.endsWith(':') || fs.endsWith('/') || fs.endsWith('\\')
-      ? `${fs}${path}`
-      : `${fs}/${path}`;
-  }
-
   buildPathStrings(
     pathGroups: PathGroup | PathGroup[] | null | undefined,
     currentRemoteName: string
@@ -203,11 +258,18 @@ export class PathService {
     return value === 'currentRemote' ? currentRemoteName : null;
   }
 
-  getFullDisplayPath(remote: ExplorerRoot | null, path: string): string {
+  getFullDisplayPath(remote: ExplorerRoot | null, path: string, pathStyle?: PathStyle): string {
     if (!remote) return path;
+    const style = pathStyle ?? this.pathStyleForRemote(remote);
     if (remote.isLocal) {
-      const sep = remote.name.endsWith('/') || remote.name.endsWith('\\') ? '' : '/';
-      return path ? `${remote.name}${sep}${path}` : remote.name;
+      const slash = style === 'windows' ? '\\' : '/';
+      let cleanPath = path;
+      if (style === 'windows' && path) {
+        cleanPath = path.replace(/^[\\/]+/, '').replace(/\//g, '\\');
+      }
+      const hasSep = remote.name.endsWith('/') || remote.name.endsWith('\\');
+      const sep = hasSep ? '' : slash;
+      return cleanPath ? `${remote.name}${sep}${cleanPath}` : remote.name;
     }
     const prefix = remote.name.includes(':') ? remote.name : `${remote.name}:`;
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -245,41 +307,11 @@ export class PathService {
   formatPathDisplay(path: string | string[]): string {
     if (!Array.isArray(path)) return path;
     if (path.length === 0) return '';
-    if (path.length === 1) return path[0];
-    return `${path[0]} (+${path.length - 1})`;
+    return path.join(', ');
   }
 
   formatPathTooltip(path: string | string[]): string {
     return Array.isArray(path) ? path.join('\n') : path;
-  }
-
-  encodePath(
-    path: string,
-    isLocal: boolean,
-    options: { platform?: string; protocol?: string } = {}
-  ): string {
-    if (!path) return '';
-
-    const normalized = path.replace(/\\/g, '/');
-    const isWindows = options.platform === 'windows';
-    const isHttp = options.protocol === 'http';
-
-    const encodedSegments = this.splitSegments(normalized).map((seg, i) => {
-      if (i === 0 && /^[A-Za-z]:$/.test(seg)) {
-        return isWindows && isHttp ? seg.replace(':', '%3A') : seg;
-      }
-      return encodeURIComponent(seg);
-    });
-
-    const joined = encodedSegments.join('/');
-    return normalized.startsWith('/') && !joined.startsWith('/') ? '/' + joined : joined;
-  }
-
-  decodePath(path: string): string {
-    if (!path) return '';
-    return this.splitSegments(path)
-      .map(seg => decodeURIComponent(seg))
-      .join('/');
   }
 
   parseLocation(
@@ -325,7 +357,16 @@ export class PathService {
     }
 
     const exactMatch = knownRemotes.find(r => r.name === normalized || r.name === rawInput);
-    return exactMatch ? { remote: exactMatch, path: '' } : null;
+    if (exactMatch) return { remote: exactMatch, path: '' };
+
+    // Fallback: If no colon present, but POSIX root drive ('/') exists in knownRemotes, treat as local path under '/'
+    const posixRoot = knownRemotes.find(r => r.isLocal && r.name === '/');
+    if (posixRoot) {
+      const cleanPath = normalized.replace(/^\/+/, '');
+      return { remote: posixRoot, path: cleanPath };
+    }
+
+    return null;
   }
 
   parseFsString(
@@ -335,6 +376,10 @@ export class PathService {
     existingRemotes: string[] = []
   ): PathGroup {
     if (!fs) return { type: defaultType, path: '', remote: '' };
+
+    if (this.isLocalPath(fs)) {
+      return { type: 'local', path: fs, remote: '' };
+    }
 
     const colonIdx = fs.indexOf(':');
     if (colonIdx > -1) {
@@ -361,9 +406,6 @@ export class PathService {
     const entryPath = item.entry.Path;
 
     if (isLocal) {
-      // For local items, reconstruct the full absolute path.
-      // meta.remote is the drive root (e.g. "/" or "C:\").
-      // entry.Path is the remainder under that root.
       const fullPath = this.joinPath(remote, entryPath);
       return { type: 'local', path: fullPath, remote: '' };
     }

@@ -4,20 +4,18 @@ import {
   OnInit,
   OnDestroy,
   HostListener,
-  EventEmitter,
-  Output,
+  output,
   signal,
   computed,
-  ViewChild,
+  viewChild,
   ElementRef,
+  ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
-import { HttpClient } from '@angular/common/http';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { Subject, of, firstValueFrom } from 'rxjs';
@@ -25,120 +23,89 @@ import { marked } from 'marked';
 
 // CodeMirror Imports
 import { EditorView, basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Extension, Compartment } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { StreamLanguage, syntaxHighlighting, HighlightStyle } from '@codemirror/language';
-import { tags } from '@lezer/highlight';
-import { javascript as cmJavascript } from '@codemirror/lang-javascript';
-import { json as cmJson } from '@codemirror/lang-json';
-import { css as cmCss } from '@codemirror/lang-css';
-import { html as cmHtml } from '@codemirror/lang-html';
-import { python as cmPython } from '@codemirror/lang-python';
-import { markdown as cmMarkdown } from '@codemirror/lang-markdown';
-import { rust as cmRust } from '@codemirror/lang-rust';
-import { sql as cmSql } from '@codemirror/lang-sql';
-import { yaml as cmYaml } from '@codemirror/lang-yaml';
-import { go as legacyGo } from '@codemirror/legacy-modes/mode/go';
-import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
+import { StreamLanguage } from '@codemirror/language';
+
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { DownloadService } from 'src/app/services/operations/download.service';
+import { OpenerService } from 'src/app/services/infrastructure/platform/opener.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
+import {
+  BinaryInspectorService,
+  DetectedSignature,
+  HexDumpRow,
+} from 'src/app/services/ui/binary-inspector.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { FormatFileSizePipe } from '@app/pipes';
+import { Entry, FilePickerResult, ArchiveListItem } from '@app/types';
 
 import {
-  RemoteFileOperationsService,
-  PathService,
-  JobManagementService,
-  FileSystemService,
-  NautilusService,
-} from '@app/services';
-import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import { IconService } from '@app/services';
-import { NotificationService } from '@app/services';
-import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, ORIGINS, FilePickerResult } from '@app/types';
-
-import { FormsModule } from '@angular/forms';
-import { MatTooltip } from '@angular/material/tooltip';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
-
-// ── GNOME / Adwaita Light Syntax Highlighting ──
-// Colors inspired by GNOME Builder's light theme and Adwaita palette
-const gnomeLightHighlighting = HighlightStyle.define([
-  { tag: tags.keyword, color: '#0d7377' }, // Teal — keywords (if, const, return)
-  { tag: tags.controlKeyword, color: '#0d7377', fontWeight: '500' },
-  { tag: tags.definitionKeyword, color: '#0d7377' },
-  { tag: tags.moduleKeyword, color: '#0d7377' },
-  { tag: tags.function(tags.variableName), color: '#1a5fb4' }, // Blue — function names
-  { tag: tags.function(tags.definition(tags.variableName)), color: '#1a5fb4', fontWeight: '500' },
-  { tag: tags.string, color: '#c64600' }, // Orange — strings
-  { tag: tags.number, color: '#813d9c' }, // Purple — numbers
-  { tag: tags.bool, color: '#813d9c' },
-  { tag: tags.null, color: '#813d9c', fontStyle: 'italic' },
-  { tag: tags.comment, color: '#5e5c64', fontStyle: 'italic' }, // Dim gray — comments
-  { tag: tags.lineComment, color: '#5e5c64', fontStyle: 'italic' },
-  { tag: tags.blockComment, color: '#5e5c64', fontStyle: 'italic' },
-  { tag: tags.typeName, color: '#1a5fb4' }, // Blue — types
-  { tag: tags.className, color: '#1a5fb4', fontWeight: '500' },
-  { tag: tags.propertyName, color: '#26a269' }, // Green — properties
-  { tag: tags.definition(tags.propertyName), color: '#26a269' },
-  { tag: tags.variableName, color: '#241f31' }, // Near-black — variables
-  { tag: tags.definition(tags.variableName), color: '#241f31' },
-  { tag: tags.operator, color: '#0d7377' }, // Teal — operators
-  { tag: tags.punctuation, color: '#77767b' }, // Gray — punctuation
-  { tag: tags.bracket, color: '#5e5c64' },
-  { tag: tags.meta, color: '#813d9c' }, // Purple — decorators / meta
-  { tag: tags.attributeName, color: '#26a269' }, // Green — HTML/XML attributes
-  { tag: tags.attributeValue, color: '#c64600' }, // Orange — attribute values
-  { tag: tags.tagName, color: '#1a5fb4' }, // Blue — HTML/XML tags
-  { tag: tags.heading, color: '#1a5fb4', fontWeight: 'bold' },
-  { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.strong, fontWeight: 'bold' },
-  { tag: tags.link, color: '#1a5fb4', textDecoration: 'underline' },
-  { tag: tags.url, color: '#1a5fb4' },
-  { tag: tags.regexp, color: '#a51d2d' }, // Red — regex
-  { tag: tags.escape, color: '#a51d2d' },
-  { tag: tags.special(tags.string), color: '#a51d2d' },
-]);
+  isHeadlessMode,
+  isMobile,
+} from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-file-viewer-modal',
-  standalone: true,
-  imports: [
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatIconModule,
-    FormatFileSizePipe,
-    TranslateModule,
-    FormsModule,
-    MatTooltip,
-    CommonModule,
-  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonModule, MatIconModule, FormatFileSizePipe, TranslatePipe],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
 export class FileViewerModalComponent implements OnInit, OnDestroy {
-  private static readonly FILE_OPERATION_ORIGIN = ORIGINS.FILEMANAGER;
-
   public data!: {
     items: Entry[];
     currentIndex: number;
     url: string;
     isLocal: boolean;
     remoteName: string;
+    isDirectUrl?: boolean;
   };
 
-  private sanitizer = inject(DomSanitizer);
-  private http = inject(HttpClient);
-  private fileViewerService = inject(FileViewerService);
-  public iconService = inject(IconService);
-  private translate = inject(TranslateService);
-  private remoteOps = inject(RemoteFileOperationsService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly http = inject(HttpClient);
+  private readonly fileViewerService = inject(FileViewerService);
+  private readonly downloadService = inject(DownloadService);
+  private readonly openerService = inject(OpenerService);
+  private readonly backendService = inject(BackendService);
+  public readonly iconService = inject(IconService);
+  private readonly translate = inject(TranslateService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly fileSystemService = inject(FileSystemService);
+  private readonly binaryInspector = inject(BinaryInspectorService);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private activeProbeImg: HTMLImageElement | null = null;
+  private lastRenderedText: string | null = null;
 
   public currentUrl = signal<string>('');
+  public readonly detectedSignature = signal<DetectedSignature | null>(null);
+  public readonly hexDumpRows = signal<HexDumpRow[]>([]);
+
+  // Zoom & Pan state for image preview
+  zoomLevel = signal(1);
+  panX = signal(0);
+  panY = signal(0);
+  isDragging = signal(false);
+  private startDragX = 0;
+  private startDragY = 0;
+  private initialPanX = 0;
+  private initialPanY = 0;
+
+  zoomPercentage = computed(() => `${Math.round(this.zoomLevel() * 100)}%`);
+  imageTransform = computed(
+    () => `translate(${this.panX()}px, ${this.panY()}px) scale(${this.zoomLevel()})`
+  );
+  imageCursor = computed(() =>
+    this.zoomLevel() > 1 ? (this.isDragging() ? 'grabbing' : 'grab') : 'default'
+  );
 
   safePdfUrl = computed(() => {
     const url = this.currentUrl();
@@ -147,22 +114,41 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   });
 
   currentIndex = signal(0);
-  currentItem = computed(() => this.data.items[this.currentIndex()]);
-  fileName = computed(() => this.currentItem().Name);
-  fileSize = computed(() => this.currentItem().Size ?? null);
+  currentItem = computed(() => this.data?.items?.[this.currentIndex()] ?? null);
+  fileName = computed(() => this.currentItem()?.Name ?? '');
+  fileSize = computed(() => this.currentItem()?.Size ?? null);
   textContent = signal('');
   folderSize = signal<{ count: number; bytes: number } | null>(null);
   coverImage = signal<string | null>(null);
   rawUrl = signal<string>('');
-  fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
+  fileCategory = computed(() => {
+    const item = this.currentItem();
+    return item ? this.iconService.getFileTypeCategory(item) : 'text';
+  });
   currentFileType = signal<string>('text');
+  isHeadless = computed(() => isHeadlessMode());
+
+  /** Normalized filesystem name for rclone API calls. */
+  private get fsName(): string {
+    return this.data.isLocal
+      ? this.data.remoteName
+      : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
+  }
+  isMobile = computed(() => isMobile());
+  isDownloadVisible = computed(() => {
+    if (this.data.isDirectUrl) {
+      return false;
+    }
+    return (
+      this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
+    );
+  });
 
   isLoading = signal(true);
   isDownloading = signal(false);
+  isOpeningNative = signal(false);
   isLoadingCover = signal(false);
-  parsedArchiveItems = signal<
-    { size: number; date: string; time: string; path: string; isDir: boolean }[]
-  >([]);
+  parsedArchiveItems = signal<ArchiveListItem[]>([]);
   isExtracting = signal(false);
   archiveError = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
@@ -182,14 +168,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     return name.endsWith('.md') || name.endsWith('.markdown');
   });
 
-  @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
+  readonly editorContainer = viewChild<ElementRef<HTMLDivElement>>('editorContainer');
   private editorView: EditorView | null = null;
+  private readonly readOnlyCompartment = new Compartment();
+  private readonly editableCompartment = new Compartment();
 
   // Cancel pending requests when component updates or destroys
-  private destroy$ = new Subject<void>();
   private cancelCurrentRequest$ = new Subject<void>();
 
-  @Output() closeViewer = new EventEmitter<void>();
+  readonly closeViewer = output<void>();
 
   ngOnInit(): void {
     this.currentIndex.set(this.data.currentIndex);
@@ -197,11 +184,24 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.cancelProbeImg();
+    this.cancelCurrentRequest$.next();
     this.cancelCurrentRequest$.complete();
     void this.stopReadJobs();
-    this.fileViewerService.activeFileName.set(null);
+    if (this.editorView) {
+      this.editorView.destroy();
+      this.editorView = null;
+    }
+    this.fileViewerService.setActiveFileName(null);
+  }
+
+  private cancelProbeImg(): void {
+    if (this.activeProbeImg) {
+      this.activeProbeImg.onload = null;
+      this.activeProbeImg.onerror = null;
+      this.activeProbeImg.src = '';
+      this.activeProbeImg = null;
+    }
   }
 
   private async stopReadJobs(): Promise<void> {
@@ -219,9 +219,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set(this.textContent());
     this.isEditing.set(true);
     this.showMarkdownPreview.set(false);
-
-    // Re-initialize as editable
-    setTimeout(() => this.initEditor(false, this.editContent()), 0);
+    this.setEditorReadOnly(false, this.editContent());
   }
 
   /**
@@ -230,93 +228,63 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   cancelEditing(): void {
     this.isEditing.set(false);
     this.editContent.set('');
-
-    // Re-initialize as read-only with original content
-    setTimeout(() => this.initEditor(true, this.textContent()), 0);
+    this.setEditorReadOnly(true, this.textContent());
   }
 
-  private initEditor(readOnly = true, content = ''): void {
+  private setEditorReadOnly(readOnly: boolean, content?: string): void {
+    if (!this.editorView) {
+      this.safeInitEditor(readOnly, content ?? this.textContent());
+      return;
+    }
+
+    const effects = [
+      this.readOnlyCompartment.reconfigure(EditorState.readOnly.of(readOnly)),
+      this.editableCompartment.reconfigure(EditorView.editable.of(!readOnly)),
+    ];
+
+    if (content !== undefined && content !== this.editorView.state.doc.toString()) {
+      this.editorView.dispatch({
+        changes: { from: 0, to: this.editorView.state.doc.length, insert: content },
+        effects,
+      });
+    } else {
+      this.editorView.dispatch({ effects });
+    }
+  }
+
+  private async initEditor(readOnly = true, content = ''): Promise<void> {
+    if (this.currentFileType() !== 'text' || this.showMarkdownPreview()) {
+      return;
+    }
+
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
     }
 
-    if (!this.editorContainer) return;
+    const editorContainer = this.editorContainer();
+    if (!editorContainer) return;
 
     // Detect current theme
-    const isDark = document.documentElement.classList.contains('dark');
-
-    const extensions = [
+    const extensions: Extension[] = [
       basicSetup,
-      ...(isDark ? [oneDark] : [syntaxHighlighting(gnomeLightHighlighting)]),
+      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
       keymap.of([]),
-      EditorView.editable.of(!readOnly),
-      EditorState.readOnly.of(readOnly),
+      this.editableCompartment.of(EditorView.editable.of(!readOnly)),
+      this.readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
+      EditorView.updateListener.of(update => {
+        if (update.docChanged && this.isEditing()) {
+          this.editContent.set(update.state.doc.toString());
+        }
+      }),
     ];
 
-    if (!readOnly) {
-      extensions.push(
-        EditorView.updateListener.of(update => {
-          if (update.docChanged) {
-            this.editContent.set(update.state.doc.toString());
-          }
-        })
-      );
-    }
-
-    // Detect language based on extension
+    // Lazy-load the language extension matching the file extension.
+    // Only the actually needed language pack is dynamically imported,
+    // keeping the main bundle ~100 KB lighter.
     const ext = this.fileName().split('.').pop()?.toLowerCase() || '';
-    switch (ext) {
-      case 'js':
-        extensions.push(cmJavascript());
-        break;
-      case 'ts':
-        extensions.push(cmJavascript({ typescript: true }));
-        break;
-      case 'json':
-        extensions.push(cmJson());
-        break;
-      case 'css':
-      case 'scss':
-      case 'sass':
-        extensions.push(cmCss());
-        break;
-      case 'html':
-      case 'htm':
-        extensions.push(cmHtml());
-        break;
-      case 'xml':
-        extensions.push(cmHtml());
-        break;
-      case 'py':
-        extensions.push(cmPython());
-        break;
-      case 'rs':
-        extensions.push(cmRust());
-        break;
-      case 'yaml':
-      case 'yml':
-        extensions.push(cmYaml());
-        break;
-      case 'sql':
-        extensions.push(cmSql());
-        break;
-      case 'go':
-        extensions.push(StreamLanguage.define(legacyGo));
-        break;
-      case 'sh':
-      case 'bash':
-      case 'zsh':
-        extensions.push(StreamLanguage.define(legacyShell));
-        break;
-      case 'md':
-      case 'markdown':
-        extensions.push(cmMarkdown());
-        break;
-      default:
-        extensions.push(cmMarkdown());
-        break;
-    }
+    const langExt = await this.loadLanguageExtension(ext);
+    if (langExt) extensions.push(langExt);
 
     const state = EditorState.create({
       doc: content,
@@ -325,8 +293,71 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
     this.editorView = new EditorView({
       state,
-      parent: this.editorContainer.nativeElement,
+      parent: editorContainer.nativeElement,
     });
+  }
+
+  private async loadLanguageExtension(ext: string): Promise<Extension | null> {
+    switch (ext) {
+      case 'js': {
+        const { javascript } = await import('@codemirror/lang-javascript');
+        return javascript();
+      }
+      case 'ts': {
+        const { javascript } = await import('@codemirror/lang-javascript');
+        return javascript({ typescript: true });
+      }
+      case 'json': {
+        const { json } = await import('@codemirror/lang-json');
+        return json();
+      }
+      case 'css':
+      case 'scss':
+      case 'sass': {
+        const { css } = await import('@codemirror/lang-css');
+        return css();
+      }
+      case 'html':
+      case 'htm':
+      case 'xml': {
+        const { html } = await import('@codemirror/lang-html');
+        return html();
+      }
+      case 'py': {
+        const { python } = await import('@codemirror/lang-python');
+        return python();
+      }
+      case 'rs': {
+        const { rust } = await import('@codemirror/lang-rust');
+        return rust();
+      }
+      case 'yaml':
+      case 'yml': {
+        const { yaml } = await import('@codemirror/lang-yaml');
+        return yaml();
+      }
+      case 'sql': {
+        const { sql } = await import('@codemirror/lang-sql');
+        return sql();
+      }
+      case 'go': {
+        const { go } = await import('@codemirror/legacy-modes/mode/go');
+        return StreamLanguage.define(go);
+      }
+      case 'sh':
+      case 'bash':
+      case 'zsh': {
+        const { shell } = await import('@codemirror/legacy-modes/mode/shell');
+        return StreamLanguage.define(shell);
+      }
+      case 'md':
+      case 'markdown': {
+        const { markdown } = await import('@codemirror/lang-markdown');
+        return markdown();
+      }
+      default:
+        return null;
+    }
   }
 
   /**
@@ -339,19 +370,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     const item = this.currentItem();
 
     try {
-      const fsName = this.data.isLocal
-        ? this.data.remoteName
-        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
-
-      const lastSlashIndex = item.Path.lastIndexOf('/');
-      const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
-      const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
+      const dirPath = this.pathService.getDirname(item.Path);
+      const filename = this.pathService.getFilename(item.Path);
 
       const content = new TextEncoder().encode(this.editContent());
-      await this.remoteOps.uploadFileSimple(fsName, dirPath, filename, content);
+      await this.remoteOps.uploadFileSimple(this.fsName, dirPath, filename, content);
 
       this.textContent.set(this.editContent());
+      this.lastRenderedText = null;
       this.isEditing.set(false);
+      this.setEditorReadOnly(true, this.textContent());
 
       this.notificationService.showInfo(
         this.translate.instant('fileBrowser.fileViewer.saveSuccess')
@@ -373,98 +401,141 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   async toggleMarkdownPreview(): Promise<void> {
     if (!this.showMarkdownPreview() && this.textContent()) {
       const item = this.currentItem();
-      let content = this.textContent();
+      if (!item) return;
 
-      // Helper to handle async replacements
-      const replaceAsync = async (
-        str: string,
-        regex: RegExp,
-        asyncFn: (match: string, ...args: string[]) => Promise<string>
-      ): Promise<string> => {
-        const promises: Promise<string>[] = [];
-        str.replace(regex, (match, ...args) => {
-          promises.push(asyncFn(match, ...args));
-          return match;
-        });
-        const data = await Promise.all(promises);
-        return str.replace(regex, () => data.shift() ?? '');
-      };
+      const currentText = this.textContent();
+      if (this.lastRenderedText !== currentText || !this.renderedMarkdown()) {
+        let content = currentText;
+        const resolveCache = new Map<string, Promise<string>>();
 
-      // Markdown Images: ![alt](path)
-      content = await replaceAsync(
-        content,
-        /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g,
-        async (_, alt, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `![${alt}](${res})`;
-        }
-      );
+        const resolveRelative = (path: string): Promise<string> => {
+          let cached = resolveCache.get(path);
+          if (!cached) {
+            cached = this.fileViewerService.resolveRelativePath(
+              item,
+              this.data.remoteName,
+              this.data.isLocal,
+              path
+            );
+            resolveCache.set(path, cached);
+          }
+          return cached;
+        };
 
-      // Markdown Links: [text](path)
-      content = await replaceAsync(
-        content,
-        /\[([^\]]+)\]\((?!https?:\/\/)([^)]+)\)/g,
-        async (_, text, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `[${text}](${res})`;
-        }
-      );
+        const replaceAsync = async (
+          str: string,
+          regex: RegExp,
+          asyncFn: (match: string, ...args: string[]) => Promise<string>
+        ): Promise<string> => {
+          const promises: Promise<string>[] = [];
+          str.replace(regex, (match, ...args) => {
+            promises.push(asyncFn(match, ...args));
+            return match;
+          });
+          const data = await Promise.all(promises);
+          return str.replace(regex, () => data.shift() ?? '');
+        };
 
-      // HTML Images: <img src="path">
-      content = await replaceAsync(
-        content,
-        /<img([^>]*)\ssrc=["']([^"']+)["']/gi,
-        async (_, attrs, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `<img${attrs} src="${res}"`;
-        }
-      );
+        // Markdown Images: ![alt](path)
+        content = await replaceAsync(
+          content,
+          /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g,
+          async (_, alt, path) => `![${alt}](${await resolveRelative(path)})`
+        );
 
-      // HTML Links: <a href="path">
-      content = await replaceAsync(
-        content,
-        /<a([^>]*)\shref=["']([^"']+)["']/gi,
-        async (_, attrs, path) => {
-          const res = await this.fileViewerService.resolveRelativePath(
-            item,
-            this.data.remoteName,
-            this.data.isLocal,
-            path
-          );
-          return `<a${attrs} href="${res}"`;
-        }
-      );
+        // Markdown Links: [text](path)
+        content = await replaceAsync(
+          content,
+          /\[([^\]]+)\]\((?!https?:\/\/)([^)]+)\)/g,
+          async (_, text, path) => `[${text}](${await resolveRelative(path)})`
+        );
 
-      this.renderedMarkdown.set(
-        this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
-      );
+        // HTML Images: <img src="path">
+        content = await replaceAsync(
+          content,
+          /<img([^>]*)\ssrc=["']([^"']+)["']/gi,
+          async (_, attrs, path) => `<img${attrs} src="${await resolveRelative(path)}"`
+        );
+
+        // HTML Links: <a href="path">
+        content = await replaceAsync(
+          content,
+          /<a([^>]*)\shref=["']([^"']+)["']/gi,
+          async (_, attrs, path) => `<a${attrs} href="${await resolveRelative(path)}"`
+        );
+
+        this.renderedMarkdown.set(
+          this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
+        );
+        this.lastRenderedText = currentText;
+      }
     }
 
     this.showMarkdownPreview.update(v => !v);
 
     // If switching back to raw view, re-initialize CodeMirror
     if (!this.showMarkdownPreview()) {
-      setTimeout(() => this.initEditor(true, this.textContent()), 0);
+      this.safeInitEditor(true, this.textContent());
     } else if (this.editorView) {
       // Destroy editor when showing preview to save resources and avoid state desync
       this.editorView.destroy();
       this.editorView = null;
     }
+  }
+
+  zoomIn(): void {
+    this.zoomLevel.update(z => Math.min(5, Math.round((z + 0.25) * 100) / 100));
+  }
+
+  zoomOut(): void {
+    this.zoomLevel.update(z => {
+      const next = Math.max(0.25, Math.round((z - 0.25) * 100) / 100);
+      if (next <= 1) {
+        this.panX.set(0);
+        this.panY.set(0);
+      }
+      return next;
+    });
+  }
+
+  resetZoom(): void {
+    this.zoomLevel.set(1);
+    this.panX.set(0);
+    this.panY.set(0);
+    this.isDragging.set(false);
+  }
+
+  onImageWheel(event: WheelEvent): void {
+    if (this.currentFileType() !== 'image') return;
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      this.zoomIn();
+    } else if (event.deltaY > 0) {
+      this.zoomOut();
+    }
+  }
+
+  onImageMouseDown(event: MouseEvent): void {
+    if (this.zoomLevel() <= 1 || event.button !== 0) return;
+    event.preventDefault();
+    this.isDragging.set(true);
+    this.startDragX = event.clientX;
+    this.startDragY = event.clientY;
+    this.initialPanX = this.panX();
+    this.initialPanY = this.panY();
+  }
+
+  onImageMouseMove(event: MouseEvent): void {
+    if (!this.isDragging()) return;
+    event.preventDefault();
+    const dx = event.clientX - this.startDragX;
+    const dy = event.clientY - this.startDragY;
+    this.panX.set(this.initialPanX + dx);
+    this.panY.set(this.initialPanY + dy);
+  }
+
+  onImageMouseUp(): void {
+    this.isDragging.set(false);
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -481,6 +552,23 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       case 'Escape':
         this.closeViewer.emit();
         break;
+      case '+':
+      case '=':
+        if (this.currentFileType() === 'image') {
+          this.zoomIn();
+        }
+        break;
+      case '-':
+      case '_':
+        if (this.currentFileType() === 'image') {
+          this.zoomOut();
+        }
+        break;
+      case '0':
+        if (this.currentFileType() === 'image') {
+          this.resetZoom();
+        }
+        break;
     }
   }
 
@@ -488,11 +576,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     await this.stopReadJobs();
 
     const item = this.currentItem();
-    this.fileViewerService.activeFileName.set(item ? item.Name : null);
+    this.fileViewerService.setActiveFileName(item ? item.Name : null);
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
+    this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
+    this.lastRenderedText = null;
+    this.detectedSignature.set(null);
+    this.hexDumpRows.set([]);
     this.isLoading.set(true);
+    this.currentFileType.set('loading');
     this.currentUrl.set('');
     this.textContent.set('');
     this.folderSize.set(null);
@@ -502,15 +595,47 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set('');
     this.archiveError.set(null);
     this.errorMessage.set(null);
+    this.resetZoom();
 
     try {
-      const [type, url] = await Promise.all([
-        this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal),
-        this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal),
-      ]);
+      const url = this.data.isDirectUrl
+        ? this.data.url
+        : await this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal);
+      const type = this.fileCategory();
 
       this.currentFileType.set(type);
       this.rawUrl.set(url);
+
+      if (this.data.isDirectUrl) {
+        if (type === 'image' || type === 'video' || type === 'audio' || type === 'pdf') {
+          this.currentUrl.set(url);
+          if (type === 'pdf') {
+            this.isLoading.set(false);
+          }
+          return;
+        }
+
+        // For non-media or extensionless URLs (e.g. Unsplash dynamic images), probe image loading first
+        const probeImg = new Image();
+        this.activeProbeImg = probeImg;
+        probeImg.referrerPolicy = 'no-referrer';
+        probeImg.onload = (): void => {
+          if (this.activeProbeImg === probeImg && this.rawUrl() === url) {
+            this.activeProbeImg = null;
+            this.currentFileType.set('image');
+            this.currentUrl.set(url);
+            this.isLoading.set(false);
+          }
+        };
+        probeImg.onerror = (): void => {
+          if (this.activeProbeImg === probeImg && this.rawUrl() === url) {
+            this.activeProbeImg = null;
+            this.isLoading.set(false);
+          }
+        };
+        probeImg.src = url;
+        return;
+      }
 
       await this.updateContent();
     } catch (err) {
@@ -520,76 +645,82 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   async updateContent(): Promise<void> {
+    if (this.data.isDirectUrl) return;
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
-        // Logic is now robust for any path structure.
-        let fsName = this.data.remoteName;
-
-        // If remote (not local), ensure it has the colon for the API call
-        if (!this.data.isLocal) {
-          fsName = this.pathService.normalizeRemoteForRclone(fsName);
-        }
+        if (!item) return;
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
-        await this.remoteOps
-          .getSize(fsName, item.Path, 'filemanager', this.readJobGroup)
-          .then((size: { count: number; bytes: number }) => {
-            this.folderSize.set(size);
-          })
-          .catch(err => {
-            console.error('Failed to get folder size:', err);
-            this.notificationService.showError(
-              this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
-            );
-          })
-          .finally(() => {
-            this.isLoading.set(false);
-          });
+        try {
+          const size = await this.remoteOps.getSize(
+            this.fsName,
+            item.Path,
+            'filemanager',
+            this.readJobGroup
+          );
+          this.folderSize.set(size);
+        } catch (err) {
+          console.error('Failed to get folder size:', err);
+          this.notificationService.showError(
+            this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
+          );
+        } finally {
+          this.isLoading.set(false);
+        }
         return;
       }
 
-      if (this.fileCategory() === 'binary' || this.currentFileType() === 'binary') {
-        // Show "Cannot preview" immediately - no download needed
-        this.isLoading.set(false);
-        return;
-      }
+      // Content-inspectable files: text files or binary files (for hex preview & signature detection)
+      if (this.fileCategory() === 'text' || this.fileCategory() === 'binary') {
+        const isKnownBinary = this.fileCategory() === 'binary';
+        // For binary files, request only the first 64KB via Range header to be fast and avoid large downloads
+        const headers = isKnownBinary
+          ? new HttpHeaders({ Range: 'bytes=0-65535' })
+          : new HttpHeaders();
 
-      // Text-based files: try to load as text, browser will handle what it can
-      if (this.fileCategory() === 'text') {
         this.http
           .get(this.rawUrl(), {
-            responseType: 'text',
+            headers,
+            responseType: 'arraybuffer',
             observe: 'response',
           })
           .pipe(
             takeUntil(this.cancelCurrentRequest$),
-            takeUntil(this.destroy$),
             catchError(err => {
               console.warn('Browser cannot render file:', err);
               this.currentFileType.set('error');
-              const body = err.error instanceof Blob ? 'Binary data' : err.error;
-              this.errorMessage.set(body || err.message || 'Unknown error');
+              this.errorMessage.set(this.extractErrorMessage(err));
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
-              if (this.looksLikeBinary(res.body)) {
+              const uint8 = new Uint8Array(res.body);
+              const inspection = this.binaryInspector.inspect(uint8, this.fileName());
+
+              if (inspection.isBinary) {
                 // Special handling for LNK files to show target info even if binary
-                if (this.fileName().toLowerCase().endsWith('.lnk')) {
-                  const info = this.extractLnkInfo(res.body);
+                if (inspection.shortcutTargets && inspection.shortcutTargets.length > 0) {
+                  const info = this.binaryInspector.extractLnkSummary(
+                    uint8,
+                    this.translate.instant('fileBrowser.fileViewer.shortcutTargets')
+                  );
                   this.textContent.set(info);
-                  setTimeout(() => this.initEditor(true, info), 0);
+                  this.safeInitEditor(true, info);
+                  this.currentFileType.set('text');
                 } else {
+                  this.detectedSignature.set(inspection.signature);
+                  this.hexDumpRows.set(inspection.hexDump ?? []);
                   this.currentFileType.set('binary');
                 }
               } else {
-                const repaired = this.repairText(res.body);
-                this.textContent.set(repaired);
+                this.currentFileType.set('text');
+                const text = this.binaryInspector.decodeText(uint8);
+                this.textContent.set(text);
                 // Initialize CodeMirror in read-only mode
-                setTimeout(() => this.initEditor(true, repaired ?? ''), 0);
+                this.safeInitEditor(true, text);
               }
             }
             this.isLoading.set(false);
@@ -598,48 +729,55 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
 
       if (this.currentFileType() === 'audio') {
-        this.isLoadingCover.set(true);
-        this.fileViewerService
-          .getAudioCover(this.currentItem(), this.data.remoteName, this.data.isLocal)
-          .then(cover => {
-            this.coverImage.set(cover);
-          })
-          .catch(err => {
+        const item = this.currentItem();
+        if (item) {
+          const targetPath = item.Path;
+          this.isLoadingCover.set(true);
+          try {
+            const cover = await this.fileViewerService.getAudioCover(
+              item,
+              this.data.remoteName,
+              this.data.isLocal
+            );
+            if (this.isStillViewing(targetPath)) {
+              this.coverImage.set(cover);
+            }
+          } catch (err) {
             console.warn('Failed to extract audio cover:', err);
-          })
-          .finally(() => {
-            this.isLoadingCover.set(false);
-          });
+          } finally {
+            if (this.isStillViewing(targetPath)) {
+              this.isLoadingCover.set(false);
+            }
+          }
+        }
       }
 
       if (this.currentFileType() === 'archive') {
         const item = this.currentItem();
-        const source = this.data.isLocal
-          ? (this.data.remoteName === '/'
-              ? `/${item.Path}`
-              : `${this.data.remoteName}/${item.Path}`
-            ).replace(/\/+/g, '/')
-          : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+        if (!item) return;
+        const targetPath = item.Path;
+        const source = this.getArchiveSource(item);
 
-        this.remoteOps
-          .archiveList(source, true) // Use long format for more info
-          .then(res => {
-            if (res && res.success) {
-              this.parsedArchiveItems.set(res.items);
-              this.archiveError.set(null);
-            } else {
-              this.archiveError.set('Unknown error');
-              this.parsedArchiveItems.set([]);
-            }
-          })
-          .catch(err => {
-            console.error('Failed to list archive:', err);
-            this.archiveError.set(err.toString());
+        try {
+          const res = await this.remoteOps.archiveList(source, true); // Use long format for more info
+          if (!this.isStillViewing(targetPath)) return;
+          if (res?.success) {
+            this.parsedArchiveItems.set(res.items);
+            this.archiveError.set(null);
+          } else {
+            this.archiveError.set('Unknown error');
             this.parsedArchiveItems.set([]);
-          })
-          .finally(() => {
+          }
+        } catch (err) {
+          if (!this.isStillViewing(targetPath)) return;
+          console.error('Failed to list archive:', err);
+          this.archiveError.set(err instanceof Error ? err.message : String(err));
+          this.parsedArchiveItems.set([]);
+        } finally {
+          if (this.isStillViewing(targetPath)) {
             this.isLoading.set(false);
-          });
+          }
+        }
         return;
       }
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
@@ -647,6 +785,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         this.currentUrl.set(this.rawUrl());
       }
       if (!['image', 'video', 'audio'].includes(this.currentFileType())) {
+        this.isLoading.set(false);
+      } else if (this.currentFileType() === 'video' && this.isMobile()) {
         this.isLoading.set(false);
       }
     } catch (error) {
@@ -658,115 +798,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Check if text content appears to be binary data.
-   * Uses NULL byte detection and non-printable character ratio.
-   */
-  private looksLikeBinary(content: string): boolean {
-    if (!content) return false;
-
-    // Check for common BOMs (Byte Order Marks) which often indicate UTF-16/32 text
-    // UTF-16 LE: FF FE, UTF-16 BE: FE FF, UTF-8: EF BB BF
-    const firstTwo = content.substring(0, 2);
-    if (firstTwo === '\xFF\xFE' || firstTwo === '\xFE\xFF' || content.startsWith('\xEF\xBB\xBF')) {
-      return false; // Definitely text
-    }
-
-    // NULL byte detection with UTF-16 heuristic:
-    // If NULL bytes are frequent but alternating with printable chars, it's likely UTF-16.
-    let nullCount = 0;
-    const maxCheck = Math.min(content.length, 1024);
-    for (let i = 0; i < maxCheck; i++) {
-      if (content.charCodeAt(i) === 0) nullCount++;
-    }
-
-    // If more than 10% are NULL but content is large, or if any NULL in first few bytes of non-UTF-16
-    // But let's be more practical: if NULL count is extremely high (> 40%), it's probably binary.
-    // If NULLs are present but the ratio is exactly around 50%, it's likely UTF-16 text.
-    const nullRatio = nullCount / maxCheck;
-    if (nullRatio > 0.1 && (nullRatio < 0.4 || nullRatio > 0.6)) return true;
-
-    // Count non-printable characters (excluding whitespace and common text control chars)
-    let nonPrintable = 0;
-    for (let i = 0; i < maxCheck; i++) {
-      const code = content.charCodeAt(i);
-      if (code === 0) continue; // Handled by nullRatio
-      if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
-        nonPrintable++;
-      }
-    }
-
-    // Windows Shortcut (LNK) magic bytes: 4C 00 00 00
-    if (maxCheck >= 4 && content.startsWith('L\0\0\0')) {
-      return true;
-    }
-
-    // If >30% non-printable (excluding NULLs), likely binary
-    return nonPrintable / (maxCheck - nullCount) > 0.3;
-  }
-
-  /**
-   * Extremely basic LNK (Windows Shortcut) parser.
-   * Scans the binary content for likely target paths or descriptions.
-   */
-  private extractLnkInfo(content: string): string {
-    // Look for Windows-style paths (e.g. C:\...) or environment variables
-    const pathRegex = /[a-zA-Z]:\\[^ \ufffd\0\r\n\t]+(?:\.exe|\.dll|\.lnk|\.bat|\.cmd)/gi;
-    const envRegex = /%[a-zA-Z0-9_]+%\\[^ \ufffd\0\r\n\t]+/gi;
-
-    const paths = new Set<string>();
-    let match;
-
-    while ((match = pathRegex.exec(content)) !== null) {
-      paths.add(match[0]);
-    }
-    while ((match = envRegex.exec(content)) !== null) {
-      paths.add(match[0]);
-    }
-
-    if (paths.size > 0) {
-      let result = this.translate.instant('fileBrowser.fileViewer.shortcutTargets') + ':\n\n';
-      paths.forEach(p => (result += `- ${p}\n`));
-      return result;
-    }
-
-    return content;
-  }
-
-  /**
-   * Detects and repairs mangled UTF-16 text.
-   * Rclone cat returns raw bytes which can be misinterpreted as UTF-8 strings
-   * with embedded NULL bytes for UTF-16 encoded files (like Windows desktop.ini).
-   */
-  private repairText(content: string): string {
-    if (!content) return content;
-
-    let nullCount = 0;
-    const maxCheck = Math.min(content.length, 1024);
-    for (let i = 0; i < maxCheck; i++) {
-      if (content.charCodeAt(i) === 0) nullCount++;
-    }
-
-    const nullRatio = nullCount / maxCheck;
-
-    // If it's around 50% NULLs, it's almost certainly mangled UTF-16 text
-    if (nullRatio > 0.4 && nullRatio < 0.6) {
-      console.debug('Repairing mangled UTF-16 text...');
-      // 1. Remove the mangled BOM (replacement characters) if present
-      const repaired = content.replace(/^\ufffd\ufffd/, '');
-      // 2. Strip all NULL bytes - for ASCII range in UTF-16 this restores the text
-      return repaired.replace(/\0/g, '');
-    }
-
-    return content;
-  }
-
   // Fired by Image/Video/Audio/Iframe onload events
   onLoadComplete(): void {
     this.isLoading.set(false);
   }
 
-  onLoadError(): void {
+  onLoadError(event?: Event): void {
     this.isLoading.set(false);
     this.currentFileType.set('error');
 
@@ -775,20 +812,68 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
 
-    // Try to fetch the specific error message from the protocol handler (e.g. Locked, Permission Denied)
-    this.http
-      .get(this.rawUrl(), { responseType: 'text' })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        error: err => {
-          const body = err.error instanceof Blob ? 'Binary data' : err.error;
-          if (body && typeof body === 'string' && body.length < 500) {
-            this.errorMessage.set(body);
-          }
-        },
-      });
+    const mediaError = (event?.target as HTMLMediaElement)?.error;
+    console.error(
+      'Failed to load file:',
+      this.fileName(),
+      'Event:',
+      event,
+      'MediaError:',
+      mediaError ? { code: mediaError.code, message: mediaError.message } : 'N/A'
+    );
+  }
 
-    console.error('Failed to load file:', this.fileName());
+  /**
+   * Extracts a human-readable error string from an unknown error or HttpErrorResponse,
+   * properly decoding ArrayBuffer error payloads without displaying '[object ArrayBuffer]'.
+   */
+  private extractErrorMessage(err: unknown): string {
+    if (err instanceof HttpErrorResponse || (err && typeof err === 'object' && 'status' in err)) {
+      const httpErr = err as HttpErrorResponse;
+      let message = '';
+
+      const isArrayBuffer =
+        httpErr.error instanceof ArrayBuffer ||
+        Object.prototype.toString.call(httpErr.error) === '[object ArrayBuffer]';
+
+      const rawBytes = isArrayBuffer
+        ? new Uint8Array(httpErr.error as ArrayBuffer)
+        : ArrayBuffer.isView(httpErr.error)
+          ? new Uint8Array(httpErr.error.buffer, httpErr.error.byteOffset, httpErr.error.byteLength)
+          : null;
+
+      if (rawBytes) {
+        try {
+          const decoded = new TextDecoder('utf-8').decode(rawBytes).replace(/\0/g, '').trim();
+          if (decoded && !decoded.startsWith('<!DOCTYPE') && !decoded.startsWith('<html')) {
+            message = decoded;
+          }
+        } catch {
+          // ignore decode failure
+        }
+      } else if (typeof httpErr.error === 'string' && httpErr.error.trim()) {
+        const trimmed = httpErr.error.replace(/\0/g, '').trim();
+        if (!trimmed.startsWith('<!DOCTYPE') && !trimmed.startsWith('<html')) {
+          message = trimmed;
+        }
+      } else if (httpErr.error && typeof httpErr.error === 'object' && 'message' in httpErr.error) {
+        message = String((httpErr.error as { message: unknown }).message || '');
+      }
+
+      if (message) return message;
+
+      if (httpErr.status) {
+        const match = httpErr.message?.match(/:\s*(\d{3}\s+.*)$/);
+        return match ? match[1] : `HTTP ${httpErr.status}`;
+      }
+      return httpErr.message || 'Unknown error';
+    }
+
+    if (err instanceof Error) {
+      return err.message;
+    }
+
+    return typeof err === 'string' ? err : 'Unknown error';
   }
 
   async back(): Promise<void> {
@@ -806,67 +891,25 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Download the current file to a selected destination using copyFile
-   * Opens a folder picker to let user choose where to save
+   * Download the current file using the DownloadService
    */
   async download(): Promise<void> {
-    if (this.isDownloading()) return;
-
-    if (isHeadlessMode()) {
-      try {
-        const url = new URL(this.rawUrl());
-        url.searchParams.set('download', 'true');
-
-        const link = document.createElement('a');
-        link.href = url.toString();
-        link.download = this.fileName();
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        this.notificationService.showInfo(
-          this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
-        );
-      } catch (err) {
-        console.error('Failed to trigger browser download:', err);
-        this.notificationService.showError(
-          this.translate.instant('fileBrowser.fileViewer.errorDownload')
-        );
-      }
+    if (this.data.isDirectUrl) {
+      await this.openerService.openUrl(this.data.url);
       return;
     }
-
+    if (this.isDownloading()) return;
     this.isDownloading.set(true);
-
     try {
-      // Let user select a local folder for download destination
-      const selectedPath = await this.fileSystemService.selectFolder();
-
-      // Start the copy job
-      const fsName = this.data.isLocal
-        ? this.data.remoteName
-        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
-
-      await this.remoteOps.transferItems(
-        [
-          {
-            remote: fsName,
-            path: this.currentItem().Path,
-            name: this.fileName(),
-            isDir: false,
-          },
-        ],
-        selectedPath,
-        '',
-        'copy',
-        ORIGINS.FILEMANAGER
-      );
-
-      this.notificationService.showInfo(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
+      await this.downloadService.download(
+        this.fsName,
+        this.currentItem().Path,
+        this.fileName(),
+        this.data.isLocal,
+        this.fileSize() || undefined
       );
     } catch (err) {
-      console.error('Failed to start download:', err);
+      console.error('Failed to download file:', err);
     } finally {
       this.isDownloading.set(false);
     }
@@ -890,13 +933,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       this.isExtracting.set(true);
       const selectedPath = result.paths[0];
-
-      const source = this.data.isLocal
-        ? (this.data.remoteName === '/'
-            ? `/${item.Path}`
-            : `${this.data.remoteName}/${item.Path}`
-          ).replace(/\/+/g, '/')
-        : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+      const source = this.getArchiveSource(item);
 
       this.notificationService.showInfo(
         this.translate.instant('fileBrowser.fileViewer.extracting', { name: this.fileName() })
@@ -911,5 +948,44 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     } finally {
       this.isExtracting.set(false);
     }
+  }
+
+  /**
+   * Open the current file natively using Android / system default application intent
+   */
+  async openNativeFile(): Promise<void> {
+    if (this.isOpeningNative()) return;
+    this.isOpeningNative.set(true);
+    try {
+      await this.downloadService.openFileNatively(
+        this.fsName,
+        this.currentItem().Path,
+        this.fileName(),
+        this.data.isLocal
+      );
+    } catch (err) {
+      console.error('Failed to open file natively:', err);
+    } finally {
+      this.isOpeningNative.set(false);
+    }
+  }
+
+  /** Checks whether the viewer is still showing the file at the given path (stale-navigation guard). */
+  private isStillViewing(targetPath: string): boolean {
+    return this.currentItem()?.Path === targetPath;
+  }
+
+  /** Builds the full rclone source path for archive operations. */
+  private getArchiveSource(item: Entry): string {
+    return this.data.isLocal
+      ? this.pathService.joinPath(this.data.remoteName, item.Path)
+      : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+  }
+
+  /** Schedules editor initialization after the next render, swallowing init errors. */
+  private safeInitEditor(readOnly: boolean, content: string): void {
+    requestAnimationFrame(() => {
+      void this.initEditor(readOnly, content).catch(e => console.error('initEditor failed', e));
+    });
   }
 }

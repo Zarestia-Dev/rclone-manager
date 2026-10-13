@@ -11,41 +11,33 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { PathDisplayComponent } from '../path-display/path-display.component';
-import { OperationControlConfig, PrimaryActionType, LocalDiskUsage } from '@app/types';
+import {
+  OperationControlConfig,
+  PrimaryActionType,
+  LocalDiskUsage,
+  OPERATION_ICONS,
+  SYNC_TYPES,
+} from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { SystemInfoService } from '@app/services';
-import { TranslateModule } from '@ngx-translate/core';
-
-const OPERATION_ICONS: Record<PrimaryActionType, string> = {
-  mount: 'mount',
-  sync: 'refresh',
-  bisync: 'right-left',
-  move: 'move',
-  copy: 'copy',
-  serve: 'serve',
-};
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operation-control',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
     MatExpansionModule,
     MatProgressBarModule,
     MatSlideToggleModule,
     PathDisplayComponent,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
   ],
   template: `
@@ -59,13 +51,22 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
-            @if (dryRun() && isSyncType()) {
+            @if (dryRun() && isOperationsType()) {
               <span
                 class="app-pill p-accent"
-                [matTooltip]="'dashboard.appDetail.dryRunActive' | translate"
+                [attr.title]="'dashboard.appDetail.dryRunActive' | translate"
               >
                 <mat-icon svgIcon="eye" class="accent"></mat-icon>
                 <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
+              </span>
+            }
+            @if (resync() && config().operationType === 'bisync') {
+              <span
+                class="app-pill p-warn"
+                [attr.title]="'dashboard.appDetail.resyncActive' | translate"
+              >
+                <mat-icon svgIcon="right-left" class="warn"></mat-icon>
+                <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
               </span>
             }
           </div>
@@ -74,12 +75,12 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         <mat-panel-description>
           <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
             <button
-              mat-icon-button
+              matIconButton
               class="quick-action"
               [class]="buttonClass()"
               (click)="handleQuickAction($event)"
               [disabled]="config().isLoading"
-              [matTooltip]="
+              [attr.title]="
                 (config().isActive && config().operationType === 'mount'
                   ? 'actions.unmount'
                   : config().isActive
@@ -89,7 +90,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
               "
             >
               @if (config().isLoading) {
-                <mat-spinner diameter="24"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
               } @else {
                 <mat-icon
                   [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
@@ -110,7 +111,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           <div class="disk-usage-info">
             @if (isDiskUsageLoading() && !diskUsage()) {
               <div class="usage-loading">
-                <mat-spinner diameter="16"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
                 <span class="stat-label">{{ 'detailShared.diskUsage.loading' | translate }}</span>
               </div>
             } @else if (diskUsage(); as usage) {
@@ -122,54 +123,61 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
               </div>
               <mat-progress-bar
                 mode="determinate"
-                [value]="(usage.used / usage.total) * 100"
+                [value]="diskUsagePercentage()"
                 class="usage-bar"
-                [color]="getUsageColor(usage.used / usage.total)"
+                [color]="diskUsageColor()"
               ></mat-progress-bar>
-              <span class="usage-free">{{
-                'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
-              }}</span>
             }
           </div>
         }
 
-        @if (isSyncType()) {
-          <div class="dry-run-control">
+        @if (isOperationsType()) {
+          <div class="controls">
             <mat-slide-toggle
+              class="control"
               [checked]="dryRun()"
               (change)="toggleDryRun.emit()"
               [disabled]="config().isActive || config().isLoading"
             >
               {{ 'dashboard.appDetail.dryRun' | translate }}
             </mat-slide-toggle>
+
+            @if (config().operationType === 'bisync') {
+              <mat-slide-toggle
+                class="control"
+                [checked]="resync()"
+                (change)="toggleResync.emit()"
+                [disabled]="config().isActive || config().isLoading"
+              >
+                {{ 'dashboard.appDetail.resync' | translate }}
+              </mat-slide-toggle>
+            }
           </div>
         }
 
-        <div class="panel-actions">
-          <button
-            mat-flat-button
-            [class]="buttonClass()"
-            (click)="
-              config().isActive
-                ? stopJob.emit(config().operationType)
-                : startJob.emit(config().operationType)
-            "
-            [disabled]="config().isLoading"
-            class="full-action-button"
-          >
-            @if (config().isLoading) {
-              <mat-spinner diameter="24"></mat-spinner>
-            } @else {
-              <mat-icon
-                [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
-              ></mat-icon>
-            }
-            <span>{{
-              (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
-                | translate
-            }}</span>
-          </button>
-        </div>
+        <button
+          matButton="filled"
+          [class]="buttonClass()"
+          (click)="
+            config().isActive
+              ? stopJob.emit(config().operationType)
+              : startJob.emit(config().operationType)
+          "
+          [disabled]="config().isLoading"
+          class="full-action-button"
+        >
+          @if (config().isLoading) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon
+              [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+            ></mat-icon>
+          }
+          <span>{{
+            (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
+              | translate
+          }}</span>
+        </button>
       </div>
     </mat-expansion-panel>
   `,
@@ -191,12 +199,9 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         }
       }
 
-      .panel-actions {
+      .full-action-button {
         margin-top: var(--space-md);
-
-        .full-action-button {
-          width: 100%;
-        }
+        width: 100%;
       }
 
       .profile-info {
@@ -206,8 +211,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
       }
 
       .disk-usage-info {
-        margin-top: var(--space-md);
-        padding: var(--space-sm);
+        margin: var(--space-md) var(--space-sm) 0 var(--space-sm);
         background: var(--surface-variant);
         border-radius: var(--radius-sm);
         display: flex;
@@ -220,30 +224,32 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           justify-content: center;
           gap: var(--space-sm);
           padding: var(--space-xs) 0;
-          color: var(--text-secondary);
+          color: var(--dim-color);
         }
 
         .usage-stats {
           display: flex;
           justify-content: space-between;
           font-size: var(--body-sm);
-          color: var(--text-secondary);
+          color: var(--dim-color);
         }
 
         .usage-bar {
           height: 6px;
           border-radius: 3px;
         }
-
-        .usage-free {
-          font-size: var(--body-xs);
-          color: var(--text-tertiary);
-          text-align: right;
-        }
       }
 
-      .dry-run-control {
+      .controls {
         margin-top: var(--space-md);
+        display: flex;
+        flex-direction: row;
+        gap: var(--space-sm);
+        justify-content: space-between;
+      }
+
+      .control {
+        flex: 1;
         padding: var(--space-sm);
         background: var(--sidebar-bg-color);
         border-radius: var(--radius-sm);
@@ -255,10 +261,12 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
 export class OperationControlComponent {
   readonly config = input.required<OperationControlConfig>();
   readonly dryRun = input<boolean>(false);
+  readonly resync = input<boolean>(false);
   readonly startJob = output<PrimaryActionType>();
   readonly stopJob = output<PrimaryActionType>();
   readonly openPath = output<string>();
   readonly toggleDryRun = output<void>();
+  readonly toggleResync = output<void>();
 
   private readonly systemInfo = inject(SystemInfoService);
 
@@ -266,8 +274,21 @@ export class OperationControlComponent {
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
   readonly isDiskUsageLoading = signal(false);
 
-  readonly isSyncType = computed(() =>
-    ['sync', 'bisync', 'move', 'copy'].includes(this.config().operationType)
+  readonly diskUsagePercentage = computed(() => {
+    const usage = this.diskUsage();
+    if (!usage || !usage.total || usage.total <= 0) return 0;
+    return Math.min(100, Math.max(0, (usage.used / usage.total) * 100));
+  });
+
+  readonly diskUsageColor = computed<'primary' | 'accent' | 'warn'>(() => {
+    const pct = this.diskUsagePercentage();
+    if (pct > 90) return 'warn';
+    if (pct > 70) return 'accent';
+    return 'primary';
+  });
+
+  readonly isOperationsType = computed(() =>
+    (SYNC_TYPES as string[]).includes(this.config().operationType)
   );
 
   readonly shouldPollDiskUsage = computed(() => {
@@ -276,8 +297,8 @@ export class OperationControlComponent {
     return (
       operationType === 'mount' &&
       isActive &&
-      !!destination &&
-      !destination.includes('Not configured')
+      pathConfig.hasDestination &&
+      destination.trim().length > 0
     );
   });
 
@@ -314,12 +335,6 @@ export class OperationControlComponent {
     } else {
       this.startJob.emit(operationType);
     }
-  }
-
-  getUsageColor(ratio: number): string {
-    if (ratio > 0.9) return 'warn';
-    if (ratio > 0.7) return 'accent';
-    return 'primary';
   }
 
   readonly operationIcon = computed(

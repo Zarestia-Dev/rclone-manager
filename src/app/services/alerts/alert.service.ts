@@ -9,16 +9,11 @@ import {
   AlertRule,
   AlertSeverity,
   AlertStats,
-} from '../../shared/types/alerts';
+  SeverityStyle,
+  SettingsChangeEvent,
+} from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ALERT_FIRED, SettingsChangeEvent } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-
-export interface SeverityStyle {
-  color: string;
-  bg: string;
-  border: string;
-}
 
 @Injectable({ providedIn: 'root' })
 export class AlertService extends TauriBaseService {
@@ -150,7 +145,8 @@ export class AlertService extends TauriBaseService {
   }
 
   private initRealtime(): void {
-    this.listenToEvent<AlertRecord>(ALERT_FIRED)
+    this.eventListeners
+      .listenToAlertFired()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(newAlert => {
         // Update history
@@ -301,6 +297,8 @@ export class AlertService extends TauriBaseService {
         return 'terminal';
       case 'telegram':
         return 'telegram';
+      case 'whatsapp':
+        return 'whatsapp';
       case 'mqtt':
         return 'message';
       case 'email':

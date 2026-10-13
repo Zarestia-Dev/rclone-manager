@@ -1,24 +1,34 @@
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{
-    rclone::backend::BackendManager,
+    core::{automation::engine::AutomationScheduler, bridge},
     rclone::{
+        backend::BackendManager,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
-        engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
     },
-    utils::{
-        process::process_manager::kill_all_rclone_processes,
-        types::{events::APP_EVENT, state::RcloneState, updater::AppUpdaterState},
-    },
+    utils::types::{events::APP_EVENT, state::RcloneState},
 };
-
-use crate::core::automation::engine::AutomationScheduler;
 
 /// Main entry point for the shutdown sequence.
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
+
+    app_handle.state::<RcloneState>().set_shutting_down();
+
+    bridge::emit(
+        APP_EVENT,
+        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
+    );
+
+    #[cfg(all(
+        feature = "desktop",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
+        power_state.release().await;
+    }
 
     let scheduler_state = app_handle.state::<AutomationScheduler>();
 
@@ -50,7 +60,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
     );
 
-    #[cfg(desktop)]
+    #[cfg(feature = "updater")]
     crate::core::lifecycle::auto_updater::stop_auto_updater(&app_handle);
 
     match scheduler_state.stop().await {
@@ -88,12 +98,18 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     match engine_result {
         Ok(Ok(())) => info!("Engine shutdown completed."),
         Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
+        #[cfg(not(feature = "librclone"))]
         Err(_) => {
             error!("Engine shutdown timed out — force-killing rclone processes");
-            if let Err(e) = kill_all_rclone_processes(DEFAULT_API_PORT, DEFAULT_OAUTH_PORT) {
+            let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
+            if let Err(e) =
+                crate::utils::process::process_manager::kill_all_rclone_processes(force_kill_port)
+            {
                 error!("Force kill failed: {e}");
             }
         }
+        #[cfg(feature = "librclone")]
+        Err(_) => {}
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.
@@ -104,18 +120,16 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
     }
 
+    // Clear temporary file preview/viewer cache files
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::io::file_helper::cleanup_temp_views(&app_handle);
+
+    #[cfg(any(feature = "updater", not(feature = "librclone")))]
     apply_pending_updates(&app_handle).await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
-    app.state::<RcloneState>().set_shutting_down();
-
-    let _ = app.emit(
-        APP_EVENT,
-        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
-    );
-
     handle_shutdown(app.clone()).await;
     info!("Shutdown completed.");
     app.exit(0);
@@ -123,37 +137,38 @@ pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
 }
 
 /// Applies any staged updates (app or rclone) during shutdown.
+#[cfg(any(feature = "updater", not(feature = "librclone")))]
 async fn apply_pending_updates(app_handle: &AppHandle) {
     // App self-update (requires the 'updater' Tauri feature).
-    #[cfg(desktop)]
-    {
-        if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
-            let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
-                let mut d = state.data.lock();
-                if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
-                    d.state = crate::utils::types::updater::UpdateState::Idle;
-                    Some((u, s))
-                } else {
-                    None
-                }
-            };
+    #[cfg(feature = "updater")]
+    if let Some(state) = app_handle.try_state::<crate::utils::types::updater::AppUpdaterState>() {
+        let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
+            let mut d = state.data.lock();
+            if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
+                d.state = crate::utils::types::updater::UpdateState::Idle;
+                Some((u, s))
+            } else {
+                None
+            }
+        };
 
-            if let Some((update, sig)) = staged {
-                info!("Applying staged app update...");
-                if let Err(e) = update.install(sig) {
-                    error!("Failed to apply app update: {e}");
-                }
+        if let Some((update, sig)) = staged {
+            info!("Applying staged app update...");
+            if let Err(e) = update.install(sig) {
+                error!("Failed to apply app update: {e}");
             }
         }
     }
 
-    // Rclone update (binary swap — always available, not feature-gated).
+    // Rclone update (binary swap — only available on desktop).
+    #[cfg(not(feature = "librclone"))]
     if let Err(e) = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await {
         error!("Failed to apply rclone update during shutdown: {e}");
     }
 }
 
-async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
+#[bridge]
+pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
     let active_jobs = app
         .state::<BackendManager>()
         .job_cache
@@ -168,7 +183,9 @@ async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
         .into_iter()
         .map(|job| {
             let app = app.clone();
-            tokio::spawn(async move { stop_job(app.clone(), job.jobid, job.remote_name).await })
+            crate::utils::spawn(
+                async move { stop_job(app.clone(), job.jobid, job.remote_name).await },
+            )
         })
         .collect();
 

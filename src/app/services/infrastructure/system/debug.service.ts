@@ -1,11 +1,10 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { EditorView } from 'codemirror';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import { isHeadlessMode } from '@app/services';
+import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 
-/**
- * Debug information returned from backend
- */
 export interface DebugInfo {
   logsDir: string;
   configDir: string;
@@ -16,205 +15,384 @@ export interface DebugInfo {
   arch: string;
 }
 
-/**
- * Service for debugging and troubleshooting tools
- */
-@Injectable({
-  providedIn: 'root',
-})
+interface MenuAction {
+  label: string;
+  action: () => void | Promise<void>;
+  shortcut?: string;
+}
+type MenuEntry = MenuAction | 'divider';
+
+const FOLDER_DIR_KEYS = {
+  logs: 'logsDir',
+  config: 'configDir',
+  cache: 'cacheDir',
+} as const satisfies Record<string, keyof DebugInfo>;
+
+@Injectable({ providedIn: 'root' })
 export class DebugService extends TauriBaseService {
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly document = inject(DOCUMENT);
+  private readonly doc = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly clipboard = inject(Clipboard);
 
   private contextMenu: HTMLElement | null = null;
 
   constructor() {
     super();
+    if (isMobile()) return;
     this.setupContextMenu();
   }
 
-  /**
-   * Restart the application
-   */
-  async restartApp(): Promise<void> {
-    await this.invokeCommand<void>('relaunch_app');
+  restartApp(): Promise<void> {
+    return this.invokeCommand<void>('relaunch_app');
   }
 
-  /**
-   * Get debug information (paths, versions, build info)
-   */
-  async getDebugInfo(): Promise<DebugInfo> {
+  getDebugInfo(): Promise<DebugInfo> {
     return this.invokeCommand<DebugInfo>('get_debug_info');
   }
 
-  /**
-   * Open a folder in the system file manager
-   * @param folderType - Type of folder: 'logs', 'config', or 'cache'
-   */
   async openFolder(folderType: 'logs' | 'config' | 'cache'): Promise<void> {
     try {
-      // First get the debug info to get the actual paths
-      const debugInfo = await this.getDebugInfo();
-      let path: string;
-
-      switch (folderType) {
-        case 'logs':
-          path = debugInfo.logsDir;
-          break;
-        case 'config':
-          path = debugInfo.configDir;
-          break;
-        case 'cache':
-          path = debugInfo.cacheDir;
-          break;
-      }
-
-      // Use the unified file manager logic
-      await this.fileSystemService.openInFiles(path);
-    } catch (error) {
-      console.error('Failed to open folder:', error);
-      this.notificationService.showError(this.translate.instant('home.errors.generic'));
-      throw error;
+      const info = await this.getDebugInfo();
+      await this.fileSystemService.openInFiles(info[FOLDER_DIR_KEYS[folderType]]);
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+      this.notificationService.showError(this.t('home.errors.generic'));
+      throw err;
     }
   }
 
-  /**
-   * Open developer tools
-   * - Desktop (Tauri): Opens WebView DevTools via backend command
-   * - Headless (Browser): Shows instruction to use F12 (can't programmatically open browser DevTools)
-   */
   async openDevTools(): Promise<void> {
-    if (isHeadlessMode()) {
-      this.notificationService.showSuccess(
-        this.translate.instant('developerTools.openDevToolsHint')
-      );
-      return;
-    }
-
+    if (!this.isTauri) return;
     try {
       await this.invokeCommand<string>('open_devtools');
-    } catch (error) {
-      console.error('Failed to open devtools:', error);
-      this.notificationService.showError(
-        this.translate.instant('developerTools.openDevToolsError')
-      );
-      throw error;
+    } catch (err) {
+      console.error('Failed to open devtools:', err);
+      this.notificationService.showError(this.t('developerTools.openDevToolsError'));
+      throw err;
     }
   }
 
   private setupContextMenu(): void {
-    const onContextMenu = (e: MouseEvent): void => {
-      e.preventDefault();
-
-      const tag = (e.target as HTMLElement).tagName;
-      if (['INPUT', 'TEXTAREA'].includes(tag)) return;
-
-      this.createContextMenu(e.clientX, e.clientY);
-    };
-    const onClose = (): void => this.closeMenu();
-    const onKeydown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') this.closeMenu();
-    };
-
-    this.document.addEventListener('contextmenu', onContextMenu);
-    this.document.addEventListener('click', onClose);
-    this.document.addEventListener('keydown', onKeydown);
-
+    const onContextMenu = (e: MouseEvent): void => this.handleContextMenu(e);
+    this.doc.addEventListener('contextmenu', onContextMenu);
     this.destroyRef.onDestroy(() => {
-      this.document.removeEventListener('contextmenu', onContextMenu);
-      this.document.removeEventListener('click', onClose);
-      this.document.removeEventListener('keydown', onKeydown);
+      this.doc.removeEventListener('contextmenu', onContextMenu);
       this.closeMenu();
     });
   }
 
-  private createContextMenu(x: number, y: number): void {
-    this.closeMenu();
+  private handleContextMenu(e: MouseEvent): void {
+    if (e.defaultPrevented) return;
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    e.preventDefault();
+    this.createContextMenu(e.clientX, e.clientY, this.buildMenuItems(target));
+  }
 
-    this.contextMenu = this.document.createElement('div');
-    this.contextMenu.className = 'material-context-menu';
-    this.contextMenu.style.cssText = `
-      position: fixed;
-      left: ${x}px;
-      top: ${y}px;
-      z-index: 99999;
-    `;
+  private buildMenuItems(target: HTMLElement): MenuEntry[] {
+    const inputEl = target.closest('input, textarea') as
+      HTMLInputElement | HTMLTextAreaElement | null;
+    const cmEditor = target.closest('.cm-editor') as HTMLElement | null;
+    const cmView = cmEditor ? EditorView.findFromDOM(cmEditor) : null;
+    const editableEl =
+      !inputEl && !cmView
+        ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
+        : null;
 
-    const menuItems = [
-      {
-        label: this.translate.instant('developerTools.refreshUi'),
-        action: (): void => this.refreshUI(),
-      },
-      {
-        label: this.translate.instant('developerTools.clearCache'),
-        action: (): void => this.clearCache(),
-      },
-      ...(isDevMode()
-        ? [
-            {
-              label: this.translate.instant('developerTools.openDevTools'),
-              action: (): void => void this.openDevTools(),
-            },
-          ]
-        : []),
-    ];
+    const isPassword = inputEl?.type === 'password';
+    const isReadOnly = cmView
+      ? cmView.state.readOnly
+      : !!(
+          inputEl?.readOnly ||
+          inputEl?.disabled ||
+          editableEl?.getAttribute('contenteditable') === 'false'
+        );
+    const isDisabled = !!inputEl?.disabled;
 
-    menuItems.forEach(item => {
-      const menuItem = this.document.createElement('button');
-      menuItem.className = 'menu-item';
-      menuItem.innerHTML = `<span>${item.label}</span>`;
-      menuItem.onclick = (): void => {
-        item.action();
-        this.closeMenu();
-      };
-      this.contextMenu?.appendChild(menuItem);
-    });
+    let selectedText = '';
+    if (inputEl && !isPassword) {
+      selectedText = inputEl.value.substring(
+        inputEl.selectionStart ?? 0,
+        inputEl.selectionEnd ?? 0
+      );
+    } else if (cmView) {
+      const mainRange = cmView.state.selection.main;
+      selectedText = cmView.state.sliceDoc(mainRange.from, mainRange.to);
+    } else {
+      selectedText = window.getSelection()?.toString() ?? '';
+    }
 
-    this.document.body.appendChild(this.contextMenu);
+    const isInput = !!(inputEl || cmView || editableEl);
+    const items: MenuEntry[] = [];
 
-    // Adjust position if menu goes off-screen
-    if (this.contextMenu) {
-      const rect = this.contextMenu.getBoundingClientRect();
-      if (rect.right > window.innerWidth) {
-        this.contextMenu.style.left = `${x - rect.width}px`;
+    if (isInput) {
+      if (selectedText) {
+        if (!isPassword && !isReadOnly && !isDisabled) {
+          items.push({
+            label: this.t('nautilus.contextMenu.cut'),
+            shortcut: 'Ctrl+X',
+            action: () => this.cut(selectedText, inputEl, editableEl, cmView),
+          });
+        }
+        if (!isPassword) {
+          items.push({
+            label: this.t('nautilus.contextMenu.copy'),
+            shortcut: 'Ctrl+C',
+            action: () => void this.clipboard.copy(selectedText),
+          });
+        }
       }
-      if (rect.bottom > window.innerHeight) {
-        this.contextMenu.style.top = `${y - rect.height}px`;
+      if (!isReadOnly && !isDisabled) {
+        items.push({
+          label: this.t('nautilus.contextMenu.paste'),
+          shortcut: 'Ctrl+V',
+          action: () => this.paste(inputEl, editableEl, cmView),
+        });
+      }
+      if (!isDisabled) {
+        items.push({
+          label: this.t('nautilus.contextMenu.selectAll'),
+          shortcut: 'Ctrl+A',
+          action: () => this.selectAll(inputEl, editableEl, cmView),
+        });
+      }
+    } else if (selectedText && !isPassword) {
+      items.push({
+        label: this.t('nautilus.contextMenu.copy'),
+        shortcut: 'Ctrl+C',
+        action: () => void this.clipboard.copy(selectedText),
+      });
+    }
+
+    if (items.length && !isInput && !selectedText) items.push('divider');
+
+    if (!isInput && !selectedText) {
+      items.push(
+        {
+          label: this.t('developerTools.refreshUi'),
+          action: () => this.refreshUI(),
+        },
+        {
+          label: this.t('developerTools.clearCache'),
+          action: () => this.clearCache(),
+        }
+      );
+    }
+
+    if (isDevMode() && this.isTauri && !selectedText) {
+      items.push({
+        label: this.t('developerTools.openDevTools'),
+        action: () => void this.openDevTools(),
+      });
+    }
+
+    return items;
+  }
+
+  private cut(
+    text: string,
+    inputEl: HTMLInputElement | HTMLTextAreaElement | null,
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
+  ): void {
+    this.clipboard.copy(text);
+    if (inputEl) {
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      inputEl.value = inputEl.value.substring(0, start) + inputEl.value.substring(end);
+      inputEl.selectionStart = inputEl.selectionEnd = start;
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (cmView) {
+      cmView.dispatch(cmView.state.replaceSelection(''));
+      cmView.focus();
+    } else if (editableEl) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        editableEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
+  }
+
+  private async paste(
+    inputEl: HTMLInputElement | HTMLTextAreaElement | null,
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
+  ): Promise<void> {
+    let text = '';
+    try {
+      text = await this.readClipboard();
+    } catch (err) {
+      console.error('Paste failed:', err);
+    }
+    if (!text) return;
+
+    if (inputEl) {
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      inputEl.value = inputEl.value.substring(0, start) + text + inputEl.value.substring(end);
+      inputEl.selectionStart = inputEl.selectionEnd = start + text.length;
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (cmView) {
+      cmView.dispatch(cmView.state.replaceSelection(text));
+      cmView.focus();
+    } else if (editableEl) {
+      editableEl.focus();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = this.doc.createTextNode(text);
+        range.insertNode(textNode);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        editableEl.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+
+  private selectAll(
+    inputEl: HTMLInputElement | HTMLTextAreaElement | null,
+    editableEl: HTMLElement | null,
+    cmView?: EditorView | null
+  ): void {
+    if (inputEl) {
+      inputEl.select();
+      return;
+    }
+    if (cmView) {
+      cmView.dispatch({
+        selection: { anchor: 0, head: cmView.state.doc.length },
+      });
+      cmView.focus();
+      return;
+    }
+    if (editableEl) {
+      const range = this.doc.createRange();
+      range.selectNodeContents(editableEl);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }
+
+  private async readClipboard(): Promise<string> {
+    if (!this.isTauri) return navigator.clipboard.readText();
+    const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+    return readText();
+  }
+
+  private createContextMenu(x: number, y: number, items: MenuEntry[]): void {
+    this.closeMenu();
+
+    this.contextMenu = this.doc.createElement('div');
+    this.contextMenu.className = 'material-context-menu';
+    this.contextMenu.setAttribute('popover', 'manual');
+    this.contextMenu.style.cssText = `position:fixed;inset:auto;left:${x}px;top:${y}px;z-index:99999;margin:0;border:none`;
+
+    for (const item of items) {
+      if (item === 'divider') {
+        const sep = this.doc.createElement('mat-divider');
+        this.contextMenu.appendChild(sep);
+        continue;
+      }
+
+      const btn = this.doc.createElement('button');
+      btn.className = `menu-item${item.shortcut ? ' space-between' : ''}`;
+      btn.innerHTML = `
+        <span class="item-label">${item.label}</span>
+        ${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}
+      `;
+      btn.onclick = async (): Promise<void> => {
+        await item.action();
+        this.closeMenu();
+      };
+      this.contextMenu.appendChild(btn);
+    }
+
+    this.doc.body.appendChild(this.contextMenu);
+    try {
+      (this.contextMenu as any).showPopover();
+    } catch {
+      /* popover not supported, menu visible via fixed positioning */
+    }
+
+    // Flip if off-screen
+    const { right, bottom, width, height } = this.contextMenu.getBoundingClientRect();
+    if (right > window.innerWidth) this.contextMenu.style.left = `${x - width}px`;
+    if (bottom > window.innerHeight) this.contextMenu.style.top = `${y - height}px`;
+
+    // Dynamic active-menu listeners
+    this.doc.addEventListener('mousedown', this.onGlobalMousedown);
+    this.doc.addEventListener('keydown', this.onGlobalKeydown);
   }
 
   private closeMenu(): void {
-    if (this.contextMenu) {
-      this.contextMenu.remove();
-      this.contextMenu = null;
+    if (!this.contextMenu) return;
+    try {
+      (this.contextMenu as any).hidePopover();
+    } catch {
+      /* ignore */
     }
+    this.contextMenu.remove();
+    this.contextMenu = null;
+
+    this.doc.removeEventListener('mousedown', this.onGlobalMousedown);
+    this.doc.removeEventListener('keydown', this.onGlobalKeydown);
   }
+
+  private readonly onGlobalMousedown = (e: MouseEvent): void => {
+    if (!this.contextMenu?.contains(e.target as Node)) {
+      this.closeMenu();
+    }
+  };
+
+  private readonly onGlobalKeydown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      this.closeMenu();
+    }
+  };
 
   private refreshUI(): void {
     sessionStorage.clear();
     window.location.reload();
   }
 
-  private clearCache(): void {
-    // 1. Clear Local/Session Storage
+  private async clearCache(): Promise<void> {
     sessionStorage.clear();
-    localStorage.clear();
+    // Preserve rcman.* keys (managed by LocalStorageService)
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !key.startsWith('rcman.')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
 
-    // 2. Clear Cookies — trim whitespace to ensure deletion matches the stored name
-    const cookies = this.document.cookie.split(';');
-    for (const cookie of cookies) {
-      const eqPos = cookie.indexOf('=');
-      const name = (eqPos > -1 ? cookie.substring(0, eqPos) : cookie).trim();
-      this.document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    if (this.doc.cookie) {
+      for (const cookie of this.doc.cookie.split(';')) {
+        const name = cookie.split('=')[0].trim();
+        this.doc.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+      }
     }
 
-    // 3. Clear Cache API (Service Workers)
     if ('caches' in window) {
-      void caches.keys().then(names => names.forEach(n => void caches.delete(n)));
+      try {
+        const names = await caches.keys();
+        await Promise.all(names.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Failed to clear caches:', err);
+      }
     }
 
-    this.notificationService.showSuccess(this.translate.instant('developerTools.cleared'));
+    this.notificationService.showSuccess(this.t('developerTools.cleared'));
+  }
+
+  private t(key: string): string {
+    return this.translate.instant(key);
   }
 }

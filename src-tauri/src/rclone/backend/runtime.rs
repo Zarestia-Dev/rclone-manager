@@ -4,9 +4,11 @@
 //! fetched from rclone's API endpoints, such as version, OS, architecture,
 //! and connection status.
 
-use crate::utils::types::rclone::RcloneCoreVersion;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::utils::types::rclone::RcloneCoreVersion;
 
 /// Connection status of an rclone backend
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -21,11 +23,8 @@ pub enum RuntimeStatus {
     Error(String),
 }
 
-/// Runtime information storage
-///
 /// Stores specific runtime properties detected from the rclone backend.
 /// This includes environment details and the current connectivity status.
-/// Runtime information gathered from API
 #[derive(Debug, Clone, Default)]
 pub struct RuntimeInfo {
     /// Rclone version (e.g. "v1.66.0")
@@ -33,8 +32,14 @@ pub struct RuntimeInfo {
     /// OS (e.g. "linux", "windows")
     pub os: Option<String>,
     /// Architecture (e.g. "amd64", "arm64")
+    ///
+    /// Populated by `fetch_runtime_info` but currently not surfaced to the
+    /// UI — kept for future diagnostics.
     pub arch: Option<String>,
     /// Go version (e.g. "go1.22.1")
+    ///
+    /// Populated by `fetch_runtime_info` but currently not surfaced to the
+    /// UI — kept for future diagnostics.
     pub go_version: Option<String>,
     /// Process ID of rclone
     pub pid: Option<u32>,
@@ -60,17 +65,14 @@ impl RuntimeInfo {
         }
     }
 
-    /// Set connection status
-    pub fn set_status(&mut self, status: RuntimeStatus) {
-        self.status = status;
-    }
-
     /// Check if the backend is connected
+    #[must_use]
     pub fn is_connected(&self) -> bool {
         matches!(self.status, RuntimeStatus::Connected)
     }
 
     /// Get error message if status is error
+    #[must_use]
     pub fn error_message(&self) -> Option<String> {
         if let RuntimeStatus::Error(ref msg) = self.status {
             Some(msg.clone())
@@ -78,11 +80,19 @@ impl RuntimeInfo {
             None
         }
     }
-}
 
-// ============================================================================
-// Tests
-// ============================================================================
+    /// Get architecture string if available
+    #[must_use]
+    pub fn arch(&self) -> Option<&str> {
+        self.arch.as_deref()
+    }
+
+    /// Get Go version string if available
+    #[must_use]
+    pub fn go_version(&self) -> Option<&str> {
+        self.go_version.as_deref()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -94,18 +104,12 @@ mod tests {
         assert_eq!(info.status, RuntimeStatus::Unknown);
         assert!(info.version.is_none());
         assert!(info.os.is_none());
+        assert!(info.arch().is_none());
+        assert!(info.go_version().is_none());
     }
 
     #[test]
-    fn test_runtime_info_connected() {
-        let mut info = RuntimeInfo::new();
-        info.set_status(RuntimeStatus::Connected);
-        assert_eq!(info.status, RuntimeStatus::Connected);
-        assert!(info.is_connected());
-    }
-
-    #[test]
-    fn test_runtime_info_error() {
+    fn test_runtime_info_with_error() {
         let info = RuntimeInfo::with_error("Connection timeout");
         assert!(matches!(info.status, RuntimeStatus::Error(_)));
         assert!(!info.is_connected());
@@ -118,9 +122,11 @@ mod tests {
         info.version = Some("v1.66.0".to_string());
         info.os = Some("linux".to_string());
         info.arch = Some("amd64".to_string());
+        info.go_version = Some("go1.22.1".to_string());
 
         assert_eq!(info.version, Some("v1.66.0".to_string()));
         assert_eq!(info.os, Some("linux".to_string()));
-        assert_eq!(info.arch.as_deref(), Some("amd64"));
+        assert_eq!(info.arch(), Some("amd64"));
+        assert_eq!(info.go_version(), Some("go1.22.1"));
     }
 }

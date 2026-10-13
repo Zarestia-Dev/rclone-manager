@@ -1,5 +1,11 @@
 use std::ffi::OsStr;
+use std::path::Path;
 use std::process::Stdio;
+
+#[cfg(windows)]
+pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(not(windows))]
+pub const CREATE_NO_WINDOW: u32 = 0;
 
 /// A wrapper around `tokio::process::Command` that mimics `tauri_plugin_shell`'s API
 /// but allows us to safely set platform-specific flags (like `CREATE_NO_WINDOW`)
@@ -15,11 +21,11 @@ impl Command {
 
         cmd.stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .stdin(Stdio::piped());
+            .stdin(Stdio::piped())
+            .kill_on_drop(true);
 
         #[cfg(windows)]
         {
-            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
@@ -37,6 +43,11 @@ impl Command {
         S: AsRef<OsStr>,
     {
         self.inner.args(args);
+        self
+    }
+
+    pub fn current_dir<P: AsRef<Path>>(mut self, dir: P) -> Self {
+        self.inner.current_dir(dir);
         self
     }
 
@@ -59,10 +70,13 @@ impl Command {
         self
     }
 
-    // pub fn current_dir<P: AsRef<std::path::Path>>(mut self, dir: P) -> Self {
-    //     self.inner.current_dir(dir);
-    //     self
-    // }
+    pub fn env_remove<K>(mut self, key: K) -> Self
+    where
+        K: AsRef<OsStr>,
+    {
+        self.inner.env_remove(key);
+        self
+    }
 
     pub fn spawn(mut self) -> std::io::Result<tokio::process::Child> {
         self.inner.spawn()

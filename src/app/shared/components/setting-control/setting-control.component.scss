@@ -3,25 +3,17 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  position: relative;
 
   .setting-info {
     flex: 1;
     min-width: 0;
 
-    h3 {
-      font-size: var(--font-size-xl);
-      font-weight: 600;
-      color: var(--window-fg-color);
-    }
-
-    .settings-description {
-      font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
-      margin: 0;
-    }
-
-    strong {
-      display: block;
+    .setting-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-xs);
       font-weight: 600;
       font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
@@ -29,34 +21,38 @@
 
       .required-asterisk {
         color: var(--warn-color);
-        margin-left: 2px;
+      }
+
+      code {
+        font-weight: 500;
+        background-color: rgba(var(--primary-color-rgb), var(--active-opacity));
+        color: var(--primary-color);
+        padding: 2px 6px 0;
+        border-radius: var(--radius-xxs);
       }
     }
 
     .help-text {
       font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       line-height: 1.6;
       margin: 0 0 var(--space-xs);
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: normal;
-      font-feature-settings: "liga" 0;
 
-      // Override the block strong style for inline use inside help text
-      strong {
+      // Override the block span style for inline use inside help text
+      span {
         font-weight: 600;
         color: var(--window-fg-color);
         display: inline;
-        margin: 0;
         font-size: inherit;
       }
 
       code {
         background-color: rgba(0, 0, 0, 0.05);
-        border-radius: 3px;
-        padding: 2px 6px;
-        font-family: var(--font-mono);
+        border-radius: var(--radius-xxs);
+        padding: 2px 6px 0;
         font-size: var(--font-size-xs);
         color: var(--warn-color);
         word-break: break-word;
@@ -65,7 +61,7 @@
       a {
         color: var(--primary-color);
         text-decoration: none;
-        border-bottom: 1px solid rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+        border-bottom: 1px solid rgba(var(--primary-color-rgb), 0.3);
         transition: all 0.2s ease;
         word-break: break-all;
 
@@ -87,19 +83,12 @@
       }
     }
 
-    .default-value,
-    .type-info {
+    .default-value {
       display: block;
       font-size: var(--font-size-xs);
       margin-top: var(--space-xs);
       font-style: italic;
-    }
-
-    .default-value {
-      color: var(--secondary-text-color);
-    }
-    .type-info {
-      color: var(--warning-color);
+      color: var(--dim-color);
     }
   }
 
@@ -135,28 +124,6 @@
   .setting-control {
     flex-shrink: 0;
 
-    .stepper-container {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-    }
-
-    .stepper-input.mat-mdc-form-field {
-      width: 100px;
-      flex-grow: 0;
-
-      input {
-        text-align: center;
-      }
-    }
-
-    // Hide native number spinners — custom stepper buttons are used instead
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
     .time-split {
       display: flex;
       gap: var(--space-md);
@@ -169,7 +136,7 @@
 
     .additional-selection {
       font-size: var(--font-size-xs);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       margin-left: var(--space-xs);
       font-weight: 400;
     }
@@ -200,14 +167,16 @@
     text-align: center;
 
     .setting-info {
-      p,
-      strong {
+      .setting-title {
+        flex-direction: column;
+        align-items: center;
         font-size: var(--font-size-sm);
       }
 
       .help-text {
         font-size: var(--font-size-xs);
         line-height: 1.5;
+        margin-inline: 40px; // We don't want to text overlap mobile reset button
 
         code {
           padding: 2px 4px;
@@ -231,5 +200,10 @@
     .setting-full-width {
       width: 100%;
     }
+  }
+  .reset-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 }

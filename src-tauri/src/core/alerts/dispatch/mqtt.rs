@@ -4,9 +4,10 @@ use crate::core::alerts::{
     types::MqttAction,
 };
 use log::debug;
-use rumqttc::Transport;
-use rumqttc::v5::mqttbytes::QoS;
-use rumqttc::v5::{AsyncClient, Event, EventLoop, MqttOptions, mqttbytes::v5::Packet};
+use rumqttc::{
+    Transport,
+    v5::{AsyncClient, Event, EventLoop, MqttOptions, mqttbytes::QoS, mqttbytes::v5::Packet},
+};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
@@ -182,9 +183,9 @@ impl MqttSession {
 
         loop {
             match state.eventloop.poll().await {
-                Ok(Event::Incoming(Packet::PubAck(_)))
-                | Ok(Event::Incoming(Packet::PubRec(_)))
-                | Ok(Event::Incoming(Packet::PubComp(_))) => return Ok(()),
+                Ok(Event::Incoming(Packet::PubAck(_) | Packet::PubRec(_) | Packet::PubComp(_))) => {
+                    return Ok(());
+                }
                 Ok(Event::Incoming(Packet::ConnAck(_))) => {
                     state.connected = true;
                 }
@@ -301,10 +302,7 @@ pub async fn dispatch(
     )
     .await?;
 
-    debug!(
-        "✅ MQTT: Successfully published message to topic '{}'",
-        topic
-    );
+    debug!("✅ MQTT: Successfully published message to topic '{topic}'");
     Ok(())
 }
 
@@ -322,7 +320,7 @@ fn build_mqtt_options(action: &MqttAction) -> MqttOptions {
         let cert_result = rustls_native_certs::load_native_certs();
         for cert in cert_result.certs {
             if let Err(e) = root_store.add(cert) {
-                log::warn!("Failed to add a native cert to MQTT root store: {}", e);
+                log::warn!("Failed to add a native cert to MQTT root store: {e}");
             }
         }
 

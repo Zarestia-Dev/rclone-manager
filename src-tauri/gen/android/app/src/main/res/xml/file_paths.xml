@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- External storage (Downloads, etc.) -->
+  <external-path name="external" path="." />
+  <!-- App-private external cache -->
+  <external-cache-path name="external_cache" path="." />
+  <!-- App-private internal cache (used by temp_views/) -->
+  <cache-path name="internal_cache" path="." />
+  <!-- App-private internal files -->
+  <files-path name="internal_files" path="." />
+</paths>

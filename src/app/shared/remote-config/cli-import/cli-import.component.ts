@@ -6,7 +6,6 @@ import {
   output,
   signal,
   computed,
-  linkedSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,10 +14,17 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { RcConfigOption, SharedProfileType } from '@app/types';
-import { CliFlagMapperService, ImportResult } from '@app/services';
+import { SharedProfileType, EditTarget } from '@app/types';
+import {
+  CliFlagMapperService,
+  ImportResult,
+} from 'src/app/services/remote/cli-flag-mapper.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+
+type ProfileMode = 'new' | 'override' | 'patch';
 
 @Component({
   selector: 'app-cli-import',
@@ -30,7 +36,9 @@ import { CliFlagMapperService, ImportResult } from '@app/services';
     MatSelectModule,
     MatButtonModule,
     MatRadioModule,
-    TranslateModule,
+    MatCheckboxModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './cli-import.component.html',
   styleUrl: './cli-import.component.scss',
@@ -39,27 +47,63 @@ import { CliFlagMapperService, ImportResult } from '@app/services';
 export class CliImportComponent {
   private readonly mapper = inject(CliFlagMapperService);
 
+  // Inputs & Outputs
   readonly visible = input(false);
-  readonly flagFields = input.required<Record<SharedProfileType, RcConfigOption[]>>();
   readonly remoteType = input('');
+  readonly activeStep = input<EditTarget>(null);
+  readonly isQuickRun = input(false);
   readonly existingProfiles = input<Record<SharedProfileType, string[]>>(
     {} as Record<SharedProfileType, string[]>
   );
 
-  readonly apply = output<{ result: ImportResult; profileName: string; isNew: boolean }>();
+  readonly apply = output<{
+    result: ImportResult;
+    profileName: string;
+    mode: ProfileMode;
+    importSourcePath: boolean;
+    importDestPath: boolean;
+  }>();
 
+  // State Signals
   readonly cliInput = signal('');
   readonly importResult = signal<ImportResult | null>(null);
-  readonly profileMode = signal<'new' | 'override'>('new');
+  readonly profileMode = signal<ProfileMode>('new');
   readonly newProfileName = signal('');
   readonly validationError = signal<string | null>(null);
+  readonly importSourcePath = signal(true);
+  readonly importDestPath = signal(true);
+  readonly selectedFlags = signal<Set<string>>(new Set());
+  readonly selectedOverrideProfile = signal('');
 
-  readonly detectedVerbProfiles = computed(() => {
-    const verb = (this.importResult()?.verb ?? 'sync') as SharedProfileType;
-    return this.existingProfiles()[verb] ?? [];
+  // Derivations
+  readonly effectiveProfileType = computed<SharedProfileType | null>(() => {
+    const result = this.importResult();
+    if (result?.verb) return result.verb as SharedProfileType;
+    const step = this.activeStep();
+    if (step && step !== 'remote') return step;
+    return null;
   });
 
-  readonly selectedOverrideProfile = linkedSignal(() => this.detectedVerbProfiles()[0] ?? '');
+  readonly detectedVerbProfiles = computed(() => {
+    const type = this.effectiveProfileType();
+    if (!type) return [];
+    return this.existingProfiles()[type] ?? [];
+  });
+
+  readonly canPatch = computed(() => {
+    if (this.isQuickRun()) return true;
+    const step = this.activeStep();
+    return !!step && step !== 'remote';
+  });
+
+  readonly canCreateNew = computed(() => {
+    if (this.isQuickRun()) return false;
+    return !!this.effectiveProfileType();
+  });
+
+  readonly canOverride = computed(
+    () => !this.isQuickRun() && this.canCreateNew() && this.detectedVerbProfiles().length > 0
+  );
 
   readonly mappedFlags = computed(
     () => this.importResult()?.classified.filter(f => f.status === 'mapped') ?? []
@@ -73,18 +117,20 @@ export class CliImportComponent {
     const res = this.importResult();
     if (!res) return [];
 
-    const verb = res.verb ?? 'sync';
+    const type = this.effectiveProfileType();
+    const isMount = type === 'mount';
+    const isServe = type === 'serve';
     const items: { source: string; value: string }[] = [];
 
     if (res.sourcePath && this.mapper.hasMacro(res.sourcePath)) {
       items.push({
-        source: verb === 'mount' || verb === 'serve' ? 'Remote' : 'Source Path',
+        source: isMount || isServe ? 'wizards.cliImport.remote' : 'wizards.cliImport.source',
         value: res.sourcePath,
       });
     }
     if (res.destPath && this.mapper.hasMacro(res.destPath)) {
       items.push({
-        source: verb === 'mount' ? 'Mount Point' : 'Destination Path',
+        source: isMount ? 'wizards.cliImport.mountPoint' : 'wizards.cliImport.destination',
         value: res.destPath,
       });
     }
@@ -99,68 +145,137 @@ export class CliImportComponent {
   });
 
   readonly isApplyDisabled = computed(() => {
-    if (!this.importResult()) return true;
-    return this.profileMode() === 'new'
-      ? !this.newProfileName().trim()
-      : !this.selectedOverrideProfile();
-  });
+    const result = this.importResult();
+    if (!result) return true;
 
-  private readonly lookupTable = computed(() =>
-    this.mapper.buildLookupTable(this.flagFields(), this.remoteType())
-  );
+    const hasFlags = this.selectedFlags().size > 0;
+    const hasPaths =
+      (result.sourcePath && this.importSourcePath()) || (result.destPath && this.importDestPath());
+    if (!hasFlags && !hasPaths) return true;
 
-  private readonly booleanFlags = computed(() => {
-    const bools = new Set<string>();
-
-    for (const fields of Object.values(this.flagFields())) {
-      for (const f of fields) {
-        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
-
-        const names = [f.Name, f.FieldName].filter(Boolean) as string[];
-        for (const name of names) {
-          const lower = name.toLowerCase();
-          bools.add(lower);
-          bools.add(lower.replace(/_/g, '-'));
-        }
-      }
+    if (this.isQuickRun()) {
+      return false;
     }
-    return bools;
+
+    switch (this.profileMode()) {
+      case 'patch':
+        return !this.canPatch();
+      case 'new':
+        return !this.canCreateNew() || !this.newProfileName().trim();
+      case 'override':
+        return !this.canOverride() || !this.selectedOverrideProfile();
+    }
   });
 
-  previewImport(): void {
+  // Selection Helpers
+
+  toggleFlag(key: string): void {
+    const current = new Set(this.selectedFlags());
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    this.selectedFlags.set(current);
+  }
+
+  isFlagSelected(key: string): boolean {
+    return this.selectedFlags().has(key);
+  }
+
+  selectAllFlags(): void {
+    const mapped = this.mappedFlags().map(f => f.flag.key);
+    this.selectedFlags.set(new Set(mapped));
+  }
+
+  deselectAllFlags(): void {
+    this.selectedFlags.set(new Set());
+  }
+
+  // Actions
+
+  async previewImport(): Promise<void> {
     const text = this.cliInput().trim();
     if (!text) {
-      this.importResult.set(null);
+      this.clearInput();
+      return;
+    }
+
+    try {
+      const result = await this.mapper.importCliCommand(
+        text,
+        this.remoteType(),
+        this.activeStep() ?? undefined
+      );
+      if (!result.verb && result.classified.length === 0) {
+        this.setError('wizards.cliImport.invalidCommand');
+        return;
+      }
+
       this.validationError.set(null);
-      return;
+      this.importResult.set(result);
+      const mapped = result.classified.filter(f => f.status === 'mapped').map(f => f.flag.key);
+      this.selectedFlags.set(new Set(mapped));
+      this.importSourcePath.set(true);
+      this.importDestPath.set(true);
+      if (this.isQuickRun()) {
+        this.profileMode.set('patch');
+      } else {
+        this.profileMode.set(this.canCreateNew() ? 'new' : 'patch');
+        this.selectedOverrideProfile.set(this.detectedVerbProfiles()[0] ?? '');
+      }
+    } catch (error) {
+      console.error('Failed to parse CLI import command:', error);
+      this.setError('wizards.cliImport.invalidCommand');
     }
-
-    const parsed = this.mapper.parse(text, this.booleanFlags());
-    if (!parsed.verb && parsed.flags.length === 0) {
-      this.validationError.set('wizards.cliImport.invalidCommand');
-      this.importResult.set(null);
-      return;
-    }
-
-    this.validationError.set(null);
-    this.importResult.set(this.mapper.classify(parsed, this.lookupTable()));
   }
 
   clearInput(): void {
     this.cliInput.set('');
     this.importResult.set(null);
     this.validationError.set(null);
+    this.importSourcePath.set(true);
+    this.importDestPath.set(true);
+    this.selectedFlags.set(new Set());
+    this.selectedOverrideProfile.set('');
   }
 
   onApply(): void {
     const result = this.importResult();
     if (!result) return;
 
-    const isNew = this.profileMode() === 'new';
-    this.apply.emit({
-      result,
-      profileName: isNew ? this.newProfileName().trim() : this.selectedOverrideProfile(),
-      isNew,
+    const selectedKeys = this.selectedFlags();
+    const filteredClassified = result.classified.filter(cls => {
+      if (cls.status === 'mapped') {
+        return selectedKeys.has(cls.flag.key);
+      }
+      return true;
     });
+
+    const filteredResult: ImportResult = {
+      ...result,
+      classified: filteredClassified,
+    };
+
+    const mode = this.profileMode();
+    const profileName =
+      mode === 'new'
+        ? this.newProfileName().trim()
+        : mode === 'override'
+          ? this.selectedOverrideProfile()
+          : '';
+
+    this.apply.emit({
+      result: filteredResult,
+      profileName,
+      mode,
+      importSourcePath: this.importSourcePath(),
+      importDestPath: this.importDestPath(),
+    });
+  }
+
+  private setError(msg: string): void {
+    this.validationError.set(msg);
+    this.importResult.set(null);
   }
 }

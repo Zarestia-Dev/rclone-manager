@@ -1,8 +1,20 @@
 <div class="left-section" data-tauri-drag-region>
-  <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
+  <button
+    (click)="goBack.emit()"
+    [disabled]="!effectiveCanGoBack()"
+    class="nav-button"
+    [attr.title]="'nautilus.toolbar.goBack' | translate"
+    [attr.aria-label]="'nautilus.toolbar.goBack' | translate"
+  >
     <mat-icon svgIcon="chevron-left"></mat-icon>
   </button>
-  <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">
+  <button
+    (click)="goForward.emit()"
+    [disabled]="!canGoForward()"
+    class="nav-button"
+    [attr.title]="'nautilus.toolbar.goForward' | translate"
+    [attr.aria-label]="'nautilus.toolbar.goForward' | translate"
+  >
     <mat-icon svgIcon="chevron-right"></mat-icon>
   </button>
 </div>
@@ -25,23 +37,21 @@
       (blur)="onSearchBlur()"
     />
   } @else if (!isEditingPath()) {
-    @if (starredMode()) {
-      <div class="path-scroll-view hide-scrollbar">
+    <div
+      class="path-scroll-view hide-scrollbar"
+      #pathScrollView
+      appScrollShadow
+      [class.show-left-shadow]="!starredMode() && showLeft()"
+      [class.show-right-shadow]="!starredMode() && showRight()"
+      (leftShadow)="showLeft.set($event)"
+      (rightShadow)="showRight.set($event)"
+    >
+      @if (starredMode()) {
         <button class="path-segment">
           <mat-icon svgIcon="star"></mat-icon>
           {{ 'nautilus.titles.starred' | translate }}
         </button>
-      </div>
-    } @else {
-      <div
-        class="path-scroll-view hide-scrollbar"
-        #pathScrollView
-        appScrollShadow
-        [class.show-left-shadow]="showLeft()"
-        [class.show-right-shadow]="showRight()"
-        (leftShadow)="showLeft.set($event)"
-        (rightShadow)="showRight.set($event)"
-      >
+      } @else {
         <button
           class="path-segment"
           data-segment-index="-1"
@@ -61,7 +71,7 @@
         </button>
 
         @for (segment of pathSegments(); track segment.path) {
-          <span class="path-separator">/</span>
+          <span class="path-separator">{{ pathSeparator() }}</span>
           <button
             class="path-segment"
             [attr.data-segment-index]="$index"
@@ -74,13 +84,15 @@
             {{ segment.name }}
           </button>
         }
-      </div>
-    }
+      }
+    </div>
 
     <button
       class="nav-button nav-button--flush"
       (click)="$event.stopPropagation()"
       [cdkMenuTriggerFor]="pathOptionsMenu()"
+      [attr.title]="'nautilus.toolbar.pathOptions' | translate"
+      [attr.aria-label]="'nautilus.toolbar.pathOptions' | translate"
     >
       <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
     </button>
@@ -90,6 +102,7 @@
       class="path-input"
       [value]="fullPathInput()"
       (keydown.enter)="navigateToPath.emit(pathInput.value); pathInput.blur()"
+      (keydown.escape)="isEditingPathChange.emit(false); pathInput.blur()"
       (blur)="isEditingPathChange.emit(false)"
     />
   }
@@ -97,7 +110,12 @@
 
 <div class="right-section" data-tauri-drag-region>
   @if (!isMobile()) {
-    <button class="nav-button" (click)="layoutChange.emit(toggledLayout())">
+    <button
+      class="nav-button"
+      (click)="layoutChange.emit(toggledLayout())"
+      [attr.title]="'nautilus.view.toggleLayout' | translate"
+      [attr.aria-label]="'nautilus.view.toggleLayout' | translate"
+    >
       <mat-icon [svgIcon]="toggledLayout()"></mat-icon>
     </button>
 
@@ -107,15 +125,37 @@
       [cdkMenuPosition]="[
         { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
       ]"
+      [attr.title]="'nautilus.view.viewOptions' | translate"
+      [attr.aria-label]="'nautilus.view.viewOptions' | translate"
     >
       <mat-icon svgIcon="chevron-down"></mat-icon>
     </button>
   }
 
-  @if (nautilusService.isStandaloneWindow()) {
+  <app-menu></app-menu>
+
+  @if (
+    nautilusService.isStandaloneWindow() ||
+    (uiStateService.defaultView() === 'nautilus' && !nautilusService.isBrowserOverlayOpen())
+  ) {
     <app-window-controls></app-window-controls>
   } @else {
-    <button class="nav-button" (click)="closeOverlay.emit()">
+    @if (!isMobileOS()) {
+      <button
+        class="nav-button"
+        [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
+        [attr.aria-label]="'nautilus.contextMenu.openNewWindow' | translate"
+        (click)="popOutToWindow.emit()"
+      >
+        <mat-icon svgIcon="open-link"></mat-icon>
+      </button>
+    }
+    <button
+      class="nav-button"
+      (click)="closeOverlay.emit()"
+      [attr.title]="'common.close' | translate"
+      [attr.aria-label]="'common.close' | translate"
+    >
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   }

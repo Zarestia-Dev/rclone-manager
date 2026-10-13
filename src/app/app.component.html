@@ -1,23 +1,36 @@
 <div class="app-wrapper" appShortcutHandler>
   @if (!initializing()) {
-    @if (!completedOnboarding()) {
-      @defer {
+    @if (modalService.isDialogStandalone()) {
+      <ng-container
+        *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
+      ></ng-container>
+    } @else if (nautilusService.isStandaloneWindow()) {
+      @defer (on immediate) {
+        <app-nautilus></app-nautilus>
+      }
+    } @else if (flowOverlayService.isStandaloneWindow()) {
+      @defer (on immediate) {
+        <app-flow-container></app-flow-container>
+      }
+    } @else if (mainUiOverlayService.isStandaloneWindow()) {
+      @defer (on immediate) {
+        <app-main-ui-container></app-main-ui-container>
+      }
+    } @else if (!completedOnboarding()) {
+      @defer (on immediate) {
         <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
-    } @else if (isDialogStandalone()) {
-      <div class="standalone-dialog-window">
-        <ng-container
-          *ngComponentOutlet="dialogComponent(); injector: dialogInjector"
-        ></ng-container>
-      </div>
-    } @else if (nautilusService.isStandaloneWindow()) {
-      <app-nautilus></app-nautilus>
+    } @else if (selectedMainView() === 'nautilus') {
+      @defer (on immediate) {
+        <app-nautilus></app-nautilus>
+      }
+    } @else if (selectedMainView() === 'flow') {
+      @defer (on immediate) {
+        <app-flow-container></app-flow-container>
+      }
     } @else {
-      @defer {
-        <app-titlebar data-tauri-drag-region></app-titlebar>
-        <app-banner></app-banner>
-        <app-home></app-home>
-        <app-tabs data-tauri-drag-region></app-tabs>
+      @defer (on immediate) {
+        <app-main-ui-container></app-main-ui-container>
       }
     }
   }

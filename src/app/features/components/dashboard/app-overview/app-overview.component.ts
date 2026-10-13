@@ -1,69 +1,44 @@
-import { NgClass } from '@angular/common';
-import { Component, computed, input, output, inject, signal, OnInit } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
-import { CardDisplayMode, OperationTab, PrimaryActionType, Remote } from '@app/types';
+import { Component, computed, input, output, inject, ChangeDetectionStrategy } from '@angular/core';
+import {
+  OperationTab,
+  PrimaryActionType,
+  Remote,
+  MODE_CONFIG,
+  StopJobEvent,
+  OpenInFilesEvent,
+} from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { AppSettingsService, RemoteFacadeService, BackendService } from '@app/services';
-
-interface StopJobEvent {
-  type: PrimaryActionType;
-  remoteName: string;
-  serveId?: string;
-  profileName?: string;
-}
-
-interface ModeConfig {
-  label: string;
-  icon: string;
-  activeTitle: string;
-  inactiveTitle: string;
-}
-
-const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
-  mount: {
-    label: 'appOverview.labels.mount',
-    icon: 'mount',
-    activeTitle: 'appOverview.panelTitles.mountedRemotes',
-    inactiveTitle: 'appOverview.panelTitles.unmountedRemotes',
-  },
-  sync: {
-    label: 'appOverview.labels.startSync',
-    icon: 'sync',
-    activeTitle: 'appOverview.panelTitles.activeSync',
-    inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
-  },
-  serve: {
-    label: 'appOverview.labels.startServe',
-    icon: 'satellite-dish',
-    activeTitle: 'appOverview.panelTitles.activeServes',
-    inactiveTitle: 'appOverview.panelTitles.availableRemotes',
-  },
-};
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-app-overview',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     OverviewHeaderComponent,
     StatusOverviewPanelComponent,
     RemotesPanelComponent,
   ],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
+  host: {
+    class: 'app-overview',
+    '[class]': 'mode()',
+    'attr.animate.enter': 'fade-in-out-enter',
+    'attr.animate.leave': 'fade-in-out-leave',
+  },
 })
-export class AppOverviewComponent implements OnInit {
-  private readonly translate = inject(TranslateService);
-  private readonly appSettingsService = inject(AppSettingsService);
+export class AppOverviewComponent {
+  private readonly uiStateService = inject(UiStateService);
   readonly remoteFacade = inject(RemoteFacadeService);
   readonly backendService = inject(BackendService);
 
@@ -72,21 +47,21 @@ export class AppOverviewComponent implements OnInit {
 
   // --- Outputs ---
   readonly remoteSelected = output<Remote>();
-  readonly openInFiles = output<{ remoteName: string; path?: string }>();
+  readonly openInFiles = output<OpenInFilesEvent>();
   readonly startJob = output<{
     type: PrimaryActionType;
     remoteName: string;
-    profileName?: string;
+    profileName: string;
   }>();
   readonly stopJob = output<StopJobEvent>();
   readonly openBackendModal = output<void>();
 
-  // Card display mode is local UI state, not derived from inputs
-  readonly cardDisplayMode = signal<CardDisplayMode>('detailed');
-  readonly isEditingLayout = signal(false);
+  // Centrally synchronized card display mode & edit layout state
+  readonly cardDisplayMode = this.uiStateService.cardDisplayMode;
+  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview(this.mode()));
 
   // --- Derived state ---
-  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()]);
+  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()] ?? MODE_CONFIG.mount);
 
   readonly activeRemotes = computed(() =>
     this.remoteFacade.orderedVisibleRemotes().filter(r => this.isActive(r))
@@ -95,39 +70,13 @@ export class AppOverviewComponent implements OnInit {
     this.remoteFacade.orderedVisibleRemotes().filter(r => !this.isActive(r))
   );
 
-  /** Active remotes including hidden ones for the editor */
-  readonly activeRemotesForEditor = computed(() =>
-    this.remoteFacade.allRemotesForEditor().filter(r => this.isActive(r))
-  );
-
-  /** Inactive remotes including hidden ones for the editor */
-  readonly inactiveRemotesForEditor = computed(() =>
-    this.remoteFacade.allRemotesForEditor().filter(r => !this.isActive(r))
-  );
-
-  /** All remotes including hidden ones for the unified editor */
-  readonly allRemotesForEditor = computed(() => this.remoteFacade.allRemotesForEditor());
-
-  /** Names of remotes that are hidden in the current backend */
-  readonly hiddenRemoteNames = computed(() => this.remoteFacade.hiddenRemoteNames());
   readonly activeCount = computed(() => this.activeRemotes().length);
   readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
-  readonly primaryActionLabel = computed(() => this.translate.instant(this.modeConfig().label));
+  readonly primaryActionLabel = computed(() => this.modeConfig().label);
   readonly activeIcon = computed(() => this.modeConfig().icon);
-  readonly activeTitle = computed(() => this.translate.instant(this.modeConfig().activeTitle));
-  readonly inactiveTitle = computed(() => this.translate.instant(this.modeConfig().inactiveTitle));
-
-  async ngOnInit(): Promise<void> {
-    try {
-      const saved = await this.appSettingsService.getSettingValue<CardDisplayMode>(
-        'runtime.dashboard_card_variant'
-      );
-      if (saved) this.cardDisplayMode.set(saved);
-    } catch {
-      console.debug('[AppOverview] Failed to load dashboard card variant, using fallback.');
-    }
-  }
+  readonly activeTitle = computed(() => this.modeConfig().activeTitle);
+  readonly inactiveTitle = computed(() => this.modeConfig().inactiveTitle);
 
   // --- Event handlers ---
 
@@ -135,12 +84,20 @@ export class AppOverviewComponent implements OnInit {
     this.remoteSelected.emit(remote);
   }
 
-  triggerOpenInFiles(event: { remoteName: string; path?: string }): void {
+  triggerOpenInFiles(event: OpenInFilesEvent): void {
     if (event?.remoteName) this.openInFiles.emit(event);
   }
 
   toggleEditLayout(): void {
-    this.isEditingLayout.update(v => !v);
+    this.uiStateService.toggleLayoutEdit({
+      overviewId: this.mode(),
+      hasViewToggle: true,
+      onReset: () => this.resetLayout(),
+    });
+  }
+
+  resetLayout(): void {
+    void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
   }
 
   onLayoutChanged(newNames: string[]): void {
@@ -151,22 +108,13 @@ export class AppOverviewComponent implements OnInit {
     void this.remoteFacade.toggleRemoteVisibility(this.backendService.activeBackend(), remoteName);
   }
 
-  onCardDisplayModeToggle(): void {
-    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'dashboard_card_variant',
-      this.cardDisplayMode()
-    );
-  }
-
   // --- Private helpers ---
 
   private isActive(remote: Remote): boolean {
     switch (this.mode()) {
       case 'mount':
         return remote.status.mount.active;
-      case 'sync':
+      case 'operations':
         return (
           remote.status.sync.active ||
           remote.status.copy.active ||

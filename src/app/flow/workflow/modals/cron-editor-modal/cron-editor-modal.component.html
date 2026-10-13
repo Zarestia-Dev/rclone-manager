@@ -1,0 +1,39 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="dismiss()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="clock"></mat-icon>
+  </button>
+  <p class="header-title" data-tauri-drag-region>
+    {{ 'flow.workflow.nodes.cronSchedule' | translate }}
+  </p>
+  <button
+    type="button"
+    matIconButton
+    (click)="dismiss()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main class="dull">
+  <app-cron-input
+    [initialValue]="cronExpression()"
+    [automationName]="data.node.title"
+    (cronChange)="onCronChange($event)"
+    (validationChange)="onValidationChange($event)"
+  ></app-cron-input>
+</main>
+
+<footer>
+  <button matButton="tonal" type="button" (click)="dismiss()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button matButton="filled" type="button" [disabled]="!isValid()" (click)="save()">
+    {{ 'common.save' | translate }}
+  </button>
+</footer>

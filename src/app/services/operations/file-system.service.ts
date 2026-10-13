@@ -4,8 +4,9 @@ import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
-import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
+import { generatePrefixedId } from 'src/app/shared/utils';
 
 /**
  * Service for file system operations
@@ -24,7 +25,7 @@ export class FileSystemService extends TauriBaseService {
    * This is true in headless mode or when a remote rclone backend is active.
    */
   private isInternalBrowserPreferred(): boolean {
-    return isHeadlessMode() || this.backendService.activeBackend() !== 'Local';
+    return !this.isTauri || this.backendService.activeBackend() !== 'Local' || isMobile();
   }
 
   /**
@@ -53,12 +54,14 @@ export class FileSystemService extends TauriBaseService {
     try {
       return await this.invokeCommand<string>('get_folder_location', {
         requireEmpty: requireEmpty || false,
+        initialPath,
       });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',
@@ -72,11 +75,7 @@ export class FileSystemService extends TauriBaseService {
    * Select a path using the integrated Nautilus file browser
    */
   async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
-    const requestId =
-      config.requestId ??
-      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `picker_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const requestId = config.requestId ?? generatePrefixedId('picker');
 
     this.nautilusService.openFilePicker({ ...config, requestId });
     return firstValueFrom(
@@ -109,10 +108,11 @@ export class FileSystemService extends TauriBaseService {
     try {
       return await this.invokeCommand<string>('get_file_location', { initialPath });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',
@@ -123,13 +123,58 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
+   * Select multiple local files for uploading.
+   * On mobile/headless: uses Nautilus in local-only mode.
+   * On desktop: uses native multi-file dialog.
+   */
+  async selectFilesForUpload(): Promise<string[]> {
+    if (this.isInternalBrowserPreferred()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'files',
+        multi: true,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled) return [];
+      return result.paths;
+    }
+    try {
+      const paths = await this.invokeCommand<string[] | null>('get_files_location');
+      return paths ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
-    if (this.isInternalBrowserPreferred()) {
+    if (!path) return;
+
+    if (!this.isTauri) {
       const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }
+
+    if (!this.pathService.isTrulyLocalPath(path) && !path.startsWith('saf://')) {
+      const { remote, path: relativePath } = this.pathService.splitFsPath(path);
+      if (remote) {
+        return this.nautilusService.newNautilusWindow(remote, relativePath);
+      }
+    }
+
+    if (isMobile()) {
+      const isInternalAppPath =
+        path.startsWith('/data/') ||
+        path.startsWith('/data/user/') ||
+        path.includes('com.rclone.manager');
+      if (isInternalAppPath) {
+        const { remote, remainder } = this.pathService.splitLocalPath(path);
+        return this.nautilusService.newNautilusWindow(remote, remainder);
+      }
+    }
+
     try {
       return await this.invokeCommand('open_in_files', { path });
     } catch (error) {

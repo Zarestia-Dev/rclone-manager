@@ -1,8 +1,13 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
-import { SettingMetadata, SettingsChangeEvent, BackendsRemotesLayout } from '@app/types';
+import {
+  SettingMetadata,
+  SettingsChangeEvent,
+  BackendsRemotesLayout,
+  ConfigValue,
+} from '@app/types';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
@@ -15,6 +20,11 @@ export class AppSettingsService extends TauriBaseService {
   private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
   public readonly options = this._options.asReadonly();
   public readonly options$ = toObservable(this._options);
+
+  public readonly isTrayAvailable = computed(() => {
+    const setting = this._options()?.['general.tray_enabled'];
+    return setting?.value === true;
+  });
 
   constructor() {
     super();
@@ -66,6 +76,12 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   async getSettingValue<T = unknown>(key: string): Promise<T | undefined> {
+    // Fast path: once settings are loaded (the common case after app boot),
+    // skip the observable dance entirely and read synchronously.
+    const current = this._options();
+    if (current) {
+      return current[key]?.value as T | undefined;
+    }
     const setting$ = this.options$.pipe(
       filter(options => options !== null),
       first(),
@@ -75,62 +91,27 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   async saveSetting(category: string, key: string, value: unknown): Promise<void> {
-    const fullKey = `${category}.${key}`;
-    const currentState = this._options();
-
-    if (currentState && currentState[fullKey]) {
-      const newState = {
-        ...currentState,
-        [fullKey]: {
-          ...currentState[fullKey],
-          value: value,
-        },
-      };
-      this._options.set(newState);
-    }
-
     return this.invokeCommand('save_setting', { category, key, value });
   }
 
-  /**
-   * Reset a single setting to its default value (backend command `reset_setting`).
-   * Updates the local options state to reflect the default returned by the backend.
-   */
   async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
-    const currentState = this._options();
-
-    try {
-      // Backend returns the default value for the setting
-      const defaultValue = await this.invokeCommand('reset_setting', { category, key });
-
-      if (currentState && currentState[fullKey]) {
-        const newState = {
-          ...currentState,
-          [fullKey]: {
-            ...currentState[fullKey],
-            value: defaultValue,
-          },
-        };
-        this._options.set(newState);
+    return this.invokeWithNotification(
+      'reset_setting',
+      { category, key },
+      {
+        errorKey: 'settings.resetFailed',
+        errorParams: { key: fullKey },
       }
-
-      return defaultValue;
-    } catch (err) {
-      console.error(`Failed to reset setting ${fullKey}:`, err);
-      this.notificationService.showError(
-        this.translate.instant('settings.resetFailed', { key: fullKey })
-      );
-      throw err;
-    }
+    );
   }
 
   async resetSettings(): Promise<boolean> {
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('settings.resetAll.title'),
       this.translate.instant('settings.resetAll.message'),
-      undefined,
-      undefined,
+      'common.yes',
+      'common.no',
       {
         icon: 'rotate-right',
         color: 'warn',
@@ -138,10 +119,9 @@ export class AppSettingsService extends TauriBaseService {
     );
 
     if (confirmed) {
-      await this.invokeCommand('reset_settings');
-      this._options.set(null);
-      await this.loadSettings();
-      this.notificationService.showSuccess(this.translate.instant('settings.resetSuccess'));
+      await this.invokeWithNotification('reset_settings', undefined, {
+        successKey: 'settings.resetSuccess',
+      });
       return true;
     }
     return false;
@@ -156,7 +136,9 @@ export class AppSettingsService extends TauriBaseService {
 
     if (payload.category === '*' && payload.key === '*') {
       // Matches the resetAll settings event payload shape
+      this._options.set(null);
       this.loadSettings();
+      void this.applySavedLanguage();
       return;
     }
 
@@ -166,11 +148,11 @@ export class AppSettingsService extends TauriBaseService {
     if (currentState[fullKey]) {
       // Only update if the value actually changed
       if (currentState[fullKey].value !== newValue) {
-        const newState = {
+        const newState: Record<string, SettingMetadata> = {
           ...currentState,
           [fullKey]: {
             ...currentState[fullKey],
-            value: newValue,
+            value: newValue as ConfigValue,
           },
         };
         this._options.set(newState);
@@ -180,15 +162,10 @@ export class AppSettingsService extends TauriBaseService {
 
   private setupLanguageChangeListener(): void {
     this.eventListeners
-      .listenToAppEvents()
+      .listenToLanguageChanged()
       .pipe(takeUntilDestroyed())
-      .subscribe(event => {
-        if (typeof event !== 'object' || event?.status !== 'language_changed') {
-          return;
-        }
-
-        const lang = event.language as string | undefined;
-        if (lang && lang !== this.translate.getCurrentLang()) {
+      .subscribe(lang => {
+        if (lang !== this.translate.getCurrentLang()) {
           this.translate.use(lang);
         }
       });
@@ -212,9 +189,13 @@ export class AppSettingsService extends TauriBaseService {
    * Reset settings for a specific remote
    */
   async resetRemoteSettings(remoteName: string): Promise<void> {
-    await this.invokeCommand('delete_remote_settings', { remoteName });
-    this.notificationService.showSuccess(
-      this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
+    await this.invokeWithNotification(
+      'delete_remote_settings',
+      { remoteName },
+      {
+        successKey: 'settings.remoteResetSuccess',
+        successParams: { remote: remoteName },
+      }
     );
   }
 

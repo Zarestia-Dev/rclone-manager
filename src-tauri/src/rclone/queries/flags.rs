@@ -1,11 +1,13 @@
 use serde_json::{Map, Value, json};
+use std::sync::Arc;
 
 use tauri::{AppHandle, Manager};
 use tokio::try_join;
 
 use crate::{
-    rclone::backend::BackendManager,
-    utils::{rclone::endpoints::options, types::state::RcloneState},
+    core::bridge,
+    rclone::backend::{BackendManager, RcloneTransport},
+    utils::rclone::endpoints::options,
 };
 
 // ---------------------------------------------------------------------------
@@ -33,9 +35,9 @@ use crate::{
 
 /// Groups that belong to the global backend / daemon settings panel.
 ///
-/// Includes `Performance` (checkers, transfers, buffer_size) because those
+/// Includes `Performance` (checkers, transfers, `buffer_size`) because those
 /// are global concurrency knobs, not per-operation flags.
-/// Includes `Important` (dry_run, interactive) so they appear as global
+/// Includes `Important` (`dry_run`, interactive) so they appear as global
 /// defaults even though they also show up on operation panels via `Config`.
 const BACKEND_INCLUDE: &[&str] = &[
     "Performance", // checkers, transfers, buffer_size
@@ -49,38 +51,39 @@ const BACKEND_INCLUDE: &[&str] = &[
 ];
 
 /// Groups that are hard-excluded from the backend panel regardless of
-/// BACKEND_INCLUDE. Prevents operation-specific flags from leaking in.
+/// `BACKEND_INCLUDE`. Prevents operation-specific flags from leaking in.
 const BACKEND_EXCLUDE: &[&str] = &["Copy", "Sync", "Filter", "Mount", "VFS", "RC", "WebDAV"];
 
 /// Groups for copy (and move) operations.
 ///
 /// Matches the "Copy Options" section in `rclone copy --help` /
-/// https://rclone.org/commands/rclone_copy/#copy-options
+/// <https://rclone.org/commands/rclone_copy/#copy-options>
 ///
-/// NOTE: `Performance` is intentionally absent. checkers/transfers/buffer_size
+/// NOTE: `Performance` is intentionally absent. `checkers/transfers/buffer_size`
 /// are global daemon settings; they must not double-appear here.
 const COPY_GROUPS: &[&str] = &["Copy"];
 
 /// Groups for sync operations — a superset of copy.
 ///
 /// Matches "Copy Options" + "Sync Options" in `rclone sync --help` /
-/// https://rclone.org/commands/rclone_sync/#sync-options
+/// <https://rclone.org/commands/rclone_sync/#sync-options>
 ///
-/// NOTE: `Performance` is intentionally absent — same reason as COPY_GROUPS.
+/// NOTE: `Performance` is intentionally absent — same reason as `COPY_GROUPS`.
 const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 
-/// Returns the flag's groups as a `Vec<&str>`, trimmed.
-fn flag_groups(flag: &Value) -> Vec<&str> {
-    flag["Groups"]
-        .as_str()
-        .map(|s| s.split(',').map(str::trim).collect())
-        .unwrap_or_default()
-}
+/// Groups for check operations.
+///
+/// Matches the "Check Options" section in `rclone check --help` /
+/// <https://rclone.org/commands/rclone_check/#check-options>
+const CHECK_GROUPS: &[&str] = &["Check"];
 
 /// True if any of the flag's groups appear in `set`.
+/// Zero-allocation short-circuit iterator.
 fn flag_has_any_group(flag: &Value, set: &[&str]) -> bool {
-    let groups = flag_groups(flag);
-    groups.iter().any(|g| set.contains(g))
+    let Some(groups) = flag["Groups"].as_str() else {
+        return false;
+    };
+    groups.split(',').map(str::trim).any(|g| set.contains(&g))
 }
 
 // ---------------------------------------------------------------------------
@@ -88,13 +91,11 @@ fn flag_has_any_group(flag: &Value, set: &[&str]) -> bool {
 // ---------------------------------------------------------------------------
 
 async fn fetch_options(
-    client: &reqwest::Client,
-    backend_manager: &BackendManager,
+    transport: &Arc<dyn RcloneTransport>,
     endpoint: &str,
 ) -> Result<Value, String> {
-    let backend = backend_manager.get_active().await;
-    backend
-        .post_json(client, endpoint, Some(&json!({})))
+    transport
+        .rpc(endpoint, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to fetch options ({endpoint}): {e}"))
 }
@@ -216,7 +217,7 @@ fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
 
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    let state = app.state::<RcloneState>();
+    let transport = crate::rclone::commands::common::transport(&app);
     let active_name = backend_manager.get_active().await.name.clone();
 
     if let Some(payload) = backend_manager.options_cache.get(&active_name).await {
@@ -224,8 +225,8 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     }
 
     let (mut options_info, current_options) = try_join!(
-        fetch_options(&state.client, &backend_manager, options::INFO),
-        fetch_options(&state.client, &backend_manager, options::GET),
+        fetch_options(&transport, options::INFO),
+        fetch_options(&transport, options::GET),
     )?;
 
     merge_options(&mut options_info, &current_options);
@@ -238,22 +239,17 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     Ok(options_info)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, String> {
     get_all_options_with_values(app)
         .await
         .map(|data| group_options(&data))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    fetch_options(
-        &app.state::<RcloneState>().client,
-        &backend_manager,
-        options::BLOCKS,
-    )
-    .await
+    let transport = crate::rclone::commands::common::transport(&app);
+    fetch_options(&transport, options::BLOCKS).await
 }
 
 fn get_flags_by_category_internal(
@@ -284,71 +280,49 @@ fn get_flags_by_category_internal(
         .collect()
 }
 
-#[tauri::command]
-pub async fn get_flags_by_category(
-    app: AppHandle,
-    category: String,
-    filter_groups: Option<Vec<String>>,
-    exclude_flags: Option<Vec<String>>,
-) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    let fg: Option<Vec<&str>> = filter_groups
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    let ef: Option<Vec<&str>> = exclude_flags
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        &category,
-        fg.as_deref(),
-        ef.as_deref(),
-    ))
+/// Unified flag fetcher for all operation types.
+/// Maps each operation to the correct rclone flag groups it supports.
+#[bridge]
+pub async fn get_operation_flags(app: AppHandle, operation: String) -> Result<Vec<Value>, String> {
+    match operation.as_str() {
+        // Copy group: copy, move
+        "copy" | "move" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(COPY_GROUPS),
+                None,
+            ))
+        }
+        // Copy + Sync groups: sync, bisync
+        "sync" | "bisync" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(SYNC_GROUPS),
+                None,
+            ))
+        }
+        // Check group: check
+        "check" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(CHECK_GROUPS),
+                None,
+            ))
+        }
+        // These operations have only static/frontend-defined flags
+        "delete" | "copyurl" | "archivecreate" | "cryptcheck" => Ok(vec![]),
+
+        _ => Err(format!("Unknown operation type for flags: {operation}")),
+    }
 }
 
-/// Copy flags — matches `rclone copy --help` "Copy Options" section.
-/// https://rclone.org/commands/rclone_copy/#copy-options
-///
-/// Does NOT include Performance (checkers/transfers/buffer_size) — those are
-/// global daemon settings shown in the backend panel instead.
-#[tauri::command]
-pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(COPY_GROUPS),
-        None,
-    ))
-}
-
-/// Move shares the same rclone option flags as copy.
-#[tauri::command]
-pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    get_copy_flags(app).await
-}
-
-/// Sync flags — matches `rclone sync --help` "Copy Options" + "Sync Options".
-/// https://rclone.org/commands/rclone_sync/#sync-options
-///
-/// Does NOT include Performance — same reasoning as get_copy_flags.
-#[tauri::command]
-pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(SYNC_GROUPS),
-        None,
-    ))
-}
-
-#[tauri::command]
-pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    get_sync_flags(app).await
-}
-
-#[tauri::command]
+#[bridge]
 pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
 
@@ -371,11 +345,11 @@ pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 ///
 /// These are settings that apply to the rclone process as a whole, regardless
 /// of which operation is running. Includes Performance (checkers, transfers,
-/// buffer_size), Networking, Config, Logging, Debugging, Listing, and Metadata.
+/// `buffer_size`), Networking, Config, Logging, Debugging, Listing, and Metadata.
 ///
 /// Flags that carry a Copy or Sync group are explicitly excluded so that
 /// operation-specific options never appear here.
-#[tauri::command]
+#[bridge]
 pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     let mut flags: Vec<Value> = get_flags_by_category_internal(&merged_json, "main", None, None)
@@ -394,7 +368,7 @@ pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(flags)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -405,7 +379,7 @@ pub async fn get_vfs_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     ))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     Ok(get_flags_by_category_internal(
@@ -417,7 +391,7 @@ pub async fn get_mount_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 }
 
 /// Get flags for a specific serve type (defaults to "http").
-#[tauri::command]
+#[bridge]
 pub async fn get_serve_flags(
     app: AppHandle,
     serve_type: Option<String>,
@@ -430,44 +404,30 @@ pub async fn get_serve_flags(
 
 /// Set a single rclone option, building a nested JSON payload from a dotted
 /// option name (e.g. "HTTP.ListenAddr" → `{ "HTTP": { "ListenAddr": value } }`).
-#[tauri::command]
+#[bridge]
 pub async fn set_rclone_option(
     app: AppHandle,
     block_name: String,
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
     let nested_value = option_name
         .split('.')
         .rev()
         .fold(value, |acc, part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            options::SET,
-            Some(&payload),
-        )
+    crate::rclone::commands::common::transport(&app)
+        .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set option '{option_name}' in block '{block_name}': {e}"))
 }
 
 /// Set multiple rclone options in one call.
 /// Expected payload shape: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
-#[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            options::SET,
-            Some(&payload),
-        )
+    crate::rclone::commands::common::transport(&app)
+        .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set bulk options: {e}"))
 }

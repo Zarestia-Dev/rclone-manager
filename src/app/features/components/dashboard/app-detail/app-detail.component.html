@@ -1,75 +1,150 @@
 <div class="remote-details" [style.--mat-sys-primary]="operationColorCssVar()">
-  <div class="detail-header">
-    <div class="remote-info-section">
-      <div
-        class="icon-container"
-        [ngClass]="{
-          sync: isSyncType() && operationActiveState(),
-          copy: selectedSyncOperation() === 'copy' && operationActiveState(),
-          move: selectedSyncOperation() === 'move' && operationActiveState(),
-          bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-          mount: selectedRemote().status.mount.active,
-          serve: selectedRemote().status.serve.active,
-        }"
-      >
-        <mat-icon
-          [svgIcon]="iconService.getIconName(selectedRemote().type)"
-          class="remote-type-icon"
-        ></mat-icon>
-      </div>
-      <div class="remote-text-info">
-        <h2 class="remote-name" [matTooltip]="selectedRemote().name" matTooltipShowDelay="600">
-          {{ selectedRemote().name }}
-        </h2>
-        <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
-      </div>
+  <header class="detail-header">
+    <div class="icon-container" [class]="iconContainerClass()">
+      <mat-icon
+        [svgIcon]="
+          mode() === 'quickRun'
+            ? currentOpMetadata().icon || 'operations'
+            : iconService.getIconName(selectedRemote().type)
+        "
+        class="remote-type-icon"
+      ></mat-icon>
     </div>
-  </div>
+    <div class="remote-text-info">
+      <h2
+        class="remote-name"
+        [attr.title]="mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name"
+      >
+        {{ mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name }}
+      </h2>
+      <span class="remote-type">
+        @if (mode() === 'quickRun') {
+          {{ currentOpMetadata().typeLabel || currentOpMetadata().label | translate }} ·
+          <button
+            type="button"
+            class="remote-link-btn"
+            (click)="openRemoteDetail.emit(quickRun()?.remoteName || '')"
+            [attr.title]="
+              ('dashboard.appDetail.remoteSettings' | translate) + ': ' + quickRun()?.remoteName
+            "
+          >
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote().type)"></mat-icon>
+            <span>{{ quickRun()?.remoteName }}</span>
+          </button>
+        } @else {
+          {{ selectedRemote().type | titlecase }}
+        }
+      </span>
+    </div>
+  </header>
 
-  @if (mainOperationType() === 'sync') {
-    <div
-      class="operation-toggle-group"
-      role="group"
-      [style.--selected-index]="selectedSyncOpIndex()"
-      [style.--selected-col]="selectedSyncOpCol()"
-      [style.--selected-row]="selectedSyncOpRow()"
+  @if (isMissingRemote()) {
+    <app-alert-banner
+      severity="warning"
+      [title]="'flow.quickRun.missingRemoteTitle' | translate"
+      [description]="
+        'flow.quickRun.missingRemoteDesc' | translate: { remote: quickRun()?.remoteName }
+      "
     >
-      @for (operation of syncOperations(); track operation.type) {
+      <div class="missing-remote-actions">
+        <button
+          matButton="filled"
+          class="primary"
+          (click)="onRecreateRemote(quickRun()?.remoteName || '')"
+          [attr.title]="
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          "
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+          <span>{{
+            'flow.quickRun.actions.createRemote' | translate: { remote: quickRun()?.remoteName }
+          }}</span>
+        </button>
+        <button
+          matButton="tonal"
+          (click)="onEditQuickRun()"
+          [attr.title]="'flow.quickRun.actions.changeRemote' | translate"
+        >
+          <mat-icon svgIcon="pen"></mat-icon>
+          <span>{{ 'flow.quickRun.actions.changeRemote' | translate }}</span>
+        </button>
+      </div>
+    </app-alert-banner>
+  }
+
+  @if (mode() === 'remote' && mainOperationType() === 'operations') {
+    <div class="toggle-container">
+      <div class="operation-toggle-group" role="group">
+        @for (opType of primarySyncOps(); track opType) {
+          @let operation = syncOperations().find(o => o.type === opType);
+          @if (operation) {
+            <button
+              type="button"
+              class="operation-toggle"
+              [class]="opType"
+              [class.is-selected]="selectedSyncOperation() === opType"
+              [class.is-running]="operation.isActive"
+              (click)="onSyncOpSelect(opType)"
+              [attr.title]="operation.description | translate"
+            >
+              <span>{{ operation.typeLabel | translate }}</span>
+            </button>
+          }
+        }
+
         <button
           type="button"
-          class="operation-toggle"
-          [class.is-selected]="selectedSyncOperation() === operation.type"
-          [class.is-running]="operation.isActive"
-          (click)="onSyncOpSelect(operation.type)"
-          [matTooltip]="operation.description | translate"
-          matTooltipPosition="below"
-          matTooltipShowDelay="600"
+          class="operation-toggle more-toggle"
+          [class.is-selected]="isMoreSelected()"
+          [class.is-running]="isAnyMoreRunning()"
+          [class]="isMoreSelected() ? selectedSyncOperation() : ''"
+          [cdkMenuTriggerFor]="moreMenu"
+          [attr.title]="moreButtonTooltip()"
         >
-          <span>{{ operation.typeLabel | translate }}</span>
+          <span>{{ moreButtonLabel() }}</span>
+          <mat-icon svgIcon="chevron-down" class="more-chevron"></mat-icon>
         </button>
-      }
+
+        <ng-template #moreMenu>
+          <div class="material-context-menu" cdkMenu>
+            @for (opType of moreSyncOps(); track opType) {
+              @let operation = syncOperations().find(o => o.type === opType);
+              @if (operation) {
+                <button
+                  class="menu-item"
+                  [class]="opType"
+                  [class.is-running]="operation.isActive"
+                  (click)="onSyncOpSelect(opType)"
+                  cdkMenuItem
+                >
+                  <mat-icon [svgIcon]="operation.icon" class="menu-item-icon"></mat-icon>
+                  <span class="menu-item-label">{{ operation.typeLabel | translate }}</span>
+                  @if (operation.isActive) {
+                    <span class="menu-item-dot"></span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </ng-template>
+      </div>
+
+      <button
+        matIconButton
+        class="configure-toggle-btn"
+        (click)="onConfigureActions()"
+        [attr.title]="'modals.actionSelection.configureTooltip' | translate"
+      >
+        <mat-icon svgIcon="settings"></mat-icon>
+      </button>
     </div>
   }
 
-  <mat-tab-group class="operation-tabs" animationDuration="300ms">
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
-      </ng-template>
-
+  <mat-tab-group>
+    <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
-        @if (showProfileSelector()) {
-          <div
-            class="profile-selector-container"
-            [ngClass]="{
-              'operation-sync': selectedSyncOperation() === 'sync' && isSyncType(),
-              'operation-bisync': selectedSyncOperation() === 'bisync',
-              'operation-move': selectedSyncOperation() === 'move',
-              'operation-copy': selectedSyncOperation() === 'copy',
-              'operation-mount': mainOperationType() === 'mount',
-              'operation-serve': mainOperationType() === 'serve',
-            }"
-          >
+        @if (mode() === 'remote' && showProfileSelector()) {
+          <div class="profile-selector-container" [class]="operationColorClass()">
             <div class="profile-selector-header">
               <span class="profile-selector-label">{{
                 'dashboard.appDetail.selectedProfile' | translate
@@ -95,7 +170,11 @@
                       [class]="iconAnimationClass()"
                     ></mat-icon>
                   } @else if (profile.status === 'scheduled') {
-                    <mat-icon svgIcon="clock"></mat-icon>
+                    @if (profile.hasWatcher && !profile.hasSchedule) {
+                      <mat-icon svgIcon="eye"></mat-icon>
+                    } @else {
+                      <mat-icon svgIcon="clock"></mat-icon>
+                    }
                   }
                   <span>{{ profile.label }}</span>
                 </button>
@@ -103,9 +182,7 @@
               <button
                 class="app-pill interactive"
                 (click)="onAddProfile()"
-                [matTooltip]="'dashboard.appDetail.addProfile' | translate"
-                matTooltipShowDelay="400"
-                matTooltipPosition="below"
+                [attr.title]="'dashboard.appDetail.addProfile' | translate"
               >
                 <mat-icon svgIcon="plus"></mat-icon>
               </button>
@@ -117,59 +194,147 @@
           <app-operation-control
             [config]="opConfig"
             [dryRun]="isDryRun()"
+            [resync]="isResync()"
             (toggleDryRun)="toggleDryRun()"
+            (toggleResync)="toggleResync()"
             (startJob)="
               startJob.emit({
                 type: $event,
                 remoteName: selectedRemote().name,
-                profileName: opConfig.profileName,
+                profileName: opConfig.profileName || '',
               })
             "
             (stopJob)="
               stopJob.emit({
                 type: $event,
                 remoteName: selectedRemote().name,
-                profileName: opConfig.profileName,
+                profileName: opConfig.profileName || '',
               })
             "
-            (openPath)="triggerOpenInFiles($event)"
+            (openPath)="triggerOpenInFiles($event, opConfig.profileName, opConfig.operationType)"
           >
           </app-operation-control>
         }
 
-        @if (isSyncType()) {
-          @if (hasCronSchedule()) {
-            @let schedule = selectedCronSchedule();
-            @if (schedule) {
-              <div
-                class="cron-human-readable"
-                [ngClass]="{
-                  'operation-sync': selectedSyncOperation() === 'sync',
-                  'operation-bisync': selectedSyncOperation() === 'bisync',
-                  'operation-move': selectedSyncOperation() === 'move',
-                  'operation-copy': selectedSyncOperation() === 'copy',
-                }"
+        @if (hasActiveAutomations()) {
+          <div class="automation-badges-row">
+            @if (selectedCronSchedule(); as schedule) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class.p-accent]="!isAutomationDisabled() && !isAutomationStopping()"
+                [class.p-orange]="isAutomationStopping()"
+                [class.p-dim]="isAutomationDisabled()"
+                [class.disabled-automation]="isAutomationDisabled()"
+                [disabled]="isAutomationStopping() || isTogglingAutomation()"
+                (click)="onToggleAutomation($event)"
+                [title]="
+                  schedule.cronExpression +
+                  ' — ' +
+                  (isAutomationStopping()
+                    ? ('automation.toggle.stopping' | translate)
+                    : isAutomationDisabled()
+                      ? ('automation.toggle.enable' | translate)
+                      : ('automation.toggle.disable' | translate))
+                "
               >
-                <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
-                  schedule.humanReadable
-                }}</span>
+                <mat-icon
+                  [svgIcon]="
+                    isTogglingAutomation()
+                      ? 'spinner'
+                      : isAutomationStopping()
+                        ? 'stop'
+                        : isAutomationDisabled()
+                          ? 'pause'
+                          : 'clock'
+                  "
+                  [class.spin]="isTogglingAutomation()"
+                ></mat-icon>
+                <span>{{ schedule.humanReadable }}</span>
+                <span class="pill-divider">·</span>
+                @if (isAutomationStopping()) {
+                  <span class="next-run-text">{{ 'automation.nextRun.stopping' | translate }}</span>
+                } @else if (isAutomationDisabled()) {
+                  <span class="next-run-text">{{ 'automation.status.disabled' | translate }}</span>
+                } @else if (nextRunFormatted(); as nextRun) {
+                  <span class="next-run-text"
+                    >{{ 'generalOverview.automations.nextRun' | translate }} {{ nextRun }}</span
+                  >
+                }
+              </button>
+            }
+
+            @if (selectedWatcher(); as watcher) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class.p-purple]="!isAutomationDisabled() && !isAutomationStopping()"
+                [class.p-orange]="isAutomationStopping()"
+                [class.p-dim]="isAutomationDisabled()"
+                [class.disabled-automation]="isAutomationDisabled()"
+                [disabled]="isAutomationStopping() || isTogglingAutomation()"
+                (click)="onToggleAutomation($event)"
+                [title]="
+                  isAutomationStopping()
+                    ? ('automation.toggle.stopping' | translate)
+                    : isAutomationDisabled()
+                      ? ('automation.toggle.enable' | translate)
+                      : ('automation.toggle.disable' | translate)
+                "
+              >
+                <mat-icon
+                  [svgIcon]="
+                    isTogglingAutomation()
+                      ? 'spinner'
+                      : isAutomationStopping()
+                        ? 'stop'
+                        : isAutomationDisabled()
+                          ? 'eye-slash'
+                          : 'eye'
+                  "
+                  [class.spin]="isTogglingAutomation()"
+                ></mat-icon>
+                <span>
+                  {{ 'automation.monitoring.realtimeSchedule' | translate }}
+                  @if (isAutomationStopping()) {
+                    · {{ 'automation.nextRun.stopping' | translate }}
+                  } @else if (isAutomationDisabled()) {
+                    · {{ 'automation.status.disabled' | translate }}
+                  } @else {
+                    ({{ watcher.watchDelay }}{{ 'automation.monitoring.seconds' | translate }}
+                    @if (watcher.watchChangedOnly) {
+                      · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+                    }
+                    )
+                  }
+                </span>
+              </button>
+            }
+
+            @if (isAutoStartEnabled()) {
+              <div class="app-pill p-yellow" [title]="'flow.quickRun.badges.autostart' | translate">
+                <mat-icon svgIcon="bolt"></mat-icon>
+                <span>{{ 'flow.quickRun.badges.autostart' | translate }}</span>
               </div>
             }
-          }
+          </div>
+        }
 
+        @if (isOperationsType()) {
           <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
 
           <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
 
           <app-transfer-activity-panel
             [config]="transferActivityConfig()"
+            [isJobRunning]="operationActiveState()"
             (resetStats)="onResetStats()"
+            (deleteJob)="onDeleteJob()"
             class="activity-panel"
           ></app-transfer-activity-panel>
         }
 
-        @if (mainOperationType() === 'serve' && filteredRunningServes().length > 0) {
+        @if (currentOpType() === 'serve' && filteredRunningServes().length > 0) {
           <div class="active-serves-list">
             <h3>{{ 'dashboard.appDetail.activeServes' | translate }}</h3>
             <div class="serves-grid">
@@ -181,6 +346,7 @@
                       type: 'serve',
                       remoteName: selectedRemote().name,
                       serveId: serve.id,
+                      profileName: serve.profile || '',
                     })
                   "
                 ></app-serve-card>
@@ -196,13 +362,16 @@
       </div>
     </mat-tab>
 
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
-      </ng-template>
-
-      <div class="configuration-content">
-        <div class="settings-layout">
+    <mat-tab [label]="'dashboard.appDetail.configuration' | translate">
+      @if (mode() === 'quickRun') {
+        <div class="settings-layout configuration-content">
+          <app-settings-panel
+            [config]="quickRunSettingsConfig()"
+            (editSettings)="openRemoteConfigModal.emit({})"
+          ></app-settings-panel>
+        </div>
+      } @else {
+        <div class="settings-layout configuration-content">
           <section class="settings-group operation-settings">
             <header class="group-header">
               <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
@@ -237,7 +406,7 @@
             </div>
           </section>
         </div>
-      </div>
+      }
     </mat-tab>
   </mat-tab-group>
 </div>

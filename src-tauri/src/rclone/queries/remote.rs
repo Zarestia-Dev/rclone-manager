@@ -1,57 +1,24 @@
-use log::debug;
-use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::rclone::backend::BackendManager;
-use crate::utils::rclone::endpoints::config;
-use crate::utils::types::state::RcloneState;
-use tauri::{AppHandle, Manager};
+use serde_json::Value;
+use tauri::AppHandle;
+
+use crate::{core::bridge, utils::rclone::endpoints::config};
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, config::DUMP, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(config::DUMP, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
 
     Ok(json)
 }
 
-pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            config::LISTREMOTES,
-            None,
-        )
-        .await
-        .map_err(|e| {
-            log::error!("❌ Failed to fetch remotes: {e}");
-            format!("❌ Failed to fetch remotes: {e}")
-        })?;
-
-    let remotes: Vec<String> = json["remotes"]
-        .as_array()
-        .unwrap_or(&vec![])
-        .iter()
-        .filter_map(|r| r.as_str())
-        .map(std::string::ToString::to_string)
-        .collect();
-
-    debug!("📡 Found {} remotes: {:?}", remotes.len(), remotes);
-    Ok(remotes)
-}
-
-/// ✅ Fetch all remote types
-#[tauri::command]
+/// Fetch all remote types
+#[bridge]
 pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, config::PROVIDERS, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(config::PROVIDERS, None)
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 
@@ -61,8 +28,8 @@ pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Valu
     Ok(providers)
 }
 
-/// ✅ Fetch only OAuth-supported remotes
-#[tauri::command]
+/// Fetch only OAuth-supported remotes
+#[bridge]
 pub async fn get_oauth_supported_remotes(
     app: AppHandle,
 ) -> Result<HashMap<String, Vec<Value>>, String> {

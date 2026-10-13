@@ -1,5 +1,7 @@
 use log::{info, warn};
 
+use crate::core::bridge;
+
 #[cfg(unix)]
 use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
 #[cfg(windows)]
@@ -11,7 +13,7 @@ use windows_sys::Win32::{
 };
 
 /// Kill a process by PID using platform-specific methods
-#[tauri::command]
+#[bridge]
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     info!("Killing process {pid}");
 
@@ -131,27 +133,30 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     Ok(pids)
 }
 
-/// Kill all rclone processes on managed ports
-pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), String> {
+/// Kill all rclone processes on the managed API port.
+pub fn kill_all_rclone_processes(api_port: u16) -> Result<(), String> {
     let _ = kill_processes_on_port(api_port);
-    let _ = kill_processes_on_port(oauth_port);
     Ok(())
 }
 
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
-pub fn cleanup_webkit_zombies() {
-    use sysinfo::{ProcessesToUpdate, System};
+/// Check if a local TCP port is already bound / occupied.
+#[must_use]
+pub fn is_port_in_use(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
+}
 
-    let mut system = System::new();
-    system.refresh_processes(ProcessesToUpdate::All, true);
-    let my_pid = std::process::id();
-
-    for process in system.processes().values() {
-        let name = process.name().to_string_lossy();
-        if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
-            && process.parent().map(|p| p.as_u32()) == Some(my_pid)
-        {
-            let _ = process.kill();
+/// Find the next available TCP port starting from `start_port`.
+#[must_use]
+pub fn find_next_available_port(start_port: u16) -> u16 {
+    for port in start_port..=65535 {
+        if !is_port_in_use(port) {
+            return port;
         }
     }
+    for port in 1024..start_port {
+        if !is_port_in_use(port) {
+            return port;
+        }
+    }
+    start_port
 }

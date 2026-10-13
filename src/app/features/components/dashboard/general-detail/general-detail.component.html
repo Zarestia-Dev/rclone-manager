@@ -1,19 +1,19 @@
-<div class="remote-details">
-  @let remote = selectedRemote();
-  <div class="header-content">
-    <div class="remote-info-section">
-      <div class="icon-container">
-        <mat-icon
-          [svgIcon]="iconService.getIconName(remote.type)"
-          class="remote-type-icon"
-        ></mat-icon>
-      </div>
-      <div class="remote-text-info">
-        <h2 class="remote-name" [matTooltip]="remote.name">{{ remote.name }}</h2>
-        <span class="remote-type">{{ remote.type | titlecase }}</span>
-      </div>
+@let remote = selectedRemote();
+<div class="header-content">
+  <div class="remote-info-section">
+    <div class="icon-container">
+      <mat-icon
+        [svgIcon]="iconService.getIconName(remote.type)"
+        class="remote-type-icon"
+      ></mat-icon>
     </div>
+    <div class="remote-text-info">
+      <h2 class="remote-name" [attr.title]="remote.name">{{ remote.name }}</h2>
+      <span class="remote-type">{{ remote.type | titlecase }}</span>
+    </div>
+  </div>
 
+  @if (showStatusIndicators()) {
     <div
       class="remote-status-indicators"
       role="group"
@@ -23,128 +23,194 @@
         <div
           class="status-chip"
           [class]="vc.key"
-          [class.selected]="vc.isSelected"
           [class.active]="vc.isActive"
-          [class.disabled]="!vc.canInteract"
+          [class.disabled]="vc.isLoading || !vc.canInteract"
           role="button"
           tabindex="0"
-          [attr.aria-pressed]="vc.isSelected"
+          aria-pressed="true"
           [attr.aria-label]="vc.ariaLabel"
-          [matTooltip]="vc.tooltip | translate"
-          (click)="onToggleAction(vc.key)"
-          (keydown.enter)="onToggleAction(vc.key)"
-          (keydown.space)="$event.preventDefault(); onToggleAction(vc.key)"
+          [attr.title]="vc.tooltip | translate"
+          (click)="onChipClick(vc)"
+          (keydown.enter)="onChipClick(vc)"
+          (keydown.space)="$event.preventDefault(); onChipClick(vc)"
         >
           <div class="status-dot">
-            <mat-icon [svgIcon]="vc.icon"></mat-icon>
-          </div>
-
-          @if (vc.isSelected) {
-            <span class="selection-badge" aria-hidden="true">{{ vc.position }}</span>
-          }
-
-          <span class="status-label">{{ vc.label | translate }}</span>
-
-          @if (vc.isSelected) {
-            <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
-          }
-        </div>
-      }
-    </div>
-  </div>
-
-  <div class="detail-content">
-    <app-disk-usage-panel
-      [config]="diskUsageConfig()"
-      (retry)="retryDiskUsage.emit()"
-    ></app-disk-usage-panel>
-
-    <app-jobs-panel
-      [config]="jobsPanelConfig()"
-      (stopJob)="
-        stopJob.emit({
-          type: $event.type,
-          remoteName: $event.remoteName,
-          profileName: $event.profileName,
-        })
-      "
-      (deleteJob)="deleteJob.emit($event)"
-    >
-    </app-jobs-panel>
-
-    @if (hasAutomations()) {
-      <mat-card class="automations-card">
-        <mat-card-header>
-          <mat-card-title>
-            <div class="panel-title">
-              <mat-icon svgIcon="clock"></mat-icon>
-              <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
-              <span class="app-pill p-primary"
-                >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
-              >
-            </div>
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          @if (remoteAutomations().length > 1) {
-            <div class="carousel-indicators">
-              @for (automation of remoteAutomations(); track automation.id) {
-                <div
-                  class="indicator"
-                  [class.active]="$index === currentAutomationCardIndex()"
-                  (click)="goToAutomationCard($index)"
-                  [matTooltip]="automation.profileName"
-                  role="button"
-                  tabindex="0"
-                  [attr.aria-label]="
-                    'dashboard.generalDetail.goToAutomation' | translate: { index: $index + 1 }
-                  "
-                ></div>
-              }
-            </div>
-          }
-
-          <div class="automation-carousel-slide-wrapper">
-            @if (currentAutomation(); as automation) {
-              <app-automation-card
-                [automation]="automation"
-                variant="detailed"
-                (toggled)="toggleAutomation($event)"
-                (openInFiles)="onOpenAutomationInFiles($event)"
-              ></app-automation-card>
+            @if (vc.isLoading) {
+              <mat-icon svgIcon="spinner"></mat-icon>
+            } @else {
+              <mat-icon [svgIcon]="vc.icon"></mat-icon>
             }
           </div>
+          <span class="status-label">{{ vc.label | translate }}</span>
+          <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
+        </div>
+      }
 
-          @if (remoteAutomations().length > 1) {
-            <div class="carousel-navigation">
-              <button
-                mat-icon-button
-                (click)="previousAutomationCard()"
-                [disabled]="currentAutomationCardIndex() === 0"
-                [matTooltip]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
-                class="nav-button"
-              >
-                <mat-icon svgIcon="left-arrow"></mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                (click)="nextAutomationCard()"
-                [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
-                [matTooltip]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
-                class="nav-button"
-              >
-                <mat-icon svgIcon="right-arrow"></mat-icon>
-              </button>
-            </div>
+      <button
+        matIconButton
+        class="configure-toggle-btn"
+        (click)="onConfigureActions()"
+        [attr.title]="'modals.actionSelection.configureTooltip' | translate"
+      >
+        <mat-icon svgIcon="settings"></mat-icon>
+      </button>
+    </div>
+  }
+</div>
+
+<div class="detail-content">
+  <app-disk-usage-panel
+    [config]="diskUsageConfig()"
+    (retry)="retryDiskUsage.emit()"
+  ></app-disk-usage-panel>
+
+  @if (showQuickRuns()) {
+    <mat-card class="quick-runs-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="quick-run"></mat-icon>
+          <span>{{ 'flow.quickRun.title' | translate }}</span>
+          @if (remoteQuickRuns().length > 0) {
+            <span class="app-pill p-primary">{{ remoteQuickRuns().length }}</span>
           }
-        </mat-card-content>
-      </mat-card>
-    }
+        </mat-card-title>
+        <button
+          class="action-button"
+          (click)="onCreateQuickRunForRemote()"
+          [attr.title]="
+            'flow.quickRun.overview.createForRemote' | translate: { remote: selectedRemote().name }
+          "
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+        </button>
+      </mat-card-header>
+      <mat-card-content>
+        @if (remoteQuickRuns().length > 0) {
+          <div class="quick-runs-grid">
+            @for (qr of remoteQuickRuns(); track qr.id) {
+              <app-quick-run-card
+                [quickRun]="qr"
+                [isRunning]="isQuickRunRunning(qr.id)"
+                variant="overview"
+                (selectedChange)="onSelectQuickRunById($event)"
+                (startRun)="onStartQuickRun($event)"
+                (stopRun)="onStopQuickRun($event)"
+                (editRun)="onEditQuickRun($event)"
+                (openInFiles)="onOpenQuickRunInFiles($event, qr)"
+              />
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon svgIcon="quick-run" class="empty-icon"></mat-icon>
+            <p>
+              {{
+                'flow.quickRun.overview.noRunsForRemote'
+                  | translate: { remote: selectedRemote().name }
+              }}
+            </p>
+            <button
+              matButton="filled"
+              class="primary"
+              (click)="onCreateQuickRunForRemote()"
+              [attr.title]="
+                'flow.quickRun.overview.createForRemote'
+                  | translate: { remote: selectedRemote().name }
+              "
+            >
+              <mat-icon svgIcon="plus"></mat-icon>
+              {{
+                'flow.quickRun.overview.createForRemote'
+                  | translate: { remote: selectedRemote().name }
+              }}
+            </button>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
 
-    <app-settings-panel
-      [config]="remoteConfigurationPanelConfig()"
-      (editSettings)="onEditRemoteConfiguration()"
-    >
-    </app-settings-panel>
-  </div>
+  <app-jobs-panel
+    [config]="jobsPanelConfig()"
+    (stopJob)="
+      stopJob.emit({
+        type: $event.type,
+        remoteName: $event.remoteName,
+        profileName: $event.profileName,
+      })
+    "
+    (deleteJob)="deleteJob.emit($event)"
+  >
+  </app-jobs-panel>
+
+  @if (hasAutomations()) {
+    <mat-card class="automations-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="clock"></mat-icon>
+          <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
+          <span class="app-pill p-primary"
+            >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
+          >
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (remoteAutomations().length > 1) {
+          <div class="carousel-indicators">
+            @for (automation of remoteAutomations(); track automation.id) {
+              <div
+                class="indicator"
+                [class.active]="$index === currentAutomationCardIndex()"
+                (click)="goToAutomationCard($index)"
+                [attr.title]="automation.profileName"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="
+                  'dashboard.generalDetail.goToAutomation' | translate: { index: $index + 1 }
+                "
+              ></div>
+            }
+          </div>
+        }
+
+        @if (currentAutomation(); as automation) {
+          <app-automation-card
+            [automation]="automation"
+            variant="detailed"
+            (toggled)="toggleAutomation($event)"
+            (openInFiles)="onOpenAutomationInFiles($event)"
+          ></app-automation-card>
+        }
+
+        @if (remoteAutomations().length > 1) {
+          <div class="carousel-navigation">
+            <button
+              matIconButton
+              (click)="previousAutomationCard()"
+              [disabled]="currentAutomationCardIndex() === 0"
+              [attr.title]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
+              class="nav-button"
+            >
+              <mat-icon svgIcon="left-arrow"></mat-icon>
+            </button>
+            <button
+              matIconButton
+              (click)="nextAutomationCard()"
+              [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
+              [attr.title]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
+              class="nav-button"
+            >
+              <mat-icon svgIcon="right-arrow"></mat-icon>
+            </button>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <app-settings-panel
+    [config]="remoteConfigurationPanelConfig()"
+    (editSettings)="onEditRemoteConfiguration()"
+  >
+  </app-settings-panel>
 </div>

@@ -1,12 +1,16 @@
 name: 🐛 Bug Report
-description: File a bug report for the RClone Manager
+description: File a bug report for RClone Manager
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: checkboxes
     attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the bug you encountered.
+      label: Pre-submission Checklist
+      description: Please verify these items before submitting your issue.
       options:
-        - label: I have searched the existing issues and did not find anything similar.
+        - label: I have searched existing issues (open and closed) to ensure this is not a duplicate.
+          required: true
+        - label: I am using the latest version of RClone Manager or have checked recent release notes.
           required: true
 
   - type: textarea
@@ -14,13 +18,13 @@ body:
     attributes:
       label: Bug Description
       description: |
-        A clear and concise description of:
+        A clear and concise description of the bug:
         - What you were trying to do
         - What actually happened
-        - Any error messages you encountered
+        - Any error messages displayed
       placeholder: |
         Example:
-        When trying to sync my Google Drive, the app crashes with error "Failed to initialize rclone config"
+        When trying to sync my Google Drive remote on Android, the app crashes with error "Failed to initialize rclone config".
     validations:
       required: true
 
@@ -28,11 +32,12 @@ body:
     id: os
     attributes:
       label: Operating System
-      description: Select the OS where the bug occurred
+      description: Select the OS where the issue occurred.
       options:
         - Windows
         - macOS
         - Linux
+        - Android
         - Other
     validations:
       required: true
@@ -41,18 +46,33 @@ body:
     id: os-version
     attributes:
       label: OS Version
-      description: The specific version of your operating system
-      placeholder: e.g., Windows 11 23H2, macOS 14.4, Ubuntu 22.04
+      description: The specific version of your operating system.
+      placeholder: e.g., Windows 11 23H2, macOS 14.4, Ubuntu 24.04, Android 14 / One UI 6.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Architecture / CPU
+      description: System architecture or processor type.
+      options:
+        - x86_64 (64-bit Intel/AMD)
+        - arm64 / aarch64 (Apple Silicon / ARM64 Android)
+        - armv7 (32-bit ARM)
+        - x86 (32-bit Intel/AMD)
+        - Other / Unknown
 
   - type: dropdown
     id: app-version-type
     attributes:
       label: App Version Type
-      description: Which version of RClone Manager are you using?
+      description: Which build / mode of RClone Manager are you using?
       options:
-        - Desktop (GUI application with window)
+        - Desktop (GUI application window)
+        - Android (Mobile APK)
         - Headless (Web server accessed via browser)
-        - Portable (Standalone executable)
+        - Portable (Standalone binary)
     validations:
       required: true
 
@@ -60,8 +80,8 @@ body:
     id: app-version
     attributes:
       label: App Version Number
-      description: The version of RClone Manager you're using
-      placeholder: e.g., 1.2.0 or commit hash if using development build
+      description: Version of RClone Manager you are using.
+      placeholder: e.g., 1.2.0 or commit hash if building from source
     validations:
       required: true
 
@@ -69,18 +89,18 @@ body:
     id: rclone-version
     attributes:
       label: RClone Version
-      description: The version of rclone you have installed
-      placeholder: Found by running `rclone version` in terminal
+      description: Version of RClone installed or used by the app.
+      placeholder: e.g., rclone v1.74.0 (or "Bundled")
 
   - type: textarea
     id: steps-to-reproduce
     attributes:
       label: Steps to Reproduce
-      description: Clear steps to reproduce the issue
+      description: Detailed step-by-step instructions to reproduce the problem.
       placeholder: |
         1. Open RClone Manager
-        2. Click on 'Add Remote'
-        3. Select 'drive' type
+        2. Tap / Click on 'Add Remote'
+        3. Select 'Google Drive'
         4. See error "Connection timeout"
     validations:
       required: true
@@ -89,34 +109,29 @@ body:
     id: expected-behavior
     attributes:
       label: Expected Behavior
-      description: What you expected to happen
-      placeholder: The app should successfully connect to Google Drive and show my files
+      description: A clear description of what you expected to happen.
+      placeholder: The app should connect to Google Drive and display the remote directory structure.
 
   - type: textarea
     id: logs
     attributes:
-      label: Relevant Logs
+      label: Relevant Logs & Output
       description: |
-        Please provide relevant logs:
-        - Application logs (check developer console)
-        - Terminal output if running from command line
-        - RClone debug logs (add `-vv` flag to rclone commands)
+        Please provide relevant logs if available:
+        - Developer Console logs (Desktop / Web)
+        - Logcat / App logs (Android)
+        - RClone debug logs (`rclone -vv` output)
       render: shell
 
   - type: textarea
     id: screenshots
     attributes:
-      label: Screenshots/Recordings
-      description: |
-        Add screenshots or screen recordings to help explain your problem.
-        For UI-related issues, these are especially helpful.
+      label: Screenshots / Screen Recordings
+      description: Add screenshots or screen recordings to help demonstrate the issue.
 
   - type: textarea
     id: additional-context
     attributes:
       label: Additional Context
       description: |
-        Any other information that might be helpful:
-        - Does this happen with all remotes or just specific ones?
-        - Does it happen consistently or intermittently?
-        - Have you made any custom configurations?
+        Any other relevant details (e.g., specific remote types, network conditions, custom rclone.conf settings).

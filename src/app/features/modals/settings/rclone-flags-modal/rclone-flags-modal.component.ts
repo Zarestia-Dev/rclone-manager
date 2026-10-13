@@ -1,6 +1,5 @@
 import {
   Component,
-  HostListener,
   OnInit,
   inject,
   signal,
@@ -9,49 +8,43 @@ import {
   ChangeDetectionStrategy,
   viewChild,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ReactiveFormsModule, FormGroup, FormBuilder, FormControl } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { Subject, debounceTime, distinctUntilChanged, firstValueFrom } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
+import { RcloneBackendOptionsService } from 'src/app/services/settings/rclone-backend-options.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import {
-  FlagConfigService,
-  RcloneBackendOptionsService,
-  NotificationService,
-  ModalService,
-} from '@app/services';
-import { RcConfigOption } from '@app/types';
+  matchesConfigSearch,
+  stripCliPrefix,
+} from 'src/app/services/remote/utils/remote-config.utils';
+import {
+  RcConfigOption,
+  SharedProfileType,
+  PageType,
+  GroupedRCloneOptions,
+  RCloneService,
+  RCloneFlagsSearchResult,
+  ServiceConfig,
+} from '@app/types';
+import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { SettingControlComponent, JsonEditorComponent } from 'src/app/shared/components';
+import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
+import {
+  JsonEditorComponent,
+  JSON_EDITOR_LOOKUP_TABLE,
+  type JsonEditorLookupTable,
+} from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
-import { MatTooltipModule } from '@angular/material/tooltip';
-
-type PageType = 'home' | string;
-type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
-
-interface RCloneService {
-  name: string;
-  expanded: boolean;
-  categories: string[];
-}
-
-interface SearchResult {
-  service: string;
-  category: string;
-  option: RcConfigOption;
-}
-
-interface ServiceConfig {
-  icon: string;
-  description: string;
-  mainCategory: string;
-}
 
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {
@@ -163,35 +156,73 @@ const MAIN_CATEGORY_CONFIG: Record<
   },
 };
 
+interface OptionViewModel {
+  option: RcConfigOption;
+  uniqueKey: string;
+}
+
+interface CategoryViewModel {
+  category: string;
+  icon: string;
+  description: string;
+  matchCount: number;
+}
+
+interface ServiceViewModel {
+  name: string;
+  expanded: boolean;
+  icon: string;
+  description: string;
+  categories: CategoryViewModel[];
+}
+
+interface MainCategoryViewModel {
+  name: string;
+  titleKey: string;
+  description: string;
+  services: ServiceViewModel[];
+}
+
+interface SearchResultViewModel {
+  result: RCloneFlagsSearchResult;
+  serviceIcon: string;
+}
+
 @Component({
   selector: 'app-rclone-flags-modal',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     TitleCasePipe,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatExpansionModule,
     ScrollingModule,
     ReactiveFormsModule,
     SearchContainerComponent,
     SettingControlComponent,
     JsonEditorComponent,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
+    RcloneOptionTranslatePipe,
   ],
   templateUrl: './rclone-flags-modal.component.html',
   styleUrls: ['./rclone-flags-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    {
+      provide: JSON_EDITOR_LOOKUP_TABLE,
+      useFactory: (modal: RcloneFlagsModalComponent): JsonEditorLookupTable => modal.lookupTable,
+      deps: [RcloneFlagsModalComponent],
+    },
+  ],
 })
 export class RcloneFlagsModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RcloneFlagsModalComponent>);
   private readonly notificationService = inject(NotificationService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
+  private readonly uiStateService = inject(UiStateService);
   private readonly fb = inject(FormBuilder);
-  private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
+  readonly translate = inject(TranslateService);
 
   readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
 
@@ -201,7 +232,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   readonly isLoading = signal(true);
   readonly searchQuery = signal('');
   readonly isSearchVisible = signal(false);
-  readonly showJsonMode = signal(false);
+  readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly savingOptions = signal(new Set<string>());
   readonly isResetting = signal(false);
 
@@ -209,6 +240,32 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly changedOptions = signal(new Set<string>());
 
   private readonly expandedServices = signal(new Set<string>());
+
+  readonly lookupTable = computed(() => {
+    const table: Record<string, { option: RcConfigOption; flagType: SharedProfileType }> = {};
+    const options = this.groupedOptions();
+    for (const service in options) {
+      for (const category in options[service]) {
+        for (const option of options[service][category]) {
+          const nameRaw = (option.Name ?? '').toLowerCase();
+          const nameHyphen = nameRaw.replace(/_/g, '-');
+          const keyCamel = (option.FieldName ?? '').toLowerCase();
+          const flagType = service as SharedProfileType;
+
+          if (nameRaw) {
+            table[nameRaw] = { option, flagType };
+          }
+          if (nameHyphen && nameHyphen !== nameRaw) {
+            table[nameHyphen] = { option, flagType };
+          }
+          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) {
+            table[keyCamel] = { option, flagType };
+          }
+        }
+      }
+    }
+    return table;
+  });
 
   // ── Form ───────────────────────────────────────────────────────────────────
   rcloneOptionsForm: FormGroup = this.fb.group({});
@@ -239,22 +296,22 @@ export class RcloneFlagsModalComponent implements OnInit {
     }))
   );
 
-  readonly globalSearchResults = computed<SearchResult[]>(() => {
+  readonly globalSearchResults = computed<RCloneFlagsSearchResult[]>(() => {
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return [];
 
-    const results: SearchResult[] = [];
+    const cleanQuery = stripCliPrefix(query);
+
+    const results: RCloneFlagsSearchResult[] = [];
     const options = this.groupedOptions();
 
     for (const service in options) {
       for (const category in options[service]) {
         for (const option of options[service][category]) {
           if (
-            option.Name.toLowerCase().includes(query) ||
-            option.FieldName.toLowerCase().includes(query) ||
-            option.Help.toLowerCase().includes(query) ||
-            service.toLowerCase().includes(query) ||
-            category.toLowerCase().includes(query)
+            matchesConfigSearch(option, query) ||
+            service.toLowerCase().includes(cleanQuery) ||
+            category.toLowerCase().includes(cleanQuery)
           ) {
             results.push({ service, category, option });
           }
@@ -271,9 +328,11 @@ export class RcloneFlagsModalComponent implements OnInit {
       return this.services();
     }
 
+    const cleanQuery = stripCliPrefix(query);
+
     const matchedServices = new Set(this.globalSearchResults().map(r => r.service));
     return this.services()
-      .filter(s => matchedServices.has(s.name) || s.name.toLowerCase().includes(query))
+      .filter(s => matchedServices.has(s.name) || s.name.toLowerCase().includes(cleanQuery))
       .map(s => ({ ...s, expanded: true }));
   });
 
@@ -295,12 +354,7 @@ export class RcloneFlagsModalComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return options;
 
-    return options.filter(
-      opt =>
-        opt.Name.toLowerCase().includes(query) ||
-        opt.FieldName.toLowerCase().includes(query) ||
-        opt.Help.toLowerCase().includes(query)
-    );
+    return options.filter(opt => matchesConfigSearch(opt, query));
   });
 
   readonly filteredOptionsCount = computed(() => this.virtualScrollData().length);
@@ -333,6 +387,58 @@ export class RcloneFlagsModalComponent implements OnInit {
     if (page === 'home' || !category) return [];
     return this.groupedOptions()[page]?.[category] ?? [];
   });
+
+  readonly mainCategoryViewModels = computed<MainCategoryViewModel[]>(() => {
+    const order = ['General Settings', 'File System & Storage', 'Network & Servers'];
+    const grouped = this.servicesByMainCategory();
+    return order
+      .map((name): MainCategoryViewModel => {
+        const cfg = MAIN_CATEGORY_CONFIG[name];
+        const services = (grouped[name] ?? []).map((svc): ServiceViewModel => {
+          const serviceCfg = SERVICE_CONFIG[svc.name];
+          const categories = svc.categories.map((catName): CategoryViewModel => {
+            const catCfg = CATEGORY_CONFIG[catName];
+            return {
+              category: catName,
+              icon: catCfg?.icon ?? 'gear',
+              description: catCfg?.description ?? '',
+              matchCount: this.getMatchCountForCategory(svc.name, catName),
+            };
+          });
+          return {
+            name: svc.name,
+            expanded: svc.expanded,
+            icon: serviceCfg?.icon ?? 'gear',
+            description: serviceCfg?.description ?? '',
+            categories,
+          };
+        });
+        return {
+          name,
+          titleKey: cfg?.titleKey ?? name,
+          description: cfg?.description ?? '',
+          services,
+        };
+      })
+      .filter(mc => mc.services.length > 0);
+  });
+
+  readonly globalSearchResultViewModels = computed<SearchResultViewModel[]>(() =>
+    this.globalSearchResults().map(r => ({
+      result: r,
+      serviceIcon: this.getServiceIcon(r.service),
+    }))
+  );
+
+  readonly virtualScrollOptionViewModels = computed<OptionViewModel[]>(() =>
+    this.virtualScrollData().map(opt => {
+      const uniqueKey = this.getUniqueControlKey(opt);
+      return {
+        option: opt,
+        uniqueKey,
+      };
+    })
+  );
 
   // ── Constructor ────────────────────────────────────────────────────────────
 
@@ -426,8 +532,9 @@ export class RcloneFlagsModalComponent implements OnInit {
     this.currentCategory.set(category ?? null);
     this.optionToFocus = optionName ?? null;
 
-    if (this.optionToFocus) {
-      queueMicrotask(() => this.scrollToOption(this.optionToFocus!));
+    const focus = this.optionToFocus;
+    if (focus) {
+      queueMicrotask(() => this.scrollToOption(focus));
     }
   }
 
@@ -476,7 +583,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   }
 
   toggleJsonMode(): void {
-    this.showJsonMode.update(v => !v);
+    this.uiStateService.toggleShowJsonMode();
   }
 
   // ── Service panel state ────────────────────────────────────────────────────
@@ -512,7 +619,8 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   // ── Persistence ────────────────────────────────────────────────────────────
 
-  async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
+  async saveRCloneOption(optionName: string): Promise<void> {
+    const isAtDefault = this.isOptionAtDefault(optionName);
     const control = this.rcloneOptionsForm.get(optionName);
     if (!control || control.invalid || this.savingOptions().has(optionName) || control.pristine) {
       return;
@@ -570,14 +678,13 @@ export class RcloneFlagsModalComponent implements OnInit {
   }
 
   async resetAllOptions(): Promise<void> {
-    const dialogRef = this.modalService.openConfirm({
-      title: this.translate.instant('modals.rcloneFlags.reset.title'),
-      message: this.translate.instant('modals.rcloneFlags.reset.message'),
-      confirmText: this.translate.instant('modals.rcloneFlags.reset.confirm'),
-      cancelText: this.translate.instant('common.cancel'),
-    });
-
-    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    const confirmed = await this.notificationService.confirmModal(
+      'modals.rcloneFlags.reset.title',
+      'modals.rcloneFlags.reset.message',
+      'modals.rcloneFlags.reset.confirm',
+      'common.cancel',
+      { color: 'warn', icon: 'circle-exclamation' }
+    );
     if (!confirmed) return;
 
     this.isResetting.set(true);
@@ -632,14 +739,13 @@ export class RcloneFlagsModalComponent implements OnInit {
     return option.Name;
   }
 
-  trackBySearchResult(_index: number, result: SearchResult): string {
+  trackBySearchResult(_index: number, result: RCloneFlagsSearchResult): string {
     return `${result.service}-${result.category}-${result.option.Name}`;
   }
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
-  @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

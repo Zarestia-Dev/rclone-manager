@@ -12,7 +12,17 @@
           <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
         </div>
         <div class="automation-title-section">
-          <span class="automation-name">{{ automation().profileName }}</span>
+          <div class="automation-title-row">
+            <span class="automation-name">{{ automation().profileName }}</span>
+            <span
+              class="origin-mini-badge"
+              [class.quickrun]="isQuickRun()"
+              [class.flow]="isFlow()"
+              [attr.title]="originLabel()"
+            >
+              <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
+            </span>
+          </div>
           <span class="automation-subtitle">
             {{ automation().remoteName }} ·
             {{ 'dashboard.appDetail.' + automation().automationType | translate }}
@@ -20,7 +30,12 @@
               ·
               <span
                 class="watcher-mini-badge"
-                [matTooltip]="'automation.monitoring.realtime' | translate"
+                [attr.title]="
+                  (automation().watchChangedOnly
+                    ? 'automation.monitoring.realtimeChangedOnly'
+                    : 'automation.monitoring.realtime'
+                  ) | translate
+                "
               >
                 <mat-icon svgIcon="eye" class="watcher-mini-icon"></mat-icon>
               </span>
@@ -35,10 +50,10 @@
           {{ 'automation.status.' + automation().status | translate }}
         </span>
         <button
-          mat-icon-button
+          matIconButton
           class="automation-toggle-btn"
           (click)="onToggle($event)"
-          [matTooltip]="toggleState().tooltip | translate"
+          [attr.title]="toggleState().tooltip | translate"
           [disabled]="automation().status === 'stopping'"
         >
           <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
@@ -48,15 +63,19 @@
 
     <mat-card-footer class="automation-footer">
       <div class="automation-stats">
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.successful' | translate">
-          <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.successful' | translate">
+          <mat-icon svgIcon="check-circle" class="stat-icon primary"></mat-icon>
           <span class="stat-value">{{ automation().successCount }}</span>
         </div>
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.failedCount' | translate">
-          <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.failedCount' | translate">
+          <mat-icon svgIcon="circle-exclamation" class="stat-icon warn"></mat-icon>
           <span class="stat-value">{{ automation().failureCount }}</span>
         </div>
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.totalRuns' | translate">
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.stoppedCount' | translate">
+          <mat-icon svgIcon="stop" class="stat-icon orange"></mat-icon>
+          <span class="stat-value">{{ automation().stoppedCount }}</span>
+        </div>
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.totalRuns' | translate">
           <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
           <span class="stat-value">{{ automation().runCount }}</span>
         </div>
@@ -75,28 +94,31 @@
     [class.stopping]="automation().status === 'stopping'"
   >
     <mat-card-header class="automation-header">
-      <div class="automation-info">
-        <div class="automation-title-row">
-          <div class="automation-icon-wrapper" [class]="automationMeta().colorClass">
-            <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
-          </div>
-          <div class="title-text">
+      <div class="automation-title-row">
+        <div class="automation-icon-wrapper" [class]="automationMeta().colorClass">
+          <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
+        </div>
+        <div class="title-text">
+          <div class="title-heading-row">
             <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
-            <span class="automation-type-label">
-              {{ automation().remoteName }} ·
-              {{ 'dashboard.appDetail.' + automation().automationType | translate }}
+            <span class="app-pill origin-pill {{ originBadgeClass() }}">
+              {{ originLabel() }}
             </span>
           </div>
-          <span class="status-indicator" [ngClass]="'status-' + automation().status">
-            <span class="dot"></span>
-            {{ 'automation.status.' + automation().status | translate }}
+          <span class="automation-type-label">
+            {{ automation().remoteName }} ·
+            {{ 'dashboard.appDetail.' + automation().automationType | translate }}
           </span>
         </div>
+        <span class="status-indicator" [ngClass]="'status-' + automation().status">
+          <span class="dot"></span>
+          {{ 'automation.status.' + automation().status | translate }}
+        </span>
       </div>
       <button
-        mat-icon-button
+        matIconButton
         (click)="onToggle($event)"
-        [matTooltip]="toggleState().tooltip | translate"
+        [attr.title]="toggleState().tooltip | translate"
         [disabled]="automation().status === 'stopping'"
       >
         <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
@@ -110,12 +132,14 @@
           {{ 'dashboard.generalDetail.schedule' | translate }}
         </h5>
         <div class="detail-grid">
-          <div class="detail-item">
-            <span class="label">{{ 'dashboard.generalDetail.cronExpression' | translate }}</span>
-            <code class="value cron-expression" [matTooltip]="cronDescription()">
-              {{ automation().cronExpression }}
-            </code>
-          </div>
+          @if (automation().cronExpression) {
+            <div class="detail-item">
+              <span class="label">{{ 'dashboard.generalDetail.cronExpression' | translate }}</span>
+              <code class="value cron-expression" [attr.title]="cronDescription()">
+                {{ automation().cronExpression }}
+              </code>
+            </div>
+          }
           <div class="detail-item">
             <span class="label">{{ 'dashboard.generalDetail.nextRunLabel' | translate }}</span>
             <span class="value next-run">{{ nextRunFormatted() }}</span>
@@ -140,6 +164,14 @@
                 {{ 'automation.monitoring.seconds' | translate }}</span
               >
             </div>
+            @if (automation().watchChangedOnly) {
+              <div class="detail-item">
+                <span class="label">{{ 'automation.monitoring.syncScope' | translate }}</span>
+                <span class="value">{{
+                  'automation.monitoring.changedOnlyActive' | translate
+                }}</span>
+              </div>
+            }
           }
         </div>
       </div>
@@ -157,6 +189,10 @@
           <div class="stat-card failed">
             <div class="stat-value">{{ automation().failureCount }}</div>
             <div class="stat-label">{{ 'dashboard.generalDetail.failedCount' | translate }}</div>
+          </div>
+          <div class="stat-card stopped">
+            <div class="stat-value">{{ automation().stoppedCount }}</div>
+            <div class="stat-label">{{ 'dashboard.generalDetail.stoppedCount' | translate }}</div>
           </div>
           <div class="stat-card total">
             <div class="stat-value">{{ automation().runCount }}</div>
@@ -183,8 +219,8 @@
                 <code class="path-value">{{ src.path }}</code>
               </div>
               <button
-                mat-icon-button
-                [matTooltip]="'shared.actions.open' | translate"
+                matIconButton
+                [attr.title]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(src.path, $event)"
               >
                 <mat-icon [svgIcon]="src.icon"></mat-icon>
@@ -204,8 +240,8 @@
                 <code class="path-value">{{ dest.path }}</code>
               </div>
               <button
-                mat-icon-button
-                [matTooltip]="'shared.actions.open' | translate"
+                matIconButton
+                [attr.title]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(dest.path, $event)"
               >
                 <mat-icon [svgIcon]="dest.icon"></mat-icon>
@@ -216,13 +252,17 @@
       </div>
 
       @if (automation().lastError) {
-        <div class="detail-section error-section">
-          <h5 class="section-title">
-            <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+        <section class="detail-section">
+          <span class="section-title error">
+            <mat-icon svgIcon="circle-exclamation"></mat-icon>
             {{ 'dashboard.generalDetail.lastError' | translate }}
-          </h5>
-          <div class="error-message">{{ automation().lastError }}</div>
-        </div>
+          </span>
+          <pre
+            class="error-entry"
+            [appCopyToClipboard]="automation().lastError"
+            [attr.title]="'common.copy' | translate"
+          ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ automation().lastError }}</span></pre>
+        </section>
       }
 
       @if (automation().currentJobId) {

@@ -1,23 +1,14 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RemoteManagementService } from '../../services/remote/remote-management.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { BackendService } from '../infrastructure/system/backend.service';
 
-/**
- * Service for managing OAuth authentication state
- * Handles authentication lifecycle and cleanup
- */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class AuthStateService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly backendService = inject(BackendService);
 
-  // Authentication state
   private readonly _isAuthInProgress = signal<boolean>(false);
   private readonly _currentRemoteName = signal<string | null>(null);
   private readonly _isAuthCancelled = signal<boolean>(false);
@@ -25,21 +16,9 @@ export class AuthStateService {
   private readonly _cleanupInProgress = signal<boolean>(false);
   private readonly _oauthUrl = signal<string | null>(null);
 
-  // Public readonly signals
   public readonly isAuthInProgress = this._isAuthInProgress.asReadonly();
   public readonly isAuthCancelled = this._isAuthCancelled.asReadonly();
   public readonly oauthUrl = this._oauthUrl.asReadonly();
-  public readonly isActiveBackendLocal = computed(() => {
-    const activeBackend = this.backendService.activeBackend();
-    if (activeBackend === 'Local') return true;
-    return (
-      this.backendService.backends().find(backend => backend.name === activeBackend)?.isLocal ??
-      true
-    );
-  });
-  public readonly shouldShowRemoteOAuthFallback = computed(
-    () => this._isAuthInProgress() && !this.isActiveBackendLocal() && !this._oauthUrl()
-  );
 
   constructor() {
     this.eventListenersService
@@ -52,9 +31,6 @@ export class AuthStateService {
       });
   }
 
-  /**
-   * Start authentication process
-   */
   async startAuth(remoteName: string, isEditMode: boolean): Promise<void> {
     if (this._cleanupInProgress()) return;
 
@@ -67,9 +43,6 @@ export class AuthStateService {
     console.debug('Starting auth for remote:', remoteName, 'in edit mode:', isEditMode);
   }
 
-  /**
-   * Cancel authentication process
-   */
   async cancelAuth(): Promise<void> {
     if (this._cleanupInProgress()) {
       console.debug('Cleanup already in progress');
@@ -85,12 +58,10 @@ export class AuthStateService {
 
       console.debug('Cancelling auth for remote:', remoteName, 'in edit mode:', isEditMode);
 
-      if (this.isActiveBackendLocal()) {
-        try {
-          await this.remoteManagementService.quitOAuth();
-        } catch (error) {
-          console.warn('Error quitting local OAuth process:', error);
-        }
+      try {
+        await this.remoteManagementService.quitOAuth();
+      } catch (error) {
+        console.warn('Error quitting OAuth process:', error);
       }
 
       // Delete remote if it's not in edit mode
@@ -108,9 +79,6 @@ export class AuthStateService {
     }
   }
 
-  /**
-   * Reset authentication state
-   */
   resetAuthState(): void {
     this._isAuthInProgress.set(false);
     this._currentRemoteName.set(null);

@@ -2,21 +2,12 @@
 // The component is now a direct grid item (no wrapper div), so it must be a
 // proper block box and carry its own edit/hidden state via host bindings.
 
-:host {
-  display: block;
-  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
 :host(.is-editing) {
   cursor: grab;
+  pointer-events: none;
 
   &:active {
     cursor: grabbing;
-  }
-
-  // Prevent accidental interaction with the card while rearranging
-  .remote-card {
-    pointer-events: none;
   }
 
   // The overlay itself must still be interactive
@@ -30,8 +21,6 @@
 }
 
 // ── Edit overlay ──────────────────────────────────────────────────────────────
-// Positioned relative to .remote-card which already has position: relative.
-
 .card-edit-overlay {
   position: absolute;
   top: var(--space-xs);
@@ -41,10 +30,9 @@
   align-items: center;
   gap: var(--space-xs);
   background: var(--view-bg-color);
-  box-shadow: var(--box-shadow);
   border-radius: var(--radius-md);
   padding: 2px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-gnome);
 
   .drag-handle {
     cursor: grab;
@@ -74,277 +62,9 @@
   }
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+// ── Profile Details (Detailed Mode) ──────────────────────────────────────────
 
-.remote-card {
-  position: relative;
-  transition: var(--transition-standard);
-  background: var(--window-bg-color);
-  box-shadow: var(--box-shadow);
-
-  &:hover {
-    background: var(--hover-bg-color);
-  }
-
-  // ── Active-state card borders & icon tints ─────────────────────────────────
-
-  &.mounted,
-  &.serving {
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-    .remote-info .icon-container {
-      background: rgba(var(--accent-color-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--accent-color);
-      }
-    }
-  }
-  &.syncing {
-    box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-    .remote-info .icon-container {
-      background: rgba(var(--primary-color-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--primary-color);
-      }
-    }
-  }
-  &.copying {
-    box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-    .remote-info .icon-container {
-      background: rgba(var(--yellow-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--yellow);
-      }
-    }
-  }
-  &.moving {
-    box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-    .remote-info .icon-container {
-      background: rgba(var(--orange-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--orange);
-      }
-    }
-  }
-  &.bisyncing {
-    box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
-    .remote-info .icon-container {
-      background: rgba(var(--purple-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--purple);
-      }
-    }
-  }
-  &.inactive-remote .remote-info .icon-container {
-    background: rgba(var(--window-fg-color-rgb), 0.1);
-    .remote-type-icon {
-      color: rgba(var(--window-fg-color-rgb), 0.5);
-    }
-  }
-  &.error-remote {
-    border-color: rgba(var(--warn-color-rgb), 0.3);
-    .remote-info .icon-container {
-      background: rgba(var(--warn-color-rgb), 0.1);
-      box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.2);
-      .remote-type-icon {
-        color: var(--warn-color);
-      }
-    }
-  }
-
-  // ── Header ─────────────────────────────────────────────────────────────────
-
-  .remote-header {
-    padding: var(--space-md) var(--space-md) var(--space-sm);
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-md);
-  }
-
-  .remote-info {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    flex: 1;
-    min-width: 0;
-
-    .icon-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--icon-size-xl);
-      height: var(--icon-size-xl);
-      border-radius: var(--card-border-radius);
-      transition: var(--transition-standard);
-    }
-
-    .remote-details {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xxs);
-      min-width: 0;
-      flex: 1;
-
-      .remote-name {
-        font-size: var(--font-size-base);
-        font-weight: 600;
-        margin: 0;
-        color: var(--window-fg-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .remote-type {
-        font-size: var(--font-size-sm);
-        color: var(--dim-color);
-        font-weight: 500;
-      }
-    }
-  }
-
-  // ── Status indicators ──────────────────────────────────────────────────────
-
-  .remote-status-indicators {
-    display: flex;
-    gap: var(--space-xs);
-    align-items: flex-end;
-  }
-
-  // ── Content ────────────────────────────────────────────────────────────────
-
-  .remote-content {
-    padding: var(--space-sm) var(--space-md) var(--space-md);
-  }
-
-  // ── Quick actions ──────────────────────────────────────────────────────────
-
-  .quick-actions {
-    display: flex;
-    gap: var(--space-xs);
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow: visible;
-
-    button[mat-mini-fab] {
-      width: 36px !important;
-      height: 36px !important;
-      transition: var(--transition-fast);
-
-      mat-icon {
-        font-size: var(--icon-size-sm);
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-      }
-      &:hover {
-        transform: scale(var(--action-btn-scale-hover));
-      }
-      &:disabled {
-        transform: scale(var(--action-btn-scale-disabled));
-      }
-    }
-  }
-
-  // ── Folder blossom cluster ─────────────────────────────────────────────────
-
-  .folder-cluster {
-    position: relative;
-    z-index: 10;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    &::before {
-      content: "";
-      position: absolute;
-      bottom: 100%;
-      left: 0;
-      right: 0;
-      height: 14px;
-      pointer-events: auto;
-    }
-
-    .folder-badge {
-      position: absolute;
-      top: var(--space-xxs);
-      right: -var(--space-md);
-      min-width: 16px;
-      height: 16px;
-      border-radius: 8px;
-      background: var(--accent-color);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 16px;
-      text-align: center;
-      pointer-events: none;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      transition: transform 0.15s ease;
-      display: flex;
-      justify-content: center;
-    }
-
-    .folder-blossom {
-      position: absolute;
-      bottom: calc(100% + 10px);
-      left: 50%;
-      transform: translateX(-50%) translateY(4px) scale(0.9);
-      transform-origin: bottom center;
-
-      display: flex;
-      gap: var(--space-xs);
-      padding: 6px;
-      background: var(--window-bg-color);
-      border: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-popover);
-      opacity: 0;
-      transition:
-        opacity 0.18s ease 150ms,
-        transform 0.22s ease 150ms;
-
-      &::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border: 6px solid transparent;
-        border-top-color: var(--window-bg-color);
-        pointer-events: none;
-      }
-
-      .folder-blossom-item {
-        opacity: 0;
-        transform: scale(0.65) translateY(6px);
-        transition:
-          opacity 0.18s ease,
-          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-    }
-
-    &:hover,
-    &:focus-within {
-      .folder-blossom {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateX(-50%) translateY(0) scale(1);
-        transition:
-          opacity 0.18s ease 0ms,
-          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
-
-        .folder-blossom-item {
-          opacity: 1;
-          transform: none;
-        }
-      }
-    }
-  }
-
+:host {
   .profile-details-section {
     padding: var(--space-md);
     display: flex;
@@ -447,7 +167,6 @@
     }
   }
 
-  .profile-chips,
   .profile-pills {
     display: flex;
     gap: 6px;
@@ -460,6 +179,15 @@
     align-items: center;
     position: relative;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    .profile-name-text {
+      display: inline-block;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
 
     .profile-open-btn {
       position: relative;
@@ -518,26 +246,15 @@
   }
 }
 
-// ── Responsive ──────────────────────────────────────────────────────────────
-
-@media (max-width: 768px) {
-  .remote-card {
-    .remote-header {
-      padding: var(--space-md);
-    }
-    .remote-content {
-      padding: var(--space-xs) var(--space-md) var(--space-md);
-    }
-  }
-}
+// ── Responsive Detailed Mode ─────────────────────────────────────────────────
 
 @media (max-width: 480px) {
-  .remote-card {
-    .remote-header {
+  :host {
+    .profile-details-section {
       padding: var(--space-sm);
     }
-    .remote-content {
-      padding: var(--space-xxs) var(--space-sm) var(--space-sm);
+    .profile-name-text {
+      max-width: 110px;
     }
   }
 }

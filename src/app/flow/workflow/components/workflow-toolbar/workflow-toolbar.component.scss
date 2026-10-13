@@ -1,0 +1,350 @@
+.workflow-toolbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 var(--space-md);
+  background: var(--headerbar-bg-color);
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+
+  .toolbar-left,
+  .toolbar-center,
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-left {
+    padding-left: 44px;
+  }
+
+  // ── Left: Title Group & Direct Input ─────────────────────────────────────
+
+  .workflow-title-group {
+    display: flex;
+    align-items: center;
+    background: var(--hover-bg-color);
+    box-shadow: 0 0 0 1px var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px 4px 2px 8px;
+    transition: var(--transition-fast);
+
+    &:focus-within,
+    &:hover {
+      border-color: var(--accent-color);
+      background: var(--selected-bg-color);
+    }
+
+    .workflow-name-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--window-fg-color);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      font-family: inherit;
+      min-width: 140px;
+      max-width: 260px;
+      padding: 2px 4px;
+
+      &::placeholder {
+        color: var(--dim-color);
+      }
+    }
+  }
+
+  // ── Center: Run & Presets ────────────────────────────────────────────────
+
+  .run-workflow-btn,
+  .stop-workflow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--button-border-radius);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+  }
+
+  .run-actions-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .run-workflow-btn {
+    background: var(--primary-color);
+    color: #ffffff;
+
+    &:hover {
+      background: var(--gnome-green-5);
+      box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.35);
+    }
+  }
+
+  .dry-run-workflow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--button-border-radius);
+    background: rgba(var(--accent-color-rgb), 0.12);
+    border: 1px dashed rgba(var(--accent-color-rgb), 0.45);
+    color: var(--accent-color);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+
+    &:hover {
+      background: rgba(var(--accent-color-rgb), 0.22);
+      border-color: var(--accent-color);
+      box-shadow: 0 2px 6px rgba(var(--accent-color-rgb), 0.25);
+    }
+  }
+
+  .toolbar-execution-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .toolbar-execution-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(var(--accent-color-rgb), 0.12);
+      border: 1px solid rgba(var(--accent-color-rgb), 0.25);
+      color: var(--accent-color);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+
+      &.is-simulation {
+        background: rgba(var(--accent-color-rgb), 0.18);
+        border-color: rgba(var(--accent-color-rgb), 0.5);
+
+        .simulation-tag {
+          margin-right: 4px;
+          font-weight: 700;
+        }
+      }
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+
+      .status-text {
+        max-width: 160px;
+      }
+
+      .status-counter {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .toolbar-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--button-border-radius);
+    background: var(--hover-bg-color);
+    box-shadow: 0 0 0 1px var(--border-color);
+    color: var(--window-fg-color);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+
+    .pill-arrow {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+      color: var(--dim-color);
+    }
+
+    &:hover {
+      background: var(--selected-bg-color);
+      border-color: var(--accent-color);
+    }
+  }
+
+  // ── Right: Zoom & History ────────────────────────────────────────────────
+
+  .button-group {
+    display: flex;
+    align-items: center;
+    background: var(--bg-elevated-1);
+    box-shadow: 0 0 0 1px var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+  }
+
+  .mobile-more-btn {
+    display: none;
+  }
+
+  .active-btn {
+    color: var(--accent-color) !important;
+    background: rgba(var(--accent-color-rgb), 0.15) !important;
+  }
+
+  // ── Responsive Breakpoints ───────────────────────────────────────────────
+
+  @media (max-width: 900px) {
+    .btn-text {
+      display: none;
+    }
+
+    .workflow-title-group .workflow-name-input {
+      max-width: 160px;
+      min-width: 90px;
+    }
+
+    .toolbar-execution-group .toolbar-execution-status .status-text {
+      max-width: 110px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 0 var(--space-xs);
+
+    .toolbar-left,
+    .toolbar-center,
+    .toolbar-right {
+      gap: 4px;
+    }
+
+    .toolbar-left {
+      padding-left: 40px;
+    }
+
+    .workflow-title-group {
+      padding: 1px 2px 1px 6px;
+
+      .workflow-name-input {
+        max-width: 110px;
+        min-width: 50px;
+        font-size: var(--font-size-xs);
+      }
+    }
+
+    .run-workflow-btn,
+    .stop-workflow-btn {
+      padding: 6px 10px;
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+    }
+
+    .toolbar-execution-group .toolbar-execution-status {
+      padding: 2px 6px;
+      font-size: 11px;
+
+      .status-text {
+        max-width: 70px;
+      }
+    }
+
+    .desktop-only {
+      display: none !important;
+    }
+
+    .mobile-more-btn {
+      display: inline-flex !important;
+      width: 32px;
+      height: 32px;
+    }
+  }
+}
+
+// ── CDK Menu Styling ─────────────────────────────────────────────────────────
+
+.material-context-menu {
+  .menu-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .workflow-menu-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: var(--radius-xs);
+    transition: var(--transition-fast);
+
+    &.is-selected {
+      background: var(--selected-bg-color);
+    }
+
+    .menu-item {
+      flex: 1;
+      min-width: 0;
+      width: auto;
+    }
+
+    .option-content {
+      min-width: 0;
+    }
+
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding-right: 4px;
+      opacity: 0.35;
+      transition: var(--transition-fast);
+    }
+
+    &:hover .row-actions,
+    &:focus-within .row-actions {
+      opacity: 1;
+    }
+  }
+
+  .check-icon {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
+    margin-left: auto;
+    color: var(--accent-color);
+  }
+
+  .menu-arrow {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
+    margin-left: auto;
+    color: var(--dim-color);
+  }
+}

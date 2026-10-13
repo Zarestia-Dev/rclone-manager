@@ -1,55 +1,18 @@
-//! Restore management with format detection
-//!
-//! Supports both rcman library format and legacy app format backups.
+//! Restore management using rcman library
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::rclone::commands::remote::{create_remote, update_remote};
 use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::{fs::File, io::BufReader, path::Path};
+use std::path::Path;
 use tauri::{AppHandle, Manager};
-use zip::ZipArchive;
-
-use super::legacy_restore::restore_legacy_backup;
 
 // -----------------------------------------------------------------------------
-// BACKUP FORMAT VERSION DETECTION
+// MAIN RESTORE COMMAND
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BackupFormatVersion {
-    AppLegacy,
-    Rcman,
-    Unknown,
-}
-
-fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVersion {
-    if manifest_json
-        .get("version")
-        .and_then(serde_json::Value::as_u64)
-        .is_some()
-    {
-        return BackupFormatVersion::Rcman;
-    }
-
-    if manifest_json
-        .get("format")
-        .and_then(|f| f.get("version"))
-        .and_then(|v| v.as_str())
-        .is_some()
-    {
-        return BackupFormatVersion::AppLegacy;
-    }
-
-    BackupFormatVersion::Unknown
-}
-
-// -----------------------------------------------------------------------------
-// MAIN RESTORE COMMAND (With format routing)
-// -----------------------------------------------------------------------------
-
-#[tauri::command]
+#[bridge]
 pub async fn restore_settings(
     app: AppHandle,
     backup_path: std::path::PathBuf,
@@ -80,40 +43,7 @@ pub async fn restore_settings(
         options = options.restore_profile_as(name);
     }
 
-    if let Ok(result) = manager.backup().analyze(&backup_path)
-        && result.format_version.parse::<u64>().unwrap_or(0) >= 1
-    {
-        return restore_rcman_backup(&backup_path, options, &manager, &app).await;
-    }
-
-    let file = File::open(&backup_path)
-        .map_err(|e| crate::localized_error!("backendErrors.backup.openFailed", "error" => e))?;
-    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(
-        |e| crate::localized_error!("backendErrors.backup.invalidArchive", "error" => e),
-    )?;
-
-    let manifest_file = archive
-        .by_name("manifest.json")
-        .map_err(|_| crate::localized_error!("backendErrors.backup.missingManifest"))?;
-
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    let format = detect_manifest_format(&manifest_json);
-    info!("Detected backup format via fallback: {format:?}");
-
-    match format {
-        BackupFormatVersion::Rcman => {
-            restore_rcman_backup(&backup_path, options, &manager, &app).await
-        }
-        BackupFormatVersion::AppLegacy => {
-            restore_legacy_backup(&backup_path, password, &manifest_json, &app).await
-        }
-        BackupFormatVersion::Unknown => Err(crate::localized_error!(
-            "backendErrors.backup.unknownFormat"
-        )),
-    }
+    restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref()).await
 }
 
 // -----------------------------------------------------------------------------
@@ -125,6 +55,7 @@ async fn restore_rcman_backup(
     options: rcman::RestoreOptions,
     manager: &AppSettingsManager,
     app_handle: &AppHandle,
+    password: Option<&str>,
 ) -> Result<String, String> {
     info!("Restoring using rcman library...");
 
@@ -142,6 +73,54 @@ async fn restore_rcman_backup(
     // System refresh will be called at the very end of the process
 
     let mut remote_restore_count = 0;
+
+    // Handle external rclone.conf restore to mobile device's active config path
+    #[cfg(feature = "librclone")]
+    if let Ok(config_data) = manager
+        .backup()
+        .get_external_config_from_backup(backup_path, "rclone.conf", password)
+        .or_else(|_| {
+            manager
+                .backup()
+                .get_external_config_from_backup(backup_path, "rclone_config", password)
+        })
+    {
+        info!("Attempting to restore rclone.conf to mobile device config path");
+        let target_path =
+            match crate::rclone::queries::get_rclone_config_file(app_handle.clone()).await {
+                Ok(path) => path,
+                Err(_) => {
+                    let paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
+                    paths.config_dir.join("rclone.conf")
+                }
+            };
+
+        if let Some(parent) = target_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        match std::fs::write(&target_path, &config_data) {
+            Ok(_) => {
+                use crate::utils::rclone::endpoints::config;
+                remote_restore_count += 1;
+                info!(
+                    "Successfully restored rclone.conf to {}",
+                    target_path.display()
+                );
+                let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
+                    "_path": config::SETPATH,
+                    "path": target_path.to_string_lossy()
+                }));
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to write restored rclone.conf to {}: {e}",
+                    target_path.display()
+                );
+            }
+        }
+    }
+
     for item in &result.external_pending {
         if item.starts_with("remote:") {
             let remote_name = item.trim_start_matches("remote:");
@@ -152,7 +131,7 @@ async fn restore_rcman_backup(
             if let Ok(config_data) = manager.backup().get_external_config_from_backup(
                 backup_path,
                 &archive_filename,
-                None,
+                password,
             ) {
                 let content =
                     String::from_utf8(config_data).map_err(|e| format!("Invalid UTF-8: {e}"))?;

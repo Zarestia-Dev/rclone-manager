@@ -1,241 +1,214 @@
-<div class="about-modal">
-  <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled()">
-    <div class="ghost-header-spacer" aria-hidden="true"></div>
-    <p class="header-title-ghost">{{ 'modals.about.title' | translate }}</p>
-    <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
+<header data-tauri-drag-region [class.scrolled]="scrolled()">
+  <div class="ghost-header-spacer" aria-hidden="true"></div>
+  <p class="header-title-ghost">{{ 'modals.about.title' | translate }}</p>
+  <button matIconButton (click)="close()" [aria-label]="'common.close' | translate">
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<div class="modal-content" #content (scroll)="onScroll(content)">
+  <img src="assets/rclone-manager.svg" alt="Rclone Logo" class="app-icon" />
+  <h2 class="app-name">RClone Manager</h2>
+  <p class="app-team">
+    Zarestia
+    <mat-icon svgIcon="wind"></mat-icon>
+  </p>
+
+  @let buildTypeVal = buildType();
+  <div class="version-info">
+    <button class="version-badge" [appCopyToClipboard]="rCloneManagerVersion">
+      {{ rCloneManagerVersion }}
     </button>
+    @if (buildTypeVal) {
+      <span
+        class="platform-badge"
+        [class]="buildTypeVal"
+        [attr.title]="getPlatformLabel(buildTypeVal)"
+      >
+        <mat-icon svgIcon="package"></mat-icon>
+        {{ getPlatformLabel(buildTypeVal) }}
+      </span>
+    }
   </div>
 
-  <div class="modal-content" #content (scroll)="onScroll(content)">
-    <img src="assets/rclone-manager.svg" alt="Rclone Logo" class="app-icon" />
-    <h2 class="app-name">RClone Manager</h2>
-    <p class="app-team">
-      Zarestia
-      <mat-icon svgIcon="wind"></mat-icon>
-    </p>
-
-    @let buildTypeVal = buildType();
-    <div class="version-info">
-      <button class="version-badge" [appCopyToClipboard]="rCloneManagerVersion">
-        {{ rCloneManagerVersion }}
+  <div class="about-list" role="tablist">
+    @for (item of navItems; track item.viewId) {
+      <button
+        matButton
+        class="about-item"
+        role="tab"
+        [attr.aria-selected]="currentView().id === item.viewId"
+        (click)="navigateTo(item.viewId)"
+        [matBadge]="item.viewId === 'about-rclone' ? (rcloneNavBadge() ? '!' : null) : null"
+      >
+        <span>{{ item.label | translate }}</span>
+        <mat-icon [svgIcon]="item.icon"></mat-icon>
       </button>
-      @if (buildTypeVal) {
-        <span
-          class="platform-badge"
-          [ngClass]="buildTypeVal"
-          [matTooltip]="getChannelLabel(buildTypeVal) | translate"
-        >
-          <mat-icon svgIcon="package"></mat-icon>
-          {{ getChannelLabel(buildTypeVal) | translate }}
-        </span>
-      }
-    </div>
+    }
 
-    <div class="about-list" role="tablist">
-      @for (item of navItems; track item.viewId) {
+    <button
+      matButton
+      class="about-item"
+      role="tab"
+      [attr.aria-selected]="currentView().id === 'about-app'"
+      (click)="navigateTo('about-app')"
+      [matBadge]="appUpdateAvailable() || appReadyToRestart() ? '!' : null"
+    >
+      <span>{{ 'modals.about.aboutApp' | translate }}</span>
+      <mat-icon svgIcon="chevron-right"></mat-icon>
+    </button>
+
+    <div class="stacked-buttons" role="tablist">
+      @for (item of bottomNavItems; track item.viewId; let last = $last) {
         <button
           matButton
           class="about-item"
           role="tab"
           [attr.aria-selected]="currentView().id === item.viewId"
           (click)="navigateTo(item.viewId)"
-          [matBadge]="item.viewId === 'about-rclone' ? (rcloneNavBadge() ? '!' : null) : null"
         >
           <span>{{ item.label | translate }}</span>
           <mat-icon [svgIcon]="item.icon"></mat-icon>
         </button>
-      }
-
-      <button
-        matButton
-        class="about-item"
-        role="tab"
-        [attr.aria-selected]="currentView().id === 'about-app'"
-        (click)="navigateTo('about-app')"
-        [matBadge]="appUpdateAvailable() || appReadyToRestart() ? '!' : null"
-      >
-        <span>{{ 'modals.about.aboutApp' | translate }}</span>
-        <mat-icon svgIcon="chevron-right"></mat-icon>
-      </button>
-
-      <div class="stacked-buttons" role="tablist">
-        @for (item of bottomNavItems; track item.viewId; let last = $last) {
-          <button
-            matButton
-            class="about-item"
-            role="tab"
-            [attr.aria-selected]="currentView().id === item.viewId"
-            (click)="navigateTo(item.viewId)"
-          >
-            <span>{{ item.label | translate }}</span>
-            <mat-icon [svgIcon]="item.icon"></mat-icon>
-          </button>
-          @if (!last) {
-            <mat-divider></mat-divider>
-          }
+        @if (!last) {
+          <mat-divider></mat-divider>
         }
-      </div>
+      }
     </div>
   </div>
+</div>
 
-  @for (overlay of overlayStack(); track overlay.id; let i = $index) {
-    <div
-      class="overlay"
-      [class.whats-new-overlay]="
-        overlay.id === 'whats-new-app' || overlay.id === 'whats-new-rclone'
-      "
-      [class.debug-overlay]="overlay.id === 'memory'"
-      [style.z-index]="10 + i"
-      animate.enter="slide-overlay-enter"
-      animate.leave="slide-overlay-leave"
-    >
-      <div class="modal-header" data-tauri-drag-region>
-        <button mat-icon-button (click)="goBack()">
-          <mat-icon svgIcon="chevron-left"></mat-icon>
-        </button>
-        <p>{{ getPageTitle(overlay.id) | translate }}</p>
-        <button mat-icon-button (click)="close()">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      </div>
+@for (overlay of overlayStack(); track overlay.id; let i = $index) {
+  <div
+    class="overlay"
+    [class.debug-overlay]="overlay.id === 'memory'"
+    [style.z-index]="10 + i"
+    animate.enter="slide-overlay-enter"
+    animate.leave="slide-overlay-leave"
+  >
+    <header data-tauri-drag-region>
+      <button matIconButton (click)="goBack()">
+        <mat-icon svgIcon="chevron-left"></mat-icon>
+      </button>
+      <p>{{ getPageTitle(overlay.id) | translate }}</p>
+      <button matIconButton (click)="close()">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </header>
 
-      @switch (overlay.id) {
-        @case ('details') {
-          <div class="modal-content">
-            <div class="stacked-buttons">
-              <a
-                matButton
-                class="about-item"
-                href="https://github.com/Zarestia-Dev/rclone-manager"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>{{ 'modals.about.website' | translate }}</span>
-                <mat-icon svgIcon="open-link"></mat-icon>
-              </a>
-              <mat-divider></mat-divider>
-              <a
-                matButton
-                class="about-item"
-                href="https://hakanismail.info/zarestia/rclone-manager/docs"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>{{ 'modals.about.wiki' | translate }}</span>
-                <mat-icon svgIcon="open-link"></mat-icon>
-              </a>
-              <mat-divider></mat-divider>
-              <a
-                matButton
-                class="about-item"
-                href="https://github.com/Zarestia-Dev/rclone-manager/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>{{ 'modals.about.reportIssues' | translate }}</span>
-                <mat-icon svgIcon="open-link"></mat-icon>
-              </a>
-            </div>
-
-            <div class="about-list">
-              <a
-                matButton
-                class="about-item"
-                href="https://rclone.org"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>{{ 'modals.about.rcloneWebsite' | translate }}</span>
-                <mat-icon svgIcon="open-link"></mat-icon>
-              </a>
-            </div>
+    @switch (overlay.id) {
+      @case ('details') {
+        <div class="modal-content">
+          <div class="stacked-buttons">
+            <a
+              matButton
+              class="about-item"
+              href="https://github.com/Zarestia-Dev/rclone-manager"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{{ 'modals.about.website' | translate }}</span>
+              <mat-icon svgIcon="open-link"></mat-icon>
+            </a>
+            <mat-divider></mat-divider>
+            <a
+              matButton
+              class="about-item"
+              href="https://hakanismail.info/zarestia/rclone-manager/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{{ 'modals.about.wiki' | translate }}</span>
+              <mat-icon svgIcon="open-link"></mat-icon>
+            </a>
+            <mat-divider></mat-divider>
+            <a
+              matButton
+              class="about-item"
+              href="https://github.com/Zarestia-Dev/rclone-manager/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{{ 'modals.about.reportIssues' | translate }}</span>
+              <mat-icon svgIcon="open-link"></mat-icon>
+            </a>
           </div>
-        }
-        @case ('about-app') {
-          <div class="modal-content updates-page">
-            <div class="rclone-info">
-              @if (debugInfo()) {
-                @let debug = debugInfo()!;
-                <div class="rclone-hero">
-                  <img
-                    src="assets/rclone-manager.svg"
-                    alt="Rclone Manager Logo"
-                    class="rclone-icon"
-                  />
-                  <div class="rclone-identity">
-                    <span class="rclone-name">RClone Manager</span>
-                    <span class="rclone-version">{{ rCloneManagerVersion }}</span>
-                    @if (buildType()) {
-                      <span class="channel-badge stable">
-                        {{ getChannelLabel(buildType()) | translate }}
-                      </span>
-                    }
-                  </div>
-                </div>
 
-                <div class="rclone-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
-                    <span class="detail-value">{{ debug.platform }} ({{ debug.arch }})</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.mode' | translate }}</span>
-                    <span class="detail-value">{{ debug.mode }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.debugTools' | translate }}</span>
-                    <span class="detail-value"></span>
-                    <button
-                      mat-icon-button
-                      class="action-button"
-                      (click)="navigateTo('debugging')"
-                      [matTooltip]="'modals.about.debugTools' | translate"
-                      matTooltipPosition="right"
-                    >
-                      <mat-icon svgIcon="bug" class="purple"></mat-icon>
-                    </button>
-                  </div>
+          <div class="about-list">
+            <a
+              matButton
+              class="about-item"
+              href="https://rclone.org"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{{ 'modals.about.rcloneWebsite' | translate }}</span>
+              <mat-icon svgIcon="open-link"></mat-icon>
+            </a>
+          </div>
+        </div>
+      }
+      @case ('about-app') {
+        <div class="modal-content updates-page">
+          <div class="rclone-info">
+            @if (debugInfo()) {
+              @let debug = debugInfo()!;
+              <div class="rclone-hero">
+                <img
+                  src="assets/rclone-manager.svg"
+                  alt="RClone Manager Logo"
+                  class="rclone-icon"
+                />
+                <div class="rclone-identity">
+                  <span class="rclone-name">RClone Manager</span>
+                  <span class="rclone-version">{{ rCloneManagerVersion }}</span>
                 </div>
-              } @else {
-                <div class="loading">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>{{ 'common.loading' | translate }}</span>
-                </div>
-              }
-            </div>
+              </div>
 
-            @if (appReadyToRestart()) {
-              <div class="update-card restart-required">
-                <div class="update-header">
-                  <mat-icon svgIcon="reset-wrench"></mat-icon>
-                  <div class="update-title">
-                    <h4>{{ 'modals.about.readyToRestart' | translate }}</h4>
-                    @if (appUpdateAvailable()) {
-                      <span class="new-version">
-                        {{ 'modals.about.version' | translate }}
-                        {{ appUpdateAvailable()!.version }}
-                      </span>
-                    }
-                    <p class="restart-description">
-                      {{ 'modals.about.restartDescription' | translate }}
-                    </p>
-                  </div>
+              <div class="rclone-details">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
+                  <span class="detail-value">{{ debug.platform }} ({{ debug.arch }})</span>
                 </div>
-                <div class="update-buttons">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.mode' | translate }}</span>
+                  <span class="detail-value">{{ debug.mode }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.debugTools' | translate }}</span>
+                  <span class="detail-value"></span>
                   <button
-                    mat-flat-button
-                    class="accent"
-                    (click)="finishUpdate()"
-                    [disabled]="restartingApp()"
+                    matIconButton
+                    class="about-button"
+                    (click)="navigateTo('debugging')"
+                    [attr.title]="'modals.about.debugTools' | translate"
                   >
-                    @if (restartingApp()) {
-                      <mat-spinner diameter="16"></mat-spinner>
-                    }
-                    <span>{{ 'modals.about.restartNow' | translate }}</span>
+                    <mat-icon svgIcon="bug" class="purple"></mat-icon>
                   </button>
                 </div>
               </div>
+            } @else {
+              <div class="loading">
+                <mat-icon svgIcon="spinner"></mat-icon>
+                <span>{{ 'common.loading' | translate }}</span>
+              </div>
+            }
+          </div>
+
+          @if (updaterEnabled()) {
+            @if (appReadyToRestart()) {
+              <ng-container
+                *ngTemplateOutlet="
+                  restartCard;
+                  context: {
+                    title: 'modals.about.readyToRestart',
+                    version: appUpdateAvailable()?.version,
+                    desc: 'modals.about.restartDescription',
+                    action: finishUpdate.bind(this),
+                    restarting: restartingApp(),
+                  }
+                "
+              ></ng-container>
             } @else if (appUpdateAvailable()) {
               @let update = appUpdateAvailable()!;
               <div class="update-card available">
@@ -256,7 +229,11 @@
                 </div>
 
                 @if (update.releaseNotes) {
-                  <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
+                  <button
+                    matButton="outlined"
+                    class="whats-new-button"
+                    (click)="showWhatsNew('app')"
+                  >
                     <mat-icon svgIcon="file-lines"></mat-icon>
                     {{ 'modals.about.whatsNew' | translate }}
                   </button>
@@ -278,31 +255,27 @@
                   </div>
                 }
 
-                @if (buildType()) {
-                  @let instructions = updateInstructions();
+                @if (updateInstructions(); as instructions) {
                   <div class="managed-update-notice">
                     <div class="managed-info">
                       <mat-icon svgIcon="circle-info"></mat-icon>
                       <p>{{ 'modals.about.managedBuildNotice' | translate }}</p>
                     </div>
-                    @if (instructions?.command) {
+                    @if (instructions.command) {
                       <button
                         class="command-block"
-                        [appCopyToClipboard]="instructions!.command!"
-                        [matTooltip]="'common.copy' | translate"
-                        matTooltipPosition="above"
+                        [appCopyToClipboard]="instructions.command"
+                        [attr.title]="'common.copy' | translate"
                       >
-                        <code>{{ instructions!.command }}</code>
+                        <code>{{ instructions.command }}</code>
                         <mat-icon svgIcon="copy"></mat-icon>
                       </button>
                     }
                   </div>
                   <div class="update-buttons">
-                    @for (link of instructions!.links; track link.url) {
+                    @for (link of instructions.links; track link.url) {
                       <a
-                        mat-flat-button
-                        [attr.mat-flat-button]="link.primary ? '' : null"
-                        [attr.mat-stroked-button]="!link.primary ? '' : null"
+                        matButton="filled"
                         [href]="link.url"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -311,19 +284,23 @@
                         {{ link.label | translate }}
                       </a>
                     }
-                    <button mat-stroked-button (click)="skipUpdate()">
+                    <button matButton="outlined" (click)="skipUpdate()">
                       {{ 'modals.about.skipVersion' | translate }}
                     </button>
                   </div>
                 } @else {
                   <div class="update-buttons">
                     <button
-                      mat-flat-button
+                      matButton="filled"
                       (click)="installUpdate()"
                       [disabled]="appUpdateInProgress() || appDownloadInProgress()"
                     >
+                      <mat-icon
+                        [svgIcon]="
+                          appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'circle-up'
+                        "
+                      ></mat-icon>
                       @if (appUpdateInProgress() || appDownloadInProgress()) {
-                        <mat-spinner diameter="16"></mat-spinner>
                         {{
                           appDownloadInProgress()
                             ? ('modals.about.downloading' | translate)
@@ -334,11 +311,11 @@
                       }
                     </button>
                     @if (appDownloadInProgress()) {
-                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
+                      <button matButton="outlined" color="warn" (click)="cancelAppUpdate()">
                         {{ 'common.cancel' | translate }}
                       </button>
                     } @else {
-                      <button mat-stroked-button (click)="skipUpdate()">
+                      <button matButton="outlined" (click)="skipUpdate()">
                         {{ 'modals.about.skipVersion' | translate }}
                       </button>
                     }
@@ -352,17 +329,15 @@
             }
 
             <button
-              mat-stroked-button
+              matButton="outlined"
               (click)="checkForUpdates()"
               [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
-              class="check-button"
             >
-              @if (appIsChecking()) {
-                <mat-spinner diameter="16"></mat-spinner>
-                {{ 'modals.about.checking' | translate }}
-              } @else {
-                {{ 'modals.about.checkUpdates' | translate }}
-              }
+              <mat-icon [svgIcon]="appIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
+              {{
+                (appIsChecking() ? 'modals.about.checking' : 'modals.about.checkUpdates')
+                  | translate
+              }}
             </button>
 
             <div class="settings-section">
@@ -388,119 +363,119 @@
                 ></ng-container>
               </div>
             }
-          </div>
-        }
-        @case ('debugging') {
-          <div class="modal-content updates-page">
-            @if (debugInfo()) {
-              @let debug = debugInfo()!;
-              <div class="stacked-buttons">
-                <button
-                  matButton
-                  class="about-item"
-                  (click)="openFolder('logs')"
-                  [matTooltip]="debug.logsDir"
-                  matTooltipPosition="right"
-                >
-                  <span>{{ 'modals.about.logsFolder' | translate }}</span>
-                  <mat-icon svgIcon="folder"></mat-icon>
-                </button>
-                <mat-divider></mat-divider>
-                <button
-                  matButton
-                  class="about-item"
-                  (click)="openFolder('config')"
-                  [matTooltip]="debug.configDir"
-                  matTooltipPosition="right"
-                >
-                  <span>{{ 'modals.about.configFolder' | translate }}</span>
-                  <mat-icon svgIcon="folder"></mat-icon>
-                </button>
-                <mat-divider></mat-divider>
-                <button
-                  matButton
-                  class="about-item"
-                  (click)="openFolder('cache')"
-                  [matTooltip]="debug.cacheDir"
-                  matTooltipPosition="right"
-                >
-                  <span>{{ 'modals.about.cacheFolder' | translate }}</span>
-                  <mat-icon svgIcon="folder"></mat-icon>
-                </button>
-              </div>
+          }
+        </div>
+      }
+      @case ('debugging') {
+        <div class="modal-content updates-page">
+          @if (debugInfo()) {
+            @let debug = debugInfo()!;
+            <div class="stacked-buttons">
+              <button
+                matButton
+                class="about-item"
+                (click)="openFolder('logs')"
+                [attr.title]="debug.logsDir"
+              >
+                <span>{{ 'modals.about.logsFolder' | translate }}</span>
+                <mat-icon svgIcon="folder"></mat-icon>
+              </button>
+              <mat-divider></mat-divider>
+              <button
+                matButton
+                class="about-item"
+                (click)="openFolder('config')"
+                [attr.title]="debug.configDir"
+              >
+                <span>{{ 'modals.about.configFolder' | translate }}</span>
+                <mat-icon svgIcon="folder"></mat-icon>
+              </button>
+              <mat-divider></mat-divider>
+              <button
+                matButton
+                class="about-item"
+                (click)="openFolder('cache')"
+                [attr.title]="debug.cacheDir"
+              >
+                <span>{{ 'modals.about.cacheFolder' | translate }}</span>
+                <mat-icon svgIcon="folder"></mat-icon>
+              </button>
+            </div>
 
-              <div class="debug-actions-section">
-                <button mat-raised-button class="primary" (click)="openDevTools()">
-                  <mat-icon svgIcon="terminal"></mat-icon>
+            <div class="debug-actions-section">
+              @if (!isHeadless && !isMobile) {
+                <button matButton="elevated" class="primary" (click)="openDevTools()">
+                  <mat-icon svgIcon="terminal"> </mat-icon>
                   <span>{{ 'modals.about.openDevTools' | translate }}</span>
                 </button>
-                <button mat-raised-button class="warn" (click)="restartApp()">
-                  <mat-icon svgIcon="reset-wrench"></mat-icon>
-                  <span>{{ 'modals.about.restartApp' | translate }}</span>
-                </button>
-              </div>
-            } @else {
+              }
+              <button matButton="elevated" class="warn" (click)="restartApp()">
+                <mat-icon svgIcon="reset-wrench"></mat-icon>
+                <span>{{ 'modals.about.restartApp' | translate }}</span>
+              </button>
+            </div>
+          } @else {
+            <div class="loading">
+              <mat-icon svgIcon="spinner"></mat-icon>
+              <span>{{ 'common.loading' | translate }}</span>
+            </div>
+          }
+        </div>
+      }
+      @case ('about-rclone') {
+        <div class="modal-content updates-page">
+          <div class="rclone-info">
+            @if (loadingRclone()) {
               <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
-                <span>{{ 'common.loading' | translate }}</span>
+                <mat-icon svgIcon="spinner"></mat-icon>
+                <span>{{ 'modals.about.loadingRclone' | translate }}</span>
               </div>
             }
-          </div>
-        }
-        @case ('about-rclone') {
-          <div class="modal-content updates-page">
-            <div class="rclone-info">
-              @if (loadingRclone()) {
-                <div class="loading">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>{{ 'modals.about.loadingRclone' | translate }}</span>
-                </div>
-              }
 
-              @if (rcloneError()) {
-                <div class="error">
-                  <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                  <span>{{ rcloneError() }}</span>
-                </div>
-              }
+            @if (rcloneError()) {
+              <div class="error">
+                <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                <span>{{ rcloneError() }}</span>
+              </div>
+            }
 
-              @if (rcloneInfo() && !loadingRclone() && !rcloneError()) {
-                @let info = rcloneInfo()!;
-                <div class="rclone-hero">
-                  <img src="assets/rclone.svg" alt="Rclone" class="rclone-icon" />
-                  <div class="rclone-identity">
-                    <span class="rclone-name">Rclone</span>
-                    <span class="rclone-version">{{ info.version }}</span>
-                    @if (info.isBeta) {
-                      <span class="channel-badge beta">β Beta</span>
-                    } @else if (info.isGit) {
-                      <span class="channel-badge dev">Dev</span>
-                    }
-                  </div>
+            @if (rcloneInfo() && !loadingRclone() && !rcloneError()) {
+              @let info = rcloneInfo()!;
+              <div class="rclone-hero">
+                <img src="assets/rclone.svg" alt="Rclone" class="rclone-icon" />
+                <div class="rclone-identity">
+                  <span class="rclone-name">Rclone</span>
+                  <span class="rclone-version">{{ info.version }}</span>
+                  @if (info.isBeta) {
+                    <span class="channel-badge beta">β Beta</span>
+                  } @else if (info.isGit) {
+                    <span class="channel-badge dev">Dev</span>
+                  }
                 </div>
+              </div>
 
-                <div class="rclone-details">
+              <div class="rclone-details">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
+                  <span class="detail-value">{{ info.os }} ({{ info.arch }})</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.goVersion' | translate }}</span>
+                  <span class="detail-value">{{ info.goVersion }}</span>
+                </div>
+                @if (info.pid) {
                   <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
-                    <span class="detail-value">{{ info.os }} ({{ info.arch }})</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.goVersion' | translate }}</span>
-                    <span class="detail-value">{{ info.goVersion }}</span>
-                  </div>
-                  @if (info.pid) {
-                    <div class="detail-row">
-                      <span class="detail-label">{{ 'modals.about.pid' | translate }}</span>
-                      <span class="detail-value">{{ info.pid }}</span>
+                    <span class="detail-label">{{ 'modals.about.pid' | translate }}</span>
+                    <span class="detail-value">{{ info.pid }}</span>
+                    @if (!isLibrclone()) {
                       <button
-                        mat-icon-button
-                        class="action-button"
-                        [matTooltip]="
+                        matIconButton
+                        class="about-button"
+                        [attr.title]="
                           backendService.activeBackend() === 'Local'
                             ? ('modals.about.killProcess' | translate)
                             : ('modals.about.quitRclone' | translate)
                         "
-                        matTooltipPosition="right"
                         (click)="quitRcloneEngine()"
                       >
                         <mat-icon
@@ -510,78 +485,59 @@
                           class="orange"
                         ></mat-icon>
                       </button>
-                    </div>
-                  }
-                  @if (memoryStats()) {
-                    <div class="detail-row">
-                      <span class="detail-label">{{ 'modals.about.memory' | translate }}</span>
-                      <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
-                      <button
-                        mat-icon-button
-                        class="action-button"
-                        (click)="showMemoryOverlay()"
-                        matTooltipPosition="right"
-                        [matTooltip]="'modals.about.viewMemoryStats' | translate"
-                      >
-                        <mat-icon svgIcon="memory" class="purple"></mat-icon>
-                      </button>
-                    </div>
-                  }
+                    }
+                  </div>
+                }
+                @if (memoryStats()) {
                   <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.backendCache' | translate }}</span>
-                    <span class="detail-value">
-                      {{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}
-                    </span>
+                    <span class="detail-label">{{ 'modals.about.memory' | translate }}</span>
+                    <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
                     <button
-                      mat-icon-button
-                      class="action-button"
-                      (click)="clearFsCache()"
-                      [disabled]="clearingFsCache()"
-                      matTooltipPosition="right"
-                      [matTooltip]="'modals.about.clear' | translate"
+                      matIconButton
+                      class="about-button"
+                      (click)="navigateTo('memory')"
+                      [attr.title]="'modals.about.viewMemoryStats' | translate"
                     >
-                      @if (clearingFsCache()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      } @else {
-                        <mat-icon svgIcon="trash" class="warn"></mat-icon>
-                      }
+                      <mat-icon svgIcon="memory" class="purple"></mat-icon>
                     </button>
                   </div>
-                </div>
-              }
-            </div>
-
-            @if (rcloneReadyToRestart()) {
-              <div class="update-card restart-required">
-                <div class="update-header">
-                  <mat-icon svgIcon="reset-wrench"></mat-icon>
-                  <div class="update-title">
-                    <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
-                    @if (rcloneUpdateAvailable()) {
-                      <span class="new-version">
-                        {{ 'modals.about.version' | translate }}
-                        {{ rcloneUpdateAvailable()!.version }}
-                      </span>
-                    }
-                    <p class="restart-description">
-                      {{ 'modals.about.rcloneRestartDescription' | translate }}
-                    </p>
-                  </div>
-                </div>
-                <div class="update-buttons">
+                }
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.backendCache' | translate }}</span>
+                  <span class="detail-value">
+                    {{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}
+                  </span>
                   <button
-                    mat-flat-button
-                    class="accent"
-                    (click)="applyRcloneUpdate()"
-                    [disabled]="restartingRcloneEngine()"
+                    matIconButton
+                    class="about-button"
+                    (click)="clearFsCache()"
+                    [disabled]="clearingFsCache()"
+                    [attr.title]="'modals.about.clear' | translate"
                   >
-                    @if (restartingRcloneEngine()) {
-                      <mat-spinner diameter="16"></mat-spinner>
+                    @if (clearingFsCache()) {
+                      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+                    } @else {
+                      <mat-icon svgIcon="trash" class="warn"></mat-icon>
                     }
-                    <span>{{ 'modals.about.restartNow' | translate }}</span>
                   </button>
                 </div>
               </div>
+            }
+          </div>
+          @if (rcloneUpdateEnabled()) {
+            @if (rcloneReadyToRestart()) {
+              <ng-container
+                *ngTemplateOutlet="
+                  restartCard;
+                  context: {
+                    title: 'modals.about.rcloneRestartRequired',
+                    version: rcloneUpdateAvailable()?.version,
+                    desc: 'modals.about.rcloneRestartDescription',
+                    action: applyRcloneUpdate.bind(this),
+                    restarting: restartingRcloneEngine(),
+                  }
+                "
+              ></ng-container>
             } @else if (rcloneHasUpdates()) {
               @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
               <div class="update-card available">
@@ -601,7 +557,7 @@
 
                 @if (rcloneUpdateInfo.releaseNotes) {
                   <button
-                    mat-stroked-button
+                    matButton="outlined"
                     class="whats-new-button"
                     (click)="showWhatsNew('rclone')"
                   >
@@ -616,19 +572,21 @@
                     (click)="installRcloneUpdate()"
                     [disabled]="rcloneUpdateInProgress()"
                   >
+                    <mat-icon
+                      [svgIcon]="rcloneUpdateInProgress() ? 'spinner' : 'rclone'"
+                    ></mat-icon>
                     @if (rcloneUpdateInProgress()) {
-                      <mat-spinner diameter="16"></mat-spinner>
                       {{ 'modals.about.downloading' | translate }}
                     } @else {
                       {{ 'modals.about.updateRclone' | translate }}
                     }
                   </button>
                   @if (rcloneUpdateInProgress()) {
-                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
+                    <button matButton="text" color="warn" (click)="cancelRcloneUpdate()">
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {
-                    <button mat-button (click)="skipRcloneUpdate()">
+                    <button matButton="text" (click)="skipRcloneUpdate()">
                       {{ 'modals.about.skipVersion' | translate }}
                     </button>
                   }
@@ -647,14 +605,12 @@
               matButton="outlined"
               (click)="checkForRcloneUpdates()"
               [disabled]="rcloneIsChecking() || rcloneUpdateInProgress() || rcloneReadyToRestart()"
-              class="check-button"
             >
-              @if (rcloneIsChecking()) {
-                <mat-spinner diameter="16"></mat-spinner>
-                {{ 'modals.about.checking' | translate }}
-              } @else {
-                {{ 'modals.about.checkRcloneUpdates' | translate }}
-              }
+              <mat-icon [svgIcon]="rcloneIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
+              {{
+                (rcloneIsChecking() ? 'modals.about.checking' : 'modals.about.checkRcloneUpdates')
+                  | translate
+              }}
             </button>
 
             <div class="settings-section">
@@ -688,230 +644,210 @@
                 ></ng-container>
               </div>
             }
-          </div>
-        }
-        @case ('credits') {
-          <div class="modal-content">
-            <div class="debug-section">
-              <h4>{{ 'modals.about.devTeam' | translate }}</h4>
-              <div class="rclone-details">
-                <div class="detail-row">
+          }
+        </div>
+      }
+      @case ('credits') {
+        <div class="modal-content">
+          <div class="info-section">
+            <h4>{{ 'modals.about.devTeam' | translate }}</h4>
+            <div class="rclone-details">
+              <div class="detail-row">
+                <div class="contributor-info">
                   <span class="detail-label">Hakan İSMAİL</span>
-                  <span class="detail-value">{{ 'modals.about.leadDeveloper' | translate }}</span>
+                  <span class="app-pill p-primary">{{
+                    'modals.about.leadDeveloper' | translate
+                  }}</span>
                 </div>
-              </div>
-            </div>
-
-            <div class="debug-section">
-              <h4>{{ 'modals.about.acknowledgments' | translate }}</h4>
-              <p class="section-prose">{{ 'modals.about.ackText' | translate }}</p>
-            </div>
-          </div>
-        }
-        @case ('legal') {
-          <div class="modal-content">
-            <div class="debug-section">
-              <h4>{{ 'modals.about.license' | translate }}</h4>
-              <p class="section-prose">
-                {{ 'modals.about.licenseText1' | translate }}
                 <a
-                  href="https://www.gnu.org/licenses/gpl-3.0.html"
+                  class="contributor-link"
+                  href="https://github.com/Hakanbaban53"
                   target="_blank"
                   rel="noopener noreferrer"
+                  [attr.title]="'modals.about.leadDeveloper' | translate"
                 >
-                  GNU General Public License v3
+                  <span>@Hakanbaban53</span>
+                  <mat-icon svgIcon="open-link"></mat-icon>
                 </a>
-                {{ 'modals.about.orLater' | translate }}
-              </p>
-              <p class="section-prose">{{ 'modals.about.licenseText2' | translate }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h4>{{ 'modals.about.contributors' | translate }}</h4>
+            <div class="rclone-details">
+              @for (c of contributors; track c.github) {
+                <div class="detail-row">
+                  <span class="detail-label">{{ c.name }}</span>
+                  <a
+                    class="contributor-link"
+                    [href]="'https://github.com/' + c.github"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    [attr.title]="c.name"
+                  >
+                    <span>@{{ c.github }}</span>
+                    <mat-icon svgIcon="open-link"></mat-icon>
+                  </a>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h4>{{ 'modals.about.acknowledgments' | translate }}</h4>
+            <p class="section-prose">{{ 'modals.about.ackText' | translate }}</p>
+          </div>
+        </div>
+      }
+      @case ('legal') {
+        <div class="modal-content">
+          <div class="info-section">
+            <h4>{{ 'modals.about.license' | translate }}</h4>
+            <p class="section-prose">
+              {{ 'modals.about.licenseText1' | translate }}
+              <a
+                href="https://www.gnu.org/licenses/gpl-3.0.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GNU General Public License v3
+              </a>
+              {{ 'modals.about.orLater' | translate }}
+            </p>
+            <p class="section-prose">{{ 'modals.about.licenseText2' | translate }}</p>
+          </div>
+
+          <div class="info-section">
+            <h4>{{ 'modals.about.thirdParty' | translate }}</h4>
+            <p class="section-prose">{{ 'modals.about.thirdPartyText' | translate }}</p>
+          </div>
+        </div>
+      }
+      @case ('whats-new-app') {
+        <ng-container
+          *ngTemplateOutlet="
+            whatsNewTemplate;
+            context: {
+              update: appUpdateAvailable(),
+              notes: formattedAppReleaseNotes(),
+            }
+          "
+        ></ng-container>
+      }
+      @case ('whats-new-rclone') {
+        <ng-container
+          *ngTemplateOutlet="
+            whatsNewTemplate;
+            context: {
+              update: rcloneUpdateAvailable(),
+              notes: formattedRcloneReleaseNotes(),
+            }
+          "
+        ></ng-container>
+      }
+
+      @case ('memory') {
+        <div class="modal-content debug-content">
+          @if (memoryStats()) {
+            @let mem = memoryStats()!;
+            <div class="debug-section">
+              <h4>{{ 'modals.about.generalMemory' | translate }}</h4>
+              <div class="rclone-details">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memAlloc' | translate }}</span>
+                  <span class="detail-value">{{ mem.Alloc | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memTotalAlloc' | translate }}</span>
+                  <span class="detail-value">{{ mem.TotalAlloc | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memSys' | translate }}</span>
+                  <span class="detail-value">{{ mem.Sys | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memMallocs' | translate }}</span>
+                  <span class="detail-value">{{ mem.Mallocs | number }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memFrees' | translate }}</span>
+                  <span class="detail-value">{{ mem.Frees | number }}</span>
+                </div>
+              </div>
             </div>
 
             <div class="debug-section">
-              <h4>{{ 'modals.about.thirdParty' | translate }}</h4>
-              <p class="section-prose">{{ 'modals.about.thirdPartyText' | translate }}</p>
+              <h4>{{ 'modals.about.heapMemory' | translate }}</h4>
+              <div class="rclone-details">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memHeapAlloc' | translate }}</span>
+                  <span class="detail-value">{{ mem.HeapAlloc | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memHeapSys' | translate }}</span>
+                  <span class="detail-value">{{ mem.HeapSys | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memHeapIdle' | translate }}</span>
+                  <span class="detail-value">{{ mem.HeapIdle | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memHeapInuse' | translate }}</span>
+                  <span class="detail-value">{{ mem.HeapInuse | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">
+                    {{ 'modals.about.memHeapReleased' | translate }}
+                  </span>
+                  <span class="detail-value">{{ mem.HeapReleased | formatFileSize }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">
+                    {{ 'modals.about.memHeapObjects' | translate }}
+                  </span>
+                  <span class="detail-value">{{ mem.HeapObjects | number }}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        }
-        @case ('whats-new-app') {
-          <div class="modal-content whats-new-content">
-            @if (appUpdateAvailable()) {
-              @let update = appUpdateAvailable()!;
-              <div class="release-header">
-                <div class="release-version">
-                  <h2>Version {{ update.version }}</h2>
-                  @if (update.releaseDate) {
-                    <span class="release-date">
-                      {{ formatReleaseDate(update.releaseDate) }}
-                    </span>
-                  }
+
+            <div class="debug-section">
+              <h4>{{ 'modals.about.stackMemory' | translate }}</h4>
+              <div class="rclone-details">
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memStackInuse' | translate }}</span>
+                  <span class="detail-value">{{ mem.StackInuse | formatFileSize }}</span>
                 </div>
-                @if (update.releaseUrl) {
-                  <a
-                    mat-stroked-button
-                    [href]="update.releaseUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="whats-new-button"
-                  >
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                    <span class="text-nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
-                  </a>
-                }
-              </div>
-
-              <div
-                class="release-notes markdown-body"
-                [innerHTML]="formattedAppReleaseNotes()"
-              ></div>
-            }
-          </div>
-        }
-        @case ('whats-new-rclone') {
-          <div class="modal-content whats-new-content">
-            @if (rcloneUpdateAvailable()) {
-              @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
-              <div class="release-header">
-                <div class="release-version">
-                  <h2>
-                    {{ rcloneUpdateInfo.version }}
-                  </h2>
-                  @if (rcloneUpdateInfo.releaseDate) {
-                    <span class="release-date">
-                      {{ formatReleaseDate(rcloneUpdateInfo.releaseDate) }}
-                    </span>
-                  }
-                </div>
-                @if (rcloneUpdateInfo.releaseUrl) {
-                  <a
-                    mat-stroked-button
-                    [href]="rcloneUpdateInfo.releaseUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="whats-new-button"
-                  >
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                    {{ 'modals.about.viewOnGithub' | translate }}
-                  </a>
-                }
-              </div>
-
-              <div
-                class="release-notes markdown-body"
-                [innerHTML]="formattedRcloneReleaseNotes()"
-              ></div>
-            }
-          </div>
-        }
-
-        @case ('memory') {
-          <div class="modal-content debug-content">
-            @if (memoryStats()) {
-              @let mem = memoryStats()!;
-              <div class="debug-section">
-                <h4>{{ 'modals.about.generalMemory' | translate }}</h4>
-                <div class="rclone-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memAlloc' | translate }}</span>
-                    <span class="detail-value">{{ mem.Alloc | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memTotalAlloc' | translate }}</span>
-                    <span class="detail-value">{{ mem.TotalAlloc | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memSys' | translate }}</span>
-                    <span class="detail-value">{{ mem.Sys | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memMallocs' | translate }}</span>
-                    <span class="detail-value">{{ mem.Mallocs | number }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memFrees' | translate }}</span>
-                    <span class="detail-value">{{ mem.Frees | number }}</span>
-                  </div>
+                <div class="detail-row">
+                  <span class="detail-label">{{ 'modals.about.memStackSys' | translate }}</span>
+                  <span class="detail-value">{{ mem.StackSys | formatFileSize }}</span>
                 </div>
               </div>
+            </div>
 
-              <div class="debug-section">
-                <h4>{{ 'modals.about.heapMemory' | translate }}</h4>
-                <div class="rclone-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memHeapAlloc' | translate }}</span>
-                    <span class="detail-value">{{ mem.HeapAlloc | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memHeapSys' | translate }}</span>
-                    <span class="detail-value">{{ mem.HeapSys | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memHeapIdle' | translate }}</span>
-                    <span class="detail-value">{{ mem.HeapIdle | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memHeapInuse' | translate }}</span>
-                    <span class="detail-value">{{ mem.HeapInuse | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">
-                      {{ 'modals.about.memHeapReleased' | translate }}
-                    </span>
-                    <span class="detail-value">{{ mem.HeapReleased | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">
-                      {{ 'modals.about.memHeapObjects' | translate }}
-                    </span>
-                    <span class="detail-value">{{ mem.HeapObjects | number }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="debug-section">
-                <h4>{{ 'modals.about.stackMemory' | translate }}</h4>
-                <div class="rclone-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memStackInuse' | translate }}</span>
-                    <span class="detail-value">{{ mem.StackInuse | formatFileSize }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.memStackSys' | translate }}</span>
-                    <span class="detail-value">{{ mem.StackSys | formatFileSize }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="debug-section">
-                <h4>{{ 'modals.about.gc' | translate }}</h4>
-                <button mat-stroked-button (click)="runGarbageCollector()" [disabled]="runningGc()">
-                  @if (runningGc()) {
-                    <mat-spinner diameter="16"></mat-spinner>
-                    {{ 'modals.about.runningGc' | translate }}
-                  } @else {
-                    <ng-container>
-                      <mat-icon svgIcon="broom"></mat-icon>
-                      {{ 'modals.about.runGc' | translate }}
-                    </ng-container>
-                  }
-                </button>
-              </div>
-            } @else {
-              <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
-                <span>{{ 'common.loading' | translate }}</span>
-              </div>
-            }
-          </div>
-        }
+            <div class="debug-section">
+              <h4>{{ 'modals.about.gc' | translate }}</h4>
+              <button matButton="outlined" (click)="runGarbageCollector()" [disabled]="runningGc()">
+                <mat-icon [svgIcon]="runningGc() ? 'spinner' : 'broom'"></mat-icon>
+                {{ (runningGc() ? 'modals.about.runningGc' : 'modals.about.runGc') | translate }}
+              </button>
+            </div>
+          } @else {
+            <div class="loading">
+              <mat-icon svgIcon="spinner"></mat-icon>
+              <span>{{ 'common.loading' | translate }}</span>
+            </div>
+          }
+        </div>
       }
-    </div>
-  }
-</div>
+    }
+  </div>
+}
 
 <!-- Up To Date template -->
 <ng-template #upToDateCard let-title>
   <div class="update-card up-to-date">
-    <mat-icon svgIcon="circle-check"></mat-icon>
+    <mat-icon svgIcon="check-circle"></mat-icon>
     <div class="status-text">
       <h4>{{ title | translate }}</h4>
       <p>{{ 'modals.about.latestVersionMsg' | translate }}</p>
@@ -950,7 +886,7 @@
         <span class="setting-title">{{ 'modals.about.releaseChannel' | translate }}</span>
       </div>
       <div class="setting-control">
-        <mat-form-field appearance="fill" class="no-subscript">
+        <mat-form-field class="no-subscript">
           <mat-select
             [value]="channel"
             (selectionChange)="
@@ -959,14 +895,8 @@
             [disabled]="disabled"
           >
             @for (ch of channels; track ch.value) {
-              <mat-option
-                [value]="ch.value"
-                [matTooltip]="ch.description | translate"
-                matTooltipPosition="left"
-              >
-                <div class="channel-option">
-                  <span class="channel-name">{{ ch.label | translate }}</span>
-                </div>
+              <mat-option [value]="ch.value" [attr.title]="ch.description | translate">
+                <span>{{ ch.label | translate }}</span>
               </mat-option>
             }
           </mat-select>
@@ -983,14 +913,80 @@
       <div class="skipped-item">
         <span class="version">{{ version }}</span>
         <button
-          mat-icon-button
+          matIconButton
           (click)="isRclone ? unskipRcloneVersion(version) : unskipVersion(version)"
-          [matTooltip]="'modals.about.restoreUpdate' | translate"
+          [attr.title]="'modals.about.restoreUpdate' | translate"
           class="restore-button"
         >
           <mat-icon svgIcon="rotate-right"></mat-icon>
         </button>
       </div>
+    }
+  </div>
+</ng-template>
+
+<!-- Restart Required Card Template -->
+<ng-template
+  #restartCard
+  let-title="title"
+  let-version="version"
+  let-desc="desc"
+  let-action="action"
+  let-restarting="restarting"
+>
+  <div class="update-card restart-required">
+    <div class="update-header">
+      <mat-icon svgIcon="reset-wrench"></mat-icon>
+      <div class="update-title">
+        <h4>{{ title | translate }}</h4>
+        @if (version) {
+          <span class="new-version">
+            {{ 'modals.about.version' | translate }}
+            {{ version }}
+          </span>
+        }
+        <p>{{ desc | translate }}</p>
+      </div>
+    </div>
+    <div class="update-buttons">
+      <button matButton="filled" class="accent" (click)="action()" [disabled]="restarting">
+        @if (restarting) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        }
+        <span>{{ 'modals.about.restartNow' | translate }}</span>
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<!-- What's New Template -->
+<ng-template #whatsNewTemplate let-update="update" let-notes="notes">
+  <div class="modal-content whats-new-content">
+    @if (update) {
+      <div class="release-header">
+        <div class="release-version">
+          <h2>Version {{ update.version }}</h2>
+          @if (update.releaseDate) {
+            <span class="release-date">
+              {{ formatReleaseDate(update.releaseDate) }}
+            </span>
+          }
+        </div>
+        @if (update.releaseUrl) {
+          <a
+            matButton="outlined"
+            [href]="update.releaseUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="whats-new-button"
+          >
+            <mat-icon svgIcon="open-link"></mat-icon>
+            <span class="text-nowrap">{{ 'modals.about.viewOnGithub' | translate }}</span>
+          </a>
+        }
+      </div>
+
+      <div class="release-notes markdown-body" [innerHTML]="notes"></div>
     }
   </div>
 </ng-template>

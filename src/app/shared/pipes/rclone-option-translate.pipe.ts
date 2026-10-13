@@ -3,8 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 
 @Pipe({
   name: 'rcloneOptionTranslate',
-  standalone: true,
-  pure: false,
+  pure: true,
 })
 export class RcloneOptionTranslatePipe implements PipeTransform {
   private translate = inject(TranslateService);
@@ -13,13 +12,18 @@ export class RcloneOptionTranslatePipe implements PipeTransform {
     optionName: string,
     type: 'title' | 'help',
     fallback: string,
-    provider?: string | null
+    provider?: string | null,
+    _langRefresh?: string | null
   ): string {
     if (!optionName) return fallback;
 
-    // Normalize option name: replace hyphens with underscores
-    // Rclone flags are often kebab-case (allow-other), but our JSON keys are snake_case (allow_other)
-    const normalizedName = optionName.replace(/-/g, '_');
+    // Normalize option name: convert camelCase & hyphens to snake_case
+    // Rclone flags are often camelCase (createEmptySrcDirs) or kebab-case (allow-other),
+    // but our JSON keys are snake_case (create_empty_src_dirs, allow_other)
+    const normalizedName = optionName
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .replace(/-/g, '_')
+      .toLowerCase();
 
     // 1. Try provider-specific translation first if provider is given
     if (provider) {

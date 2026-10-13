@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "8080:8080"
+      - '8080:8080'
       # Uncomment below if you need OAuth authentication for cloud remotes
       # (Google Drive, OneDrive, Dropbox, etc.)
       # Alternatively, use 'network_mode: host' — see docs for details.
@@ -31,6 +31,12 @@ services:
       # Run 'id' in your terminal to find your UID/GID.
       - PUID=1000
       - PGID=1000
+      # - PGIDS=1000,3000 # Optional: Supplementary group IDs (comma-separated) for NFSv4 ACLs / ZFS mounts
+
+      # --- Optional: Master Secret / rcman Encrypted Credentials ---
+      # Master password for rcman encrypted credentials store (remote passwords, tokens).
+      # - RCLONE_MANAGER_SECRET=MySuperSecretPassword123!
+      # - RCLONE_MANAGER_SECRET_PATH=/data/.secret # Path to secret file (must exist before starting container)
 
       # --- Optional: Basic Authentication ---
       # Uncomment and fill in to password-protect the web UI.
@@ -53,8 +59,20 @@ services:
     # When enabled, remove the 'ports' section above — it's not needed.
     # network_mode: host
 
+    # --- Optional: FUSE Mounting on Host ---
+    # Uncomment if you want to mount cloud remotes directly to your host filesystem from inside Docker.
+    # Note: To propagate mounts to the host, bind-mount a host folder with 'rshared' propagation.
+    # devices:
+    #   - /dev/fuse:/dev/fuse
+    # cap_add:
+    #   - SYS_ADMIN
+    # security_opt:
+    #   - apparmor:unconfined
+    # volumes:
+    #   - /mnt/remotes:/mnt/remotes:rshared
+
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      test: ['CMD', 'curl', '-sf', 'http://localhost:8080/health']
       interval: 30s
       timeout: 5s
       retries: 3

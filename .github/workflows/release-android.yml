@@ -1,0 +1,132 @@
+name: 'Release Android'
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Checkout rclone source code
+        uses: actions/checkout@v7
+        with:
+          repository: 'rclone/rclone'
+          path: 'rclone'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install Rust stable and Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: |
+            aarch64-linux-android
+            armv7-linux-androideabi
+            x86_64-linux-android
+            i686-linux-android
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;26.1.10909125"
+          # Write environment variables to GITHUB_ENV so subsequent steps can read them
+          echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build & Package Android APKs (Per Architecture)
+        env:
+          NDK_HOME: ${{ env.NDK_HOME }}
+          RCLONE_SRC_DIR: ${{ github.workspace }}/rclone
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          mkdir -p dist_apks
+
+          # Check if official release keystore secret is available
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Using official release keystore from GitHub Secrets..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+            KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+            KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
+            KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
+          else
+            echo "No repository keystore secret found. Generating temporary fallback keystore..."
+            keytool -genkeypair -v -keystore release.keystore -alias releasekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=ZarestiaDev, O=Zarestia, C=US"
+            KEYSTORE_PASS="android"
+            KEY_ALIAS="releasekey"
+            KEY_PASS="android"
+          fi
+
+          APKSIGNER=$(find $ANDROID_HOME/build-tools/ -name "apksigner" | head -n 1)
+
+          TARGET_LIST=("aarch64:arm64-v8a" "armv7:armeabi-v7a" "x86_64:x86_64" "i686:x86")
+
+          for item in "${TARGET_LIST[@]}"; do
+            IFS=":" read -r target abi <<< "$item"
+            echo "=========================================="
+            echo "Building & Signing Android APK for $target ($abi)..."
+            echo "=========================================="
+
+            rm -rf src-tauri/gen/android/app/build/outputs/apk/
+            RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384" npm run tauri android build -- --target "$target" --features mobile -- --no-default-features
+
+            apk_path=$(find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | head -n 1)
+            if [ -f "$apk_path" ]; then
+              out_name="RClone Manager_${VERSION}_${abi}.apk"
+              "$APKSIGNER" sign --ks release.keystore --ks-pass "pass:$KEYSTORE_PASS" --ks-key-alias "$KEY_ALIAS" --key-pass "pass:$KEY_PASS" --out "dist_apks/$out_name" "$apk_path"
+              echo "Successfully signed & packaged: dist_apks/$out_name"
+            else
+              echo "Error: No APK found for target $target ($abi)"
+              exit 1
+            fi
+          done
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rclone-manager-android-apks
+          path: dist_apks/*.apk
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
+          draft: true
+          prerelease: false
+          files: |
+            dist_apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

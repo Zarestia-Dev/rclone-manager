@@ -1,36 +1,32 @@
-import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  HostListener,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { ExportModalData, ExportType } from '@app/types';
+import { ExportModalData, ExportType, BackupExportOption } from '@app/types';
 import {
   BackupRestoreService,
   ExportCategory,
-  RemoteManagementService,
-  FileSystemService,
-  ModalService,
-} from '@app/services';
-
-interface ExportOption {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  categoryType?: string;
-  isTranslationKey?: boolean;
-}
+} from 'src/app/services/settings/backup-restore.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -40,6 +36,9 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
   remotes: 'cloud',
   external: 'file-export',
   alerts: 'bell',
+  workflows: 'workflow',
+  templates: 'bookmark',
+  quick_runs: 'quick-run',
 };
 
 // Maps specific category IDs to their translation key roots
@@ -49,32 +48,34 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
   connections: 'modals.export.categories.connections',
   remotes: 'modals.export.categories.remotes',
   alerts: 'modals.export.categories.alerts',
+  workflows: 'modals.export.categories.workflows',
+  templates: 'modals.export.categories.templates',
+  quick_runs: 'modals.export.categories.quickRuns',
 };
 
 // Maps ExportType string values to option IDs used in the UI
 const EXPORT_TYPE_TO_ID: Record<string, string> = {
   All: 'full',
+  FullBackup: 'full',
   Settings: 'settings',
   SpecificRemote: 'specific_remote',
 };
 
 @Component({
   selector: 'app-export-modal',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconModule,
-    MatDialogModule,
     MatFormFieldModule,
     MatSelectModule,
     FormsModule,
     MatInputModule,
-    MatTooltipModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
-    MatRadioModule,
     MatSlideToggleModule,
     MatCheckboxModule,
-    TranslateModule,
+    MatExpansionModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -84,8 +85,6 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly modalService = inject(ModalService);
-  private readonly destroyRef = inject(DestroyRef);
 
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 
@@ -101,8 +100,13 @@ export class ExportModalComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly isExporting = signal(false);
   readonly userNote = signal('');
-  readonly exportOptions = signal<ExportOption[]>([]);
-  readonly includeSecrets = signal(false);
+  readonly exportOptions = signal<BackupExportOption[]>([]);
+  readonly isTypeMenuExpanded = signal(false);
+
+  readonly selectedOptionDetails = computed(
+    () => this.exportOptions().find(o => o.id === this.selectedOption()) ?? this.exportOptions()[0]
+  );
+  readonly includeSecrets = computed(() => this.withPassword());
 
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
@@ -110,7 +114,8 @@ export class ExportModalComponent implements OnInit {
     const hasValidPassword = !this.withPassword() || !!this.password().trim();
     const hasRemoteSelected =
       this.selectedOption() !== 'specific_remote' || !!this.selectedRemoteName().trim();
-    return hasPath && hasValidPassword && hasRemoteSelected;
+    const hasProfiles = !this.shouldShowProfileSelection() || this.selectedProfiles().length > 0;
+    return hasPath && hasValidPassword && hasRemoteSelected && hasProfiles;
   });
 
   readonly showSpecificRemoteSection = computed(() => this.selectedOption() === 'specific_remote');
@@ -120,14 +125,6 @@ export class ExportModalComponent implements OnInit {
   );
 
   async ngOnInit(): Promise<void> {
-    // Scope escape handling to this dialog only — avoids global HostListener conflicts
-    this.dialogRef
-      .keydownEvents()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        if (event.key === 'Escape') this.close();
-      });
-
     this.isLoading.set(true);
     try {
       const [remotesList, categoriesList, profilesList] = await Promise.allSettled([
@@ -141,9 +138,7 @@ export class ExportModalComponent implements OnInit {
       if (profilesList.status === 'fulfilled') {
         const profiles = profilesList.value;
         this.availableProfiles.set(profiles);
-        // Pre-select "default" if present, otherwise first available
-        const preselect = profiles.includes('default') ? 'default' : profiles[0];
-        if (preselect) this.selectedProfiles.set([preselect]);
+        this.selectedProfiles.set([...profiles]);
       }
 
       const backendCategories = categoriesList.status === 'fulfilled' ? categoriesList.value : [];
@@ -157,7 +152,7 @@ export class ExportModalComponent implements OnInit {
   }
 
   private buildExportOptions(categories: ExportCategory[]): void {
-    const options: ExportOption[] = [
+    const options: BackupExportOption[] = [
       {
         id: 'full',
         label: 'modals.export.fullBackup',
@@ -167,22 +162,25 @@ export class ExportModalComponent implements OnInit {
       },
     ];
 
-    // Group alerts
-    const hasAlerts = categories.some(c => c.id.startsWith('alerts/'));
-    if (hasAlerts) {
-      const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
-      options.push({
-        id: 'alerts',
-        label: translationRoot ? `${translationRoot}.label` : 'Alerts',
-        description: translationRoot ? `${translationRoot}.description` : 'Alert rules and actions',
-        icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
-        categoryType: 'subsettings',
-        isTranslationKey: !!translationRoot,
-      });
-    }
-
+    let alertsAdded = false;
     for (const cat of categories) {
-      if (cat.id.startsWith('alerts/')) continue;
+      if (cat.id.startsWith('alerts/')) {
+        if (!alertsAdded) {
+          alertsAdded = true;
+          const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
+          options.push({
+            id: 'alerts',
+            label: translationRoot ? `${translationRoot}.label` : 'Alerts',
+            description: translationRoot
+              ? `${translationRoot}.description`
+              : 'Alert rules and actions',
+            icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
+            categoryType: 'subsettings',
+            isTranslationKey: !!translationRoot,
+          });
+        }
+        continue;
+      }
 
       const translationRoot = CATEGORY_TRANSLATION_MAP[cat.id];
       const hasTranslation = !!translationRoot;
@@ -197,16 +195,16 @@ export class ExportModalComponent implements OnInit {
         categoryType: cat.categoryType,
         isTranslationKey: hasTranslation,
       });
-    }
 
-    if (categories.some(c => c.id === 'remotes')) {
-      options.push({
-        id: 'specific_remote',
-        label: 'modals.export.singleRemote',
-        description: 'modals.export.singleRemoteDesc',
-        icon: 'hard-drive',
-        isTranslationKey: true,
-      });
+      if (cat.id === 'remotes') {
+        options.push({
+          id: 'specific_remote',
+          label: 'modals.export.singleRemote',
+          description: 'modals.export.singleRemoteDesc',
+          icon: 'hard-drive',
+          isTranslationKey: true,
+        });
+      }
     }
 
     this.exportOptions.set(options);
@@ -232,11 +230,6 @@ export class ExportModalComponent implements OnInit {
   }
 
   private initializeFromData(): void {
-    if (this.data?.remoteName) {
-      this.selectedOption.set('specific_remote');
-      this.selectedRemoteName.set(this.data.remoteName);
-    }
-
     if (this.data?.defaultExportType) {
       const type = this.data.defaultExportType;
       let id: string;
@@ -250,11 +243,21 @@ export class ExportModalComponent implements OnInit {
 
       this.selectedOption.set(id);
     }
+
+    if (this.data?.remoteName) {
+      this.selectedOption.set('specific_remote');
+      this.selectedRemoteName.set(this.data.remoteName);
+    }
   }
 
+  @HostListener('document:keydown.escape')
   close(): void {
+    if (this.isTypeMenuExpanded()) {
+      this.isTypeMenuExpanded.set(false);
+      return;
+    }
     if (!this.isExporting()) {
-      this.modalService.animatedClose(this.dialogRef, false);
+      this.dialogRef.close(false);
     }
   }
 
@@ -318,6 +321,18 @@ export class ExportModalComponent implements OnInit {
     this.showPassword.update(v => !v);
   }
 
+  toggleTypeMenu(): void {
+    if (!this.isExporting()) {
+      this.isTypeMenuExpanded.update(v => !v);
+    }
+  }
+
+  selectOption(optionId: string): void {
+    if (this.isExporting()) return;
+    this.onExportOptionChange(optionId);
+    this.isTypeMenuExpanded.set(false);
+  }
+
   onExportOptionChange(optionId: string): void {
     this.selectedOption.set(optionId);
     if (optionId !== 'specific_remote') this.selectedRemoteName.set('');
@@ -328,9 +343,6 @@ export class ExportModalComponent implements OnInit {
     if (!enabled) {
       this.password.set('');
       this.showPassword.set(false);
-      this.includeSecrets.set(false);
-    } else {
-      this.includeSecrets.set(true);
     }
   }
 

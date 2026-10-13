@@ -1,6 +1,11 @@
 [Desktop Entry]
 Name=RClone Manager
 Comment=User-friendly GUI for Rclone
+Comment[tr]=Rclone için kullanıcı dostu arayüz
+Comment[es]=Interfaz gráfica de usuario amigable para Rclone
+Comment[fr]=Interface graphique conviviale pour Rclone
+Comment[uk]=Зручний графічний інтерфейс для Rclone
+Comment[zh_CN]=易于使用的 Rclone 图形用户界面
 Exec=rclone-manager
 Icon=rclone-manager
 Terminal=false
@@ -13,5 +18,10 @@ Actions=StartOnTray;
 
 [Desktop Action StartOnTray]
 Name=Start on Tray
+Name[tr]=Sistem Tepsisinde Başlat
+Name[es]=Iniciar en la bandeja de sistema
+Name[fr]=Démarrer dans la zone de notification
+Name[uk]=Запустити в системному треї
+Name[zh_CN]=启动至系统托盘
 Exec=rclone-manager --tray
 OnlyShowIn=GNOME;Unity;XFCE;KDE;

@@ -3,19 +3,20 @@ import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 
 // Services
-import {
-  MountManagementService,
-  NautilusService,
-  WindowService,
-  BackupRestoreUiService,
-  OnboardingStateService,
-  NotificationService,
-  ModalService,
-} from '@app/services';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { WindowService } from 'src/app/services/ui/window.service';
+import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
+import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
+import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
+import { MAIN_SHORTCUTS } from '../models/shortcut-definitions';
 
 @Directive({
   selector: '[appShortcutHandler]',
-  standalone: true,
 })
 export class ShortcutHandlerDirective {
   private readonly translate = inject(TranslateService);
@@ -25,13 +26,31 @@ export class ShortcutHandlerDirective {
   private readonly windowService = inject(WindowService);
   private readonly onboardingStateService = inject(OnboardingStateService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
   private readonly nautilusService = inject(NautilusService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
+  private readonly flowOverlayService = inject(FlowOverlayService);
+
+  private readonly actionMap: Record<string, () => void | Promise<void>> = {
+    'app.quit': () => this.quitApplication(),
+    'app.toggleFileBrowser': () => this.toggleFileBrowser(),
+    'app.showShortcuts': () => this.showKeyboardShortcuts(),
+    'app.forceRefreshMountedRemotes': () => this.forceRefreshMountedRemotes(),
+    'app.forceRefreshServes': () => this.forceRefreshServes(),
+    'app.createNewRemoteDetailed': () => this.createNewRemoteDetailed(),
+    'app.createNewRemoteQuick': () => this.createNewRemoteQuick(),
+    'app.loadConfiguration': () => this.loadConfiguration(),
+    'app.exportConfiguration': () => this.exportConfiguration(),
+    'app.openPreferences': () => this.openPreferences(),
+    'app.openFlags': () => this.openRcloneFlags(),
+    'app.openAlerts': () => this.openAlerts(),
+    'app.toggleFlowOverlay': () => this.toggleFlowOverlay(),
+  };
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Skip if typing in input fields (except for critical shortcuts)
-    if (this.isInInputField(event) && !this.isCriticalShortcut(event)) {
+    if (isInputFocused(event) && !this.isCriticalShortcut(event)) {
       return;
     }
 
@@ -48,89 +67,16 @@ export class ShortcutHandlerDirective {
   }
 
   private handleShortcut(event: KeyboardEvent): boolean {
-    const { ctrlKey, shiftKey, altKey, key } = event;
-
-    // Global shortcuts
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'q') {
-      this.quitApplication();
+    const matched = MAIN_SHORTCUTS.find(s => matchesShortcut(s.keys, event));
+    if (matched && this.actionMap[matched.actionId]) {
+      void this.actionMap[matched.actionId]();
       return true;
     }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'b') {
-      this.toggleFileBrowser();
-      return true;
-    }
-
-    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === '?') {
-      this.showKeyboardShortcuts();
-      return true;
-    }
-
-    // Remote management shortcuts
-    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === 'm') {
-      this.forceRefreshMountedRemotes();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'n') {
-      this.createNewRemoteDetailed();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'r') {
-      this.createNewRemoteQuick();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'i') {
-      this.loadConfiguration();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'e') {
-      this.exportConfiguration();
-      return true;
-    }
-
-    // Navigation shortcuts
-    if (!ctrlKey && !shiftKey && !altKey && key === 'Escape') {
-      // Let individual components handle this
-      return false;
-    }
-
-    // Settings shortcuts
-    if (ctrlKey && !shiftKey && !altKey && key === ',') {
-      this.openPreferences();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && !altKey && key === '.') {
-      this.openRcloneFlags();
-      return true;
-    }
-
-    if (ctrlKey && !shiftKey && altKey && key.toLowerCase() === 'a') {
-      this.openAlerts();
-      return true;
-    }
-
     return false;
   }
 
-  private isInInputField(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement;
-    return (
-      target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.contentEditable === 'true' ||
-        target.isContentEditable)
-    );
-  }
-
   private isCriticalShortcut(event: KeyboardEvent): boolean {
-    // Ctrl+Q should always work, even in input fields
-    return event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'q';
+    return matchesShortcut('Ctrl + Q', event);
   }
 
   /**
@@ -139,30 +85,26 @@ export class ShortcutHandlerDirective {
    * Critical shortcuts (like Ctrl+Q) bypass this check
    */
   private shouldBlockShortcuts(event: KeyboardEvent): boolean {
+    // Block all shortcuts when keyboard shortcuts modal is open (so user can test them safely)
+    if (this.isShortcutsModalOpen()) {
+      return true;
+    }
+
     // Always allow critical shortcuts
     if (this.isCriticalShortcut(event)) {
       return false;
     }
 
-    // Block if file viewer is open
-    if (this.isFileViewerOpen()) {
-      console.debug('Shortcuts blocked: File viewer is open');
-      return true;
-    }
+    return (
+      this.isFileViewerOpen() || this.dialog.openDialogs.length > 0 || this.isOnboardingActive()
+    );
+  }
 
-    // Block if any modal is open
-    if (this.dialog.openDialogs.length > 0) {
-      console.debug('Shortcuts blocked: Modal is open');
-      return true;
-    }
-
-    // Block if onboarding is active
-    if (this.isOnboardingActive()) {
-      console.debug('Shortcuts blocked: Onboarding is active');
-      return true;
-    }
-
-    return false;
+  /**
+   * Check if keyboard shortcuts cheat sheet modal is open
+   */
+  private isShortcutsModalOpen(): boolean {
+    return document.querySelector('app-keyboard-shortcuts-modal') !== null;
   }
 
   /**
@@ -194,16 +136,37 @@ export class ShortcutHandlerDirective {
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
       await this.mountManagementService.forceCheckMountedRemotes();
-      this.notificationService.showSuccess(this.translate.instant('shortcuts.refreshSuccess'));
+      this.notificationService.showSuccess(
+        this.translate.instant('shortcuts.mountsRefreshSuccess')
+      );
     } catch (error) {
       this.notificationService.showError(
-        this.translate.instant('shortcuts.refreshError', { error })
+        this.translate.instant('shortcuts.mountsRefreshError', { error })
+      );
+    }
+  }
+
+  private async forceRefreshServes(): Promise<void> {
+    try {
+      await this.serveManagementService.forceCheckServes();
+      this.notificationService.showSuccess(
+        this.translate.instant('shortcuts.servesRefreshSuccess')
+      );
+    } catch (error) {
+      this.notificationService.showError(
+        this.translate.instant('shortcuts.servesRefreshError', { error })
       );
     }
   }
 
   private showKeyboardShortcuts(): void {
-    this.modalService.openKeyboardShortcuts();
+    if (this.flowOverlayService.isFlowOverlayOpen()) {
+      this.modalService.openKeyboardShortcuts({ context: 'flow' });
+    } else if (this.nautilusService.isBrowserOverlayOpen()) {
+      this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
+    } else {
+      this.modalService.openKeyboardShortcuts({ context: 'main' });
+    }
   }
 
   private createNewRemoteDetailed(): void {
@@ -232,5 +195,9 @@ export class ShortcutHandlerDirective {
 
   private openAlerts(): void {
     this.modalService.openAlerts();
+  }
+
+  private toggleFlowOverlay(): void {
+    this.flowOverlayService.toggleFlowOverlay();
   }
 }

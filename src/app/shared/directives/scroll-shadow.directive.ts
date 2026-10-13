@@ -11,7 +11,6 @@ import {
 
 @Directive({
   selector: '[appScrollShadow]',
-  standalone: true,
 })
 export class ScrollShadowDirective {
   /** Emits when the left shadow should be visible. */

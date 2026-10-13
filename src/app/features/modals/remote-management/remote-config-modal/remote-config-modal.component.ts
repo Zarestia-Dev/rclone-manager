@@ -4,159 +4,106 @@ import {
   computed,
   DestroyRef,
   ElementRef,
-  HostListener,
   inject,
-  OnInit,
-  viewChild,
+  signal,
+  afterNextRender,
 } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
+import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
+import { ObscureToolComponent } from '../../../../shared/remote-config/obscure-tool/obscure-tool.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
-import { JobManagementService } from '../../../../services/operations/job-management.service';
-import { MountManagementService } from '../../../../services/operations/mount-management.service';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
-import { ServeManagementService } from '../../../../services/operations/serve-management.service';
-import { NautilusService } from '../../../../services/ui/nautilus.service';
-import { ModalService } from '../../../../services/ui/modal.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
-import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
   RemoteConfigStateService,
   DialogData,
 } from '../../../../services/remote/remote-config-state.service';
+import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
+import { RcloneValueMapperService } from '../../../../services/remote/rclone-value-mapper.service';
+import { retargetProfilesRemote } from '../../../../services/remote/utils/remote-config.utils';
 import {
-  RemoteConfigFormBuilderService,
-  PendingRemoteData,
-} from '../../../../services/remote/remote-config-form-builder.service';
-import {
-  RemoteConfigProfileManagerService,
-  PROFILE_TYPES,
-  LINKED_PROFILE_TYPES,
-} from '../../../../services/remote/remote-config-profile-manager.service';
-import { RemoteConfigCliImporterService } from '../../../../services/remote/remote-config-cli-importer.service';
-import {
-  FLAG_TYPES,
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
-  MountConfig,
-  CopyConfig,
-  SyncConfig,
-  BisyncConfig,
-  MoveConfig,
-  ServeConfig,
-  VfsConfig,
-  BackendConfig,
-  RuntimeRemoteConfig,
-  SharedProfileType,
-  FilterConfig,
+  LINKED_PROFILE_TYPES,
+  PROFILE_ICONS,
+  EditTarget,
+  TemplateCategory,
+  FlagType,
 } from '@app/types';
-import { CopyToClipboardDirective } from '@app/directives';
-import { ProfileHeaderComponent } from './profile-header/profile-header.component';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
-import {
-  createInitialInteractiveFlowState,
-  convertBoolAnswerToString,
-  getDefaultAnswerFromQuestion,
-} from '../../../../services/remote/utils/remote-config.utils';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface JobProfile {
-  autoStart?: boolean;
-  source?: string;
-  dest?: string;
-}
-
-type JobMap = Record<string, JobProfile>;
-
-// ── Component ─────────────────────────────────────────────────────────────────
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
+import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-remote-config-modal',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatInputModule,
-    MatTooltipModule,
     MatExpansionModule,
+    MatSidenavModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
+    OperationConfigComponent,
+    ObscureToolComponent,
     CliImportComponent,
+    AlertBannerComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
-    ProfileHeaderComponent,
+    ProfileSwitcherComponent,
     ConfigModalSidebarComponent,
     ConfigModalFooterComponent,
   ],
-  providers: [
-    RemoteConfigStateService,
-    RemoteConfigFormBuilderService,
-    RemoteConfigProfileManagerService,
-    RemoteConfigCliImporterService,
-  ],
+
+  providers: [RemoteCreationOrchestrator, RemoteConfigStateService],
   templateUrl: './remote-config-modal.component.html',
-  styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: ['../../../../styles/_shared-modal.scss', './remote-config-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RemoteConfigModalComponent implements OnInit {
+export class RemoteConfigModalComponent {
   readonly state = inject(RemoteConfigStateService);
-
-  // ── Injections ────────────────────────────────────────────────────────────────
 
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  private readonly jobManagementService = inject(JobManagementService);
-  readonly configStep = viewChild(RemoteConfigStepComponent);
-  private readonly mountManagementService = inject(MountManagementService);
-  private readonly appSettingsService = inject(AppSettingsService);
-  private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData;
-  private readonly serveManagementService = inject(ServeManagementService);
-  readonly iconService = inject(IconService);
-  private readonly nautilusService = inject(NautilusService);
+  private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
+    DialogData | undefined;
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly orchestrator = inject(RemoteCreationOrchestrator);
+  private readonly valueMapper = inject(RcloneValueMapperService);
 
-  // ── Static config ─────────────────────────────────────────────────────────────
-
-  readonly FLAG_TYPES = FLAG_TYPES;
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
-  readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
-    mount: 'hard-drive',
-    sync: 'refresh',
-    copy: 'copy',
-    move: 'move',
-    bisync: 'right-left',
-    serve: 'server',
-    vfs: 'vfs',
-    filter: 'filter',
-    backend: 'database',
-    runtimeRemote: 'gear',
-  };
+  readonly PROFILE_ICONS = PROFILE_ICONS;
+
+  readonly isSidebarOpen = signal(true);
+  readonly sidebarMode = signal<MatDrawerMode>('side');
 
   readonly remoteEditCategories = [
     { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },
@@ -168,58 +115,41 @@ export class RemoteConfigModalComponent implements OnInit {
     },
   ] as const;
 
-  readonly visibleSections = computed(() => {
-    const step = this.configStep();
-    if (!step) return new Set<string>();
-
-    const visible = new Set<string>();
-    if (step.showNameField() || step.showAdvancedToggle()) visible.add('section-general');
-    if (step.providerField()) visible.add('section-auth');
-    if (step.showAdvancedOptions() && step.advancedFields().length > 0 && step.providerReady()) {
-      visible.add('section-advanced');
-    }
-    return visible;
-  });
-
-  private pendingConfig: {
-    remoteData: PendingRemoteData;
-    finalConfig: RemoteConfigSections;
-  } | null = null;
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+  readonly visibleSections = this.state.remoteEditVisibleSections;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
-    this.state.setStepInvalidFn((stepType: string) => this.isStepInvalid(stepType));
+    afterNextRender(() =>
+      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef)
+    );
+    this.initializeState();
   }
 
-  async ngOnInit(): Promise<void> {
+  private async initializeState(): Promise<void> {
     try {
       await this.state.init(this.dialogData);
-    } finally {
       this.state.isInitializing.set(false);
+    } catch (error) {
+      console.error('Failed to initialize remote config state:', error);
+      const errorMsg = this.translate.instant('modals.remoteConfig.errors.loadFailed');
+      this.notificationService.showError(
+        errorMsg !== 'modals.remoteConfig.errors.loadFailed'
+          ? errorMsg
+          : 'Failed to load remote configuration settings'
+      );
+      this.close();
     }
   }
 
-  isStepInvalid(stepType: string): boolean {
-    return this.state.remoteConfigForm.get(`${stepType}Config`)?.invalid ?? false;
-  }
-
-  // ── Step navigation ───────────────────────────────────────────────────────────
-
   goToStep(step: number): void {
-    if (this.isStepDisabled(step)) return;
+    if (!this.state.isStepClickable(step)) return;
     this.saveCurrentStepProfile();
     this.state.currentStep.set(step);
     this.scrollToTop();
     if (step === 1 && !this.state.editTarget()) {
+      this.state.showObscureTool.set(false);
       this.state.showCliImport.set(false);
     }
-  }
-
-  isStepDisabled(step: number): boolean {
-    if (this.state.isStepNavigationLocked()) return true;
-    return !this.state.editTarget() && step > 1 && this.state.remoteFormStatus() === 'INVALID';
   }
 
   nextStep(): void {
@@ -239,23 +169,19 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.state.interactiveFlowState().isActive) {
-      this.state.interactiveFlowState.update(s => ({ ...s, answer: newAnswer }));
-    }
+    this.orchestrator.updateInteractiveAnswer(newAnswer);
   }
-
-  // ── Form submission ───────────────────────────────────────────────────────────
 
   async onSubmit(): Promise<void> {
     if (this.state.isAuthInProgress()) return;
     try {
-      const result = this.state.editTarget()
+      const result = this.state.isEditingExisting()
         ? await this.handleEditMode()
         : await this.handleCreateMode();
       if (result.success && !this.state.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
-      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
+      this.orchestrator.resetInteractiveFlow();
 
       let errorMessage = this.translate.instant(
         'modals.remoteConfig.errors.interactiveProcessingFailed'
@@ -273,262 +199,119 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
+  private readonly requiresInteractiveFlow = computed(() =>
+    this.state.commandOptions().some(o => o.key === 'nonInteractive' && o.value === true)
+  );
+
   private async handleCreateMode(): Promise<{ success: boolean }> {
-    PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    const requiresInteractiveFlow = this.state
-      .commandOptions()
-      .some(o => o.key === 'nonInteractive' && o.value === true);
-
-    if (!requiresInteractiveFlow) {
+    if (!this.requiresInteractiveFlow()) {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
         this.remoteManagementService.buildOpt(this.state.commandOptions())
       );
-      this.pendingConfig = { remoteData, finalConfig };
-      await this.finalizeRemoteCreation();
+      this.orchestrator.setPendingConfig(remoteData, finalConfig);
+      await this.orchestrator.finalizeCreation();
       return { success: true };
     }
 
-    this.pendingConfig = { remoteData, finalConfig };
-    return await this.startInteractiveRemoteConfig(remoteData);
+    this.orchestrator.setPendingConfig(remoteData, finalConfig);
+    const completed = await this.orchestrator.startInteractiveCreation(
+      remoteData,
+      finalConfig,
+      this.state.commandOptions()
+    );
+    return { success: completed };
   }
 
   private async handleEditMode(): Promise<{ success: boolean }> {
     const remoteName = this.state.currentRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    const requiresInteractiveFlow = this.state
-      .commandOptions()
-      .some(o => o.key === 'nonInteractive' && o.value === true);
-
-    if (this.state.editTarget() === 'remote') {
+    if (this.state.editTarget() === 'remote' || this.state.editTarget() === null) {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
-      if (requiresInteractiveFlow) {
-        this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
-        return await this.startInteractiveRemoteConfig(remoteData);
+      if (this.requiresInteractiveFlow()) {
+        const finalConfig = this.buildFinalConfig();
+        this.orchestrator.setPendingConfig(remoteData, finalConfig);
+        const completed = await this.orchestrator.startInteractiveCreation(
+          remoteData,
+          finalConfig,
+          this.state.commandOptions()
+        );
+        return { success: completed };
       }
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-      return { success: true };
+      let profileSuccess = true;
+      if (this.state.editTarget() === null) {
+        profileSuccess = await this.state.saveRemoteProfiles(remoteName);
+      }
+      return { success: profileSuccess };
     }
 
-    const updatedConfig = this.buildUpdateConfig();
-    await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
-    return { success: true };
+    const target = this.state.editTarget();
+    if (!target || target === 'remote') {
+      return { success: false };
+    }
+    const success = await this.state.saveRemoteProfiles(remoteName, target);
+    return { success };
   }
-
-  // ── Config building ───────────────────────────────────────────────────────────
 
   private buildFinalConfig(): RemoteConfigSections {
     this.saveCurrentStepProfile();
-    const p = this.state.profiles();
-    return {
-      [REMOTE_CONFIG_KEYS.mount]: p['mount'] as Record<string, MountConfig>,
-      [REMOTE_CONFIG_KEYS.copy]: p['copy'] as Record<string, CopyConfig>,
-      [REMOTE_CONFIG_KEYS.sync]: p['sync'] as Record<string, SyncConfig>,
-      [REMOTE_CONFIG_KEYS.bisync]: p['bisync'] as Record<string, BisyncConfig>,
-      [REMOTE_CONFIG_KEYS.move]: p['move'] as Record<string, MoveConfig>,
-      [REMOTE_CONFIG_KEYS.serve]: p['serve'] as unknown as Record<string, ServeConfig>,
-      [REMOTE_CONFIG_KEYS.filter]: p['filter'] as Record<string, FilterConfig>,
-      [REMOTE_CONFIG_KEYS.vfs]: p['vfs'] as Record<string, VfsConfig>,
-      [REMOTE_CONFIG_KEYS.backend]: p['backend'] as Record<string, BackendConfig>,
-      [REMOTE_CONFIG_KEYS.runtimeRemote]: p['runtimeRemote'] as Record<string, RuntimeRemoteConfig>,
-      showOnTray: true,
-    };
-  }
+    let p = this.state.profiles();
 
-  private buildUpdateConfig(): Record<string, unknown> {
-    const target = this.state.editTarget() as SharedProfileType;
-    if (!target) return {};
-
-    this.state.saveCurrentProfile(target);
-    this.state.dirtyProfileTypes.add(target);
-
-    const updatedConfig: Record<string, unknown> = {};
-    for (const dirty of this.state.dirtyProfileTypes) {
-      const key = REMOTE_CONFIG_KEYS[dirty as keyof typeof REMOTE_CONFIG_KEYS];
-      if (key) updatedConfig[key] = this.state.profiles()[dirty];
+    if (this.state.cloneTarget()) {
+      const cloneFrom = this.dialogData?.cloneFrom;
+      const targetName = this.state.remoteForm.get('name')?.value || this.state.currentRemoteName();
+      if (cloneFrom && targetName && cloneFrom !== targetName) {
+        p = retargetProfilesRemote(p, cloneFrom, targetName);
+      }
     }
 
-    return updatedConfig;
-  }
-
-  private createEmptyFinalConfig(): RemoteConfigSections {
-    const empty = Object.fromEntries(
-      Object.values(REMOTE_CONFIG_KEYS).map(k => [k, {}])
+    const sections = Object.fromEntries(
+      Object.entries(REMOTE_CONFIG_KEYS).map(([type, key]) => [
+        key,
+        p[type as keyof typeof p] ?? {},
+      ])
     ) as unknown as RemoteConfigSections;
-    return { ...empty, showOnTray: true };
+    return { ...sections, showOnTray: true };
   }
 
   saveCurrentStepProfile(): void {
     const editTargetValue = this.state.editTarget();
+    const stepIdx = this.state.currentStep() - 1;
     const type =
       editTargetValue && editTargetValue !== 'remote'
         ? editTargetValue
-        : this.state.stepConfigs()[this.state.currentStep() - 1]?.type;
-    if (type && type !== 'remote') this.state.saveCurrentProfile(type as SharedProfileType);
+        : stepIdx >= 0
+          ? this.state.stepConfigs()[stepIdx]?.type
+          : undefined;
+    if (type && type !== 'remote') this.state.saveCurrentProfile(type);
   }
-
-  // ── Interactive flow ──────────────────────────────────────────────────────────
 
   onInteractiveContinue(answer: string | number | boolean | null): void {
     if (this.state.interactiveFlowState().isProcessing) return;
     this.state.interactiveFlowState.update(s => ({
       ...s,
       isProcessing: true,
-      answer: String(answer),
+      answer: answer != null ? String(answer) : '',
     }));
-    void this.processInteractiveResponse(String(answer));
+    void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
+      this.closeIfFlowComplete();
+    });
   }
 
-  private async startInteractiveRemoteConfig(
-    remoteData: PendingRemoteData
-  ): Promise<{ success: boolean }> {
-    try {
-      const resp = await this.remoteManagementService.startRemoteConfigInteractive(
-        remoteData.name,
-        remoteData.type,
-        remoteData,
-        this.remoteManagementService.buildOpt(this.state.commandOptions())
-      );
-
-      if (!resp || resp.State === '') {
-        await this.finalizeRemoteCreation();
-        return { success: true };
-      }
-
-      this.state.interactiveFlowState.set({
-        isActive: true,
-        isProcessing: false,
-        question: resp,
-        answer: getDefaultAnswerFromQuestion(resp),
-      });
-
-      return { success: false };
-    } catch (error) {
-      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-      throw error;
-    }
-  }
-
-  private async processInteractiveResponse(answer: string): Promise<void> {
-    try {
-      const state = this.state.interactiveFlowState();
-      if (!state.isActive || !state.question || !this.pendingConfig) return;
-
-      const { name, ...paramRest } = this.pendingConfig.remoteData;
-      const processedAnswer: unknown =
-        state.question?.Option?.Type === 'bool' ? convertBoolAnswerToString(answer) : answer;
-
-      const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
-        name,
-        state.question.State,
-        processedAnswer,
-        paramRest,
-        this.remoteManagementService.buildOpt(this.state.commandOptions())
-      );
-
-      if (!resp || resp.State === '') {
-        this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-        await this.finalizeRemoteCreation();
-      } else {
-        this.state.interactiveFlowState.update(s => ({
-          ...s,
-          question: resp,
-          answer: getDefaultAnswerFromQuestion(resp),
-          isProcessing: false,
-        }));
-      }
-    } catch (error) {
-      console.error('Error processing interactive response:', error);
-      this.state.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
-      this.notificationService.showError(
-        this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
-      );
-    }
-  }
-
-  // ── Finalization ──────────────────────────────────────────────────────────────
-
-  private async finalizeRemoteCreation(): Promise<void> {
-    if (!this.pendingConfig) return;
-    const { remoteData, finalConfig } = this.pendingConfig;
-    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
-    await this.remoteManagementService.getRemotes();
-    this.authStateService.resetAuthState();
-    await this.triggerAutoStartJobs(remoteData.name, finalConfig);
-    this.close();
-  }
-
-  private async triggerAutoStartJobs(
-    remoteName: string,
-    finalConfig: RemoteConfigSections
-  ): Promise<void> {
-    const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
-    if (mountConfigs) {
-      for (const [profileName, config] of Object.entries(mountConfigs)) {
-        if (config.autoStart && config.dest) {
-          void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
-        }
-      }
-    }
-
-    const jobStarters: Record<string, (remote: string, profile: string) => Promise<number>> = {
-      copy: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Copy', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      sync: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Sync', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      bisync: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Bisync', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      move: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Move', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-    };
-
-    for (const [jobType, starter] of Object.entries(jobStarters)) {
-      const configs = finalConfig[
-        REMOTE_CONFIG_KEYS[jobType as keyof typeof REMOTE_CONFIG_KEYS]
-      ] as JobMap | undefined;
-      if (!configs) continue;
-      for (const [profileName, config] of Object.entries(configs)) {
-        if (config.autoStart && config.source && config.dest) {
-          void starter(remoteName, profileName);
-        }
-      }
-    }
-
-    const serveConfigs = finalConfig[REMOTE_CONFIG_KEYS.serve];
-    if (serveConfigs) {
-      for (const [profileName, config] of Object.entries(serveConfigs)) {
-        if (config.autoStart && (config as Record<string, unknown>)['options']) {
-          void this.serveManagementService.startServeProfile(remoteName, profileName);
-        }
-      }
-    }
+  private closeIfFlowComplete(): void {
+    if (!this.state.interactiveFlowState().isActive) this.close();
   }
 
   async cancelAuth(): Promise<void> {
-    await this.authStateService.cancelAuth();
-    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
+    await this.orchestrator.cancelAuth();
   }
-
-  // ── Search & Listeners ─────────────────────────────────────────────────────────
 
   toggleSearchVisibility(): void {
     this.state.isSearchVisible.update(visible => !visible);
@@ -541,21 +324,108 @@ export class RemoteConfigModalComponent implements OnInit {
 
   scrollToSection(sectionId: string): void {
     this.hostEl.nativeElement
-      .querySelector('#' + sectionId)
+      .querySelector('#' + CSS.escape(sectionId))
       ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
-  @HostListener('window:keydown', ['$event'])
-  handleSearchKeyboard(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-      event.preventDefault();
-      this.toggleSearchVisibility();
+  toggleSidebar(): void {
+    this.isSidebarOpen.update(v => !v);
+  }
+
+  private closeSidebarIfOver(): void {
+    if (this.sidebarMode() === 'over') {
+      this.isSidebarOpen.set(false);
     }
   }
 
-  @HostListener('document:keydown.escape')
+  onStepSelected(step: number): void {
+    this.goToStep(step);
+    this.closeSidebarIfOver();
+  }
+
+  onSectionScrolled(sectionId: string): void {
+    this.scrollToSection(sectionId);
+    this.closeSidebarIfOver();
+  }
+
+  onProfileSelected(event: { type: EditTarget; name: string }): void {
+    this.state.selectProfile(event.type, event.name);
+    this.closeSidebarIfOver();
+  }
+
+  onSharedNavigated(type: EditTarget): void {
+    this.state.navigateToShared(type);
+    this.closeSidebarIfOver();
+  }
+
+  onReturnFromShared(): void {
+    this.state.returnFromShared();
+    this.closeSidebarIfOver();
+  }
+
+  onSearchToggled(): void {
+    this.toggleSearchVisibility();
+    this.closeSidebarIfOver();
+  }
+
+  onCliImportToggled(): void {
+    this.state.toggleCliImportVisibility();
+    if (this.state.showCliImport()) this.closeSidebarIfOver();
+  }
+
+  onObscureToolToggled(): void {
+    this.state.toggleObscureToolVisibility();
+    if (this.state.showObscureTool()) this.closeSidebarIfOver();
+  }
+
+  onApplyPresets(): void {
+    const remoteType = this.state.remoteTypeSignal();
+    if (!remoteType) return;
+    this.state.applyPresets(remoteType);
+    const msg = this.translate.instant('wizards.presets.applied');
+    this.notificationService.showSuccess(
+      msg !== 'wizards.presets.applied' ? msg : 'Default presets applied successfully'
+    );
+  }
+
+  readonly currentValues = computed(() => {
+    const rcf = this.state.remoteConfigForm;
+    const getCleanOptions = (configKey: string, flagType: FlagType): Record<string, unknown> => {
+      const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
+      const fields = this.state.getDynamicFlagFields(flagType);
+      return this.valueMapper.cleanData(opts, fields);
+    };
+
+    const remoteRaw = this.state.remoteForm.getRawValue();
+    const remoteClean = (this.state.cleanFormData(remoteRaw) as Record<string, unknown>) ?? {};
+    const cleanRemoteData: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(remoteClean)) {
+      if (k !== 'name' && k !== 'type') cleanRemoteData[k] = v;
+    }
+
+    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {
+      vfs: getCleanOptions('vfsConfig', 'vfs'),
+      mount: getCleanOptions('mountConfig', 'mount'),
+      backend: getCleanOptions('backendConfig', 'backend'),
+      filter: getCleanOptions('filterConfig', 'filter'),
+      remote: cleanRemoteData,
+    };
+
+    const activeFlag = this.state.activeFlagType();
+    if (activeFlag && !result[activeFlag]) {
+      result[activeFlag] = getCleanOptions(`${activeFlag}Config`, activeFlag);
+    }
+
+    return result;
+  });
+
+  onApplyTemplate(event: ApplyTemplateEvent): void {
+    this.state.applyTemplate(event.values);
+    const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
+    this.notificationService.showSuccess(msg);
+  }
+
   close(): void {
-    if (this.nautilusService.isNautilusOverlayOpen()) return;
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

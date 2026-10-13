@@ -1,0 +1,174 @@
+// ── Header ──────────────────────────────────────────────────────────────
+.palette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+
+  .palette-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--radius-xs);
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--hover-bg-color);
+    }
+
+    .title-icon {
+      color: var(--accent-color);
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+
+    .toggle-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+      color: var(--dim-color);
+    }
+  }
+
+  .palette-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-xs);
+    color: var(--dim-color);
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--hover-bg-color);
+      color: var(--window-fg-color);
+    }
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+  }
+}
+
+// app-search-container appears right below the header — its own SCSS animates height
+
+// ── Category Pills (collapse along with search) ───────────────────────
+.category-pills-bar {
+  overflow: hidden;
+  max-height: 0;
+  padding: 0 var(--space-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  transition:
+    max-height var(--transition-cubic),
+    padding var(--transition-cubic);
+
+  &.is-open {
+    max-height: 120px;
+    padding: var(--space-xs) var(--space-md) var(--space-sm);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .app-pill {
+    min-height: 28px;
+    padding: 2px 10px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+// ── Node List ────────────────────────────────────────────────────────────
+.palette-items-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .palette-item-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--card-bg-color);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--shadow-gnome);
+    cursor: grab;
+    touch-action: manipulation;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--card-bg-hover);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    .item-icon-box {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-xs);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+
+      @each $status,
+        $color
+          in (
+            "primary": primary-color,
+            "accent": accent-color,
+            "orange": orange,
+            "yellow": yellow,
+            "purple": purple,
+            "warn": warn-color,
+            "dim": dim-color
+          )
+      {
+        &.color-#{$status} {
+          background: rgba(var(--#{$color}-rgb), 0.15);
+          color: var(--#{$color});
+        }
+      }
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+
+      .item-title {
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        color: var(--window-fg-color);
+      }
+
+      .item-description {
+        font-size: var(--font-size-xs);
+        color: var(--dim-color);
+        margin-top: 2px;
+      }
+    }
+  }
+}

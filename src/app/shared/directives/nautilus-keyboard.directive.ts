@@ -1,7 +1,10 @@
 import { Directive, HostListener, inject, WritableSignal, Signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { NautilusService, NautilusTabService, NautilusFileOperationsService } from '@app/services';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { NautilusTabService } from 'src/app/services/ui/nautilus-tab.service';
+import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { FileBrowserItem } from '@app/types';
+import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
 
 export interface KeyboardCallbacks {
   navigateTo: (item: FileBrowserItem) => void;
@@ -25,12 +28,12 @@ export interface KeyboardCallbacks {
   pathSegments: Signal<{ name: string; path: string }[]>;
   showHidden: Signal<boolean>;
   isPickerMode: Signal<boolean>;
+  isSearchMode?: Signal<boolean>;
   navigateToSegment: (index: number) => void;
 }
 
 @Directive({
   selector: '[appNautilusKeyboard]',
-  standalone: true,
 })
 export class NautilusKeyboardDirective {
   private readonly dialog = inject(MatDialog);
@@ -50,73 +53,82 @@ export class NautilusKeyboardDirective {
       return;
     }
 
-    if (this.isInputFocused(event)) {
+    if (isInputFocused(event)) {
       if (event.key === 'Escape') (event.target as HTMLElement).blur();
       return;
     }
 
-    const isCtrl = event.ctrlKey || event.metaKey;
-    const isShift = event.shiftKey;
-    const isAlt = event.altKey;
-
-    if (await this.handleClipboardShortcuts(event, isCtrl, isShift)) return;
-    if (this.handleNavigationShortcuts(event, isCtrl, isAlt, isShift)) return;
-    if (this.handleSelectionShortcuts(event, isCtrl)) return;
-    if (await this.handleFileOperationsShortcuts(event, isCtrl, isShift)) return;
+    if (await this.handleClipboardShortcuts(event)) return;
+    if (this.handleNavigationShortcuts(event)) return;
+    if (this.handleSelectionShortcuts(event)) return;
+    if (await this.handleFileOperationsShortcuts(event)) return;
   }
 
-  private isInputFocused(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement;
-    return (
-      target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
-    );
-  }
+  @HostListener('window:paste', ['$event'])
+  async handlePasteEvent(event: ClipboardEvent): Promise<void> {
+    if (this.dialog.openDialogs.length > 0 || !this.callbacks) return;
+    if (isInputFocused(event)) return;
 
-  private async handleClipboardShortcuts(
-    event: KeyboardEvent,
-    isCtrl: boolean,
-    isShift: boolean
-  ): Promise<boolean> {
-    if (!isCtrl) return false;
-    switch (event.key.toLowerCase()) {
-      case 'c':
-        event.preventDefault();
-        this.fileOps.copyItems(this.callbacks.getSelectedItems());
-        return true;
-      case 'x':
-        event.preventDefault();
-        this.fileOps.cutItems(this.callbacks.getSelectedItems());
-        return true;
-      case 'v':
+    const files = event.clipboardData?.files;
+    if (files && files.length > 0) {
+      event.preventDefault();
+      const activeRemote = this.tabSvc.activeRemote();
+      const activePath = this.tabSvc.activePath();
+      if (activeRemote) {
+        await this.fileOps.uploadWebFiles(activeRemote, activePath, files);
+        this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+      }
+      return;
+    }
+
+    const textData =
+      event.clipboardData?.getData('text/uri-list') || event.clipboardData?.getData('text/plain');
+    if (textData) {
+      const paths = this.fileOps.parseClipboardPaths(textData);
+      if (paths.length > 0) {
         event.preventDefault();
         await this.callbacks.pasteItems();
-        return true;
-      case 'z':
-        event.preventDefault();
-        if (isShift) await this.fileOps.redoLastOperation();
-        else await this.fileOps.undoLastOperation();
-        return true;
-      case 'y':
-        event.preventDefault();
-        await this.fileOps.redoLastOperation();
-        return true;
+      }
+    }
+  }
+
+  private async handleClipboardShortcuts(event: KeyboardEvent): Promise<boolean> {
+    if (matchesShortcut('Ctrl + C', event)) {
+      event.preventDefault();
+      this.fileOps.copyItems(this.callbacks.getSelectedItems());
+      return true;
+    }
+    if (matchesShortcut('Ctrl + X', event)) {
+      event.preventDefault();
+      this.fileOps.cutItems(this.callbacks.getSelectedItems());
+      return true;
+    }
+    if (matchesShortcut('Ctrl + V', event)) {
+      event.preventDefault();
+      await this.callbacks.pasteItems();
+      return true;
+    }
+    if (matchesShortcut('Ctrl + Shift + Z / Ctrl + Y', event)) {
+      event.preventDefault();
+      await this.fileOps.redoLastOperation();
+      return true;
+    }
+    if (matchesShortcut('Ctrl + Z', event)) {
+      event.preventDefault();
+      await this.fileOps.undoLastOperation();
+      return true;
     }
     return false;
   }
 
-  private handleNavigationShortcuts(
-    event: KeyboardEvent,
-    isCtrl: boolean,
-    isAlt: boolean,
-    isShift: boolean
-  ): boolean {
-    if (isCtrl && event.key.toLowerCase() === 'l') {
+  private handleNavigationShortcuts(event: KeyboardEvent): boolean {
+    if (matchesShortcut('Ctrl + L', event)) {
       event.preventDefault();
       this.callbacks.isEditingPath.set(true);
       return true;
     }
 
-    if (event.key === 'Backspace' || (isAlt && event.key === 'ArrowUp')) {
+    if (matchesShortcut('Backspace / Alt + Up', event)) {
       if (this.callbacks.pathSegments().length > 0) {
         event.preventDefault();
         this.callbacks.navigateToSegment(this.callbacks.pathSegments().length - 2);
@@ -124,28 +136,28 @@ export class NautilusKeyboardDirective {
       return true;
     }
 
-    if (isAlt && event.key === 'ArrowLeft' && this.tabSvc.canGoBack()) {
+    if (matchesShortcut('Alt + Left', event) && this.tabSvc.canGoBack()) {
       event.preventDefault();
       this.tabSvc.goBack();
       return true;
     }
 
-    if (isAlt && event.key === 'ArrowRight' && this.tabSvc.canGoForward()) {
+    if (matchesShortcut('Alt + Right', event) && this.tabSvc.canGoForward()) {
       event.preventDefault();
       this.tabSvc.goForward();
       return true;
     }
 
-    if (event.key === 'Enter' && !isAlt) {
+    if (event.key === 'Enter' && !event.altKey) {
       const selected = this.callbacks.getSelectedItems();
       if (selected.length === 1) {
         event.preventDefault();
         const item = selected[0];
 
-        if (isCtrl) {
+        if (event.ctrlKey || event.metaKey) {
           this.callbacks.setContextItem(item);
           this.callbacks.openInNewTab();
-        } else if (isShift) {
+        } else if (event.shiftKey) {
           this.callbacks.setContextItem(item);
           this.callbacks.openInNewWindow();
         } else {
@@ -155,26 +167,39 @@ export class NautilusKeyboardDirective {
       }
     }
 
-    if (isCtrl && event.key === 'Tab') {
+    if (matchesShortcut('Ctrl + Shift + Tab', event)) {
       event.preventDefault();
       const count = this.tabSvc.tabs().length;
       if (count > 0) {
-        const next = isShift
-          ? (this.tabSvc.activeTabIndex() - 1 + count) % count
-          : (this.tabSvc.activeTabIndex() + 1) % count;
+        const next = (this.tabSvc.activeTabIndex() - 1 + count) % count;
         this.tabSvc.switchTab(next);
       }
       return true;
     }
 
-    if (isCtrl && event.key.toLowerCase() === 't') {
+    if (matchesShortcut('Ctrl + Tab', event)) {
       event.preventDefault();
-      if (isShift) this.tabSvc.duplicateTab(this.tabSvc.activeTabIndex());
-      else this.tabSvc.createTab(this.tabSvc.activeRemote(), this.tabSvc.activePath());
+      const count = this.tabSvc.tabs().length;
+      if (count > 0) {
+        const next = (this.tabSvc.activeTabIndex() + 1) % count;
+        this.tabSvc.switchTab(next);
+      }
       return true;
     }
 
-    if (isCtrl && event.key.toLowerCase() === 'w') {
+    if (matchesShortcut('Ctrl + Shift + T', event)) {
+      event.preventDefault();
+      this.tabSvc.duplicateTab(this.tabSvc.activeTabIndex());
+      return true;
+    }
+
+    if (matchesShortcut('Ctrl + T', event)) {
+      event.preventDefault();
+      this.tabSvc.createTab(this.tabSvc.activeRemote(), this.tabSvc.activePath());
+      return true;
+    }
+
+    if (matchesShortcut('Ctrl + W', event)) {
       event.preventDefault();
       this.tabSvc.closeTab(this.tabSvc.activeTabIndex());
       return true;
@@ -183,25 +208,27 @@ export class NautilusKeyboardDirective {
     return false;
   }
 
-  private handleSelectionShortcuts(event: KeyboardEvent, isCtrl: boolean): boolean {
-    if (isCtrl && event.key.toLowerCase() === 'a') {
+  private handleSelectionShortcuts(event: KeyboardEvent): boolean {
+    if (matchesShortcut('Ctrl + A', event)) {
       event.preventDefault();
       this.callbacks.selectAll();
       return true;
     }
 
-    if (event.key === 'Escape') {
+    if (matchesShortcut('Escape', event)) {
       event.preventDefault();
+      if (this.callbacks.isSearchMode?.()) {
+        this.callbacks.toggleSearch();
+        return true;
+      }
       if (this.callbacks.isPickerMode()) {
         this.nautilusService.closeFilePicker(null);
         return true;
       }
-      if (this.tabSvc.activePaneIndex() === 0) {
-        if (this.tabSvc.selectedItems().size > 0) this.callbacks.clearSelection();
-        else this.fileOps.clearClipboard();
+      if (this.tabSvc.activeSelection().size > 0) {
+        this.callbacks.clearSelection();
       } else {
-        if (this.tabSvc.selectedItemsRight().size > 0) this.callbacks.clearSelection();
-        else this.fileOps.clearClipboard();
+        this.fileOps.clearClipboard();
       }
       return true;
     }
@@ -209,12 +236,8 @@ export class NautilusKeyboardDirective {
     return false;
   }
 
-  private async handleFileOperationsShortcuts(
-    event: KeyboardEvent,
-    isCtrl: boolean,
-    isShift: boolean
-  ): Promise<boolean> {
-    if (event.key === 'F2') {
+  private async handleFileOperationsShortcuts(event: KeyboardEvent): Promise<boolean> {
+    if (matchesShortcut('F2', event)) {
       const selected = this.callbacks.getSelectedItems();
       if (selected.length === 1) {
         event.preventDefault();
@@ -224,43 +247,43 @@ export class NautilusKeyboardDirective {
       }
     }
 
-    if (event.key === 'Delete') {
+    if (matchesShortcut('Delete', event)) {
       event.preventDefault();
       await this.callbacks.deleteSelected();
       return true;
     }
 
-    if (event.key === 'F5' || (isCtrl && event.key.toLowerCase() === 'r')) {
+    if (matchesShortcut('F5 / Ctrl + R', event)) {
       event.preventDefault();
       this.callbacks.refresh();
       return true;
     }
 
-    if (isCtrl && isShift && event.key.toLowerCase() === 'n') {
+    if (matchesShortcut('Ctrl + Shift + N', event)) {
       event.preventDefault();
       await this.callbacks.openNewFolder();
       return true;
     }
 
-    if (event.altKey && event.key === 'Enter') {
+    if (matchesShortcut('Alt + Enter', event)) {
       event.preventDefault();
       this.callbacks.openProperties();
       return true;
     }
 
-    if (isCtrl && event.key === '/') {
+    if (matchesShortcut('Ctrl + /', event)) {
       event.preventDefault();
       this.tabSvc.toggleSplit();
       return true;
     }
 
-    if (isCtrl && event.key.toLowerCase() === 'f') {
+    if (matchesShortcut('Ctrl + F', event)) {
       event.preventDefault();
       this.callbacks.toggleSearch();
       return true;
     }
 
-    if (isCtrl && event.key.toLowerCase() === 'h') {
+    if (matchesShortcut('Ctrl + H', event)) {
       event.preventDefault();
       this.callbacks.toggleShowHidden(!this.callbacks.showHidden());
       return true;

@@ -1,49 +1,77 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal, resource } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
+import { EventListenersService } from './event-listeners.service';
 
-import {
-  BackendInfo,
-  TestConnectionResult,
-  BackendSettingMetadata,
-  addBackendArgs,
-  RuntimeStatus,
-} from 'src/app/shared/types/backend.types';
+import { BackendInfo, TestConnectionResult, AddBackendArgs, RuntimeStatus } from '@app/types';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class BackendService extends TauriBaseService {
-  readonly backends = signal<BackendInfo[]>([]);
   readonly activeBackend = signal<string>('Local');
-  readonly isLoading = signal<boolean>(false);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly eventListenersService = inject(EventListenersService);
+
+  // Use Angular 19+ resource API for native async loading, caching, and state management
+  readonly backendData = resource({
+    loader: async () => {
+      const backends = (await this.invokeCommand<BackendInfo[]>('list_backends')) || [];
+      const active = backends.find(b => b.isActive);
+      if (active) this.activeBackend.set(active.name);
+      return backends;
+    },
+  });
+
+  // Derived signals replacing manual state
+  readonly backends = computed(() => this.backendData.value() ?? []);
+  readonly isLoading = computed(() => this.backendData.isLoading());
+
+  constructor() {
+    super();
+    merge(
+      this.eventListenersService.listenToRcloneEngineReady(),
+      this.eventListenersService.listenToBackendSwitched()
+    )
+      .pipe(takeUntilDestroyed())
+      .subscribe(evt => {
+        if (typeof evt === 'string') {
+          this.activeBackend.set(evt);
+        }
+        this.backendData.reload();
+      });
+
+    this.eventListenersService
+      .listenToSettingsCategory('connections')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.backendData.reload();
+      });
+  }
 
   readonly activeConfigPath = computed(() => {
     const active = this.backends().find(b => b.name === this.activeBackend());
     return active?.runtimeConfigPath ?? null;
   });
 
-  async getBackendSchema(): Promise<Record<string, BackendSettingMetadata>> {
-    return this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
-  }
+  readonly isLocalBackend = computed(() => {
+    const active = this.backends().find(b => b.name === this.activeBackend());
+    return active?.isLocal ?? true;
+  });
 
+  readonly isWindows = computed(() => {
+    const active = this.backends().find(b => b.name === this.activeBackend());
+    return active?.os?.toLowerCase().includes('windows') ?? false;
+  });
+
+  // Legacy API support for components expecting a Promise
   async loadBackends(): Promise<void> {
-    try {
-      this.isLoading.set(true);
-      const backends = await this.invokeCommand<BackendInfo[]>('list_backends');
-      this.backends.set(backends);
-      const active = backends.find(b => b.isActive);
-      if (active) this.activeBackend.set(active.name);
-    } finally {
-      this.isLoading.set(false);
-    }
+    await this.backendData.reload();
   }
 
   async runStartupChecks(): Promise<void> {
-    await this.loadBackends();
-    await this.checkStartupConnectivity();
-    await this.checkAllBackends();
+    await this.backendData.reload();
+    await Promise.all([this.checkStartupConnectivity(), this.checkAllBackends()]);
   }
 
   async getActiveBackend(): Promise<string> {
@@ -57,84 +85,100 @@ export class BackendService extends TauriBaseService {
   }
 
   async switchBackend(name: string): Promise<void> {
-    try {
-      this.isLoading.set(true);
-      await this.invokeWithNotification(
-        'switch_backend',
-        { name },
-        {
-          successKey: 'backendSuccess.backend.switched',
-          successParams: { name },
-          errorKey: 'backendErrors.request.failed',
-        }
-      );
-      this.activeBackend.set(name);
-      this.backends.update(current => current.map(b => ({ ...b, isActive: b.name === name })));
-    } finally {
-      this.isLoading.set(false);
-    }
+    await this.invokeWithNotification(
+      'switch_backend',
+      { name },
+      {
+        successKey: 'backendSuccess.backend.switched',
+        successParams: { name },
+        errorKey: 'backendErrors.request.failed',
+      }
+    );
+    this.activeBackend.set(name);
+    // Optimistic UI update
+    this.backendData.update(current =>
+      (current ?? []).map(b => ({ ...b, isActive: b.name === name }))
+    );
   }
 
   async addBackend(
-    config: addBackendArgs,
+    config: AddBackendArgs,
     copyBackendFrom?: string,
     copyRemotesFrom?: string
   ): Promise<void> {
-    try {
-      this.isLoading.set(true);
-      await this.invokeCommand('add_backend', {
-        params: {
-          name: config.name,
-          host: config.host,
-          port: config.port,
-          isLocal: config.isLocal,
-          username: config.username,
-          password: config.password,
-          configPassword: config.configPassword,
-          configPath: config.configPath,
-          oauthPort: config.oauthPort,
-          oauthHost: config.oauthHost,
-          copyBackendFrom: copyBackendFrom ?? null,
-          copyRemotesFrom: copyRemotesFrom ?? null,
-        },
-      });
-      await this.loadBackends();
-    } finally {
-      this.isLoading.set(false);
-    }
+    await this.invokeCommand('add_backend', {
+      params: {
+        name: config.name,
+        host: config.host,
+        port: config.port,
+        isLocal: config.isLocal,
+        username: config.username,
+        password: config.password,
+        configPassword: config.configPassword,
+        configPath: config.configPath,
+        copyBackendFrom: copyBackendFrom ?? null,
+        copyRemotesFrom: copyRemotesFrom ?? null,
+      },
+    });
+    this.backendData.reload();
   }
 
-  async updateBackend(config: addBackendArgs): Promise<void> {
-    try {
-      this.isLoading.set(true);
-      await this.invokeCommand('update_backend', {
-        params: {
-          name: config.name,
-          host: config.host,
-          port: config.port,
-          username: config.username,
-          password: config.password,
-          configPassword: config.configPassword,
-          configPath: config.configPath,
-          oauthPort: config.oauthPort,
-          oauthHost: config.oauthHost,
-        },
-      });
-      await this.loadBackends();
-    } finally {
-      this.isLoading.set(false);
-    }
+  async updateBackend(config: AddBackendArgs): Promise<void> {
+    await this.invokeCommand('update_backend', {
+      params: {
+        name: config.name,
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        password: config.password,
+        configPassword: config.configPassword,
+        configPath: config.configPath,
+      },
+    });
+    this.backendData.reload();
   }
 
   async removeBackend(name: string): Promise<void> {
-    try {
-      this.isLoading.set(true);
-      await this.invokeCommand('remove_backend', { name });
-      this.backends.update(current => current.filter(b => b.name !== name));
-      await this.appSettingsService.removeBackendLayout(name);
-    } finally {
-      this.isLoading.set(false);
+    await this.invokeCommand('remove_backend', { name });
+    // Optimistic UI update
+    this.backendData.update(current => (current ?? []).filter(b => b.name !== name));
+    await this.appSettingsService.removeBackendLayout(name);
+  }
+
+  async updateLocalBackendConfigPath(configPath: string | undefined): Promise<void> {
+    let localBackend = this.backends().find(b => b.name === 'Local');
+    if (!localBackend) {
+      await this.loadBackends();
+      localBackend = this.backends().find(b => b.name === 'Local');
     }
+    if (!localBackend) return;
+    await this.updateBackend({
+      name: 'Local',
+      host: localBackend.host,
+      port: localBackend.port,
+      isLocal: true,
+      username: localBackend.username,
+      password: localBackend.password,
+      configPath: configPath || undefined,
+    });
+  }
+
+  async updateLocalBackendPort(port: number): Promise<void> {
+    let localBackend = this.backends().find(b => b.name === 'Local');
+    if (!localBackend) {
+      await this.loadBackends();
+      localBackend = this.backends().find(b => b.name === 'Local');
+    }
+    if (!localBackend) return;
+    await this.updateBackend({
+      name: 'Local',
+      host: localBackend.host,
+      port,
+      isLocal: true,
+      username: localBackend.username,
+      password: localBackend.password,
+      configPath: localBackend.configPath,
+    });
   }
 
   async testConnection(name: string): Promise<TestConnectionResult> {
@@ -143,8 +187,8 @@ export class BackendService extends TauriBaseService {
         name,
       });
 
-      this.backends.update(current =>
-        current.map(b =>
+      this.backendData.update(current =>
+        (current ?? []).map(b =>
           b.name !== name
             ? b
             : {
@@ -163,7 +207,28 @@ export class BackendService extends TauriBaseService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: this.backendTranslation.translateBackendMessage(error),
+      };
+    }
+  }
+
+  async testConnectionDetails(details: {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+  }): Promise<{ success: boolean; message: string; version?: string; os?: string }> {
+    try {
+      return await this.invokeCommand<TestConnectionResult>('test_backend_connection_details', {
+        host: details.host,
+        port: details.port,
+        username: details.username || null,
+        password: details.password || null,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        message: this.backendTranslation.translateBackendMessage(error),
       };
     }
   }
@@ -200,8 +265,8 @@ export class BackendService extends TauriBaseService {
     const activeBackend = this.activeBackend();
     if (!activeBackend || activeBackend === 'Local') return;
 
-    this.backends.update(backends =>
-      backends.map(b =>
+    this.backendData.update(backends =>
+      (backends ?? []).map(b =>
         b.name !== activeBackend
           ? b
           : {
@@ -215,25 +280,7 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  /**
-   * Maps a form value to addBackendArgs for creating a new backend.
-   * All fields are sent explicitly, including empty strings to clear values.
-   */
-  mapFormToConfig(
-    formValue: {
-      name: string;
-      host: string;
-      port: number | string;
-      has_auth: boolean;
-      username?: string;
-      password?: string;
-      config_password?: string;
-      config_path?: string;
-      oauth_host?: string;
-      oauth_port?: number | string;
-    },
-    isLocal: boolean
-  ): addBackendArgs {
+  mapFormToConfig(formValue: any, isLocal: boolean): AddBackendArgs {
     return {
       name: formValue.name,
       host: formValue.host,
@@ -243,49 +290,19 @@ export class BackendService extends TauriBaseService {
       password: formValue.has_auth ? (formValue.password ?? '') : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 
-  /**
-   * Maps a form value to addBackendArgs for updating an existing backend.
-   *
-   * Key difference from `mapFormToConfig`: credentials left blank are sent as
-   * `undefined` (Rust receives `None`) so the backend preserves the existing
-   * stored value instead of overwriting with an empty string.
-   *
-   * Rules:
-   *  - has_auth OFF          → send undefined (clear on the Rust side via None/None arm)
-   *  - has_auth ON + filled  → send the new value
-   *  - has_auth ON + blank   → send undefined (preserve existing on Rust side)
-   */
-  mapFormToUpdateConfig(
-    formValue: {
-      host: string;
-      port: number | string;
-      has_auth: boolean;
-      username?: string;
-      password?: string;
-      config_password?: string;
-      config_path?: string;
-      oauth_host?: string;
-      oauth_port?: number | string;
-    },
-    editingName: string,
-    isLocal: boolean
-  ): addBackendArgs {
+  mapFormToUpdateConfig(formValue: any, editingName: string, isLocal: boolean): AddBackendArgs {
     return {
       name: editingName,
       host: formValue.host,
       port: Number(formValue.port),
       isLocal,
-      username: formValue.has_auth && formValue.username ? formValue.username : undefined,
-      password: formValue.has_auth && formValue.password ? formValue.password : undefined,
+      username: formValue.has_auth ? formValue.username || undefined : '',
+      password: formValue.has_auth ? formValue.password || undefined : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 }

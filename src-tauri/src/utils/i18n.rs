@@ -9,7 +9,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::RwLock;
-use tauri::{AppHandle, Emitter};
 
 /// Directory where backend translation files are stored (relative to executable)
 const I18N_DIR: &str = "i18n";
@@ -50,51 +49,47 @@ impl Translations {
 
     /// Load a language directory into the cache
     fn load_language(&self, lang: &str) -> bool {
-        let base_path = match self.base_path.read() {
-            Ok(p) => p.clone(),
-            Err(_) => {
-                log::error!("❌ i18n base_path lock poisoned in load_language");
-                None
-            }
+        let base_path = if let Ok(p) = self.base_path.read() {
+            p.clone()
+        } else {
+            log::error!("❌ i18n base_path lock poisoned in load_language");
+            None
         };
 
         if let Some(path) = base_path {
-            let lang_dir = path.join(lang);
-            let mut merged_translations = serde_json::Map::new();
+            let main_file = path.join(lang).join("main.json");
+            let mut backend_translations = serde_json::Map::new();
 
-            if lang_dir.exists() && lang_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&lang_dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                            match std::fs::read_to_string(&path) {
-                                Ok(content) => match serde_json::from_str::<Value>(&content) {
-                                    Ok(Value::Object(map)) => {
-                                        merged_translations.extend(map);
-                                    }
-                                    Ok(_) => {
-                                        log::warn!("Skipping non-object JSON file: {path:?}");
-                                    }
-                                    Err(e) => {
-                                        log::warn!("Failed to parse {path:?}: {e}");
-                                    }
-                                },
-                                Err(e) => {
-                                    log::warn!("Failed to read {path:?}: {e}");
+            if main_file.exists() {
+                match std::fs::read_to_string(&main_file) {
+                    Ok(content) => match serde_json::from_str::<Value>(&content) {
+                        Ok(Value::Object(map)) => {
+                            for key in [
+                                "tray",
+                                "notification",
+                                "powerInhibitor",
+                                "alerts",
+                                "backendErrors",
+                            ] {
+                                if let Some(val) = map.get(key) {
+                                    backend_translations.insert(key.to_string(), val.clone());
                                 }
                             }
                         }
-                    }
+                        Ok(_) => log::warn!("Skipping non-object JSON file: {main_file:?}"),
+                        Err(e) => log::warn!("Failed to parse {main_file:?}: {e}"),
+                    },
+                    Err(e) => log::warn!("Failed to read {main_file:?}: {e}"),
                 }
             } else {
-                log::warn!("Language directory not found: {lang_dir:?}");
+                log::warn!("Translation file not found: {main_file:?}");
             }
 
-            if !merged_translations.is_empty() {
+            if !backend_translations.is_empty() {
                 match self.cache.write() {
                     Ok(mut cache) => {
-                        cache.insert(lang.to_string(), Value::Object(merged_translations));
-                        log::info!("🌐 Loaded translations for: {lang}");
+                        cache.insert(lang.to_string(), Value::Object(backend_translations));
+                        log::info!("🌐 Loaded backend translations for: {lang}");
                         return true;
                     }
                     Err(_) => {
@@ -145,28 +140,19 @@ impl Translations {
     }
 
     fn resolve(&self, key: &str) -> String {
-        let lang = match self.current_lang.read() {
-            Ok(l) => l.clone(),
-            Err(_) => {
-                log::error!("❌ i18n current_lang lock poisoned in resolve");
-                DEFAULT_LANG.to_string()
-            }
+        let lang = if let Ok(l) = self.current_lang.read() {
+            l.clone()
+        } else {
+            log::error!("❌ i18n current_lang lock poisoned in resolve");
+            DEFAULT_LANG.to_string()
         };
 
-        let cache = match self.cache.read() {
-            Ok(c) => c,
-            Err(_) => {
-                log::error!("❌ i18n cache lock poisoned in resolve");
-                return key.to_string();
-            }
-        };
-
-        let dict = match cache.get(&lang).or_else(|| cache.get(DEFAULT_LANG)) {
+        let dict = match self.get_dict(&lang) {
             Some(d) => d,
             None => return key.to_string(),
         };
 
-        let mut current = dict;
+        let mut current = &dict;
         for part in key.split('.') {
             match current.get(part) {
                 Some(v) => current = v,
@@ -177,11 +163,69 @@ impl Translations {
         current.as_str().unwrap_or(key).to_string()
     }
 
+    fn resolve_param_value(&self, value: &str) -> String {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return String::new();
+        }
+
+        // 1. If it's a structured JSON error string: {"key":"...", "params":{...}}
+        if ((trimmed.starts_with('{') && trimmed.ends_with('}'))
+            || trimmed.contains(r#"{"key":""#)
+            || trimmed.contains(r#"{"key": ""#))
+            && let Ok(val) = serde_json::from_str::<Value>(trimmed)
+            && let Some(key) = val.get("key").and_then(|k| k.as_str())
+        {
+            if let Some(params_obj) = val.get("params").and_then(|p| p.as_object()) {
+                let resolved_params: Vec<(String, String)> = params_obj
+                    .iter()
+                    .map(|(k, v)| {
+                        let val_str = match v {
+                            Value::String(s) => self.resolve_param_value(s),
+                            _ => v.to_string(),
+                        };
+                        (k.clone(), val_str)
+                    })
+                    .collect();
+                let params_ref: Vec<(&str, &str)> = resolved_params
+                    .iter()
+                    .map(|(k, v)| (k.as_str(), v.as_str()))
+                    .collect();
+                let translated = self.resolve_with_params(key, &params_ref);
+                if translated != key {
+                    return translated;
+                }
+            } else {
+                let translated = self.resolve(key);
+                if translated != key {
+                    return translated;
+                }
+            }
+        }
+
+        // 2. If it's a translation key (e.g. "backendErrors.mount.pointEmpty")
+        if trimmed.starts_with("backendErrors.")
+            || (trimmed.contains('.')
+                && !trimmed.contains(' ')
+                && !trimmed.contains('/')
+                && !trimmed.contains('\\'))
+        {
+            let translated = self.resolve(trimmed);
+            if translated != trimmed {
+                return translated;
+            }
+        }
+
+        // 3. Fallback: plain string as-is
+        trimmed.to_string()
+    }
+
     fn resolve_with_params(&self, key: &str, params: &[(&str, &str)]) -> String {
         let mut result = self.resolve(key);
         for (param_key, param_value) in params {
             let placeholder = format!("{{{{{param_key}}}}}");
-            result = result.replace(&placeholder, param_value);
+            let resolved_val = self.resolve_param_value(param_value);
+            result = result.replace(&placeholder, &resolved_val);
         }
         result
     }
@@ -207,27 +251,26 @@ pub fn set_language(lang: &str) {
 }
 
 /// Apply a language change across the application (backend, frontend event, and tray)
-pub fn apply_language_change(app: &AppHandle, lang: &str) {
+pub fn apply_language_change(lang: &str) {
     log::debug!("🌐 Applying language change to: {lang}");
     set_language(lang);
 
     // Notify frontend
-    if let Err(e) = app.emit(
+    crate::core::bridge::emit(
         crate::utils::types::events::APP_EVENT,
         serde_json::json!({ "status": "language_changed", "language": lang }),
-    ) {
-        log::error!("Failed to emit language change event: {e}");
-    }
+    );
 
     // Update tray menu
     #[cfg(feature = "tray")]
     {
-        let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
-                log::error!("Failed to update tray menu: {e}");
-            }
-        });
+        if let Some(app_handle) = crate::core::bridge::get_app_handle() {
+            crate::utils::spawn(async move {
+                if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
+                    log::error!("Failed to update tray menu: {e}");
+                }
+            });
+        }
     }
 }
 
@@ -236,20 +279,27 @@ pub fn t(key: &str) -> String {
     TRANSLATIONS.resolve(key)
 }
 
-/// Translate a key with parameter interpolation
+/// Translate a key with parameter interpolation (automatically resolves structured error params)
 pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
-/// Get the full translation map for a language (merged from all JSON files)
-pub fn get_language_map(lang: &str) -> Option<Value> {
-    TRANSLATIONS.get_dict(lang)
+#[cfg(test)]
+pub fn init_test_translations() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let resource_dir = manifest_dir.parent().unwrap().join("resources");
+    init(resource_dir);
 }
 
-/// Return the merged translations for a language (desktop invoke)
-#[tauri::command]
-pub fn get_i18n(lang: String) -> Result<Value, String> {
-    get_language_map(&lang).ok_or_else(|| format!("Translations not found for: {lang}"))
+#[cfg(test)]
+pub fn set_test_translations(lang: &str, dict: Value) {
+    let mut cache = TRANSLATIONS.cache.write().unwrap();
+    cache.insert(lang.to_string(), dict);
+}
+
+/// Translates a backend error message (structured JSON, translation key, or raw string)
+pub fn resolve_error(error_str: &str) -> String {
+    TRANSLATIONS.resolve_param_value(error_str)
 }
 
 /// Macro for ergonomic translations
@@ -289,10 +339,15 @@ macro_rules! t {
 #[macro_export]
 macro_rules! localized_error {
     ($key:expr) => {
-        $crate::t!($key)
+        $key.to_string()
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        $crate::t!($key, $($param_key => $param_value),+)
+        serde_json::json!({
+            "key": $key,
+            "params": {
+                $($param_key: $param_value.to_string()),+
+            }
+        }).to_string()
     }};
 }
 
@@ -300,15 +355,22 @@ macro_rules! localized_error {
 #[macro_export]
 macro_rules! localized_success {
     ($key:expr) => {
-        $crate::t!($key)
+        $key.to_string()
     };
     ($key:expr, $($param_key:expr => $param_value:expr),+ $(,)?) => {{
-        $crate::t!($key, $($param_key => $param_value),+)
+        serde_json::json!({
+            "key": $key,
+            "params": {
+                $($param_key: $param_value.to_string()),+
+            }
+        }).to_string()
     }};
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_static_error() {
         let error = localized_error!("backendErrors.mount.pointEmpty");
@@ -325,9 +387,10 @@ mod tests {
             "remote" => remote
         );
 
-        // Since translation files are not loaded in tests, it falls back to the key
-        // Params are ignored in fallback if the key doesn't contain placeholders (which it doesn't here)
-        assert_eq!(error, "backendErrors.mount.alreadyInUse");
+        let parsed: serde_json::Value = serde_json::from_str(&error).unwrap();
+        assert_eq!(parsed["key"], "backendErrors.mount.alreadyInUse");
+        assert_eq!(parsed["params"]["mountPoint"], "/mnt/drive");
+        assert_eq!(parsed["params"]["remote"], "gdrive");
     }
 
     #[test]
@@ -339,26 +402,62 @@ mod tests {
 
     #[test]
     fn test_nested_resolution() {
-        use serde_json::json;
-        let mut cache = super::TRANSLATIONS.cache.write().unwrap();
-        cache.insert(
-            super::DEFAULT_LANG.to_string(),
-            json!({
-                "tray": {
-                    "showApp": "Show Application",
-                    "nested": {
-                        "key": "Value"
-                    }
-                }
-            }),
-        );
-        drop(cache);
-
-        assert_eq!(super::t("tray.showApp"), "Show Application");
-        assert_eq!(super::t("tray.nested.key"), "Value");
+        super::init_test_translations();
+        assert_eq!(super::t("tray.showApp"), "Show App");
         assert_eq!(super::t("tray.nonexistent"), "tray.nonexistent");
+    }
 
-        // Cleanup
-        super::TRANSLATIONS.cache.write().unwrap().clear();
+    #[test]
+    fn test_resolve_error_structured_json() {
+        super::init_test_translations();
+
+        let json_err = localized_error!(
+            "backendErrors.job.executionFailed",
+            "error" => "failed to mount FUSE fs: no such directory"
+        );
+        let resolved = resolve_error(&json_err);
+        assert_eq!(
+            resolved,
+            "Job execution failed: failed to mount FUSE fs: no such directory"
+        );
+
+        let key_err = localized_error!("backendErrors.mount.pointEmpty");
+        let resolved_key = resolve_error(&key_err);
+        assert_eq!(resolved_key, "Mount point cannot be empty");
+
+        let multi_param_err = localized_error!(
+            "backendErrors.mount.alreadyInUse",
+            "mountPoint" => "/mnt/pcloud",
+            "remote" => "pcloud:"
+        );
+        let resolved_multi = resolve_error(&multi_param_err);
+        assert_eq!(
+            resolved_multi,
+            "Mount point /mnt/pcloud is already in use by remote pcloud:"
+        );
+
+        // Fallback to raw string
+        let raw_err = "failed to exec mount: no such file or directory";
+        assert_eq!(resolve_error(raw_err), raw_err);
+
+        // Empty string
+        assert_eq!(resolve_error(""), "");
+    }
+
+    #[test]
+    fn test_resolve_unmount_failed() {
+        super::init_test_translations();
+        let rendered = t_with_params(
+            "notification.body.unmountFailed",
+            &[
+                ("backend", "Local"),
+                ("remote", "Google Drive"),
+                ("error", "Device or resource busy"),
+            ],
+        );
+        assert_eq!(
+            rendered,
+            "Failed to unmount Google Drive from Local: Device or resource busy"
+        );
     }
 }

@@ -1,220 +1,21 @@
-<div class="modal">
-  <div class="modal-header" data-tauri-drag-region>
-    <button
-      matIconButton
-      (click)="toggleSearch()"
-      [attr.aria-label]="
-        searchVisible()
-          ? ('shared.search.hideSearch' | translate)
-          : ('shared.search.showSearch' | translate)
-      "
-      [class.active]="searchVisible()"
-    >
-      <mat-icon svgIcon="search"></mat-icon>
-    </button>
+<header data-tauri-drag-region>
+  <button
+    matIconButton
+    (click)="toggleSearch()"
+    [attr.aria-label]="
+      searchVisible()
+        ? ('shared.search.hideSearch' | translate)
+        : ('shared.search.showSearch' | translate)
+    "
+    [class.active]="searchVisible()"
+  >
+    <mat-icon svgIcon="search"></mat-icon>
+  </button>
 
-    @if (bottomTabs()) {
-      <p class="modal-title">{{ 'modals.preferences.title' | translate }}</p>
-    } @else if (!hasSearchResults()) {
-      <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
-        @for (tab of tabs; track tab.key; let i = $index) {
-          <button
-            (click)="selectTab(i)"
-            [class.selected]="selectedTabIndex() === i"
-            [attr.aria-selected]="selectedTabIndex() === i"
-            [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
-            role="tab"
-          >
-            <mat-icon [svgIcon]="tab.icon"></mat-icon>
-            <span class="tab-label">{{ 'modals.preferences.tabs.' + tab.key | translate }}</span>
-          </button>
-        }
-      </div>
-    } @else {
-      <h2 class="modal-title search-title">
-        {{ 'modals.preferences.searchResults' | translate }}
-      </h2>
-    }
-
-    <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
-    </button>
-  </div>
-
-  <app-search-container
-    [visible]="searchVisible()"
-    [searchText]="searchQuery()"
-    (searchTextChange)="onSearchTextChange($event)"
-    [placeholder]="'modals.preferences.searchPlaceholder' | translate"
-    [ariaLabel]="'modals.preferences.searchPlaceholder' | translate"
-  ></app-search-container>
-
-  @if (isLoading()) {
-    <div class="loading-overlay">
-      <mat-spinner diameter="50"></mat-spinner>
-    </div>
-  } @else {
-    <main class="modal-content">
-      <div class="tab-content">
-        <div class="settings-list" role="list">
-          @if (hasSearchResults()) {
-            <!-- Search result items, or empty state when nothing matches -->
-            @if (searchResults().length > 0) {
-              @for (result of searchResults(); track result.category + '.' + result.key) {
-                @if (getFormControl(result.category, result.key); as ctrl) {
-                  <div
-                    class="setting-item"
-                    role="listitem"
-                    [class.layout-row]="isRowLayout(result.category, result.key)"
-                  >
-                    <ng-container
-                      [ngTemplateOutlet]="settingTemplate"
-                      [ngTemplateOutletContext]="{
-                        category: result.category,
-                        key: result.key,
-                        showCategory: true,
-                      }"
-                    ></ng-container>
-                  </div>
-                }
-              }
-            } @else {
-              <div class="empty-state" role="status" aria-live="polite">
-                <mat-icon svgIcon="search"></mat-icon>
-                <p>
-                  {{ 'modals.preferences.noSettingsFound' | translate }}
-                  <strong>"{{ searchQuery() }}"</strong>
-                </p>
-                <div class="search-suggestions">
-                  <small>{{ 'modals.preferences.trySearching' | translate }}</small>
-                  <div class="suggestion-chips">
-                    @for (suggestion of searchSuggestions(); track suggestion) {
-                      <button
-                        class="app-pill interactive p-primary"
-                        (click)="onSearchTextChange(suggestion)"
-                        [attr.aria-label]="
-                          'modals.preferences.aria.searchFor'
-                            | translate: { suggestion: suggestion }
-                        "
-                      >
-                        {{ suggestion }}
-                      </button>
-                    }
-                  </div>
-                </div>
-              </div>
-            }
-          } @else {
-            @if (selectedTabKey(); as activeCategory) {
-              @for (key of selectedTabKeys(); track key) {
-                <div
-                  class="setting-item"
-                  role="listitem"
-                  [class.layout-row]="isRowLayout(activeCategory, key)"
-                >
-                  <ng-container
-                    [ngTemplateOutlet]="settingTemplate"
-                    [ngTemplateOutletContext]="{
-                      category: activeCategory,
-                      key: key,
-                      showCategory: false,
-                    }"
-                  ></ng-container>
-                </div>
-              }
-              @if (isGeneralTab()) {
-                <div class="actions">
-                  <button
-                    mat-raised-button
-                    class="warn"
-                    (click)="resetSettings()"
-                    [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
-                  >
-                    <mat-icon svgIcon="rotate-right"></mat-icon>
-                    {{ 'modals.preferences.resetAll' | translate }}
-                  </button>
-                </div>
-              }
-            }
-          }
-        </div>
-      </div>
-
-      @if (hasPendingRestartChanges()) {
-        <div class="pending-changes-section">
-          <div class="pending-changes-header">
-            <div class="header-info">
-              <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
-              <div class="header-text">
-                <h3>{{ 'modals.preferences.readyToRestartHeader' | translate }}</h3>
-                <p>{{ 'modals.preferences.readyToRestartDesc' | translate }}</p>
-              </div>
-            </div>
-          </div>
-          <div class="pending-changes-list">
-            @for (change of pendingChangesList(); track change.category + '.' + change.key) {
-              <div class="pending-change-item">
-                <div class="change-info">
-                  <strong>{{ change.displayName }}</strong>
-                  <span class="app-pill p-primary">{{
-                    getCategoryDisplayName(change.category)
-                  }}</span>
-                </div>
-                <div class="change-value">
-                  @if (change.value === true || change.value === false) {
-                    <span
-                      class="app-pill p-primary"
-                      [class.p-primary]="change.value"
-                      [class.p-warn]="!change.value"
-                    >
-                      {{
-                        change.value
-                          ? ('modals.preferences.enabled' | translate)
-                          : ('modals.preferences.disabled' | translate)
-                      }}
-                    </span>
-                  } @else if (isArray(change.value)) {
-                    <span class="app-pill p-accent">
-                      {{ asArray(change.value).length }}
-                      {{ 'modals.preferences.items' | translate }}
-                    </span>
-                  } @else {
-                    <span class="text-value">{{ change.value }}</span>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-          <div class="pending-changes-actions">
-            <button
-              matButton
-              (click)="discardPendingChanges()"
-              [attr.aria-label]="'modals.preferences.aria.discardChanges' | translate"
-            >
-              <mat-icon svgIcon="close"></mat-icon>
-              {{ 'modals.preferences.discardChanges' | translate }}
-            </button>
-            <button
-              mat-raised-button
-              class="warn"
-              (click)="savePendingChanges()"
-              [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
-            >
-              <mat-icon svgIcon="rotate-right"></mat-icon>
-              {{ 'modals.preferences.saveAndRestart' | translate }}
-            </button>
-          </div>
-        </div>
-      }
-    </main>
-  }
-
-  @if (bottomTabs() && !hasSearchResults()) {
-    <div
-      class="tabs bottom-tabs"
-      role="tablist"
-      [attr.aria-label]="'modals.preferences.aria.settingsCategories' | translate"
-    >
+  @if (bottomTabs()) {
+    <p>{{ 'modals.preferences.title' | translate }}</p>
+  } @else if (!hasSearchResults()) {
+    <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
       @for (tab of tabs; track tab.key; let i = $index) {
         <button
           (click)="selectTab(i)"
@@ -222,274 +23,425 @@
           [attr.aria-selected]="selectedTabIndex() === i"
           [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
           role="tab"
-          [attr.aria-controls]="'tab-panel-' + tab.key"
         >
           <mat-icon [svgIcon]="tab.icon"></mat-icon>
           <span class="tab-label">{{ 'modals.preferences.tabs.' + tab.key | translate }}</span>
         </button>
       }
     </div>
+  } @else {
+    <p>
+      {{ 'modals.preferences.searchResults' | translate }}
+    </p>
   }
 
-  <!-- ── Setting Template ──────────────────────────────────────────────────── -->
-  <ng-template
-    #settingTemplate
-    let-category="category"
-    let-key="key"
-    let-showCategory="showCategory"
-  >
-    @if (getMetadata(category, key); as meta) {
-      <div class="setting-item-header">
-        <div class="setting-info">
-          <strong>{{ getSettingLabel(category, key, meta) }}</strong>
-          <p>{{ getSettingDescription(category, key, meta) }}</p>
-          @if (showCategory) {
-            <small class="app-pill p-primary">{{ getCategoryDisplayName(category) }}</small>
+  <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<app-search-container
+  [visible]="searchVisible()"
+  (searchToggle)="toggleSearch()"
+  [searchText]="searchQuery()"
+  (searchTextChange)="onSearchTextChange($event)"
+  [placeholder]="'modals.preferences.searchPlaceholder' | translate"
+  [ariaLabel]="'modals.preferences.searchPlaceholder' | translate"
+></app-search-container>
+
+@if (isLoading()) {
+  <div class="loading-container">
+    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+  </div>
+} @else {
+  <main>
+    @if (hasSearchResults()) {
+      <!-- Search result items, or empty state when nothing matches -->
+      @if (searchResults().length > 0) {
+        @for (vm of searchResultViewModels(); track vm.category + '.' + vm.key) {
+          <div class="setting-item" role="listitem">
+            <ng-container
+              [ngTemplateOutlet]="settingTemplate"
+              [ngTemplateOutletContext]="{
+                setting: vm,
+                showCategory: true,
+              }"
+            ></ng-container>
+          </div>
+        }
+      } @else {
+        <div class="empty-state" role="status" aria-live="polite">
+          <mat-icon svgIcon="search"></mat-icon>
+          <p>
+            {{ 'modals.preferences.noSettingsFound' | translate }}
+            <strong>"{{ searchQuery() }}"</strong>
+          </p>
+          <div class="search-suggestions">
+            <small>{{ 'modals.preferences.trySearching' | translate }}</small>
+            <div class="suggestion-chips">
+              @for (suggestion of searchSuggestions(); track suggestion) {
+                <button
+                  class="app-pill interactive p-primary"
+                  (click)="onSearchTextChange(suggestion)"
+                  [attr.aria-label]="
+                    'modals.preferences.aria.searchFor' | translate: { suggestion: suggestion }
+                  "
+                >
+                  {{ suggestion }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    } @else {
+      @if (selectedTabKey(); as activeCategory) {
+        @for (vm of selectedTabViewModels(); track vm.key) {
+          <div class="setting-item" role="listitem">
+            <ng-container
+              [ngTemplateOutlet]="settingTemplate"
+              [ngTemplateOutletContext]="{
+                setting: vm,
+                showCategory: false,
+              }"
+            ></ng-container>
+          </div>
+        }
+        @if (isGeneralTab()) {
+          <div class="actions">
+            <button
+              matButton="elevated"
+              class="warn"
+              (click)="resetSettings()"
+              [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
+            >
+              <mat-icon svgIcon="rotate-right"></mat-icon>
+              {{ 'modals.preferences.resetAll' | translate }}
+            </button>
+          </div>
+        }
+      }
+    }
+
+    @if (hasPendingRestartChanges()) {
+      <div class="pending-changes-section">
+        <div class="pending-changes-header">
+          <div class="header-info">
+            <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
+            <div class="header-text">
+              <h3>{{ 'modals.preferences.readyToRestartHeader' | translate }}</h3>
+              <p>{{ 'modals.preferences.readyToRestartDesc' | translate }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="pending-changes-list">
+          @for (change of pendingChangesList(); track change.category + '.' + change.key) {
+            <div class="pending-change-item">
+              <div class="change-info">
+                <strong>{{ change.displayName | translate }}</strong>
+                <span class="app-pill p-primary">{{
+                  getCategoryDisplayName(change.category)
+                }}</span>
+              </div>
+              <div class="change-value">
+                @if (change.value === true || change.value === false) {
+                  <span
+                    class="app-pill p-primary"
+                    [class.p-primary]="change.value"
+                    [class.p-warn]="!change.value"
+                  >
+                    {{
+                      change.value
+                        ? ('modals.preferences.enabled' | translate)
+                        : ('modals.preferences.disabled' | translate)
+                    }}
+                  </span>
+                } @else if (isArray(change.value)) {
+                  <span class="app-pill p-accent">
+                    {{ asArray(change.value).length }}
+                    {{ 'modals.preferences.items' | translate }}
+                  </span>
+                } @else {
+                  <span class="text-value">{{ change.value }}</span>
+                }
+              </div>
+            </div>
           }
         </div>
-        @if (isModified(category, key)) {
+        <div class="pending-changes-actions">
           <button
-            mat-icon-button
-            class="reset-btn"
-            (click)="resetSetting(category, key)"
-            [attr.aria-label]="
-              ('modals.preferences.resetToDefault' | translate) + ': ' + meta.metadata?.display_name
-            "
-            [matTooltip]="'modals.preferences.resetToDefault' | translate"
-            matTooltipPosition="above"
+            matButton
+            (click)="discardPendingChanges()"
+            [attr.aria-label]="'modals.preferences.aria.discardChanges' | translate"
+          >
+            <mat-icon svgIcon="close"></mat-icon>
+            {{ 'modals.preferences.discardChanges' | translate }}
+          </button>
+          <button
+            matButton="elevated"
+            class="warn"
+            (click)="savePendingChanges()"
+            [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
           >
             <mat-icon svgIcon="rotate-right"></mat-icon>
+            {{ 'modals.preferences.saveAndRestart' | translate }}
           </button>
-        }
-      </div>
-
-      <div class="setting-control">
-        <div class="control-with-reset">
-          <div class="control-field">
-            @switch (meta.value_type) {
-              @case ('bool') {
-                <mat-slide-toggle
-                  [formControl]="$any(getFormControl(category, key))"
-                  (change)="onValueChange(category, key)"
-                ></mat-slide-toggle>
-              }
-              @case ('int') {
-                <div class="stepper">
-                  <button
-                    mat-icon-button
-                    class="stepper-btn"
-                    (mousedown)="startHold('decrement', category, key, meta)"
-                    (touchstart.prevent)="startHold('decrement', category, key, meta)"
-                    (mouseup)="stopHold(category, key)"
-                    (mouseleave)="stopHold(category, key)"
-                    (touchend)="stopHold(category, key)"
-                    [disabled]="(+getFormControl(category, key).value || 0) <= (meta.min ?? 0)"
-                  >
-                    <mat-icon svgIcon="remove"></mat-icon>
-                  </button>
-                  <mat-form-field appearance="fill" class="number-input no-subscript">
-                    <input
-                      matInput
-                      type="number"
-                      [formControl]="$any(getFormControl(category, key))"
-                      (keydown)="onIntegerInput($event)"
-                      (blur)="onBlur(category, key)"
-                      [attr.aria-label]="meta.metadata?.display_name"
-                    />
-                    @if (isControlInvalid(category, key)) {
-                      <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-                    }
-                  </mat-form-field>
-                  <button
-                    mat-icon-button
-                    class="stepper-btn"
-                    (mousedown)="startHold('increment', category, key, meta)"
-                    (touchstart.prevent)="startHold('increment', category, key, meta)"
-                    (mouseup)="stopHold(category, key)"
-                    (mouseleave)="stopHold(category, key)"
-                    (touchend)="stopHold(category, key)"
-                    [disabled]="
-                      (+getFormControl(category, key).value || 0) >= (meta.max ?? 1000000000000)
-                    "
-                  >
-                    <mat-icon svgIcon="plus"></mat-icon>
-                  </button>
-                </div>
-              }
-              @case ('string') {
-                <ng-container
-                  [ngTemplateOutlet]="textInputTemplate"
-                  [ngTemplateOutletContext]="{ category, key, meta }"
-                ></ng-container>
-              }
-              @case ('bandwidth') {
-                <ng-container
-                  [ngTemplateOutlet]="textInputTemplate"
-                  [ngTemplateOutletContext]="{ category, key, meta }"
-                ></ng-container>
-              }
-              @case ('select') {
-                <mat-form-field class="input-field no-subscript" appearance="fill">
-                  <mat-select
-                    [formControl]="$any(getFormControl(category, key))"
-                    [attr.aria-label]="meta.metadata?.display_name"
-                    (selectionChange)="onValueChange(category, key)"
-                  >
-                    @for (option of meta.options; track $any(option).value || option) {
-                      <mat-option [value]="$any(option).value ?? option">
-                        {{ getOptionLabel(option) }}
-                      </mat-option>
-                    }
-                  </mat-select>
-                  @if (isControlInvalid(category, key)) {
-                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-                  }
-                </mat-form-field>
-              }
-              @case ('string[]') {
-                <div class="array-control-wrapper">
-                  <div class="array-items">
-                    @for (item of getArrayControls(category, key); track $index) {
-                      <div class="array-item">
-                        <mat-form-field appearance="fill" class="input-field">
-                          <input
-                            matInput
-                            [formControl]="getArrayItemControl(category, key, $index)"
-                            [attr.aria-label]="
-                              'modals.preferences.aria.itemIndex' | translate: { index: $index + 1 }
-                            "
-                            (blur)="onBlur(category, key)"
-                          />
-                          <button
-                            matIconButton
-                            matSuffix
-                            (click)="removeArrayItem(category, key, $index)"
-                            [attr.aria-label]="
-                              'modals.preferences.aria.removeItemIndex'
-                                | translate: { index: $index + 1 }
-                            "
-                          >
-                            <mat-icon svgIcon="close"></mat-icon>
-                          </button>
-                          @if (isControlInvalid(category, key, $index)) {
-                            <mat-error>{{ getValidationMessage(category, key, $index) }}</mat-error>
-                          }
-                        </mat-form-field>
-                      </div>
-                    }
-                  </div>
-                  @if (isControlInvalid(category, key)) {
-                    <mat-error class="array-error">{{
-                      getValidationMessage(category, key)
-                    }}</mat-error>
-                  }
-                  <button
-                    mat-stroked-button
-                    (click)="addArrayItem(category, key)"
-                    [attr.aria-label]="
-                      'modals.preferences.aria.addNewItem'
-                        | translate: { name: meta.metadata?.display_name }
-                    "
-                  >
-                    <mat-icon svgIcon="plus"></mat-icon>
-                    {{ 'modals.preferences.addItem' | translate }}
-                  </button>
-                </div>
-              }
-              <!-- file and folder are structurally identical — delegated to a shared template -->
-              @case ('file') {
-                <ng-container
-                  [ngTemplateOutlet]="pathPickerTemplate"
-                  [ngTemplateOutletContext]="{
-                    category: category,
-                    key: key,
-                    type: 'file',
-                    meta: meta,
-                  }"
-                ></ng-container>
-              }
-              @case ('folder') {
-                <ng-container
-                  [ngTemplateOutlet]="pathPickerTemplate"
-                  [ngTemplateOutletContext]="{
-                    category: category,
-                    key: key,
-                    type: 'folder',
-                    meta: meta,
-                  }"
-                ></ng-container>
-              }
-            }
-          </div>
         </div>
       </div>
     }
-  </ng-template>
+  </main>
+}
 
-  <!-- ── Text Input Template (shared by 'string' and 'bandwidth' cases) ────── -->
-  <ng-template #textInputTemplate let-category="category" let-key="key" let-meta="meta">
-    <mat-form-field class="input-field" appearance="fill">
-      <input
-        matInput
-        [formControl]="$any(getFormControl(category, key))"
-        [attr.aria-label]="meta.metadata?.display_name"
-        [placeholder]="(meta.metadata?.placeholder | translate) || ''"
-        (blur)="onBlur(category, key)"
-      />
-      @if (isControlInvalid(category, key)) {
-        <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-      }
-    </mat-form-field>
-  </ng-template>
-
-  <!-- ── Path Picker Template (shared by 'file' and 'folder' cases) ──────── -->
-  <ng-template
-    #pathPickerTemplate
-    let-category="category"
-    let-key="key"
-    let-type="type"
-    let-meta="meta"
+@if (bottomTabs() && !hasSearchResults()) {
+  <div
+    class="tabs bottom-tabs"
+    role="tablist"
+    [attr.aria-label]="'modals.preferences.aria.settingsCategories' | translate"
   >
-    <mat-form-field appearance="fill" class="input-field">
-      <input
-        matInput
-        [formControl]="$any(getFormControl(category, key))"
-        (input)="onPathInput(category, key)"
-        (blur)="onBlur(category, key)"
-        [attr.aria-label]="
-          'modals.preferences.aria.' + type + 'PathFor'
-            | translate: { name: meta.metadata?.display_name }
-        "
-      />
+    @for (tab of tabs; track tab.key; let i = $index) {
+      <button
+        (click)="selectTab(i)"
+        [class.selected]="selectedTabIndex() === i"
+        [attr.aria-selected]="selectedTabIndex() === i"
+        [attr.tabindex]="selectedTabIndex() === i ? 0 : -1"
+        role="tab"
+        [attr.aria-controls]="'tab-panel-' + tab.key"
+      >
+        <mat-icon [svgIcon]="tab.icon"></mat-icon>
+        <span class="tab-label">{{ 'modals.preferences.tabs.' + tab.key | translate }}</span>
+      </button>
+    }
+  </div>
+}
+
+<!-- ── Setting Header Template ─────────────────────────────────────────── -->
+<ng-template #settingHeader let-setting="setting" let-showCategory="showCategory">
+  <div class="setting">
+    <div class="setting-info">
+      <div class="setting-title">
+        <span>{{ setting.label }}</span>
+        @if (showCategory) {
+          <small class="app-pill p-primary">{{ setting.categoryDisplayName }}</small>
+        }
+      </div>
+      @if (setting.description) {
+        <p class="help-text">{{ setting.description }}</p>
+      }
+    </div>
+    @if (setting.isModified) {
       <button
         matIconButton
-        matSuffix
-        (click)="openPicker(category, key, type)"
+        class="reset-btn"
+        (click)="resetSetting(setting.category, setting.key)"
         [attr.aria-label]="
-          'modals.preferences.aria.browseFor' | translate: { name: meta.metadata?.display_name }
+          ('modals.preferences.resetToDefault' | translate) +
+          ': ' +
+          setting.meta?.metadata?.display_name
         "
+        [attr.title]="'modals.preferences.resetToDefault' | translate"
       >
-        <mat-icon [svgIcon]="type"></mat-icon>
+        <mat-icon svgIcon="rotate-right"></mat-icon>
       </button>
-      @if (isControlInvalid(category, key)) {
-        <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-      }
-    </mat-form-field>
-  </ng-template>
+    }
+  </div>
+</ng-template>
 
-  @if (hasPendingRestartChanges()) {
-    <button
-      class="floating-pending-indicator"
-      (click)="scrollToPendingChanges()"
-      [matTooltip]="
-        'modals.preferences.pendingChangesTooltip' | translate: { count: pendingChangesCount() }
-      "
-      matTooltipPosition="left"
-      matTooltipClass="pending-changes-tooltip"
-      [attr.aria-label]="'modals.preferences.aria.scrollToPending' | translate"
-    >
-      <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
-      <span class="pending-count">{{ pendingChangesCount() }}</span>
-    </button>
+<!-- ── Setting Template ──────────────────────────────────────────────────── -->
+<ng-template #settingTemplate let-setting="setting" let-showCategory="showCategory">
+  @if (setting.meta; as meta) {
+    @if (meta.value_type === 'bool' || meta.value_type === 'int') {
+      <ng-container
+        [ngTemplateOutlet]="settingHeader"
+        [ngTemplateOutletContext]="{ setting: setting, showCategory: showCategory }"
+      ></ng-container>
+      <div class="setting-control">
+        @if (meta.value_type === 'bool') {
+          <mat-slide-toggle
+            [formControl]="$any(setting.control)"
+            (change)="onValueChange(setting.category, setting.key)"
+          ></mat-slide-toggle>
+        } @else {
+          <app-number-input
+            [formControl]="$any(setting.control)"
+            [placeholder]="(meta.metadata?.placeholder | translate) || ''"
+            [step]="meta.step || 1"
+            [min]="meta.min !== undefined ? meta.min : undefined"
+            [max]="meta.max !== undefined ? meta.max : undefined"
+            [isFloat]="false"
+            [isSensitive]="false"
+            [allowNegative]="meta.min === undefined || meta.min < 0"
+            [ariaLabel]="meta.metadata?.display_name || ''"
+            (inputBlur)="onBlur(setting.category, setting.key)"
+          />
+        }
+      </div>
+    } @else {
+      <div class="setting-full-width">
+        <ng-container
+          [ngTemplateOutlet]="settingHeader"
+          [ngTemplateOutletContext]="{ setting: setting, showCategory: showCategory }"
+        ></ng-container>
+        <div class="setting-control">
+          @switch (meta.value_type) {
+            @case ('string') {
+              <ng-container
+                [ngTemplateOutlet]="textInputTemplate"
+                [ngTemplateOutletContext]="{ setting: setting }"
+              ></ng-container>
+            }
+            @case ('bandwidth') {
+              <ng-container
+                [ngTemplateOutlet]="textInputTemplate"
+                [ngTemplateOutletContext]="{ setting: setting }"
+              ></ng-container>
+            }
+            @case ('select') {
+              <mat-form-field class="input-field no-subscript">
+                <mat-select
+                  [formControl]="$any(setting.control)"
+                  [attr.aria-label]="meta.metadata?.display_name"
+                  (selectionChange)="onValueChange(setting.category, setting.key)"
+                >
+                  @for (option of setting.options; track option.value) {
+                    <mat-option [value]="option.value">
+                      {{ option.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+                @if (setting.isInvalid) {
+                  <mat-error>{{ setting.validationMessage }}</mat-error>
+                }
+              </mat-form-field>
+            }
+            @case ('string[]') {
+              <div class="array-items">
+                @for (item of setting.arrayItemViewModels; track item.control) {
+                  <div class="array-item">
+                    <mat-form-field class="input-field">
+                      <input
+                        matInput
+                        [formControl]="item.control"
+                        [attr.aria-label]="
+                          'modals.preferences.aria.itemIndex' | translate: { index: $index + 1 }
+                        "
+                        (blur)="onBlur(setting.category, setting.key)"
+                      />
+                      <button
+                        matIconButton
+                        matSuffix
+                        (click)="removeArrayItem(setting.category, setting.key, $index)"
+                        [attr.aria-label]="
+                          'modals.preferences.aria.removeItemIndex'
+                            | translate: { index: $index + 1 }
+                        "
+                      >
+                        <mat-icon svgIcon="close"></mat-icon>
+                      </button>
+                      @if (item.isInvalid) {
+                        <mat-error>{{ item.validationMessage }}</mat-error>
+                      }
+                    </mat-form-field>
+                  </div>
+                }
+                <button
+                  matButton="outlined"
+                  (click)="addArrayItem(setting.category, setting.key)"
+                  [attr.aria-label]="
+                    'modals.preferences.aria.addNewItem'
+                      | translate: { name: meta.metadata?.display_name }
+                  "
+                >
+                  <mat-icon svgIcon="plus"></mat-icon>
+                  {{ 'modals.preferences.addItem' | translate }}
+                </button>
+                @if (setting.isInvalid) {
+                  <mat-error class="array-error">{{ setting.validationMessage }}</mat-error>
+                }
+              </div>
+            }
+            <!-- file and folder are structurally identical — delegated to a shared template -->
+            @case ('file') {
+              <ng-container
+                [ngTemplateOutlet]="pathPickerTemplate"
+                [ngTemplateOutletContext]="{
+                  setting: setting,
+                  type: 'file',
+                }"
+              ></ng-container>
+            }
+            @case ('folder') {
+              <ng-container
+                [ngTemplateOutlet]="pathPickerTemplate"
+                [ngTemplateOutletContext]="{
+                  setting: setting,
+                  type: 'folder',
+                }"
+              ></ng-container>
+            }
+          }
+        </div>
+      </div>
+    }
   }
-</div>
+</ng-template>
+
+<!-- ── Text Input Template (shared by 'string' and 'bandwidth' cases) ────── -->
+<ng-template #textInputTemplate let-setting="setting">
+  <mat-form-field class="input-field">
+    <input
+      matInput
+      [formControl]="$any(setting.control)"
+      [attr.aria-label]="setting.meta?.metadata?.display_name"
+      [placeholder]="(setting.meta?.metadata?.placeholder | translate) || ''"
+      (blur)="onBlur(setting.category, setting.key)"
+      (keydown.enter)="onBlur(setting.category, setting.key)"
+    />
+    @if (setting.isInvalid) {
+      <mat-error>{{ setting.validationMessage }}</mat-error>
+    }
+  </mat-form-field>
+</ng-template>
+
+<!-- ── Path Picker Template (shared by 'file' and 'folder' cases) ──────── -->
+<ng-template #pathPickerTemplate let-setting="setting" let-type="type">
+  <mat-form-field class="input-field">
+    <input
+      matInput
+      [formControl]="$any(setting.control)"
+      (input)="onPathInput(setting.category, setting.key)"
+      (blur)="onBlur(setting.category, setting.key)"
+      [attr.aria-label]="
+        'modals.preferences.aria.' + type + 'PathFor'
+          | translate: { name: setting.meta?.metadata?.display_name }
+      "
+    />
+    <button
+      matIconButton
+      matSuffix
+      (click)="openPicker(setting.category, setting.key, type)"
+      [attr.aria-label]="
+        'modals.preferences.aria.browseFor'
+          | translate: { name: setting.meta?.metadata?.display_name }
+      "
+    >
+      <mat-icon [svgIcon]="type"></mat-icon>
+    </button>
+    @if (setting.isInvalid) {
+      <mat-error>{{ setting.validationMessage }}</mat-error>
+    }
+  </mat-form-field>
+</ng-template>
+
+@if (hasPendingRestartChanges()) {
+  <button
+    class="floating-pending-indicator"
+    (click)="scrollToPendingChanges()"
+    [attr.title]="
+      'modals.preferences.pendingChangesTooltip' | translate: { count: pendingChangesCount() }
+    "
+    [attr.aria-label]="'modals.preferences.aria.scrollToPending' | translate"
+  >
+    <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
+    <span class="pending-count">{{ pendingChangesCount() }}</span>
+  </button>
+}

@@ -3,40 +3,20 @@ import { UpperCasePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ServeListItem } from '@app/types';
-import { PathService } from '@app/services';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-
-interface TypeInfo {
-  icon: string;
-}
-
-const TYPE_INFO: Record<string, TypeInfo> = {
-  http: { icon: 'globe' },
-  webdav: { icon: 'cloud' },
-  ftp: { icon: 'file-arrow-up' },
-  sftp: { icon: 'lock' },
-  nfs: { icon: 'server' },
-  dlna: { icon: 'tv' },
-  restic: { icon: 'shield' },
-  s3: { icon: 'bucket' },
-};
-
-const DEFAULT_ICON = 'satellite-dish';
-const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 
 @Component({
   selector: 'app-serve-card',
-  standalone: true,
   imports: [
     UpperCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './serve-card.component.html',
@@ -46,12 +26,47 @@ const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 export class ServeCardComponent {
   private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
+  private readonly quickRunService = inject(QuickRunService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
 
   stopServe = output<ServeListItem>();
   cardClick = output<ServeListItem>();
+
+  readonly isFlow = computed(() => {
+    const s = this.serve();
+    return s.origin === 'flow' || !!s.workflow_id;
+  });
+
+  readonly isQuickRun = computed(() => {
+    if (this.isFlow()) return false;
+    const s = this.serve();
+    if (s.origin === 'quickrun' || !!s.quick_run_id) return true;
+    const profile = s.profile;
+    if (!profile) return false;
+    return this.quickRunService
+      .quickRuns()
+      .some(qr => qr.operationType === 'serve' && qr.name === profile);
+  });
+
+  readonly originLabel = computed(() => {
+    if (this.isFlow()) {
+      const t = this.translate.instant('flow.title');
+      return t === 'flow.title' ? 'Flow' : t;
+    }
+    if (this.isQuickRun()) {
+      const t = this.translate.instant('flow.tabs.quickRun');
+      return t === 'flow.tabs.quickRun' ? 'Quick Run' : t;
+    }
+    const t = this.translate.instant('navigation.dashboard');
+    return t === 'navigation.dashboard' ? 'Dashboard' : t;
+  });
+
+  readonly originIcon = computed(() => {
+    if (this.isFlow()) return 'flow';
+    return this.isQuickRun() ? 'quick-run' : 'cloud';
+  });
 
   serveIcon = computed<string>(() => {
     const type = this.serve().params.type.toLowerCase();

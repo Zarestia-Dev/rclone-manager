@@ -1,5 +1,8 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { ProvisionProgressPayload, ProvisionStatus } from '@app/types';
 
 /**
  * Service for handling installations of rclone and plugins
@@ -9,51 +12,93 @@ import { TauriBaseService } from '../infrastructure/platform/tauri-base.service'
   providedIn: 'root',
 })
 export class InstallationService extends TauriBaseService {
+  private readonly eventListenersService = inject(EventListenersService);
+
+  readonly rcloneProgress = signal<ProvisionProgressPayload | null>(null);
+  readonly mountPluginProgress = signal<ProvisionProgressPayload | null>(null);
+
+  constructor() {
+    super();
+    this.eventListenersService
+      .listenToProvisionProgress()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        const isTerminal =
+          payload.stage === 'completed' ||
+          payload.stage === 'cancelled' ||
+          payload.stage === 'error';
+        const progress = isTerminal ? null : payload;
+
+        if (payload.component === 'rclone') {
+          this.rcloneProgress.set(progress);
+        } else if (payload.component === 'mountPlugin') {
+          this.mountPluginProgress.set(progress);
+        }
+      });
+
+    this.restoreProvisionStatus();
+  }
+
+  private async restoreProvisionStatus(): Promise<void> {
+    try {
+      const status = await this.invokeCommand<ProvisionStatus>('get_provision_status');
+      if (status?.rclone) {
+        this.rcloneProgress.set(status.rclone);
+      }
+      if (status?.mountPlugin) {
+        this.mountPluginProgress.set(status.mountPlugin);
+      }
+    } catch {
+      // Ignore if unsupported (e.g. mobile/librclone) or in non-Tauri environment
+    }
+  }
+
+  isCancellationError(error: unknown): boolean {
+    const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+    return msg.includes('downloadCancelled');
+  }
+
   /**
    * Install rclone to the system
    * @param path Optional custom installation path. If null, uses default location
    */
   async installRclone(path?: string | null): Promise<string> {
-    return this.invokeWithNotification<string>(
-      'provision_rclone',
-      { path },
-      {
-        errorKey: 'repairSheet.errors.rcloneInstallFailed',
-        errorParams: { errorKey: 'repairSheet.errors.rcloneInstallFailed' },
-      }
-    );
+    try {
+      return await this.invokeWithNotification<string>(
+        'provision_rclone',
+        { path },
+        {
+          errorKey: 'repairSheet.errors.rcloneInstallFailed',
+        }
+      );
+    } finally {
+      this.rcloneProgress.set(null);
+    }
+  }
+
+  /**
+   * Cancel in-flight rclone provisioning/download
+   */
+  async cancelRcloneInstall(): Promise<void> {
+    try {
+      await this.invokeCommand<void>('cancel_provision_rclone');
+    } catch (error) {
+      console.error('Failed to cancel rclone provisioning:', error);
+    } finally {
+      this.rcloneProgress.set(null);
+    }
   }
 
   /**
    * Check if mount plugin is installed
-   * @param retryCount Number of times to retry the check (for post-installation verification)
    */
-  async isMountPluginInstalled(retryCount = 0): Promise<boolean> {
+  async isMountPluginInstalled(): Promise<boolean> {
     try {
-      const result = await this.invokeCommand<boolean>('check_mount_plugin_installed');
-
-      // If we got false but this is a retry (indicating we just installed),
-      // wait a bit and try again
-      if (!result && retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.invokeCommand<boolean>('check_mount_plugin_installed');
-      }
-
-      return result;
+      return await this.invokeWithNotification<boolean>('check_mount_plugin_installed', undefined, {
+        errorKey: 'repairSheet.messages.mountPluginStatusError',
+      });
     } catch (error) {
       console.error('Error checking mount plugin installation:', error);
-
-      const translatedError = this.backendTranslation.translateBackendMessage(error);
-      this.notificationService.showError(
-        `${this.translate.instant('repairSheet.messages.mountPluginStatusError')}: ${translatedError}`
-      );
-
-      // If this is a retry attempt, don't retry again
-      if (retryCount > 0) {
-        throw error;
-      }
-
-      // For first attempt, assume not installed on error
       return false;
     }
   }
@@ -62,9 +107,26 @@ export class InstallationService extends TauriBaseService {
    * Install the mount plugin
    */
   async installMountPlugin(): Promise<string> {
-    return this.invokeWithNotification<string>('install_mount_plugin', undefined, {
-      errorKey: 'repairSheet.errors.mountPluginInstallFailed',
-      errorParams: { errorKey: 'repairSheet.errors.mountPluginInstallFailed' },
-    });
+    try {
+      return await this.invokeWithNotification<string>('install_mount_plugin', undefined, {
+        successKey: 'backendSuccess.rclone.mountPluginInstalled',
+        errorKey: 'backendErrors.rclone.mountPluginInstallFailed',
+      });
+    } finally {
+      this.mountPluginProgress.set(null);
+    }
+  }
+
+  /**
+   * Cancel in-flight mount plugin installation/download
+   */
+  async cancelMountPluginInstall(): Promise<void> {
+    try {
+      await this.invokeCommand<void>('cancel_mount_plugin_install');
+    } catch (error) {
+      console.error('Failed to cancel mount plugin install:', error);
+    } finally {
+      this.mountPluginProgress.set(null);
+    }
   }
 }

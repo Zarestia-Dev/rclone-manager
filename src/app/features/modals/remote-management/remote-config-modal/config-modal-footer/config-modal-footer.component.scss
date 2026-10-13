@@ -29,6 +29,7 @@
     color: var(--dim-color);
     display: inline-flex;
     align-items: center;
+    flex-direction: column;
     gap: var(--space-xs);
   }
 }

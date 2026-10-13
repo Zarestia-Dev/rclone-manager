@@ -3,43 +3,41 @@ import { DatePipe, NgClass } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertRule } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
+import { MatDialog } from '@angular/material/dialog';
+import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor.component';
 
 @Component({
   selector: 'app-alert-rules',
-  standalone: true,
   imports: [
     NgClass,
     DatePipe,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatSlideToggleModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
-    MatProgressSpinnerModule,
   ],
   template: `
     <div class="rules-container">
       <!-- Toolbar -->
       <div class="toolbar">
         <button
-          mat-icon-button
+          matIconButton
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button mat-flat-button (click)="createRule()">
+        <button matButton="filled" (click)="createRule()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createRule' | translate }}
         </button>
@@ -55,8 +53,7 @@ import { SearchContainerComponent } from '@app/shared/components';
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.rules().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="32" strokeWidth="2">
-            </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 
@@ -156,7 +153,7 @@ import { SearchContainerComponent } from '@app/shared/components';
                     @if (alerts.actionsMap().get(actionId); as action) {
                       <mat-icon
                         [svgIcon]="alerts.getActionIcon(action.kind)"
-                        [matTooltip]="action.name"
+                        [attr.title]="action.name"
                         class="trigger-icon"
                       ></mat-icon>
                     }
@@ -177,7 +174,7 @@ import { SearchContainerComponent } from '@app/shared/components';
                 <mat-slide-toggle
                   [checked]="rule.enabled"
                   (change)="toggleRule(rule)"
-                  [matTooltip]="
+                  [attr.title]="
                     (rule.enabled ? 'automation.status.enabled' : 'automation.status.disabled')
                       | translate
                   "
@@ -191,16 +188,16 @@ import { SearchContainerComponent } from '@app/shared/components';
               <td mat-cell *matCellDef="let rule">
                 <div class="row-actions">
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="editRule(rule)"
-                    [matTooltip]="'common.edit' | translate"
+                    [attr.title]="'common.edit' | translate"
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="deleteRule(rule)"
-                    [matTooltip]="'common.delete' | translate"
+                    [attr.title]="'common.delete' | translate"
                   >
                     <mat-icon svgIcon="trash"></mat-icon>
                   </button>
@@ -368,7 +365,6 @@ import { SearchContainerComponent } from '@app/shared/components';
       display: flex;
       flex-direction: column;
       gap: var(--space-xs);
-      padding: var(--space-xs) 0;
     }
 
     .filter-group {
@@ -389,7 +385,6 @@ import { SearchContainerComponent } from '@app/shared/components';
       align-items: center;
       flex-wrap: wrap;
       gap: var(--space-xs);
-      padding: var(--space-xs) 0;
     }
 
     .trigger-icon {
@@ -425,19 +420,26 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertRulesComponent {
-  readonly alerts = inject(AlertService);
-  private modalService = inject(ModalService);
+  public readonly alerts = inject(AlertService);
+  private readonly dialog = inject(MatDialog);
+  private readonly notificationService = inject(NotificationService);
 
-  searchVisible = signal(false);
-  displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
+  readonly searchVisible = signal(false);
+  readonly displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
 
   onSearchChange(term: string): void {
     this.alerts.rulesSearchTerm.set(term);
   }
 
   createRule(): void {
-    this.modalService
-      .openAlertRuleEditor()
+    this.dialog
+      .open(AlertRuleEditorComponent, {
+        width: '600px',
+        maxHeight: '80vh',
+        disableClose: false,
+        data: { ruleId: undefined },
+        panelClass: 'mobile-sheet-dialog',
+      })
       .afterClosed()
       .subscribe(async rule => {
         if (rule) await this.alerts.saveAlertRule(rule);
@@ -445,26 +447,30 @@ export class AlertRulesComponent {
   }
 
   editRule(rule: AlertRule): void {
-    this.modalService
-      .openAlertRuleEditor(rule)
+    this.dialog
+      .open(AlertRuleEditorComponent, {
+        width: '600px',
+        maxHeight: '80vh',
+        disableClose: false,
+        data: { ruleId: rule.id },
+        panelClass: 'mobile-sheet-dialog',
+      })
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertRule(updated);
       });
   }
 
-  deleteRule(rule: AlertRule): void {
-    this.modalService
-      .openConfirm({
-        title: 'common.delete',
-        message: 'alerts.deleteRuleConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.deleteAlertRule(rule.id);
-      });
+  async deleteRule(rule: AlertRule): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'common.delete',
+      'alerts.deleteRuleConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      await this.alerts.deleteAlertRule(rule.id);
+    }
   }
 
   async toggleRule(rule: AlertRule): Promise<void> {

@@ -13,28 +13,27 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { FileSystemService, SystemInfoService } from '@app/services';
-import { ValidatorRegistryService } from '@app/services';
-import { InstallationOptionsData, InstallationTabOption } from '../../types';
-
-type LocationType = 'default' | 'custom' | 'existing';
-type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
+import {
+  InstallationOptionsData,
+  InstallationTabOption,
+  LocationType,
+  BinaryStatus,
+} from '@app/types';
 
 @Component({
   selector: 'app-installation-options',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './installation-options.component.html',
   styleUrl: './installation-options.component.scss',
@@ -43,7 +42,7 @@ type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
 export class InstallationOptionsComponent implements OnInit {
   disabled = input(false);
   mode = input<'install' | 'config'>('install');
-  tabOptions = input<InstallationTabOption[]>([
+  tabOptions = input<readonly InstallationTabOption[]>([
     { key: 'default', label: 'shared.installationOptions.tabs.quickFix', icon: 'bolt' },
     { key: 'custom', label: 'shared.installationOptions.tabs.custom', icon: 'folder' },
     { key: 'existing', label: 'shared.installationOptions.tabs.existing', icon: 'file' },
@@ -60,7 +59,6 @@ export class InstallationOptionsComponent implements OnInit {
 
   private fs = inject(FileSystemService);
   private system = inject(SystemInfoService);
-  private validators = inject(ValidatorRegistryService);
   private translate = inject(TranslateService);
 
   readonly statusText = computed(() => {
@@ -76,8 +74,8 @@ export class InstallationOptionsComponent implements OnInit {
   readonly statusIcon = computed(() => {
     const icons: Record<BinaryStatus, string> = {
       untested: 'help',
-      testing: 'refresh',
-      valid: 'circle-check',
+      testing: 'spinner',
+      valid: 'check-circle',
       invalid: 'circle-xmark',
     };
     return icons[this.binaryTestResult()];
@@ -95,11 +93,6 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const pathValidator = this.validators.getValidator('crossPlatformPath');
-    if (pathValidator) {
-      this.customPathControl.setValidators([pathValidator]);
-      this.existingBinaryControl.setValidators([pathValidator]);
-    }
     this.emit();
   }
 
@@ -126,7 +119,7 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   async selectBinary(): Promise<void> {
-    const path = await this.fs.selectFolder(); // Needs to change to selectFile when we have a rclone binary with a GUI-friendly name
+    const path = await this.fs.selectFile();
     if (path) {
       this.existingBinaryControl.setValue(path);
       this.binaryTestResult.set('untested');
@@ -156,8 +149,6 @@ export class InstallationOptionsComponent implements OnInit {
   }
 
   getError(control: FormControl): string {
-    if (control.hasError('invalidPath'))
-      return this.translate.instant('shared.installationOptions.errors.invalidPath');
     if (control.hasError('required'))
       return this.translate.instant('shared.installationOptions.errors.required');
     return '';

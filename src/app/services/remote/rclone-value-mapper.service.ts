@@ -1,158 +1,113 @@
 import { Injectable } from '@angular/core';
-import { RcConfigOption } from '@app/types';
+import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
+import { isIntType, isFloatType } from 'src/app/shared/utils';
 
-/**
- * Service for converting between rclone's machine values and human-readable formats
- */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class RcloneValueMapperService {
-  /**
-   * Convert a machine value to human-readable format based on type
-   */
-  machineToHuman(value: unknown, type: string, fallback?: string): string {
-    if (value === null || value === undefined) {
-      return fallback || '';
-    }
-
+  machineToHuman(value: unknown, type: string, fallback = ''): string {
+    if (value == null) return fallback;
     switch (type) {
       case 'Duration':
         return this.nanosecondsToDuration(value as number, fallback);
-
       case 'SizeSuffix':
-      case 'BwTimetable':
         return this.bytesToSize(value as number, fallback);
-
+      case 'BwTimetable':
+        return String(value);
       case 'FileMode':
         return this.fileModeToString(value as number | string, fallback);
-
       default:
         return String(value);
     }
   }
 
-  /**
-   * Convert nanoseconds to duration string (e.g., 60000000000 → "1m0s")
-   * Always includes seconds like rclone does (5m → 5m0s)
-   */
-  nanosecondsToDuration(nanoseconds: number, fallback?: string): string {
+  nanosecondsToDuration(nanoseconds: number, fallback = 'off'): string {
     if (nanoseconds === 0) return '0s';
-    if (nanoseconds < 0) return fallback || '';
-    if (nanoseconds >= 9e18) return fallback || 'off';
+    if (nanoseconds < 0 || nanoseconds >= 9e18) return fallback;
 
-    const hours = Math.floor(nanoseconds / 3600000000000);
-    const minutes = Math.floor((nanoseconds % 3600000000000) / 60000000000);
-    const seconds = Math.floor((nanoseconds % 60000000000) / 1000000000);
-    const milliseconds = Math.floor((nanoseconds % 1000000000) / 1000000);
-    const microseconds = Math.floor((nanoseconds % 1000000) / 1000);
-    const ns = nanoseconds % 1000;
-
+    let remaining = nanoseconds;
     let result = '';
 
-    // Add hours if present
-    if (hours > 0) result += `${hours}h`;
-
-    // Add minutes if present (or if we have hours)
-    if (minutes > 0 || hours > 0) result += `${minutes}m`;
-
-    // Always add seconds if we have hours or minutes, or if seconds > 0
-    if (hours > 0 || minutes > 0 || seconds > 0) {
-      result += `${seconds}s`;
+    const h = Math.floor(remaining / 3600000000000);
+    if (h > 0) {
+      result += `${h}h`;
+      remaining %= 3600000000000;
     }
 
-    // Add smaller units only if no larger units
-    if (hours === 0 && minutes === 0 && seconds === 0) {
-      if (milliseconds > 0) result += `${milliseconds}ms`;
-      if (microseconds > 0) result += `${microseconds}us`;
-      if (ns > 0) result += `${ns}ns`;
+    const m = Math.floor(remaining / 60000000000);
+    if (m > 0 || result) {
+      result += `${m}m`;
+      remaining %= 60000000000;
+    }
+
+    const s = Math.floor(remaining / 1000000000);
+    if (s > 0 || result) {
+      result += `${s}s`;
+      remaining %= 1000000000;
+    }
+
+    if (!result) {
+      const ms = Math.floor(remaining / 1000000);
+      if (ms > 0) {
+        result += `${ms}ms`;
+        remaining %= 1000000;
+      }
+      const us = Math.floor(remaining / 1000);
+      if (us > 0) {
+        result += `${us}us`;
+        remaining %= 1000;
+      }
+      if (remaining > 0) result += `${remaining}ns`;
     }
 
     return result || '0s';
   }
 
-  /**
-   * Convert bytes to size string (e.g., -1 → "off", 102400 → "100Ki")
-   */
-  bytesToSize(bytes: number, fallback?: string): string {
-    // Special cases
+  bytesToSize(bytes: number, fallback = ''): string {
     if (bytes === -1) return 'off';
     if (bytes === 0) return '0';
-    if (bytes < 0) return fallback || '';
+    if (bytes < 0) return fallback;
 
-    const units = [
-      { suffix: 'Pi', value: 1125899906842624 },
-      { suffix: 'Ti', value: 1099511627776 },
-      { suffix: 'Gi', value: 1073741824 },
-      { suffix: 'Mi', value: 1048576 },
-      { suffix: 'Ki', value: 1024 },
-      { suffix: 'B', value: 1 },
-    ];
-
-    for (const unit of units) {
-      if (bytes >= unit.value) {
-        if (bytes % unit.value === 0) return `${bytes / unit.value}${unit.suffix}`;
-        return `${Math.round((bytes / unit.value) * 100) / 100}${unit.suffix}`;
+    for (const u of BYTES_UNITS) {
+      if (bytes >= u.v) {
+        const val = bytes / u.v;
+        return `${bytes % u.v === 0 ? val : Math.round(val * 1000) / 1000}${u.s}`;
       }
     }
-
     return `${bytes}B`;
   }
 
-  /**
-   * Convert numeric file mode to octal string (e.g., 18 → "022", 511 → "777")
-   */
-  fileModeToString(value: number | string | null | undefined, fallback?: string): string {
-    if (value === null || value === undefined) return fallback || '';
-
-    const minWidth = Math.max(3, fallback ? fallback.length : 0);
+  fileModeToString(value: number | string | null | undefined, fallback = ''): string {
+    if (value == null) return fallback;
+    const minWidth = Math.max(3, fallback.length);
 
     if (typeof value === 'number') {
-      if (value < 0) return fallback || '';
-      const oct = (value & 0o7777).toString(8);
-      return oct.length >= minWidth ? oct : oct.padStart(minWidth, '0');
+      if (value < 0) return fallback;
+      return (value & 0o7777).toString(8).padStart(minWidth, '0');
     }
-
-    const s = String(value);
-    if (s.trim() === '') return fallback || '';
-    return s.length >= minWidth ? s : s.padStart(minWidth, '0');
+    const s = String(value).trim();
+    return s ? s.padStart(minWidth, '0') : fallback;
   }
 
-  /**
-   * Parse octal string to numeric file mode (e.g., "777" → 511)
-   * Returns the parsed number, or the original value if parsing fails
-   */
-  parseFileMode(value: string | number | unknown): number | string | unknown {
-    if (typeof value === 'string' && value.trim() !== '') {
+  parseFileMode(value: unknown): number | string {
+    if (typeof value === 'string' && value.trim()) {
       const parsed = parseInt(value, 8);
       return isNaN(parsed) ? value : parsed;
     }
-    return value;
+    return value as number | string;
   }
 
-  /**
-   * Parse a Tristate value (e.g. from rclone backend) to a boolean or null.
-   * Rclone sometimes returns Tristate objects like { Valid: false, Value: false }
-   */
   parseTristate(value: unknown): boolean | null {
-    if (value === null || value === undefined || value === '') return null;
+    if (value == null || value === '') return null;
     if (typeof value === 'boolean') return value;
-    if (typeof value === 'object' && 'Valid' in (value as object) && 'Value' in (value as object)) {
-      const obj = value as { Valid: boolean; Value: boolean };
-      return obj.Valid ? obj.Value : null;
+    if (typeof value === 'object' && 'Valid' in value && 'Value' in value) {
+      const tri = value as { Valid: boolean; Value: boolean };
+      return tri.Valid ? tri.Value : null;
     }
     const s = String(value).toLowerCase().trim();
-    // '[object object]' guards against cases where a Tristate object was accidentally
-    // passed through String() without being unwrapped first (e.g. stale serialised cache).
     if (s === 'unset' || s === 'null' || s === '[object object]') return null;
-    if (s === 'true') return true;
-    if (s === 'false') return false;
-    return null;
+    return s === 'true' ? true : s === 'false' ? false : null;
   }
 
-  /**
-   * Normalizes an RcConfigOption by unwrapping its Default and Value properties if they are Tristate objects.
-   */
   normalizeOption(opt: RcConfigOption): RcConfigOption {
     if (opt.Type === 'Tristate') {
       return {
@@ -164,32 +119,61 @@ export class RcloneValueMapperService {
     return opt;
   }
 
-  /**
-   * Convert string value to appropriate type for backend
-   */
+  private normalizeList(val: unknown, type: string): string {
+    const isSpace = type === 'SpaceSepList';
+    if (Array.isArray(val))
+      return val
+        .map(String)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join(isSpace ? ' ' : ',');
+    if (val == null) return '';
+    return String(val)
+      .split(isSpace ? /\s+/ : /,/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join(isSpace ? ' ' : ',');
+  }
+
+  isDefaultValue(value: unknown, field: RcConfigOption): boolean {
+    if (value == null) return true;
+
+    if (field.Type === 'Tristate') {
+      const valBool = this.parseTristate(value);
+      return (
+        valBool === this.parseTristate(field.Default) ||
+        valBool === this.parseTristate(field.DefaultStr) ||
+        (valBool === null && field.Default == null && field.DefaultStr == null)
+      );
+    }
+
+    if (Array.isArray(value)) {
+      const normVal = this.normalizeList(value, field.Type);
+      const normDefault = this.normalizeList(field.Default, field.Type);
+      const normDefaultStr = this.normalizeList(field.DefaultStr, field.Type);
+      if (value.length === 0) {
+        return field.Default == null || normVal === normDefault || normVal === normDefaultStr;
+      }
+      return normVal === normDefault || normVal === normDefaultStr;
+    }
+
+    const strVal = String(value);
+    return strVal === String(field.Default) || strVal === String(field.DefaultStr) || strVal === '';
+  }
+
   humanToMachine(value: unknown, type: string): unknown {
+    if (isIntType(type)) {
+      if (typeof value !== 'string' || !value.trim()) return value;
+      const p = parseInt(value, 10);
+      return isNaN(p) ? value : p;
+    }
+    if (isFloatType(type)) {
+      if (typeof value !== 'string' || !value.trim()) return value;
+      const p = parseFloat(value);
+      return isNaN(p) ? value : p;
+    }
+
     switch (type) {
-      case 'int':
-      case 'int64':
-      case 'int32':
-      case 'uint':
-      case 'uint32':
-      case 'uint64':
-        if (typeof value === 'string' && value.trim() !== '') {
-          const numValue = parseInt(value, 10);
-          return isNaN(numValue) ? value : numValue;
-        }
-        return value;
-
-      case 'float':
-      case 'float32':
-      case 'float64':
-        if (typeof value === 'string' && value.trim() !== '') {
-          const numValue = parseFloat(value);
-          return isNaN(numValue) ? value : numValue;
-        }
-        return value;
-
       case 'bool':
         if (typeof value === 'boolean') return value;
         if (typeof value === 'string') {
@@ -198,41 +182,71 @@ export class RcloneValueMapperService {
           if (s === 'false') return false;
         }
         return value;
-
       case 'Tristate':
         return this.parseTristate(value);
-
       case 'FileMode':
         return this.parseFileMode(value);
-
       case 'Encoding':
       case 'Bits':
       case 'DumpFlags':
         return Array.isArray(value) ? value.join(',') : value;
-
       case 'CommaSepList':
         if (Array.isArray(value)) return value.join(',');
-        if (typeof value === 'string')
-          return value
-            .split(',')
-            .map(v => v.trim())
-            .filter(v => v)
-            .join(',');
-        return value;
-
+        return typeof value === 'string'
+          ? value
+              .split(',')
+              .map(v => v.trim())
+              .filter(Boolean)
+              .join(',')
+          : value;
       case 'SpaceSepList':
         if (Array.isArray(value)) return value.join(' ');
-        if (typeof value === 'string')
-          return value
-            .trim()
-            .split(/\s+/)
-            .filter(v => v)
-            .join(' ');
-        return value;
-
+        return typeof value === 'string'
+          ? value.trim().split(/\s+/).filter(Boolean).join(' ')
+          : value;
       default:
-        // Duration, SizeSuffix, BwTimetable, string, etc. - keep as string
         return value;
     }
   }
+
+  cleanData(formData: Record<string, unknown>, fields: RcConfigOption[]): Record<string, unknown> {
+    const map = new Map(fields.map(f => [f.Name || f.FieldName, f]));
+    return Object.entries(formData).reduce(
+      (acc, [k, v]) => {
+        const f = map.get(k);
+        if (f) {
+          if (!this.isDefaultValue(v, f)) acc[f.Name || f.FieldName] = v;
+        } else if (v !== undefined && v !== null && v !== '') acc[k] = v;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
+  }
+
+  extractSensitiveFields(fields: RcConfigOption[]): { key: string; name: string; help: string }[] {
+    if (!fields) return [];
+
+    return fields
+      .filter(field => {
+        const name = (field.FieldName || field.Name || '').toLowerCase();
+        return (
+          field.IsPassword ||
+          field.Name === 'pass' ||
+          SENSITIVE_KEYS.some(key => name.includes(key))
+        );
+      })
+      .map(field => ({
+        key: field.Name || field.FieldName || '',
+        name: field.FieldName || field.Name || '',
+        help: field.Help || '',
+      }));
+  }
 }
+
+const BYTES_UNITS: readonly { s: string; v: number }[] = [
+  { s: 'Pi', v: 1125899906842624 },
+  { s: 'Ti', v: 1099511627776 },
+  { s: 'Gi', v: 1073741824 },
+  { s: 'Mi', v: 1048576 },
+  { s: 'Ki', v: 1024 },
+];

@@ -1,42 +1,21 @@
-// Operation type hierarchy:
-//
-//   SyncOperationType ('sync' | 'copy' | 'move' | 'bisync')  ┐
-//   'mount'                                                    ├──▶ PrimaryActionType
-//   'serve'                                                    ┘
-//
-// Note: 'sync' appears in both SyncOperationType and PrimaryActionType.
-// As a PrimaryActionType it means "enter the sync tab"; the active sub-operation
-// (copy / move / bisync) is tracked separately via SyncOperationType.
-// They share the string 'sync' intentionally so tab routing and dispatch align.
+import { OPERATION_REGISTRY } from './operation-registry';
 
-// ── Core operation discriminants ────────────────────────────────────────────
+// ── Types inferred directly from the registry! ──────────────────────────────
+export type OperationDefinitionItem = (typeof OPERATION_REGISTRY)[number];
 
-export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
-
-export type PrimaryActionType = SyncOperationType | 'mount' | 'serve';
+export type SyncOperationType = Extract<OperationDefinitionItem, { isSyncType: true }>['key'];
+export type PrimaryActionType = Extract<OperationDefinitionItem, { isPrimary: true }>['key'];
 
 // ── Job-level types ─────────────────────────────────────────────────────────
+export type JobType = Extract<OperationDefinitionItem, { isJobType: true }>['key'];
 
-export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check' | 'serve';
-
-export type RemoteAction =
-  | 'mount'
-  | 'unmount'
-  | 'sync'
-  | 'copy'
-  | 'move'
-  | 'bisync'
-  | 'serve'
-  | 'stop'
-  | 'open'
-  | 'delete'
-  | null;
+export type RemoteAction = PrimaryActionType | 'unmount' | 'stop' | 'open' | null;
 
 export type FileOperationType =
   | 'delete'
   | 'rename'
   | 'upload'
-  | 'copy_url'
+  | 'copyurl'
   | 'cleanup'
   | 'rmdirs'
   | 'list'
@@ -51,8 +30,13 @@ export type FileOperationType =
 /** Single source of truth for `JobInfo.job_type`. */
 export type JobActionType = PrimaryActionType | FileOperationType;
 
-// ── Runtime action state ────────────────────────────────────────────────────
+/**
+ * Context in which an operation (e.g., unmount_all, stop_all_serves) is invoked.
+ * Matches Rust's `crate::rclone::commands::common::OperationContext`.
+ */
+export type OperationContext = 'normal' | 'shutdown';
 
+// ── Runtime action state ────────────────────────────────────────────────────
 export interface ActionState {
   type: RemoteAction;
   profileName?: string;
@@ -61,9 +45,77 @@ export interface ActionState {
 
 export type RemoteActionProgress = Record<string, ActionState[]>;
 
-// ── Static operation metadata ───────────────────────────────────────────────
-// No runtime state here — use SyncOperationViewModel when you need isActive.
+/**
+ * Checks if a given action state array has an in-flight operation matching `opType` and optional `profileName`.
+ * Supports matching start (`opType`), stop (`type: 'stop'`, `operationType: opType`), and unmount operations.
+ */
+export function isOperationActionInProgress(
+  actions: readonly ActionState[] | undefined | null,
+  opType?: PrimaryActionType,
+  profileName?: string
+): boolean {
+  return (
+    actions?.some(a => {
+      if (profileName && a.profileName && a.profileName !== profileName) return false;
+      if (!opType) return a.type !== 'open';
+      return (
+        a.type === opType ||
+        (opType === 'mount' && a.type === 'unmount') ||
+        (a.type === 'stop' && a.operationType === opType)
+      );
+    }) ?? false
+  );
+}
 
+/**
+ * Checks if a folder opening operation is currently in-flight for a remote (and optional profile/op).
+ */
+export function isFolderOpeningAction(
+  actions: readonly ActionState[] | undefined | null,
+  opType?: PrimaryActionType,
+  profileName?: string
+): boolean {
+  return (
+    actions?.some(
+      a =>
+        a.type === 'open' &&
+        (!opType || !a.operationType || a.operationType === opType) &&
+        (!profileName || !a.profileName || a.profileName === profileName)
+    ) ?? false
+  );
+}
+
+/**
+ * Finds the in-flight action matching `opType` and optional `profileName`.
+ */
+export function findInFlightAction(
+  actions: readonly ActionState[] | undefined | null,
+  opType: PrimaryActionType,
+  profileName?: string
+): ActionState | undefined {
+  return actions?.find(
+    a =>
+      (a.type === opType ||
+        (opType === 'mount' && a.type === 'unmount') ||
+        (a.type === 'stop' && a.operationType === opType)) &&
+      (a.profileName === profileName || (!a.profileName && !profileName))
+  );
+}
+
+export interface StartJobEvent {
+  type: PrimaryActionType;
+  remoteName: string;
+  profileName: string;
+}
+
+export interface StopJobEvent {
+  type: JobActionType;
+  remoteName: string;
+  serveId?: string;
+  profileName?: string;
+}
+
+// ── Static operation metadata ───────────────────────────────────────────────
 export interface SyncOperationConfig {
   type: SyncOperationType;
   /** i18n key for the full label. */
@@ -77,14 +129,12 @@ export interface SyncOperationConfig {
 }
 
 // ── View model ──────────────────────────────────────────────────────────────
-
 export interface SyncOperationViewModel extends SyncOperationConfig {
   /** True when this specific operation is currently running on the remote. */
   isActive: boolean;
 }
 
 // ── Misc UI helpers ─────────────────────────────────────────────────────────
-
 export interface QuickActionButton {
   id: string;
   icon: string;
@@ -92,4 +142,97 @@ export interface QuickActionButton {
   isLoading?: boolean;
   isDisabled?: boolean;
   cssClass?: string;
+}
+
+export const OPERATION_ICONS = Object.freeze(
+  Object.fromEntries(OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [op.key, op.icon]))
+) as Readonly<Record<PrimaryActionType, string>>;
+
+export const SYNC_TYPES = OPERATION_REGISTRY.filter(op => op.isSyncType).map(
+  op => op.key
+) as SyncOperationType[];
+
+export const BROWSABLE_OPS = OPERATION_REGISTRY.filter(op => op.isBrowsable).map(
+  op => op.key
+) as PrimaryActionType[];
+
+export const ALL_PRIMARY_ACTIONS = OPERATION_REGISTRY.filter(op => op.isPrimary).map(
+  op => op.key
+) as PrimaryActionType[];
+
+/**
+ * Maps sync operation types to their capitalized labels used by the rclone API.
+ */
+export const BATCH_OP_LABELS = Object.freeze(
+  Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.isSyncType).map(op => [op.key, op.apiLabel])
+  )
+) as Readonly<Record<SyncOperationType, BatchApiLabel>>;
+export type BatchApiLabel = Extract<
+  (typeof OPERATION_REGISTRY)[number],
+  { isSyncType: true }
+>['apiLabel'];
+
+/**
+ * Set of primary operation-type keys for efficient lookup.
+ */
+export const OPERATION_TYPE_KEYS: ReadonlySet<string> = new Set<string>(ALL_PRIMARY_ACTIONS);
+
+/**
+ * Type guard to check if a value is a PrimaryActionType.
+ */
+export function isPrimaryActionType(type: string): type is PrimaryActionType {
+  return OPERATION_TYPE_KEYS.has(type);
+}
+
+// ── Operation Category Constants for unifying inline lists ──────────────────
+// Each list is typed as `readonly PrimaryActionType[]` so consumers can pass
+// them to APIs expecting `PrimaryActionType` without an `as` cast.
+export const CORE_SYNC_OPS = [
+  'sync',
+  'copy',
+  'move',
+] as const satisfies readonly PrimaryActionType[];
+export const WATCH_SUPPORTED_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'bisync',
+  'check',
+] as const satisfies readonly PrimaryActionType[];
+export const CORE_COMMAND_OPS = [
+  'archivecreate',
+  'cryptcheck',
+] as const satisfies readonly PrimaryActionType[];
+export const MULTI_SOURCE_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'delete',
+  'copyurl',
+  'check',
+  'cryptcheck',
+] as const satisfies readonly PrimaryActionType[];
+export const FILE_SOURCE_OPS = [
+  'copy',
+  'move',
+  'delete',
+  'archivecreate',
+] as const satisfies readonly PrimaryActionType[];
+export const BACKEND_PROFILE_SUPPORTED_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'check',
+  'delete',
+  'copyurl',
+  'archivecreate',
+] as const satisfies readonly PrimaryActionType[];
+export const NON_JOB_OPS = ['mount', 'serve'] as const satisfies readonly PrimaryActionType[];
+
+export interface RenameItem {
+  remote: string;
+  srcPath: string;
+  dstPath: string;
+  isDir: boolean;
 }

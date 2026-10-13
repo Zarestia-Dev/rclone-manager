@@ -2,14 +2,21 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
-use crate::utils::rclone::endpoints::core;
+use crate::utils::logging::log::log_operation;
+use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::jobs::JobType;
+use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
 use crate::utils::types::state::RcloneState;
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    },
+};
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_create(
     app: AppHandle,
     source: String,
@@ -19,60 +26,72 @@ pub async fn archive_create(
     full_path: Option<bool>,
     include: Option<Vec<String>>,
 ) -> Result<Value, String> {
-    debug!(
-        "archive_create: source={source} destination={destination} include={:?}",
-        include
-    );
+    debug!("archive_create: source={source} destination={destination} include={include:?}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
-
-    let mut args = vec!["create".to_string(), source.clone(), destination.clone()];
-
-    if let Some(f) = format {
-        args.push("--format".to_string());
-        args.push(f);
-    }
-    if let Some(p) = prefix {
-        args.push("--prefix".to_string());
-        args.push(p);
-    }
-    if full_path.unwrap_or(false) {
-        args.push("--full-path".to_string());
-    }
-    if let Some(inc) = include {
-        for i in inc {
-            args.push("--include".to_string());
-            args.push(i);
-        }
-    }
 
     let group_id = format!("archive_create_{}", uuid::Uuid::new_v4().simple());
-    let os = backend_manager.get_runtime_os(&backend.name).await;
-    let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
+    let (endpoint, mut payload) = if backend.is_librclone_local() {
+        let mut p = json!({
+            "action": "create",
+            "src": source,
+            "dst": destination,
+            "_async": true,
+        });
 
-    let metadata = JobMetadata {
-        remote_name: destination.clone(),
-        job_type: JobType::ArchiveCreate,
-        source: source.clone(),
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
+        if let Some(f) = format {
+            p["format"] = json!(f);
+        }
+        if let Some(pr) = prefix {
+            p["prefix"] = json!(pr);
+        }
+        if let Some(fp) = full_path {
+            p["full_path"] = json!(fp);
+        }
+        if let Some(inc) = include {
+            p["include"] = json!(inc);
+        }
+        (operations::ARCHIVE, p)
+    } else {
+        let mut args = vec!["create".to_string(), source.clone(), destination.clone()];
+        if let Some(f) = format {
+            args.push(format!("--format={f}"));
+        }
+        if let Some(p) = prefix {
+            args.push(format!("--prefix={p}"));
+        }
+        if full_path.unwrap_or(false) {
+            args.push("--full-path".to_string());
+        }
+        if let Some(inc) = include {
+            for i in inc {
+                args.push(format!("--include={i}"));
+            }
+        }
+        let os = backend_manager.get_runtime_os(&backend.name).await;
+        (
+            core::COMMAND,
+            backend.build_core_command_payload("archive", args, true, os),
+        )
     };
+
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
+
+    let metadata = JobMetadata::new(
+        destination.clone(),
+        JobType::ArchiveCreate,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        client.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        endpoint,
         payload,
         metadata,
         SubmitJobOptions {
@@ -84,7 +103,7 @@ pub async fn archive_create(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_extract(
     app: AppHandle,
     source: String,
@@ -94,35 +113,43 @@ pub async fn archive_extract(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
-
-    let args = vec!["extract".to_string(), source.clone(), destination.clone()];
 
     let group_id = format!("archive_extract_{}", uuid::Uuid::new_v4().simple());
-    let os = backend_manager.get_runtime_os(&backend.name).await;
-    let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
-
-    let metadata = JobMetadata {
-        remote_name: source.clone(),
-        job_type: JobType::ArchiveExtract,
-        source: source.clone(),
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
+    let (endpoint, mut payload) = if backend.is_librclone_local() {
+        (
+            operations::ARCHIVE,
+            json!({
+                "action": "extract",
+                "src": source,
+                "dst": destination,
+                "_async": true,
+            }),
+        )
+    } else {
+        let args = vec!["extract".to_string(), source.clone(), destination.clone()];
+        let os = backend_manager.get_runtime_os(&backend.name).await;
+        (
+            core::COMMAND,
+            backend.build_core_command_payload("archive", args, true, os),
+        )
     };
+
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
+
+    let metadata = JobMetadata::new(
+        source.clone(),
+        JobType::ArchiveExtract,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        client.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        endpoint,
         payload,
         metadata,
         SubmitJobOptions {
@@ -134,7 +161,7 @@ pub async fn archive_extract(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_list(
     app: AppHandle,
     source: String,
@@ -147,35 +174,76 @@ pub async fn archive_list(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
+    let transport = app.state::<RcloneState>().transport.clone();
 
-    let mut args = vec!["list".to_string(), source];
+    let (endpoint, payload) = if backend.is_librclone_local() {
+        let mut p = json!({
+            "action": "list",
+            "src": source,
+        });
 
-    if long.unwrap_or(false) {
-        args.push("--long".to_string());
-    }
-    if plain.unwrap_or(false) {
-        args.push("--plain".to_string());
-    }
-    if files_only.unwrap_or(false) {
-        args.push("--files-only".to_string());
-    }
-    if dirs_only.unwrap_or(false) {
-        args.push("--dirs-only".to_string());
-    }
+        if let Some(l) = long {
+            p["long"] = json!(l);
+        }
+        if let Some(pr) = plain {
+            p["plain"] = json!(pr);
+        }
+        if let Some(fo) = files_only {
+            p["files_only"] = json!(fo);
+        }
+        if let Some(do_val) = dirs_only {
+            p["dirs_only"] = json!(do_val);
+        }
+        (operations::ARCHIVE, p)
+    } else {
+        let mut args = vec!["list".to_string(), source.clone()];
+        if long.unwrap_or(false) {
+            args.push("--long".to_string());
+        }
+        if plain.unwrap_or(false) {
+            args.push("--plain".to_string());
+        }
+        if files_only.unwrap_or(false) {
+            args.push("--files-only".to_string());
+        }
+        if dirs_only.unwrap_or(false) {
+            args.push("--dirs-only".to_string());
+        }
+        let os = backend_manager.get_runtime_os(&backend.name).await;
+        (
+            core::COMMAND,
+            backend.build_core_command_payload("archive", args, false, os),
+        )
+    };
 
-    let os = backend_manager.get_runtime_os(&backend.name).await;
-    let payload = backend.build_core_command_payload("archive", args, false, os);
+    let remote_name =
+        Some(crate::utils::json_helpers::extract_remote_name_from_fs(&source).into_owned());
 
-    let response = backend
-        .post_json(client, core::COMMAND, Some(&payload))
-        .await
-        .map_err(|e| format!("Failed to list archive: {e}"))?;
+    log_operation(
+        LogLevel::Info,
+        remote_name.clone(),
+        Some("Archive list".to_string()),
+        format!("Listing archive at {source}"),
+        Some(json!({
+            "arguments": crate::rclone::commands::common::redact_value(&payload, &app),
+        })),
+    );
+
+    let response = transport.rpc(endpoint, Some(&payload)).await.map_err(|e| {
+        let err_msg = format!("Failed to list archive: {e}");
+        log_operation(
+            LogLevel::Error,
+            remote_name.clone(),
+            Some("Archive list".to_string()),
+            err_msg.clone(),
+            None,
+        );
+        err_msg
+    })?;
 
     let error = response
         .get("error")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let result = response
         .get("result")
@@ -183,8 +251,24 @@ pub async fn archive_list(
         .unwrap_or("");
 
     if error {
-        return Err(format!("Archive list failed: {result}"));
+        let err_msg = format!("Archive list failed: {result}");
+        log_operation(
+            LogLevel::Error,
+            remote_name.clone(),
+            Some("Archive list".to_string()),
+            err_msg.clone(),
+            None,
+        );
+        return Err(err_msg);
     }
+
+    log_operation(
+        LogLevel::Info,
+        remote_name.clone(),
+        Some("Archive list".to_string()),
+        format!("Successfully listed archive at {source}"),
+        None,
+    );
 
     let is_long = long.unwrap_or(false);
     let is_plain = plain.unwrap_or(false);

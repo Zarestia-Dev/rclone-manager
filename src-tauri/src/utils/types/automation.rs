@@ -1,41 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::types::jobs::JobType;
-use crate::utils::types::remotes::ProfileParams;
-
-/// Type of automation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum AutomationType {
-    Copy,
-    Sync,
-    Move,
-    Bisync,
-}
-
-impl std::fmt::Display for AutomationType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AutomationType::Copy => write!(f, "Copy"),
-            AutomationType::Sync => write!(f, "Sync"),
-            AutomationType::Move => write!(f, "Move"),
-            AutomationType::Bisync => write!(f, "Bisync"),
-        }
-    }
-}
-
-impl AutomationType {
-    #[must_use]
-    pub fn as_job_type(&self) -> JobType {
-        match self {
-            AutomationType::Copy => JobType::Copy,
-            AutomationType::Sync => JobType::Sync,
-            AutomationType::Move => JobType::Move,
-            AutomationType::Bisync => JobType::Bisync,
-        }
-    }
-}
+use crate::utils::types::remotes::{OperationType, ProfileParams};
 
 /// Status of an automation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -65,10 +31,12 @@ pub struct AutomationArgs {
 
 impl AutomationArgs {
     /// Returns a display string for the source paths (comma-joined).
+    #[must_use]
     pub fn src_display(&self) -> String {
         self.src_paths.join(", ")
     }
     /// Returns a display string for the dest paths (comma-joined).
+    #[must_use]
     pub fn dst_display(&self) -> String {
         self.dst_paths.join(", ")
     }
@@ -86,7 +54,7 @@ pub struct Automation {
     pub id: String,
 
     /// Type of rclone operation
-    pub automation_type: AutomationType,
+    pub automation_type: OperationType,
 
     /// Remote name this automation is associated with
     pub remote_name: String,
@@ -95,7 +63,7 @@ pub struct Automation {
     pub profile_name: String,
 
     /// Cron expression (e.g., "0 0 * * *" for daily at midnight)
-    pub cron_expression: String,
+    pub cron_expression: Option<String>,
 
     /// Current status
     pub status: AutomationStatus,
@@ -136,6 +104,10 @@ pub struct Automation {
     /// Number of failed runs
     pub failure_count: u64,
 
+    /// Number of stopped runs
+    #[serde(default)]
+    pub stopped_count: u64,
+
     /// Enable real-time filesystem monitoring
     #[serde(default)]
     pub watch_enabled: bool,
@@ -143,49 +115,24 @@ pub struct Automation {
     /// Delay in seconds to debounce file changes before running the sync
     #[serde(default = "default_watch_delay")]
     pub watch_delay: u64,
+
+    /// Only synchronize directories containing changed files when triggered by file watcher
+    #[serde(default)]
+    pub watch_changed_only: bool,
 }
 
 impl Automation {
+    #[must_use]
     pub fn display_name(&self) -> String {
         format!("{} ({})", self.profile_name, self.backend_name)
     }
 
-    /// Validate and transition automation state
-    pub fn transition_to(&mut self, new_status: AutomationStatus) -> Result<(), String> {
-        let valid_transition = match (&self.status, &new_status) {
-            // From Enabled
-            (AutomationStatus::Enabled, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Enabled, AutomationStatus::Running) => true,
-
-            // From Disabled
-            (AutomationStatus::Disabled, AutomationStatus::Enabled) => true,
-
-            // From Running
-            (AutomationStatus::Running, AutomationStatus::Enabled) => true, // Success
-            (AutomationStatus::Running, AutomationStatus::Failed) => true,
-            (AutomationStatus::Running, AutomationStatus::Stopping) => true,
-
-            // From Stopping
-            (AutomationStatus::Stopping, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Stopping, AutomationStatus::Enabled) => true,
-
-            // From Failed
-            (AutomationStatus::Failed, AutomationStatus::Enabled) => true,
-            (AutomationStatus::Failed, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Failed, AutomationStatus::Running) => true,
-
-            _ => false,
-        };
-
-        if !valid_transition {
-            return Err(format!(
-                "Invalid state transition from {:?} to {:?}",
-                self.status, new_status
-            ));
-        }
-
-        self.status = new_status;
-        Ok(())
+    #[must_use]
+    pub fn log_name(&self) -> String {
+        format!(
+            "{}: {}-{}.{}",
+            self.backend_name, self.remote_name, self.profile_name, self.id
+        )
     }
 
     /// Update the automation after a successful run
@@ -194,15 +141,11 @@ impl Automation {
         self.last_error = None;
         self.current_job_id = None;
         self.success_count += 1;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Enabled
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_success: unexpected state transition failure: {e}");
-        }
     }
 
     /// Update the automation after a failed run
@@ -211,15 +154,11 @@ impl Automation {
         self.last_error = Some(error);
         self.current_job_id = None;
         self.failure_count += 1;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Failed
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_failure: unexpected state transition failure: {e}");
-        }
     }
 
     /// Mark automation as starting execution
@@ -231,7 +170,7 @@ impl Automation {
             ));
         }
 
-        self.transition_to(AutomationStatus::Running)?;
+        self.status = AutomationStatus::Running;
         self.current_job_id = None;
         self.last_run = Some(Utc::now());
         self.run_count += 1;
@@ -252,15 +191,12 @@ impl Automation {
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.stopped_count += 1;
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Enabled
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_stopped: unexpected state transition failure: {e}");
-        }
     }
 
     /// Check if automation can transition to running
@@ -280,19 +216,6 @@ pub struct CronValidationResponse {
     pub next_run: Option<DateTime<Utc>>,
 }
 
-/// Statistics for automations
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AutomationStats {
-    pub total_automations: usize,
-    pub enabled_automations: usize,
-    pub running_automations: usize,
-    pub failed_automations: usize,
-    pub total_runs: u64,
-    pub successful_runs: u64,
-    pub failed_runs: u64,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,10 +224,10 @@ mod tests {
     fn create_test_automation() -> Automation {
         Automation {
             id: "test-id".to_string(),
-            automation_type: AutomationType::Sync,
+            automation_type: OperationType::Sync,
             remote_name: "remote".to_string(),
             profile_name: "profile".to_string(),
-            cron_expression: "0 0 * * *".to_string(),
+            cron_expression: Some("0 0 * * *".to_string()),
             status: AutomationStatus::Enabled,
             args: AutomationArgs {
                 params: ProfileParams {
@@ -312,6 +235,7 @@ mod tests {
                     profile_name: "profile".to_string(),
                     source: None,
                     no_cache: None,
+                    scoped_targets: None,
                 },
                 src_paths: vec![],
                 dst_paths: vec![],
@@ -326,56 +250,30 @@ mod tests {
             run_count: 0,
             success_count: 0,
             failure_count: 0,
+            stopped_count: 0,
             watch_enabled: false,
             watch_delay: 5,
+            watch_changed_only: false,
         }
     }
 
     #[test]
     fn test_automation_type_conversion() {
-        assert_eq!(AutomationType::Sync.as_job_type(), JobType::Sync);
-        assert_eq!(AutomationType::Copy.as_job_type(), JobType::Copy);
-        assert_eq!(AutomationType::Move.as_job_type(), JobType::Move);
-        assert_eq!(AutomationType::Bisync.as_job_type(), JobType::Bisync);
-    }
-
-    #[test]
-    fn test_state_transitions() {
-        let mut automation = create_test_automation();
-
-        // Enabled -> Running
-        assert!(automation.transition_to(AutomationStatus::Running).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Running);
-
-        // Running -> Enabled (Success)
-        assert!(automation.transition_to(AutomationStatus::Enabled).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Enabled);
-
-        // Enabled -> Disabled
-        assert!(automation.transition_to(AutomationStatus::Disabled).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Disabled);
-
-        // Disabled -> Enabled
-        assert!(automation.transition_to(AutomationStatus::Enabled).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Enabled);
-
-        // Running -> Failed
-        automation.status = AutomationStatus::Running;
-        assert!(automation.transition_to(AutomationStatus::Failed).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Failed);
-
-        // Failed -> Enabled
-        assert!(automation.transition_to(AutomationStatus::Enabled).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Enabled);
-    }
-
-    #[test]
-    fn test_invalid_transitions() {
-        let mut automation = create_test_automation();
-        automation.status = AutomationStatus::Disabled;
-
-        // Disabled -> Running (Invalid)
-        assert!(automation.transition_to(AutomationStatus::Running).is_err());
+        assert_eq!(OperationType::Sync.as_job_type(), Some(JobType::Sync));
+        assert_eq!(OperationType::Copy.as_job_type(), Some(JobType::Copy));
+        assert_eq!(OperationType::Move.as_job_type(), Some(JobType::Move));
+        assert_eq!(OperationType::Bisync.as_job_type(), Some(JobType::Bisync));
+        assert_eq!(OperationType::Check.as_job_type(), Some(JobType::Check));
+        assert_eq!(OperationType::Delete.as_job_type(), Some(JobType::Delete));
+        assert_eq!(OperationType::Copyurl.as_job_type(), Some(JobType::CopyUrl));
+        assert_eq!(
+            OperationType::Archivecreate.as_job_type(),
+            Some(JobType::ArchiveCreate)
+        );
+        assert_eq!(
+            OperationType::Cryptcheck.as_job_type(),
+            Some(JobType::CryptCheck)
+        );
     }
 
     #[test]
@@ -411,8 +309,7 @@ mod tests {
         assert_eq!(automation.failure_count, 1);
         assert_eq!(automation.last_error, Some("error".to_string()));
 
-        assert!(automation.transition_to(AutomationStatus::Enabled).is_ok());
-        assert_eq!(automation.status, AutomationStatus::Enabled);
+        automation.status = AutomationStatus::Enabled;
     }
 
     #[test]
@@ -425,10 +322,18 @@ mod tests {
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
         assert_eq!(automation.current_job_id, None);
+        assert_eq!(automation.stopped_count, 1);
 
         // Test Stopping -> Disabled
         automation.status = AutomationStatus::Stopping;
         automation.mark_stopped();
         assert_eq!(automation.status, AutomationStatus::Disabled);
+        assert_eq!(automation.stopped_count, 2);
+    }
+
+    #[test]
+    fn test_log_name() {
+        let automation = create_test_automation();
+        assert_eq!(automation.log_name(), "Local: remote-profile.test-id");
     }
 }

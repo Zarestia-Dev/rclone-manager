@@ -5,19 +5,23 @@ mod state;
 pub use routes::*;
 pub use state::*;
 
-use axum::Router;
-use axum_server::tls_rustls::RustlsConfig;
-use log::info;
 use std::{collections::HashSet, sync::Arc};
-use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Listener, Manager};
-use tokio::sync::{RwLock, broadcast};
-use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use crate::utils::types::events::SSE_FORWARD_EVENTS;
+use axum::{Router, http::Method, routing::get};
+use axum_server::tls_rustls::RustlsConfig;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use log::info;
+use tauri::path::BaseDirectory;
+use tauri::{AppHandle, Manager};
+use tokio::sync::RwLock;
+use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
+
+use crate::core::bridge::EventBridge;
 
 pub async fn start_web_server(
     app_handle: AppHandle,
+    event_bridge: Arc<EventBridge>,
     host: String,
     port: u16,
     auth_credentials: Option<(String, String)>,
@@ -37,33 +41,14 @@ pub async fn start_web_server(
         info!("   → API server: http://localhost:{port}/api");
     }
 
-    let (event_tx, _) = broadcast::channel::<TauriEvent>(100);
-    let event_tx = Arc::new(event_tx);
-
-    for &event_name in SSE_FORWARD_EVENTS {
-        let event_tx_for_listener = event_tx.clone();
-        let event_name_owned = event_name.to_string();
-        app_handle.listen(event_name, move |event| {
-            let payload_str = event.payload();
-            let payload_val: serde_json::Value = serde_json::from_str(payload_str)
-                .unwrap_or_else(|_| serde_json::Value::String(payload_str.to_string()));
-
-            let _ = event_tx_for_listener.send(TauriEvent {
-                event: event_name_owned.clone(),
-                payload: payload_val,
-            });
-        });
-    }
-
     let encoded_auth = auth_credentials.map(|(username, password)| {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
         let encoded = STANDARD.encode(format!("{username}:{password}").as_bytes());
         (username, encoded)
     });
 
     let state = WebServerState {
         app_handle: app_handle.clone(),
-        event_tx,
+        event_bridge,
         auth_credentials: encoded_auth,
         sessions: Arc::new(RwLock::new(HashSet::new())),
     };
@@ -72,6 +57,15 @@ pub async fn start_web_server(
     let app = build_app(state.clone(), static_dir, &host, port);
     let addr: std::net::SocketAddr = format!("{host}:{port}").parse()?;
 
+    serve(app, addr, tls_cert, tls_key).await
+}
+
+async fn serve(
+    app: Router,
+    addr: std::net::SocketAddr,
+    tls_cert: Option<std::path::PathBuf>,
+    tls_key: Option<std::path::PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let (Some(cert), Some(key)) = (tls_cert, tls_key) {
         info!("🔒 TLS enabled — https://{addr}");
         let _ = rustls::crypto::ring::default_provider().install_default();
@@ -131,19 +125,43 @@ fn build_app(
     host: &str,
     port: u16,
 ) -> Router {
-    use axum::{http::Method, routing::get};
-
     let api_router = build_api_router(state.clone());
 
+    let cors = build_cors_layer(host, port);
+
+    let mut app = Router::new()
+        .route("/health", get(handlers::health_handler))
+        .nest("/api", api_router)
+        .layer(cors)
+        .layer(tower_http::trace::TraceLayer::new_for_http());
+
+    match static_dir {
+        Some(static_path) => {
+            let index_path = static_path.join("index.html");
+            let serve_dir =
+                ServeDir::new(&static_path).not_found_service(ServeFile::new(index_path));
+            info!("📁 Serving static files from: {}", static_path.display());
+            app = app.fallback_service(serve_dir);
+        }
+        None => {
+            info!("⚠️  No static files found. Build with: npm run build:headless");
+            app = app.route("/", get(handlers::root_handler));
+        }
+    }
+
+    app
+}
+
+fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
     let mut allowed_origins = vec![
         format!("http://localhost:{port}").parse().unwrap(),
         format!("http://127.0.0.1:{port}").parse().unwrap(),
     ];
 
-    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost") {
-        if let Ok(origin) = format!("http://{host}:{port}").parse() {
-            allowed_origins.push(origin);
-        }
+    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost")
+        && let Ok(origin) = format!("http://{host}:{port}").parse()
+    {
+        allowed_origins.push(origin);
     }
 
     #[cfg(debug_assertions)]
@@ -156,7 +174,7 @@ fn build_app(
         allowed_origins.push(format!("http://127.0.0.1:{dev_port}").parse().unwrap());
     }
 
-    let cors = CorsLayer::new()
+    CorsLayer::new()
         .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([
             Method::GET,
@@ -172,28 +190,5 @@ fn build_app(
             axum::http::header::COOKIE,
         ])
         .expose_headers([axum::http::header::WWW_AUTHENTICATE])
-        .allow_credentials(true);
-
-    let mut app = Router::new()
-        .route("/health", get(handlers::health_handler))
-        .nest("/api", api_router)
-        .layer(cors)
-        .layer(tower_http::trace::TraceLayer::new_for_http());
-
-    match static_dir {
-        Some(static_path) => {
-            use tower_http::services::{ServeDir, ServeFile};
-            let index_path = static_path.join("index.html");
-            let serve_dir =
-                ServeDir::new(&static_path).not_found_service(ServeFile::new(index_path));
-            info!("📁 Serving static files from: {}", static_path.display());
-            app = app.fallback_service(serve_dir);
-        }
-        None => {
-            info!("⚠️  No static files found. Build with: npm run build:headless");
-            app = app.route("/", get(handlers::root_handler));
-        }
-    }
-
-    app
+        .allow_credentials(true)
 }

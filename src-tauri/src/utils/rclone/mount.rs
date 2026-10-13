@@ -1,422 +1,337 @@
-//! Mount plugin detection and installation
-//!
-//! This module handles:
-//! - Detecting mount plugins (`WinFsp`, FUSE-T, `MacFUSE`) on the current platform
-//! - Installing mount plugins with dynamic version fetching from GitHub
-
+use crate::core::bridge;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
-    github_client, types::events::MOUNT_PLUGIN_INSTALLED, types::state::RcloneState,
+    github_client,
+    rclone::downloader::stream_download_to_file,
+    types::{
+        events::MOUNT_PLUGIN_INSTALLED,
+        provision::{ProvisionComponent, ProvisionStage, ProvisionState},
+        state::RcloneState,
+    },
 };
 
-// =============================================================================
-// MOUNT PLUGIN DETECTION
-// =============================================================================
-
 #[cfg(target_os = "macos")]
-/// Checks for the presence of any compatible FUSE implementation on macOS.
 fn check_fuse_installed() -> bool {
-    use log::debug;
-    use std::path::PathBuf;
-    // Check for FUSE-T (the preferred implementation)
-    let fuse_t_app_support = PathBuf::from("/Library/Application Support/fuse-t").exists();
-    let fuse_t_framework = PathBuf::from("/Library/Frameworks/FuseT.framework").exists();
-    let fuse_t_bin = PathBuf::from("/usr/local/bin/mount_fuse-t").exists();
-    let fuse_t_exists = fuse_t_app_support || fuse_t_framework || fuse_t_bin;
+    use std::path::Path;
 
-    // Check for MacFUSE (a common alternative)
-    let macfuse_pkg_receipt = PathBuf::from("/Library/Receipts/MacFUSE.pkg").exists();
-    let macfuse_core = PathBuf::from("/Library/Filesystems/macfuse.fs").exists();
-    let macfuse_bin = PathBuf::from("/usr/local/bin/mount_macfuse").exists();
-    let macfuse_exists = macfuse_pkg_receipt || macfuse_core || macfuse_bin;
+    let fuse_t = [
+        "/Library/Application Support/fuse-t",
+        "/Library/Frameworks/FuseT.framework",
+        "/usr/local/bin/mount_fuse-t",
+    ]
+    .iter()
+    .any(|p| Path::new(p).exists());
 
-    match (fuse_t_exists, macfuse_exists) {
-        (true, _) => {
-            debug!("macOS: FUSE-T installation detected");
-            true
-        }
-        (_, true) => {
-            debug!("macOS: MacFUSE installation detected");
-            true
-        }
-        _ => {
-            debug!("macOS: No compatible FUSE installation found");
-            false
-        }
-    }
+    let macfuse = [
+        "/Library/Receipts/MacFUSE.pkg",
+        "/Library/Filesystems/macfuse.fs",
+        "/usr/local/bin/mount_macfuse",
+    ]
+    .iter()
+    .any(|p| Path::new(p).exists());
+
+    log::debug!("macOS: FUSE-T={fuse_t}, MacFUSE={macfuse}");
+    fuse_t || macfuse
 }
 
 #[cfg(target_os = "windows")]
 fn check_winfsp_installed() -> bool {
-    let possible_paths = [
+    use std::path::Path;
+
+    if [
         "C:\\Program Files\\WinFsp",
         "C:\\Program Files (x86)\\WinFsp",
         "C:\\Windows\\System32\\drivers\\winfsp.sys",
-    ];
-
-    for path in &possible_paths {
-        if std::path::PathBuf::from(path).exists() {
-            log::debug!("Windows: WinFsp found at: {}", path);
-            return true;
-        }
+    ]
+    .iter()
+    .any(|p| Path::new(p).exists())
+    {
+        log::debug!("Windows: WinFsp found via path");
+        return true;
     }
 
-    // Check WinFsp service as fallback
-    if let Ok(output) = std::process::Command::new("sc")
+    let via_service = std::process::Command::new("sc")
         .args(["query", "WinFsp.Launcher"])
         .output()
-        && output.status.success()
-    {
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        if output_str.contains("WinFsp.Launcher") {
-            log::debug!("Windows: WinFsp service found via sc query");
-            return true;
-        }
-    }
+        .is_ok_and(|o| {
+            o.status.success() && String::from_utf8_lossy(&o.stdout).contains("WinFsp.Launcher")
+        });
 
-    log::debug!("Windows: WinFsp not installed");
-    false
+    log::debug!("Windows: WinFsp service={via_service}");
+    via_service
 }
 
-/// Checks if the required mount plugin is installed for the current platform.
-#[tauri::command]
-pub async fn check_mount_plugin_installed() -> Result<bool, String> {
+#[bridge]
+pub fn check_mount_plugin_installed() -> bool {
     #[cfg(target_os = "macos")]
     {
-        Ok(check_fuse_installed())
+        check_fuse_installed()
     }
     #[cfg(target_os = "windows")]
     {
-        Ok(check_winfsp_installed())
+        check_winfsp_installed()
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        Ok(true)
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    {
-        Ok(false)
+        true
     }
 }
 
-// =============================================================================
-// DYNAMIC VERSION FETCHING
-// =============================================================================
-
-/// Mount plugin info containing download URL and filename
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 struct MountPluginInfo {
     download_url: String,
     filename: String,
 }
 
-/// Fetch the latest WinFsp release URL from GitHub
 #[cfg(target_os = "windows")]
 async fn get_latest_winfsp_url() -> Result<MountPluginInfo, String> {
     let release = github_client::get_latest_release("winfsp", "winfsp")
         .await
         .map_err(|e| format!("Failed to fetch WinFsp releases: {e}"))?;
 
-    // Find the .msi asset
-    let msi_asset = release
+    let asset = release
         .assets
         .iter()
         .find(|a| a.name.ends_with(".msi"))
-        .ok_or("No .msi asset found in WinFsp release")?;
+        .ok_or("No .msi asset in WinFsp release")?;
 
-    log::info!("Found WinFsp version: {}", release.tag_name);
-
+    log::info!("WinFsp {}", release.tag_name);
     Ok(MountPluginInfo {
-        download_url: msi_asset.browser_download_url.clone(),
-        filename: msi_asset.name.clone(),
+        download_url: asset.browser_download_url.clone(),
+        filename: asset.name.clone(),
     })
 }
 
-/// Fetch the latest FUSE-T release URL from GitHub
 #[cfg(target_os = "macos")]
 async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
     let release = github_client::get_latest_release("macos-fuse-t", "fuse-t")
         .await
         .map_err(|e| format!("Failed to fetch FUSE-T releases: {e}"))?;
 
-    // Find the .pkg asset (installer)
-    let pkg_asset = release
+    let asset = release
         .assets
         .iter()
         .find(|a| a.name.ends_with(".pkg"))
-        .ok_or("No .pkg asset found in FUSE-T release")?;
+        .ok_or("No .pkg asset in FUSE-T release")?;
 
-    log::info!("Found FUSE-T version: {}", release.tag_name);
-
+    log::info!("FUSE-T {}", release.tag_name);
     Ok(MountPluginInfo {
-        download_url: pkg_asset.browser_download_url.clone(),
-        filename: pkg_asset.name.clone(),
+        download_url: asset.browser_download_url.clone(),
+        filename: asset.name.clone(),
     })
 }
 
-// =============================================================================
-// PLUGIN INSTALLATION
-// =============================================================================
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+async fn run_install(
+    app_handle: &tauri::AppHandle,
+    info: MountPluginInfo,
+) -> Result<String, String> {
+    use tauri::Manager;
+    use tokio_util::sync::CancellationToken;
 
-/// Install mount plugin - macOS version
+    let cancel_token = CancellationToken::new();
+    let provision_state = app_handle.state::<ProvisionState>();
+    let _token_guard = provision_state.set_mount_plugin_token(cancel_token.clone());
+
+    let state = app_handle.state::<RcloneState>();
+    let tmp = std::env::temp_dir().join("rclone_temp");
+    std::fs::create_dir_all(&tmp).map_err(|e| format!("Failed to create temp dir: {e}"))?;
+
+    let local_file = tmp.join(&info.filename);
+    log::info!("Downloading {}", info.download_url);
+
+    stream_download_to_file(
+        app_handle,
+        &state.client,
+        &info.download_url,
+        &local_file,
+        ProvisionComponent::MountPlugin,
+        Some(cancel_token),
+    )
+    .await?;
+
+    let file_len = std::fs::metadata(&local_file).map(|m| m.len()).unwrap_or(0);
+
+    // Stage: Installing
+    provision_state.set_stage(
+        ProvisionComponent::MountPlugin,
+        ProvisionStage::Installing,
+        file_len,
+        None,
+    );
+
+    let result = install_with_elevation(&local_file).await;
+    let _ = std::fs::remove_file(&local_file);
+    if let Err(e) = result {
+        provision_state.set_stage(
+            ProvisionComponent::MountPlugin,
+            ProvisionStage::Error,
+            file_len,
+            Some(e.clone()),
+        );
+        return Err(e);
+    }
+
+    for attempt in 1..=5 {
+        if check_mount_plugin_installed() {
+            bridge::emit(MOUNT_PLUGIN_INSTALLED, ());
+            provision_state.set_stage(
+                ProvisionComponent::MountPlugin,
+                ProvisionStage::Completed,
+                file_len,
+                None,
+            );
+            return Ok(crate::localized_success!(
+                "backendSuccess.rclone.mountPluginInstalled"
+            ));
+        }
+        log::debug!("Post-install verification {attempt}/5 failed, retrying in 1s...");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+
+    let err = crate::localized_error!("backendErrors.rclone.mountPluginVerificationFailed");
+    provision_state.set_stage(
+        ProvisionComponent::MountPlugin,
+        ProvisionStage::Error,
+        file_len,
+        Some(err.clone()),
+    );
+    Err(err)
+}
+
 #[cfg(target_os = "macos")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
-    use tauri::Manager;
-    let state = app_handle.state::<RcloneState>();
-    let download_path = std::env::temp_dir().join("rclone_temp");
-    std::fs::create_dir_all(&download_path)
-        .map_err(|e| format!("Failed to create download directory: {e}"))?;
-
-    let plugin_info = get_latest_fuse_t_url().await?;
-    let local_file = download_path.join(&plugin_info.filename);
-
-    log::info!(
-        "Downloading mount plugin from: {}",
-        plugin_info.download_url
-    );
-    fetch_and_save(&state, &plugin_info.download_url, &local_file).await?;
-    log::info!("Downloaded to: {:?}", local_file);
-
-    let result = install_with_elevation(&local_file).await;
-    let _ = std::fs::remove_file(&local_file);
-
-    match result {
-        Ok(_) => {
-            if check_mount_plugin_installed().await? {
-                if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
-                    let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
-                }
-                Ok("Mount plugin installed successfully".to_string())
-            } else {
-                Err(
-                    "Installation succeeded but verification failed. Restart may be required."
-                        .to_string(),
-                )
-            }
-        }
-        Err(e) => Err(e),
-    }
+    run_install(&app_handle, get_latest_fuse_t_url().await?).await
 }
 
-/// Install mount plugin - Windows version
 #[cfg(target_os = "windows")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
-    use tauri::Manager;
-    let state = app_handle.state::<RcloneState>();
-    let download_path = std::env::temp_dir().join("rclone_temp");
-    std::fs::create_dir_all(&download_path)
-        .map_err(|e| format!("Failed to create download directory: {e}"))?;
-
-    let plugin_info = get_latest_winfsp_url().await?;
-    let local_file = download_path.join(&plugin_info.filename);
-
-    log::info!(
-        "Downloading mount plugin from: {}",
-        plugin_info.download_url
-    );
-    fetch_and_save(&state, &plugin_info.download_url, &local_file).await?;
-    log::info!("Downloaded to: {:?}", local_file);
-
-    let result = install_with_elevation(&local_file).await;
-    let _ = std::fs::remove_file(&local_file);
-
-    match result {
-        Ok(_) => {
-            if check_mount_plugin_installed().await? {
-                if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
-                    let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
-                }
-                Ok("Mount plugin installed successfully".to_string())
-            } else {
-                Err(
-                    "Installation succeeded but verification failed. Restart may be required."
-                        .to_string(),
-                )
-            }
-        }
-        Err(e) => Err(e),
-    }
+    run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
-/// Install mount plugin - Linux version (no-op)
-#[cfg(target_os = "linux")]
-#[tauri::command]
-pub async fn install_mount_plugin() -> Result<String, String> {
-    Ok("Linux does not require a mount plugin".to_string())
-}
-
-/// Install mount plugin - unsupported platforms
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-#[tauri::command]
-pub async fn install_mount_plugin() -> Result<String, String> {
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[bridge]
+pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<String, String> {
     Err(crate::localized_error!(
         "backendErrors.rclone.unsupportedPlatform"
     ))
 }
 
-/// Install the plugin with admin elevation using local Command wrapper
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[bridge]
+pub async fn cancel_mount_plugin_install(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let provision_state = app_handle.state::<ProvisionState>();
+    if provision_state.cancel_mount_plugin() {
+        log::info!("Cancelling mount plugin download");
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[bridge]
+pub async fn cancel_mount_plugin_install(_app_handle: tauri::AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 async fn install_with_elevation(file_path: &std::path::Path) -> Result<(), String> {
-    let file_path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
+    let path_str = file_path.to_str().ok_or("Invalid UTF-8 in file path")?;
 
     #[cfg(target_os = "macos")]
     {
-        // Use osascript for admin elevation (shows password prompt)
         let script = format!(
             "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
-            file_path_str.replace("'", "'\\''")
+            path_str.replace("'", "'\\''")
         );
-
         let output = crate::utils::process::command::Command::new("osascript")
             .args(["-e", &script])
             .output()
             .await
-            .map_err(|e| format!("Failed to execute installer: {e}"))?;
+            .map_err(|e| format!("Failed to run installer: {e}"))?;
 
         if output.status.success() {
             Ok(())
         } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("Installation failed: {stderr}"))
+            Err(format!(
+                "Installation failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
         }
     }
 
     #[cfg(target_os = "windows")]
     {
-        // Use PowerShell Start-Process with -Verb RunAs for UAC elevation
-        // The -WindowStyle Hidden hides the PowerShell window
         let ps_command = format!(
             "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs -Wait -WindowStyle Hidden",
-            file_path_str.replace("'", "''")
+            path_str.replace("'", "''")
         );
+        let args = [
+            "-NoProfile",
+            "-NonInteractive",
+            "-NoLogo",
+            "-WindowStyle",
+            "Hidden",
+            "-Command",
+            &ps_command,
+        ];
 
-        let output = crate::utils::process::command::Command::new("powershell")
-            .args(["-WindowStyle", "Hidden", "-Command", &ps_command])
+        // Try pwsh (PowerShell 7+), fall back to the legacy inbox powershell.exe
+        let output = match crate::utils::process::command::Command::new("pwsh")
+            .args(args)
             .output()
             .await
-            .map_err(|e| format!("Failed to execute installer: {e}"))?;
+        {
+            Ok(out) => out,
+            Err(_) => {
+                log::debug!("pwsh unavailable, falling back to powershell.exe");
+                crate::utils::process::command::Command::new("powershell")
+                    .args(args)
+                    .output()
+                    .await
+                    .map_err(|e| format!("Failed to run installer: {e}"))?
+            }
+        };
 
         if output.status.success() {
             Ok(())
         } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("Installation failed: {stderr}"))
+            Err(format!(
+                "Installation failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
         }
     }
 }
-
-/// Download a file and save it to disk
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-async fn fetch_and_save(
-    state: &tauri::State<'_, RcloneState>,
-    url: &str,
-    file_path: &std::path::PathBuf,
-) -> Result<(), String> {
-    let response = state
-        .client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Download failed with status: {}",
-            response.status()
-        ));
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read bytes: {e}"))?;
-
-    let mut file =
-        std::fs::File::create(file_path).map_err(|e| format!("File creation error: {e}"))?;
-
-    std::io::Write::write_all(&mut file, &bytes)
-        .map_err(|e| format!("Failed to write file: {e}"))?;
-
-    log::debug!("Downloaded and saved at {:?}", file_path);
-    Ok(())
-}
-
-// =============================================================================
-// TESTS
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // -------------------------------------------------------------------------
-    // check_mount_plugin_installed tests
-    // -------------------------------------------------------------------------
-
     #[test]
-    fn test_check_mount_plugin_returns_bool() {
-        // Just verify it returns a bool without panicking
-        let _result = check_mount_plugin_installed(); // Just verify no panic
+    fn test_check_mount_plugin_installed_no_panic() {
+        let _ = check_mount_plugin_installed();
     }
-
-    // -------------------------------------------------------------------------
-    // MountPluginInfo tests
-    // -------------------------------------------------------------------------
-
-    #[test]
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    fn test_mount_plugin_info_struct() {
-        let info = MountPluginInfo {
-            download_url: "https://example.com/plugin.msi".to_string(),
-            filename: "plugin.msi".to_string(),
-        };
-
-        assert!(info.download_url.contains("example.com"));
-        assert!(info.filename.ends_with(".msi"));
-    }
-
-    // -------------------------------------------------------------------------
-    // URL parsing tests (for asset detection logic)
-    // -------------------------------------------------------------------------
-
-    #[test]
-    fn test_msi_detection() {
-        let filenames = ["winfsp-2.0.msi", "winfsp-2.0.exe", "winfsp-2.0.zip"];
-        let msi_file = filenames.iter().find(|f| f.ends_with(".msi"));
-        assert_eq!(msi_file, Some(&"winfsp-2.0.msi"));
-    }
-
-    #[test]
-    fn test_pkg_detection() {
-        let filenames = ["fuse-t-1.0.pkg", "fuse-t-1.0.dmg", "fuse-t-1.0.tar.gz"];
-        let pkg_file = filenames.iter().find(|f| f.ends_with(".pkg"));
-        assert_eq!(pkg_file, Some(&"fuse-t-1.0.pkg"));
-    }
-
-    // -------------------------------------------------------------------------
-    // Path escaping tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_windows_path_escaping() {
-        let path = "C:\\Users\\test\\file.msi";
-        let escaped = path.replace("'", "''");
-        assert_eq!(escaped, "C:\\Users\\test\\file.msi"); // No single quotes to escape
+        assert_eq!(
+            "C:\\Users\\test\\file.msi".replace("'", "''"),
+            "C:\\Users\\test\\file.msi"
+        );
+        assert_eq!(
+            "C:\\it's here\\file.msi".replace("'", "''"),
+            "C:\\it''s here\\file.msi"
+        );
     }
 
     #[test]
     fn test_macos_path_escaping() {
-        let path = "/tmp/fuse-t's-installer.pkg";
-        let escaped = path.replace("'", "'\\''");
-        assert_eq!(escaped, "/tmp/fuse-t'\\''s-installer.pkg");
-    }
-
-    #[test]
-    fn test_path_with_spaces() {
-        let path = "/tmp/my plugin installer.pkg";
-        // The path should work as-is since we quote it in the command
-        assert!(path.contains(" "));
+        assert_eq!(
+            "/tmp/fuse-t's-installer.pkg".replace("'", "'\\''"),
+            "/tmp/fuse-t'\\''s-installer.pkg"
+        );
     }
 }

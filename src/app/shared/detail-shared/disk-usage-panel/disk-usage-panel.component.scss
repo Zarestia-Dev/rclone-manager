@@ -82,6 +82,11 @@
   overflow: hidden;
   background: var(--hover-bg-color);
   margin-bottom: var(--space-md);
+  transition: background 0.3s ease;
+
+  &.loading {
+    background: var(--bg-elevated-1);
+  }
 }
 
 .progress-fill {
@@ -92,14 +97,14 @@
 
   &.loading {
     width: 100% !important;
-    background: linear-gradient(
+    background-image: linear-gradient(
       90deg,
-      var(--hover-bg-color) 0%,
-      rgba(var(--orange-rgb), 0.35) 50%,
-      var(--hover-bg-color) 100%
-    ) !important;
-    background-size: 200% 100% !important;
-    animation: shimmer 1.5s ease-in-out infinite;
+      rgba(var(--primary-color-rgb), 0.08) 25%,
+      rgba(var(--primary-color-rgb), 0.28) 50%,
+      rgba(var(--primary-color-rgb), 0.08) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   &.healthy {

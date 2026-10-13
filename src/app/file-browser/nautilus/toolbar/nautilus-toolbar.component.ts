@@ -8,30 +8,37 @@ import {
   effect,
   computed,
   TemplateRef,
-  Injector,
   signal,
-  afterNextRender,
   afterRenderEffect,
+  ChangeDetectionStrategy,
+  HostListener,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { IconService, NautilusService } from '@app/services';
-import { WindowControlsComponent } from '@app/shared/components';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
 import { ExplorerRoot } from '@app/types';
-import { ScrollShadowDirective } from '@app/directives';
+import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
+import { isMobile as isMobileOS } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-nautilus-toolbar',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatToolbarModule,
     MatIconModule,
-    TranslateModule,
+    TranslatePipe,
     CdkMenuModule,
     WindowControlsComponent,
     ScrollShadowDirective,
+    AppMenuComponent,
   ],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrl: './nautilus-toolbar.component.scss',
@@ -39,7 +46,9 @@ import { ScrollShadowDirective } from '@app/directives';
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
   protected readonly nautilusService = inject(NautilusService);
-  private readonly injector = inject(Injector);
+  protected readonly uiStateService = inject(UiStateService);
+  private readonly pathService = inject(PathService);
+  protected readonly isMobileOS = isMobileOS;
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();
@@ -55,7 +64,7 @@ export class NautilusToolbarComponent {
   public readonly hoveredSegmentIndex = input.required<number | null>();
   public readonly fullPathInput = input.required<string>();
   public readonly layout = input.required<'grid' | 'list'>();
-  public readonly pathOptionsMenu = input.required<TemplateRef<unknown>>();
+  public readonly pathOptionsMenu = input<TemplateRef<unknown> | null | undefined>(undefined);
   public readonly viewMenu = input.required<TemplateRef<unknown>>();
 
   // --- Outputs ---
@@ -66,7 +75,7 @@ export class NautilusToolbarComponent {
   public readonly navigateToPath = output<string>();
   public readonly layoutChange = output<'grid' | 'list'>();
   public readonly closeOverlay = output<void>();
-  public readonly copyUrl = output<void>();
+  public readonly popOutToWindow = output<void>();
   public readonly searchFilterChange = output<string>();
   public readonly isSearchModeChange = output<boolean>();
   public readonly isEditingPathChange = output<boolean>();
@@ -81,8 +90,14 @@ export class NautilusToolbarComponent {
   protected readonly showLeft = signal(false);
   protected readonly showRight = signal(false);
 
+  protected readonly effectiveCanGoBack = computed(() => this.isSearchMode() || this.canGoBack());
+
   protected readonly toggledLayout = computed((): 'grid' | 'list' =>
     this.layout() === 'grid' ? 'list' : 'grid'
+  );
+
+  protected readonly pathSeparator = computed((): string =>
+    this.pathService.pathStyleForRemote(this.activeRemote()) === 'windows' ? '\\' : '/'
   );
 
   constructor() {
@@ -93,20 +108,31 @@ export class NautilusToolbarComponent {
 
     effect(() => {
       if (this.isEditingPath()) {
-        afterNextRender(() => this.pathInput()?.nativeElement.select(), {
-          injector: this.injector,
-        });
+        requestAnimationFrame(() => this.pathInput()?.nativeElement.select());
       } else if (this.isSearchMode()) {
-        afterNextRender(
-          () => {
-            const el = this.searchInput()?.nativeElement;
-            el?.focus();
-            el?.select();
-          },
-          { injector: this.injector }
-        );
+        requestAnimationFrame(() => {
+          const el = this.searchInput()?.nativeElement;
+          el?.focus();
+          el?.select();
+        });
       }
     });
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.isEditingPath() && !this.isSearchMode()) return;
+
+    const target = event.target as HTMLElement | null;
+    const clickedInside = target?.closest('.path-container');
+    if (!clickedInside) {
+      if (this.isEditingPath()) {
+        this.isEditingPathChange.emit(false);
+      }
+      if (this.isSearchMode() && !this.searchFilter().trim()) {
+        this.isSearchModeChange.emit(false);
+      }
+    }
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {

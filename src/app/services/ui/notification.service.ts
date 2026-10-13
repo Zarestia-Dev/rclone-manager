@@ -1,91 +1,72 @@
-import { inject, Injectable, Injector } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
-import { ConfirmDialogData } from '@app/types';
-import { ModalService } from '@app/services';
+import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
+import type { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
+import type {
+  InputModalData,
+  InputModalComponent,
+} from '../../shared/modals/input-modal/input-modal.component';
+import { ConfirmDialogData } from '@app/types';
+import { BackendTranslationService } from '../i18n/backend-translation.service';
 
-/**
- * Service for handling user notifications and confirmations
- * Centralizes snackbar, modal, and toast notifications
- * Automatically translates default button texts
- */
-@Injectable({
-  providedIn: 'root',
-})
+type NotificationSeverity = 'success' | 'error' | 'info' | 'warning';
+
+@Injectable({ providedIn: 'root' })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
-  private injector = inject(Injector);
   private translate = inject(TranslateService);
+  private dialog = inject(MatDialog);
+  private backendTranslation = inject(BackendTranslationService);
 
-  private _modalService?: ModalService;
-  private get modalService(): ModalService {
-    if (!this._modalService) {
-      this._modalService = this.injector.get(ModalService);
-    }
-    return this._modalService;
+  /** Default action label per severity. */
+  private static readonly DEFAULT_ACTION_KEY = {
+    success: 'common.ok',
+    info: 'common.ok',
+    warning: 'common.close',
+    error: 'common.close',
+  } as const;
+
+  /** Default duration per severity (undefined = no auto-dismiss). */
+  private static readonly DEFAULT_DURATION_MS: Record<NotificationSeverity, number | undefined> = {
+    success: 3000,
+    info: 3000,
+    warning: 4000,
+    error: undefined,
+  };
+
+  showSuccess(message: unknown, action?: string, duration?: number): void {
+    this.show('success', message, action, duration);
   }
 
-  /**
-   * Show success message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
-  showSuccess(message: string, action?: string, duration = 3000): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
-      panelClass: ['success-snackbar'],
+  showError(message: unknown, action?: string, duration?: number): void {
+    this.show('error', message, action, duration);
+  }
+
+  showInfo(message: unknown, action?: string, duration?: number): void {
+    this.show('info', message, action, duration);
+  }
+
+  showWarning(message: unknown, action?: string, duration?: number): void {
+    this.show('warning', message, action, duration);
+  }
+
+  private show(
+    severity: NotificationSeverity,
+    message: unknown,
+    action: string | undefined,
+    duration: number | undefined
+  ): void {
+    const resolvedMessage = this.backendTranslation.translateBackendMessage(message);
+    const resolvedAction =
+      action ?? this.translate.instant(NotificationService.DEFAULT_ACTION_KEY[severity]);
+    const resolvedDuration = duration ?? NotificationService.DEFAULT_DURATION_MS[severity];
+    this.snackBar.open(resolvedMessage, resolvedAction, {
+      duration: resolvedDuration,
     });
   }
 
-  /**
-   * Show error message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'Close')
-   * @param duration Display duration in milliseconds
-   */
-  showError(message: string, action?: string, duration?: number): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
-      duration,
-      panelClass: ['error-snackbar'],
-    });
-  }
-
-  /**
-   * Show info message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
-  showInfo(message: string, action?: string, duration = 3000): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
-      panelClass: ['info-snackbar'],
-    });
-  }
-
-  /**
-   * Show warning message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
-  showWarning(message: string, action?: string, duration?: number): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
-      panelClass: ['warning-snackbar'],
-    });
-  }
-
-  /**
-   * Show confirmation modal
-   * @param title Modal title (should be pre-translated)
-   * @param message Modal message (should be pre-translated)
-   * @param confirmText Confirm button text (defaults to translated 'Yes')
-   * @param cancelText Cancel button text (defaults to translated 'No')
-   * @param options Optional icon and styling options
-   */
   async confirmModal(
     title: string,
     message: string,
@@ -96,40 +77,43 @@ export class NotificationService {
     const dialogData: ConfirmDialogData = {
       title,
       message,
-      cancelText: cancelText ?? this.translate.instant('common.no'),
-      confirmText: confirmText ?? this.translate.instant('common.yes'),
+      cancelText: cancelText ?? (confirmText ? 'common.no' : 'common.ok'),
+      confirmText,
       ...options,
     };
 
-    const dialogRef = this.modalService.openConfirm(dialogData);
+    const dialogRef = await this.openConfirm(dialogData);
     const result = await firstValueFrom(dialogRef.afterClosed());
     return !!result;
   }
 
-  /**
-   * Show alert modal
-   * @param title Modal title (should be pre-translated)
-   * @param message Modal message (should be pre-translated)
-   * @param buttonText Button text (defaults to translated 'OK')
-   * @param options Optional icon and styling options
-   */
-  async alertModal(
-    title: string,
-    message: string,
-    buttonText?: string,
-    options?: Pick<ConfirmDialogData, 'icon' | 'color'>
-  ): Promise<void> {
-    const dialogData: ConfirmDialogData = {
-      title,
-      message,
-      cancelText: buttonText ?? this.translate.instant('common.ok'),
-      ...options,
-    };
-
-    const dialogRef = this.modalService.openConfirm({
-      ...dialogData,
+  async openConfirm(
+    data: ConfirmDialogData,
+    config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
+  ): Promise<MatDialogRef<ConfirmModalComponent, boolean>> {
+    const { ConfirmModalComponent } =
+      await import('../../shared/modals/confirm-modal/confirm-modal.component');
+    return this.dialog.open(ConfirmModalComponent, {
+      maxWidth: '480px',
+      disableClose: true,
+      data,
+      ...config,
+      panelClass: 'mobile-sheet-dialog',
     });
+  }
 
-    await firstValueFrom(dialogRef.afterClosed());
+  async openInput<T = unknown>(
+    data: InputModalData,
+    config: Partial<MatDialogConfig<InputModalData>> = {}
+  ): Promise<MatDialogRef<InputModalComponent, T>> {
+    const { InputModalComponent } =
+      await import('../../shared/modals/input-modal/input-modal.component');
+    return this.dialog.open(InputModalComponent, {
+      minWidth: '362px',
+      disableClose: true,
+      data,
+      ...config,
+      panelClass: 'mobile-sheet-dialog',
+    });
   }
 }

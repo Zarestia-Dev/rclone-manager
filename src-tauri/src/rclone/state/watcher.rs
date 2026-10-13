@@ -1,11 +1,13 @@
-use log::{debug, warn};
 use std::sync::Arc;
+
+use log::{debug, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::rclone::queries::{get_mounted_remotes, list_serves};
+use crate::utils::types::remotes::RemoteCache;
 use crate::{
+    core::bridge,
     rclone::backend::{BackendManager, types::Backend},
-    utils::types::remotes::RemoteCache,
 };
 
 /// Core logic to check and reconcile mounted remotes for the active backend
@@ -24,9 +26,7 @@ async fn check_and_reconcile_mounts(
     };
 
     // Use reactive cache update - it will emit event only if changed
-    let changed = cache
-        .update_mounts_if_changed(api_mounts, &app_handle)
-        .await;
+    let changed = cache.update_mounts_if_changed(api_mounts).await;
     if changed {
         debug!("🔍 Mount cache updated via watcher for {api_url}");
     }
@@ -35,7 +35,7 @@ async fn check_and_reconcile_mounts(
 }
 
 /// Force refresh mounted remotes
-#[tauri::command]
+#[bridge]
 pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking mounted remotes");
     // Force check only checks active backend
@@ -63,9 +63,7 @@ async fn check_and_reconcile_serves(
     };
 
     // Use reactive cache update - it will emit event only if changed
-    let changed = cache
-        .update_serves_if_changed(api_serves, &app_handle)
-        .await;
+    let changed = cache.update_serves_if_changed(api_serves).await;
     if changed {
         debug!("🔍 Serve cache updated via watcher for {api_url}");
     }
@@ -74,7 +72,7 @@ async fn check_and_reconcile_serves(
 }
 
 /// Force refresh serves
-#[tauri::command]
+#[bridge]
 pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking running serves");
     let backend_manager = app_handle.state::<BackendManager>();
@@ -83,4 +81,24 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
 
     check_and_reconcile_serves(app_handle.clone(), backend, cache).await?;
     Ok(())
+}
+
+/// Fire-and-forget refresh of the mounted-remotes cache.
+///
+/// Equivalent to `force_check_mounted_remotes` but swallows the error into a
+/// `warn!` log line — useful after mount/unmount operations where a refresh
+/// failure is not actionable by the caller.
+pub async fn refresh_mounts_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+        warn!("Failed to refresh mounted remotes: {e}");
+    }
+}
+
+/// Fire-and-forget refresh of the serves cache.
+///
+/// See [`refresh_mounts_quietly`] for rationale.
+pub async fn refresh_serves_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
 }

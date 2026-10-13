@@ -1,16 +1,25 @@
 //! File operation handlers (streaming, etc.)
 
-use axum::http::header;
+use std::io::SeekFrom;
+use std::path::PathBuf;
+
 use axum::{
     extract::{Query, State},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use serde::Deserialize;
 use tauri::Manager;
 use tokio::fs::File;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::server::state::{AppError, WebServerState};
+use crate::utils::io::http_helpers::{
+    classify_error_status, content_disposition, decode_remote_name, normalize_asset_path,
+    parse_byte_range,
+};
+use crate::utils::types::state::RcloneState;
 
 #[derive(Deserialize)]
 pub struct StreamRemoteFileQuery {
@@ -21,82 +30,98 @@ pub struct StreamRemoteFileQuery {
 
 pub async fn stream_remote_file_handler(
     State(state): State<WebServerState>,
+    headers: HeaderMap,
     Query(query): Query<StreamRemoteFileQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = state.app_handle.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
-    let rclone_state = state
-        .app_handle
-        .state::<crate::utils::types::state::RcloneState>();
-    let client = &rclone_state.client;
-
-    let response = backend
-        .fetch_file_stream(client, &query.remote, &query.path)
-        .await
-        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
-
-    if !response.status().is_success() {
-        return Err(AppError::BadRequest(anyhow::Error::msg(format!(
-            "Failed to fetch remote file ({}): {}/{}",
-            response.status(),
-            query.remote,
-            query.path
-        ))));
+    if query.path.contains("..") {
+        return Err(AppError::BadRequest(anyhow::anyhow!(
+            "Path traversal denied"
+        )));
     }
 
-    let content_type = response
-        .headers()
-        .get(header::CONTENT_TYPE)
+    let byte_range = headers
+        .get(header::RANGE)
         .and_then(|v| v.to_str().ok())
-        .unwrap_or("application/octet-stream")
+        .and_then(parse_byte_range);
+
+    let remote = decode_remote_name(&query.remote);
+
+    let rclone_state = state.app_handle.state::<RcloneState>();
+    let transport = rclone_state.transport.clone();
+
+    let reader = transport
+        .read_file(&remote, &query.path, byte_range)
+        .await
+        .map_err(|e| {
+            let err_msg = e.to_string();
+            let status = classify_error_status(&err_msg);
+            match status {
+                StatusCode::NOT_FOUND => AppError::NotFound(err_msg),
+                StatusCode::LOCKED | StatusCode::FORBIDDEN => {
+                    AppError::BadRequest(anyhow::anyhow!(err_msg))
+                }
+                _ => AppError::InternalServerError(anyhow::anyhow!(err_msg)),
+            }
+        })?;
+
+    let filename = query.path.split('/').next_back().unwrap_or("file");
+    let mime_type = mime_guess::from_path(&query.path)
+        .first_or_octet_stream()
         .to_string();
 
-    let body = axum::body::Body::from_stream(response.bytes_stream());
-
-    let mut builder =
-        axum::response::Response::builder().header(header::CONTENT_TYPE, content_type);
-
-    // Extract filename from path and clean it
-    let filename = query.path.split('/').next_back().unwrap_or("file").replace(
-        |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
-        "_",
-    );
-
-    // Always provide the filename. Use 'attachment' for forced downloads, 'inline' for streaming.
-    let disposition_type = if query.download.unwrap_or(false) {
-        "attachment"
-    } else {
-        "inline"
-    };
-    builder = builder.header(
-        header::CONTENT_DISPOSITION,
-        format!("{disposition_type}; filename=\"{filename}\""),
-    );
-
-    builder
-        .body(body)
-        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
+    let body = axum::body::Body::from_stream(ReaderStream::new(reader));
+    build_stream_response(
+        body,
+        filename,
+        &mime_type,
+        query.download.unwrap_or(false),
+        byte_range,
+        None,
+    )
 }
 
 #[derive(Deserialize)]
-pub struct ConvertFileSrcQuery {
+pub struct StreamFileQuery {
     pub path: String,
     pub download: Option<bool>,
 }
 
 pub async fn stream_file_handler(
     State(state): State<WebServerState>,
-    Query(query): Query<ConvertFileSrcQuery>,
+    headers: HeaderMap,
+    Query(query): Query<StreamFileQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    use crate::rclone::backend::BackendManager;
-    use crate::utils::types::state::RcloneState;
+    let path_str = normalize_asset_path(query.path);
 
-    let path_str = query.path.clone();
-    let path = std::path::PathBuf::from(&path_str);
+    if path_str.contains("..") {
+        return Err(AppError::BadRequest(anyhow::anyhow!(
+            "Path traversal denied"
+        )));
+    }
 
-    // Try standard file opening first
+    let path = PathBuf::from(&path_str);
+
+    if path.is_dir() {
+        return Err(AppError::BadRequest(anyhow::anyhow!(
+            "Directories cannot be streamed as files"
+        )));
+    }
+
+    let byte_range = headers
+        .get(header::RANGE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(parse_byte_range);
+
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file")
+        .to_string();
+    let mime_type = mime_guess::from_path(&path)
+        .first_or_octet_stream()
+        .to_string();
+
+    // Try standard local file opening first
     let file_result = if path.exists() {
         File::open(&path).await.map_err(anyhow::Error::msg)
     } else {
@@ -106,38 +131,50 @@ pub async fn stream_file_handler(
     };
 
     match file_result {
-        Ok(file) => {
-            let stream = ReaderStream::new(file);
-            let body = axum::body::Body::from_stream(stream);
+        Ok(mut file) => {
+            let metadata = file.metadata().await.map_err(anyhow::Error::msg)?;
+            let total_len = metadata.len();
 
-            let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
+            if let Some((start, end_opt)) = byte_range {
+                if start >= total_len {
+                    return axum::response::Response::builder()
+                        .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                        .header(header::CONTENT_RANGE, format!("bytes */{total_len}"))
+                        .body(axum::body::Body::empty())
+                        .map_err(|e| {
+                            AppError::InternalServerError(anyhow::anyhow!(e.to_string()))
+                        });
+                }
 
-            let mut builder = axum::response::Response::builder()
-                .header(header::CONTENT_TYPE, mime_type.as_ref());
+                file.seek(SeekFrom::Start(start))
+                    .await
+                    .map_err(anyhow::Error::msg)?;
 
-            // Extract filename from path and clean it
-            let filename = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("file")
-                .replace(
-                    |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
-                    "_",
-                );
+                let count = match end_opt {
+                    Some(end) if end >= start && end < total_len => end - start + 1,
+                    _ => total_len - start,
+                };
 
-            let disposition_type = if query.download.unwrap_or(false) {
-                "attachment"
+                let body = axum::body::Body::from_stream(ReaderStream::new(file.take(count)));
+                build_stream_response(
+                    body,
+                    &filename,
+                    &mime_type,
+                    query.download.unwrap_or(false),
+                    Some((start, end_opt)),
+                    Some(total_len),
+                )
             } else {
-                "inline"
-            };
-            builder = builder.header(
-                header::CONTENT_DISPOSITION,
-                format!("{disposition_type}; filename=\"{filename}\""),
-            );
-
-            builder
-                .body(body)
-                .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
+                let body = axum::body::Body::from_stream(ReaderStream::new(file));
+                build_stream_response(
+                    body,
+                    &filename,
+                    &mime_type,
+                    query.download.unwrap_or(false),
+                    None,
+                    Some(total_len),
+                )
+            }
         }
         Err(e) => {
             // Fallback to rclone cat
@@ -146,60 +183,126 @@ pub async fn stream_file_handler(
                 path_str,
                 e
             );
-            let backend_manager = state.app_handle.state::<BackendManager>();
-            let backend = backend_manager.get_active().await;
             let rclone_state = state.app_handle.state::<RcloneState>();
-            let os = backend_manager.get_runtime_os(&backend.name).await;
+            let transport = rclone_state.transport.clone();
 
-            // For local files on the manager machine, we use an empty remote or ":"
-            match backend
-                .fetch_file_via_cat(&rclone_state.client, "", &path_str, None, None, os)
-                .await
-            {
-                Ok(bytes) => {
-                    let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
-                    let mut builder = axum::response::Response::builder()
-                        .header(header::CONTENT_TYPE, mime_type.as_ref());
-
-                    let filename = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("file")
-                        .replace(
-                            |c: char| {
-                                !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' '
-                            },
-                            "_",
-                        );
-
-                    let disposition_type = if query.download.unwrap_or(false) {
-                        "attachment"
-                    } else {
-                        "inline"
-                    };
-                    builder = builder.header(
-                        header::CONTENT_DISPOSITION,
-                        format!("{disposition_type}; filename=\"{filename}\""),
-                    );
-
-                    builder.body(axum::body::Body::from(bytes)).map_err(|e| {
-                        AppError::InternalServerError(anyhow::Error::msg(e.to_string()))
-                    })
+            match transport.read_file("", &path_str, byte_range).await {
+                Ok(reader) => {
+                    let body = axum::body::Body::from_stream(ReaderStream::new(reader));
+                    build_stream_response(
+                        body,
+                        &filename,
+                        &mime_type,
+                        query.download.unwrap_or(false),
+                        byte_range,
+                        None,
+                    )
                 }
                 Err(cat_err) => {
                     log::error!("❌ Cat fallback also failed for {}: {}", path_str, cat_err);
 
-                    if cat_err.contains("not found") || cat_err.contains("directory not found") {
-                        Err(AppError::NotFound(cat_err))
-                    } else if cat_err.contains("being used by another process")
-                        || cat_err.contains("Access is denied")
-                    {
-                        Err(AppError::BadRequest(anyhow::anyhow!(cat_err)))
-                    } else {
-                        Err(AppError::InternalServerError(anyhow::anyhow!(cat_err)))
+                    let err_msg = cat_err.to_string();
+                    let status = classify_error_status(&err_msg);
+                    match status {
+                        StatusCode::NOT_FOUND => Err(AppError::NotFound(err_msg)),
+                        StatusCode::LOCKED | StatusCode::FORBIDDEN => {
+                            Err(AppError::BadRequest(anyhow::anyhow!(err_msg)))
+                        }
+                        _ => Err(AppError::InternalServerError(anyhow::anyhow!(err_msg))),
                     }
                 }
             }
         }
+    }
+}
+
+fn build_stream_response(
+    body: axum::body::Body,
+    filename: &str,
+    mime_type: &str,
+    download: bool,
+    byte_range: Option<(u64, Option<u64>)>,
+    total_len: Option<u64>,
+) -> Result<axum::response::Response, AppError> {
+    let mut builder = axum::response::Response::builder()
+        .header(header::CONTENT_TYPE, mime_type)
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(
+            header::CONTENT_DISPOSITION,
+            content_disposition(download, filename),
+        );
+
+    if let Some((start, end_opt)) = byte_range {
+        builder = builder.status(StatusCode::PARTIAL_CONTENT);
+        if let Some(total) = total_len {
+            let end = match end_opt {
+                Some(e) if e >= start && e < total => e,
+                _ => total.saturating_sub(1),
+            };
+            let length = end.saturating_sub(start) + 1;
+            builder = builder
+                .header(
+                    header::CONTENT_RANGE,
+                    format!("bytes {start}-{end}/{total}"),
+                )
+                .header(header::CONTENT_LENGTH, length.to_string());
+        } else if let Some(end) = end_opt {
+            let length = end.saturating_sub(start) + 1;
+            builder = builder
+                .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/*"))
+                .header(header::CONTENT_LENGTH, length.to_string());
+        } else {
+            builder = builder.header(header::CONTENT_RANGE, format!("bytes {start}-/*"));
+        }
+    } else {
+        builder = builder.status(StatusCode::OK);
+        if let Some(total) = total_len {
+            builder = builder.header(header::CONTENT_LENGTH, total.to_string());
+        }
+    }
+
+    builder
+        .body(body)
+        .map_err(|e| AppError::InternalServerError(anyhow::anyhow!(e.to_string())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_stream_response_headers() {
+        let body = axum::body::Body::empty();
+        let resp =
+            build_stream_response(body, "test.txt", "text/plain", false, None, Some(100)).unwrap();
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers().get(header::CONTENT_TYPE).unwrap(),
+            "text/plain"
+        );
+        assert_eq!(resp.headers().get(header::ACCEPT_RANGES).unwrap(), "bytes");
+        assert_eq!(resp.headers().get(header::CONTENT_LENGTH).unwrap(), "100");
+    }
+
+    #[test]
+    fn test_build_stream_response_partial_content() {
+        let body = axum::body::Body::empty();
+        let resp = build_stream_response(
+            body,
+            "video.mp4",
+            "video/mp4",
+            false,
+            Some((0, Some(499))),
+            Some(1000),
+        )
+        .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(
+            resp.headers().get(header::CONTENT_RANGE).unwrap(),
+            "bytes 0-499/1000"
+        );
+        assert_eq!(resp.headers().get(header::CONTENT_LENGTH).unwrap(), "500");
     }
 }

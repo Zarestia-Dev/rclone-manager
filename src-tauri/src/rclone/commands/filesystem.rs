@@ -2,14 +2,17 @@ use log::debug;
 
 use serde::Deserialize;
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::JobMetadata;
-use crate::utils::app::notification::notify;
-use crate::utils::rclone::endpoints::{operations, sync};
-use crate::utils::rclone::util::build_full_path;
-use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
+use crate::{
+    core::bridge,
+    rclone::commands::job::JobMetadata,
+    utils::{
+        json_helpers::build_full_path,
+        rclone::endpoints::{operations, sync},
+        types::{jobs::JobType, origin::Origin},
+    },
+};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +33,7 @@ pub struct RenameItem {
     pub is_dir: bool,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn mkdir(
     app: AppHandle,
     remote: String,
@@ -38,12 +41,7 @@ pub async fn mkdir(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("mkdir: remote={remote} path={path}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::MKDIR);
 
     let payload = json!({
         "fs": &remote,
@@ -51,22 +49,12 @@ pub async fn mkdir(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_mutation(remote, vec![path], "", JobType::Mkdir, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::MKDIR,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Mkdir,
-            source: path.clone(),
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -76,7 +64,7 @@ pub async fn mkdir(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn cleanup(
     app: AppHandle,
     remote: String,
@@ -84,13 +72,8 @@ pub async fn cleanup(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     let path_str = path.as_deref().unwrap_or("");
     debug!("cleanup: remote={remote} path={path_str}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::CLEANUP);
 
     let mut payload = serde_json::Map::new();
     payload.insert("fs".to_string(), json!(&remote));
@@ -99,22 +82,12 @@ pub async fn cleanup(
     }
     payload.insert("_async".to_string(), json!(true));
 
+    let metadata = JobMetadata::for_query(remote, path_str, JobType::Cleanup, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::CLEANUP,
         json!(payload),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Cleanup,
-            source: path_str.to_string(),
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -124,7 +97,7 @@ pub async fn cleanup(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn copy_url(
     app: AppHandle,
     remote: String,
@@ -134,12 +107,7 @@ pub async fn copy_url(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("copy_url: remote={remote} path={path} url={url_to_copy}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::COPYURL);
 
     let payload = json!({
         "fs": &remote,
@@ -149,22 +117,20 @@ pub async fn copy_url(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_mutation(
+        remote,
+        vec![url_to_copy],
+        path,
+        JobType::CopyUrl,
+        origin,
+        group,
+    )
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::COPYURL,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::CopyUrl,
-            source: url_to_copy,
-            destination: path.clone(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -174,7 +140,7 @@ pub async fn copy_url(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn remove_empty_dirs(
     app: AppHandle,
     remote: String,
@@ -182,12 +148,7 @@ pub async fn remove_empty_dirs(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("remove_empty_dirs: remote={remote} path={path}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::RMDIRS);
 
     let payload = json!({
         "fs": &remote,
@@ -196,22 +157,12 @@ pub async fn remove_empty_dirs(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_query(remote, path, JobType::Rmdirs, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::RMDIRS,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Rmdirs,
-            source: path.clone(),
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -221,7 +172,8 @@ pub async fn remove_empty_dirs(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
+#[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     app: AppHandle,
     items: Vec<FsItem>,
@@ -230,9 +182,10 @@ pub async fn transfer(
     mode: String,
     origin: Option<Origin>,
     group: Option<String>,
+    parent_job_id: Option<u64>,
 ) -> Result<String, String> {
     let dst_path = if dst_path == "/" {
-        "".to_string()
+        String::new()
     } else {
         dst_path
     };
@@ -295,31 +248,35 @@ pub async fn transfer(
         JobType::Copy
     };
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to transfer".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.path))
+        .collect::<Vec<String>>();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type,
-            source,
-            destination: dst_path,
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-        },
+    let metadata = JobMetadata::new(
+        remote_name,
+        job_type,
+        source,
+        build_full_path(&dst_remote, &dst_path),
     )
-    .await
+    .with_origin(origin)
+    .with_group(group)
+    .with_parent_job_id(parent_job_id)
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete(
     app: AppHandle,
     items: Vec<FsItem>,
@@ -338,261 +295,29 @@ pub async fn delete(
         inputs.push(json!({ "_path": endpoint, "fs": item.remote, "remote": item.path }));
     }
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to delete".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.path))
+        .collect::<Vec<String>>();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type: JobType::Delete,
-            source,
-            destination: "trash".to_string(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-        },
-    )
-    .await
+    let metadata = JobMetadata::new(remote_name, JobType::Delete, source, "trash")
+        .with_origin(origin)
+        .with_group(group)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
-async fn discover_upload_entries(
-    local_paths: &[String],
-    remote_path: &str,
-) -> Vec<(std::path::PathBuf, String)> {
-    let remote_path = if remote_path == "/" { "" } else { remote_path };
-    let mut entries = Vec::new();
-    for raw in local_paths {
-        let p = std::path::PathBuf::from(raw);
-        if !p.exists() {
-            continue;
-        }
-
-        let top_name = p
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-        if p.is_file() {
-            entries.push((p, remote_path.to_string()));
-        } else if p.is_dir() {
-            for entry in walkdir::WalkDir::new(&p)
-                .min_depth(1)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .filter(|e| e.file_type().is_file())
-            {
-                let rel = entry
-                    .path()
-                    .strip_prefix(&p)
-                    .unwrap_or(entry.path())
-                    .parent()
-                    .unwrap_or(std::path::Path::new(""))
-                    .to_string_lossy()
-                    .to_string();
-                let base = if remote_path.is_empty() {
-                    top_name.clone()
-                } else {
-                    format!("{}/{}", remote_path.trim_end_matches('/'), top_name)
-                };
-                let remote_dir = if rel.is_empty() {
-                    base
-                } else {
-                    format!("{}/{}", base, rel.replace('\\', "/"))
-                };
-                entries.push((entry.path().to_path_buf(), remote_dir));
-            }
-        }
-    }
-    entries
-}
-
-pub struct UploadBatchParams {
-    pub remote: String,
-    pub path: String,
-    pub local_paths: Vec<String>,
-    pub origin: Option<Origin>,
-    pub group: Option<String>,
-    pub cleanup_dir: Option<std::path::PathBuf>,
-    pub existing_jobid: Option<u64>,
-    pub no_cache: bool,
-}
-
-pub async fn execute_upload_batch(
-    app: AppHandle,
-    params: UploadBatchParams,
-) -> Result<String, String> {
-    let UploadBatchParams {
-        remote,
-        path,
-        local_paths,
-        origin,
-        group,
-        cleanup_dir,
-        existing_jobid,
-        no_cache,
-    } = params;
-
-    debug!(
-        "execute_upload_batch: {} paths to {remote}:{path}",
-        local_paths.len()
-    );
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let client = app.state::<RcloneState>().client.clone();
-    let job_cache = &backend_manager.job_cache;
-
-    let file_entries = discover_upload_entries(&local_paths, &path).await;
-    if file_entries.is_empty() {
-        if let Some(dir) = cleanup_dir {
-            let _ = tokio::fs::remove_dir_all(dir).await;
-        }
-        return Err("No valid files found to upload".to_string());
-    }
-
-    let total_bytes: u64 =
-        futures::future::join_all(file_entries.iter().map(|(p, _)| tokio::fs::metadata(p)))
-            .await
-            .into_iter()
-            .filter_map(|m| m.ok())
-            .map(|m| m.len())
-            .sum();
-
-    let destination = build_full_path(&remote, &path);
-    let jobid = existing_jobid.unwrap_or_else(|| chrono::Utc::now().timestamp_millis() as u64);
-    let metadata = JobMetadata {
-        remote_name: remote.clone(),
-        job_type: JobType::Upload,
-        source: "local paths".to_string(),
-        destination,
-        profile: None,
-        origin: origin.clone(),
-        group,
-        no_cache,
-        dry_run: false,
-    };
-
-    if existing_jobid.is_none() {
-        job_cache
-            .create_job(
-                jobid,
-                None,
-                metadata.clone(),
-                backend.name.clone(),
-                Some(&app),
-            )
-            .await;
-    }
-
-    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
-        notify(&app, metadata.started_event(backend.name.clone()));
-    }
-
-    let mut uploaded_bytes = 0u64;
-    let mut completed = Vec::new();
-    let mut errors = Vec::new();
-
-    for (file_path, remote_dir) in file_entries {
-        let filename = file_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-        let file = match tokio::fs::File::open(&file_path).await {
-            Ok(f) => f,
-            Err(e) => {
-                errors.push(format!("Failed to open {filename}: {e}"));
-                continue;
-            }
-        };
-
-        let size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
-        let part = reqwest::multipart::Part::stream(reqwest::Body::from(file))
-            .file_name(filename.clone())
-            .mime_str("application/octet-stream")
-            .map_err(|e| e.to_string())?;
-
-        let resp = backend
-            .inject_auth(
-                client
-                    .post(backend.url_for(operations::UPLOADFILE))
-                    .query(&[("fs", &remote), ("remote", &remote_dir)]),
-            )
-            .multipart(reqwest::multipart::Form::new().part("file", part))
-            .send()
-            .await;
-
-        match resp {
-            Ok(r) if r.status().is_success() => {
-                uploaded_bytes += size;
-                completed.push(json!({ "name": filename, "size": size, "bytes": size, "completed_at": chrono::Utc::now() }));
-                let _ = job_cache.update_job_stats(jobid, json!({ "totalBytes": total_bytes, "bytes": uploaded_bytes, "transfers": completed.len(), "totalTransfers": completed.len(), "completed": completed, "transferring": [] })).await;
-            }
-            Ok(r) => {
-                let status = r.status();
-                let err_text = r.text().await.unwrap_or_default();
-                errors.push(format!(
-                    "Upload failed for {filename}: {status} - {err_text}"
-                ));
-            }
-            Err(e) => errors.push(format!("Network error for {filename}: {e}")),
-        }
-    }
-
-    let success = errors.is_empty();
-    let error_msg = (!success).then(|| format!("{} failed: {}", errors.len(), errors.join("; ")));
-
-    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
-        if success {
-            notify(&app, metadata.completed_event(backend.name.clone()));
-        } else if let Some(ref m) = error_msg {
-            notify(&app, metadata.failed_event(backend.name.clone(), m));
-        }
-    }
-
-    let _ = job_cache
-        .complete_job(jobid, success, error_msg.clone(), Some(&app))
-        .await;
-    if let Some(dir) = cleanup_dir {
-        let _ = tokio::fs::remove_dir_all(dir).await;
-    }
-
-    error_msg.map_or(Ok(jobid.to_string()), Err)
-}
-
-#[tauri::command]
-pub async fn upload_local_drop_paths(
-    app: AppHandle,
-    remote: String,
-    path: String,
-    local_paths: Vec<String>,
-    origin: Option<Origin>,
-    group: Option<String>,
-) -> Result<String, String> {
-    execute_upload_batch(
-        app,
-        UploadBatchParams {
-            remote,
-            path,
-            local_paths,
-            origin,
-            group,
-            cleanup_dir: None,
-            existing_jobid: None,
-            no_cache: false,
-        },
-    )
-    .await
-}
-
-#[tauri::command]
+#[bridge]
 pub async fn rename(
     app: AppHandle,
     items: Vec<RenameItem>,
@@ -625,73 +350,25 @@ pub async fn rename(
         }
     }
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].src_path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to rename".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.src_path))
+        .collect::<Vec<String>>();
+    let destination = first_item.dst_path.clone();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type: JobType::Rename,
-            source,
-            destination: "multiple items".to_string(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-        },
-    )
-    .await
-}
+    let metadata = JobMetadata::new(remote_name, JobType::Rename, source, destination)
+        .with_origin(origin)
+        .with_group(group)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-#[tauri::command]
-pub async fn upload_file(
-    app: AppHandle,
-    remote: String,
-    path: String,
-    name: String,
-    content: Vec<u8>,
-) -> Result<String, String> {
-    let state = app.state::<crate::utils::types::state::RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
-    let client = &state.client;
-    let remote_dir = if path.is_empty() {
-        "".to_string()
-    } else if path.ends_with('/') {
-        path.clone()
-    } else {
-        format!("{}/", path)
-    };
-
-    let part = reqwest::multipart::Part::bytes(content)
-        .file_name(name.clone())
-        .mime_str("application/octet-stream")
-        .map_err(|e: reqwest::Error| e.to_string())?;
-
-    let resp = backend
-        .inject_auth(
-            client
-                .post(backend.url_for(operations::UPLOADFILE))
-                .query(&[("fs", &remote), ("remote", &remote_dir)]),
-        )
-        .multipart(reqwest::multipart::Form::new().part("file", part))
-        .send()
-        .await;
-
-    match resp {
-        Ok(r) if r.status().is_success() => Ok("File uploaded successfully".to_string()),
-        Ok(r) => {
-            let status = r.status();
-            let err_text = r.text().await.unwrap_or_default();
-            Err(format!("Upload failed: {status} - {err_text}"))
-        }
-        Err(e) => Err(format!("Network error: {e}")),
-    }
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }

@@ -1,4 +1,4 @@
-<aside class="modal-sidebar">
+<aside class="sidebar-inner">
   @if (!state.editTarget()) {
     <!-- Step wizard navigation -->
     <div class="step-indicator-container hide-scrollbar">
@@ -21,12 +21,11 @@
             [attr.aria-selected]="isCurrent"
             (keydown.enter)="stepSelected.emit(stepNum)"
             (keydown.space)="stepSelected.emit(stepNum)"
-            [matTooltip]="config.label | translate"
-            matTooltipPosition="right"
+            [attr.title]="config.label | translate"
           >
             <mat-icon
               matListItemIcon
-              [svgIcon]="isCompleted ? 'circle-check' : config.icon"
+              [svgIcon]="isCompleted ? 'check-circle' : config.icon"
             ></mat-icon>
             <span matListItemTitle>{{ config.label | translate }}</span>
           </button>
@@ -50,8 +49,7 @@
             <button
               mat-list-item
               (click)="sectionScrolled.emit(category.id)"
-              [matTooltip]="category.label | translate"
-              matTooltipPosition="right"
+              [attr.title]="category.label | translate"
             >
               <mat-icon matListItemIcon [svgIcon]="category.icon"></mat-icon>
               <span matListItemTitle>{{ category.label | translate }}</span>
@@ -76,10 +74,10 @@
         <mat-nav-list class="step-indicator">
           <button
             mat-list-item
+            [disabled]="state.isActiveStepInvalid()"
             (click)="returnFromShared.emit()"
             [attr.aria-label]="translatedPrevTarget"
-            [matTooltip]="translatedPrevTarget"
-            matTooltipPosition="right"
+            [attr.title]="translatedPrevTarget"
           >
             <mat-icon matListItemIcon svgIcon="left-arrow"></mat-icon>
             <span matListItemTitle>{{ translatedPrevTarget }}</span>
@@ -101,10 +99,10 @@
             <button
               mat-list-item
               [activated]="isActive"
+              [disabled]="state.isActiveStepInvalid()"
               (click)="profileSelected.emit({ type: targetType, name: profile.name })"
               [attr.aria-selected]="isActive"
-              [matTooltip]="profile.name"
-              matTooltipPosition="right"
+              [attr.title]="profile.name"
             >
               <mat-icon
                 matListItemIcon
@@ -127,10 +125,10 @@
           @for (item of state.sharedSidebarTypes(); track item.type) {
             <button
               mat-list-item
+              [disabled]="state.isActiveStepInvalid()"
               (click)="sharedNavigated.emit(item.type)"
               [activated]="state.editTarget() === item.type"
-              [matTooltip]="item.label | translate"
-              matTooltipPosition="right"
+              [attr.title]="item.label | translate"
             >
               <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
               <span matListItemTitle>{{ item.label | translate }}</span>
@@ -144,20 +142,46 @@
     </div>
   }
 
-  @if (state.currentStep() > 1 || state.editTarget()) {
-    <div class="sidebar-footer">
-      <mat-nav-list class="step-indicator">
+  <div class="sidebar-footer">
+    <mat-nav-list class="step-indicator">
+      <button
+        mat-list-item
+        [activated]="state.isSearchVisible()"
+        (click)="searchToggled.emit()"
+        [attr.title]="'shared.search.toggle' | translate"
+      >
+        <mat-icon matListItemIcon svgIcon="search"></mat-icon>
+        <span matListItemTitle>{{ 'shared.search.toggle' | translate }}</span>
+      </button>
+
+      @if (state.currentStep() > 1 || state.editTarget()) {
         <button
           mat-list-item
           [activated]="state.showCliImport()"
           (click)="cliImportToggled.emit()"
-          [matTooltip]="'wizards.cliImport.title' | translate"
-          matTooltipPosition="right"
+          [attr.title]="'wizards.cliImport.title' | translate"
         >
           <mat-icon matListItemIcon svgIcon="terminal"></mat-icon>
           <span matListItemTitle>{{ 'wizards.cliImport.title' | translate }}</span>
         </button>
-      </mat-nav-list>
-    </div>
-  }
+
+        <button
+          mat-list-item
+          [activated]="state.showObscureTool()"
+          (click)="obscureToolToggled.emit()"
+          [attr.title]="'wizards.obscure.title' | translate"
+        >
+          <mat-icon matListItemIcon svgIcon="lock"></mat-icon>
+          <span matListItemTitle>{{ 'wizards.obscure.title' | translate }}</span>
+        </button>
+
+        <app-preset-template-bar
+          variant="sidebar-item"
+          [currentValues]="currentValues()"
+          (applyDefaultPresets)="presetsApplied.emit()"
+          (applyTemplate)="templateApplied.emit($event)"
+        />
+      }
+    </mat-nav-list>
+  </div>
 </aside>

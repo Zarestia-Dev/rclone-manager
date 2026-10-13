@@ -1,60 +1,66 @@
-import { Component, inject, computed, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { EscapeCloseDirective } from '../../../../../shared/directives/escape-close.directive';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
-import { AlertService, ModalService, RemoteFacadeService, BackendService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { WorkflowStorageService } from 'src/app/services/flow/workflow-storage.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({
   selector: 'app-alert-rule-editor',
-  standalone: true,
   templateUrl: './alert-rule-editor.component.html',
   styleUrls: ['./alert-rule-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
-    MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertRuleEditorComponent {
-  private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<AlertRuleEditorComponent>);
-  private modalService = inject(ModalService);
-  private alertService = inject(AlertService);
-  private remoteFacade = inject(RemoteFacadeService);
-  private backendService = inject(BackendService);
+  private readonly fb = inject(FormBuilder);
+  private readonly dialogRef = inject(MatDialogRef<AlertRuleEditorComponent>);
+  private readonly alertService = inject(AlertService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly backendService = inject(BackendService);
+  private readonly workflowStorage = inject(WorkflowStorageService, { optional: true });
 
-  data = inject(MAT_DIALOG_DATA) as AlertRule | undefined;
-  remotes = this.remoteFacade.activeRemotes;
-  backends = this.backendService.backends;
-  actions = this.alertService.actions;
-
-  allProfiles = computed(() => {
+  private readonly dialogData = inject(MAT_DIALOG_DATA) as { ruleId?: string } | undefined;
+  readonly data?: AlertRule;
+  readonly remotes = this.remoteFacade.activeRemotes;
+  readonly backends = this.backendService.backends;
+  readonly allProfiles = computed(() => {
     const profiles = new Set<string>();
     this.remotes().forEach(r => {
-      const s = r.status;
+      const s = r?.status;
+      if (!s) return;
       [s.sync, s.copy, s.bisync, s.move, s.mount, s.serve].forEach(op => {
-        op.configuredProfiles?.forEach(p => profiles.add(p));
+        op?.configuredProfiles?.forEach(p => profiles.add(p));
       });
     });
     return Array.from(profiles).sort();
   });
+
+  readonly actions = this.alertService.actions;
+  readonly workflows = computed(() => this.workflowStorage?.workflows() ?? []);
 
   readonly severities: AlertSeverity[] = ['info', 'warning', 'average', 'high', 'critical'];
 
@@ -74,6 +80,7 @@ export class AlertRuleEditorComponent {
     'update',
     'automation',
     'system',
+    'workflow',
   ];
 
   readonly origins: Origin[] = [
@@ -83,9 +90,11 @@ export class AlertRuleEditorComponent {
     'startup',
     'update',
     'internal',
+    'flow',
+    'quickrun',
   ];
 
-  form = this.fb.nonNullable.group({
+  readonly form = this.fb.nonNullable.group({
     id: [''],
     name: ['', Validators.required],
     enabled: [true],
@@ -95,6 +104,7 @@ export class AlertRuleEditorComponent {
     remote_filter: [[] as string[]],
     backend_filter: [[] as string[]],
     profile_filter: [[] as string[]],
+    workflow_filter: [[] as string[]],
     origin_filter: [[] as Origin[]],
     auto_acknowledge: [false],
     action_ids: [[] as string[], [Validators.required, Validators.minLength(1)]],
@@ -104,18 +114,28 @@ export class AlertRuleEditorComponent {
   });
 
   constructor() {
+    void this.workflowStorage?.loadAllWorkflows();
+    const ruleId = this.dialogData?.ruleId;
+    this.data = ruleId ? this.alertService.rules().find(r => r.id === ruleId) : undefined;
+
     if (this.data) this.form.patchValue(this.data);
+  }
+
+  getSelectedActionNames(): string {
+    const selectedIds = this.form.controls.action_ids.value;
+    if (!selectedIds?.length) return '';
+    const map = new Map(this.actions().map(a => [a.id, a.name]));
+    return selectedIds.map(id => map.get(id) ?? id).join(', ');
   }
 
   save(): void {
     if (this.form.invalid) return;
     const val = this.form.getRawValue();
     if (!val.action_ids.length) return;
-    this.modalService.animatedClose(this.dialogRef, val);
+    this.dialogRef.close(val);
   }
 
-  @HostListener('document:keydown.escape')
   cancel(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

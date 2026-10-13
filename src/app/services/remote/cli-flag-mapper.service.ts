@@ -1,19 +1,22 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { RcConfigOption, SharedProfileType } from '@app/types';
+import { FlagConfigService } from './flag-config.service';
+import { RemoteManagementService } from './remote-management.service';
+import { RcloneValueMapperService } from './rclone-value-mapper.service';
 
 export interface ParsedCLIFlag {
-  raw: string; // e.g. "--max-delete"
-  key: string; // e.g. "max-delete"
-  value: string | boolean; // e.g. "50" or true (for flags without value)
-  hasMacro: boolean; // true if it contains macro pattern like $(...) or `...`
+  raw: string;
+  key: string;
+  value: string | boolean;
+  hasMacro: boolean;
 }
 
 export interface ParsedCLI {
-  verb?: string; // "sync" | "copy" | "move" | "bisync" | "mount" | "serve"
-  serveSubtype?: string; // e.g. "http", "ftp", etc. for serve command
-  mountSubtype?: string; // e.g. "mount", "mount2", "cmount", "nfsmount"
-  sourcePath?: string; // first positional arg
-  destPath?: string; // second positional arg
+  verb?: string;
+  serveSubtype?: string;
+  mountSubtype?: string;
+  sourcePath?: string;
+  destPath?: string;
   flags: ParsedCLIFlag[];
 }
 
@@ -36,15 +39,82 @@ export interface ImportResult {
   destPath?: string;
   classified: ClassifiedFlag[];
 }
+const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
 
-@Injectable({
-  providedIn: 'root',
-})
+const SHORT_FLAG_ALIASES: Record<string, string> = {
+  P: 'progress',
+  v: 'verbose',
+  vv: 'verbose',
+  q: 'quiet',
+  n: 'dry-run',
+  u: 'update',
+  L: 'copy-links',
+  I: 'ignore-times',
+  c: 'checksum',
+  R: 'raw-list',
+  s: 'stats',
+};
+
+const VERB_MAP: Record<string, { verb: string; mountSubtype?: string }> = {
+  sync: { verb: 'sync' },
+  copy: { verb: 'copy' },
+  move: { verb: 'move' },
+  bisync: { verb: 'bisync' },
+  mount: { verb: 'mount', mountSubtype: 'mount' },
+  mount2: { verb: 'mount', mountSubtype: 'mount2' },
+  cmount: { verb: 'mount', mountSubtype: 'cmount' },
+  nfsmount: { verb: 'mount', mountSubtype: 'nfsmount' },
+  serve: { verb: 'serve' },
+  check: { verb: 'check' },
+  delete: { verb: 'delete' },
+  copyurl: { verb: 'copyurl' },
+  copyto: { verb: 'copy' },
+  moveto: { verb: 'move' },
+  cleanup: { verb: 'delete' },
+  purge: { verb: 'delete' },
+  rmdir: { verb: 'delete' },
+  rmdirs: { verb: 'delete' },
+};
+
+const WRAPPER_TOKENS = new Set([
+  'sudo',
+  'nohup',
+  'nice',
+  'time',
+  'env',
+  'wsl',
+  'exec',
+  'sh',
+  'bash',
+  '-c',
+]);
+
+export interface LookupEntry {
+  option: RcConfigOption;
+  flagType: SharedProfileType;
+  supportedFlagTypes: Set<SharedProfileType>;
+}
+
+function isFlagToken(token: string): boolean {
+  if (!token.startsWith('-')) return false;
+  if (token.startsWith('--')) {
+    return token.length > 2;
+  }
+  if (token.length === 2 && /[a-zA-Z0-9]/.test(token[1])) return true;
+  if (token === '-vv' || token === '-vvv') return true;
+  return false;
+}
+
+@Injectable({ providedIn: 'root' })
 export class CliFlagMapperService {
-  /**
-   * Tokenizes a raw shell command line into tokens, respecting quotes.
-   */
-  tokenize(cli: string): string[] {
+  private flagConfigService = inject(FlagConfigService);
+  private remoteManagementService = inject(RemoteManagementService);
+  private valueMapper = inject(RcloneValueMapperService);
+
+  private booleanFlagsCache: Set<string> | null = null;
+  private readonly lookupTablesCache = new Map<string, Record<string, LookupEntry>>();
+
+  tokenize(input: string): string[] {
     const tokens: string[] = [];
     let current = '';
     let inDoubleQuote = false;
@@ -52,46 +122,51 @@ export class CliFlagMapperService {
     let inSubshell = 0;
     let inBacktick = false;
 
-    // Replace backslash line continuations
-    const cleanCli = cli.replace(/\\\r?\n/g, ' ');
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+      const nextChar = input[i + 1];
 
-    let i = 0;
-    while (i < cleanCli.length) {
-      const char = cleanCli[i];
-
-      // Strip shell comments starting with #
-      if (
-        char === '#' &&
-        !inDoubleQuote &&
-        !inSingleQuote &&
-        (i === 0 || /\s/.test(cleanCli[i - 1]))
-      ) {
-        while (i < cleanCli.length && cleanCli[i] !== '\n') {
-          i++;
+      if (char === '\\' && (nextChar === '\n' || nextChar === '\r')) {
+        if (nextChar === '\r' && input[i + 2] === '\n') {
+          i += 2;
+        } else {
+          i += 1;
         }
         continue;
       }
 
-      if (char === '"' && !inSingleQuote) {
+      if (char === '\\' && inDoubleQuote && nextChar) {
+        current += char + nextChar;
+        i++;
+        continue;
+      }
+
+      if (
+        char === '#' &&
+        !inDoubleQuote &&
+        !inSingleQuote &&
+        inSubshell === 0 &&
+        !inBacktick &&
+        (i === 0 || /\s/.test(input[i - 1]))
+      ) {
+        while (i < input.length && input[i] !== '\n') i++;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote && inSubshell === 0 && !inBacktick) {
         inDoubleQuote = !inDoubleQuote;
         current += char;
-      } else if (char === "'" && !inDoubleQuote) {
+      } else if (char === "'" && !inDoubleQuote && inSubshell === 0 && !inBacktick) {
         inSingleQuote = !inSingleQuote;
         current += char;
-      } else if (char === '`' && !inDoubleQuote && !inSingleQuote) {
+      } else if (char === '`' && !inSingleQuote) {
         inBacktick = !inBacktick;
         current += char;
-      } else if (
-        char === '$' &&
-        i + 1 < cleanCli.length &&
-        cleanCli[i + 1] === '(' &&
-        !inDoubleQuote &&
-        !inSingleQuote
-      ) {
+      } else if (char === '$' && nextChar === '(' && !inSingleQuote) {
         inSubshell++;
         current += '$(';
-        i++; // skip '('
-      } else if (char === ')' && inSubshell > 0 && !inDoubleQuote && !inSingleQuote) {
+        i++;
+      } else if (char === ')' && inSubshell > 0 && !inSingleQuote) {
         inSubshell--;
         current += ')';
       } else if (
@@ -102,129 +177,131 @@ export class CliFlagMapperService {
         !inBacktick
       ) {
         if (current) {
-          tokens.push(current);
+          tokens.push(this.stripQuotes(current));
           current = '';
         }
       } else {
         current += char;
       }
-      i++;
     }
-    if (current) {
-      tokens.push(current);
-    }
-    return tokens.map(t => this.stripQuotes(t));
+    if (current) tokens.push(this.stripQuotes(current));
+    return tokens;
   }
 
   private stripQuotes(token: string): string {
+    const len = token.length;
     if (
-      (token.startsWith('"') && token.endsWith('"')) ||
-      (token.startsWith("'") && token.endsWith("'"))
+      len >= 2 &&
+      ((token[0] === '"' && token[len - 1] === '"') || (token[0] === "'" && token[len - 1] === "'"))
     ) {
       return token.slice(1, -1);
     }
     return token;
   }
 
-  /**
-   * Checks if a string contains macros like $(...) or `...`
-   */
+  private isRcloneBinary(token: string): boolean {
+    const lower = token.toLowerCase();
+    return (
+      lower === 'rclone' ||
+      lower === 'rclone.exe' ||
+      lower.startsWith('./rclone') ||
+      lower.startsWith('.\\rclone') ||
+      lower.endsWith('/rclone') ||
+      lower.endsWith('\\rclone') ||
+      lower.endsWith('/rclone.exe') ||
+      lower.endsWith('\\rclone.exe')
+    );
+  }
+
   hasMacro(val: string): boolean {
     return /(\$\([\s\S]+?\))|(`[\s\S]+?`)/.test(val);
   }
 
-  /**
-   * Parse a list of tokens into parsed verb, paths, and flags.
-   */
   parse(cliString: string, existingBools: Set<string>): ParsedCLI {
-    const tokens = this.tokenize(cliString);
+    const rawTokens = this.tokenize(cliString);
     const flags: ParsedCLIFlag[] = [];
     let verb: string | undefined;
     let serveSubtype: string | undefined;
     let mountSubtype: string | undefined;
     const positionalArgs: string[] = [];
 
-    const verbs = new Set([
-      'sync',
-      'copy',
-      'move',
-      'bisync',
-      'mount',
-      'mount2',
-      'cmount',
-      'nfsmount',
-      'serve',
-    ]);
-
-    let i = 0;
-    while (i < tokens.length) {
-      const token = tokens[i];
-
-      // Handle rclone binary prefix
-      if (
-        i === 0 &&
-        (token.toLowerCase() === 'rclone' ||
-          token.toLowerCase() === 'rclone.exe' ||
-          token.startsWith('./rclone') ||
-          token.startsWith('.\\rclone'))
-      ) {
-        i++;
+    // Filter out leading wrappers and rclone binary invocations
+    let startIndex = 0;
+    while (startIndex < rawTokens.length) {
+      const t = rawTokens[startIndex];
+      if (this.isRcloneBinary(t)) {
+        startIndex++;
+        break;
+      }
+      if (WRAPPER_TOKENS.has(t.toLowerCase())) {
+        startIndex++;
         continue;
       }
+      break;
+    }
 
-      if (token.startsWith('-') && /^-{1,2}[a-zA-Z0-9_]/.test(token)) {
+    const tokens = rawTokens.slice(startIndex);
+    const len = tokens.length;
+
+    for (let i = 0; i < len; i++) {
+      const token = tokens[i];
+
+      if (token[0] === '-' && FLAG_PATTERN.test(token)) {
         let rawKey: string;
         let rawValue: string | boolean = true;
         let originalToken = token;
 
-        if (token.includes('=')) {
-          const eqIdx = token.indexOf('=');
+        const eqIdx = token.indexOf('=');
+        if (eqIdx !== -1) {
           rawKey = token.substring(0, eqIdx);
-          rawValue = this.stripQuotes(token.substring(eqIdx + 1));
+          const rawValStr = this.stripQuotes(token.substring(eqIdx + 1));
+          if (rawValStr.toLowerCase() === 'true') {
+            rawValue = true;
+          } else if (rawValStr.toLowerCase() === 'false') {
+            rawValue = false;
+          } else {
+            rawValue = rawValStr;
+          }
         } else {
           rawKey = token;
-          const cleanKey = rawKey.replace(/^-+/, '').toLowerCase();
+          const cleanKey = rawKey.replace(/^-+/, '');
+          const lowerKey = cleanKey.toLowerCase();
+          const isShortFlag = !rawKey.startsWith('--') && cleanKey.length === 1;
           const isKnownBool =
-            existingBools.has(cleanKey) ||
-            existingBools.has(cleanKey.replace(/-/g, '_')) ||
-            existingBools.has(cleanKey.replace(/_/g, '-'));
-          const isNextFlag = i + 1 < tokens.length && /^-{1,2}[a-zA-Z0-9_]/.test(tokens[i + 1]);
+            isShortFlag ||
+            existingBools.has(lowerKey) ||
+            existingBools.has(lowerKey.replace(/-/g, '_')) ||
+            existingBools.has(lowerKey.replace(/_/g, '-')) ||
+            lowerKey.startsWith('no-');
 
-          if (i + 1 < tokens.length && !isNextFlag && !isKnownBool) {
-            rawValue = tokens[i + 1];
-            originalToken = `${rawKey} ${rawValue}`;
+          const nextToken = tokens[i + 1];
+          if (nextToken && !isFlagToken(nextToken) && !isKnownBool) {
+            rawValue = nextToken;
             i++;
+            originalToken = `${rawKey} ${rawValue}`;
           }
         }
 
-        const cleanKey = rawKey.replace(/^-+/, '');
         flags.push({
           raw: originalToken,
-          key: cleanKey,
+          key: rawKey.replace(/^-+/, ''),
           value: rawValue,
           hasMacro: typeof rawValue === 'string' && this.hasMacro(rawValue),
         });
       } else {
-        if (!verb && verbs.has(token.toLowerCase())) {
-          const lowerToken = token.toLowerCase();
-          if (
-            lowerToken === 'mount' ||
-            lowerToken === 'mount2' ||
-            lowerToken === 'cmount' ||
-            lowerToken === 'nfsmount'
-          ) {
-            verb = 'mount';
-            mountSubtype = lowerToken;
-          } else {
-            verb = lowerToken;
+        const lowerToken = token.toLowerCase();
+        if (!verb && VERB_MAP[lowerToken]) {
+          const mapping = VERB_MAP[lowerToken];
+          verb = mapping.verb;
+          if (mapping.mountSubtype) {
+            mountSubtype = mapping.mountSubtype;
           }
         } else if (verb === 'serve' && !serveSubtype) {
-          serveSubtype = token.toLowerCase();
+          serveSubtype = lowerToken;
         } else {
           positionalArgs.push(token);
         }
       }
-      i++;
     }
 
     return {
@@ -237,96 +314,166 @@ export class CliFlagMapperService {
     };
   }
 
-  /**
-   * Builds lookup table mapping flag names to their definitions.
-   */
   buildLookupTable(
     flagFields: Record<SharedProfileType, RcConfigOption[]>,
     remoteType?: string
-  ): Record<string, { option: RcConfigOption; flagType: SharedProfileType }> {
-    const table: Record<string, { option: RcConfigOption; flagType: SharedProfileType }> = {};
+  ): Record<string, LookupEntry> {
+    const table: Record<string, LookupEntry> = {};
+    const prefix = remoteType ? `${remoteType.toLowerCase().trim()}-` : '';
 
-    Object.entries(flagFields).forEach(([type, fields]) => {
+    for (const [type, fields] of Object.entries(flagFields)) {
       const flagType = type as SharedProfileType;
-      fields.forEach(field => {
-        const nameRaw = (field.Name ?? '').toLowerCase();
-        const nameHyphen = nameRaw.replace(/_/g, '-');
-        const keyCamel = (field.FieldName ?? '').toLowerCase();
+      const isRuntimeRemote = flagType === 'runtimeRemote';
 
-        const prefixes: string[] = [''];
-        if (flagType === 'runtimeRemote' && remoteType) {
-          prefixes.push(`${remoteType.toLowerCase().trim()}-`);
+      for (const field of fields) {
+        // Index by Name, FieldName, hyphenated, underscored and stripped forms
+        const names = [field.Name, field.FieldName].filter((n): n is string => !!n);
+
+        for (const rawName of names) {
+          const key = rawName.toLowerCase().replace(/_/g, '-');
+          if (!key) continue;
+
+          const registerKey = (k: string): void => {
+            const existing = table[k];
+            if (existing) {
+              existing.supportedFlagTypes.add(flagType);
+            } else {
+              table[k] = {
+                option: field,
+                flagType,
+                supportedFlagTypes: new Set([flagType]),
+              };
+            }
+          };
+
+          registerKey(key);
+          registerKey(key.replace(/-/g, ''));
+          registerKey(rawName.toLowerCase());
+
+          if (isRuntimeRemote && prefix) {
+            registerKey(prefix + key);
+            registerKey((prefix + key).replace(/-/g, ''));
+          }
         }
-
-        prefixes.forEach(p => {
-          if (nameRaw) {
-            table[p + nameRaw] = { option: field, flagType };
-          }
-          if (nameHyphen && nameHyphen !== nameRaw) {
-            table[p + nameHyphen] = { option: field, flagType };
-          }
-          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) {
-            table[p + keyCamel] = { option: field, flagType };
-          }
-        });
-      });
-    });
-
+      }
+    }
     return table;
   }
 
-  /**
-   * Classify parsed CLI structure against lookup table.
-   */
   classify(
     parsed: ParsedCLI,
-    lookupTable: Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
+    lookupTable: Record<string, LookupEntry>,
+    preferredType?: string
   ): ImportResult {
+    const targetPref = (preferredType || parsed.verb) as SharedProfileType | undefined;
+
     const classified: ClassifiedFlag[] = parsed.flags.map(flag => {
-      const match = lookupTable[flag.key.toLowerCase()];
+      let keyLower = flag.key.toLowerCase();
+
+      // Check short flag aliases (e.g. -P -> progress, -v -> verbose)
+      if (SHORT_FLAG_ALIASES[flag.key] || SHORT_FLAG_ALIASES[keyLower]) {
+        keyLower = SHORT_FLAG_ALIASES[flag.key] || SHORT_FLAG_ALIASES[keyLower];
+      }
+
+      // 1. Direct match
+      let match = lookupTable[keyLower] || lookupTable[keyLower.replace(/[-_]/g, '')];
+
+      // 2. Negated boolean flag match (e.g. --no-traverse -> traverse = false)
+      let isNegated = false;
+      if (!match && keyLower.startsWith('no-')) {
+        const unnegatedKey = keyLower.substring(3);
+        const candidate =
+          lookupTable[unnegatedKey] || lookupTable[unnegatedKey.replace(/[-_]/g, '')];
+        if (
+          candidate &&
+          (candidate.option.Type === 'bool' || candidate.option.Type === 'Tristate')
+        ) {
+          match = candidate;
+          isNegated = true;
+        }
+      }
+
       if (match) {
+        const coercedValue = isNegated ? false : this.coerceValue(flag.value, match.option.Type);
+        const resolvedFlagType =
+          targetPref && match.supportedFlagTypes.has(targetPref) ? targetPref : match.flagType;
+
         return {
           flag,
-          status: 'mapped' as FlagStatus,
-          flagType: match.flagType,
-          fieldName: match.option.FieldName || match.option.Name,
-          coercedValue: this.coerceValue(flag.value, match.option.Type),
+          status: 'mapped',
+          flagType: resolvedFlagType,
+          fieldName: match.option.Name || match.option.FieldName,
+          coercedValue,
         };
       }
-      return { flag, status: 'unknown' as FlagStatus };
+      return { flag, status: 'unknown' };
     });
 
-    return {
-      verb: parsed.verb,
-      serveSubtype: parsed.serveSubtype,
-      mountSubtype: parsed.mountSubtype,
-      sourcePath: parsed.sourcePath,
-      destPath: parsed.destPath,
-      classified,
-    };
+    return { ...parsed, classified };
   }
 
   private coerceValue(val: string | boolean, type: string): unknown {
     if (typeof val === 'boolean') return val;
-    if (type === 'bool' || type === 'Tristate') {
-      const s = val.toLowerCase().trim();
-      return s === 'true' || s === '1' || s === 'yes';
+    if (typeof val === 'string') {
+      const lower = val.toLowerCase().trim();
+      if (lower === 'false' && (type === 'bool' || type === 'Tristate')) return false;
+      if (lower === 'true' && (type === 'bool' || type === 'Tristate')) return true;
     }
-    if (
-      type === 'int' ||
-      type === 'int64' ||
-      type === 'int32' ||
-      type === 'uint' ||
-      type === 'uint32' ||
-      type === 'uint64'
-    ) {
-      const num = parseInt(val, 10);
-      return isNaN(num) ? val : num;
+    if (type === 'Tristate') return this.valueMapper.parseTristate(val);
+    return this.valueMapper.humanToMachine(val, type);
+  }
+
+  async getGlobalLookupTable(remoteType?: string): Promise<Record<string, LookupEntry>> {
+    const cacheKey = remoteType || '__none__';
+    const cached = this.lookupTablesCache.get(cacheKey);
+    if (cached) return cached;
+
+    const flagFields = await this.flagConfigService.loadAllFlagFields();
+    let runtimeRemoteFields: RcConfigOption[] = [];
+
+    if (remoteType) {
+      try {
+        runtimeRemoteFields = await this.remoteManagementService.getRemoteConfigFields(remoteType);
+      } catch (error) {
+        console.error('Failed to load remote config fields:', error);
+      }
     }
-    if (type === 'float' || type === 'float32' || type === 'float64') {
-      const num = parseFloat(val);
-      return isNaN(num) ? val : num;
+
+    const table = this.buildLookupTable(
+      { ...flagFields, runtimeRemote: runtimeRemoteFields },
+      remoteType
+    );
+    this.lookupTablesCache.set(cacheKey, table);
+    return table;
+  }
+
+  async getBooleanFlags(): Promise<Set<string>> {
+    if (this.booleanFlagsCache) return this.booleanFlagsCache;
+    const flagFields = await this.flagConfigService.loadAllFlagFields();
+    const bools = new Set<string>();
+
+    for (const fields of Object.values(flagFields)) {
+      for (const f of fields) {
+        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
+        const name = (f.Name || f.FieldName || '').toLowerCase();
+        if (!name) continue;
+        bools.add(name);
+        bools.add(name.replace(/_/g, '-'));
+      }
     }
-    return val;
+    this.booleanFlagsCache = bools;
+    return bools;
+  }
+
+  async importCliCommand(
+    cliString: string,
+    remoteType?: string,
+    preferredType?: string
+  ): Promise<ImportResult> {
+    const [boolFlags, lookupTable] = await Promise.all([
+      this.getBooleanFlags(),
+      this.getGlobalLookupTable(remoteType),
+    ]);
+    return this.classify(this.parse(cliString, boolFlags), lookupTable, preferredType);
   }
 }

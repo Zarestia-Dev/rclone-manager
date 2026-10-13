@@ -1,0 +1,161 @@
+// ============================================================================
+// TEMPLATE MANAGER MODAL STYLES
+// ============================================================================
+
+.manage-control-bar {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  justify-content: space-between;
+
+  .bar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex: 1;
+    min-width: 200px;
+
+    .selected-count-badge {
+      font-size: var(--font-size-xs);
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      background: rgba(var(--primary-color-rgb), 0.15);
+      color: var(--primary-color);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
+
+  .bar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+
+    .view-mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px;
+      border-radius: var(--radius-sm);
+      background: rgba(var(--primary-color-rgb), 0.06);
+
+      .toggle-btn {
+        color: var(--dim-color);
+        &.active {
+          background: rgba(var(--primary-color-rgb), 0.16);
+          color: var(--primary-color);
+        }
+      }
+    }
+  }
+}
+
+.template-edit-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  flex-wrap: wrap;
+
+  .tpl-name-field {
+    flex: 1;
+  }
+
+  .tpl-desc-field {
+    flex: 2;
+  }
+}
+
+.visual-inspector {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  mat-expansion-panel {
+    border-radius: 0;
+  }
+
+  .cat-badge {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-color);
+  }
+
+  .cat-count-badge {
+    font-size: var(--font-size-xs);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: rgba(128, 128, 128, 0.15);
+    color: var(--dim-color);
+    font-weight: 600;
+    white-space: nowrap;
+
+    &.has-keys {
+      background: rgba(var(--primary-color-rgb), 0.15);
+      color: var(--primary-color);
+    }
+  }
+
+  .category-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding-top: var(--space-xs);
+
+    .cat-inline-add {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      flex-wrap: wrap;
+
+      .inline-key-field,
+      .inline-val-field {
+        flex: 1;
+        min-width: 140px;
+      }
+    }
+
+    .cat-kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: var(--space-xs);
+
+      .kv-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-xs);
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        background: var(--view-bg-color);
+        box-shadow: var(--box-shadow);
+
+        .kv-details {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          flex: 1;
+
+          .k-label {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--window-fg-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          code {
+            color: var(--dim-color);
+          }
+        }
+      }
+    }
+  }
+}

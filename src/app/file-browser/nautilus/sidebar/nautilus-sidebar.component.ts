@@ -1,28 +1,59 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService, PathService, RemoteFacadeService } from '@app/services';
-import { FileBrowserItem, ExplorerRoot } from '@app/types';
+import { MatDialog } from '@angular/material/dialog';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { SlideMenuController } from '../slide-menu';
+import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
+import {
+  ItemOrderVisibilityModalComponent,
+  ItemOrderVisibilityConfigItem,
+  ItemOrderVisibilityResult,
+} from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
+
+interface BookmarkViewModel {
+  bm: FileBrowserItem;
+  key: string;
+}
+
+function sortAndFilterRoots(
+  roots: ExplorerRoot[],
+  hidden: Set<string>,
+  orderMap: Map<string, number>
+): ExplorerRoot[] {
+  const visible = roots.filter(r => !hidden.has(r.name));
+  if (orderMap.size === 0) return visible;
+
+  return visible.sort((a, b) => (orderMap.get(a.name) ?? 9999) - (orderMap.get(b.name) ?? 9999));
+}
 
 @Component({
   selector: 'app-nautilus-sidebar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
-    MatTooltipModule,
     CdkMenuModule,
     OperationsPanelComponent,
   ],
@@ -30,9 +61,12 @@ import { SlideMenuController } from '../slide-menu';
   styleUrl: './nautilus-sidebar.component.scss',
 })
 export class NautilusSidebarComponent {
+  private readonly elementRef = inject(ElementRef);
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
+  protected readonly settings = inject(NautilusSettingsService);
+  private readonly dialog = inject(MatDialog);
 
   // Inputs
   readonly isMobile = input.required<boolean>();
@@ -72,18 +106,107 @@ export class NautilusSidebarComponent {
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
 
   // Context menu sliding controller
-  protected readonly menuCtrl = new SlideMenuController('.sidebar-sliding-container');
+  protected readonly menuCtrl = new SlideMenuController(
+    '.sidebar-sliding-container',
+    () => this.elementRef.nativeElement
+  );
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {
-    if (this.starredMode() || !this.nautilusRemote()) return null;
-    return `${this.nautilusRemote()!.name}::${this.currentPath()}`;
+    const remote = this.nautilusRemote();
+    if (this.starredMode() || !remote) return null;
+    return `${this.pathService.normalizeRemoteName(remote.name)}::${this.currentPath()}`;
   });
+
+  readonly activeBookmarkKey = this._activeKey;
 
   readonly anyBookmarkSelected = computed(() => {
     const active = this._activeKey();
     return active !== null && this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
   });
+
+  readonly bookmarkViewModels = computed<BookmarkViewModel[]>(() =>
+    this.bookmarks().map(bm => ({ bm, key: this._bookmarkKey(bm) }))
+  );
+
+  private readonly _orderMap = computed(
+    () => new Map<string, number>(this.settings.sidebarDriveOrder().map((name, i) => [name, i]))
+  );
+
+  readonly displayLocalDrives = computed<ExplorerRoot[]>(() =>
+    sortAndFilterRoots(this.localDrives(), this.settings.sidebarHiddenDrives(), this._orderMap())
+  );
+
+  readonly displayCloudRemotes = computed<ExplorerRoot[]>(() =>
+    sortAndFilterRoots(this.cloudRemotes(), this.settings.sidebarHiddenDrives(), this._orderMap())
+  );
+
+  constructor() {
+    effect(() => {
+      const remotes = this.displayCloudRemotes();
+      for (const remote of remotes) {
+        this.remoteFacadeService.featuresSignal(remote.name, remote.type);
+      }
+    });
+  }
+
+  hasFeature(remote: ExplorerRoot, feature: string): boolean {
+    return this.remoteFacadeService.hasFeature(remote.name, feature, remote.type);
+  }
+
+  readonly driveTooltips = computed<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    for (const drive of [...this.displayLocalDrives(), ...this.displayCloudRemotes()]) {
+      const pathInfo = drive.name ? `${drive.name}\n` : '';
+      if (drive.totalSpace === undefined || drive.totalSpace === 0) {
+        map.set(drive.name, pathInfo);
+        continue;
+      }
+      const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
+      map.set(drive.name, `${pathInfo}${fs}`);
+    }
+    return map;
+  });
+
+  onConfigureSidebar(): void {
+    const all = [...this.localDrives(), ...this.cloudRemotes()];
+    const hidden = this.settings.sidebarHiddenDrives();
+    const orderMap = this._orderMap();
+
+    const sortedAll = [...all].sort(
+      (a, b) => (orderMap.get(a.name) ?? 9999) - (orderMap.get(b.name) ?? 9999)
+    );
+
+    const items = sortedAll.map(root => this._toConfigItem(root, !hidden.has(root.name)));
+    const defaultItems = all.map(root => this._toConfigItem(root, true));
+
+    this.dialog
+      .open(ItemOrderVisibilityModalComponent, {
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        data: {
+          title: 'nautilus.sidebar.configureTitle',
+          description: 'nautilus.sidebar.configureDescription',
+          mode: 'visibility',
+          iconHeader: 'tune',
+          items,
+          defaultItems,
+        },
+        panelClass: 'mobile-sheet-dialog',
+      })
+      .afterClosed()
+      .subscribe((result: ItemOrderVisibilityResult | undefined) => {
+        if (result) {
+          if (result.isReset) {
+            this.settings.saveSidebarConfig([], []);
+          } else {
+            const newOrder = result.items.map(i => i.id);
+            const newHidden = result.hiddenIds;
+            this.settings.saveSidebarConfig(newOrder, newHidden);
+          }
+        }
+      });
+  }
 
   // Handlers
   onToggleSearch(): void {
@@ -120,25 +243,19 @@ export class NautilusSidebarComponent {
     this._closeSidenavOnMobile();
   }
 
-  isBookmarkSelected(bm: FileBrowserItem): boolean {
-    const active = this._activeKey();
-    return active !== null && this._bookmarkKey(bm) === active;
-  }
-
-  supportsCleanup(remote: ExplorerRoot | null): boolean {
-    return remote ? this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp : false;
-  }
-
   private _bookmarkKey(bm: FileBrowserItem): string {
-    const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '', bm.meta.isLocal);
+    const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '');
     return `${remote}::${bm.entry.Path}`;
   }
 
-  getDriveTooltip(drive: ExplorerRoot): string {
-    const pathInfo = drive.name ? `${drive.name}\n` : '';
-    if (drive.totalSpace === undefined || drive.totalSpace === 0) return pathInfo;
-    const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
-    return `${pathInfo}${fs}`;
+  private _toConfigItem(root: ExplorerRoot, isVisible: boolean): ItemOrderVisibilityConfigItem {
+    return {
+      id: root.name,
+      label: root.label || root.name,
+      subLabel: root.showName && root.label !== root.name ? root.name : undefined,
+      icon: root.isLocal ? 'hard-drive' : this.iconService.getIconName(root.type),
+      isVisible,
+    };
   }
 
   private _closeSidenavOnMobile(): void {

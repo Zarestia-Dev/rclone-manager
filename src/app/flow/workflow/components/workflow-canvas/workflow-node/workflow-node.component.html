@@ -1,0 +1,180 @@
+<div
+  class="workflow-node-card"
+  role="button"
+  tabindex="0"
+  [class.selected]="isSelected()"
+  [ngClass]="[statusClass(), 'color-' + nodeCssClass()]"
+  (click)="onCardClick($event)"
+  (keydown.enter)="onCardClick($event)"
+  (keydown.space)="onCardClick($event)"
+  (dblclick)="onInspect($event)"
+  (contextmenu)="$event.preventDefault()"
+>
+  <!-- Node Header -->
+  <div class="node-header">
+    <div class="node-category-wrapper">
+      <span class="app-pill" [ngClass]="nodePillClass()">
+        {{ 'flow.workflow.category.' + node().category | translate }}
+      </span>
+      @if (isLiveActive()) {
+        <span class="node-live-badge" [attr.title]="liveStatusLabelKey() | translate">
+          <span class="live-dot"></span>
+          <span>{{ liveStatusLabelKey() | translate }}</span>
+        </span>
+      }
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="node-actions">
+      @if (nodeJob(); as job) {
+        <button
+          type="button"
+          class="action-button job-btn"
+          [class.is-running]="job.status === 'Running'"
+          (click)="onInspectJob($event)"
+          (touchstart)="$event.stopPropagation()"
+          [attr.title]="'flow.workflow.actions.inspectJob' | translate"
+        >
+          <mat-icon svgIcon="jobs"></mat-icon>
+        </button>
+      }
+      <button
+        type="button"
+        class="action-button"
+        (click)="onInspect($event)"
+        (touchstart)="$event.stopPropagation()"
+        [attr.title]="'flow.workflow.toolbar.toggleInspector' | translate"
+      >
+        <mat-icon svgIcon="tune"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="action-button"
+        (click)="onDuplicate($event)"
+        (touchstart)="$event.stopPropagation()"
+        [attr.title]="'flow.workflow.actions.duplicate' | translate"
+      >
+        <mat-icon svgIcon="copy"></mat-icon>
+      </button>
+      <button
+        type="button"
+        class="action-button danger"
+        (click)="onDelete($event)"
+        (touchstart)="$event.stopPropagation()"
+        [attr.title]="'flow.workflow.actions.delete' | translate"
+      >
+        <mat-icon svgIcon="trash"></mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Node Body: Icon + Title & Subtitle + Execution Feedback -->
+  <div class="node-body">
+    <div class="node-icon-box" [ngClass]="'box-' + nodeCssClass()">
+      <mat-icon [svgIcon]="nodeIcon()"></mat-icon>
+    </div>
+    <div class="node-text-content">
+      <div class="node-title truncate" [attr.title]="displayTitle()">{{ displayTitle() }}</div>
+      @if (displaySubtitle()) {
+        <div class="node-subtitle truncate" [attr.title]="displaySubtitle()">
+          {{ displaySubtitle() }}
+        </div>
+      }
+    </div>
+
+    @if (node().state && node().state !== 'idle') {
+      <div
+        class="node-execution-badge"
+        [ngClass]="'badge-' + node().state"
+        [class.has-job]="!!nodeJob()"
+        role="button"
+        tabindex="0"
+        (click)="onBadgeClick($event)"
+        (keydown.enter)="onBadgeClick($event)"
+        [attr.title]="
+          nodeJob()
+            ? ('flow.workflow.status.' + node().state | translate) +
+              ' - ' +
+              ('flow.workflow.actions.inspectJob' | translate)
+            : ('flow.workflow.status.' + node().state | translate) +
+              (node().lastDurationMs ? ' (' + node().lastDurationMs + 'ms)' : '')
+        "
+      >
+        @if (node().state === 'running') {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else if (node().state === 'success') {
+          <mat-icon svgIcon="check-circle"></mat-icon>
+        } @else if (node().state === 'failed') {
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        } @else if (node().state === 'skipped') {
+          <mat-icon svgIcon="pause"></mat-icon>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Dedicated Structured Port Rows -->
+  @if (portRows().length > 0) {
+    <div class="node-ports">
+      @for (row of portRows(); track $index) {
+        <div class="port-row">
+          <!-- Left Input Port Slot (if present) -->
+          @if (row.inputPort; as inPort) {
+            <div
+              class="port-slot port-slot-in"
+              [attr.title]="
+                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+              "
+            >
+              <div
+                class="port-handle input-handle"
+                [attr.data-node-id]="node().id"
+                [attr.data-port-id]="inPort.id"
+                [attr.data-port-type]="inPort.type"
+                [attr.data-is-output]="false"
+                (mousedown)="onPortMouseDown(inPort, false, $event)"
+                (mouseup)="onPortMouseUp(inPort, false, $event)"
+                (touchstart)="onPortTouchStart(inPort, false, $event)"
+              ></div>
+              <span class="port-label truncate">{{
+                inPort.labelKey ? (inPort.labelKey | translate) : inPort.label || inPort.name
+              }}</span>
+            </div>
+          }
+
+          <!-- Right Output Port Slot (if present) -->
+          @if (row.outputPort; as outPort) {
+            <div
+              class="port-slot port-slot-out"
+              [attr.title]="
+                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+              "
+            >
+              <span class="port-label truncate">{{
+                outPort.labelKey ? (outPort.labelKey | translate) : outPort.label || outPort.name
+              }}</span>
+              <div
+                class="port-handle output-handle"
+                [attr.data-node-id]="node().id"
+                [attr.data-port-id]="outPort.id"
+                [attr.data-port-type]="outPort.type"
+                [attr.data-is-output]="true"
+                (mousedown)="onPortMouseDown(outPort, true, $event)"
+                (mouseup)="onPortMouseUp(outPort, true, $event)"
+                (touchstart)="onPortTouchStart(outPort, true, $event)"
+              ></div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error Message Banner -->
+  @if (node().errorMessage) {
+    <div class="node-error-message" [attr.title]="node().errorMessage">
+      <mat-icon svgIcon="warning" class="error-icon"></mat-icon>
+      <span class="error-text truncate">{{ node().errorMessage }}</span>
+    </div>
+  }
+</div>
