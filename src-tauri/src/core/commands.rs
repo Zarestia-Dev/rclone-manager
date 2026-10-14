@@ -12,83 +12,89 @@
 macro_rules! MASTER_COMMAND_LIST {
     ($action:ident) => {
         $action! {
-            // =================================================================
             // FILE OPERATIONS (Utils)
-            // =================================================================
-            // File Picker / System Interaction (Desktop Only)
+            // File Picker / System Interaction
             #[cfg(not(feature = "web-server"))]
-            (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
+            (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: String]);
             #[cfg(not(feature = "web-server"))]
+            (open_file_natively, $crate::utils::io::file_helper::open_file_natively, [remote: String, path: String, file_name: String, is_local: bool]);
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
             #[cfg(not(feature = "web-server"))]
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
             #[cfg(not(feature = "web-server"))]
             (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
+            #[cfg(not(feature = "web-server"))]
+            (get_save_file_location, $crate::utils::io::file_helper::get_save_file_location, [default_name: Option<String>]);
+            #[cfg(not(feature = "web-server"))]
+            (download_file, $crate::utils::io::file_helper::download_file, [remote: String, path: String, destination: String, total_size: Option<u64>, is_local: bool]);
 
-            // =================================================================
             // UI & THEME
-            // =================================================================
             // UI / Theming (Desktop Only)
             #[cfg(not(feature = "web-server"))]
-            (set_theme, $crate::utils::app::ui::set_theme, [theme: String]);
-            #[cfg(not(feature = "web-server"))]
-            (get_system_theme, $crate::utils::app::ui::get_system_theme, [], [sync, no_app, infallible]);
-            (get_i18n, $crate::utils::i18n::get_i18n, [lang: String], [sync, no_app]);
+            (set_theme, $crate::utils::app::ui::set_theme, [theme: String, system_is_dark: Option<bool>]);
             (get_rclone_rc_url, $crate::rclone::queries::get_rclone_rc_url, []);
 
-            // =================================================================
             // PLATFORM
-            // =================================================================
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
+            (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
+            (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
+            (check_pending_app_exit, $crate::utils::app::platform::check_pending_app_exit, [], [sync, no_app, infallible]);
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            (request_app_exit, $crate::utils::app::platform::request_app_exit, []);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
 
-            // =================================================================
-            // RCLONE OPERATIONS
-            // =================================================================
-            (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
-            (refresh_system, $crate::core::initialization::refresh_system, []);
-            (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
-            (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
-            (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
-            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
-            (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
-            (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>], [no_app]);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>], [no_app]);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (is_send_to_registered, $crate::utils::app::send_to::is_send_to_registered, [remote: String, path: Option<String>], [no_app]);
 
-            // =================================================================
+            // RCLONE OPERATIONS
+            #[cfg(not(feature = "librclone"))]
+            (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
+            #[cfg(not(feature = "librclone"))]
+            (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (cancel_provision_rclone, $crate::utils::rclone::provision::cancel_provision_rclone, []);
+            #[cfg(not(feature = "librclone"))]
+            (get_provision_status, $crate::utils::rclone::provision::get_provision_status, [], [sync]);
+            #[cfg(not(feature = "librclone"))]
+            (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
+            #[cfg(not(feature = "librclone"))]
+            (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
+            #[cfg(not(feature = "librclone"))]
+            (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
+
             // RCLONE QUERIES
-            // =================================================================
-            (get_stats, $crate::rclone::queries::get_stats, [group: Option<String>]);
-            (get_completed_transfers, $crate::rclone::queries::get_completed_transfers, [group: Option<String>]);
             (get_fs_info, $crate::rclone::queries::get_fs_info, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_disk_usage, $crate::rclone::queries::get_disk_usage, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_about_remote, $crate::rclone::queries::get_about_remote, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_size, $crate::rclone::queries::get_size, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (get_stat, $crate::rclone::queries::get_stat, [remote: String, path: String, opt: Option<serde_json::Value>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum, $crate::rclone::queries::get_hashsum, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum_file, $crate::rclone::queries::get_hashsum_file, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_public_link, $crate::rclone::queries::get_public_link, [remote: String, path: String, options: Option<$crate::rclone::queries::filesystem::PublicLinkParams>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_disk_usage, $crate::rclone::queries::system::get_local_disk_usage, [dir: Option<String>]);
+            (obscure_value, $crate::rclone::queries::system::obscure_value, [clear: String]);
             (get_remote_types, $crate::rclone::queries::get_remote_types, []);
             (get_oauth_supported_remotes, $crate::rclone::queries::get_oauth_supported_remotes, []);
             (get_rclone_config_file, $crate::rclone::queries::get_rclone_config_file, []);
             (bandwidth_limit, $crate::rclone::commands::system::bandwidth_limit, [rate: Option<String>]);
 
-            // =================================================================
             // SYNC OPERATIONS
-            // =================================================================
-            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::rclone::commands::sync::TransferType, params: $crate::utils::types::remotes::ProfileParams]);
+            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::utils::types::remotes::OperationType, params: $crate::utils::types::remotes::ProfileParams]);
 
-            // =================================================================
             // MOUNT OPERATIONS
-            // =================================================================
             (mount_remote_profile, $crate::rclone::commands::mount::mount_remote_profile, [params: $crate::utils::types::remotes::ProfileParams]);
             (unmount_remote, $crate::rclone::commands::mount::unmount_remote, [mount_point: String, remote_name: String]);
             (unmount_all_remotes, $crate::rclone::commands::mount::unmount_all_remotes, [context: $crate::rclone::commands::common::OperationContext]);
             (get_mount_types, $crate::rclone::queries::get_mount_types, []);
 
-            // =================================================================
-            // APPLE FILEPROVIDER (macOS only)
-            // =================================================================
             #[cfg(target_os = "macos")]
             (register_apple_file_domain, $crate::rclone::commands::apple_file::register_apple_file_domain, [params: $crate::rclone::commands::apple_file::RegisterAppleFileParams]);
             #[cfg(target_os = "macos")]
@@ -102,9 +108,7 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(target_os = "macos")]
             (signal_apple_file_change, $crate::rclone::commands::apple_file::signal_apple_file_change, [remote_name: String]);
 
-            // =================================================================
             // VFS COMMANDS
-            // =================================================================
             (vfs_forget, $crate::rclone::queries::vfs_forget, [fs: Option<String>, file: Option<String>]);
             (vfs_list, $crate::rclone::queries::vfs_list, []);
             (vfs_poll_interval, $crate::rclone::queries::vfs_poll_interval, [fs: Option<String>, interval: Option<String>, timeout: Option<String>]);
@@ -113,61 +117,48 @@ macro_rules! MASTER_COMMAND_LIST {
             (vfs_queue, $crate::rclone::queries::vfs_queue, [fs: Option<String>]);
             (vfs_queue_set_expiry, $crate::rclone::queries::vfs_queue_set_expiry, [fs: Option<String>, id: u64, expiry: f64, relative: bool]);
 
-            // =================================================================
             // SERVE OPERATIONS
-            // =================================================================
             (start_serve_profile, $crate::rclone::commands::serve::start_serve_profile, [params: $crate::utils::types::remotes::ProfileParams]);
-            (stop_serve, $crate::rclone::commands::serve::stop_serve, [id: String, remote_name: String]);
+            (stop_serve, $crate::rclone::commands::serve::stop_serve, [server_id: String, remote_name: String]);
             (stop_all_serves, $crate::rclone::commands::serve::stop_all_serves, [context: $crate::rclone::commands::common::OperationContext]);
             (get_serve_types, $crate::rclone::queries::get_serve_types, []);
             (get_serve_flags, $crate::rclone::queries::flags::get_serve_flags, [serve_type: Option<String>]);
             (list_serves, $crate::rclone::queries::list_serves, []);
 
-            // =================================================================
             // REMOTE MANAGEMENT
-            // =================================================================
             (create_remote_interactive, $crate::rclone::commands::remote::create_remote_interactive, [name: String, rclone_type: String, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>]);
             (continue_create_remote_interactive, $crate::rclone::commands::remote::continue_create_remote_interactive, [name: String, state_token: String, result: serde_json::Value, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>]);
             (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String]);
-            (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
-            (quit_rclone_oauth, $crate::rclone::commands::system::quit_rclone_oauth, []);
+            (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
             (get_remote_paths, $crate::rclone::queries::get_remote_paths, [remote: String, path: Option<String>, options: Option<$crate::utils::types::remotes::ListOptions>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (run_garbage_collector, $crate::rclone::commands::system::run_garbage_collector, []);
             (get_fscache_entries, $crate::rclone::commands::system::get_fscache_entries, []);
             (clear_fscache, $crate::rclone::commands::system::clear_fscache, []);
+            #[cfg(not(feature = "librclone"))]
+            (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
 
-            // =================================================================
             // FILESYSTEM COMMANDS
-            // =================================================================
             (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_file, $crate::rclone::commands::filesystem::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
+            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
 
-            // =================================================================
             // ARCHIVE OPERATIONS
-            // =================================================================
             (archive_create, $crate::rclone::commands::archive::archive_create, [source: String, destination: String, format: Option<String>, prefix: Option<String>, full_path: Option<bool>, include: Option<Vec<String>>]);
             (archive_extract, $crate::rclone::commands::archive::archive_extract, [source: String, destination: String]);
             (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>]);
 
-            // =================================================================
             // FLAGS & OPTIONS
-            // =================================================================
             (get_option_blocks, $crate::rclone::queries::flags::get_option_blocks, []);
-            (get_flags_by_category, $crate::rclone::queries::flags::get_flags_by_category, [category: String, filter_groups: Option<Vec<String>>, exclude_flags: Option<Vec<String>>]);
-            (get_copy_flags, $crate::rclone::queries::flags::get_copy_flags, []);
-            (get_sync_flags, $crate::rclone::queries::flags::get_sync_flags, []);
-            (get_bisync_flags, $crate::rclone::queries::flags::get_bisync_flags, []);
-            (get_move_flags, $crate::rclone::queries::flags::get_move_flags, []);
+            (get_operation_flags, $crate::rclone::queries::flags::get_operation_flags, [operation: String]);
             (get_filter_flags, $crate::rclone::queries::flags::get_filter_flags, []);
             (get_vfs_flags, $crate::rclone::queries::flags::get_vfs_flags, []);
             (get_mount_flags, $crate::rclone::queries::flags::get_mount_flags, []);
@@ -175,17 +166,17 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_grouped_options_with_values, $crate::rclone::queries::flags::get_grouped_options_with_values, []);
             (set_rclone_option, $crate::rclone::queries::flags::set_rclone_option, [block_name: String, option_name: String, value: serde_json::Value]);
 
-            // =================================================================
             // SETTINGS
-            // =================================================================
             (load_settings, $crate::core::settings::operations::core::load_settings, []);
             (save_setting, $crate::core::settings::operations::core::save_setting, [category: String, key: String, value: serde_json::Value]);
             (reset_settings, $crate::core::settings::operations::core::reset_settings, []);
             (reset_setting, $crate::core::settings::operations::core::reset_setting, [category: String, key: String]);
+            (list_user_templates, $crate::core::settings::operations::templates::list_user_templates, []);
+            (save_user_template, $crate::core::settings::operations::templates::save_user_template, [id: String, template: serde_json::Value]);
+            (update_user_template, $crate::core::settings::operations::templates::update_user_template, [id: String, template: serde_json::Value]);
+            (delete_user_template, $crate::core::settings::operations::templates::delete_user_template, [id: String]);
 
-            // =================================================================
             // RCLONE BACKEND SETTINGS
-            // =================================================================
             (load_rclone_backend_options, $crate::core::settings::rclone_backend::load_rclone_backend_options, []);
             (save_rclone_backend_options, $crate::core::settings::rclone_backend::save_rclone_backend_options, [options: serde_json::Value]);
             (save_rclone_backend_option, $crate::core::settings::rclone_backend::save_rclone_backend_option, [block: String, option: String, value: serde_json::Value]);
@@ -193,39 +184,27 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_rclone_backend_store_path, $crate::core::settings::rclone_backend::get_rclone_backend_store_path, []);
             (remove_rclone_backend_option, $crate::core::settings::rclone_backend::remove_rclone_backend_option, [block: String, option: String]);
 
-            // =================================================================
             // REMOTE SETTINGS
-            // =================================================================
             (save_remote_settings, $crate::core::settings::remote::manager::save_remote_settings, [remote_name: String, settings: serde_json::Value]);
-            (get_remote_settings, $crate::core::settings::remote::manager::get_remote_settings, [remote_name: String]);
             (delete_remote_settings, $crate::core::settings::remote::manager::delete_remote_settings, [remote_name: String]);
 
-            // =================================================================
             // BACKUP & RESTORE
-            // =================================================================
             (backup_settings, $crate::core::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>, include_secrets: Option<bool>]);
             (analyze_backup_file, $crate::core::settings::backup::backup_manager::analyze_backup_file, [path: std::path::PathBuf]);
             (restore_settings, $crate::core::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>, restore_profile_as: Option<String>]);
             (get_export_categories, $crate::core::settings::backup::export_categories::get_export_categories, []);
 
-            // =================================================================
             // NETWORK
-            // =================================================================
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (check_links, $crate::utils::io::network::check_links, [links: Vec<String>, max_retries: usize, retry_delay_secs: u64], [no_app]);
             (is_network_metered, $crate::utils::io::network::is_network_metered, [], [no_app]);
 
-            // =================================================================
             // MOUNT PLUGIN
-            // =================================================================
-            (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [no_app]);
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [sync, no_app, infallible]);
             (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-            (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, [], [no_app]);
+            (cancel_mount_plugin_install, $crate::utils::rclone::mount::cancel_mount_plugin_install, []);
 
-            // =================================================================
             // CACHE
-            // =================================================================
             (get_cached_remotes, $crate::rclone::state::cache::get_cached_remotes, []);
             (get_configs, $crate::rclone::state::cache::get_configs, []);
             (get_settings, $crate::rclone::state::cache::get_settings, []);
@@ -234,41 +213,28 @@ macro_rules! MASTER_COMMAND_LIST {
             (rename_mount_profile_in_cache, $crate::rclone::state::cache::rename_mount_profile_in_cache, [remote_name: String, old_name: String, new_name: String]);
             (rename_serve_profile_in_cache, $crate::rclone::state::cache::rename_serve_profile_in_cache, [remote_name: String, old_name: String, new_name: String]);
 
-            // =================================================================
             // BINARIES
-            // =================================================================
+            #[cfg(not(feature = "librclone"))]
             (check_rclone_available, $crate::core::check_binaries::check_rclone_available, [path: String]);
 
-            // =================================================================
             // LOGS
-            // =================================================================
             (get_remote_logs, $crate::rclone::state::log::get_remote_logs, [remote_name: Option<String>]);
             (clear_remote_logs, $crate::rclone::state::log::clear_remote_logs, [remote_name: Option<String>]);
 
-            // =================================================================
             // JOBS
-            // =================================================================
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
-            (get_active_jobs, $crate::rclone::commands::job::get_active_jobs, []);
-            (get_job_status, $crate::rclone::commands::job::get_job_status, [jobid: u64]);
             (submit_batch_job, $crate::rclone::commands::job::submit_batch_job, [inputs: Vec<serde_json::Value>, metadata: $crate::rclone::commands::job::JobMetadata]);
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
+            (stop_all_active_jobs, $crate::core::lifecycle::shutdown::stop_all_active_jobs, []);
             (register_preparing_job, $crate::rclone::commands::job::register_preparing_job, [jobid: u64, remote: String, destination: String, total_files: usize, total_bytes: u64, origin: Option<$crate::utils::types::origin::Origin>]);
             (update_job_stats, $crate::rclone::commands::job::update_job_stats, [jobid: u64, stats: serde_json::Value]);
 
-            // =================================================================
             // STATS GROUP MANAGEMENT
-            // =================================================================
-            (get_stats_groups, $crate::rclone::commands::system::get_stats_groups, []);
             (reset_group_stats, $crate::rclone::commands::system::reset_group_stats, [group: Option<String>]);
-            (delete_stats_group, $crate::rclone::commands::system::delete_stats_group, [group: String]);
 
-            // =================================================================
             // BACKEND MANAGEMENT
-            // =================================================================
-            (get_backend_schema, $crate::rclone::commands::backend::get_backend_schema, [], [no_app]);
             (list_backends, $crate::rclone::commands::backend::list_backends, []);
             (get_active_backend, $crate::rclone::commands::backend::get_active_backend, []);
             (get_backend_profiles, $crate::rclone::commands::backend::get_backend_profiles, []);
@@ -277,35 +243,56 @@ macro_rules! MASTER_COMMAND_LIST {
             (update_backend, $crate::rclone::commands::backend::update_backend, [params: $crate::rclone::commands::backend::UpdateBackendParams]);
             (remove_backend, $crate::rclone::commands::backend::remove_backend, [name: String]);
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
+            (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>]);
+            (clear_engine_auth_error, $crate::rclone::engine::lifecycle::clear_engine_auth_error, []);
+            #[cfg(not(feature = "librclone"))]
+            (find_available_port, $crate::rclone::commands::backend::find_available_port, [start_port: Option<u16>], [sync, no_app]);
+            #[cfg(not(feature = "librclone"))]
+            (check_port_available, $crate::rclone::commands::backend::check_port_available, [port: u16], [sync, no_app]);
 
-            // =================================================================
             // AUTOMATIONS
-            // =================================================================
             (get_automations, $crate::rclone::state::automations::get_automations, []);
             (get_automation, $crate::rclone::state::automations::get_automation, [automation_id: String]);
-            (get_automation_stats, $crate::rclone::state::automations::get_automation_stats, []);
             (toggle_automation, $crate::core::automation::commands::toggle_automation, [automation_id: String]);
             (validate_cron, $crate::core::automation::commands::validate_cron, [cron_expression: String], [no_app]);
             (reload_automations, $crate::core::automation::commands::reload_automations, []);
-            (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
             (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
-            // =================================================================
+            // QUICK RUNS (FLOW WORKSPACE)
+            (list_quick_runs, $crate::core::flow::quick_run::commands::list_quick_runs, []);
+            (create_quick_run, $crate::core::flow::quick_run::commands::create_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
+            (update_quick_run, $crate::core::flow::quick_run::commands::update_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
+            (delete_quick_run, $crate::core::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
+            (start_quick_run, $crate::core::flow::quick_run::commands::start_quick_run, [quick_run_id: String, workflow_id: Option<String>, node_id: Option<String>]);
+            (stop_quick_run, $crate::core::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
+
+            // WORKFLOWS (FLOW WORKSPACE)
+            (list_workflows, $crate::core::flow::workflow::commands::list_workflows, []);
+            (get_workflow, $crate::core::flow::workflow::commands::get_workflow, [workflow_id: String]);
+            (create_workflow, $crate::core::flow::workflow::commands::create_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (update_workflow, $crate::core::flow::workflow::commands::update_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowInput]);
+            (delete_workflow, $crate::core::flow::workflow::commands::delete_workflow, [workflow_id: String]);
+            (duplicate_workflow, $crate::core::flow::workflow::commands::duplicate_workflow, [workflow_id: String]);
+            (validate_workflow, $crate::core::flow::workflow::commands::validate_workflow, [workflow: $crate::core::flow::workflow::types::WorkflowDefinition], [no_app]);
+            (execute_workflow, $crate::core::flow::workflow::commands::execute_workflow, [workflow_id: String, dry_run: Option<bool>]);
+            (stop_workflow, $crate::core::flow::workflow::commands::stop_workflow, [workflow_id: String]);
+            (export_workflow, $crate::core::flow::workflow::commands::export_workflow, [workflow_id: String]);
+            (import_workflow, $crate::core::flow::workflow::commands::import_workflow, [json_str: String]);
+            (test_rc_command, $crate::core::flow::workflow::commands::test_rc_command, [command: String, params: Option<serde_json::Value>]);
+
             // WATCHERS
-            // =================================================================
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
             (force_check_serves, $crate::rclone::state::watcher::force_check_serves, []);
             (set_poller_visibility, $crate::rclone::engine::poller::set_poller_visibility, [visible: bool], [sync]);
             (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 
-            // =================================================================
             // APPLICATION CONTROL
-            // =================================================================
+            #[cfg(not(any(target_os = "ios")))]
             (shutdown_app, $crate::core::lifecycle::shutdown::shutdown_app, []);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            (execute_system_power, $crate::core::power::actions::execute_system_power, [action: String], [no_app]);
 
-            // =================================================================
             // SECURITY & PASSWORD MANAGEMENT
-            // =================================================================
             (store_config_password, $crate::core::security::store_config_password, [password: String]);
             (get_config_password, $crate::core::security::get_config_password, []);
             (has_stored_password, $crate::core::security::has_stored_password, []);
@@ -317,10 +304,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (change_config_password, $crate::core::security::change_config_password, [old_password: String, new_password: String]);
             (set_config_password_env, $crate::core::security::set_config_password_env, [password: String]);
 
-
-            // =================================================================
             // ALERTS
-            // =================================================================
             (get_alert_rules, $crate::core::alerts::commands::get_alert_rules, []);
             (save_alert_rule, $crate::core::alerts::commands::save_alert_rule, [rule: $crate::core::alerts::types::AlertRule]);
             (delete_alert_rule, $crate::core::alerts::commands::delete_alert_rule, [id: String]);
@@ -334,25 +318,25 @@ macro_rules! MASTER_COMMAND_LIST {
             (acknowledge_all_alerts, $crate::core::alerts::commands::acknowledge_all_alerts, []);
             (clear_alert_history, $crate::core::alerts::commands::clear_alert_history, []);
             (get_alert_stats, $crate::core::alerts::commands::get_alert_stats, []);
-            (get_unacknowledged_alert_count, $crate::core::alerts::commands::get_unacknowledged_alert_count, []);
             (get_alert_template_keys, $crate::core::alerts::commands::get_alert_template_keys, [], [sync, no_app, infallible]);
 
-            // =================================================================
             // DESKTOP & HEADLESS UTILITIES
-            // =================================================================
-            (fetch_update, $crate::utils::app::updater::app_updates::fetch_update, [channel: String]);
-            (get_app_update_info, $crate::utils::app::updater::app_updates::get_app_update_info, []);
-            (install_update, $crate::utils::app::updater::app_updates::install_update, []);
-            (cancel_app_update, $crate::utils::app::updater::app_updates::cancel_app_update, []);
-            (apply_app_update, $crate::utils::app::updater::app_updates::apply_app_update, []);
+            #[cfg(feature = "updater")]
+            (fetch_update, $crate::utils::app::updater::fetch_update, [channel: String]);
+            #[cfg(feature = "updater")]
+            (get_app_update_info, $crate::utils::app::updater::get_app_update_info, []);
+            #[cfg(feature = "updater")]
+            (install_update, $crate::utils::app::updater::install_update, []);
+            #[cfg(feature = "updater")]
+            (cancel_app_update, $crate::utils::app::updater::cancel_app_update, []);
+            #[cfg(feature = "updater")]
+            (apply_app_update, $crate::utils::app::updater::apply_app_update, []);
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
 
-            // =================================================================
             // DESKTOP ONLY
-            // =================================================================
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(not(feature = "web-server"), not(target_os = "android"), not(target_os = "ios")))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
         }
     }

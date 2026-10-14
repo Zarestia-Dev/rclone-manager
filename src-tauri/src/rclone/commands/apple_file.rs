@@ -109,14 +109,22 @@ unsafe fn make_fp_domain(
     domain
 }
 
+fn endpoint_remote_names(configs: serde_json::Value) -> Vec<String> {
+    configs
+        .as_object()
+        .map(|configs| configs.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
 pub async fn write_endpoint_info(app: &AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let backend_name = backend_manager.get_active_name().await;
     let rc_url = backend.url_for("");
 
-    let remotes = crate::rclone::queries::get_remotes(app.clone())
+    let remotes = crate::rclone::queries::get_all_remote_configs(app.clone())
         .await
+        .map(endpoint_remote_names)
         .unwrap_or_default();
 
     let info = RcloneEndpointInfo {
@@ -313,6 +321,26 @@ pub async fn signal_apple_file_change(_app: AppHandle, remote_name: String) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extracts_remote_names_from_current_config_dump() {
+        let configs = serde_json::json!({
+            "work remote": { "type": "s3" },
+            "特殊": { "type": "drive" }
+        });
+        assert_eq!(endpoint_remote_names(configs), vec!["work remote", "特殊"]);
+    }
+
+    #[test]
+    fn empty_or_invalid_config_dump_has_no_remote_names() {
+        for configs in [
+            serde_json::json!({}),
+            serde_json::Value::Null,
+            serde_json::json!([]),
+        ] {
+            assert!(endpoint_remote_names(configs).is_empty());
+        }
+    }
 
     #[test]
     fn domain_id_alphanumeric_passthrough() {
