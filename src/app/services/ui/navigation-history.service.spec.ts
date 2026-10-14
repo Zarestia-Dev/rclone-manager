@@ -226,6 +226,44 @@ describe('NavigationHistoryService', () => {
     expect(service.canGoBack()).toBe(false);
   });
 
+  it.each([false, true])(
+    'keeps a mobile sidebar selection when navigation was already flushed: %s',
+    async flushed => {
+      service.initialize({ ...home, view: 'nautilus' });
+      const root = { tab: 1, pane: 0 as const, remote: null, path: '' };
+      service.updateNautilus(root, true);
+      const release = service.openLayer(vi.fn(), { preserveNavigationOnClose: true });
+      const dropbox = { ...root, remote: 'dropbox' };
+      service.updateNautilus(dropbox);
+      if (flushed) await settle();
+      release();
+      await settle();
+      expect(service.current()?.nautilus).toEqual(dropbox);
+      service.back();
+      await settle();
+      expect(service.current()?.nautilus).toEqual(root);
+    }
+  );
+
+  it('closes a mobile sidebar without creating navigation when nothing was selected', async () => {
+    service.initialize(home);
+    const release = service.openLayer(vi.fn(), { preserveNavigationOnClose: true });
+    release();
+    await settle();
+    expect(service.current()?.index).toBe(0);
+    expect(service.current()?.main).toEqual(home);
+  });
+
+  it('hardware Back closes a mobile sidebar without creating a new selection', async () => {
+    service.initialize(home);
+    const close = vi.fn();
+    service.openLayer(close, { preserveNavigationOnClose: true });
+    service.back();
+    await settle();
+    expect(close).toHaveBeenCalledOnce();
+    expect(service.current()?.index).toBe(0);
+  });
+
   it('keeps a covering dialog open when its underlying sidebar closes', async () => {
     service.initialize(home);
     const releaseSidebar = service.openLayer(vi.fn());

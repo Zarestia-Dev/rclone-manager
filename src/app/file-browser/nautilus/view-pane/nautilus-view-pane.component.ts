@@ -74,6 +74,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
   public readonly fileMenu = input<TemplateRef<unknown> | null | undefined>(undefined);
   public readonly isMultiSelectEnabled = input<boolean>(true);
+  public readonly isMobile = input<boolean>(false);
   public readonly directoryKey = input<string>('');
 
   // --- Outputs ---
@@ -173,6 +174,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     startY: number;
     started: boolean;
     svgIcon: SVGElement | null;
+    targetEl: HTMLElement;
   } | null = null;
   private _ignoreNextItemClick = false;
 
@@ -186,6 +188,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
       if (dx < 8 && dy < 8) return;
 
       this._pendingPointerDrag.started = true;
+      this._pendingPointerDrag.targetEl.setPointerCapture?.(event.pointerId);
       this._draggedItemPath.set(this._pendingPointerDrag.item.entry.Path);
       this.dragDrop.beginInternalPointerDrag(
         this._pendingPointerDrag.items,
@@ -250,7 +253,14 @@ export class NautilusViewPaneComponent implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   protected onItemPointerDown(event: PointerEvent, item: FileBrowserItem): void {
-    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
+    if (
+      this.isMobile() ||
+      (event.pointerType && event.pointerType !== 'mouse') ||
+      event.button !== 0 ||
+      !this.isMultiSelectEnabled()
+    ) {
+      return;
+    }
 
     const target = event.target as HTMLElement;
     if (target.closest('button') || target.closest('a')) return;
@@ -274,9 +284,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
       startY: event.clientY,
       started: false,
       svgIcon,
+      targetEl: itemEl,
     };
 
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     window.addEventListener('pointermove', this._onWindowPointerMove);
     window.addEventListener('pointerup', this._onWindowPointerUp);
     window.addEventListener('pointercancel', this._onWindowPointerCancel);
@@ -342,7 +352,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     if (event.button === 0) {
       this.switchPane.emit(this.paneIndex());
     }
-    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
+    if (this.isMobile() || event.button !== 0 || !this.isMultiSelectEnabled()) return;
 
     const target = event.target as HTMLElement;
     const container = this._activeContainer;
@@ -557,6 +567,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
   }
 
   protected onGridScroll(event: Event): void {
+    if (this._pendingPointerDrag && !this._pendingPointerDrag.started) {
+      this._onWindowPointerCancel();
+    }
     const el = event.target as HTMLElement;
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
     if (nearBottom && this.hasMore()) {

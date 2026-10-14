@@ -29,3 +29,16 @@ upstream release targets; a Rust target alone is not evidence of application sup
 
 Android stays in the mobile release workflow. WebAssembly is not a standalone
 server target and is disabled in the inspected Rclone release matrix.
+
+# Android media range workaround
+
+- [ ] Once a compatible published Tauri/Wry release includes
+  [wry#1865](https://github.com/tauri-apps/wry/pull/1865), update the dependencies
+  and lockfile, then remove the media range backport from
+  `desktop/gen/android/app/build.gradle.kts`,
+  `desktop/gen/android/app/src/main/java/com/rclone/manager/MediaRangeResponse.kt`,
+  and its `MediaRangeResponseTest.kt` unit tests. Confirm the resolved Wry source
+  contains the upstream fix before removing the workaround. Rebuild the Android
+  app and verify local/remote audio and video playback and seeking, including
+  offsets beyond 2 GiB. The user confirmed the current workaround works on
+  2026-10-14; the latest published Wry on that date (0.57.0) does not include the fix.

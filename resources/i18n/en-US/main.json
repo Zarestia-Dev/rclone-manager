@@ -2886,7 +2886,8 @@
       "failedToOpen": "Failed to open file manager: {{error}}",
       "diskFull": "Target disk or drive is full. Not enough free disk space available.",
       "fileLocked": "The file is currently locked or in use by another process.",
-      "readOnly": "The target file system is read-only or write-protected."
+      "readOnly": "The target file system is read-only or write-protected.",
+      "ioError": "IO error: {{error}}"
     },
     "rclone": {
       "downloadCancelled": "Download cancelled by user",

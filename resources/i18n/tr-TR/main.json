@@ -2886,7 +2886,8 @@
       "failedToOpen": "Dosya yöneticisi açılamadı: {{error}}",
       "diskFull": "Hedef disk veya sürücü dolu. Yeterli boş disk alanı yok.",
       "fileLocked": "Dosya kilitli veya başka bir işlem tarafından kullanılıyor.",
-      "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı."
+      "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı.",
+      "ioError": "Giriş/Çıkış hatası: {{error}}"
     },
     "rclone": {
       "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",

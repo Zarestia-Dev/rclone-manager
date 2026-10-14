@@ -124,6 +124,7 @@
           [activePaneIndex]="tabSvc.activePaneIndex()"
           [isItemSelectable]="isItemSelectable"
           [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
+          [isMobile]="isMobile()"
           [fileMenu]="contextMenu()?.fileMenuTemplate()"
           (switchPane)="tabSvc.switchPane($event)"
           (clearSelection)="selectionSvc.clearSelection(pane.index)"

@@ -156,7 +156,7 @@ pub const BROWSE: &str = "browse";
 
 /// Emitted during native file downloads to report throttled progress updates.
 /// - Emitted by: `native::files::download_file`
-/// - Handled by: `DownloadService`
+/// - Completion is returned by the download command; no UI listener currently subscribes.
 pub const FILE_DOWNLOAD_PROGRESS: &str = "file_download_progress";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]

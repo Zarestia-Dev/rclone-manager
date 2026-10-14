@@ -9,6 +9,11 @@ use http::StatusCode;
 /// Maximum number of bytes to probe from the start of an audio file when extracting embedded cover artwork (10 MB).
 pub const MAX_AUDIO_COVER_PROBE_BYTES: u64 = 10 * 1024 * 1024;
 
+/// Reject parent directory components without rejecting names such as `track..mp3`.
+pub fn has_parent_path_component(path: &str) -> bool {
+    path.split(['/', '\\']).any(|component| component == "..")
+}
+
 /// Strips custom protocol prefixes (`scheme://localhost`, `http://scheme.localhost`, `https://scheme.localhost`, `scheme://`).
 /// Returns the remaining path slice without re-allocating.
 pub fn strip_protocol_prefix<'a>(uri: &'a str, scheme: &str) -> &'a str {
@@ -76,13 +81,53 @@ pub fn normalize_asset_path(mut path: String) -> String {
 /// Returns `Some((start, end))` if valid, or `None` otherwise.
 pub fn parse_byte_range(range_str: &str) -> Option<(u64, Option<u64>)> {
     let stripped = range_str.strip_prefix("bytes=")?;
-    let mut parts = stripped.split('-');
-    let start = parts.next()?.parse::<u64>().ok()?;
-    let end = match parts.next() {
-        Some(s) if !s.is_empty() => Some(s.parse::<u64>().ok()?),
-        _ => None,
+    let (start, end) = stripped.split_once('-')?;
+    let start = parse_decimal(start)?;
+    let end = if end.is_empty() {
+        None
+    } else {
+        Some(parse_decimal(end)?)
     };
+    if end.is_some_and(|end| end < start) {
+        return None;
+    }
     Some((start, end))
+}
+
+fn parse_decimal(value: &str) -> Option<u64> {
+    if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    value.parse().ok()
+}
+
+/// Resolve a single byte range against the actual representation length.
+/// Malformed and multipart ranges are ignored; unsatisfiable ranges return 416.
+pub fn resolve_byte_range(
+    range: Option<&str>,
+    total: u64,
+) -> Result<Option<(u64, u64)>, StatusCode> {
+    let Some(range) = range else {
+        return Ok(None);
+    };
+    let resolved = if let Some(suffix) = range.strip_prefix("bytes=-") {
+        let Some(count) = parse_decimal(suffix) else {
+            return Ok(None);
+        };
+        if count == 0 || total == 0 {
+            return Err(StatusCode::RANGE_NOT_SATISFIABLE);
+        }
+        (total.saturating_sub(count), total - 1)
+    } else {
+        let Some((start, end)) = parse_byte_range(range) else {
+            return Ok(None);
+        };
+        if start >= total {
+            return Err(StatusCode::RANGE_NOT_SATISFIABLE);
+        }
+        (start, end.unwrap_or(total - 1).min(total - 1))
+    };
+    Ok(Some(resolved))
 }
 
 /// Maps an error message to a suitable HTTP status code.
@@ -145,6 +190,15 @@ pub fn content_disposition(download: bool, filename: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn parent_components_are_distinguished_from_valid_filenames() {
+        for path in ["..", "../song.mp3", "/music/../song", r"C:\music\..\song"] {
+            assert!(super::has_parent_path_component(path));
+        }
+        for path in ["", "/music/song..mp3", ".../song", "..hidden/song"] {
+            assert!(!super::has_parent_path_component(path));
+        }
+    }
     use super::*;
 
     #[test]
@@ -263,6 +317,43 @@ mod tests {
         assert_eq!(parse_byte_range("invalid"), None);
         assert_eq!(parse_byte_range("bytes="), None);
         assert_eq!(parse_byte_range("bytes=-100"), None);
+    }
+
+    #[test]
+    fn resolves_browser_ranges_and_rejects_unsatisfiable_offsets() {
+        for (header, expected) in [
+            ("bytes=0-", Some((0, 999))),
+            ("bytes=500-", Some((500, 999))),
+            ("bytes=0-1", Some((0, 1))),
+            ("bytes=900-9999", Some((900, 999))),
+            ("bytes=-100", Some((900, 999))),
+            ("bytes=-9999", Some((0, 999))),
+            ("bytes=9-1", None),
+            ("bytes=0-1,4-5", None),
+            ("bytes=0-1-2", None),
+            ("bytes=0", None),
+            ("bytes=+1-2", None),
+            ("bytes=18446744073709551616-", None),
+            ("items=0-1", None),
+        ] {
+            assert_eq!(
+                resolve_byte_range(Some(header), 1000),
+                Ok(expected),
+                "{header}"
+            );
+        }
+        for (header, total) in [
+            ("bytes=1000-", 1000),
+            ("bytes=-0", 1000),
+            ("bytes=0-", 0),
+            ("bytes=-1", 0),
+        ] {
+            assert_eq!(
+                resolve_byte_range(Some(header), total),
+                Err(StatusCode::RANGE_NOT_SATISFIABLE)
+            );
+        }
+        assert_eq!(resolve_byte_range(None, 0), Ok(None));
     }
 
     #[test]

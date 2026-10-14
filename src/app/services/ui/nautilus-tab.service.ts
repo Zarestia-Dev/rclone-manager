@@ -3,7 +3,7 @@ import { inject, Injectable, signal, computed, DestroyRef, WritableSignal } from
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, from, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 import { LocalStorageService } from './state/local-storage.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -371,6 +371,8 @@ export class NautilusTabService {
     if (activeTab) {
       const pane = paneIndex === 0 ? activeTab.left : activeTab.right;
       if (pane) {
+        pane.isLoading.set(true);
+        pane.error.set(null);
         pane.refreshTrigger.set(ref.refreshTrigger());
       }
     }
@@ -433,7 +435,7 @@ export class NautilusTabService {
       history: [{ remote, path }],
       historyIndex: 0,
       rawFiles: signal<FileBrowserItem[]>([]),
-      isLoading: signal(false),
+      isLoading: signal(remote !== null),
       error: signal<string | null>(null),
       refreshTrigger: signal(0),
     };
@@ -605,6 +607,15 @@ export class NautilusTabService {
   }
 
   restoreNavigation(location: NautilusNavigation): void {
+    this.navigationGeneration++;
+    const current = this.navigationSnapshot();
+    if (
+      current?.tab === location.tab &&
+      current.pane === location.pane &&
+      current.remote === location.remote &&
+      current.path === location.path
+    )
+      return;
     let index = this.tabs().findIndex(tab => tab.id === location.tab);
     const remote =
       location.remote === null ? null : this.nautilusService.lookupRemoteByName(location.remote);
@@ -743,6 +754,7 @@ export class NautilusTabService {
     const pane = pIdx === 0 ? tab.left : tab.right;
     if (!pane) return;
 
+    const isNewLocation = pane.remote?.name !== remote?.name || pane.path !== path;
     let updatedHistory = pane.history;
     let updatedHistoryIndex = pane.historyIndex;
 
@@ -768,7 +780,7 @@ export class NautilusTabService {
       tabs.map((t, i) => {
         if (i !== index) return t;
         const updatedPane: PaneState = {
-          ...pane,
+          ...(isNewLocation ? this.createPaneState(remote, path) : pane),
           remote,
           path,
           selection: new Set<string>(),
@@ -781,16 +793,11 @@ export class NautilusTabService {
       })
     );
 
-    const ref = this.getPaneRef(pIdx);
-    const isNewLocation = ref.remote()?.name !== remote?.name || ref.path() !== path;
-    if (isNewLocation) {
-      ref.rawFiles.set([]);
-      ref.loading.set(true);
-      ref.error.set(null);
-    }
-    ref.remote.set(remote);
-    ref.path.set(path);
-    ref.selection.set(new Set<string>());
+    const updatedTab = this.tabs()[index];
+    const updatedPane = pIdx === 0 ? updatedTab.left : updatedTab.right;
+    if (!updatedPane) return;
+    if (isNewLocation) updatedPane.isLoading.set(remote !== null);
+    this.syncPaneSignals(pIdx, updatedPane);
 
     if (pIdx === 1) {
       this.persistSplitState(this.tabs()[index]);
@@ -865,44 +872,57 @@ export class NautilusTabService {
 
     const loadParams = computed(() => {
       const activeTab = this.tabs()[this.activeTabIndex()];
+      const pane = paneIndex === 0 ? activeTab?.left : activeTab?.right;
       return {
         tabId: activeTab?.id,
-        remote: paneIndex === 1 && !activeTab?.right ? null : ref.remote(),
-        path: ref.path(),
-        _trigger: ref.refreshTrigger(),
+        pane,
+        remote: pane?.remote ?? null,
+        path: pane?.path ?? '',
+        _trigger: pane?.refreshTrigger() ?? 0,
       };
     });
 
     toObservable(loadParams)
       .pipe(
-        switchMap(({ tabId, remote, path, _trigger }) => {
-          if (!remote) {
+        distinctUntilChanged(
+          (a, b) =>
+            a.tabId === b.tabId &&
+            a.pane?.rawFiles === b.pane?.rawFiles &&
+            a.remote?.name === b.remote?.name &&
+            a.path === b.path &&
+            a._trigger === b._trigger
+        ),
+        switchMap(({ tabId, pane, remote, path, _trigger }) => {
+          if (!remote || !pane) {
             ref.rawFiles.set([]);
+            ref.loading.set(false);
+            ref.error.set(null);
             return EMPTY;
           }
 
-          // Check if this path was already loaded for this specific pane state
-          const targetTab = this.tabs().find(t => t.id === tabId);
-          if (targetTab) {
-            const pane = paneIndex === 0 ? targetTab.left : targetTab.right;
-            if (
-              pane &&
-              pane.remote?.name === remote.name &&
-              pane.path === path &&
-              pane.loadedRemote?.name === remote.name &&
-              pane.loadedPath === path &&
-              pane.loadedTrigger === _trigger
-            ) {
-              // Restore cached signals instead of re-fetching
-              ref.rawFiles.set(pane.rawFiles());
-              ref.loading.set(pane.isLoading());
-              ref.error.set(pane.error());
-              return EMPTY;
-            }
+          const isCurrentRequest = (): boolean => {
+            const tab = this.tabs()[this.activeTabIndex()];
+            const current = paneIndex === 0 ? tab?.left : tab?.right;
+            return (
+              tab?.id === tabId &&
+              current?.rawFiles === pane.rawFiles &&
+              current.refreshTrigger() === _trigger
+            );
+          };
+
+          if (
+            pane.loadedRemote?.name === remote.name &&
+            pane.loadedPath === path &&
+            pane.loadedTrigger === _trigger
+          ) {
+            this.syncPaneSignals(paneIndex, pane);
+            return EMPTY;
           }
 
           ref.loading.set(true);
           ref.error.set(null);
+          pane.isLoading.set(true);
+          pane.error.set(null);
 
           const fsName = remote.isLocal
             ? remote.name
@@ -914,6 +934,7 @@ export class NautilusTabService {
           ).pipe(
             map(res => ({
               tabId,
+              pane,
               remote,
               path,
               _trigger,
@@ -931,6 +952,7 @@ export class NautilusTabService {
               error: null as string | null,
             })),
             catchError(err => {
+              if (!isCurrentRequest()) return EMPTY;
               const errorMessage = (err?.message ?? err ?? '').toString().toLowerCase();
               const isCancelled =
                 errorMessage.includes('cancelled') ||
@@ -939,6 +961,7 @@ export class NautilusTabService {
 
               if (isCancelled) {
                 ref.loading.set(false);
+                pane.isLoading.set(false);
                 return EMPTY;
               }
 
@@ -948,6 +971,7 @@ export class NautilusTabService {
               this.notificationService.showError(msg);
               return of({
                 tabId,
+                pane,
                 remote,
                 path,
                 _trigger,
@@ -959,38 +983,28 @@ export class NautilusTabService {
         }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(({ tabId, remote, path, _trigger, files, error }) => {
-        const isCurrentPane = ref.remote()?.name === remote?.name && ref.path() === path;
+      .subscribe(({ tabId, pane: sourcePane, remote, path, _trigger, files, error }) => {
+        const targetTab = this.tabs().find(tab => tab.id === tabId);
+        const targetPane = paneIndex === 0 ? targetTab?.left : targetTab?.right;
+        // Signal effects run later: a response can settle after navigation but
+        // before switchMap sees it. The directory state also guards A -> B -> A.
+        if (
+          targetPane?.rawFiles !== sourcePane.rawFiles ||
+          targetPane.refreshTrigger() !== _trigger
+        )
+          return;
+        const isCurrentPane =
+          this.tabs()[this.activeTabIndex()]?.id === tabId &&
+          ref.remote()?.name === remote?.name &&
+          ref.path() === path;
 
-        if (isCurrentPane) {
-          ref.loading.set(false);
-          if (error) {
-            ref.error.set(error);
-          } else {
-            ref.rawFiles.set(files);
-            ref.error.set(null);
-          }
-        }
-
-        // Store into the originating tab & pane
-        if (tabId !== undefined) {
-          const tab = this.tabs().find(t => t.id === tabId);
-          if (tab) {
-            const pane = paneIndex === 0 ? tab.left : tab.right;
-            if (pane && pane.remote?.name === remote?.name && pane.path === path) {
-              pane.isLoading.set(false);
-              if (error) {
-                pane.error.set(error);
-              } else {
-                pane.rawFiles.set(files);
-                pane.error.set(null);
-              }
-              pane.loadedRemote = pane.remote;
-              pane.loadedPath = pane.path;
-              pane.loadedTrigger = _trigger;
-            }
-          }
-        }
+        targetPane.isLoading.set(false);
+        targetPane.rawFiles.set(files);
+        targetPane.error.set(error);
+        targetPane.loadedRemote = targetPane.remote;
+        targetPane.loadedPath = targetPane.path;
+        targetPane.loadedTrigger = _trigger;
+        if (isCurrentPane) this.syncPaneSignals(paneIndex, targetPane);
 
         const pending = this.pendingPreviewFilePath();
         if (pending && isCurrentPane && !error) {

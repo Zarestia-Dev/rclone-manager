@@ -34,14 +34,10 @@ async fn serve(uri: Uri) -> Response {
     }
     let (name, bytes) = match asset(path) {
         Some(bytes) => (path, bytes),
-        None if !path.starts_with("assets/")
-            && !path.rsplit('/').next().unwrap_or("").contains('.') =>
-        {
-            (
-                "index.html",
-                asset("index.html").expect("Build requires index.html"),
-            )
-        }
+        None if super::routes::is_client_route(path) => (
+            "index.html",
+            asset("index.html").expect("Build requires index.html"),
+        ),
         None => return StatusCode::NOT_FOUND.into_response(),
     };
     let mime = mime_guess::from_path(name).first_or_octet_stream();

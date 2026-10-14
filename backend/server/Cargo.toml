@@ -8,6 +8,9 @@ default-run = "rclone-manager-server"
 name = "rclone-manager-server"
 path = "src/main.rs"
 
+[target.'cfg(windows)'.build-dependencies]
+tauri-winres = "0.3"
+
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false }
 axum = { version = "0.8", features = ["multipart"] }

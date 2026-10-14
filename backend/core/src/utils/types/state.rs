@@ -7,24 +7,10 @@ use crate::rclone::backend::RcloneTransport;
 
 /// Core application state for Rclone operations.
 pub struct RcloneState {
-    /// HTTP client for rclone API calls.
-    ///
-    /// On the HTTP transport (desktop), this is used by [`RcHttpBackend`] and
-    /// by a few remaining direct-HTTP call sites (connectivity checks, file
-    /// streaming in the protocol handler, multipart upload).
-    /// On the librclone transport (mobile), this field is unused by rclone
-    /// calls but may still be needed for non-rclone HTTP (alerts dispatch,
-    /// github_client) — those callers should get their own client rather
-    /// than reaching into `RcloneState`.
+    /// Shared HTTP client for rclone API requests and file transfers.
     pub client: reqwest::Client,
 
-    /// The rclone transport — the single entry point for all rc calls.
-    ///
-    /// Constructed once in `setup_app` based on the `librclone` feature:
-    /// - `#[cfg(not(feature = "librclone"))]` → `Arc::new(RcHttpBackend::new(app))`
-    /// - `#[cfg(feature = "librclone")]` → `Arc::new(RcloneLibBackend::new())` (Phase 3)
-    ///
-    /// Held as `Arc<dyn RcloneTransport>` so callers don't know the concrete type.
+    /// Routes rclone calls to HTTP or librclone for the active backend.
     pub transport: Arc<dyn RcloneTransport>,
 
     /// Flag indicating the app is shutting down

@@ -23,6 +23,19 @@ fn collect_assets(root: &Path, directory: &Path, assets: &mut Vec<(String, Strin
 }
 
 fn main() {
+    #[cfg(windows)]
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        let icon = "../desktop/icons/icon.ico";
+        println!("cargo:rerun-if-changed={icon}");
+        tauri_winres::WindowsResource::new()
+            .set_icon(icon)
+            .set("ProductName", "RClone Manager Server")
+            .set("FileDescription", "RClone Manager Server")
+            .set("OriginalFilename", "rclone-manager-server.exe")
+            .compile_for(&["rclone-manager-server"])
+            .expect("Cannot embed Windows server icon");
+    }
+
     if env::var_os("CARGO_CFG_DEBUG_ASSERTIONS").is_some() {
         return;
     }

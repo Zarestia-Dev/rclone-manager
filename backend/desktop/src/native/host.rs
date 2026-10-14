@@ -19,6 +19,14 @@ impl Host for NativeHost {
     fn exit(&self, code: i32) {
         self.0.exit(code);
     }
+    #[cfg(all(target_os = "windows", feature = "desktop"))]
+    fn main_window_hwnd(&self) -> Option<isize> {
+        use tauri::Manager;
+        self.0
+            .get_webview_window("main")
+            .and_then(|window| window.hwnd().ok())
+            .map(|hwnd| hwnd.0 as isize)
+    }
     fn prepare(
         &self,
         _app: &CoreHandle,

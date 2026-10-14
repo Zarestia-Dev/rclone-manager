@@ -46,8 +46,14 @@ impl EventBridge {
     ///
     /// - In headless/web-server mode: broadcasts directly to the Tokio channel (and Axum SSE).
     /// - In desktop mode: broadcasts to the Tokio channel AND Tauri's webview IPC.
-    pub fn emit<S: Serialize + Clone>(&self, event: &str, payload: S) {
-        let value = serde_json::to_value(&payload).unwrap_or(serde_json::Value::Null);
+    pub fn emit<S: Serialize>(&self, event: &str, payload: S) {
+        let value = match serde_json::to_value(&payload) {
+            Ok(value) => value,
+            Err(error) => {
+                log::error!("Failed to serialize event {event}, dropping event: {error}");
+                return;
+            }
+        };
 
         let bridge_event = BridgeEvent {
             event: event.to_string(),
@@ -70,7 +76,7 @@ pub fn init_event_bridge(bridge: Arc<EventBridge>) {
 }
 
 /// Emits an event globally through the `EventBridge`.
-pub fn emit<S: Serialize + Clone>(event: &str, payload: S) {
+pub fn emit<S: Serialize>(event: &str, payload: S) {
     if let Some(bridge) = GLOBAL_EVENT_BRIDGE.get() {
         bridge.emit(event, payload);
     } else {
@@ -120,9 +126,8 @@ mod tests {
         assert_eq!(sink.0.lock()[0].payload, json!(null));
     }
 
-    #[tokio::test]
-    async fn failed_serialization_has_the_same_fallback_for_both_transports() {
-        #[derive(Clone)]
+    #[test]
+    fn failed_serialization_is_not_delivered_to_either_transport() {
         struct InvalidPayload;
         impl Serialize for InvalidPayload {
             fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
@@ -134,8 +139,16 @@ mod tests {
         let bridge = EventBridge::new(1, Some(sink.clone()));
         let mut receiver = bridge.subscribe();
         bridge.emit("invalid", InvalidPayload);
-        let event = receiver.recv().await.unwrap();
-        assert_eq!(event.payload, json!(null));
+        assert!(matches!(
+            receiver.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty)
+        ));
+        assert!(sink.0.lock().is_empty());
+
+        bridge.emit("valid", json!({"message": "özel"}));
+        let event = receiver.try_recv().unwrap();
+        assert_eq!(event.event, "valid");
+        assert_eq!(event.payload, json!({"message": "özel"}));
         assert_eq!(sink.0.lock()[0], event);
     }
 

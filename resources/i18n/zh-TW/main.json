@@ -2886,7 +2886,8 @@
       "failedToOpen": "開啟檔案瀏覽器失敗：{{error}}",
       "diskFull": "目標磁碟空間不足。",
       "fileLocked": "檔案當前已被鎖定或被其他處理程式佔用。",
-      "readOnly": "目標檔案系統為只讀或受防寫。"
+      "readOnly": "目標檔案系統為只讀或受防寫。",
+      "ioError": "IO 錯誤：{{error}}"
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",

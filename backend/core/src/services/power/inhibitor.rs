@@ -170,10 +170,7 @@ impl PowerInhibitorState {
             SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED);
         }
 
-        let raw_hwnd = app
-            .get_webview_window("main")
-            .and_then(|window| window.hwnd().ok())
-            .map(|hwnd| hwnd.0 as isize);
+        let raw_hwnd = app.host().main_window_hwnd();
 
         if let Some(raw_hwnd) = raw_hwnd {
             let reason: Vec<u16> = reason_str

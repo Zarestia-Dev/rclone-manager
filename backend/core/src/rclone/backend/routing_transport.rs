@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::io::AsyncRead;
 
-#[cfg(feature = "librclone")]
 use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::http_transport::RcHttpBackend;
 #[cfg(feature = "librclone")]
@@ -11,7 +10,6 @@ use crate::rclone::backend::librclone_transport::RcloneLibBackend;
 use crate::rclone::backend::transport::{BackendError, RcloneTransport, TransportKind};
 
 pub struct RoutingTransport {
-    #[cfg(feature = "librclone")]
     app: AppHandle,
     http_transport: RcHttpBackend,
     #[cfg(feature = "librclone")]
@@ -24,7 +22,6 @@ impl RoutingTransport {
             http_transport: RcHttpBackend::new(app.clone()),
             #[cfg(feature = "librclone")]
             lib_transport: RcloneLibBackend::new(app.clone()),
-            #[cfg(feature = "librclone")]
             app,
         }
     }
@@ -46,6 +43,23 @@ impl RoutingTransport {
 
 #[async_trait]
 impl RcloneTransport for RoutingTransport {
+    async fn for_file_read(
+        &self,
+    ) -> Result<Option<std::sync::Arc<dyn RcloneTransport>>, BackendError> {
+        let manager = self
+            .app
+            .try_state::<BackendManager>()
+            .ok_or_else(|| BackendError::NotConnected("BackendManager not in state".into()))?;
+        let backend = manager.get_active().await;
+        #[cfg(feature = "librclone")]
+        if backend.is_local {
+            return Ok(Some(std::sync::Arc::new(self.lib_transport.clone())));
+        }
+        Ok(Some(std::sync::Arc::new(
+            self.http_transport.for_backend(backend),
+        )))
+    }
+
     async fn kind(&self) -> TransportKind {
         // Desktop: only HTTP exists, return immediately.
         #[cfg(not(feature = "librclone"))]

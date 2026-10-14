@@ -50,6 +50,7 @@ export class NavigationHistoryService {
   private scheduled = false;
   private restoring = false;
   private closingLayer: number | null = null;
+  private closingLayerBase: NavigationEntry | null = null;
 
   constructor() {
     this.window.addEventListener('popstate', this.onPopState);
@@ -142,12 +143,12 @@ export class NavigationHistoryService {
   }
 
   /** Registers a transient surface so Back closes it before leaving its parent view. */
-  openLayer(close: () => void): () => void {
+  openLayer(close: () => void, options: { preserveNavigationOnClose?: boolean } = {}): () => void {
     if (this.closingLayer !== null) {
       // A replacement dialog belongs to the parent reached by the pending traversal.
       let release: (() => void) | undefined;
       const subscription = this.restored$.pipe(take(1)).subscribe(() => {
-        release = this.openLayer(close);
+        release = this.openLayer(close, options);
       });
       return () => {
         subscription.unsubscribe();
@@ -184,6 +185,9 @@ export class NavigationHistoryService {
         this.closingLayer = Math.min(this.closingLayer, layer.parentIndex);
         return;
       }
+      // Sidebar selections belong to the underlying view, even when their
+      // history update was flushed before the sidebar's closing effect ran.
+      if (options.preserveNavigationOnClose) this.closingLayerBase = parent;
       this.closingLayer = layer.parentIndex;
       this.window.history.go(layer.parentIndex - current.index);
     };
@@ -230,21 +234,21 @@ export class NavigationHistoryService {
     this.scheduled = false;
     const pending = this.entry();
     this.lastIndex.update(index => Math.max(index, entry.index));
+    const baseline = this.closingLayerBase ?? this.committed;
     const keepPending =
       this.closingLayer !== null &&
-      this.committed &&
+      baseline &&
       pending &&
-      (!deepEqual(pending.main, this.committed.main) ||
-        !deepEqual(pending.nautilus, this.committed.nautilus));
-    const committed = this.committed;
+      (!deepEqual(pending.main, baseline.main) || !deepEqual(pending.nautilus, baseline.nautilus));
     this.closingLayer = null;
+    this.closingLayerBase = null;
     if (keepPending && pending) {
       this.write(entry, true, this.window.location.href);
       const next = {
         ...entry,
         index: entry.index + 1,
-        main: !deepEqual(pending.main, committed?.main) ? pending.main : entry.main,
-        nautilus: !deepEqual(pending.nautilus, committed?.nautilus)
+        main: !deepEqual(pending.main, baseline?.main) ? pending.main : entry.main,
+        nautilus: !deepEqual(pending.nautilus, baseline?.nautilus)
           ? pending.nautilus
           : entry.nautilus,
       };

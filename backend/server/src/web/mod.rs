@@ -11,4 +11,4 @@ mod server;
 pub mod startup;
 mod state;
 
-pub(crate) use state::{ApiResponse, AppError, WebServerState};
+pub(crate) use state::{ApiResponse, WebServerState};

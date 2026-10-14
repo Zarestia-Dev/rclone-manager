@@ -2845,7 +2845,8 @@
       "failedToOpen": "Error al abrir el administrador de archivos: {{error}}",
       "diskFull": "El disco o unidad de destino está lleno. No hay suficiente espacio libre.",
       "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
-      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura."
+      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura.",
+      "ioError": "Error de E/S: {{error}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",

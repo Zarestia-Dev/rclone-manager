@@ -203,47 +203,19 @@
       </div>
     }
     @case ('video') {
-      @if (isMobile() && !data.isDirectUrl) {
-        <div class="unsupported-container mobile-video-card">
-          <mat-icon
-            [svgIcon]="iconService.getIconForFileType('video')"
-            class="media-card-icon"
-            aria-hidden="true"
-          ></mat-icon>
-          <h3 class="media-card-title">{{ fileName() }}</h3>
-          @if (fileSize()) {
-            <p class="unsupported-subtext">{{ fileSize() | formatFileSize }}</p>
-          }
-          <button
-            matButton="filled"
-            class="accent"
-            [disabled]="isOpeningNative()"
-            (click)="openNativeFile()"
-          >
-            @if (isOpeningNative()) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <mat-icon svgIcon="play"></mat-icon>
-            }
-            <span>{{ 'fileBrowser.fileViewer.playVideo' | translate }}</span>
-          </button>
-        </div>
-      } @else {
-        @if (currentUrl()) {
-          <video
-            [src]="currentUrl()"
-            controls
-            preload="metadata"
-            class="preview-content"
-            (loadeddata)="onLoadComplete()"
-            (canplay)="onLoadComplete()"
-            (loadedmetadata)="onLoadComplete()"
-            (error)="onLoadError($event)"
-            [attr.aria-label]="
-              'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }
-            "
-          ></video>
-        }
+      @if (currentUrl()) {
+        <video
+          [src]="currentUrl()"
+          controls
+          playsinline
+          preload="metadata"
+          class="preview-content"
+          (loadeddata)="onLoadComplete()"
+          (canplay)="onLoadComplete()"
+          (loadedmetadata)="onLoadComplete()"
+          (error)="onLoadError($event)"
+          [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
+        ></video>
       }
     }
     @case ('audio') {

@@ -2845,7 +2845,8 @@
       "failedToOpen": "打开文件管理器失败：{{error}}",
       "diskFull": "目标磁盘空间不足。",
       "fileLocked": "文件当前已被锁定或被其他进程占用。",
-      "readOnly": "目标文件系统为只读或受写保护。"
+      "readOnly": "目标文件系统为只读或受写保护。",
+      "ioError": "IO 错误：{{error}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",

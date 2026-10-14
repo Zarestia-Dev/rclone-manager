@@ -8,8 +8,6 @@ use axum::{
 };
 use log::info;
 use tower_http::cors::{AllowOrigin, CorsLayer};
-#[cfg(debug_assertions)]
-use tower_http::services::{ServeDir, ServeFile};
 
 use super::auth::{auth_middleware, create_session_handler, delete_session_handler};
 use super::handlers;
@@ -55,11 +53,8 @@ pub(super) fn build_app(state: WebServerState, host: &str, port: u16) -> Router 
     #[cfg(debug_assertions)]
     match super::paths::find_static_dir(&state.app_handle) {
         Some(static_path) => {
-            let index_path = static_path.join("index.html");
-            let serve_dir =
-                ServeDir::new(&static_path).not_found_service(ServeFile::new(index_path));
             info!("📁 Serving static files from: {}", static_path.display());
-            app = app.fallback_service(serve_dir);
+            app = app.fallback_service(development_router(static_path));
         }
         None => {
             info!("⚠️  No static files found. Build with: npm run build");
@@ -109,4 +104,77 @@ fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
         ])
         .expose_headers([axum::http::header::WWW_AUTHENTICATE])
         .allow_credentials(true)
+}
+
+/// Disk-backed development builds use the same client-route policy as embedded releases.
+#[cfg(debug_assertions)]
+fn development_router(path: std::path::PathBuf) -> Router {
+    use axum::{
+        extract::Request,
+        middleware::{Next, from_fn},
+    };
+    use axum::{http::StatusCode, response::IntoResponse};
+    use tower_http::services::{ServeDir, ServeFile};
+    let fallback = Router::new()
+        .fallback_service(ServeFile::new(path.join("index.html")))
+        .layer(from_fn(|request: Request, next: Next| async move {
+            let is_route = percent_encoding::percent_decode_str(request.uri().path())
+                .decode_utf8()
+                .is_ok_and(|path| is_client_route(path.trim_start_matches('/')));
+            if !is_route {
+                return StatusCode::NOT_FOUND.into_response();
+            }
+            next.run(request).await
+        }));
+    Router::new().fallback_service(ServeDir::new(path).fallback(fallback))
+}
+
+pub(super) fn is_client_route(path: &str) -> bool {
+    !path.split('/').any(|part| part == ".." || part == ".")
+        && !path.contains(['\\', '\0'])
+        && path != "api"
+        && !path.starts_with("api/")
+        && path != "assets"
+        && !path.starts_with("assets/")
+        && !path.rsplit('/').next().unwrap_or("").contains('.')
+}
+
+#[cfg(all(test, debug_assertions))]
+mod tests {
+    use super::*;
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
+    };
+    use tower::ServiceExt;
+    #[cfg(debug_assertions)]
+    #[tokio::test]
+    async fn development_routes_return_200_without_masking_missing_assets_or_api() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("index.html"), "<app-root></app-root>").unwrap();
+        let app = development_router(directory.path().to_owned());
+        for (path, expected) in [
+            ("/nautilus/dropbox", StatusCode::OK),
+            ("/settings", StatusCode::OK),
+            ("/missing.js", StatusCode::NOT_FOUND),
+            ("/assets/missing", StatusCode::NOT_FOUND),
+            ("/api/missing", StatusCode::NOT_FOUND),
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected, "{path}");
+            if expected == StatusCode::OK {
+                assert_eq!(
+                    to_bytes(response.into_body(), usize::MAX)
+                        .await
+                        .unwrap()
+                        .as_ref(),
+                    b"<app-root></app-root>"
+                );
+            }
+        }
+    }
 }

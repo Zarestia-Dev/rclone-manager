@@ -2845,7 +2845,8 @@
       "failedToOpen": "Falha ao abrir gerenciador de arquivos: {{error}}",
       "diskFull": "O disco ou unidade de destino está cheio. Espaço em disco insuficiente.",
       "fileLocked": "O arquivo está bloqueado ou em uso por outro processo.",
-      "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação."
+      "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação.",
+      "ioError": "Erro de E/S: {{error}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",

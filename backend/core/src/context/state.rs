@@ -161,6 +161,11 @@ mod tests {
         assert_eq!(host.0.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
     #[test]
+    #[cfg(all(target_os = "windows", feature = "desktop"))]
+    fn headless_host_has_no_native_window() {
+        assert_eq!(AppHandle::default().host().main_window_hwnd(), None);
+    }
+    #[test]
     fn headless_host_does_not_request_native_exit_confirmation() {
         let app = AppHandle::default();
         assert_eq!(

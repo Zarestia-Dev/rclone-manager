@@ -2,6 +2,8 @@
 
 use std::path::Path;
 
+use crate::utils::io::file_stream::pin_file_transport;
+
 use axum::{
     extract::{Query, State},
     http::{StatusCode, header},
@@ -13,7 +15,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::utils::app::audio::{self, PictureData};
 use crate::utils::io::http_helpers::{
-    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name,
+    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, has_parent_path_component,
 };
 use crate::utils::types::state::RcloneState;
 use crate::web::state::{AppError, WebServerState};
@@ -28,28 +30,34 @@ pub async fn audio_cover_handler(
     State(state): State<WebServerState>,
     Query(query): Query<AudioCoverQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    if query.path.contains("..") {
+    if has_parent_path_component(&query.path) {
         return Err(AppError::BadRequest(anyhow::anyhow!(
             "Path traversal denied"
         )));
     }
 
-    // Extension hint helps lofty identify the format from raw bytes
-    let extension = Path::new(&query.path)
-        .extension()
-        .and_then(|ext| ext.to_str());
-
     if let Some(raw_remote) = query.remote {
-        let remote = decode_remote_name(&raw_remote);
+        let _input_permit = audio::cover_input_permit().await.ok_or_else(|| {
+            AppError::InternalServerError(anyhow::anyhow!("Cover reader unavailable"))
+        })?;
+        // Axum already decoded the query string once.
+        let remote = if raw_remote.ends_with(':') {
+            raw_remote
+        } else {
+            format!("{raw_remote}:")
+        };
 
         let rclone_state = state.app_handle.state::<RcloneState>();
         let transport = rclone_state.transport.clone();
 
-        let mut reader = transport
+        let transport = pin_file_transport(transport)
+            .await
+            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
+        let reader = transport
             .read_file(
                 &remote,
                 &query.path,
-                Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES))),
+                Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES - 1))),
             )
             .await
             .map_err(|e| {
@@ -63,18 +71,25 @@ pub async fn audio_cover_handler(
 
         let mut bytes = Vec::new();
         reader
+            .take(MAX_AUDIO_COVER_PROBE_BYTES)
             .read_to_end(&mut bytes)
             .await
             .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
 
-        if let Some(pic) = audio::extract_picture_from_bytes(&bytes, extension) {
+        let extension = Path::new(&query.path)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(str::to_owned);
+        let picture = audio::extract_picture_from_bytes(bytes, extension).await;
+        if let Some(pic) = picture {
             picture_response(pic)
         } else {
             Err(AppError::NotFound("Audio cover not found".to_string()))
         }
     } else {
         // Local file extraction
-        if let Some(pic) = audio::extract_picture_from_path(&query.path) {
+        let picture = audio::extract_picture_from_path(query.path).await;
+        if let Some(pic) = picture {
             picture_response(pic)
         } else {
             Err(AppError::NotFound("Audio cover not found".to_string()))
@@ -85,7 +100,7 @@ pub async fn audio_cover_handler(
 fn picture_response(pic: PictureData) -> Result<axum::response::Response, AppError> {
     axum::response::Response::builder()
         .header(header::CONTENT_TYPE, pic.mime_type)
-        .header(header::CACHE_CONTROL, "max-age=3600")
+        .header(header::CACHE_CONTROL, "no-store")
         .body(axum::body::Body::from(pic.data))
         .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
 }

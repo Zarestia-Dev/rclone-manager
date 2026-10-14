@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { EMPTY } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
-import { ExplorerRoot } from '@app/types';
+import { createMinimalEntry, ExplorerRoot } from '@app/types';
 import { NautilusNavigation } from './navigation-history.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { NautilusService } from './nautilus.service';
@@ -37,9 +37,11 @@ function snapshot(service: NautilusTabService): NautilusNavigation {
 describe('NautilusTabService navigation', () => {
   let service: NautilusTabService;
   const getStat = vi.fn();
+  const getRemotePaths = vi.fn();
   beforeEach(() => {
     TestBed.resetTestingModule();
     getStat.mockReset().mockResolvedValue({ item: { IsDir: true } });
+    getRemotePaths.mockReset().mockResolvedValue({ list: [] });
     TestBed.configureTestingModule({
       providers: [
         NautilusTabService,
@@ -58,12 +60,13 @@ describe('NautilusTabService navigation', () => {
           useValue: {
             getDisplaySegment: (_: unknown, path: string): string => path,
             normalizeRemoteForRclone: (name: string): string => name,
+            normalizeRemoteName: (name: string): string => name,
             getParentPath: (path: string): string => path.split('/').slice(0, -1).join('/'),
           },
         },
         {
           provide: RemoteFileOperationsService,
-          useValue: { getStat, getRemotePaths: vi.fn().mockResolvedValue({ list: [] }) },
+          useValue: { getStat, getRemotePaths },
         },
         {
           provide: JobManagementService,
@@ -97,6 +100,126 @@ describe('NautilusTabService navigation', () => {
     await Promise.resolve();
     await service.navigate(remote, 'C', true);
     expect(service.tabs()[0].left.history.map(entry => entry.path)).toEqual(['', 'A', 'C']);
+  });
+
+  async function settleFiles(): Promise<void> {
+    TestBed.tick();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  it('keeps the new directory empty and loading through sidebar restoration and tab switching', async () => {
+    getRemotePaths.mockResolvedValueOnce({ list: [createMinimalEntry('old.mp3')] });
+    service.executeNavigate(remote, 'old', true);
+    await settleFiles();
+    expect(service.rawFiles()).toHaveLength(1);
+
+    getRemotePaths.mockReturnValueOnce(new Promise(vi.fn()));
+    service.executeNavigate(remote, 'new', true);
+    const location = snapshot(service);
+    service.restoreNavigation(location);
+    service.createTab(null);
+    service.switchTab(0);
+    expect(service.activePath()).toBe('new');
+    expect(service.rawFiles()).toEqual([]);
+    expect(service.isLoading()).toBe(true);
+    expect(service.tabs()[0].left.rawFiles()).toEqual([]);
+    expect(service.tabs()[0].left.loadedPath).toBeUndefined();
+    await settleFiles();
+    expect(getRemotePaths).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains the failed destination without resurrecting the previous directory', async () => {
+    getRemotePaths.mockResolvedValueOnce({ list: [createMinimalEntry('old.mp3')] });
+    service.executeNavigate(remote, 'old', true);
+    await settleFiles();
+    getRemotePaths.mockRejectedValueOnce(new Error('offline'));
+    service.executeNavigate(remote, 'new', true);
+    await settleFiles();
+    service.restoreNavigation(snapshot(service));
+    service.createTab(null);
+    service.switchTab(0);
+    expect(service.activePath()).toBe('new');
+    expect(service.rawFiles()).toEqual([]);
+    expect(service.errorState()).toBe('offline');
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('does not restart an in-flight listing when selection or history restoration changes', async () => {
+    getRemotePaths.mockReturnValue(new Promise(vi.fn()));
+    service.executeNavigate(remote, '', true);
+    await settleFiles();
+    service.syncSelection(new Set(['file']));
+    service.restoreNavigation(snapshot(service));
+    await settleFiles();
+    expect(getRemotePaths).toHaveBeenCalledTimes(1);
+    expect(service.selectedItems()).toEqual(new Set(['file']));
+  });
+
+  it('ignores an old A response after A -> B -> A even before signal effects run', async () => {
+    let resolve!: (value: { list: ReturnType<typeof createMinimalEntry>[] }) => void;
+    getRemotePaths.mockReturnValueOnce(
+      new Promise(done => {
+        resolve = done;
+      })
+    );
+    service.executeNavigate(remote, 'A', true);
+    await settleFiles();
+    service.executeNavigate(remote, 'B', true);
+    service.executeNavigate(remote, 'A', true);
+    resolve({ list: [createMinimalEntry('stale.mp3')] });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(service.rawFiles()).toEqual([]);
+    expect(service.isLoading()).toBe(true);
+    expect(service.tabs()[0].left.loadedPath).toBeUndefined();
+  });
+
+  it('leaves loading and errors behind when navigating to starred items', async () => {
+    getRemotePaths.mockReturnValue(new Promise(vi.fn()));
+    service.executeNavigate(remote, 'pending', true);
+    await settleFiles();
+    service.executeNavigate(null, '', true);
+    expect(service.isLoading()).toBe(false);
+    expect(service.rawFiles()).toEqual([]);
+    expect(service.errorState()).toBeNull();
+    await settleFiles();
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('does not show an obsolete request error after navigating away', async () => {
+    let reject!: (reason: Error) => void;
+    getRemotePaths.mockReturnValueOnce(
+      new Promise((_, fail) => {
+        reject = fail;
+      })
+    );
+    service.executeNavigate(remote, 'old', true);
+    await settleFiles();
+    service.executeNavigate(remote, 'new', true);
+    reject(new Error('old request failed'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(service.errorState()).toBeNull();
+    expect(service.isLoading()).toBe(true);
+    expect(TestBed.inject(NotificationService).showError).not.toHaveBeenCalled();
+  });
+
+  it('clears only the navigating split pane', async () => {
+    getRemotePaths.mockResolvedValue({ list: [createMinimalEntry('file.mp3')] });
+    service.executeNavigate(remote, 'left', true);
+    service.toggleSplit();
+    await settleFiles();
+    const leftFiles = service.rawFiles();
+    service.switchPane(1);
+    service.executeNavigate(remote, 'right', true);
+    expect(service.rawFiles()).toBe(leftFiles);
+    expect(service.currentPath()).toBe('left');
+    expect(service.rawFilesRight()).toEqual([]);
+    expect(service.isLoadingRight()).toBe(true);
+    service.restoreNavigation(snapshot(service));
+    expect(service.rawFiles()).toBe(leftFiles);
+    expect(service.rawFilesRight()).toEqual([]);
   });
 
   it('reuses the initial tab when the browser URL restores after a reload', () => {

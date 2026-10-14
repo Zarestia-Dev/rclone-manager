@@ -179,7 +179,10 @@ export class UiStateService {
       for (const [view, sidebar] of this._mobileSidebarRegistrations()) {
         if (sidebar.isOver() && sidebar.isOpen()) {
           if (!this.sidebarHistory.has(view)) {
-            this.sidebarHistory.set(view, this.navigationHistory.openLayer(sidebar.close));
+            this.sidebarHistory.set(
+              view,
+              this.navigationHistory.openLayer(sidebar.close, { preserveNavigationOnClose: true })
+            );
           }
         } else {
           this.sidebarHistory.get(view)?.();

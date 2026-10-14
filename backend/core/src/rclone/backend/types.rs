@@ -7,7 +7,6 @@ use crate::rclone::backend::BackendError;
 use crate::rclone::backend::runtime::RuntimeInfo;
 use crate::rclone::endpoints::config;
 use crate::rclone::endpoints::core;
-use crate::rclone::endpoints::operations;
 use crate::rclone::engine::core::DEFAULT_API_PORT;
 
 /// Single flat backend configuration
@@ -317,11 +316,17 @@ impl Backend {
 
     /// Build the URL used to fetch a remote file over the rclone serve endpoint.
     fn build_file_url(&self, remote: &str, path: &str) -> String {
-        let r_name = if remote.contains(':') || remote.contains('/') || remote.contains('\\') {
+        let (remote, path) = crate::utils::io::file_stream::file_location(remote, path);
+        let r_name = if remote.contains(':')
+            || remote.contains('/')
+            || remote.contains('\\')
+            || remote == "."
+        {
             remote.to_string()
         } else {
             format!("{remote}:")
         };
+        let r_name = urlencoding::encode(&r_name);
 
         let encoded_path = path
             .split('/')
@@ -350,7 +355,10 @@ impl Backend {
         range: Option<&str>,
     ) -> Result<reqwest::Response, String> {
         let url = self.build_file_url(remote, path);
-        let mut builder = self.inject_auth(client.get(&url));
+        // Byte offsets refer to the original representation, not compressed data.
+        let mut builder = self
+            .inject_auth(client.get(&url))
+            .header(reqwest::header::ACCEPT_ENCODING, "identity");
 
         if let Some(r) = range {
             builder = builder.header(reqwest::header::RANGE, r);
@@ -360,162 +368,6 @@ impl Backend {
             .send()
             .await
             .map_err(|e| format!("Failed to fetch remote file: {e}"))
-    }
-
-    /// Fetch a file's content using the `core/command` endpoint with `cat`.
-    ///
-    /// This is used as a fallback for remote backends where the standard serve
-    /// endpoint might not support local files or specific remote configurations.
-    pub async fn fetch_file_via_cat(
-        &self,
-        transport: &dyn crate::rclone::backend::RcloneTransport,
-        remote: &str,
-        path: &str,
-        offset: Option<i64>,
-        count: Option<i64>,
-        _os: Option<String>,
-    ) -> Result<Vec<u8>, String> {
-        let (fs_name, remote_path) = if remote.is_empty() || remote == ":" {
-            ("".to_string(), path.to_string())
-        } else {
-            let r_name = if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
-                remote.to_string()
-            } else {
-                format!("{remote}:")
-            };
-            (r_name, path.to_string())
-        };
-
-        let full_path = if fs_name.is_empty() {
-            remote_path
-        } else {
-            crate::utils::json_helpers::build_full_path(&fs_name, &remote_path)
-        };
-
-        // TODO(rclone-v1.70): Once rclone with `operations/getfile` is released to stable,
-        // remove this `if self.is_librclone_local()` check and run the GETFILE loop unconditionally for all backends.
-        if self.is_librclone_local() {
-            const CHUNK_SIZE: i64 = 2 * 1024 * 1024; // 2 MiB upstream rclone limit
-            let mut current_offset = offset.unwrap_or(0);
-            let mut remaining = count;
-            let mut buffer = Vec::new();
-
-            loop {
-                let chunk_to_read = match remaining {
-                    Some(rem) => {
-                        if rem <= 0 {
-                            break;
-                        }
-                        rem.min(CHUNK_SIZE)
-                    }
-                    None => CHUNK_SIZE,
-                };
-
-                let payload = serde_json::json!({
-                    "fs": full_path,
-                    "offset": current_offset,
-                    "count": chunk_to_read,
-                    "base64": true,
-                });
-
-                let response = transport
-                    .rpc(operations::GETFILE, Some(&payload))
-                    .await
-                    .map_err(|e| e.to_string())?;
-
-                if response
-                    .get("error")
-                    .and_then(serde_json::Value::as_bool)
-                    .unwrap_or(false)
-                {
-                    let err_msg = response
-                        .get("result")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown rclone error");
-                    return Err(err_msg.to_string());
-                }
-
-                let b64_str = response
-                    .get("result")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| "No result in getfile response".to_string())?;
-
-                use base64::{Engine as _, engine::general_purpose::STANDARD};
-                let chunk_bytes = STANDARD
-                    .decode(b64_str)
-                    .map_err(|e| format!("Failed to decode base64 getfile response: {e}"))?;
-
-                let bytes_read = chunk_bytes.len() as i64;
-                if bytes_read == 0 {
-                    break;
-                }
-
-                buffer.extend_from_slice(&chunk_bytes);
-                current_offset += bytes_read;
-
-                if let Some(rem) = remaining.as_mut() {
-                    *rem -= bytes_read;
-                    if *rem <= 0 {
-                        break;
-                    }
-                }
-
-                // If fewer bytes than requested were returned, we hit EOF
-                if bytes_read < chunk_to_read {
-                    break;
-                }
-            }
-
-            return Ok(buffer);
-        }
-
-        // =========================================================================
-        // TODO(rclone-v1.70): DELETE START FOR CORE/COMMAND CAT FALLBACK
-        // When upstream rclone with `operations/getfile` is widely available on stable,
-        // delete everything from here down to the end of this function.
-        // =========================================================================
-        let mut args = vec![full_path];
-        if let Some(o) = offset {
-            args.push(format!("--offset={o}"));
-        }
-        if let Some(c) = count {
-            args.push(format!("--count={c}"));
-        }
-        let payload = self.build_core_command_payload("cat", args, false, _os);
-
-        let response = transport
-            .rpc(core::COMMAND, Some(&payload))
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if response
-            .get("error")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false)
-        {
-            let err_msg = response
-                .get("result")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Unknown rclone error");
-            return Err(err_msg.to_string());
-        }
-
-        if let Some(b64) = response.get("result_base64").and_then(|v| v.as_str()) {
-            use base64::{Engine as _, engine::general_purpose::STANDARD};
-            return STANDARD
-                .decode(b64)
-                .map_err(|e| format!("Failed to decode base64 cat response: {e}"));
-        }
-
-        let result = response
-            .get("result")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| "No result in cat response".to_string())?;
-
-        Ok(result.as_bytes().to_vec())
-        // =========================================================================
-        // TODO(rclone-v1.70): DELETE END FOR CORE/COMMAND CAT FALLBACK
-        // =========================================================================
     }
 
     /// Helper for POST requests expecting a JSON response.
@@ -701,6 +553,37 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn ranged_file_requests_preserve_original_byte_offsets() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let request = crate::utils::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut headers = Vec::new();
+            while !headers.ends_with(b"\r\n\r\n") {
+                assert_ne!(socket.read_buf(&mut headers).await.unwrap(), 0);
+                assert!(headers.len() < 8192);
+            }
+            socket.write_all(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 3\r\nContent-Range: bytes 10-12/20\r\nConnection: close\r\n\r\nabc").await.unwrap();
+            String::from_utf8(headers).unwrap().to_lowercase()
+        });
+        let backend = Backend::new_remote("test", "127.0.0.1", port);
+        let response = backend
+            .fetch_file_stream_with_range(
+                &reqwest::Client::new(),
+                "drive:",
+                "song.mp3",
+                Some("bytes=10-12"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.bytes().await.unwrap().as_ref(), b"abc");
+        let headers = request.await.unwrap();
+        assert!(headers.contains("accept-encoding: identity\r\n"));
+        assert!(headers.contains("range: bytes=10-12\r\n"));
+    }
+
+    #[tokio::test]
     async fn http_requests_preserve_status_and_error_body() {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -880,73 +763,16 @@ mod tests {
         assert!(!backend.is_auth_generated);
     }
 
-    struct MockTransport {
-        expected_endpoint: &'static str,
-        response: serde_json::Value,
-    }
-
-    #[async_trait::async_trait]
-    impl crate::rclone::backend::RcloneTransport for MockTransport {
-        async fn kind(&self) -> crate::rclone::backend::TransportKind {
-            crate::rclone::backend::TransportKind::Librclone
-        }
-        async fn rpc(
-            &self,
-            endpoint: &str,
-            _payload: Option<&serde_json::Value>,
-        ) -> Result<serde_json::Value, crate::rclone::backend::BackendError> {
-            assert_eq!(endpoint, self.expected_endpoint);
-            Ok(self.response.clone())
-        }
-        async fn read_file(
-            &self,
-            _remote: &str,
-            _path: &str,
-            _range: Option<(u64, Option<u64>)>,
-        ) -> Result<
-            Box<dyn tokio::io::AsyncRead + Unpin + Send>,
-            crate::rclone::backend::BackendError,
-        > {
-            unimplemented!()
-        }
-    }
-
-    // TODO(rclone-v1.70): These two tests verify the core/command cat fallback for external daemons.
-    // They can be removed (or migrated to GETFILE) once the core/command cat fallback is deleted.
-    #[tokio::test]
-    async fn test_fetch_file_via_cat_fallback() {
-        let backend = Backend::new_remote("NAS", "192.168.1.100", 51900);
-        let transport = MockTransport {
-            expected_endpoint: core::COMMAND,
-            response: serde_json::json!({
-                "result": "fallback cat file content"
-            }),
-        };
-
-        let res = backend
-            .fetch_file_via_cat(&transport, "remote:", "test.txt", None, None, None)
-            .await
-            .unwrap();
-
-        assert_eq!(res, b"fallback cat file content");
-    }
-
-    #[tokio::test]
-    async fn test_fetch_file_via_cat_fallback_base64() {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
-        let backend = Backend::new_remote("NAS", "192.168.1.100", 51900);
-        let transport = MockTransport {
-            expected_endpoint: core::COMMAND,
-            response: serde_json::json!({
-                "result_base64": STANDARD.encode("base64 cat content")
-            }),
-        };
-
-        let res = backend
-            .fetch_file_via_cat(&transport, "remote:", "test.txt", None, None, None)
-            .await
-            .unwrap();
-
-        assert_eq!(res, b"base64 cat content");
+    #[test]
+    fn file_urls_preserve_local_roots_and_reserved_remote_characters() {
+        let backend = Backend::new_remote("test", "localhost", 1234);
+        assert_eq!(
+            backend.build_file_url("", "/music/a #+.mp3"),
+            "http://localhost:1234/[%2Fmusic%2F]/a%20%23%2B.mp3"
+        );
+        assert_eq!(
+            backend.build_file_url("drive #+%:", "folder/a.mp3"),
+            "http://localhost:1234/[drive%20%23%2B%25%3A]/folder/a.mp3"
+        );
     }
 }

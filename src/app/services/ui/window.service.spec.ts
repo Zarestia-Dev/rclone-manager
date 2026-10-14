@@ -1,3 +1,4 @@
+import { platform } from '@tauri-apps/plugin-os';
 import { TestBed } from '@angular/core/testing';
 import { of, Subject } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -9,6 +10,8 @@ import { NotificationService } from './notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+
+vi.mock('@tauri-apps/plugin-os', () => ({ platform: vi.fn() }));
 
 describe('WindowService', () => {
   let service: WindowService;
@@ -85,6 +88,39 @@ describe('WindowService', () => {
 
   afterEach(() => {
     document.documentElement.removeAttribute('class');
+  });
+
+  it.each(['android', 'ios'] as const)('does not call desktop window APIs on %s', async os => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__');
+    const osDescriptor = Object.getOwnPropertyDescriptor(window, '__TAURI_OS_PLUGIN_INTERNALS__');
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+    Object.defineProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__', {
+      value: { platform: os },
+      configurable: true,
+    });
+    vi.mocked(platform).mockReturnValue(os);
+    const getWindowSpy = vi.spyOn(
+      WindowService.prototype as unknown as { getCurrentTauriWindow: () => unknown },
+      'getCurrentTauriWindow'
+    );
+    try {
+      const mobile = TestBed.runInInjectionContext(() => new WindowService());
+      expect(await mobile.isWindowMaximized()).toBe(false);
+      await mobile.minimize();
+      await mobile.maximize();
+      await mobile.startResizeDragging('East');
+      expect(getWindowSpy).not.toHaveBeenCalled();
+      expect(TestBed.inject(EventListenersService).listenToWindowResize).not.toHaveBeenCalled();
+      expect(TestBed.inject(EventListenersService).listenToSystemThemeChanged).toHaveBeenCalled();
+    } finally {
+      getWindowSpy.mockRestore();
+      if (descriptor) Object.defineProperty(window, '__TAURI_INTERNALS__', descriptor);
+      else Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+      if (osDescriptor)
+        Object.defineProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__', osDescriptor);
+      else Reflect.deleteProperty(window, '__TAURI_OS_PLUGIN_INTERNALS__');
+      vi.mocked(platform).mockReset();
+    }
   });
 
   it('should be created with default system theme', () => {

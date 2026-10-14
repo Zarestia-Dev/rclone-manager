@@ -40,12 +40,14 @@ urlencoding = "2"
 futures = "0.3"
 http = "1"
 mime_guess = "2"
+tempfile = "3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "5", optional = true }
 notify-rust = { version = "4", optional = true }
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry", "Win32_System_Threading"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-single-instance = { version = "2", optional = true }
@@ -102,6 +104,3 @@ tauri-test = ["tauri/test"]
 
 # Native autostart capability exposed to shared settings.
 tauri-plugin-autostart = ["dep:tauri-plugin-autostart", "rclone-manager-core/autostart"]
-
-[dev-dependencies]
-tempfile = "3"

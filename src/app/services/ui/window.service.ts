@@ -4,6 +4,7 @@ import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { isMobile } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 export type ResizeDirection =
@@ -68,8 +69,10 @@ export class WindowService extends TauriBaseService {
           }
         });
 
-      this.initWindowListeners();
-      this.initLinuxResizeHandles();
+      if (this.appWindow) {
+        this.initWindowListeners();
+        this.initLinuxResizeHandles();
+      }
     }
   }
 
@@ -171,7 +174,9 @@ export class WindowService extends TauriBaseService {
     }
   }
 
-  private appWindow = this.getCurrentTauriWindow();
+  // Mobile Tauri windows do not implement desktop maximize/resize operations.
+  private readonly appWindow =
+    this.isTauri && !isMobile() ? this.getCurrentTauriWindow() : undefined;
 
   async minimize(): Promise<void> {
     try {

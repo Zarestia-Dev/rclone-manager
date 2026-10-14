@@ -2,6 +2,7 @@ fn main() {
     embed_translations();
     println!("cargo:rerun-if-env-changed=LIBRCLONE_SKIP_LINK_CHECK");
     println!("cargo:rerun-if-env-changed=RCLONE_SRC_DIR");
+    println!("cargo:rerun-if-changed=librclone_patches/");
     // Link librclone static archive when the `librclone` feature is enabled.
     //
     // We link it statically (whole-archive) so the rclone symbols are available
@@ -20,7 +21,18 @@ fn main() {
         let rclone_src_dir = std::env::var("RCLONE_SRC_DIR")
             .unwrap_or_else(|_| format!("{manifest_dir}/../../../rclone"));
 
-        let rebuild_needed = check_rebuild_needed(&rclone_src_dir, &target_lib_path);
+        let patches_dir = std::path::Path::new(&manifest_dir).join("librclone_patches");
+        let patches_changed = std::fs::metadata(&target_lib_path)
+            .and_then(|metadata| metadata.modified())
+            .map_or(true, |built| {
+                check_rebuild_needed_dir(&patches_dir, built)
+                    || patches_dir
+                        .metadata()
+                        .and_then(|metadata| metadata.modified())
+                        .is_ok_and(|modified| modified > built)
+            });
+        let rebuild_needed =
+            patches_changed || check_rebuild_needed(&rclone_src_dir, &target_lib_path);
 
         if rebuild_needed {
             let build_res = build_librclone(&target, &target_lib_path);

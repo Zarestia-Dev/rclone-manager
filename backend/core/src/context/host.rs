@@ -16,6 +16,11 @@ pub trait Host: Send + Sync {
     fn resolve_paths(&self, app: &AppHandle) -> Result<AppPaths, String>;
     fn restart(&self, app: &AppHandle) -> Result<(), String>;
     fn exit(&self, _code: i32) {}
+    /// Main window HWND, if this host has a native Windows window.
+    #[cfg(all(target_os = "windows", feature = "desktop"))]
+    fn main_window_hwnd(&self) -> Option<isize> {
+        None
+    }
     fn prepare(&self, _app: &AppHandle, _paths: &AppPaths) -> Result<(), String> {
         Ok(())
     }

@@ -27,7 +27,10 @@ describe('FileViewerModalComponent', () => {
   let fixture: ComponentFixture<FileViewerModalComponent>;
   let component: FileViewerModalComponent;
 
-  let fileViewerServiceMock: Partial<FileViewerService>;
+  let fileViewerServiceMock: Pick<
+    FileViewerService,
+    'setActiveFileName' | 'generateUrl' | 'resolveRelativePath' | 'getAudioCover'
+  >;
   let downloadServiceMock: Partial<DownloadService>;
   let openerServiceMock: Partial<OpenerService>;
   let backendServiceMock: Partial<BackendService>;
@@ -36,7 +39,7 @@ describe('FileViewerModalComponent', () => {
   let nautilusServiceMock: Partial<NautilusService>;
   let notificationServiceMock: Partial<NotificationService>;
   let pathServiceMock: Partial<PathService>;
-  let jobManagementServiceMock: Partial<JobManagementService>;
+  let jobManagementServiceMock: Pick<JobManagementService, 'stopJobsByGroup'>;
 
   const mockItems: Entry[] = [
     {
@@ -158,6 +161,48 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Component Initialization & Computed Properties', () => {
+    it('ignores a late URL from the previous file', async () => {
+      component.data.items = [
+        mockItems[1],
+        { ...mockItems[1], Path: 'second.jpg', Name: 'second.jpg' },
+      ];
+      let resolveOld!: (url: string) => void;
+      let started!: () => void;
+      const start = new Promise<void>(resolve => {
+        started = resolve;
+      });
+      vi.mocked(fileViewerServiceMock.generateUrl)
+        .mockImplementationOnce(() => {
+          started();
+          return new Promise(resolve => {
+            resolveOld = resolve;
+          });
+        })
+        .mockResolvedValue('http://localhost/second.jpg');
+      const first = component.updateData();
+      await start;
+      component.currentIndex.set(1);
+      await component.updateData();
+      resolveOld('http://localhost/old.jpg');
+      await first;
+      expect(component.currentUrl()).toBe('http://localhost/second.jpg');
+    });
+
+    it('does not restart media after destruction while job cancellation is pending', async () => {
+      let finishStop!: () => void;
+      vi.mocked(jobManagementServiceMock.stopJobsByGroup).mockReturnValueOnce(
+        new Promise(resolve => {
+          finishStop = (): void => resolve(undefined);
+        })
+      );
+      const pending = component.updateData();
+      component.ngOnDestroy();
+      finishStop();
+      await pending;
+      expect(fileViewerServiceMock.generateUrl).not.toHaveBeenCalled();
+      expect(component.currentUrl()).toBe('');
+    });
+
     it('should create and compute currentItem, fileName, and fileSize', () => {
       expect(component).toBeTruthy();
       expect(component.currentItem()).toEqual(mockItems[0]);
@@ -422,7 +467,7 @@ describe('FileViewerModalComponent', () => {
       );
     });
 
-    it('should set isLoading to false when viewing video on mobile', async () => {
+    it('should keep loading mobile video until the media load completes', async () => {
       vi.spyOn(component, 'isMobile').mockReturnValue(true);
       const videoItem: Entry = {
         ID: 'vid1',
@@ -445,6 +490,9 @@ describe('FileViewerModalComponent', () => {
       await component.updateData();
 
       expect(component.currentFileType()).toBe('video');
+      expect(component.isLoading()).toBe(true);
+
+      component.onLoadComplete();
       expect(component.isLoading()).toBe(false);
     });
   });

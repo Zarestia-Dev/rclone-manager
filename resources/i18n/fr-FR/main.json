@@ -2845,7 +2845,8 @@
       "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}",
       "diskFull": "Le disque ou lecteur cible est plein. Espace disque insuffisant.",
       "fileLocked": "Le fichier est actuellement verrouillé ou utilisé par un autre processus.",
-      "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture."
+      "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture.",
+      "ioError": "IO erreur : {{error}}"
     },
     "rclone": {
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",

@@ -145,6 +145,7 @@ pub fn detect_linux_theme() -> Option<bool> {
 }
 
 /// Parses KDE Plasma `kdeglobals` content to determine dark mode.
+#[cfg(any(target_os = "linux", test))]
 pub fn parse_kde_globals(contents: &str) -> Option<bool> {
     let mut in_general = false;
     let mut in_colors_window = false;
@@ -209,6 +210,7 @@ fn detect_kde_theme() -> Option<bool> {
 }
 
 /// Parses GTK `settings.ini` content to determine dark mode preference.
+#[cfg(any(target_os = "linux", test))]
 pub fn parse_gtk_settings(contents: &str) -> Option<bool> {
     let mut prefer_dark: Option<bool> = None;
     let mut theme_name_dark: Option<bool> = None;

@@ -2,13 +2,13 @@ import { Injectable, inject, signal, effect } from '@angular/core';
 import { outputToObservable } from '@angular/core/rxjs-interop';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { platform } from '@tauri-apps/plugin-os';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
 import { VaultService } from '../security/vault.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { NavigationHistoryService } from './navigation-history.service';
 
 import { encodeUrlPath, extractFilenameFromUrl } from 'src/app/shared/utils/url.utils';
 
@@ -17,7 +17,10 @@ import { encodeUrlPath, extractFilenameFromUrl } from 'src/app/shared/utils/url.
 })
 export class FileViewerService extends TauriBaseService {
   private readonly vault = inject(VaultService);
+  private readonly navigationHistory = inject(NavigationHistoryService);
   private overlayRef: OverlayRef | null = null;
+  private openGeneration = 0;
+  private releaseHistory: (() => void) | null = null;
 
   constructor() {
     super();
@@ -27,10 +30,15 @@ export class FileViewerService extends TauriBaseService {
   }
 
   private close(): void {
-    this.overlayRef?.dispose();
+    this.openGeneration++;
+    const releaseHistory = this.releaseHistory;
+    this.releaseHistory = null;
+    const overlayRef = this.overlayRef;
     this.overlayRef = null;
+    overlayRef?.dispose();
     this._isViewerOpen.set(false);
     this._activeFileName.set(null);
+    releaseHistory?.();
   }
 
   private readonly overlay = inject(Overlay);
@@ -42,20 +50,9 @@ export class FileViewerService extends TauriBaseService {
   private readonly _activeFileName = signal<string | null>(null);
   public readonly activeFileName = this._activeFileName.asReadonly();
 
-  /**
-   * Whether the client WebView can register a custom URL scheme
-   * (`local-asset://`, `rclone://`, `audio-cover://`). Windows WebView2 and
-   * mobile WebViews do not reliably support custom schemes, so we fall back
-   * to `http://*.localhost`.
-   */
-  private supportsCustomUrlScheme(): boolean {
-    if (!this.isTauri) return false;
-    try {
-      const p = platform();
-      return p !== 'windows' && !isMobile();
-    } catch {
-      return !isMobile();
-    }
+  /** Let Tauri choose the platform's registered HTTP(S) or custom protocol origin. */
+  private protocolUrl(scheme: string, encodedPath: string): string {
+    return `${convertFileSrc('', scheme)}${encodedPath.replace(/^\//, '')}`;
   }
 
   setActiveFileName(name: string | null): void {
@@ -70,7 +67,10 @@ export class FileViewerService extends TauriBaseService {
   ): Promise<void> {
     if (!this.vault.isAccessible()) return;
     const item = items[currentIndex];
+    if (!item) return;
+    const generation = ++this.openGeneration;
     const fileUrl = await this.generateUrl(item, remoteName, isLocal);
+    if (generation !== this.openGeneration || !this.vault.isAccessible()) return;
     await this.attachModalOverlay({
       items,
       currentIndex,
@@ -119,6 +119,8 @@ export class FileViewerService extends TauriBaseService {
     });
     this.overlayRef = overlayRef;
     this._isViewerOpen.set(true);
+    // Register before the lazy import so Back also closes a viewer still loading.
+    this.releaseHistory = this.navigationHistory.openLayer(() => this.close());
 
     try {
       const { FileViewerModalComponent } =
@@ -127,13 +129,11 @@ export class FileViewerService extends TauriBaseService {
       const componentRef = overlayRef.attach(new ComponentPortal(FileViewerModalComponent));
       componentRef.instance.data = data;
 
-      outputToObservable(componentRef.instance.closeViewer)
-        .pipe(take(1))
-        .subscribe(() => this.close());
-      overlayRef
-        .backdropClick()
-        .pipe(take(1))
-        .subscribe(() => this.close());
+      const closeOverlay = (): void => {
+        if (this.overlayRef === overlayRef) this.close();
+      };
+      outputToObservable(componentRef.instance.closeViewer).pipe(take(1)).subscribe(closeOverlay);
+      overlayRef.backdropClick().pipe(take(1)).subscribe(closeOverlay);
     } catch (error) {
       if (this.overlayRef === overlayRef) this.close();
       throw error;
@@ -150,24 +150,17 @@ export class FileViewerService extends TauriBaseService {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}`;
       }
-      if (this.supportsCustomUrlScheme()) {
-        return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
-      }
-      return `http://audio-cover.localhost/local/${encodeURIComponent(fullPath)}`;
+      return this.protocolUrl('audio-cover', `local/${encodeURIComponent(fullPath)}`);
     } else {
       if (!this.isTauri) {
         const encodedRemote = encodeURIComponent(remoteName);
         const encodedPath = encodeURIComponent(path);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
       }
-      if (this.supportsCustomUrlScheme()) {
-        return `audio-cover://localhost/remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(
-          path
-        )}`;
-      }
-      return `http://audio-cover.localhost/remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(
-        path
-      )}`;
+      return this.protocolUrl(
+        'audio-cover',
+        `remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(path)}`
+      );
     }
   }
 
@@ -214,17 +207,7 @@ export class FileViewerService extends TauriBaseService {
       // (absolute vs relative), not an OS inference.
       const encodedSegments = encodeUrlPath(fullPath);
 
-      if (this.supportsCustomUrlScheme()) {
-        const pathWithSlash = encodedSegments.startsWith('/')
-          ? encodedSegments
-          : `/${encodedSegments}`;
-        return `local-asset://localhost${pathWithSlash}`;
-      }
-
-      const cleanSegments = encodedSegments.startsWith('/')
-        ? encodedSegments.substring(1)
-        : encodedSegments;
-      return `http://local-asset.localhost/${cleanSegments}`;
+      return this.protocolUrl('local-asset', encodedSegments);
     }
 
     const rName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
@@ -233,14 +216,11 @@ export class FileViewerService extends TauriBaseService {
     if (!this.isTauri) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(
         rName
-      )}&path=${encodedPath}`;
+      )}&path=${encodeURIComponent(path)}`;
     }
 
     const urlSafeRemote = this.pathService.normalizeRemoteName(rName);
     const encodedRemote = encodeURIComponent(urlSafeRemote);
-    if (this.supportsCustomUrlScheme()) {
-      return `rclone://localhost/${encodedRemote}/${encodedPath}`;
-    }
-    return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;
+    return this.protocolUrl('rclone', `${encodedRemote}/${encodedPath}`);
   }
 }

@@ -20,11 +20,40 @@ use tauri::{Builder, Runtime};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 use crate::utils::app::audio;
+use crate::utils::io::file_stream::{
+    FILE_CHUNK_SIZE, file_metadata, file_reader, pin_file_transport,
+};
 use crate::utils::io::http_helpers::{
-    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name, normalize_asset_path,
-    parse_byte_range, strip_protocol_prefix, strip_protocol_prefix_trimmed, url_decode,
+    MAX_AUDIO_COVER_PROBE_BYTES, classify_error_status, decode_remote_name,
+    has_parent_path_component, normalize_asset_path, resolve_byte_range, strip_protocol_prefix,
+    strip_protocol_prefix_trimmed, url_decode,
 };
 use crate::utils::types::state::RcloneState;
+
+// Wry's native protocol response owns its full body. Range requests remain
+// bounded separately; large full downloads use the disk-streaming command.
+const MAX_BUFFERED_ASSET_BYTES: u64 = 64 * 1024 * 1024;
+
+// A shared budget bounds simultaneous Rust-side response buffers as well as
+// each individual response. Hold the permit through responder.respond().
+static NATIVE_BODY_BUDGET: tokio::sync::Semaphore =
+    tokio::sync::Semaphore::const_new(MAX_BUFFERED_ASSET_BYTES as usize);
+type AssetResponse = (
+    Response<Vec<u8>>,
+    Option<tokio::sync::SemaphorePermit<'static>>,
+);
+
+async fn body_permit(length: u64) -> Result<Option<tokio::sync::SemaphorePermit<'static>>, String> {
+    if length == 0 {
+        return Ok(None);
+    }
+    let count = u32::try_from(length).map_err(|e| e.to_string())?;
+    NATIVE_BODY_BUDGET
+        .acquire_many(count)
+        .await
+        .map(Some)
+        .map_err(|e| e.to_string())
+}
 
 pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder = register_rclone_protocol(builder);
@@ -37,7 +66,7 @@ fn cors_preflight_response() -> Response<Vec<u8>> {
     Response::builder()
         .status(204)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
         .header("Access-Control-Allow-Headers", "*")
         .body(vec![])
         .unwrap()
@@ -94,52 +123,17 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     app_handle.backend_state::<crate::utils::types::state::RcloneState>();
                 let transport = rclone_state.transport.clone();
 
-                let byte_range = range_header.as_deref().and_then(parse_byte_range);
-                let mime_type = mime_guess::from_path(&path)
-                    .first_or_octet_stream()
-                    .to_string();
-
-                match transport.read_file(&remote, &path, byte_range).await {
-                    Ok(mut reader) => {
-                        let mut bytes = Vec::new();
-                        match reader.read_to_end(&mut bytes).await {
-                            Ok(_) => {
-                                let bytes_len = bytes.len() as u64;
-                                let mut builder = Response::builder()
-                                    .status(if byte_range.is_some() { 206 } else { 200 })
-                                    .header(header::CONTENT_TYPE, mime_type)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .header("Accept-Ranges", "bytes")
-                                    .header(header::CONTENT_LENGTH, bytes_len.to_string());
-
-                                if let Some((start, _)) = byte_range {
-                                    let end = if bytes_len > 0 {
-                                        start + bytes_len - 1
-                                    } else {
-                                        start
-                                    };
-                                    builder = builder
-                                        .header("Content-Range", format!("bytes {start}-{end}/*"));
-                                }
-
-                                responder.respond(builder.body(bytes).unwrap());
-                            }
-                            Err(e) => {
-                                error!("Stream read error for {remote}:{path}: {e}");
-                                responder.respond(error_response(
-                                    500,
-                                    format!("Stream read error: {e}"),
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("read_file failed for {remote}:{path}: {e}");
-                        let err_str = e.to_string();
-                        let status = classify_error_status(&err_str);
-                        responder.respond(error_response(status, err_str));
-                    }
-                }
+                let result = remote_asset_response(
+                    transport,
+                    &remote,
+                    &path,
+                    range_header.as_deref(),
+                    request.method() == Method::HEAD,
+                )
+                .await;
+                let (response, _permit) =
+                    result.unwrap_or_else(|e| (error_response(classify_error_status(&e), e), None));
+                responder.respond(response);
             });
         });
     builder
@@ -163,29 +157,9 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
             debug!("🔍 Final decoded path: '{final_path}'");
 
             // SECURITY 1: Prevent basic path traversal attacks
-            if final_path.contains("..") {
+            if has_parent_path_component(&final_path) {
                 error!("❌ Path traversal attempt blocked: '{final_path}'");
                 responder.respond(error_response(403, "Path traversal denied"));
-                return;
-            }
-
-            // Android path alias mapping (/sdcard/ -> /storage/emulated/0/)
-            if final_path.starts_with("/sdcard/") {
-                let alt_path = final_path.replacen("/sdcard/", "/storage/emulated/0/", 1);
-                if std::path::Path::new(&alt_path).exists() {
-                    final_path = alt_path;
-                }
-            }
-
-            let file_path = std::path::Path::new(&final_path);
-
-            // SECURITY 2: Ensure the target is actually a file
-            if file_path.is_dir() {
-                error!("❌ Attempted to access directory as asset: '{final_path}'");
-                responder.respond(error_response(
-                    403,
-                    "Directories are not supported by the local-asset protocol",
-                ));
                 return;
             }
 
@@ -198,134 +172,134 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
 
             // Use async runtime to support cat fallback
             crate::utils::spawn(async move {
-                let byte_range = request
-                    .headers()
-                    .get("Range")
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(parse_byte_range);
-
-                // Try to open the file directly using non-blocking tokio::fs
-                match tokio::fs::File::open(&final_path).await {
-                    Ok(mut file) => {
-                        let file_size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
-                        debug!("✅ Opened local asset: {final_path} (size: {file_size} bytes)");
-
-                        if let Some((start, end_opt)) = byte_range
-                            && file_size > 0
-                        {
-                            let mut end = end_opt.unwrap_or(file_size - 1);
-                            if end >= file_size {
-                                end = file_size - 1;
-                            }
-
-                            if start > end {
-                                responder.respond(
-                                    Response::builder()
-                                        .status(416)
-                                        .header("Access-Control-Allow-Origin", "*")
-                                        .header("Content-Range", format!("bytes */{file_size}"))
-                                        .body(vec![])
-                                        .unwrap(),
-                                );
-                                return;
-                            }
-
-                            let chunk_size = (end - start + 1) as usize;
-                            let mut buffer = vec![0; chunk_size];
-                            if let Err(e) = file.seek(SeekFrom::Start(start)).await {
-                                error!("❌ Seek error in local asset '{final_path}': {e}");
-                                responder.respond(error_response(500, format!("Seek error: {e}")));
-                                return;
-                            }
-                            if let Err(e) = file.read_exact(&mut buffer).await {
-                                error!("❌ Read error in local asset '{final_path}': {e}");
-                                responder.respond(error_response(500, format!("Read error: {e}")));
-                                return;
-                            }
-
-                            responder.respond(
-                                Response::builder()
-                                    .status(206)
-                                    .header(header::CONTENT_TYPE, &mime_type)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .header("Accept-Ranges", "bytes")
-                                    .header(
-                                        "Content-Range",
-                                        format!("bytes {start}-{end}/{file_size}"),
-                                    )
-                                    .header("Content-Length", chunk_size.to_string())
-                                    .body(buffer)
-                                    .unwrap(),
-                            );
-                        } else {
-                            let mut buffer = Vec::with_capacity(file_size as usize);
-                            if file_size > 0
-                                && let Err(e) = file.read_to_end(&mut buffer).await
-                            {
-                                error!("❌ Read error in local asset '{final_path}': {e}");
-                                responder.respond(error_response(500, format!("Read error: {e}")));
-                                return;
-                            }
-
-                            responder.respond(
-                                Response::builder()
-                                    .status(200)
-                                    .header(header::CONTENT_TYPE, &mime_type)
-                                    .header("Access-Control-Allow-Origin", "*")
-                                    .header("Accept-Ranges", "bytes")
-                                    .header("Content-Length", buffer.len().to_string())
-                                    .body(buffer)
-                                    .unwrap(),
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        warn!("Standard open failed for local asset {final_path}, attempting transport fallback: {e}");
-
-                        let rclone_state = app_handle.backend_state::<RcloneState>();
-                        let transport = rclone_state.transport.clone();
-
-                        match transport.read_file("", &final_path, byte_range).await {
-                            Ok(mut reader) => {
-                                let mut bytes = Vec::new();
-                                match reader.read_to_end(&mut bytes).await {
-                                    Ok(_) => {
-                                        let bytes_len = bytes.len() as u64;
-                                        let mut builder = Response::builder()
-                                            .status(if byte_range.is_some() { 206 } else { 200 })
-                                            .header(header::CONTENT_TYPE, &mime_type)
-                                            .header("Access-Control-Allow-Origin", "*")
-                                            .header("Accept-Ranges", "bytes")
-                                            .header(header::CONTENT_LENGTH, bytes_len.to_string());
-
-                                        if let Some((start, _)) = byte_range {
-                                            let end = if bytes_len > 0 { start + bytes_len - 1 } else { start };
-                                            builder = builder.header("Content-Range", format!("bytes {start}-{end}/*"));
-                                        }
-
-                                        responder.respond(builder.body(bytes).unwrap());
-                                    }
-                                    Err(read_err) => {
-                                        error!("Transport read failed for {final_path}: {read_err}");
-                                        responder.respond(error_response(
-                                            500,
-                                            format!("Read error: {read_err}"),
-                                        ));
-                                    }
-                                }
-                            }
-                            Err(cat_err) => {
-                                error!("Local transport fallback failed for {final_path}: {cat_err}");
-                                let err_str = cat_err.to_string();
-                                let status = classify_error_status(&err_str);
-                                responder.respond(error_response(status, err_str));
-                            }
-                        }
-                    }
+                // Filesystem checks belong off the WebView callback thread.
+                if final_path.starts_with("/sdcard/") {
+                    let alias = final_path.replacen("/sdcard/", "/storage/emulated/0/", 1);
+                    if tokio::fs::try_exists(&alias).await.unwrap_or(false) { final_path = alias; }
                 }
+                let range = request.headers().get(header::RANGE).and_then(|v| v.to_str().ok());
+                let head = request.method() == Method::HEAD;
+                if let Ok(metadata) = tokio::fs::metadata(&final_path).await
+                    && !metadata.is_file()
+                {
+                    responder.respond(error_response(403, "Only regular files can be streamed"));
+                    return;
+                }
+                let result = match tokio::fs::File::open(&final_path).await {
+                    Ok(mut file) => async {
+                        let metadata = file.metadata().await.map_err(|e| e.to_string())?;
+                        if !metadata.is_file() { return Err("Permission denied: only regular files can be streamed".into()); }
+                        let total = metadata.len();
+                        let (builder, start, length) = asset_response_builder(&mime_type, range, total, head);
+                        if head || length == 0 { return Ok((builder.body(Vec::new()).unwrap(), None)); }
+                        let permit = body_permit(length).await?;
+                        file.seek(SeekFrom::Start(start)).await.map_err(|e| e.to_string())?;
+                        let mut bytes = Vec::with_capacity(length as usize);
+                        (&mut file).take(length).read_to_end(&mut bytes).await.map_err(|e| e.to_string())?;
+                        if bytes.len() as u64 != length { return Err("File changed during streaming".into()); }
+                        let after = file.metadata().await.map_err(|e| e.to_string())?;
+                        if after.len() != metadata.len() || after.modified().ok() != metadata.modified().ok() { return Err("File changed during streaming".into()); }
+                        Ok((builder.body(bytes).unwrap(), permit))
+                    }.await,
+                    Err(e) => {
+                        warn!("Standard open failed for {final_path}, attempting transport fallback: {e}");
+                        let transport = app_handle.backend_state::<RcloneState>().transport.clone();
+                        remote_asset_response(transport, "", &final_path, range, head).await
+                    }
+                };
+                let (response, _permit) = result.unwrap_or_else(|e| (error_response(classify_error_status(&e), e), None));
+                responder.respond(response);
+
             });
         });
     builder
+}
+
+/// Bound native response bodies before reading; HEAD reports metadata without a body.
+fn asset_response_builder(
+    mime: &str,
+    range: Option<&str>,
+    total: u64,
+    head: bool,
+) -> (http::response::Builder, u64, u64) {
+    let builder = Response::builder()
+        .header(header::CONTENT_TYPE, mime)
+        .header(header::CACHE_CONTROL, "no-store")
+        .header("Access-Control-Allow-Origin", "*")
+        .header(header::ACCEPT_RANGES, "bytes");
+    match resolve_byte_range(if head { None } else { range }, total) {
+        Err(_) => (
+            builder
+                .status(416)
+                .header(header::CONTENT_RANGE, format!("bytes */{total}"))
+                .header(header::CONTENT_LENGTH, "0"),
+            0,
+            0,
+        ),
+        Ok(Some((start, end))) => {
+            let end = end.min(start.saturating_add(FILE_CHUNK_SIZE - 1));
+            let length = end - start + 1;
+            (
+                builder
+                    .status(206)
+                    .header(
+                        header::CONTENT_RANGE,
+                        format!("bytes {start}-{end}/{total}"),
+                    )
+                    .header(header::CONTENT_LENGTH, length),
+                start,
+                length,
+            )
+        }
+        Ok(None) if !head && total > MAX_BUFFERED_ASSET_BYTES => (
+            builder
+                .status(StatusCode::PAYLOAD_TOO_LARGE)
+                .header(header::CONTENT_LENGTH, 0),
+            0,
+            0,
+        ),
+        Ok(None) => (
+            builder.status(200).header(header::CONTENT_LENGTH, total),
+            0,
+            total,
+        ),
+    }
+}
+
+async fn remote_asset_response(
+    transport: std::sync::Arc<dyn crate::rclone::backend::RcloneTransport>,
+    remote: &str,
+    path: &str,
+    range: Option<&str>,
+    head: bool,
+) -> Result<AssetResponse, String> {
+    let transport = pin_file_transport(transport)
+        .await
+        .map_err(|e| e.to_string())?;
+    let version = file_metadata(transport.as_ref(), remote, path)
+        .await
+        .map_err(|e| e.to_string())?;
+    let total = version.size;
+    let mime = mime_guess::from_path(path)
+        .first_or_octet_stream()
+        .to_string();
+    let (builder, start, length) = asset_response_builder(&mime, range, total, head);
+    let permit = body_permit(if head { 0 } else { length }).await?;
+    let mut bytes = Vec::with_capacity(if head { 0 } else { length as usize });
+    if !head && length > 0 {
+        file_reader(
+            transport,
+            remote.to_string(),
+            path.to_string(),
+            start,
+            length,
+            Some(version),
+        )
+        .read_to_end(&mut bytes)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    Ok((builder.body(bytes).map_err(|e| e.to_string())?, permit))
 }
 
 fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
@@ -345,19 +319,22 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                 // Local file extraction
                 let decoded_path = normalize_asset_path(url_decode(local_path));
 
-                if let Some(pic) = audio::extract_picture_from_path(&decoded_path) {
-                    responder.respond(
-                        Response::builder()
-                            .status(200)
-                            .header(header::CONTENT_TYPE, pic.mime_type)
-                            .header("Access-Control-Allow-Origin", "*")
-                            .header("Cache-Control", "max-age=3600")
-                            .body(pic.data)
-                            .unwrap(),
-                    );
-                } else {
-                    responder.respond(error_response(404, vec![]));
-                }
+                crate::utils::spawn(async move {
+                    let picture = audio::extract_picture_from_path(decoded_path).await;
+                    if let Some(pic) = picture {
+                        responder.respond(
+                            Response::builder()
+                                .status(200)
+                                .header(header::CONTENT_TYPE, pic.mime_type)
+                                .header("Access-Control-Allow-Origin", "*")
+                                .header("Cache-Control", "no-store")
+                                .body(pic.data)
+                                .unwrap(),
+                        );
+                    } else {
+                        responder.respond(error_response(404, vec![]));
+                    }
+                });
             } else if let Some(remote_part) = path_part.strip_prefix("remote/") {
                 // Remote file extraction
                 let (remote_enc, path_enc) = match remote_part.find('/') {
@@ -374,24 +351,47 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                         app_handle.backend_state::<crate::utils::types::state::RcloneState>();
                     let transport = rclone_state.transport.clone();
 
+                    let transport = match pin_file_transport(transport).await {
+                        Ok(transport) => transport,
+                        Err(error) => {
+                            responder.respond(error_response(500, error.to_string()));
+                            return;
+                        }
+                    };
+                    let Some(_input_permit) = audio::cover_input_permit().await else {
+                        responder.respond(error_response(503, "Cover reader unavailable"));
+                        return;
+                    };
                     match transport
-                        .read_file(&remote, &path, Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES))))
+                        .read_file(
+                            &remote,
+                            &path,
+                            Some((0, Some(MAX_AUDIO_COVER_PROBE_BYTES - 1))),
+                        )
                         .await
                     {
-                        Ok(mut reader) => {
+                        Ok(reader) => {
                             let mut bytes = Vec::new();
-                            if reader.read_to_end(&mut bytes).await.is_ok() && !bytes.is_empty() {
-                                let extension =
-                                    Path::new(&path).extension().and_then(|ext| ext.to_str());
-                                if let Some(pic) =
-                                    audio::extract_picture_from_bytes(&bytes, extension)
-                                {
+                            if reader
+                                .take(MAX_AUDIO_COVER_PROBE_BYTES)
+                                .read_to_end(&mut bytes)
+                                .await
+                                .is_ok()
+                                && !bytes.is_empty()
+                            {
+                                let extension = Path::new(&path)
+                                    .extension()
+                                    .and_then(|ext| ext.to_str())
+                                    .map(str::to_owned);
+                                let picture =
+                                    audio::extract_picture_from_bytes(bytes, extension).await;
+                                if let Some(pic) = picture {
                                     responder.respond(
                                         Response::builder()
                                             .status(200)
                                             .header(header::CONTENT_TYPE, pic.mime_type)
                                             .header("Access-Control-Allow-Origin", "*")
-                                            .header("Cache-Control", "max-age=3600")
+                                            .header("Cache-Control", "no-store")
                                             .body(pic.data)
                                             .unwrap(),
                                     );
@@ -417,6 +417,67 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn simultaneous_native_responses_share_one_buffer_budget() {
+        let permit = body_permit(MAX_BUFFERED_ASSET_BYTES).await.unwrap();
+        assert!(NATIVE_BODY_BUDGET.try_acquire_many(1).is_err());
+        drop(permit);
+        assert!(
+            NATIVE_BODY_BUDGET
+                .try_acquire_many(MAX_BUFFERED_ASSET_BYTES as u32)
+                .is_ok()
+        );
+        assert!(body_permit(0).await.unwrap().is_none());
+    }
+
+    #[test]
+    fn large_full_native_responses_do_not_allocate_the_file() {
+        let total = MAX_BUFFERED_ASSET_BYTES + 1;
+        for range in [None, Some("garbage"), Some("bytes=0-1,4-5")] {
+            let (builder, _, length) = asset_response_builder("video/mp4", range, total, false);
+            assert_eq!(length, 0);
+            let response = builder.body(()).unwrap();
+            assert_eq!(response.status(), 413);
+            assert_eq!(response.headers()[header::CONTENT_LENGTH], "0");
+        }
+        let (builder, _, length) =
+            asset_response_builder("video/mp4", None, MAX_BUFFERED_ASSET_BYTES, false);
+        assert_eq!(length, MAX_BUFFERED_ASSET_BYTES);
+        assert_eq!(builder.body(()).unwrap().status(), 200);
+        let (builder, _, length) =
+            asset_response_builder("video/mp4", Some("bytes=0-"), total, false);
+        assert_eq!(length, FILE_CHUNK_SIZE);
+        assert_eq!(builder.body(()).unwrap().status(), 206);
+        let (builder, _, _) = asset_response_builder("video/mp4", Some("bytes=0-"), total, true);
+        let response = builder.body(()).unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(
+            response.headers()[header::CONTENT_LENGTH],
+            total.to_string()
+        );
+    }
+
+    #[test]
+    fn native_media_responses_have_complete_bounded_ranges() {
+        let total = FILE_CHUNK_SIZE * 10;
+        let (builder, start, length) =
+            asset_response_builder("video/mp4", Some("bytes=0-"), total, false);
+        let response = builder.body(Vec::<u8>::new()).unwrap();
+        assert_eq!(response.status(), 206);
+        assert_eq!((start, length), (0, FILE_CHUNK_SIZE));
+        assert_eq!(
+            response.headers()[header::CONTENT_RANGE],
+            format!("bytes 0-{}/{total}", FILE_CHUNK_SIZE - 1)
+        );
+        let (builder, start, length) =
+            asset_response_builder("audio/mpeg", Some("bytes=-128"), total, false);
+        assert_eq!((start, length), (total - 128, 128));
+        assert_eq!(builder.body(()).unwrap().status(), 206);
+        let (builder, _, length) = asset_response_builder("audio/mpeg", Some("bytes=0-"), 0, false);
+        assert_eq!(length, 0);
+        assert_eq!(builder.body(()).unwrap().status(), 416);
+    }
 
     #[test]
     fn test_error_response() {

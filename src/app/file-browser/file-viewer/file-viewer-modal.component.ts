@@ -175,6 +175,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   // Cancel pending requests when component updates or destroys
   private cancelCurrentRequest$ = new Subject<void>();
+  private loadGeneration = 0;
+  private destroyed = false;
+  private pendingStop: Promise<void> | null = null;
 
   readonly closeViewer = output<void>();
 
@@ -184,6 +187,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.loadGeneration++;
     this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
     this.cancelCurrentRequest$.complete();
@@ -204,12 +209,17 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async stopReadJobs(): Promise<void> {
-    try {
-      await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
-    } catch (err) {
-      console.debug('Failed to stop file viewer read jobs:', err);
-    }
+  private stopReadJobs(): Promise<void> {
+    this.pendingStop ??= this.jobManagementService
+      .stopJobsByGroup(this.readJobGroup)
+      .then(() => undefined)
+      .catch(err => {
+        console.debug('Failed to stop file viewer read jobs:', err);
+      })
+      .finally(() => {
+        this.pendingStop = null;
+      });
+    return this.pendingStop;
   }
 
   /**
@@ -573,8 +583,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   async updateData(): Promise<void> {
-    await this.stopReadJobs();
-
+    const generation = ++this.loadGeneration;
+    const isCurrent = (): boolean => !this.destroyed && generation === this.loadGeneration;
     const item = this.currentItem();
     this.fileViewerService.setActiveFileName(item ? item.Name : null);
 
@@ -602,9 +612,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.resetZoom();
 
     try {
+      await this.stopReadJobs();
+      if (!isCurrent()) return;
+      if (!item) {
+        this.isLoading.set(false);
+        return;
+      }
       const url = this.data.isDirectUrl
         ? this.data.url
         : await this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal);
+      if (!isCurrent()) return;
       const type = this.fileCategory();
 
       this.currentFileType.set(type);
@@ -643,6 +660,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       await this.updateContent();
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('Failed to update data:', err);
       this.isLoading.set(false);
     }
@@ -650,6 +668,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   async updateContent(): Promise<void> {
     if (this.data.isDirectUrl) return;
+    const generation = this.loadGeneration;
+    const isCurrent = (): boolean => !this.destroyed && generation === this.loadGeneration;
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
@@ -664,14 +684,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             'filemanager',
             this.readJobGroup
           );
-          this.folderSize.set(size);
+          if (isCurrent()) this.folderSize.set(size);
         } catch (err) {
+          if (!isCurrent()) return;
           console.error('Failed to get folder size:', err);
           this.notificationService.showError(
             this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
           );
         } finally {
-          this.isLoading.set(false);
+          if (isCurrent()) this.isLoading.set(false);
         }
         return;
       }
@@ -743,13 +764,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
               this.data.remoteName,
               this.data.isLocal
             );
-            if (this.isStillViewing(targetPath)) {
+            if (this.isStillViewing(targetPath, generation)) {
               this.coverImage.set(cover);
             }
           } catch (err) {
             console.warn('Failed to extract audio cover:', err);
           } finally {
-            if (this.isStillViewing(targetPath)) {
+            if (this.isStillViewing(targetPath, generation)) {
               this.isLoadingCover.set(false);
             }
           }
@@ -764,7 +785,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         try {
           const res = await this.remoteOps.archiveList(source, true); // Use long format for more info
-          if (!this.isStillViewing(targetPath)) return;
+          if (!this.isStillViewing(targetPath, generation)) return;
           if (res?.success) {
             this.parsedArchiveItems.set(res.items);
             this.archiveError.set(null);
@@ -773,27 +794,27 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             this.parsedArchiveItems.set([]);
           }
         } catch (err) {
-          if (!this.isStillViewing(targetPath)) return;
+          if (!this.isStillViewing(targetPath, generation)) return;
           console.error('Failed to list archive:', err);
           this.archiveError.set(err instanceof Error ? err.message : String(err));
           this.parsedArchiveItems.set([]);
         } finally {
-          if (this.isStillViewing(targetPath)) {
+          if (this.isStillViewing(targetPath, generation)) {
             this.isLoading.set(false);
           }
         }
         return;
       }
+      if (!isCurrent()) return;
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
       if (mediaTypes.includes(this.currentFileType())) {
         this.currentUrl.set(this.rawUrl());
       }
       if (!['image', 'video', 'audio'].includes(this.currentFileType())) {
         this.isLoading.set(false);
-      } else if (this.currentFileType() === 'video' && this.isMobile()) {
-        this.isLoading.set(false);
       }
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('Error updating content:', error);
       this.notificationService.showError(
         this.translate.instant('fileBrowser.fileViewer.errorUnexpected')
@@ -986,8 +1007,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /** Checks whether the viewer is still showing the file at the given path (stale-navigation guard). */
-  private isStillViewing(targetPath: string): boolean {
-    return this.currentItem()?.Path === targetPath;
+  private isStillViewing(targetPath: string, generation: number): boolean {
+    return (
+      !this.destroyed &&
+      generation === this.loadGeneration &&
+      this.currentItem()?.Path === targetPath
+    );
   }
 
   /** Builds the full rclone source path for archive operations. */
