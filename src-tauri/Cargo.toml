@@ -1,3 +1,7 @@
+[workspace]
+resolver = "2"
+members = [".", "rman-file-provider"]
+
 [package]
 name = "rclone-manager"
 version = "0.3.3"
@@ -81,14 +85,22 @@ notify = "8"
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", features = ["std"] }
+objc2-foundation = { version = "0.3", features = [
+    "NSArray", "NSData", "NSDate", "NSDictionary", "NSError", "NSFileManager",
+    "NSEnumerator", "NSObject", "NSProgress", "NSString", "NSURL", "NSValue",
+    "NSRunLoop", "NSProcessInfo"
+] }
+objc2-file-provider = { version = "0.3", features = [
+    "Extension", "NSFileProviderDomain", "NSFileProviderEnumerating"
+] }
+block2 = "0.6"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "5", optional = true }
 futures-lite = { version = "2", optional = true }
 notify-rust = { version = "4", optional = true }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = { version = "0.6", optional = true }
-objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"], optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = "0.1"
@@ -127,8 +139,6 @@ desktop = [
     "dep:zbus",
     "dep:futures-lite",
     "dep:notify-rust",
-    "dep:objc2",
-    "dep:objc2-foundation",
 ]
 tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
 default = ["desktop", "tray"]

@@ -396,6 +396,9 @@ fn setup_app(
     #[cfg(all(desktop, feature = "tray"))]
     app.manage(crate::core::tray::TrayMenuState::default());
 
+    #[cfg(target_os = "macos")]
+    app.manage(crate::rclone::commands::apple_file::AppleFileState::default());
+
     let history_cache = AlertHistoryCache::new(10000);
     app.manage(history_cache);
 
