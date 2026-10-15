@@ -1119,33 +1119,13 @@
     "title": "刪除空源目錄",
     "help": "移動操作後刪除空的源目錄。"
   },
-  "dryRun": {
-    "title": "模擬執行",
-    "help": "執行模擬執行。"
-  },
   "resync": {
     "title": "重新同步",
     "help": "執行重新同步操作。"
   },
-  "checkAccess": {
-    "title": "存取檢查",
-    "help": "若未在兩端檔案系統找到RCLONE_TEST檔案則終止操作。"
-  },
-  "checkFilename": {
-    "title": "檢查檔案名",
-    "help": "--check-access使用的檔案名。"
-  },
-  "maxDelete": {
-    "title": "最大刪除比例",
-    "help": "若刪除檔案的比例超過此閾值則終止同步。"
-  },
   "force": {
     "title": "強制執行",
     "help": "繞過--max-delete安全檢查並執行同步。"
-  },
-  "checkSync": {
-    "title": "同步校驗",
-    "help": "控制最終列表的對比方式。"
   },
   "remove_empty_dirs": {
     "title": "移除空目錄",
@@ -1163,10 +1143,6 @@
     "title": "彈性模式",
     "help": "允許後續執行重試某些非嚴重錯誤。"
   },
-  "work_dir": {
-    "title": "工作目錄",
-    "help": "存放歷史檔案的伺服器目錄。"
-  },
   "backup_dir1": {
     "title": "備份目錄1",
     "help": "Path1對應的--backup-dir引數。"
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "VFS 控制程式碼快取",
     "help": "最後一次關閉後，保持檔案控制程式碼和下載器活躍的時間"
-  },
-  "mountType": {
-    "title": "掛載型別",
-    "help": "要使用的掛載型別。"
   },
   "type": {
     "title": "服務型別",

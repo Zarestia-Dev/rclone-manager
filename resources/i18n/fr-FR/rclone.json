@@ -1119,33 +1119,13 @@
     "title": "Supprimer les répertoires source vides",
     "help": "Supprimer les répertoires source vides après déplacement."
   },
-  "dryRun": {
-    "title": "Simulation",
-    "help": "Effectuer une simulation."
-  },
   "resync": {
     "title": "Resynchronisation",
     "help": "Effectuer la resynchronisation."
   },
-  "checkAccess": {
-    "title": "Vérifier l'accès",
-    "help": "Abandonner si les fichiers RCLONE_TEST sont introuvables sur les deux systèmes de fichiers"
-  },
-  "checkFilename": {
-    "title": "Nom de fichier de vérification",
-    "help": "Nom de fichier pour --check-access"
-  },
-  "maxDelete": {
-    "title": "Limite de suppressions (bisync)",
-    "help": "Abandonner la synchronisation si le pourcentage de fichiers supprimés dépasse ce seuil"
-  },
   "force": {
     "title": "Forcer",
     "help": "Contourner la vérification de sécurité --max-delete et exécuter la synchronisation"
-  },
-  "checkSync": {
-    "title": "Vérifier la synchronisation",
-    "help": "Contrôle la comparaison des listages finaux."
   },
   "remove_empty_dirs": {
     "title": "Supprimer les répertoires vides",
@@ -1163,10 +1143,6 @@
     "title": "Résilient",
     "help": "Autoriser les futures exécutions à réessayer après certaines erreurs moins graves."
   },
-  "work_dir": {
-    "title": "Répertoire de travail",
-    "help": "Répertoire serveur pour les fichiers d'historique."
-  },
   "backup_dir1": {
     "title": "Répertoire de sauvegarde 1",
     "help": "--backup-dir pour Path1"
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "Mise en cache des descripteurs VFS",
     "help": "Durée de conservation du descripteur de fichier et des téléchargeurs après la dernière fermeture"
-  },
-  "mountType": {
-    "title": "Type de montage",
-    "help": "Type de montage à utiliser."
   },
   "type": {
     "title": "Type de partage",

@@ -1119,33 +1119,13 @@
     "title": "Boş Kaynak Dizinleri Sil",
     "help": "Taşıma sonrası boş kaynak dizinleri sil."
   },
-  "dryRun": {
-    "title": "Deneme Çalıştırması",
-    "help": "Kalıcı değişiklikler olmadan deneme çalıştırması yap."
-  },
   "resync": {
     "title": "Yeniden Senkronizasyon",
     "help": "Yeniden senkronizasyon çalıştırmasını gerçekleştirir."
   },
-  "checkAccess": {
-    "title": "Erişim Kontrolü",
-    "help": "RCLONE_TEST dosyaları her iki dosya sisteminde de bulunamazsa iptal et."
-  },
-  "checkFilename": {
-    "title": "Kontrol Dosya Adı",
-    "help": "--check-access için dosya adı."
-  },
-  "maxDelete": {
-    "title": "Maksimum Silme",
-    "help": "Silinen dosya yüzdesi bu eşiğin üzerindeyse senkronizasyonu iptal et."
-  },
   "force": {
     "title": "Zorla",
     "help": "--max-delete güvenlik kontrolünü atla ve senkronizasyonu çalıştır."
-  },
-  "checkSync": {
-    "title": "Senkronizasyon Kontrolü",
-    "help": "Son listelemelerin karşılaştırılmasını kontrol eder."
   },
   "remove_empty_dirs": {
     "title": "Boş Dizinleri Kaldır",
@@ -1163,10 +1143,6 @@
     "title": "Esnek (Resilient)",
     "help": "Belirli daha az ciddi hatalardan sonra gelecekteki çalıştırmaların yeniden denenmesine izin ver."
   },
-  "work_dir": {
-    "title": "Çalışma Dizini",
-    "help": "Geçmiş dosyaları için sunucu dizini."
-  },
   "backup_dir1": {
     "title": "Yedek Dizini 1",
     "help": "Yol1 için --backup-dir."
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "VFS Tanımlayıcı Önbelleğe Alma",
     "help": "Son kapatmadan sonra dosya tanımlayıcısını ve indiricileri aktif tutma süresi"
-  },
-  "mountType": {
-    "title": "Bağlama Türü",
-    "help": "Kullanılacak bağlama türü."
   },
   "type": {
     "title": "Sunma Türü",

@@ -1119,33 +1119,13 @@
     "title": "删除空源目录",
     "help": "移动操作后删除空的源目录。"
   },
-  "dryRun": {
-    "title": "模拟运行",
-    "help": "执行模拟运行。"
-  },
   "resync": {
     "title": "重新同步",
     "help": "执行重新同步操作。"
   },
-  "checkAccess": {
-    "title": "访问检查",
-    "help": "若未在两端文件系统找到RCLONE_TEST文件则终止操作。"
-  },
-  "checkFilename": {
-    "title": "检查文件名",
-    "help": "--check-access使用的文件名。"
-  },
-  "maxDelete": {
-    "title": "最大删除比例",
-    "help": "若删除文件的比例超过此阈值则终止同步。"
-  },
   "force": {
     "title": "强制执行",
     "help": "绕过--max-delete安全检查并执行同步。"
-  },
-  "checkSync": {
-    "title": "同步校验",
-    "help": "控制最终列表的对比方式。"
   },
   "remove_empty_dirs": {
     "title": "移除空目录",
@@ -1163,10 +1143,6 @@
     "title": "弹性模式",
     "help": "允许后续运行重试某些非严重错误。"
   },
-  "work_dir": {
-    "title": "工作目录",
-    "help": "存放历史文件的服务器目录。"
-  },
   "backup_dir1": {
     "title": "备份目录1",
     "help": "Path1对应的--backup-dir参数。"
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "VFS 句柄缓存",
     "help": "最后一次关闭后，保持文件句柄和下载器活跃的时间"
-  },
-  "mountType": {
-    "title": "挂载类型",
-    "help": "要使用的挂载类型。"
   },
   "type": {
     "title": "服务类型",

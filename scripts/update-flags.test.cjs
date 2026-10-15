@@ -50,6 +50,29 @@ test('options/info parsing skips malformed entries and supplies missing help', (
   );
 });
 
+function completeFlagSchema() {
+  return Object.fromEntries(
+    ['main', 'filter', 'log', 'rc', 'vfs'].map(block => [
+      block,
+      [{ Name: `${block}_option`, Help: `${block} help` }],
+    ])
+  );
+}
+
+test('prune requires the complete global schema and rejects malformed option blocks', () => {
+  const valid = completeFlagSchema();
+  assert.ok(parseFlags(JSON.stringify(valid), true));
+  for (const invalid of [
+    {},
+    { main: valid.main },
+    { ...valid, vfs: [] },
+    { ...valid, mount: null },
+    { ...valid, mount: [{ Name: '' }] },
+  ]) {
+    assert.equal(parseFlags(JSON.stringify(invalid), true), null);
+  }
+});
+
 test('static parsing handles nested examples, mixed quotes, escapes, and multiline text', () => {
   const source = `
     const unrelated = { Name: 'ignoreMe', Help: 'Not a static flag' };
@@ -110,6 +133,20 @@ test('actual static flags with nested examples and apostrophes are extracted', (
   assert.ok(flags.one_way.help.includes("don't"));
   assert.ok(flags.conflict_suffix.help.endsWith("(default: 'conflict')"));
   assert.ok(Object.keys(flags).every(key => key === normalizeFlagName(key)));
+  assert.deepEqual(getStaticFlags(true), flags);
+});
+
+test('prune rejects partial static parsing instead of deleting unparsed definitions', () => {
+  for (const source of [
+    "const staticFlagDefinitions = { check: [{ Name: 'oneWay', Help: getHelp() }] };",
+    "const staticFlagDefinitions = { check: [{ 'Name': getName(), Help: 'Help' }] };",
+    "const staticFlagDefinitions = { check: [{ Name: 'oneWay', Help: 'Help' }], ...other };",
+    "const staticFlagDefinitions = { check: [{ Name: 'oneWay', Help: 'Help' }, ...other] };",
+    "const staticFlagDefinitions = { check: [{ Name: 'oneWay', Help: 'Help' }], copy: other };",
+    "const staticFlagDefinitions = { check: [{ Name: 'oneWay', Help: 'Help' }]",
+  ]) {
+    assert.equal(parseStaticFlags(source, true), null, source);
+  }
 });
 
 function fixture(t, tree) {
@@ -163,6 +200,15 @@ test('default sync retains older flags for compatibility', t => {
   const file = fixture(t, tree);
   updateFile(file, {});
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), tree);
+});
+
+test('dry run leaves bytes unchanged when sync would add and prune entries', t => {
+  const file = fixture(t, { obsolete: { title: 'Eski', help: 'Eski açıklama' } });
+  const before = fs.readFileSync(file, 'utf8');
+  const mtime = fs.statSync(file).mtimeMs;
+  updateFile(file, { added: { title: 'Added', help: 'New help' } }, true, false, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  assert.equal(fs.statSync(file).mtimeMs, mtime);
 });
 
 test('invalid JSON files are left untouched', t => {

@@ -1119,33 +1119,13 @@
     "title": "Deletar Diretórios de Origem Vazias",
     "help": "Excluir diretórios vazios após mover."
   },
-  "dryRun": {
-    "title": "Teste de Simulação (Dry Run)",
-    "help": "Realizar um teste de simulação (dry-run)."
-  },
   "resync": {
     "title": "Ressincronizar",
     "help": "Executa a ressincronização."
   },
-  "checkAccess": {
-    "title": "Verificar o Acesso",
-    "help": "Abra se os arquivos RCLONE_TEST não forem encontrados em ambos os sistemas de arquivo."
-  },
-  "checkFilename": {
-    "title": "Verificar Nome do Arquivo",
-    "help": "Nome do arquivo para --check-acessos."
-  },
-  "maxDelete": {
-    "title": "Máximo de Exclusões",
-    "help": "Abortar sincronização se o percentual de arquivos excluídos for acima deste limiar."
-  },
   "force": {
     "title": "Forçar",
     "help": "Ignorar a verificação de segurança --max-delete e executar a sincronização."
-  },
-  "checkSync": {
-    "title": "Verificar Sincronismo",
-    "help": "Controle da comparação das listagens finais."
   },
   "remove_empty_dirs": {
     "title": "Remover Diretórios Vazios",
@@ -1163,10 +1143,6 @@
     "title": "Resistente",
     "help": "Permitir que os futuros executores tentem novamente após certos erros menos graves."
   },
-  "work_dir": {
-    "title": "Diretório de Trabalho",
-    "help": "Diretório do servidor para arquivos de histórico."
-  },
   "backup_dir1": {
     "title": "Diretório de Backup 1",
     "help": "--backup-dir para Path1."
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "Cache de Manipulador do VFS",
     "help": "Tempo para manter o endereço de arquivo e os downloads vivos após o último fechamento"
-  },
-  "mountType": {
-    "title": "Tipo de Montagem",
-    "help": "Tipo de montagem a usar."
   },
   "type": {
     "title": "Tipo de Serviço",

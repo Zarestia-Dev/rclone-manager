@@ -256,11 +256,16 @@ Instead of manually fetching and editing definitions, use the built-in sync scri
    Newly added keys in non-English translation files will be tagged with `"TODO": "NEEDS_TRANSLATION"`. Translate the `title` and `help` values into the target language and remove the `"TODO"` marker.
 
 5. **Pruning Obsolete Keys (Optional)**:
-   To remove flags or provider options that have been deprecated/removed in newer rclone versions, pass `--prune`:
+   `--prune` removes keys absent from the selected rclone schema and the app's static flag definitions. Runtime mount/serve type translations are retained. Absence from one version or platform does not prove a key is obsolete for every supported build.
+
+   Preview the exact removal candidates first. `--dry-run` does not write files:
+
    ```bash
-   npm run sync:flags -- --prune
-   npm run sync:providers -- --prune
+   npm run sync:flags -- --loopback --prune --dry-run
+   npm run sync:providers -- --loopback --prune --dry-run
    ```
+
+   After reviewing the candidates against the versions and platforms you support, omit `--dry-run` to apply the changes. Pruning rejects malformed responses and schemas missing core blocks or providers; these checks cannot detect every possible partial schema.
 
 ---
 

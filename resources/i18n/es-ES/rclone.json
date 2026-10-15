@@ -1119,33 +1119,13 @@
     "title": "Eliminar directorios de origen vacíos",
     "help": "Eliminar directorios de origen vacíos después de mover."
   },
-  "dryRun": {
-    "title": "Simulacro",
-    "help": "Realizar un simulacro."
-  },
   "resync": {
     "title": "Resincronizar",
     "help": "Realiza la resincronización."
   },
-  "checkAccess": {
-    "title": "Comprobar acceso",
-    "help": "Cancelar si no se encuentran los archivos RCLONE_TEST en ambos sistemas de archivos."
-  },
-  "checkFilename": {
-    "title": "Comprobar nombre de archivo",
-    "help": "Nombre de archivo para --check-access."
-  },
-  "maxDelete": {
-    "title": "Eliminación máxima",
-    "help": "Cancelar la sincronización si el porcentaje de archivos eliminados supera este umbral."
-  },
   "force": {
     "title": "Forzar",
     "help": "Omitir la comprobación de seguridad de --max-delete y ejecutar la sincronización."
-  },
-  "checkSync": {
-    "title": "Comprobar sincronización",
-    "help": "Controla la comparación de los listados finales."
   },
   "remove_empty_dirs": {
     "title": "Eliminar directorios vacíos",
@@ -1163,10 +1143,6 @@
     "title": "Resiliente",
     "help": "Permitir que las ejecuciones futuras se reintenten después de ciertos errores menos graves."
   },
-  "work_dir": {
-    "title": "Directorio de trabajo",
-    "help": "Directorio del servidor para historial de archivos."
-  },
   "backup_dir1": {
     "title": "Directorio de respaldo 1",
     "help": "Ruta 1: --backup-dir"
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "Caché de manejadores VFS",
     "help": "Tiempo para mantener activos el manejador de archivos y los descargadores después del último cierre"
-  },
-  "mountType": {
-    "title": "Tipo de montaje",
-    "help": "Tipo de montaje a utilizar."
   },
   "type": {
     "title": "Tipo de servidor",

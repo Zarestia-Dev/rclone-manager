@@ -11,7 +11,7 @@ const I18N_DIR = path.join(PROJECT_ROOT, 'resources', 'i18n');
 /**
  * Fetch flags from rclone rc options/info.
  */
-function getFlags(url, loopback = false) {
+function getFlags(url, loopback = false, prune = false) {
   console.log(`Fetching flags from ${loopback ? 'local rclone (--loopback)' : url}...`);
   try {
     const connectionArgs = loopback ? ['--loopback'] : ['--rc-no-auth', '--url', url];
@@ -25,7 +25,7 @@ function getFlags(url, loopback = false) {
       return null;
     }
 
-    return parseFlags(result.stdout);
+    return parseFlags(result.stdout, prune);
   } catch (e) {
     if (e.code === 'ENOENT') {
       console.error('rclone command not found. Please verify it is installed and in your PATH.');
@@ -39,7 +39,7 @@ function getFlags(url, loopback = false) {
 /**
  * Parses 'rclone rc options/info' output (JSON).
  */
-function parseFlags(output) {
+function parseFlags(output, prune = false) {
   let data;
   try {
     data = JSON.parse(output);
@@ -50,6 +50,23 @@ function parseFlags(output) {
 
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid options/info response: expected an object of option blocks.');
+    return null;
+  }
+
+  // These global blocks are present in supported rclone builds, regardless of OS.
+  // A filtered or incomplete schema is unsuitable for deciding which keys to delete.
+  if (
+    prune &&
+    (['main', 'filter', 'log', 'rc', 'vfs'].some(
+      block => !Array.isArray(data[block]) || data[block].length === 0
+    ) ||
+      Object.values(data).some(
+        options =>
+          !Array.isArray(options) ||
+          options.some(option => !option || typeof option.Name !== 'string' || !option.Name.trim())
+      ))
+  ) {
+    console.error('Refusing to prune from an incomplete or malformed options/info schema.');
     return null;
   }
 
@@ -73,7 +90,7 @@ function parseFlags(output) {
 }
 
 /**
- * Simple title case helper.
+ * Normalize names to the same keys used by the frontend translation pipe.
  */
 function normalizeFlagName(s) {
   // Match RcloneOptionTranslatePipe so static camelCase flags use existing translations.
@@ -93,7 +110,7 @@ function titleCase(s) {
 /**
  * Updates a single rclone.json file.
  */
-function updateFile(filePath, flagsData, prune = false, isEnglish = false) {
+function updateFile(filePath, flagsData, prune = false, isEnglish = false, dryRun = false) {
   console.log(`Checking ${filePath}...`);
 
   let currentData;
@@ -127,13 +144,22 @@ function updateFile(filePath, flagsData, prune = false, isEnglish = false) {
         delete currentData[key];
         removedCount++;
       }
-      console.log(`  [PRUNE] Removed ${removedCount} unused keys`);
+      console.log(
+        `  [PRUNE] ${dryRun ? 'Would remove' : 'Removed'} ${removedCount} keys absent from this schema`
+      );
     } else {
-      console.warn(`  [WARN] Found ${unusedKeys.length} unused keys (use --prune to remove)`);
+      console.warn(
+        `  [WARN] Found ${unusedKeys.length} keys absent from this schema (use --prune to remove)`
+      );
     }
+    console.log(`  Keys absent from this schema: ${unusedKeys.join(', ')}`);
   }
 
   if (addedCount > 0 || removedCount > 0) {
+    if (dryRun) {
+      console.log(`  [DRY RUN] Would update ${filePath} (+${addedCount}, -${removedCount})`);
+      return;
+    }
     fs.writeFileSync(filePath, JSON.stringify(currentData, null, 2) + '\n', 'utf8');
     console.log(`  Updated ${filePath} (+${addedCount}, -${removedCount})`);
   } else {
@@ -144,7 +170,7 @@ function updateFile(filePath, flagsData, prune = false, isEnglish = false) {
 /**
  * Extract static flag definitions from flag-definitions.ts.
  */
-function getStaticFlags() {
+function getStaticFlags(prune = false) {
   const filePath = path.join(
     PROJECT_ROOT,
     'src',
@@ -157,17 +183,27 @@ function getStaticFlags() {
     console.warn(`Static flag definitions not found at ${filePath}`);
     return {};
   }
-  return parseStaticFlags(fs.readFileSync(filePath, 'utf8'));
+  return parseStaticFlags(fs.readFileSync(filePath, 'utf8'), prune);
 }
 
-function parseStaticFlags(content) {
+function parseStaticFlags(content, prune = false) {
   const source = ts.createSourceFile('flag-definitions.ts', content, ts.ScriptTarget.Latest, true);
   const staticFlags = {};
+  let incomplete = source.parseDiagnostics.length > 0;
 
   function visitOption(node) {
     if (ts.isObjectLiteralExpression(node)) {
       const fields = {};
+      let hasName = false;
       for (const property of node.properties) {
+        if (ts.isSpreadAssignment(property)) incomplete = true;
+        if (
+          ts.isPropertyAssignment(property) &&
+          (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+          property.name.text === 'Name'
+        ) {
+          hasName = true;
+        }
         if (
           ts.isPropertyAssignment(property) &&
           (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
@@ -175,6 +211,9 @@ function parseStaticFlags(content) {
         ) {
           fields[property.name.text] = property.initializer.text;
         }
+      }
+      if (hasName && (!fields.Name?.trim() || typeof fields.Help !== 'string')) {
+        incomplete = true;
       }
       if (fields.Name?.trim() && typeof fields.Help === 'string') {
         const key = normalizeFlagName(fields.Name);
@@ -192,6 +231,17 @@ function parseStaticFlags(content) {
       node.name.text === 'staticFlagDefinitions' &&
       node.initializer
     ) {
+      if (
+        !ts.isObjectLiteralExpression(node.initializer) ||
+        node.initializer.properties.some(
+          group =>
+            !ts.isPropertyAssignment(group) ||
+            !ts.isArrayLiteralExpression(group.initializer) ||
+            group.initializer.elements.some(option => !ts.isObjectLiteralExpression(option))
+        )
+      ) {
+        incomplete = true;
+      }
       visitOption(node.initializer);
       return;
     }
@@ -199,6 +249,10 @@ function parseStaticFlags(content) {
   }
 
   visitDeclaration(source);
+  if (prune && incomplete) {
+    console.error('Refusing to prune: static flag definitions could not be fully parsed.');
+    return null;
+  }
   return staticFlags;
 }
 
@@ -210,6 +264,7 @@ function main() {
   let url = DEFAULT_RCLONE_URL;
   const prune = args.includes('--prune');
   const loopback = args.includes('--loopback');
+  const dryRun = args.includes('--dry-run');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--url' && args[i + 1]) {
@@ -218,15 +273,15 @@ function main() {
     }
   }
 
-  const flags = getFlags(url, loopback);
+  const flags = getFlags(url, loopback, prune);
   if (!flags || Object.keys(flags).length === 0) {
     console.error('Could not fetch rclone flags. Translation files were not changed.');
     process.exitCode = 1;
     return;
   }
 
-  const staticFlags = getStaticFlags();
-  if (Object.keys(staticFlags).length === 0) {
+  const staticFlags = getStaticFlags(prune);
+  if (!staticFlags || Object.keys(staticFlags).length === 0) {
     console.error('Could not load static flag definitions. Translation files were not changed.');
     process.exitCode = 1;
     return;
@@ -250,7 +305,7 @@ function main() {
       const targetFile = path.join(langDir, 'rclone.json');
       if (fs.existsSync(targetFile)) {
         console.log(`Processing language: ${entry}`);
-        updateFile(targetFile, mergedFlags, prune, entry === 'en-US');
+        updateFile(targetFile, mergedFlags, prune, entry === 'en-US', dryRun);
       }
     }
   }
