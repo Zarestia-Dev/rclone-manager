@@ -188,6 +188,7 @@ pub(super) async fn upsert_remote_from_config(
         remote_name.to_string(),
         config_map.clone(),
         None,
+        None,
     )
     .await
     {
@@ -196,6 +197,7 @@ pub(super) async fn upsert_remote_from_config(
             app_handle.clone(),
             remote_name.to_string(),
             config_map,
+            None,
             None,
         )
         .await

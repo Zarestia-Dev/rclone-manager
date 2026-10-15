@@ -1,6 +1,10 @@
 import { RcConfigOption, OperationType, SharedProfileType, RCLONE_PATH_KEYS } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import { PathGroup } from '../../infrastructure/platform/path.service';
+import {
+  extractProfileSource,
+  extractProfileDest,
+} from '../../../shared/utils/profile-config.util';
 
 export interface PathMappingInfo {
   sourceKey: string;
@@ -42,6 +46,15 @@ const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
   'backendProfile',
   'runtimeRemoteProfile',
   'name',
+  'url',
+  'filenames',
+  'autoFilename',
+  'vfs',
+  'filter',
+  'backend',
+  'remotes',
+  'runtimeRemote',
+  ...Object.keys(OPERATION_PATH_MAPPINGS),
 ]);
 
 const MOUNT_TYPE_KEY = 'mountType';
@@ -78,13 +91,11 @@ export interface FormToConfigContext {
     buildPathStrings(p: PathGroup | PathGroup[] | null | undefined, remoteName: string): string[];
     joinPath(...segments: string[]): string;
   };
-  runtimeRemoteProfileNames?: string[];
   cleanData?: (
     options: Record<string, unknown>,
     fields: RcConfigOption[]
   ) => Record<string, unknown>;
   dynamicFields?: RcConfigOption[];
-  flatOptionNames?: Set<string>;
 }
 
 function buildAppConfig(formData: Record<string, unknown>): Record<string, unknown> {
@@ -103,8 +114,7 @@ function buildAppConfig(formData: Record<string, unknown>): Record<string, unkno
 
   if ('runtimeRemoteProfile' in formData) {
     const selectedProfile = String(formData['runtimeRemoteProfile'] || '').trim();
-    app['runtimeRemoteProfile'] =
-      selectedProfile && selectedProfile !== 'Default' ? selectedProfile : undefined;
+    app['runtimeRemoteProfile'] = selectedProfile || undefined;
   }
 
   return app;
@@ -294,7 +304,7 @@ function mapSourceToForm(
   mapping: PathMappingInfo,
   ctx: ConfigToFormContext
 ): Record<string, unknown> {
-  const sourceVal = rcloneConfig[mapping.sourceKey];
+  const sourceVal = rcloneConfig[mapping.sourceKey] ?? extractProfileSource(rcloneConfig);
   const configSources = (
     Array.isArray(sourceVal) ? sourceVal : sourceVal ? [sourceVal] : []
   ) as string[];
@@ -317,10 +327,6 @@ function mapSourceToForm(
     ctx.remoteName,
     ctx.existingRemotes
   );
-  if (type === 'mount' || type === 'serve') {
-    parsedSrc.type = 'currentRemote';
-    parsedSrc.remote = '';
-  }
   return { source: parsedSrc };
 }
 
@@ -331,7 +337,7 @@ function mapDestToForm(
   ctx: ConfigToFormContext
 ): Record<string, unknown> {
   if (!mapping.destKey) return {};
-  const destVal = rcloneConfig[mapping.destKey] ?? '';
+  const destVal = rcloneConfig[mapping.destKey] ?? extractProfileDest(rcloneConfig) ?? '';
   const parsedDst = ctx.pathService.parseFsString(
     destVal as string,
     'local',
@@ -371,7 +377,12 @@ export function mapConfigToFormProfile(
   ctx: ConfigToFormContext
 ): Record<string, unknown> {
   const appConfig = (config['app'] as Record<string, unknown>) || config;
-  const rcloneConfig = (config['rclone'] as Record<string, unknown>) || config;
+  const rawRclone = (config['rclone'] as Record<string, unknown>) || config;
+  const nested = rawRclone[type];
+  const rcloneConfig = {
+    ...(nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : {}),
+    ...rawRclone,
+  };
 
   const result: Record<string, unknown> = buildAppConfigResult(appConfig);
 

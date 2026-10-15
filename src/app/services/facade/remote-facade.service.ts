@@ -262,8 +262,7 @@ export class RemoteFacadeService {
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
     try {
-      const updated = { ...this.getRemoteSettings(remoteName), ...updates };
-      await this.appSettingsService.saveRemoteSettings(remoteName, updated);
+      await this.appSettingsService.saveRemoteSettings(remoteName, updates);
       this.notificationService.showSuccess(
         this.translate.instant('settings.remoteSaved', { remote: remoteName })
       );
@@ -724,8 +723,9 @@ export class RemoteFacadeService {
   }
 
   async deleteRemote(remoteName: string): Promise<void> {
+    const backendName = this.backendService.activeBackend();
     await this.executeAction(remoteName, 'delete', async () => {
-      await this.remoteService.deleteRemote(remoteName);
+      await this.remoteService.deleteRemote(remoteName, backendName);
       await this.refreshAll();
       this.notificationService.showSuccess(
         this.translate.instant('backendSuccess.remote.deleted', { name: remoteName })

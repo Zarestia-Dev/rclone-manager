@@ -42,6 +42,9 @@ export class PathInspectionService {
     const { root, relative } = this.pathService.splitLocalForStat(path);
     try {
       const statRes = await this.remoteFileOps.getStat(root, relative);
+      if (!statRes || !Object.prototype.hasOwnProperty.call(statRes, 'item')) {
+        throw new Error('Invalid path stat response');
+      }
       if (!statRes?.item) {
         return {
           state: 'willCreate',
@@ -51,8 +54,11 @@ export class PathInspectionService {
         };
       }
 
-      const sizeRes = await this.remoteFileOps.getSize(root, relative).catch(() => null);
-      if (sizeRes && sizeRes.count > 0) {
+      const sizeRes = await this.remoteFileOps.getSize(root, relative);
+      if (!sizeRes || !Number.isFinite(sizeRes.count) || sizeRes.count < 0) {
+        throw new Error('Invalid directory size response');
+      }
+      if (sizeRes.count > 0) {
         return {
           state: 'nonEmpty',
           icon: 'folder-open',
@@ -69,10 +75,10 @@ export class PathInspectionService {
       };
     } catch {
       return {
-        state: 'willCreate',
-        icon: 'folder-plus',
-        badgeClass: 'will-create',
-        labelKey: 'remoteConfig.pathStatus.willCreate',
+        state: 'unavailable',
+        icon: 'warning',
+        badgeClass: 'non-empty',
+        labelKey: 'common.error',
       };
     }
   }
@@ -125,24 +131,15 @@ export class PathInspectionService {
       const candidate = `${path}${suffix}`;
       const candidateRel = `${relative}${suffix}`;
 
-      try {
-        const stat = await this.remoteFileOps.getStat(root, candidateRel);
-        if (!stat?.item) {
-          return candidate;
-        }
-        try {
-          const size = await this.remoteFileOps.getSize(root, candidateRel);
-          if (!size || size.count === 0) {
-            return candidate;
-          }
-        } catch {
-          return candidate;
-        }
-      } catch {
-        return candidate;
+      const stat = await this.remoteFileOps.getStat(root, candidateRel);
+      if (!stat || !Object.prototype.hasOwnProperty.call(stat, 'item')) {
+        throw new Error('Invalid path stat response');
       }
+      if (!stat?.item) return candidate;
+      const size = await this.remoteFileOps.getSize(root, candidateRel);
+      if (size && size.count === 0) return candidate;
     }
-    return path;
+    throw new Error(JSON.stringify({ key: 'backendErrors.mount.directoryNotEmpty' }));
   }
 
   isTrulyLocalPath(
@@ -152,7 +149,11 @@ export class PathInspectionService {
     return this.pathService.isTrulyLocalPath(path, pathStyle);
   }
 
-  async createLocalDirectory(path: string, parentOnly = false): Promise<void> {
+  async createLocalDirectory(
+    path: string,
+    parentOnly = false,
+    backendName?: string
+  ): Promise<void> {
     if (!path) return;
     let targetPath = path;
     if (parentOnly) {
@@ -160,14 +161,13 @@ export class PathInspectionService {
       if (!targetPath) return;
     }
     const { root, relative } = this.pathService.splitLocalForStat(targetPath);
-    try {
-      await this.remoteFileOps.makeDirectory(root, relative);
-    } catch (err) {
-      console.error(`[PathInspectionService] Failed to create directory: ${targetPath}`, err);
-    }
+    await this.remoteFileOps.makeDirectory(root, relative, undefined, undefined, backendName);
   }
 
-  async createRequiredDirectories(settings: Record<string, unknown>): Promise<void> {
+  async createRequiredDirectories(
+    settings: Record<string, unknown>,
+    backendName?: string
+  ): Promise<void> {
     const pathStyle = this.pathService.enginePathStyle();
 
     // 1. Handle Mount Configs
@@ -182,7 +182,7 @@ export class PathInspectionService {
         typeof mountPoint === 'string' &&
         this.isTrulyLocalPath(mountPoint, pathStyle)
       ) {
-        await this.createLocalDirectory(mountPoint, pathStyle === 'windows');
+        await this.createLocalDirectory(mountPoint, pathStyle === 'windows', backendName);
       }
     }
 
@@ -197,10 +197,10 @@ export class PathInspectionService {
       const path2 = config?.rclone?.path2 || config?.path2;
 
       if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
-        await this.createLocalDirectory(path1, false);
+        await this.createLocalDirectory(path1, false, backendName);
       }
       if (path2 && typeof path2 === 'string' && this.isTrulyLocalPath(path2, pathStyle)) {
-        await this.createLocalDirectory(path2, false);
+        await this.createLocalDirectory(path2, false, backendName);
       }
     }
   }

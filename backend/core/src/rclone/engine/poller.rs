@@ -11,7 +11,7 @@ use crate::rclone::endpoints::job;
 use crate::rclone::endpoints::serve;
 use crate::rclone::queries::parse_serves_response;
 use crate::rclone::{
-    backend::{BackendError, BackendManager},
+    backend::{BackendError, BackendManager, routing_transport::RoutingTransport, types::Backend},
     engine::lifecycle::{get_engine_status, start_engine_if_not_running},
 };
 use crate::utils::types::events::SYSTEM_STATUS;
@@ -36,7 +36,12 @@ pub async fn get_system_status_snapshot(
         return Ok(SystemStatusPayload::inactive());
     }
 
-    match perform_batch_poll(&app_handle).await {
+    let backend = app_handle.state::<BackendManager>().get_active().await;
+    let result = perform_batch_poll(&app_handle, &backend).await;
+    if app_handle.state::<BackendManager>().get_active_name().await != backend.name {
+        return Ok(SystemStatusPayload::inactive());
+    }
+    match result {
         Ok(payload) => Ok(payload),
         Err(e) => {
             warn!("Failed to fetch system status snapshot: {e}");
@@ -115,7 +120,15 @@ pub fn start_system_poller(app_handle: AppHandle) {
             }
             prev_visible = is_visible;
 
-            match perform_batch_poll(&app_handle).await {
+            let backend = app_handle.state::<BackendManager>().get_active().await;
+            let result = perform_batch_poll(&app_handle, &backend).await;
+            let manager = app_handle.state::<BackendManager>();
+            let selection_guard = manager.switch_lock.lock().await;
+            if manager.get_active_name().await != backend.name {
+                burst_ticks = BURST_TICK_COUNT;
+                continue;
+            }
+            match result {
                 Ok(payload) => {
                     has_active_jobs = payload.has_active_jobs;
                     if burst_ticks > 0 {
@@ -136,6 +149,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                     crate::services::bridge::emit(SYSTEM_STATUS, SystemStatusPayload::error());
                 }
             }
+            drop(selection_guard);
 
             if burst_ticks == 0 && !has_active_jobs {
                 let delay = if is_visible {
@@ -186,9 +200,13 @@ fn get_batch_result<'a>(
     Some(result_obj)
 }
 
-async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, BackendError> {
+async fn perform_batch_poll(
+    app: &AppHandle,
+    backend: &Backend,
+) -> Result<SystemStatusPayload, BackendError> {
     let backend_manager = app.state::<BackendManager>();
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
+    let cache = backend_manager.remote_cache_for(&backend.name);
 
     #[cfg(not(target_os = "android"))]
     let batch_payload = json!({
@@ -249,15 +267,14 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Back
 
     #[cfg(not(target_os = "android"))]
     if let Some(mount_result) = mount_result {
-        update_mount_cache(app, mount_result).await;
+        update_mount_cache(&cache, mount_result).await;
     }
 
     if let Some(serve_result) = serve_result {
-        update_serve_cache(app, serve_result).await;
+        update_serve_cache(&cache, serve_result).await;
     }
 
-    let active_name = backend_manager.get_active_name().await;
-    let runtime = backend_manager.get_runtime_info(&active_name).await;
+    let runtime = backend_manager.get_runtime_info(&backend.name).await;
 
     Ok(SystemStatusPayload {
         rclone_info: runtime.as_ref().and_then(|r| r.core_version.clone()),
@@ -265,12 +282,18 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Back
         stats,
         memory,
         status: SystemStatus::Active,
-        has_active_jobs: backend_manager.job_cache.has_running_jobs().await,
+        has_active_jobs: backend_manager
+            .job_cache_for(&backend.name)
+            .has_running_jobs()
+            .await,
     })
 }
 
 #[cfg(not(target_os = "android"))]
-async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
+async fn update_mount_cache(
+    cache: &crate::utils::types::remotes::RemoteCache,
+    result: &serde_json::Value,
+) {
     let mounts: Vec<crate::utils::types::remotes::MountedRemote> = result["mountPoints"]
         .as_array()
         .map_or_else(Vec::new, |arr| {
@@ -284,18 +307,15 @@ async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
                 .collect()
         });
 
-    app.state::<BackendManager>()
-        .remote_cache
-        .update_mounts_if_changed(mounts)
-        .await;
+    cache.update_mounts_if_changed(mounts).await;
 }
 
-async fn update_serve_cache(app: &AppHandle, result: &serde_json::Value) {
+async fn update_serve_cache(
+    cache: &crate::utils::types::remotes::RemoteCache,
+    result: &serde_json::Value,
+) {
     let serves = parse_serves_response(result);
-    app.state::<BackendManager>()
-        .remote_cache
-        .update_serves_if_changed(serves)
-        .await;
+    cache.update_serves_if_changed(serves).await;
 }
 
 #[cfg(test)]

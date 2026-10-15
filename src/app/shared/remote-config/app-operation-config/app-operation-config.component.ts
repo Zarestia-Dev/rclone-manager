@@ -213,15 +213,11 @@ export class OperationConfigComponent {
   }
 
   readonly showAutoStart = computed(
-    () =>
-      this.showAutomations() &&
-      !this.isNewRemote() &&
-      this.matchesSearch(['auto', 'start', 'enable'])
+    () => this.showAutomations() && this.matchesSearch(['auto', 'start', 'enable'])
   );
   readonly showCronSection = computed(
     () =>
       this.showAutomations() &&
-      !this.isNewRemote() &&
       this.matchesSearch([
         'cron',
         'schedule',
@@ -579,10 +575,10 @@ export class OperationConfigComponent {
         .catch(() => {
           if (this.inspectionTokens.get(itemKey) === token) {
             statusSignal.set({
-              state: 'willCreate',
-              icon: 'folder-plus',
-              badgeClass: 'will-create',
-              labelKey: 'remoteConfig.pathStatus.willCreate',
+              state: 'unavailable',
+              icon: 'warning',
+              badgeClass: 'non-empty',
+              labelKey: 'common.error',
             });
           }
         });
@@ -593,6 +589,7 @@ export class OperationConfigComponent {
 
   setType(item: PathItem, typeValue: string): void {
     if (item.typeControl.value === typeValue) return;
+    this.opFormGroup().markAsDirty();
 
     item.typeControl.setValue(typeValue);
     item.pathControl.setValue('', { emitEvent: false });
@@ -630,6 +627,7 @@ export class OperationConfigComponent {
       controls['filename'] = new FormControl(initial?.filename ?? '');
     }
 
+    array.markAsDirty();
     array.push(new FormGroup(controls));
     this.formVersion.update(v => v + 1);
   }
@@ -637,6 +635,7 @@ export class OperationConfigComponent {
   removePath(group: PathDirection, index: number): void {
     const array = this.opFormGroup().get(group) as FormArray;
     if (!array || (group === 'source' && array.length <= 1)) return;
+    this.opFormGroup().markAsDirty();
 
     array.removeAt(index);
     this.pathSelectionService.unregisterField(`${group}-${index}`);
@@ -669,6 +668,7 @@ export class OperationConfigComponent {
           : await this.fileSystemService.selectFolder(requireEmpty, item.pathControl.value);
 
       if (selected) {
+        this.opFormGroup().markAsDirty();
         item.pathControl.setValue(selected);
         item.typeControl.setValue('local');
         item.control.get('remote')?.setValue('');
@@ -691,6 +691,7 @@ export class OperationConfigComponent {
     });
 
     if (!result.cancelled && result.items.length > 0) {
+      this.opFormGroup().markAsDirty();
       result.items.forEach((res, i) => {
         const data = this.getPathData(res, item.group);
         if (!data) return;
@@ -764,6 +765,7 @@ export class OperationConfigComponent {
   }
 
   onPathSelected(entryName: string, item: PathItem): void {
+    this.opFormGroup().markAsDirty();
     this.pathSelectionService.selectEntry(
       `${item.group}-${item.index}`,
       entryName,
@@ -772,10 +774,12 @@ export class OperationConfigComponent {
   }
 
   goUp(item: PathItem): void {
+    this.opFormGroup().markAsDirty();
     this.pathSelectionService.navigateUp(`${item.group}-${item.index}`, item.pathControl);
   }
 
   onCronChange(cron: string | null): void {
+    this.opFormGroup().markAsDirty();
     this.opFormGroup().get('cronExpression')?.setValue(cron);
   }
 
@@ -784,6 +788,7 @@ export class OperationConfigComponent {
   }
 
   clearSchedule(): void {
+    this.opFormGroup().markAsDirty();
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
   }

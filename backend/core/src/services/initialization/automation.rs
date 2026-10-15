@@ -9,8 +9,6 @@ use crate::{
     },
 };
 
-use crate::utils::types::remotes::RemoteSettings;
-
 /// Initialize the cron scheduler with tasks loaded from remote configs.
 pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String> {
     let cache_state = app_handle.state::<AutomationsCache>();
@@ -18,11 +16,11 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let manager = app_handle.state::<AppSettingsManager>();
 
     let backend_manager = app_handle.state::<BackendManager>();
-    let all_settings = RemoteSettings::load_all(manager.inner());
+    let (backend, all_settings) = backend_manager.active_remote_configs(manager.inner()).await;
 
     info!("📋 Loading automations from remote configs...");
 
-    let backend_name = backend_manager.get_active_name().await;
+    let backend_name = backend.name.clone();
 
     let result = cache_state
         .load_from_remote_configs(&all_settings, &backend_name)
@@ -45,14 +43,18 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
                 info!("⚡ Auto-starting Quick Run: {} ({})", qr.name, qr.id);
                 let app = app_handle.clone();
                 let qr_id = qr.id.clone();
+                let backend = backend.clone();
                 crate::utils::spawn(async move {
-                    if let Err(e) = crate::services::flow::quick_run::commands::start_quick_run(
-                        app,
-                        qr_id.clone(),
-                        None,
-                        None,
-                    )
-                    .await
+                    if let Err(e) =
+                        crate::services::flow::quick_run::commands::start_quick_run_on_backend(
+                            app,
+                            backend,
+                            qr_id.clone(),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await
                     {
                         log::error!("Failed to auto-start Quick Run {qr_id}: {e}");
                     }
@@ -80,11 +82,13 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
                 );
                 let app = app_handle.clone();
                 let wf_id = wf.id.clone();
+                let backend = backend.clone();
                 crate::utils::spawn(async move {
-                    if let Err(e) = crate::services::flow::workflow::commands::execute_workflow(
+                    if let Err(e) = crate::services::flow::workflow::engine::execute_workflow(
                         app,
+                        backend,
                         wf_id.clone(),
-                        None,
+                        false,
                     )
                     .await
                     {

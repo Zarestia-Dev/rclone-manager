@@ -296,13 +296,7 @@ pub async fn update_power_inhibition(app: &AppHandle) {
     let backend_manager = app.try_state::<crate::rclone::backend::BackendManager>();
     let (has_active_operations, mounts_count, jobs_count, serves_count) =
         if let Some(bm) = backend_manager {
-            let active_jobs = bm.job_cache.get_active_jobs().await;
-            let active_mounts = bm.remote_cache.get_mounted_remotes().await;
-            let active_serves = bm.remote_cache.get_serves().await;
-
-            let j_count = active_jobs.len();
-            let m_count = active_mounts.len();
-            let s_count = active_serves.len();
+            let (j_count, m_count, s_count) = bm.active_operation_counts().await;
 
             let active = j_count > 0 || m_count > 0 || s_count > 0;
             (active, m_count, j_count, s_count)

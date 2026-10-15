@@ -7,10 +7,10 @@ static NDK_CONTEXT_INITIALIZED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
 fn cache_java_vm(env: &mut jni::Env) {
-    if JAVA_VM.get().is_none() {
-        if let Ok(vm) = env.get_java_vm() {
-            let _ = JAVA_VM.set(vm);
-        }
+    if JAVA_VM.get().is_none()
+        && let Ok(vm) = env.get_java_vm()
+    {
+        let _ = JAVA_VM.set(vm);
     }
     if BRIDGE_CLASS.get().is_none() {
         use jni::jni_str;
@@ -25,19 +25,19 @@ fn cache_java_vm(env: &mut jni::Env) {
 }
 
 fn init_android_context(env: &mut jni::Env, context: &jni::objects::JObject) {
-    if ANDROID_APP_CONTEXT.get().is_none() {
-        if let Ok(global_ctx) = env.new_global_ref(context) {
-            if let Ok(vm) = env.get_java_vm() {
-                if !NDK_CONTEXT_INITIALIZED.swap(true, std::sync::atomic::Ordering::SeqCst) {
-                    let vm_ptr = vm.get_raw() as *mut std::ffi::c_void;
-                    let context_ptr = global_ctx.as_raw() as *mut std::ffi::c_void;
-                    unsafe {
-                        ndk_context::initialize_android_context(vm_ptr, context_ptr);
-                    }
-                }
+    if ANDROID_APP_CONTEXT.get().is_none()
+        && let Ok(global_ctx) = env.new_global_ref(context)
+    {
+        if let Ok(vm) = env.get_java_vm()
+            && !NDK_CONTEXT_INITIALIZED.swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            let vm_ptr = vm.get_raw() as *mut std::ffi::c_void;
+            let context_ptr = global_ctx.as_raw() as *mut std::ffi::c_void;
+            unsafe {
+                ndk_context::initialize_android_context(vm_ptr, context_ptr);
             }
-            let _ = ANDROID_APP_CONTEXT.set(global_ctx);
         }
+        let _ = ANDROID_APP_CONTEXT.set(global_ctx);
     }
 }
 
@@ -111,17 +111,16 @@ pub fn open_saf_remote(remote_name: &str) -> bool {
     let _ = vm.attach_current_thread(|env| {
         use jni::{jni_sig, jni_str};
         let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(jstr) = env.new_string(remote_name) {
-            if let Ok(res) = env.call_static_method(
+        if let Ok(jstr) = env.new_string(remote_name)
+            && let Ok(res) = env.call_static_method(
                 cls,
                 jni_str!("openSafRemote"),
                 jni_sig!("(Ljava/lang/String;)Z"),
                 &[(&jstr).into()],
-            ) {
-                if let Ok(val) = res.z() {
-                    success = val;
-                }
-            }
+            )
+            && let Ok(value) = res.z()
+        {
+            success = value;
         }
         Ok::<(), jni::errors::Error>(())
     });
@@ -139,17 +138,16 @@ pub fn open_local_path(path: &str) -> bool {
     let _ = vm.attach_current_thread(|env| {
         use jni::{jni_sig, jni_str};
         let cls: &jni::objects::JClass = g_cls.as_ref();
-        if let Ok(jstr) = env.new_string(path) {
-            if let Ok(res) = env.call_static_method(
+        if let Ok(jstr) = env.new_string(path)
+            && let Ok(res) = env.call_static_method(
                 cls,
                 jni_str!("openLocalPath"),
                 jni_sig!("(Ljava/lang/String;)Z"),
                 &[(&jstr).into()],
-            ) {
-                if let Ok(val) = res.z() {
-                    success = val;
-                }
-            }
+            )
+            && let Ok(value) = res.z()
+        {
+            success = value;
         }
         Ok::<(), jni::errors::Error>(())
     });
@@ -223,13 +221,6 @@ mod jni_impl {
             let cache_path = std::path::PathBuf::from(&cache_str);
             let conf_path = path.join("rclone.conf");
             let _ = std::fs::create_dir_all(&cache_path);
-
-            unsafe {
-                std::env::set_var("HOME", &path);
-                std::env::set_var("XDG_CONFIG_HOME", &path);
-                std::env::set_var("XDG_CACHE_HOME", &cache_path);
-                std::env::set_var("TMPDIR", &cache_path);
-            }
 
             rclone_ffi::initialize();
 

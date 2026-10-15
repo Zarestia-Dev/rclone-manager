@@ -5,7 +5,7 @@ use serde_json::json;
 use crate::{
     rclone::{
         backend::BackendManager,
-        commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+        commands::{job::stop_job_on_backend, mount::unmount_all_remotes, serve::stop_all_serves},
     },
     services::{automation::engine::AutomationScheduler, bridge},
     utils::types::{events::APP_EVENT, state::RcloneState},
@@ -169,25 +169,20 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
 }
 
 pub async fn stop_all_active_jobs(app: AppHandle) -> Result<(), String> {
-    let active_jobs = app
-        .state::<BackendManager>()
-        .job_cache
-        .get_active_jobs()
-        .await;
-
-    if active_jobs.is_empty() {
-        return Ok(());
-    }
-
-    let tasks: Vec<_> = active_jobs
-        .into_iter()
-        .map(|job| {
+    let manager = app.state::<BackendManager>();
+    let mut tasks = Vec::new();
+    for info in manager.list_all().await {
+        let Some(backend) = manager.get(&info.name).await else {
+            continue;
+        };
+        for job in manager.job_cache_for(&backend.name).get_active_jobs().await {
             let app = app.clone();
-            crate::utils::spawn(
-                async move { stop_job(app.clone(), job.jobid, job.remote_name).await },
-            )
-        })
-        .collect();
+            let backend = backend.clone();
+            tasks.push(crate::utils::spawn(async move {
+                stop_job_on_backend(app, backend, job.jobid, job.remote_name).await
+            }));
+        }
+    }
 
     let errors: Vec<String> = futures::future::join_all(tasks)
         .await

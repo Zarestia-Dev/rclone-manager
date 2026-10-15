@@ -88,18 +88,10 @@ export class PresetTemplateBarComponent {
   }
 
   openSaveDialog(): void {
-    const dialogRef = this.modalService.openTemplateManager({
+    this.modalService.openTemplateManager({
       mode: 'save',
       currentValues: this.currentValues(),
     });
-
-    dialogRef
-      .afterClosed()
-      .subscribe((res: { action?: string; template?: UserPresetTemplate } | undefined) => {
-        if (res?.action === 'saved') {
-          // Template saved
-        }
-      });
   }
 
   openManageDialog(): void {

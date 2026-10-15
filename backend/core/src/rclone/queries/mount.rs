@@ -1,23 +1,32 @@
 use crate::context::AppHandle;
 use log::debug;
 
-#[cfg(target_os = "android")]
-use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::mount;
 use crate::utils::types::remotes::MountedRemote;
 
 pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    get_mounted_remotes_for_backend(app, &backend).await
+}
+
+pub async fn get_mounted_remotes_for_backend(
+    app: AppHandle,
+    backend: &Backend,
+) -> Result<Vec<MountedRemote>, String> {
     #[cfg(target_os = "android")]
-    {
+    if backend.is_local {
         let backend_manager = app.state::<BackendManager>();
-        let mounts = backend_manager.remote_cache.get_mounted_remotes().await;
+        let mounts = backend_manager
+            .remote_cache_for(&backend.name)
+            .get_mounted_remotes()
+            .await;
         debug!("📂 Android SAF Mounted Remotes: {mounts:?}");
         return Ok(mounts);
     }
 
-    #[cfg(not(target_os = "android"))]
     {
-        let json = crate::rclone::commands::common::transport(&app)
+        let json = RoutingTransport::for_backend(app, backend.clone())
             .rpc(mount::LISTMOUNTS, None)
             .await
             .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;

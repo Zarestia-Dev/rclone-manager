@@ -1,6 +1,7 @@
 use crate::context::AppHandle;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::sync::Arc;
 use tokio::io::AsyncRead;
 
 use crate::rclone::backend::BackendManager;
@@ -8,6 +9,7 @@ use crate::rclone::backend::http_transport::RcHttpBackend;
 #[cfg(feature = "librclone")]
 use crate::rclone::backend::librclone_transport::RcloneLibBackend;
 use crate::rclone::backend::transport::{BackendError, RcloneTransport, TransportKind};
+use crate::rclone::backend::types::Backend;
 
 pub struct RoutingTransport {
     app: AppHandle,
@@ -17,6 +19,15 @@ pub struct RoutingTransport {
 }
 
 impl RoutingTransport {
+    /// Build a transport whose destination cannot change with the UI selection.
+    pub fn for_backend(app: AppHandle, backend: Backend) -> Arc<dyn RcloneTransport> {
+        #[cfg(feature = "librclone")]
+        if backend.is_local {
+            return Arc::new(RcloneLibBackend::new(app));
+        }
+        Arc::new(RcHttpBackend::new(app).for_backend(backend))
+    }
+
     pub fn new(app: AppHandle) -> Self {
         Self {
             http_transport: RcHttpBackend::new(app.clone()),
@@ -51,13 +62,7 @@ impl RcloneTransport for RoutingTransport {
             .try_state::<BackendManager>()
             .ok_or_else(|| BackendError::NotConnected("BackendManager not in state".into()))?;
         let backend = manager.get_active().await;
-        #[cfg(feature = "librclone")]
-        if backend.is_local {
-            return Ok(Some(std::sync::Arc::new(self.lib_transport.clone())));
-        }
-        Ok(Some(std::sync::Arc::new(
-            self.http_transport.for_backend(backend),
-        )))
+        Ok(Some(Self::for_backend(self.app.clone(), backend)))
     }
 
     async fn kind(&self) -> TransportKind {

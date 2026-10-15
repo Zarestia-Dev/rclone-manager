@@ -4,7 +4,7 @@ use crate::context::AppHandle;
 use log::{debug, info, warn};
 use serde_json::{Value, json};
 
-use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::serve;
 use crate::rclone::state::watcher::refresh_serves_quietly;
 use crate::services::paths::AppPaths;
@@ -15,13 +15,14 @@ use crate::utils::logging::log::log_operation;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
-use crate::utils::types::state::RcloneState;
 
-use super::common::{OperationContext, parse_common_config, redact_value};
+use super::common::{CommonConfigParams, OperationContext, parse_common_config, redact_value};
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ServeParams {
+    #[serde(skip)]
+    pub backend: Option<Backend>,
     pub remote_name: String,
     pub source: String,
     pub rclone_config: Value,
@@ -40,9 +41,19 @@ pub struct ServeParams {
 
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
-    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let common = parse_common_config(config, settings)?;
-        let rclone_config = config.get("rclone").unwrap_or(config);
+    pub fn from_config(
+        remote_name: String,
+        config: &Value,
+        settings: &Value,
+    ) -> Result<Self, String> {
+        Ok(Self::from_common(
+            remote_name,
+            parse_common_config(config, settings)?,
+        ))
+    }
+
+    pub fn from_common(remote_name: String, common: CommonConfigParams) -> Self {
+        let rclone_config = &common.rclone_config;
         let serve_type = rclone_config
             .get("type")
             .or_else(|| rclone_config.get("serveType"))
@@ -50,7 +61,8 @@ impl ServeParams {
             .unwrap_or("http")
             .to_string();
 
-        Some(Self {
+        Self {
+            backend: None,
             remote_name,
             source: common.first_source(),
             rclone_config: common.rclone_config.clone(),
@@ -65,10 +77,10 @@ impl ServeParams {
             execute_id: None,
             workflow_id: None,
             node_id: None,
-        })
+        }
     }
 
-    pub fn to_rclone_body(&self) -> Value {
+    pub fn to_rclone_body(&self) -> Result<Value, String> {
         let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
             &self.rclone_config,
         );
@@ -85,11 +97,11 @@ impl ServeParams {
         builder
             .insert("fs", self.source.as_str())
             .insert("type", self.serve_type.as_str())
-            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
             .with_vfs_options(self.vfs_options.as_ref())
             .with_filter_options(self.filter_options.as_ref())
-            .with_backend_options(self.backend_options.as_ref())
-            .build()
+            .with_backend_options(self.backend_options.as_ref());
+        builder.with_runtime_remote_options(self.runtime_remote_options.as_ref())?;
+        Ok(builder.build())
     }
 }
 
@@ -108,14 +120,18 @@ pub async fn start_serve(
         return Err(crate::localized_error!("backendErrors.serve.remoteEmpty"));
     }
 
-    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
+    let backend = match &params.backend {
+        Some(backend) => backend.clone(),
+        None => backend_manager.get_active().await,
+    };
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
 
     let serve_type = &params.serve_type;
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
-    let mut payload = params.to_rclone_body();
+    let mut payload = params.to_rclone_body()?;
 
     // Auto-inject our custom template for web-based protocols if not already specified
     if (serve_type == "http" || serve_type == "webdav") && payload.get("template").is_none() {
@@ -151,7 +167,7 @@ pub async fn start_serve(
 
     debug!("📦 Serve request payload: {payload:#?}");
 
-    let backend_name_for_err = backend_manager.get_active_name().await;
+    let backend_name_for_err = backend.name.clone();
 
     // Call serve/start via the transport
     let response_json = transport
@@ -211,26 +227,26 @@ pub async fn start_serve(
 
     // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     backend_manager
-        .remote_cache
-        .preseed_serve_metadata(
-            &serve_id,
-            &addr,
-            payload.clone(),
-            params.profile.clone(),
-            params.quick_run_id.clone(),
-            params.origin.clone(),
-            params.execute_id.clone(),
-            params.workflow_id.clone(),
-            params.node_id.clone(),
-        )
+        .remote_cache_for(&backend.name)
+        .preseed_serve_metadata(crate::utils::types::remotes::ServeInstance {
+            id: serve_id,
+            addr: addr.clone(),
+            params: payload,
+            profile: params.profile.clone(),
+            quick_run_id: params.quick_run_id.clone(),
+            origin: params.origin.clone(),
+            execute_id: params.execute_id.clone(),
+            workflow_id: params.workflow_id.clone(),
+            node_id: params.node_id.clone(),
+        })
         .await;
-    refresh_serves_quietly(&app).await;
+    refresh_serves_quietly(&app, &backend).await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
     );
 
-    let backend_name = backend_manager.get_active_name().await;
+    let backend_name = backend.name.clone();
     notify(
         &app,
         NotificationEvent::Serve(ServeStage::Started {
@@ -250,6 +266,16 @@ pub async fn stop_serve(
     server_id: String,
     remote_name: String,
 ) -> Result<String, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    stop_serve_on_backend(app, backend, server_id, remote_name).await
+}
+
+pub(crate) async fn stop_serve_on_backend(
+    app: AppHandle,
+    backend: Backend,
+    server_id: String,
+    remote_name: String,
+) -> Result<String, String> {
     log_operation(
         LogLevel::Info,
         Some(remote_name.clone()),
@@ -258,13 +284,13 @@ pub async fn stop_serve(
         None,
     );
 
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
     let backend_manager = app.state::<BackendManager>();
     let payload = json!({ "id": server_id });
 
     // Get serve details from cache before stopping
     let serve_info = backend_manager
-        .remote_cache
+        .remote_cache_for(&backend.name)
         .get_serve_by_id(&server_id)
         .await;
     let profile = serve_info.as_ref().and_then(|s| s.profile.clone());
@@ -274,7 +300,7 @@ pub async fn stop_serve(
         .unwrap_or("unknown")
         .to_string();
 
-    let backend_name_for_err = backend_manager.get_active_name().await;
+    let backend_name_for_err = backend.name.clone();
 
     let result = transport
         .rpc(serve::STOP, Some(&payload))
@@ -304,7 +330,7 @@ pub async fn stop_serve(
         });
 
     if let Err(err) = result {
-        refresh_serves_quietly(&app).await;
+        refresh_serves_quietly(&app, &backend).await;
         return Err(err);
     }
 
@@ -316,10 +342,10 @@ pub async fn stop_serve(
         None,
     );
 
-    refresh_serves_quietly(&app).await;
+    refresh_serves_quietly(&app, &backend).await;
     info!("✅ Serve {server_id} stopped successfully");
 
-    let backend_name = backend_manager.get_active_name().await;
+    let backend_name = backend.name.clone();
     notify(
         &app,
         NotificationEvent::Serve(ServeStage::Stopped {
@@ -335,16 +361,17 @@ pub async fn stop_serve(
 
 /// Stop all running serve instances
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
     info!("🗑️ Stopping all serves");
 
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
 
     if let Err(e) = transport.rpc(serve::STOPALL, None).await {
         warn!("Failed to stop all serves: {e}");
     }
 
     if !context.is_shutdown() {
-        refresh_serves_quietly(&app).await;
+        refresh_serves_quietly(&app, &backend).await;
         notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
     }
 
@@ -359,23 +386,19 @@ pub async fn start_serve_profile(
     app: AppHandle,
     params: ProfileParams,
 ) -> Result<ServeStartResponse, String> {
-    let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
+    let resolved = crate::rclone::commands::common::resolve_profile_settings(
         &app,
         &params.remote_name,
         &params.profile_name,
-        OperationType::Serve.config_key(),
+        OperationType::Serve,
+        params.backend_name.as_deref(),
     )
     .await?;
 
-    let mut serve_params = ServeParams::from_config(params.remote_name.clone(), &config, &settings)
-        .ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.operations.configIncomplete",
-                "profile" => &params.profile_name
-            )
-        })?;
+    let mut serve_params = ServeParams::from_common(params.remote_name.clone(), resolved.params);
 
     // Ensure profile is set from the function parameter, not the config object
+    serve_params.backend = Some(resolved.backend);
     serve_params.profile = Some(params.profile_name.clone());
     serve_params.origin = params
         .source
@@ -432,6 +455,7 @@ mod tests {
     #[test]
     fn test_serve_to_rclone_body() {
         let params = ServeParams {
+            backend: None,
             remote_name: "my_remote".to_string(),
             source: "my_remote:bucket".to_string(),
             rclone_config: json!({
@@ -460,7 +484,7 @@ mod tests {
             serve_type: "webdav".to_string(),
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("fs").unwrap(), "my_remote:bucket");

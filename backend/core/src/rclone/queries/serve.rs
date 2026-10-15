@@ -1,6 +1,7 @@
 use log::debug;
 use serde_json::Value;
 
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::serve;
 use crate::utils::types::remotes::ServeInstance;
 
@@ -45,7 +46,15 @@ pub async fn get_serve_types(app: crate::context::AppHandle) -> Result<Vec<Strin
 }
 
 pub async fn list_serves(app: crate::context::AppHandle) -> Result<Vec<ServeInstance>, String> {
-    let json = crate::rclone::commands::common::transport(&app)
+    let backend = app.state::<BackendManager>().get_active().await;
+    list_serves_for_backend(app, &backend).await
+}
+
+pub async fn list_serves_for_backend(
+    app: crate::context::AppHandle,
+    backend: &Backend,
+) -> Result<Vec<ServeInstance>, String> {
+    let json = RoutingTransport::for_backend(app, backend.clone())
         .rpc(serve::LIST, None)
         .await
         .map_err(|e| format!("Failed to list serves: {e}"))?;

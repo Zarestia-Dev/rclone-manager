@@ -30,49 +30,30 @@ pub async fn archive_create(
 
     let group_id = format!("archive_create_{}", uuid::Uuid::new_v4().simple());
 
-    let (endpoint, mut payload) = if backend.is_librclone_local() {
-        let mut p = json!({
-            "action": "create",
-            "src": source,
-            "dst": destination,
-            "_async": true,
-        });
-
-        if let Some(f) = format {
-            p["format"] = json!(f);
+    let mut config = json!({});
+    for (key, value) in [
+        ("format", format.map(Value::String)),
+        ("prefix", prefix.map(Value::String)),
+        ("full_path", full_path.map(Value::Bool)),
+        ("include", include.map(|value| json!(value))),
+    ] {
+        if let Some(value) = value {
+            config[key] = value;
         }
-        if let Some(pr) = prefix {
-            p["prefix"] = json!(pr);
-        }
-        if let Some(fp) = full_path {
-            p["full_path"] = json!(fp);
-        }
-        if let Some(inc) = include {
-            p["include"] = json!(inc);
-        }
-        (operations::ARCHIVE, p)
-    } else {
-        let mut args = vec!["create".to_string(), source.clone(), destination.clone()];
-        if let Some(f) = format {
-            args.push(format!("--format={f}"));
-        }
-        if let Some(p) = prefix {
-            args.push(format!("--prefix={p}"));
-        }
-        if full_path.unwrap_or(false) {
-            args.push("--full-path".to_string());
-        }
-        if let Some(inc) = include {
-            for i in inc {
-                args.push(format!("--include={i}"));
-            }
-        }
-        let os = backend_manager.get_runtime_os(&backend.name).await;
-        (
-            core::COMMAND,
-            backend.build_core_command_payload("archive", args, true, os),
-        )
+    }
+    let params = super::sync::GenericTransferParams {
+        source: source.clone(),
+        dest: destination.clone(),
+        rclone_config: config,
+        filter_options: None,
+        backend_options: None,
+        runtime_remote_options: None,
+        transfer_type: crate::utils::types::remotes::OperationType::Archivecreate,
+        is_dir: true,
+        dry_run: None,
     };
+    let (endpoint, mut payload) =
+        super::sync::build_special_transfer_payload(&app, &backend, &params).await?;
 
     crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
@@ -86,18 +67,19 @@ pub async fn archive_create(
     .with_group(Some(group_id))
     .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-    let (jobid, _response, _execute_id) = submit_job_with_options(
+    let submission = submit_job_with_options(
         app.clone(),
         endpoint,
         payload,
         metadata,
         SubmitJobOptions {
             wait_for_completion: false,
+            backend: Some(backend),
         },
     )
     .await?;
 
-    Ok(json!({ "success": true, "jobid": jobid }))
+    Ok(json!({ "success": true, "jobid": submission.job_id }))
 }
 
 pub async fn archive_extract(
@@ -143,18 +125,19 @@ pub async fn archive_extract(
     .with_group(Some(group_id))
     .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-    let (jobid, _response, _execute_id) = submit_job_with_options(
+    let submission = submit_job_with_options(
         app.clone(),
         endpoint,
         payload,
         metadata,
         SubmitJobOptions {
             wait_for_completion: false,
+            backend: Some(backend),
         },
     )
     .await?;
 
-    Ok(json!({ "success": true, "jobid": jobid }))
+    Ok(json!({ "success": true, "jobid": submission.job_id }))
 }
 
 pub async fn archive_list(

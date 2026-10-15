@@ -48,6 +48,7 @@ import {
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
   WorkflowNode,
+  PathGroup,
   isRclonePathKey,
 } from '@app/types';
 import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
@@ -81,6 +82,11 @@ import {
   extractProfileDest,
 } from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  mapConfigToFormProfile,
+  mapFormToConfigProfile,
+  OPERATION_PATH_MAPPINGS,
+} from 'src/app/services/remote/utils/profile-mapper.utils';
 
 const ALL_FLAG_TYPES = [
   'sync',
@@ -164,12 +170,6 @@ export class QuickRunEditorComponent implements OnInit {
 
   // ── Form ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Top-level form built with static sub-groups for all flag types, matching
-   * `RemoteConfigStateService.createRemoteConfigForm()` structure.
-   */
-  readonly form: FormGroup = this.createForm();
-
   readonly runtimeRemoteFields = signal<RcConfigOption[]>([]);
   readonly isLoadingRuntimeRemoteFields = signal(false);
   readonly runtimeRemoteForm = signal<FormGroup>(
@@ -212,6 +212,13 @@ export class QuickRunEditorComponent implements OnInit {
 
   readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes());
   readonly existingRemoteNames = computed(() => this.remotes().map(r => r.name));
+
+  /**
+   * Top-level form built with static sub-groups for all flag types, matching
+   * `RemoteConfigStateService.createRemoteConfigForm()` structure.
+   */
+  readonly form: FormGroup = this.createForm();
+
   readonly selectedRemoteType = computed(() => {
     const rName = (this.currentRemoteName() || '').replace(/:+$/, '').trim();
     if (!rName) return '';
@@ -461,54 +468,42 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   private createOpConfigGroup(opType: PrimaryActionType, seed?: QuickRunConfig): FormGroup {
-    const app = seed?.app;
-    const rclone = seed?.rclone as Record<string, unknown> | undefined;
-
-    const isSingleSource =
-      opType === 'mount' || opType === 'serve' || opType === 'bisync' || opType === 'archivecreate';
-    const seedSourcePath = this.extractSourcePath(rclone);
-    const seedDestPath = this.extractDestPath(rclone);
-
-    const source = isSingleSource
-      ? this.createPathGroup(seedSourcePath)
-      : this.fb.array([this.createPathGroup(seedSourcePath)]);
-
-    const hasDest = opType !== 'serve' && opType !== 'delete';
-    const dest = hasDest ? this.createDestGroup(seedDestPath) : null;
-
+    const mapped = mapConfigToFormProfile(
+      opType,
+      seed ? { app: seed.app, rclone: seed.rclone } : {},
+      {
+        remoteName: this.currentRemoteName(),
+        existingRemotes: this.existingRemoteNames(),
+        pathService: this.pathService,
+      }
+    );
+    const mapping = OPERATION_PATH_MAPPINGS[opType];
+    if (!mapping) throw new Error(`Unsupported operation: ${opType}`);
+    const createPath = (path: PathGroup & { filename?: string }): FormGroup =>
+      this.fb.group({ ...path, filename: path.filename ?? '' });
+    const mappedSource = mapped['source'] as PathGroup | PathGroup[];
+    const source = mapping.isSourceArray
+      ? this.fb.array(
+          (Array.isArray(mappedSource) && mappedSource.length
+            ? mappedSource
+            : [{ type: 'currentRemote' as const, path: '', remote: '' }]
+          ).map(createPath)
+        )
+      : createPath(mappedSource as PathGroup);
+    const dest = mapping.destKey ? createPath(mapped['dest'] as PathGroup) : null;
     const optionsGroup = this.fb.group({});
-    if (rclone && typeof rclone === 'object') {
-      for (const [k, v] of Object.entries(rclone)) {
-        if (isRclonePathKey(k)) continue;
-        if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
-        optionsGroup.addControl(k, new FormControl(v));
-      }
-      const opSubObj = rclone[opType] as Record<string, unknown> | undefined;
-      if (opSubObj && typeof opSubObj === 'object') {
-        for (const [k, v] of Object.entries(opSubObj)) {
-          if (isRclonePathKey(k)) continue;
-          if (typeof v === 'object' && v !== null && !Array.isArray(v)) continue;
-          if (!optionsGroup.contains(k)) {
-            optionsGroup.addControl(k, new FormControl(v));
-          }
-        }
-      }
-    }
-
-    if (opType === 'mount' && !optionsGroup.contains('mountType')) {
-      optionsGroup.addControl('mountType', new FormControl('mount'));
-    } else if (opType === 'serve' && !optionsGroup.contains('type')) {
-      optionsGroup.addControl('type', new FormControl('http'));
+    for (const [key, value] of Object.entries(mapped['options'] as Record<string, unknown>)) {
+      optionsGroup.addControl(key, new FormControl(value));
     }
 
     const group: Record<string, unknown> = {
-      autoStart: [app?.autoStart ?? false],
-      showOnTray: [app?.showOnTray ?? true],
-      cronEnabled: [app?.cronEnabled ?? false],
-      cronExpression: [app?.cronExpression ?? null],
-      watchEnabled: [app?.watchEnabled ?? false],
-      watchDelay: [app?.watchDelay ?? 5],
-      watchChangedOnly: [app?.watchChangedOnly ?? false],
+      autoStart: [mapped['autoStart']],
+      showOnTray: [mapped['showOnTray']],
+      cronEnabled: [mapped['cronEnabled']],
+      cronExpression: [mapped['cronExpression']],
+      watchEnabled: [mapped['watchEnabled']],
+      watchDelay: [mapped['watchDelay']],
+      watchChangedOnly: [mapped['watchChangedOnly']],
       source,
       options: optionsGroup,
     };
@@ -526,9 +521,13 @@ export class QuickRunEditorComponent implements OnInit {
       const group: FormGroup = this.fb.group({
         type: [type],
       });
+      const remote = this.currentRemoteName();
+      const scoped = this.seedRcloneConfig?.['remotes'] as
+        Record<string, Record<string, unknown>> | undefined;
+      const legacy = this.seedRcloneConfig?.['runtimeRemote'] as
+        Record<string, unknown> | undefined;
       const runtimeSeed =
-        (this.seedRcloneConfig?.['runtimeRemote'] as Record<string, unknown> | undefined) ??
-        this.seedRcloneConfig;
+        scoped?.[remote] ?? (legacy?.[remote] as Record<string, unknown> | undefined) ?? legacy;
       for (const f of fields) {
         const key = f.Name || f.FieldName;
         if (!key || key === 'type') continue;
@@ -576,107 +575,6 @@ export class QuickRunEditorComponent implements OnInit {
         }
       }
     }
-  }
-
-  private createPathGroup(initialPath?: string): FormGroup {
-    let type = 'currentRemote';
-    let path = initialPath ?? '';
-    let remote = '';
-
-    if (path) {
-      if (path.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(path)) {
-        type = 'local';
-      } else if (path.includes(':')) {
-        const colonIdx = path.indexOf(':');
-        const rName = path.slice(0, colonIdx);
-        const relPath = path.slice(colonIdx + 1);
-        const curRemote = (this.currentRemoteName() || '').replace(/:+$/, '');
-        if (rName === curRemote) {
-          type = 'currentRemote';
-          path = relPath;
-        } else {
-          type = `otherRemote:${rName}`;
-          path = relPath;
-          remote = rName;
-        }
-      }
-    }
-
-    return this.fb.group({
-      type: [type],
-      path: [path],
-      remote: [remote],
-      filename: [''],
-    });
-  }
-
-  private createDestGroup(initialPath: string | undefined): FormGroup {
-    let type = 'local';
-    let path = initialPath ?? '';
-    let remote = '';
-
-    if (path) {
-      if (path.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(path)) {
-        type = 'local';
-      } else if (path.includes(':')) {
-        const colonIdx = path.indexOf(':');
-        const rName = path.slice(0, colonIdx);
-        const relPath = path.slice(colonIdx + 1);
-        const curRemote = (this.currentRemoteName() || '').replace(/:+$/, '');
-        if (rName === curRemote) {
-          type = 'currentRemote';
-          path = relPath;
-        } else {
-          type = `otherRemote:${rName}`;
-          path = relPath;
-          remote = rName;
-        }
-      }
-    }
-
-    return this.fb.group({
-      type: [type],
-      path: [path],
-      remote: [remote],
-    });
-  }
-
-  private extractSourcePath(rclone?: Record<string, unknown>): string {
-    if (!rclone) return '';
-    const opType = this.currentOpType();
-    const subObj = rclone[opType] as Record<string, unknown> | undefined;
-    const src =
-      rclone['srcFs'] ??
-      rclone['path1'] ??
-      rclone['fs'] ??
-      rclone['source'] ??
-      subObj?.['srcFs'] ??
-      subObj?.['path1'] ??
-      subObj?.['fs'] ??
-      subObj?.['source'];
-    if (Array.isArray(src)) {
-      return src[0] != null ? String(src[0]) : '';
-    }
-    return src != null ? String(src) : '';
-  }
-
-  private extractDestPath(rclone?: Record<string, unknown>): string {
-    if (!rclone) return '';
-    const opType = this.currentOpType();
-    const subObj = rclone[opType] as Record<string, unknown> | undefined;
-    const dst =
-      rclone['mountPoint'] ??
-      rclone['dstFs'] ??
-      rclone['path2'] ??
-      rclone['dest'] ??
-      subObj?.['mountPoint'] ??
-      subObj?.['dstFs'] ??
-      subObj?.['path2'] ??
-      subObj?.['dest'];
-    if (Array.isArray(dst)) {
-      return dst[0] != null ? String(dst[0]) : '';
-    }
-    return dst != null ? String(dst) : '';
   }
 
   private async loadServeFields(): Promise<void> {
@@ -841,7 +739,8 @@ export class QuickRunEditorComponent implements OnInit {
         input.config.rclone as Record<string, unknown>
       );
     } catch (err) {
-      console.error('Failed to create required directories for Quick Run:', err);
+      this.notificationService.showError(err);
+      return;
     }
 
     const node = this.targetNode();
@@ -1030,79 +929,15 @@ export class QuickRunEditorComponent implements OnInit {
 
     const rawValue = inner.getRawValue() as Record<string, unknown>;
 
-    const app: AppConfig = {
-      autoStart: !!rawValue['autoStart'],
-      showOnTray: rawValue['showOnTray'] !== undefined ? !!rawValue['showOnTray'] : true,
-      cronEnabled: !!rawValue['cronEnabled'],
-      cronExpression: (rawValue['cronExpression'] as string | null) ?? null,
-      watchEnabled: !!rawValue['watchEnabled'],
-      watchDelay: (rawValue['watchDelay'] as number) ?? 5,
-      watchChangedOnly: !!rawValue['watchChangedOnly'],
-    };
-
-    const opConfig: Record<string, unknown> = {};
-
-    const sourceValue = rawValue['source'];
-    if (sourceValue) {
-      if (Array.isArray(sourceValue)) {
-        const paths = (sourceValue as Record<string, unknown>[]).map(item =>
-          opType === 'copyurl'
-            ? String(item['path'] ?? '').trim()
-            : this.resolvePath(item, remoteName)
-        );
-        if (opType === 'bisync') opConfig['path1'] = paths[0] ?? '';
-        else if (opType === 'copyurl')
-          opConfig['url'] = paths.length === 1 ? (paths[0] ?? '') : paths;
-        else opConfig['srcFs'] = paths.length === 1 ? (paths[0] ?? '') : paths;
-      } else if (typeof sourceValue === 'object') {
-        const path =
-          opType === 'copyurl'
-            ? String((sourceValue as Record<string, unknown>)['path'] ?? '').trim()
-            : this.resolvePath(sourceValue as Record<string, unknown>, remoteName);
-        if (opType === 'mount') opConfig['srcFs'] = path;
-        else if (opType === 'serve') opConfig['fs'] = path;
-        else if (opType === 'bisync') opConfig['path1'] = path;
-        else if (opType === 'copyurl') opConfig['url'] = path;
-        else opConfig['srcFs'] = path;
-      }
-    }
-
-    const destValue = rawValue['dest'] as Record<string, unknown> | undefined;
-    if (destValue) {
-      const destPath = this.resolvePath(destValue, remoteName);
-      if (opType === 'mount') opConfig['mountPoint'] = destPath;
-      else if (opType === 'bisync') opConfig['path2'] = destPath;
-      else opConfig['dstFs'] = destPath;
-    }
-
     const fields = this.dynamicFlagFields();
-
-    const opOptsGroup = inner.get('options') as FormGroup | null;
-    if (opOptsGroup) {
-      const opFields =
-        opType === 'serve' ? this.dynamicServeFields() : (fields[opType as FlagType] ?? []);
-      const cleanedOp = this.valueMapper.cleanData(
-        opOptsGroup.getRawValue() as Record<string, unknown>,
-        opFields
-      );
-      Object.assign(opConfig, cleanedOp);
-
-      if (opType === 'mount') {
-        const mt = opOptsGroup.get('mountType')?.value;
-        if (mt && mt !== 'mount') {
-          opConfig['mountType'] = mt;
-        }
-      } else if (opType === 'serve') {
-        const st = opOptsGroup.get('type')?.value;
-        if (st) {
-          opConfig['type'] = st;
-        }
-      }
-    }
-
-    const rclone: Record<string, unknown> = {
-      ...opConfig,
-    };
+    const mapped = mapFormToConfigProfile(opType, rawValue, {
+      remoteName,
+      pathService: this.pathService,
+      cleanData: (options, definitions) => this.valueMapper.cleanData(options, definitions),
+      dynamicFields: this.getFlagFields(opType),
+    });
+    const app = mapped['app'] as AppConfig;
+    const rclone = mapped['rclone'] as Record<string, unknown>;
 
     const sharedTypes =
       opType === 'mount' || opType === 'serve'
@@ -1128,9 +963,12 @@ export class QuickRunEditorComponent implements OnInit {
     const runtimeRaw = this.runtimeRemoteForm().getRawValue() as Record<string, unknown>;
     delete runtimeRaw['type'];
     const cleanedRuntime = this.valueMapper.cleanData(runtimeRaw, this.runtimeRemoteFields());
-    if (Object.keys(cleanedRuntime).length > 0) {
-      rclone['runtimeRemote'] = cleanedRuntime;
-    }
+    const remotes = {
+      ...((this.seedRcloneConfig?.['remotes'] as Record<string, unknown> | undefined) ?? {}),
+    };
+    if (Object.keys(cleanedRuntime).length > 0) remotes[remoteName] = cleanedRuntime;
+    else delete remotes[remoteName];
+    if (Object.keys(remotes).length > 0) rclone['remotes'] = remotes;
 
     return {
       id: this.targetQuickRun()?.id,
@@ -1140,31 +978,6 @@ export class QuickRunEditorComponent implements OnInit {
       remoteName,
       config: { app, rclone },
     };
-  }
-
-  private resolvePath(item: Record<string, unknown>, currentRemote: string): string {
-    const type = String(item['type'] ?? 'currentRemote');
-    const rawPath = String(item['path'] ?? '').trim();
-    const cleanCurrent = (currentRemote || '').replace(/:+$/, '');
-
-    if (type === 'currentRemote') {
-      if (!cleanCurrent) return rawPath;
-      if (rawPath.startsWith(`${cleanCurrent}:`)) return rawPath;
-      return rawPath ? `${cleanCurrent}:${rawPath}` : `${cleanCurrent}:`;
-    }
-
-    if (type.startsWith('otherRemote:')) {
-      const otherRemote = type.slice('otherRemote:'.length).replace(/:+$/, '');
-      if (!otherRemote) return rawPath;
-      if (rawPath.startsWith(`${otherRemote}:`)) return rawPath;
-      return rawPath ? `${otherRemote}:${rawPath}` : `${otherRemote}:`;
-    }
-
-    if (type === 'local' || rawPath.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(rawPath)) {
-      return rawPath;
-    }
-
-    return rawPath;
   }
 
   // ── Template helpers ─────────────────────────────────────────────────────

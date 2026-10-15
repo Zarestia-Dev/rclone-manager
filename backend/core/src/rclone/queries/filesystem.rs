@@ -9,18 +9,13 @@ use serde_json::json;
 use sysinfo::Disks;
 
 use crate::rclone::endpoints::core;
-use crate::rclone::endpoints::job as job_endpoints;
 use crate::rclone::endpoints::operations;
 use crate::utils::json_helpers::normalize_windows_path;
-use crate::utils::types::jobs::JobStatus;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::rclone::DiskUsage;
 use crate::utils::types::remotes::ListOptions;
 use crate::{
-    rclone::{
-        backend::BackendManager,
-        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
-    },
+    rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
     utils::json_helpers::build_full_path,
 };
 
@@ -30,52 +25,21 @@ async fn run_fs_command_as_job(
     mut payload: serde_json::Value,
     metadata: JobMetadata,
 ) -> Result<serde_json::Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let transport = crate::rclone::commands::common::transport(&app);
-
     if let Some(obj) = payload.as_object_mut() {
         obj.insert("_async".to_string(), json!(true));
     }
-
-    let (jobid, _, _) = submit_job_with_options(
-        app.clone(),
+    let submission = submit_job_with_options(
+        app,
         endpoint,
         payload,
         metadata,
         SubmitJobOptions {
             wait_for_completion: true,
+            ..Default::default()
         },
     )
     .await?;
-
-    if let Some(job) = backend_manager.job_cache.get_job(jobid).await {
-        if job.status == JobStatus::Stopped {
-            return Err("Operation cancelled".to_string());
-        }
-        if job.status == JobStatus::Failed {
-            return Err(job.error.unwrap_or_else(|| "Operation failed".to_string()));
-        }
-    }
-
-    let value = transport
-        .rpc(job_endpoints::STATUS, Some(&json!({ "jobid": jobid })))
-        .await
-        .map_err(|e| format!("Failed to fetch async job status: {e}"))?;
-
-    if value.get("success").and_then(|v| v.as_bool()) == Some(false)
-        || value
-            .get("error")
-            .and_then(|v| v.as_str())
-            .is_some_and(|s| !s.is_empty())
-    {
-        let error_msg = value
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Operation failed");
-        return Err(error_msg.to_string());
-    }
-
-    Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
+    Ok(submission.output.unwrap_or_else(|| json!({})))
 }
 
 fn create_fs_params(

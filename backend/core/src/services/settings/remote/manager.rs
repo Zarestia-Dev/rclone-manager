@@ -7,165 +7,194 @@
 use crate::context::AppHandle;
 use crate::services::settings::AppSettingsManager;
 use log::{info, warn};
-use serde::Deserialize;
 use serde_json::Value;
 
 use crate::rclone::state::automations::AutomationsCache;
-use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHANGED};
+use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 use crate::utils::types::remotes::OperationType;
 
-/// **Save remote settings (per remote)**
+/// Merge profile mutations with compare-and-set semantics. Only names present in
+/// the desired/expected maps are touched; omitted profiles retain newer edits.
+fn merge_settings(
+    existing: &Value,
+    desired: &Value,
+    expected: Option<&Value>,
+) -> Result<Value, String> {
+    let mut merged = existing.as_object().cloned().unwrap_or_default();
+    let desired = desired.as_object().ok_or_else(|| crate::localized_error!("backendErrors.settings.saveFailed", "error" => "Invalid settings object"))?;
+    let Some(expected) = expected else {
+        merged.extend(desired.clone());
+        return Ok(Value::Object(merged));
+    };
+    let expected = expected.as_object().ok_or_else(|| crate::localized_error!("backendErrors.settings.saveFailed", "error" => "Invalid expected settings"))?;
+    let keys: std::collections::HashSet<_> = desired.keys().chain(expected.keys()).collect();
+    for key in keys {
+        if !OperationType::ALL
+            .iter()
+            .any(|operation| operation.config_key() == key)
+            && !crate::utils::types::remotes::helper_config_keys::ALL.contains(&key.as_str())
+        {
+            return Err(
+                crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Invalid profile section: {key}")),
+            );
+        }
+        let desired_profiles = desired.get(key).and_then(Value::as_object);
+        let expected_profiles = expected.get(key).and_then(Value::as_object);
+        if desired.get(key).is_some() && desired_profiles.is_none()
+            || expected.get(key).is_some() && expected_profiles.is_none()
+        {
+            return Err(
+                crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Invalid profile section: {key}")),
+            );
+        }
+        let mut profiles = merged
+            .get(key)
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        let names: std::collections::HashSet<_> = desired_profiles
+            .into_iter()
+            .flat_map(|profiles| profiles.keys())
+            .chain(
+                expected_profiles
+                    .into_iter()
+                    .flat_map(|profiles| profiles.keys()),
+            )
+            .collect();
+        for name in names {
+            let next = desired_profiles.and_then(|profiles| profiles.get(name));
+            let base = expected_profiles.and_then(|profiles| profiles.get(name));
+            let actual = profiles.get(name);
+            if actual != base && actual != next {
+                return Err(
+                    crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Concurrent update: {key}.{name}")),
+                );
+            }
+            if let Some(next) = next {
+                profiles.insert(name.clone(), next.clone());
+            } else {
+                profiles.remove(name);
+            }
+        }
+        merged.insert(key.clone(), Value::Object(profiles));
+    }
+    Ok(Value::Object(merged))
+}
+
 pub async fn save_remote_settings(
     app: AppHandle,
     remote_name: String,
-    mut settings: Value,
+    settings: Value,
+    expected_settings: Option<Value>,
+    backend_name: Option<String>,
 ) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let cache = app.state::<AutomationsCache>();
-
-    // Insert name into settings
-    if let Some(settings_obj) = settings.as_object_mut() {
-        settings_obj.insert("name".to_string(), Value::String(remote_name.clone()));
-    }
-
-    // Get remotes sub-settings
-    let remotes = manager.inner().sub_settings("remotes").map_err(
-        |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
-    )?;
-
-    // Fetch existing settings once
-    let existing = remotes.get_value(&remote_name).ok();
-
-    // Check if remote already exists and merge settings
-    if let Some(existing_obj) = existing.as_ref().and_then(|v| v.as_object())
-        && let Some(new_obj) = settings.as_object_mut()
-    {
-        let mut merged = existing_obj.clone();
-        merged.append(new_obj);
-        settings = Value::Object(merged);
-    }
-
-    // Validate the settings structure and canonicalize it
-    let parsed: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(settings)
-        .map_err(|e| format!("Invalid remote settings structure: {e}"))?;
-
-    let cleaned_settings = serde_json::to_value(&parsed)
-        .map_err(|e| format!("Failed to serialize remote settings: {e}"))?;
-
-    // Save to rcman sub-settings
-    remotes
-        .set(&remote_name, &cleaned_settings)
-        .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
-
-    info!("Remote settings saved for '{remote_name}'");
-
-    // Detect deleted profiles
-    if let Some(existing_settings) = existing
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+    let _selection = backend_manager.switch_lock.lock().await;
+    let backend = backend_manager.get_active().await;
+    if backend_name
         .as_ref()
-        .and_then(|v| crate::utils::types::remotes::RemoteSettings::deserialize(v).ok())
+        .is_some_and(|expected| expected != &backend.name)
     {
-        for &op_type in OperationType::ALL {
-            if let Some(old_configs) = existing_settings.get_configs(op_type) {
-                let new_configs = parsed.get_configs(op_type);
-                for profile_name in old_configs.keys() {
-                    let was_deleted = new_configs.is_none_or(|new| !new.contains_key(profile_name));
-
-                    if was_deleted {
-                        info!(
-                            "Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
-                        );
-                        app.state::<crate::rclone::backend::BackendManager>()
-                            .job_cache
-                            .delete_jobs_by_profile(&remote_name, profile_name, Some(&app))
-                            .await;
-                    }
+        return Err(
+            crate::localized_error!("backendErrors.request.failed", "error" => "Backend selection changed"),
+        );
+    }
+    let manager = app.state::<AppSettingsManager>();
+    let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
+    let existing = remotes
+        .get_value(&remote_name)
+        .unwrap_or_else(|_| serde_json::json!({}));
+    let mut settings = merge_settings(&existing, &settings, expected_settings.as_ref())?;
+    settings["name"] = Value::String(remote_name.clone());
+    settings = migrate_to_multi_profile(settings);
+    let parsed: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(settings)
+        .map_err(
+            |error| crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
+        )?;
+    let resolved_settings = serde_json::to_value(&parsed).map_err(
+        |error| crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
+    )?;
+    // Reject malformed cron before committing the desired settings to disk.
+    for operation in OperationType::ALL {
+        if let Some(profiles) = parsed.get_configs(*operation) {
+            for profile in profiles.values() {
+                crate::services::automation::engine::validate_enabled_cron(
+                    profile.app.cron_enabled == Some(true),
+                    profile.app.cron_expression.as_deref(),
+                )?;
+                for (name, section) in [
+                    (profile.app.vfs_profile.as_deref(), "vfsConfigs"),
+                    (profile.app.filter_profile.as_deref(), "filterConfigs"),
+                    (profile.app.backend_profile.as_deref(), "backendConfigs"),
+                ] {
+                    crate::utils::json_helpers::resolve_profile_options(
+                        &resolved_settings,
+                        name,
+                        section,
+                    )?;
+                }
+                crate::rclone::commands::common::resolve_runtime_remote_options(
+                    &profile.app,
+                    &profile.rclone,
+                    &resolved_settings,
+                    "remotes",
+                )?;
+            }
+        }
+    }
+    remotes.set(&remote_name, &parsed).map_err(
+        |error| crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
+    )?;
+    let jobs = backend_manager.job_cache_for(&backend.name);
+    if let Ok(previous) =
+        serde_json::from_value::<crate::utils::types::remotes::RemoteSettings>(existing)
+    {
+        for operation in OperationType::ALL {
+            if let (Some(profiles), Some(job_type)) =
+                (previous.get_configs(*operation), operation.as_job_type())
+            {
+                for name in profiles.keys().filter(|name| {
+                    parsed
+                        .get_configs(*operation)
+                        .is_none_or(|profiles| !profiles.contains_key(*name))
+                }) {
+                    jobs.delete_jobs_by_profile(&remote_name, name, &job_type, Some(&app))
+                        .await;
                 }
             }
         }
     }
-
-    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
-
-    match cache
-        .add_or_update_automation_for_remote(&backend_name, &remote_name, &parsed)
-        .await
-    {
-        Ok(result) if result.has_changes() => {
-            use crate::services::automation::engine::AutomationScheduler;
-            let scheduler = app.state::<AutomationScheduler>();
-            if let Err(e) = scheduler.apply_cache_result(&result, cache).await {
-                warn!("Automation sync incomplete for remote '{remote_name}': {e}");
-            } else {
-                info!("Automation updated for remote '{remote_name}'");
-            }
-
-            let watcher_manager =
-                app.state::<crate::services::automation::watcher::WatcherManager>();
-            if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
-                warn!("Watcher sync incomplete for remote '{remote_name}': {e}");
-            }
-
-            crate::services::bridge::emit(AUTOMATIONS_CACHE_CHANGED, "remote_settings_update");
-        }
-        _ => {}
-    }
-
+    let cache = app.state::<AutomationsCache>();
+    cache
+        .add_or_update_automation_for_remote(&backend.name, &remote_name, &parsed)
+        .await?;
     crate::services::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
-    Ok(())
+    crate::services::automation::engine::apply_and_sync_automations(&app).await
 }
 
-/// **Delete remote settings**
 pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Result<(), String> {
-    let manager = app.state::<AppSettingsManager>();
-    let remotes = manager.inner().sub_settings("remotes").map_err(
-        |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
-    )?;
-
-    if remotes.get_value(&remote_name).is_err() {
-        warn!("Remote settings for '{remote_name}' not found, but that's okay.");
-        crate::services::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
-        return Ok(());
-    }
-
-    remotes.delete(&remote_name).map_err(
-        |e| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => e),
-    )?;
-
-    // Clean up any automations and watchers associated with this remote
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
-    let cache = app.state::<AutomationsCache>();
-    let scheduler = app.state::<crate::services::automation::engine::AutomationScheduler>();
+    let _selection = backend_manager.switch_lock.lock().await;
+    let backend = backend_manager.get_active_name().await;
+    delete_remote_settings_on_backend(&app, remote_name, &backend).await
+}
 
-    if let Ok(removed) = cache
-        .remove_automations_for_remote(&backend_name, &remote_name)
-        .await
-        && !removed.is_empty()
-    {
-        info!(
-            "Removed {} automation(s) for deleted remote settings '{remote_name}'",
-            removed.len()
-        );
-        for automation in &removed {
-            if let Some(job_id_str) = &automation.scheduler_job_id
-                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
-                && let Err(e) = scheduler.unschedule_automation(job_id).await
-            {
-                warn!("Failed to unschedule job {job_id} for remote '{remote_name}': {e}");
-            }
-        }
-        let watcher_manager = app.state::<crate::services::automation::watcher::WatcherManager>();
-        if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
-            warn!(
-                "Watcher sync incomplete after deleting remote settings for '{remote_name}': {e}"
-            );
-        }
+/// Caller holds BackendManager::switch_lock to keep the settings profile stable.
+pub(crate) async fn delete_remote_settings_on_backend(
+    app: &AppHandle,
+    remote_name: String,
+    backend: &str,
+) -> Result<(), String> {
+    let manager = app.state::<AppSettingsManager>();
+    let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
+    if remotes.get_value(&remote_name).is_ok() {
+        remotes.delete(&remote_name).map_err(|error| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error))?;
     }
-
-    info!("Remote settings for '{remote_name}' deleted.");
+    app.state::<AutomationsCache>()
+        .remove_automations_for_remote(backend, &remote_name)
+        .await?;
     crate::services::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
-    Ok(())
+    crate::services::automation::engine::apply_and_sync_automations(app).await
 }
 
 pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
@@ -378,21 +407,19 @@ fn migrate_profiles_format(obj: &mut serde_json::Map<String, Value>) {
         }
     }
 
-    // 6. Flatten legacy double-nested runtimeRemoteConfigs if present
-    // e.g. { "runtimeRemoteConfigs": { "Default": { "One Drive": { "token": "123" } } } }
-    // -> { "runtimeRemoteConfigs": { "Default": { "token": "123" } } }
-    if let Some(runtime_configs) = obj
+    // Runtime profiles are scoped maps: { remoteName: { options } }. Preserve
+    // existing scoped data; repair the flat form written by older migrations.
+    let owner = obj.get("name").and_then(Value::as_str).map(str::to_string);
+    if let Some(configs) = obj
         .get_mut("runtimeRemoteConfigs")
         .and_then(Value::as_object_mut)
     {
-        for profile_val in runtime_configs.values_mut() {
-            if let Some(profile_obj) = profile_val.as_object()
-                && profile_obj.len() == 1
+        for profile in configs.values_mut() {
+            if let Some(options) = profile.as_object()
+                && options.values().any(|value| !value.is_object())
+                && let Some(owner) = &owner
             {
-                let inner_val = profile_obj.values().next();
-                if let Some(inner_obj) = inner_val.filter(|v| v.is_object()) {
-                    *profile_val = inner_obj.clone();
-                }
+                *profile = serde_json::json!({owner: options});
             }
         }
     }
@@ -449,6 +476,89 @@ fn partition_profile_to_app_and_rclone(profile: &mut Value) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[tokio::test]
+    async fn invalid_cron_and_dangling_profiles_do_not_overwrite_saved_settings() {
+        use crate::rclone::backend::BackendManager;
+        let directory = tempfile::tempdir().unwrap();
+        let settings: AppSettingsManager =
+            rcman::SettingsManager::builder("settings-contract", "1.0.0")
+                .with_config_dir(directory.path())
+                .with_schema::<crate::services::settings::schema::AppSettings>()
+                .with_sub_settings(rcman::SubSettingsConfig::new("remotes").with_profiles())
+                .build()
+                .unwrap();
+        let original = json!({"name": "drive", "syncConfigs": {"Default": {"app": {}, "rclone": {"srcFs": "/src", "dstFs": "drive:"}}}});
+        settings
+            .sub_settings("remotes")
+            .unwrap()
+            .set("drive", &original)
+            .unwrap();
+        let app = AppHandle::default();
+        app.manage(settings);
+        app.manage(BackendManager::new());
+        for invalid in [
+            json!({"cronEnabled": true, "cronExpression": null}),
+            json!({"filterProfile": "MissingCustom"}),
+        ] {
+            let mut update = original.clone();
+            update["syncConfigs"]["Default"]["app"] = invalid;
+            assert!(
+                save_remote_settings(app.clone(), "drive".into(), update, None, None)
+                    .await
+                    .is_err()
+            );
+            let actual = app
+                .state::<AppSettingsManager>()
+                .sub_settings("remotes")
+                .unwrap()
+                .get_value("drive")
+                .unwrap();
+            assert_eq!(actual, original);
+        }
+    }
+
+    #[test]
+    fn profile_compare_and_set_preserves_other_clients_and_supports_retry_and_delete() {
+        let base = json!({"mountConfigs": {"Default": {"rclone": {"fs": "old:"}}}, "syncConfigs": {"Default": {"rclone": {"srcFs": "old:"}}}});
+        let mount_expected = json!({"mountConfigs": base["mountConfigs"]});
+        let mount = json!({"mountConfigs": {"Default": {"rclone": {"fs": "new:"}}}});
+        let after_mount = merge_settings(&base, &mount, Some(&mount_expected)).unwrap();
+        let sync_expected = json!({"syncConfigs": base["syncConfigs"]});
+        let sync = json!({"syncConfigs": {"Default": {"rclone": {"srcFs": "new:"}}}});
+        let combined = merge_settings(&after_mount, &sync, Some(&sync_expected)).unwrap();
+        assert_eq!(combined["mountConfigs"], mount["mountConfigs"]);
+        assert_eq!(combined["syncConfigs"], sync["syncConfigs"]);
+        assert_eq!(
+            merge_settings(&combined, &sync, Some(&sync_expected)).unwrap(),
+            combined
+        );
+        let conflict = json!({"mountConfigs": {"Default": {"rclone": {"fs": "stale:"}}}});
+        assert!(merge_settings(&combined, &conflict, Some(&mount_expected)).is_err());
+        let deleted = merge_settings(&combined, &json!({}), Some(&mount)).unwrap();
+        assert!(deleted["mountConfigs"].get("Default").is_none());
+        assert_eq!(deleted["syncConfigs"], sync["syncConfigs"]);
+        assert!(merge_settings(&combined, &json!({"name":"wrong"}), Some(&json!({}))).is_err());
+        assert!(
+            merge_settings(&combined, &json!({"syncConfigs": null}), Some(&json!({}))).is_err()
+        );
+    }
+
+    #[test]
+    fn runtime_migration_preserves_scoped_form_and_repairs_flat_form_idempotently() {
+        for profile in [
+            json!({"region":"us", "env_auth":true}),
+            json!({"drive":{"region":"us", "env_auth":true}}),
+        ] {
+            let config = json!({"name":"drive", "runtimeRemoteConfigs":{"Default": profile}});
+            let migrated = migrate_to_multi_profile(config);
+            assert_eq!(
+                migrated["runtimeRemoteConfigs"]["Default"],
+                json!({"drive":{"region":"us", "env_auth":true}})
+            );
+            assert_eq!(migrate_to_multi_profile(migrated.clone()), migrated);
+        }
+    }
 
     /// Production format from the released version
     fn production_config() -> Value {
@@ -573,9 +683,9 @@ mod tests {
 
         // RuntimeRemote: options flattened and double nesting flattened
         let rt = &obj["runtimeRemoteConfigs"]["default"];
-        assert_eq!(rt["scope"], "drive.readonly");
+        assert_eq!(rt["Google Drive"]["scope"], "drive.readonly");
         assert!(rt.get("options").is_none());
-        assert!(rt.get("Google Drive").is_none());
+        assert!(rt.get("Google Drive").is_some());
     }
 
     #[test]
@@ -722,9 +832,9 @@ mod tests {
         let migrated = migrate_to_multi_profile(legacy);
         let default_profile = &migrated["runtimeRemoteConfigs"]["Default"];
 
-        assert_eq!(default_profile["token"], "secret_token");
-        assert_eq!(default_profile["client_credentials"], true);
-        assert!(default_profile.get("One Drive").is_none());
+        assert_eq!(default_profile["One Drive"]["token"], "secret_token");
+        assert_eq!(default_profile["One Drive"]["client_credentials"], true);
+        assert!(default_profile.get("One Drive").is_some());
     }
 
     #[test]

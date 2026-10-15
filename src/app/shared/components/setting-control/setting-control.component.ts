@@ -510,6 +510,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   resetToDefault(): void {
     const ctrl = this.control();
     if (!ctrl) return;
+    ctrl.markAsDirty();
 
     const defaultValue = this.uiDefaultValue();
 
@@ -765,6 +766,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     const ctrl = this.control();
     const combined = this.combineDateTime();
     if (ctrl && combined !== null && ctrl.value !== combined) {
+      ctrl.markAsDirty();
       ctrl.setValue(combined);
     }
   }
@@ -825,6 +827,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   addArrayItem(): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
+    ctrl.markAsDirty();
     ctrl.push(new FormControl(''));
     this.syncFormArrayControls(ctrl);
   }
@@ -832,6 +835,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   removeArrayItem(i: number): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
+    ctrl.markAsDirty();
     ctrl.removeAt(i);
     this.syncFormArrayControls(ctrl);
     this.commitValue();

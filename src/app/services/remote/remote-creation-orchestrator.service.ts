@@ -18,6 +18,7 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { NotificationService } from '../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
+import { BackendService } from '../infrastructure/system/backend.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import {
   getAppCfg,
@@ -69,6 +70,7 @@ export class RemoteCreationOrchestrator {
     return isAnswerRequired(s);
   });
 
+  readonly backendName = inject(BackendService).activeBackend();
   private pendingConfig: PendingConfig | null = null;
 
   setPendingConfig(remoteData: PendingRemoteData, finalConfig: RemoteConfigSections): void {
@@ -81,42 +83,45 @@ export class RemoteCreationOrchestrator {
     commandOptions: CommandOption[]
   ): Promise<boolean> {
     this.pendingConfig = { remoteData, finalConfig };
-    try {
-      const resp = await this.remoteManagementService.startRemoteConfigInteractive(
-        remoteData.name,
-        remoteData.type,
-        remoteData,
-        this.remoteManagementService.buildOpt(commandOptions)
-      );
+    const pending = this.pendingConfig;
+    this.resetInteractiveFlow();
+    const resp = await this.remoteManagementService.startRemoteConfigInteractive(
+      remoteData.name,
+      remoteData.type,
+      remoteData,
+      this.remoteManagementService.buildOpt(commandOptions),
+      this.backendName
+    );
+    if (this.pendingConfig !== pending) return false;
 
-      if (!resp || resp.State === '') {
-        await this.finalizeCreation();
-        return true;
-      }
-
-      this.interactiveFlowState.set({
-        isActive: true,
-        isProcessing: false,
-        question: resp,
-        answer: getDefaultAnswerFromQuestion(resp),
-      });
-
-      return false;
-    } catch (error) {
-      this.interactiveFlowState.set(createInitialInteractiveFlowState());
-      throw error;
+    this.interactiveFlowState.set({
+      isActive: true,
+      isProcessing: false,
+      question: resp ?? { State: '', Option: null, Error: '' },
+      answer: resp ? getDefaultAnswerFromQuestion(resp) : null,
+    });
+    if (!resp || resp.State === '') {
+      await this.finalizeCreation();
+      return true;
     }
+    return false;
   }
 
   async submitInteractiveAnswer(
     answer: string | number | boolean | null,
     commandOptions: CommandOption[]
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       const state = this.interactiveFlowState();
-      if (!state.isActive || !state.question || !this.pendingConfig) return;
+      const pending = this.pendingConfig;
+      if (!state.isActive || !state.question || !pending) return false;
+      // A completed backend flow can retry saving settings without submitting the last answer again.
+      if (state.question.State === '') {
+        await this.finalizeCreation();
+        return true;
+      }
 
-      const { name, ...paramRest } = this.pendingConfig.remoteData;
+      const { name, ...paramRest } = pending.remoteData;
       const processedAnswer: string | number | boolean | null =
         state.question?.Option?.Type === 'bool'
           ? convertBoolAnswerToString(answer)
@@ -127,12 +132,18 @@ export class RemoteCreationOrchestrator {
         state.question.State,
         processedAnswer,
         paramRest,
-        this.remoteManagementService.buildOpt(commandOptions)
+        this.remoteManagementService.buildOpt(commandOptions),
+        this.backendName
       );
+      if (this.pendingConfig !== pending) return false;
 
       if (!resp || resp.State === '') {
-        this.interactiveFlowState.set(createInitialInteractiveFlowState());
+        this.interactiveFlowState.update(s => ({
+          ...s,
+          question: resp ?? { State: '', Option: null, Error: '' },
+        }));
         await this.finalizeCreation();
+        return true;
       } else {
         this.interactiveFlowState.update(s => ({
           ...s,
@@ -145,27 +156,35 @@ export class RemoteCreationOrchestrator {
       console.error('Error processing interactive response:', error);
       this.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
       this.notificationService.showError(
-        this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
+        error || this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
       );
     }
+    return false;
   }
 
   async finalizeCreation(): Promise<void> {
     if (!this.pendingConfig) return;
-    const { remoteData, finalConfig } = this.pendingConfig;
-    this.interactiveFlowState.set(createInitialInteractiveFlowState());
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
-    try {
-      await this.pathInspectionService.createRequiredDirectories(finalConfig);
-    } catch (err) {
-      console.error('Failed to create required directories:', err);
-    }
+    const pending = this.pendingConfig;
+    const { remoteData, finalConfig } = pending;
+    await this.pathInspectionService.createRequiredDirectories(finalConfig, this.backendName);
+    if (this.pendingConfig !== pending) return;
+    await this.appSettingsService.saveRemoteSettings(
+      remoteData.name,
+      finalConfig,
+      undefined,
+      this.backendName
+    );
+    if (this.pendingConfig !== pending) return;
     await this.remoteManagementService.getRemotes();
+    if (this.pendingConfig !== pending) return;
     this.authStateService.resetAuthState();
+    this.resetInteractiveFlow();
+    this.pendingConfig = null;
     await this.triggerAutoStartJobs(remoteData.name, finalConfig);
   }
 
   async cancelAuth(): Promise<void> {
+    this.pendingConfig = null;
     await this.authStateService.cancelAuth();
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
@@ -195,7 +214,9 @@ export class RemoteCreationOrchestrator {
       const appCfg = (getAppCfg(config) ?? config) as AppConfig;
       const rcloneCfg = (getRcloneCfg(config) ?? config) as RcloneSubConfig;
       if (appCfg.autoStart && rcloneCfg.mountPoint) {
-        void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
+        void this.mountManagementService
+          .mountRemoteProfile(remoteName, profileName, undefined, undefined, this.backendName)
+          .catch(error => console.error('Auto-start mount failed', error));
       }
     }
   }
@@ -207,13 +228,19 @@ export class RemoteCreationOrchestrator {
       for (const [profileName, config] of Object.entries(configs)) {
         const appCfg = getAppCfg(config) ?? config;
         const rcloneCfg = getRcloneCfg(config) ?? config;
-        const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
+        const source = rcloneCfg.srcFs || rcloneCfg.path1;
+        const hasSource = (Array.isArray(source) ? source : [source]).some(
+          path => typeof path === 'string' && path.length > 0
+        );
         const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
-        if (appCfg.autoStart && hasSource && hasDest) {
-          void this.jobManagementService.startProfileBatch(BATCH_OP_LABELS[jobType], {
-            remoteName,
-            profileName,
-          });
+        if (appCfg.autoStart && hasSource && (jobType === 'delete' || hasDest)) {
+          void this.jobManagementService
+            .startProfileBatch(BATCH_OP_LABELS[jobType], {
+              remoteName,
+              profileName,
+              backendName: this.backendName,
+            })
+            .catch(error => console.error('Auto-start transfer failed', error));
         }
       }
     }
@@ -227,7 +254,9 @@ export class RemoteCreationOrchestrator {
     for (const [profileName, config] of Object.entries(serveConfigs)) {
       const appCfg = (getAppCfg(config) ?? config) as AppConfig;
       if (appCfg.autoStart) {
-        void this.serveManagementService.startServeProfile(remoteName, profileName);
+        void this.serveManagementService
+          .startServeProfile(remoteName, profileName, this.backendName)
+          .catch(error => console.error('Auto-start serve failed', error));
       }
     }
   }

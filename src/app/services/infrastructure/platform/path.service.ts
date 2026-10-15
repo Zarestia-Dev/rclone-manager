@@ -193,6 +193,12 @@ export class PathService {
     existingRemotes: string[] = []
   ): PathGroup {
     if (!fs) return { type: defaultType, path: '', remote: '' };
+    // During setup the current remote is not in the backend's remote list yet.
+    const currentPrefix = currentRemoteName ? `${currentRemoteName}:` : '';
+    const isWindowsDrive = this.enginePathStyle() === 'windows' && /^[a-z]:/i.test(fs);
+    if (!isWindowsDrive && currentPrefix && fs.startsWith(currentPrefix)) {
+      return { type: 'currentRemote', path: fs.slice(currentPrefix.length), remote: '' };
+    }
 
     if (this.isLocalPath(fs)) {
       return { type: 'local', path: fs, remote: '' };

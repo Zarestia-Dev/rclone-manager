@@ -16,6 +16,7 @@ pub fn build_send_to_params(
         .collect();
 
     UploadBatchParams {
+        backend: None,
         remote,
         path: path.unwrap_or_default(),
         local_paths,

@@ -92,11 +92,11 @@ macro_rules! MASTER_COMMAND_LIST {
             (list_serves, $crate::rclone::queries::list_serves, []);
 
             // REMOTE MANAGEMENT
-            (create_remote_interactive, $crate::rclone::commands::remote::create_remote_interactive, [name: String, rclone_type: String, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>]);
-            (continue_create_remote_interactive, $crate::rclone::commands::remote::continue_create_remote_interactive, [name: String, state_token: String, result: serde_json::Value, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>]);
-            (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
-            (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
-            (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String]);
+            (create_remote_interactive, $crate::rclone::commands::remote::create_remote_interactive, [name: String, rclone_type: String, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
+            (continue_create_remote_interactive, $crate::rclone::commands::remote::continue_create_remote_interactive, [name: String, state_token: String, result: serde_json::Value, parameters: Option<std::collections::HashMap<String, serde_json::Value>>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
+            (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
+            (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>, backend_name: Option<String>]);
+            (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String, backend_name: Option<String>]);
             (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
             (get_remote_paths, $crate::rclone::queries::get_remote_paths, [remote: String, path: Option<String>, options: Option<$crate::utils::types::remotes::ListOptions>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (run_garbage_collector, $crate::rclone::commands::system::run_garbage_collector, []);
@@ -106,7 +106,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
 
             // FILESYSTEM COMMANDS
-            (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, backend_name: Option<String>]);
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
@@ -151,7 +151,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (remove_rclone_backend_option, $crate::services::settings::rclone_backend::remove_rclone_backend_option, [block: String, option: String]);
 
             // REMOTE SETTINGS
-            (save_remote_settings, $crate::services::settings::remote::manager::save_remote_settings, [remote_name: String, settings: serde_json::Value]);
+            (save_remote_settings, $crate::services::settings::remote::manager::save_remote_settings, [remote_name: String, settings: serde_json::Value, expected_settings: Option<serde_json::Value>, backend_name: Option<String>]);
             (delete_remote_settings, $crate::services::settings::remote::manager::delete_remote_settings, [remote_name: String]);
 
             // BACKUP & RESTORE

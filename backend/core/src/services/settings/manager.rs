@@ -87,9 +87,9 @@ mod tests {
         let migrated = migrate_remote_sub_settings(legacy);
         let default_profile = &migrated["runtimeRemoteConfigs"]["Default"];
 
-        assert_eq!(default_profile["token"], "secret_token");
-        assert_eq!(default_profile["client_credentials"], true);
-        assert!(default_profile.get("One Drive").is_none());
+        assert_eq!(default_profile["One Drive"]["token"], "secret_token");
+        assert_eq!(default_profile["One Drive"]["client_credentials"], true);
+        assert!(default_profile.get("One Drive").is_some());
     }
 
     #[test]

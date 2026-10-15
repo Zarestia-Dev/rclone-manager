@@ -16,9 +16,10 @@ import (
 	"github.com/rclone/rclone/cmd/archive/create"
 	"github.com/rclone/rclone/cmd/archive/extract"
 	"github.com/rclone/rclone/cmd/archive/list"
-	"github.com/rclone/rclone/cmd/check"
 	"github.com/rclone/rclone/fs"
+	"github.com/rclone/rclone/fs/cache"
 	"github.com/rclone/rclone/fs/filter"
+	"github.com/rclone/rclone/fs/fspath"
 	"github.com/rclone/rclone/fs/hash"
 	"github.com/rclone/rclone/fs/operations"
 	"github.com/rclone/rclone/fs/rc"
@@ -81,25 +82,70 @@ func rcOperationsArchive(ctx context.Context, in rc.Params) (out rc.Params, err 
 			return nil, errors.New("archive create requires source and destination parameters")
 		}
 
-		format, _ := in.GetString("format")
-		prefix, _ := in.GetString("prefix")
+		format, err := in.GetString("format")
+		if rc.NotErrParamNotFound(err) {
+			return nil, err
+		}
+		prefix, err := in.GetString("prefix")
+		if rc.NotErrParamNotFound(err) {
+			return nil, err
+		}
 
-		src := cmd.NewFsSrc([]string{srcPath})
-		dst, dstFile := cmd.NewFsDstFile([]string{dstPath})
+		// Rebuild inherited rules before adding per-operation exclusions. Keep
+		// this before GetFsNamedFileOK, which may add a single-file selection.
+		fi, err := filter.NewFilter(&filter.GetConfig(ctx).Opt)
+		if err != nil {
+			return nil, err
+		}
+		ctx = filter.ReplaceConfig(ctx, fi)
+		ctx, src, err := rc.GetFsNamedFileOK(ctx, rc.Params{"fs": srcPath}, "fs")
+		if err != nil {
+			return nil, err
+		}
+		dstRoot, dstFile, err := fspath.Split(dstPath)
+		if err != nil || dstFile == "" {
+			return nil, fmt.Errorf("invalid archive destination %q", dstPath)
+		}
+		if dstRoot == "" {
+			dstRoot = "."
+		}
+		dst, err := cache.Get(ctx, dstRoot)
+		if err != nil {
+			return nil, err
+		}
+		fullPath, err := in.GetBool("full_path")
+		if rc.NotErrParamNotFound(err) {
+			return nil, err
+		}
+		if prefix == "" && fullPath {
+			prefix = src.Root()
+		}
 
 		// Prevent infinite self-archiving loop if dstFile is created inside srcPath
-		fi := filter.GetConfig(ctx)
+		fi = filter.GetConfig(ctx)
 		if dst != nil {
 			dstFileName := filepath.Base(dstFile)
-			_ = fi.Add(false, dstFileName)
+			if err := fi.Add(false, dstFileName); err != nil {
+				return nil, err
+			}
 		}
 
 		var includes []string
-		_ = in.GetStructMissingOK("include", &includes)
+		if err := in.GetStructMissingOK("include", &includes); err != nil {
+			return nil, err
+		}
 		for _, inc := range includes {
 			if inc != "" {
-				_ = fi.Add(true, inc)
+				if err := fi.Add(true, inc); err != nil {
+					return nil, err
+				}
 			}
+		}
+		for _, key := range []string{"action", "src", "source", "dst", "destination", "arg", "format", "prefix", "full_path", "include"} {
+			delete(in, key)
+		}
+		if err := rc.CheckParamsUsed(in); err != nil {
+			return nil, err
 		}
 
 		err = create.ArchiveCreate(ctx, dst, dstFile, src, format, prefix)
@@ -224,7 +270,14 @@ func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, e
 		return nil, errors.New("cryptcheck requires source and destination parameters")
 	}
 
-	fsrc, fdst := cmd.NewFsSrcDst([]string{srcPath, dstPath})
+	ctx, fsrc, err := rc.GetFsNamedFileOK(ctx, rc.Params{"fs": srcPath}, "fs")
+	if err != nil {
+		return nil, err
+	}
+	fdst, err := cache.Get(ctx, dstPath)
+	if err != nil {
+		return nil, err
+	}
 
 	fcrypt, ok := fdst.(*crypt.Fs)
 	if !ok {
@@ -237,7 +290,29 @@ func rcOperationsCryptCheck(ctx context.Context, in rc.Params) (out rc.Params, e
 		return nil, fmt.Errorf("%s:%s does not support any hashes", funderlying.Name(), funderlying.Root())
 	}
 
-	opt, closeFn, err := check.GetCheckOpt(fsrc, fcrypt)
+	oneWay, err := in.GetBool("one_way")
+	if rc.NotErrParamNotFound(err) {
+		return nil, err
+	}
+	opt := &operations.CheckOpt{Fsrc: fsrc, Fdst: fcrypt, OneWay: oneWay}
+	reports := []operations.ReportFile{
+		{Out: &opt.Combined}, {Out: &opt.MissingOnSrc}, {Out: &opt.MissingOnDst},
+		{Out: &opt.Match}, {Out: &opt.Differ}, {Out: &opt.Error},
+	}
+	for i, key := range []string{"combined", "missing_on_src", "missing_on_dst", "match", "differ", "error"} {
+		reports[i].Name, err = in.GetString(key)
+		if rc.NotErrParamNotFound(err) {
+			return nil, err
+		}
+		delete(in, key)
+	}
+	for _, key := range []string{"src", "srcFs", "source", "dst", "dstFs", "destination", "arg", "one_way"} {
+		delete(in, key)
+	}
+	if err := rc.CheckParamsUsed(in); err != nil {
+		return nil, err
+	}
+	closeFn, err := operations.OpenReportFiles(reports...)
 	if err != nil {
 		return nil, err
 	}

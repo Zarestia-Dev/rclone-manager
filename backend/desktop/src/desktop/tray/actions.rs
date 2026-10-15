@@ -35,9 +35,11 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
+        backend_name: None,
         source: Some(Origin::Dashboard),
         no_cache: None,
         scoped_targets: None,
+        execute_id: None,
     }
 }
 
@@ -84,10 +86,10 @@ pub fn handle_stop_quick_run(app: AppHandle, quick_run_id: String) {
 pub fn handle_start_workflow(app: AppHandle, workflow_id: String) {
     let app = app.backend().clone();
     spawn(async move {
-        match crate::services::flow::workflow::engine::execute_workflow(
+        match crate::services::flow::workflow::commands::execute_workflow(
             app,
             workflow_id.clone(),
-            false,
+            None,
         )
         .await
         {
@@ -145,7 +147,8 @@ pub fn handle_stop_job_profile(
     spawn(async move {
         let backend_manager = app.state::<BackendManager>();
         let running_job = backend_manager
-            .job_cache
+            .job_cache()
+            .await
             .get_jobs()
             .await
             .into_iter()
@@ -248,7 +251,7 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
     let app = app.backend().clone();
     spawn(async move {
         let backend_manager = app.state::<BackendManager>();
-        let all_serves = backend_manager.remote_cache.get_serves().await;
+        let all_serves = backend_manager.remote_cache().await.get_serves().await;
 
         let instance = all_serves
             .iter()

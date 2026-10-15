@@ -9,6 +9,8 @@ import {
   afterNextRender,
 } from '@angular/core';
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -98,6 +100,9 @@ export class RemoteConfigModalComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
   private readonly valueMapper = inject(RcloneValueMapperService);
+  private readonly formChanges = toSignal(
+    merge(this.state.remoteForm.valueChanges, this.state.remoteConfigForm.valueChanges)
+  );
 
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
@@ -182,7 +187,6 @@ export class RemoteConfigModalComponent {
       if (result.success && !this.state.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
-      this.orchestrator.resetInteractiveFlow();
 
       let errorMessage = this.translate.instant(
         'modals.remoteConfig.errors.interactiveProcessingFailed'
@@ -213,7 +217,8 @@ export class RemoteConfigModalComponent {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
-        this.remoteManagementService.buildOpt(this.state.commandOptions())
+        this.remoteManagementService.buildOpt(this.state.commandOptions()),
+        this.orchestrator.backendName
       );
       this.orchestrator.setPendingConfig(remoteData, finalConfig);
       await this.orchestrator.finalizeCreation();
@@ -245,7 +250,12 @@ export class RemoteConfigModalComponent {
         );
         return { success: completed };
       }
-      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
+      await this.remoteManagementService.updateRemote(
+        remoteData.name,
+        remoteData,
+        undefined,
+        this.orchestrator.backendName
+      );
       let profileSuccess = true;
       if (this.state.editTarget() === null) {
         profileSuccess = await this.state.saveRemoteProfiles(remoteName);
@@ -301,13 +311,11 @@ export class RemoteConfigModalComponent {
       isProcessing: true,
       answer: answer != null ? String(answer) : '',
     }));
-    void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
-      this.closeIfFlowComplete();
-    });
-  }
-
-  private closeIfFlowComplete(): void {
-    if (!this.state.interactiveFlowState().isActive) this.close();
+    void this.orchestrator
+      .submitInteractiveAnswer(answer, this.state.commandOptions())
+      .then(completed => {
+        if (completed) this.close();
+      });
   }
 
   async cancelAuth(): Promise<void> {
@@ -384,6 +392,7 @@ export class RemoteConfigModalComponent {
   );
 
   readonly currentValues = computed(() => {
+    this.formChanges();
     const rcf = this.state.remoteConfigForm;
     const applicable = new Set(this.applicableCategories());
     const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};

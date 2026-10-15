@@ -174,8 +174,18 @@ export class AppSettingsService extends TauriBaseService {
   /**
    * Save remote-specific settings
    */
-  async saveRemoteSettings(remoteName: string, settings: Record<string, unknown>): Promise<void> {
-    return this.invokeCommand('save_remote_settings', { remoteName, settings });
+  async saveRemoteSettings(
+    remoteName: string,
+    settings: Record<string, unknown>,
+    expectedSettings?: Record<string, unknown>,
+    backendName?: string
+  ): Promise<void> {
+    return this.invokeCommand('save_remote_settings', {
+      remoteName,
+      settings,
+      expectedSettings: expectedSettings ?? null,
+      backendName: backendName ?? null,
+    });
   }
 
   /**

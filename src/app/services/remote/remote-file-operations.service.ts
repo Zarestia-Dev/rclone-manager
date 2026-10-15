@@ -170,9 +170,16 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     source?: Origin,
-    group?: string
+    group?: string,
+    backendName?: string
   ): Promise<void> {
-    return this.invokeCommand<void>('mkdir', { remote, path, origin: source, group });
+    return this.invokeCommand<void>('mkdir', {
+      remote,
+      path,
+      origin: source,
+      group,
+      ...(backendName && { backendName }),
+    });
   }
 
   async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {

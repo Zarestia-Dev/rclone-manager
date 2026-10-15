@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Signal, signal } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { FormControl, FormGroup } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
 import { QuickRunEditorComponent } from './quick-run-editor.component';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
@@ -16,7 +16,8 @@ import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-m
 import { MountManagementService } from 'src/app/services/operations/mount-management.service';
 import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { RcConfigOption } from '@app/types';
+import { RcConfigOption, QuickRunInput, QuickRunConfig, PrimaryActionType } from '@app/types';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 
 describe('QuickRunEditorComponent', () => {
   let fixture: ComponentFixture<QuickRunEditorComponent>;
@@ -157,13 +158,8 @@ describe('QuickRunEditorComponent', () => {
             showError: vi.fn(),
           },
         },
-        {
-          provide: PathService,
-          useValue: {
-            formatFsPath: vi.fn((p: string) => p),
-            isLocalPath: vi.fn(() => false),
-          },
-        },
+        PathService,
+        { provide: BackendService, useValue: { isWindows: signal(false) } },
         {
           provide: PathInspectionService,
           useValue: {
@@ -182,9 +178,122 @@ describe('QuickRunEditorComponent', () => {
       ],
     }).compileComponents();
 
+    TestBed.inject(PathService).setRemoteNames(['test-remote', 'other']);
     fixture = TestBed.createComponent(QuickRunEditorComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it.each([{ runtimeRemote: { region: 'eu' } }, { remotes: { 'test-remote': { region: 'eu' } } }])(
+    'reads runtime options from saved configuration %j',
+    async config => {
+      component.form.patchValue({ remoteName: 'test-remote' });
+      vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields).mockResolvedValue([
+        {
+          Name: 'region',
+          FieldName: 'region',
+          Type: 'string',
+          Help: '',
+          Default: '',
+          DefaultStr: '',
+        },
+      ]);
+      const editor = component as unknown as {
+        seedRcloneConfig: Record<string, unknown>;
+        loadRuntimeRemoteFields(type: string): Promise<void>;
+      };
+      editor.seedRcloneConfig = config;
+      await editor.loadRuntimeRemoteFields('drive');
+      expect(component.runtimeRemoteForm().get('region')?.value).toBe('eu');
+    }
+  );
+
+  it('writes runtime options under the owning remote for backend resolution', () => {
+    component.form.patchValue({ name: 'Photos', remoteName: 'test-remote' });
+    component.runtimeRemoteFields.set([
+      {
+        Name: 'region',
+        FieldName: 'region',
+        Type: 'string',
+        Help: '',
+        Default: '',
+        DefaultStr: '',
+      },
+    ]);
+    component.runtimeRemoteForm.set(
+      new FormGroup({ type: new FormControl('drive'), region: new FormControl("a'b,c") })
+    );
+    const input = (component as unknown as { buildInput(): QuickRunInput }).buildInput();
+    expect(input.config.rclone['remotes']).toEqual({ 'test-remote': { region: "a'b,c" } });
+    expect(input.config.rclone['runtimeRemote']).toBeUndefined();
+  });
+
+  it.each([
+    ['sync', { srcFs: ['test-remote:a', '/tmp/b'], dstFs: 'other:backup' }],
+    ['copy', { srcFs: ['test-remote:a', 'other:b'], dstFs: '/tmp/backup' }],
+    ['mount', { fs: 'test-remote:photos', mountPoint: 'saf://test-remote', mountType: 'saf' }],
+    ['bisync', { path1: 'test-remote:a', path2: '/tmp/b' }],
+    [
+      'copyurl',
+      {
+        srcFs: ['https://example.com/a', 'https://example.com/b'],
+        dstFs: '/tmp',
+        filenames: ['a.jpg', 'b.jpg'],
+        autoFilename: false,
+      },
+    ],
+  ] as const)('preserves %s paths and scheduling through an edit', (operation, rclone) => {
+    component.form.patchValue({
+      name: 'Saved',
+      remoteName: 'test-remote',
+      operationType: operation,
+    });
+    const app = {
+      autoStart: true,
+      cronEnabled: true,
+      cronExpression: '0 0 * * * *',
+      watchEnabled: true,
+      watchDelay: 7,
+    };
+    const editor = component as unknown as {
+      createOpConfigGroup(operation: PrimaryActionType, seed: QuickRunConfig): FormGroup;
+      buildInput(): QuickRunInput;
+    };
+    const group = editor.createOpConfigGroup(operation, { app, rclone: structuredClone(rclone) });
+    component.form.setControl(`${operation}Config`, group);
+    const saved = editor.buildInput().config;
+    expect(saved.app).toMatchObject(app);
+    expect(saved.rclone).toMatchObject(rclone);
+  });
+
+  it('loads legacy operation blocks and URL aliases without losing sources', () => {
+    component.form.patchValue({
+      name: 'Legacy',
+      remoteName: 'test-remote',
+      operationType: 'copyurl',
+    });
+    const editor = component as unknown as {
+      createOpConfigGroup(operation: PrimaryActionType, seed: QuickRunConfig): FormGroup;
+      buildInput(): QuickRunInput;
+    };
+    component.form.setControl(
+      'copyurlConfig',
+      editor.createOpConfigGroup('copyurl', {
+        app: { autoStart: false },
+        rclone: {
+          copyurl: {
+            url: ['https://example.com/a', 'https://example.com/b'],
+            dstFs: '/tmp',
+            autoFilename: true,
+          },
+        },
+      })
+    );
+    expect(editor.buildInput().config.rclone).toMatchObject({
+      srcFs: ['https://example.com/a', 'https://example.com/b'],
+      dstFs: '/tmp',
+      autoFilename: true,
+    });
   });
 
   it('should initialize subtype controls (mountType and type) with default values', () => {

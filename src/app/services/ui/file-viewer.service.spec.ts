@@ -4,7 +4,6 @@ import { EventEmitter } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { Entry } from '@app/types';
 import { FileViewerService } from './file-viewer.service';
 import { VaultService } from '../security/vault.service';
@@ -13,8 +12,6 @@ import { ApiClientService } from '../infrastructure/platform/api-client.service'
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { NotificationService } from './notification.service';
 import { NavigationHistoryService } from './navigation-history.service';
-
-vi.mock('@tauri-apps/api/core', () => ({ convertFileSrc: vi.fn() }));
 
 const item = (path: string): Entry => ({
   ID: '',
@@ -29,12 +26,13 @@ const item = (path: string): Entry => ({
 describe('FileViewerService media URLs', () => {
   const openLayer = vi.fn();
   const releaseHistory = vi.fn();
+  const convertFileSrc = vi.fn();
   afterEach(() => {
     Object.defineProperty(window, '__TAURI_INTERNALS__', { value: undefined, configurable: true });
   });
   beforeEach(() => {
     Object.defineProperty(window, '__TAURI_INTERNALS__', { value: undefined, configurable: true });
-    vi.mocked(convertFileSrc).mockReset();
+    convertFileSrc.mockReset();
     openLayer.mockReset().mockReturnValue(releaseHistory);
     releaseHistory.mockReset();
     TestBed.configureTestingModule({
@@ -180,8 +178,11 @@ describe('FileViewerService media URLs', () => {
   it.each(['http', 'https', 'custom'])(
     'uses Tauri registered %s origin for every native resource',
     async mode => {
-      Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
-      vi.mocked(convertFileSrc).mockImplementation((path, scheme = 'asset') =>
+      Object.defineProperty(window, '__TAURI_INTERNALS__', {
+        value: { convertFileSrc },
+        configurable: true,
+      });
+      convertFileSrc.mockImplementation((path, scheme = 'asset') =>
         mode === 'custom'
           ? `${scheme}://localhost/${path}`
           : `${mode}://${scheme}.localhost/${path}`

@@ -90,6 +90,7 @@ export interface OAuthUrlEvent {
 
 export interface JobChangeEvent {
   jobId: string;
+  backendName?: string;
   status: JobStatus;
   remote?: string;
   source?: string;
@@ -103,6 +104,7 @@ export interface JobChangeEvent {
 
 export interface JobStatsUpdatedEvent {
   jobId: number;
+  backendName: string;
   stats: GlobalStats;
 }
 

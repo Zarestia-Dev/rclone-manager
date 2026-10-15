@@ -129,11 +129,14 @@ impl TraySnapshot {
         let backend_manager = app.backend_state::<BackendManager>();
         let settings_manager = app.backend_state::<AppSettingsManager>();
 
+        let backend = backend_manager.get_active().await;
+        let jobs = backend_manager.job_cache_for(&backend.name);
+        let remotes = backend_manager.remote_cache_for(&backend.name);
         let (active_jobs_raw, mounted_remotes, active_serves, remote_names) = tokio::join!(
-            backend_manager.job_cache.get_active_jobs(),
-            backend_manager.remote_cache.get_mounted_remotes(),
-            backend_manager.remote_cache.get_serves(),
-            backend_manager.remote_cache.get_remotes(),
+            jobs.get_active_jobs(),
+            remotes.get_mounted_remotes(),
+            remotes.get_serves(),
+            remotes.get_remotes(),
         );
 
         let active_jobs: Vec<TrayJobSummary> = active_jobs_raw

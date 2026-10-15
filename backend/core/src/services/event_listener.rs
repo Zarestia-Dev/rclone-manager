@@ -105,9 +105,14 @@ fn handle_remote_presence_changed(app: &AppHandle, payload: &Value) {
     }
     let app = app.clone();
     spawn(async move {
-        let cache = &app.state::<BackendManager>().remote_cache;
+        let manager = app.state::<BackendManager>();
+        let backend = manager.get_active().await;
+        let cache = manager.remote_cache_for(&backend.name);
 
-        if let Err(e) = cache.refresh_remotes_and_configs(app.clone()).await {
+        if let Err(e) = cache
+            .refresh_remotes_and_configs(app.clone(), &backend)
+            .await
+        {
             error!("Failed to refresh cache: {e}");
         }
 
@@ -316,7 +321,11 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
     spawn(async move {
         if let Ok(ev) = serde_json::from_value::<JobChangeEvent>(payload)
             && let Ok(id) = ev.job_id.parse::<u64>()
-            && let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
+            && let Some(job) = app
+                .state::<BackendManager>()
+                .job_cache_for(&ev.backend_name)
+                .get_job(id)
+                .await
         {
             #[cfg(feature = "tray")]
             if job.job_type.is_tray_relevant() {
@@ -370,6 +379,20 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
             trigger_tray_update(app.clone());
         }
         _ => {}
+    }
+
+    #[cfg(target_os = "android")]
+    if event.event == crate::utils::types::events::MOUNT_STATE_CHANGED {
+        let app = app.clone();
+        spawn(async move {
+            let mounts = app
+                .state::<BackendManager>()
+                .remote_cache_for(crate::rclone::backend::types::LOCAL_BACKEND_NAME)
+                .get_mounted_remotes()
+                .await;
+            crate::rclone::backend::saf_bridge::update_mounted_remotes(&mounts);
+            crate::rclone::backend::saf_bridge::notify_roots_changed();
+        });
     }
 
     #[cfg(all(

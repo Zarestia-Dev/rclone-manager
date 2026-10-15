@@ -278,6 +278,65 @@ describe('remote-config.utils', () => {
     });
   });
 
+  describe('shared operation mapping', () => {
+    it('preserves local mount sources instead of converting them into remote paths', () => {
+      const form = mapConfigToFormProfile(
+        'mount',
+        {
+          rclone: { srcFs: '/tmp/photos', mountPoint: '/mnt/photos' },
+        },
+        ctx
+      );
+      expect(form['source']).toEqual({ type: 'local', path: '/tmp/photos', remote: '' });
+      expect(mapFormToConfigProfile('mount', form, formCtx)['rclone']).toEqual({
+        fs: '/tmp/photos',
+        mountPoint: '/mnt/photos',
+      });
+    });
+
+    it('reads legacy operation blocks without mixing shared options into operation flags', () => {
+      const form = mapConfigToFormProfile(
+        'sync',
+        {
+          app: { autoStart: true },
+          rclone: {
+            sync: { srcFs: ['myremote:a', 'otherremote:b'], dstFs: '/tmp', dry_run: true },
+            dry_run: false,
+            vfs: { cache_mode: 'full' },
+            remotes: { myremote: { region: 'eu' } },
+          },
+        },
+        ctx
+      );
+      expect(form['options']).toEqual({ dry_run: false });
+      expect(mapFormToConfigProfile('sync', form, formCtx)['rclone']).toEqual({
+        srcFs: ['myremote:a', 'otherremote:b'],
+        dstFs: '/tmp',
+        dry_run: false,
+      });
+    });
+
+    it('preserves multiple URLs and filenames, including punctuation, through both directions', () => {
+      const original = {
+        srcFs: ["https://example.com/a?x=1&y='two'", 'https://example.com/b'],
+        dstFs: '/tmp/photos',
+        filenames: ["a'b,c.jpg", 'b.jpg'],
+        autoFilename: false,
+      };
+      const form = mapConfigToFormProfile('copyurl', { rclone: original }, ctx);
+      expect(mapFormToConfigProfile('copyurl', form, formCtx)['rclone']).toEqual(original);
+    });
+
+    it('handles an empty source list without manufacturing a source', () => {
+      const form = mapConfigToFormProfile('sync', { rclone: { srcFs: [], dstFs: '/tmp' } }, ctx);
+      expect(form['source']).toEqual([]);
+      expect(mapFormToConfigProfile('sync', form, formCtx)['rclone']).toEqual({
+        srcFs: '',
+        dstFs: '/tmp',
+      });
+    });
+  });
+
   describe('resolveOptionExamples', () => {
     it('should return explicit examples when defined on option', () => {
       const opt = {

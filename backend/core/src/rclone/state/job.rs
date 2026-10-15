@@ -11,14 +11,13 @@ use crate::utils::types::{
     jobs::{JobCache, JobInfo, JobStatus, JobType},
 };
 
-pub fn spawn_stats_cleanup_by_group(app: &AppHandle, group: &str) {
+pub fn spawn_stats_cleanup_by_group(
+    transport: std::sync::Arc<dyn crate::rclone::backend::RcloneTransport>,
+    group: &str,
+) {
     if group.is_empty() {
         return;
     }
-    let transport = app
-        .state::<crate::utils::types::state::RcloneState>()
-        .transport
-        .clone();
     let group = group.to_string();
 
     crate::utils::spawn(async move {
@@ -76,10 +75,6 @@ impl JobCache {
 
         self.add_job(job).await;
         jobid
-    }
-
-    pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
-        *self.jobs.write().await = jobs.into_iter().map(|j| (j.jobid, j)).collect();
     }
 
     pub async fn add_job(&self, job: JobInfo) {
@@ -142,7 +137,7 @@ impl JobCache {
         if let Some(app) = app {
             for job in &removed_jobs {
                 if !job.group.is_empty() && !remaining_groups.contains(&job.group) {
-                    spawn_stats_cleanup_by_group(app, &job.group);
+                    cleanup_job_stats(app, job).await;
                 }
             }
         }
@@ -206,6 +201,7 @@ impl JobCache {
         }
         job.stats = Some(stats);
         job.normalize_job_stats();
+        let backend_name = job.backend_name.clone();
 
         let parent_id = job.parent_job_id;
         let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
@@ -233,6 +229,7 @@ impl JobCache {
                 JOB_STATS_UPDATED,
                 JobStatsUpdatedEvent {
                     job_id: p_id,
+                    backend_name: backend_name.clone(),
                     stats: p_stats,
                 },
             );
@@ -242,6 +239,7 @@ impl JobCache {
             JOB_STATS_UPDATED,
             JobStatsUpdatedEvent {
                 job_id: jobid,
+                backend_name,
                 stats: job_stats,
             },
         );
@@ -338,10 +336,16 @@ impl JobCache {
         &self,
         remote_name: &str,
         profile_name: &str,
+        job_type: &JobType,
         app: Option<&AppHandle>,
     ) {
         self.delete_matching(
-            |j| j.remote_name == remote_name && j.profile.as_deref() == Some(profile_name),
+            |j| {
+                j.remote_name == remote_name
+                    && j.profile.as_deref() == Some(profile_name)
+                    && &j.job_type == job_type
+                    && !j.status.is_running()
+            },
             app,
         )
         .await;
@@ -371,9 +375,10 @@ impl JobCache {
         loop {
             let mut orphaned = Vec::new();
             for job in jobs.values() {
-                if job
-                    .parent_job_id
-                    .is_some_and(|parent_id| !jobs.contains_key(&parent_id))
+                if job.status.is_finished()
+                    && job
+                        .parent_job_id
+                        .is_some_and(|parent_id| !jobs.contains_key(&parent_id))
                 {
                     orphaned.push(job.jobid);
                 }
@@ -395,7 +400,7 @@ impl JobCache {
         if let Some(app) = app {
             for job in &removed_jobs {
                 if !job.group.is_empty() && !remaining_groups.contains(&job.group) {
-                    spawn_stats_cleanup_by_group(app, &job.group);
+                    cleanup_job_stats(app, job).await;
                 }
             }
         }
@@ -415,6 +420,19 @@ impl JobCache {
     }
 }
 
+async fn cleanup_job_stats(app: &AppHandle, job: &JobInfo) {
+    let manager = app.state::<crate::rclone::backend::BackendManager>();
+    if let Some(backend) = manager.get(&job.backend_name).await {
+        spawn_stats_cleanup_by_group(
+            crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
+                app.clone(),
+                backend,
+            ),
+            &job.group,
+        );
+    }
+}
+
 impl Default for JobCache {
     fn default() -> Self {
         Self::new()
@@ -425,6 +443,30 @@ impl Default for JobCache {
 mod tests {
     use super::*;
     use crate::rclone::backend::types::default_backend_name;
+
+    #[tokio::test]
+    async fn profile_cleanup_only_removes_finished_jobs_of_the_same_operation() {
+        let cache = JobCache::new();
+        for (id, operation, profile, finished) in [
+            (1, JobType::Mount, "Default", true),
+            (2, JobType::Sync, "Default", true),
+            (3, JobType::Mount, "Default", false),
+            (4, JobType::Mount, "Other", true),
+        ] {
+            let mut job = mock_job(id, "drive", operation, Some(profile));
+            if finished {
+                job.status = JobStatus::Completed;
+            }
+            cache.add_job(job).await;
+        }
+        cache
+            .delete_jobs_by_profile("drive", "Default", &JobType::Mount, None)
+            .await;
+        assert!(cache.get_job(1).await.is_none());
+        for id in [2, 3, 4] {
+            assert!(cache.get_job(id).await.is_some());
+        }
+    }
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
         JobInfo {

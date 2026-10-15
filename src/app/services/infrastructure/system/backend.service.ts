@@ -7,6 +7,17 @@ import { EventListenersService } from './event-listeners.service';
 
 import { BackendInfo, TestConnectionResult, AddBackendArgs, RuntimeStatus } from '@app/types';
 
+interface BackendFormValues {
+  name: string;
+  host: string;
+  port: string | number;
+  has_auth: boolean;
+  username?: string;
+  password?: string;
+  config_password?: string;
+  config_path?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BackendService extends TauriBaseService {
   readonly activeBackend = signal<string>('Local');
@@ -280,7 +291,7 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  mapFormToConfig(formValue: any, isLocal: boolean): AddBackendArgs {
+  mapFormToConfig(formValue: BackendFormValues, isLocal: boolean): AddBackendArgs {
     return {
       name: formValue.name,
       host: formValue.host,
@@ -293,7 +304,11 @@ export class BackendService extends TauriBaseService {
     };
   }
 
-  mapFormToUpdateConfig(formValue: any, editingName: string, isLocal: boolean): AddBackendArgs {
+  mapFormToUpdateConfig(
+    formValue: BackendFormValues,
+    editingName: string,
+    isLocal: boolean
+  ): AddBackendArgs {
     return {
       name: editingName,
       host: formValue.host,

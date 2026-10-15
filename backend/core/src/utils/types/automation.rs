@@ -91,6 +91,10 @@ pub struct Automation {
     /// Current rclone job ID or batch ID if automation is running
     pub current_job_id: Option<String>,
 
+    /// Identity reserved before any asynchronous work starts.
+    #[serde(skip)]
+    pub execution_id: Option<String>,
+
     /// Scheduler job UUID (used to unschedule the automation)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scheduler_job_id: Option<String>,
@@ -122,6 +126,35 @@ pub struct Automation {
 }
 
 impl Automation {
+    /// Quick Run and workflow definitions are global; remote profiles are scoped.
+    #[must_use]
+    pub fn is_global(&self) -> bool {
+        matches!(
+            self.args.params.source,
+            Some(
+                crate::utils::types::origin::Origin::QuickRun
+                    | crate::utils::types::origin::Origin::Flow
+            )
+        )
+    }
+
+    #[must_use]
+    pub fn belongs_to_backend(&self, backend_name: &str) -> bool {
+        self.is_global() || self.backend_name == backend_name
+    }
+
+    /// Running jobs retain their next cron. Remote-profile cron jobs are
+    /// suspended outside their backend; global definitions follow selection.
+    #[must_use]
+    pub fn should_schedule(&self, backend_name: &str) -> bool {
+        self.belongs_to_backend(backend_name)
+            && self.cron_expression.is_some()
+            && !matches!(
+                self.status,
+                AutomationStatus::Disabled | AutomationStatus::Stopping
+            )
+    }
+
     #[must_use]
     pub fn display_name(&self) -> String {
         format!("{} ({})", self.profile_name, self.backend_name)
@@ -140,6 +173,7 @@ impl Automation {
         self.last_run = Some(Utc::now());
         self.last_error = None;
         self.current_job_id = None;
+        self.execution_id = None;
         self.success_count += 1;
         self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
@@ -153,6 +187,7 @@ impl Automation {
         self.last_run = Some(Utc::now());
         self.last_error = Some(error);
         self.current_job_id = None;
+        self.execution_id = None;
         self.failure_count += 1;
         self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
@@ -164,33 +199,24 @@ impl Automation {
     /// Mark automation as starting execution
     pub fn mark_starting(&mut self) -> Result<(), String> {
         if !self.can_run() {
-            return Err(format!(
-                "Automation cannot start from status {:?}",
-                self.status
+            return Err(crate::localized_error!(
+                "backendErrors.automation.automationCannotRun",
+                "status" => format!("{:?}", self.status)
             ));
         }
 
         self.status = AutomationStatus::Running;
+        self.execution_id = Some(uuid::Uuid::new_v4().to_string());
         self.current_job_id = None;
         self.last_run = Some(Utc::now());
         self.run_count += 1;
         Ok(())
     }
 
-    /// Mark automation as running with job ID or batch ID (after operation starts)
-    pub fn mark_running(&mut self, job_id: String) {
-        debug_assert_eq!(
-            self.status,
-            AutomationStatus::Running,
-            "mark_running called from unexpected state {:?}",
-            self.status
-        );
-        self.current_job_id = Some(job_id);
-    }
-
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
+        self.execution_id = None;
         self.stopped_count += 1;
         self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
@@ -233,9 +259,11 @@ mod tests {
                 params: ProfileParams {
                     remote_name: "remote".to_string(),
                     profile_name: "profile".to_string(),
+                    backend_name: None,
                     source: None,
                     no_cache: None,
                     scoped_targets: None,
+                    execute_id: None,
                 },
                 src_paths: vec![],
                 dst_paths: vec![],
@@ -246,6 +274,7 @@ mod tests {
             next_run: None,
             last_error: None,
             current_job_id: None,
+            execution_id: None,
             scheduler_job_id: None,
             run_count: 0,
             success_count: 0,
@@ -254,6 +283,45 @@ mod tests {
             watch_enabled: false,
             watch_delay: 5,
             watch_changed_only: false,
+        }
+    }
+
+    #[test]
+    fn cron_eligibility_depends_on_backend_and_enabled_state() {
+        let mut automation = create_test_automation();
+        for status in [
+            AutomationStatus::Enabled,
+            AutomationStatus::Failed,
+            AutomationStatus::Running,
+        ] {
+            automation.status = status;
+            assert!(automation.should_schedule("Local"));
+            assert!(!automation.should_schedule("Other"));
+        }
+        for status in [AutomationStatus::Disabled, AutomationStatus::Stopping] {
+            automation.status = status;
+            assert!(!automation.should_schedule("Local"));
+        }
+        automation.status = AutomationStatus::Enabled;
+        automation.cron_expression = None;
+        assert!(!automation.should_schedule("Local"));
+    }
+
+    #[test]
+    fn global_definitions_remain_scheduled_when_backend_selection_changes() {
+        let mut automation = create_test_automation();
+        for source in [
+            crate::utils::types::origin::Origin::QuickRun,
+            crate::utils::types::origin::Origin::Flow,
+        ] {
+            automation.args.params.source = Some(source);
+            assert!(automation.belongs_to_backend("Other"));
+            assert!(automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Running;
+            assert!(automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Disabled;
+            assert!(!automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Enabled;
         }
     }
 
@@ -286,7 +354,7 @@ mod tests {
         assert_eq!(automation.run_count, 1);
         assert!(automation.last_run.is_some());
 
-        automation.mark_running("12345".to_string());
+        automation.current_job_id = Some("12345".to_string());
         assert_eq!(automation.current_job_id, Some("12345".to_string()));
         assert!(!automation.can_run());
     }

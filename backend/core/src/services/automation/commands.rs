@@ -1,13 +1,10 @@
 use crate::context::AppHandle;
-use log::{error, info, warn};
+use log::{error, info};
 
 use crate::{
     rclone::state::automations::AutomationsCache,
     services::automation::engine::{AutomationScheduler, get_next_run, validate_cron_expression},
-    utils::types::{
-        automation::{Automation, AutomationStatus, CronValidationResponse},
-        remotes::RemoteSettings,
-    },
+    utils::types::automation::{Automation, AutomationStatus, CronValidationResponse},
 };
 
 /// Toggle automation scheduling state.
@@ -22,10 +19,10 @@ pub async fn toggle_automation(
 
     let automation = cache.toggle_automation_status(&automation_id).await?;
 
-    if let Err(e) = scheduler
-        .reschedule_automation(&automation, cache.clone())
-        .await
-    {
+    let schedule_result = scheduler
+        .reschedule_automation(&automation_id, cache.clone())
+        .await;
+    if let Err(e) = &schedule_result {
         error!("Failed to reload automations after toggle: {e}");
     } else {
         let automation_name = automation.log_name();
@@ -42,10 +39,9 @@ pub async fn toggle_automation(
     }
 
     let watcher_manager = app.state::<crate::services::automation::watcher::WatcherManager>();
-    if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
-        error!("Failed to sync watchers after toggle: {e}");
-    }
-
+    let watch_result = watcher_manager.sync_watchers(app.clone()).await;
+    schedule_result?;
+    watch_result?;
     Ok(automation)
 }
 
@@ -72,36 +68,16 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
 /// Reload all automations
 pub async fn reload_automations(app: AppHandle) -> Result<(), String> {
     info!("Reloading all automations");
-    let scheduler = app.state::<AutomationScheduler>();
-
-    scheduler.reload_automations(app.clone()).await?;
-
-    info!("Automations reloaded");
-    Ok(())
+    crate::services::automation::engine::apply_and_sync_automations(&app).await
 }
 
-/// Clear all automations
+/// Clear definitions, then reconcile actual scheduler jobs and watchers. Failed
+/// removals remain tracked by the scheduler for a subsequent retry.
 pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
-    info!("Clearing all automations");
-
-    let cache = app.state::<AutomationsCache>();
-    let scheduler = app.state::<AutomationScheduler>();
-
-    let automations = cache.get_all_automations().await;
-
-    for automation in automations {
-        if let Some(job_id_str) = automation.scheduler_job_id
-            && let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str)
-            && let Err(e) = scheduler.unschedule_automation(job_id).await
-        {
-            warn!("Failed to unschedule job {job_id}: {e}");
-        }
-    }
-
-    cache.clear_all_automations().await?;
-
-    info!("All automations cleared");
-    Ok(())
+    app.state::<AutomationsCache>()
+        .clear_all_automations()
+        .await?;
+    crate::services::automation::engine::apply_and_sync_automations(&app).await
 }
 
 /// Reload automations from remote configs stored in AppSettingsManager
@@ -109,15 +85,13 @@ pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, S
     info!("Reloading automations from configs...");
 
     let manager = app.state::<crate::services::settings::AppSettingsManager>();
-    let all_settings = RemoteSettings::load_all(manager.inner());
-
     let cache = app.state::<AutomationsCache>();
     let scheduler = app.state::<AutomationScheduler>();
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    let backend_name = backend_manager.get_active_name().await;
+    let (backend, all_settings) = backend_manager.active_remote_configs(manager.inner()).await;
 
     let result = cache
-        .load_from_remote_configs(&all_settings, &backend_name)
+        .load_from_remote_configs(&all_settings, &backend.name)
         .await?;
 
     let counts = (
@@ -126,12 +100,16 @@ pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, S
         result.removed.len(),
     );
 
-    scheduler.apply_cache_result(&result, cache).await?;
+    // Backend changes also affect unchanged cache entries: suspend their old
+    // cron jobs and reinstall those belonging to the newly selected backend.
+    let reconcile_result = scheduler.reload_automations(app.clone()).await;
 
-    let watcher_manager = app.state::<crate::services::automation::watcher::WatcherManager>();
-    if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
-        error!("Failed to sync watchers after config reload: {e}");
-    }
+    let watch_result = app
+        .state::<crate::services::automation::watcher::WatcherManager>()
+        .sync_watchers(app.clone())
+        .await;
+    reconcile_result?;
+    watch_result?;
 
     info!(
         "Reload complete: {} added, {} updated, {} removed",

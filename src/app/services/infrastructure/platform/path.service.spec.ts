@@ -50,6 +50,30 @@ describe('PathService', () => {
     expect(service).toBeTruthy();
   });
 
+  it('parses paths of the remote being created before it exists in the backend list', () => {
+    for (const path of ['', 'photos', 'folder with spaces/file:1']) {
+      expect(service.parseFsString(`new-drive:${path}`, 'local', 'new-drive')).toEqual({
+        type: 'currentRemote',
+        path,
+        remote: '',
+      });
+    }
+    expect(service.parseFsString('/tmp/new-drive:photos', 'local', 'new-drive')).toEqual({
+      type: 'local',
+      path: '/tmp/new-drive:photos',
+      remote: '',
+    });
+  });
+
+  it('keeps Windows drive paths local when a new remote name matches the drive letter', () => {
+    setEngineOs('windows');
+    expect(service.parseFsString('C:\\files', 'local', 'C')).toEqual({
+      type: 'local',
+      path: 'C:\\files',
+      remote: '',
+    });
+  });
+
   // ── Engine-reported OS → PathStyle derivation ──────────────────────────────
 
   describe('enginePathStyle / pathStyleForRemote', () => {

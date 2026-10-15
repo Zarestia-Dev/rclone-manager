@@ -44,6 +44,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     let backend_manager = app.state::<BackendManager>();
     let settings_manager = app.state::<AppSettingsManager>();
+    let _switch = backend_manager.switch_lock.lock().await;
 
     let backend = backend_manager
         .get(&name)
@@ -55,6 +56,9 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
     backend_manager
         .switch_to(settings_manager.inner(), &name)
         .await?;
+    app.state::<crate::services::automation::watcher::WatcherManager>()
+        .stop_all()
+        .await;
 
     crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
     info!("Re-evaluating engine after backend switch to '{name}'");
@@ -62,12 +66,22 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     configure_remote_backend(&app, &backend).await;
 
-    refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await?;
+    let refresh_result =
+        refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await;
+    // Refresh may revert to Local. Reconcile the backend actually selected on
+    // both paths, so old cron jobs and watch sessions cannot remain attached.
+    let automation_result =
+        crate::services::automation::commands::reload_automations_from_configs(&app).await;
+    let active_name = backend_manager.get_active_name().await;
 
     crate::rclone::backend::manager::save_active_backend_to_settings(
         settings_manager.inner(),
-        &name,
+        &active_name,
     );
+    crate::services::bridge::emit(BACKEND_SWITCHED, &active_name);
+
+    refresh_result?;
+    automation_result?;
 
     info!("Switched to backend: {name}");
     Ok(())
@@ -492,17 +506,20 @@ async fn refresh_and_verify_cache(
     settings_manager: &AppSettingsManager,
     name: &str,
 ) -> Result<(), String> {
+    let backend = backend_manager
+        .get(name)
+        .await
+        .ok_or_else(|| crate::localized_error!("backendErrors.backend.notFound", "name" => name))?;
     match tokio::time::timeout(
         std::time::Duration::from_secs(15),
         app.state::<BackendManager>()
-            .remote_cache
-            .refresh_all(app.clone()),
+            .remote_cache_for(name)
+            .refresh_all(app.clone(), &backend),
     )
     .await
     {
         Ok(Ok(())) => {
             info!("Cache refreshed for backend '{name}'");
-            crate::services::bridge::emit(BACKEND_SWITCHED, name);
             Ok(())
         }
         Ok(Err(e)) => {

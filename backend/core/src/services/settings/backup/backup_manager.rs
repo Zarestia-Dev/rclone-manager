@@ -103,7 +103,7 @@ pub async fn backup_settings(
         use crate::rclone::backend::BackendManager;
         let backend_manager = app_handle.state::<BackendManager>();
 
-        let all_configs = backend_manager.remote_cache.get_configs().await;
+        let all_configs = backend_manager.remote_cache().await.get_configs().await;
         let remote_config = all_configs.get(name).cloned();
 
         let provider = RcloneConfigProvider::for_remote(name, remote_config)

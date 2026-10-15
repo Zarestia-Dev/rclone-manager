@@ -5,7 +5,7 @@ use serde_json::json;
 
 use crate::{
     rclone::commands::{
-        common::{FromConfig, parse_common_config},
+        common::parse_common_config,
         job::JobMetadata,
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
@@ -56,7 +56,7 @@ pub async fn create_quick_run(
 
     save_quick_run(&manager, &record)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_quick_run_automations_bg(&app).await;
+    sync_quick_run_automations(&app).await?;
     Ok(record)
 }
 
@@ -84,7 +84,7 @@ pub async fn update_quick_run(
 
     save_quick_run(&manager, &existing)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_quick_run_automations_bg(&app).await;
+    sync_quick_run_automations(&app).await?;
     Ok(existing)
 }
 
@@ -94,11 +94,11 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     let manager = app.state::<AppSettingsManager>();
     delete_quick_run_by_id(&manager, &quick_run_id)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_quick_run_automations_bg(&app).await;
+    sync_quick_run_automations(&app).await?;
     Ok(())
 }
 
-pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
+pub async fn sync_quick_run_automations(app: &AppHandle) -> Result<(), String> {
     use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
     use crate::services::automation::engine::apply_and_sync_automations;
     use crate::services::settings::AppSettingsManager;
@@ -108,11 +108,11 @@ pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
-    if let Ok(quick_runs) = get_all_quick_runs_sync(&manager)
-        && let Ok(result) = cache.load_from_quick_runs(&quick_runs, &backend_name).await
-    {
-        apply_and_sync_automations(app, &result).await;
-    }
+    let quick_runs = get_all_quick_runs_sync(&manager)?;
+    cache
+        .load_from_quick_runs(&quick_runs, &backend_name)
+        .await?;
+    apply_and_sync_automations(app).await
 }
 
 /// Start execution of a quick run.
@@ -122,23 +122,36 @@ pub async fn start_quick_run(
     workflow_id: Option<String>,
     node_id: Option<String>,
 ) -> Result<StartQuickRunResponse, String> {
+    let backend = app
+        .state::<crate::rclone::backend::BackendManager>()
+        .get_active()
+        .await;
+    start_quick_run_on_backend(app, backend, quick_run_id, workflow_id, node_id, None).await
+}
+
+pub(crate) async fn start_quick_run_on_backend(
+    app: AppHandle,
+    backend: crate::rclone::backend::types::Backend,
+    quick_run_id: String,
+    workflow_id: Option<String>,
+    node_id: Option<String>,
+    execute_id: Option<String>,
+) -> Result<StartQuickRunResponse, String> {
     info!("Starting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
 
     let qr = get_quick_run(&manager, &quick_run_id)?
         .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
 
-    let execute_id = uuid::Uuid::new_v4().to_string();
+    let execute_id = execute_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let start_time = chrono::Utc::now();
-    let empty_settings = json!({});
+    let empty_settings = json!({"name": qr.remote_name.trim_end_matches(':')});
 
     if qr.operation_type == OperationType::Mount {
         let mut mount_params =
-            MountParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)
-                .ok_or_else(|| {
-                    format!("Quick run '{}' mount configuration is incomplete", qr.name)
-                })?;
+            MountParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
         let mount_point = mount_params.mount_point.clone();
+        mount_params.backend = Some(backend.clone());
         mount_params.profile = None;
         mount_params.quick_run_id = Some(quick_run_id.clone());
         mount_params.workflow_id = workflow_id;
@@ -167,10 +180,8 @@ pub async fn start_quick_run(
 
     if qr.operation_type == OperationType::Serve {
         let mut serve_params =
-            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)
-                .ok_or_else(|| {
-                    format!("Quick run '{}' serve configuration is incomplete", qr.name)
-                })?;
+            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)?;
+        serve_params.backend = Some(backend.clone());
         serve_params.profile = None;
         serve_params.quick_run_id = Some(quick_run_id.clone());
         serve_params.workflow_id = workflow_id;
@@ -197,8 +208,7 @@ pub async fn start_quick_run(
         });
     }
 
-    let common = parse_common_config(&qr.config, &empty_settings)
-        .ok_or_else(|| format!("Quick run '{}' configuration is incomplete", qr.name))?;
+    let common = parse_common_config(&qr.config, &empty_settings)?;
 
     let dry_run = lookup_dry_run(
         &common.rclone_config,
@@ -228,6 +238,7 @@ pub async fn start_quick_run(
 
     let job_id_str = submit_transfer_batch(
         app.clone(),
+        backend,
         qr.operation_type,
         target_pairs,
         &common,
@@ -264,84 +275,63 @@ pub async fn stop_quick_run(
     quick_run_id: String,
     job_id: Option<u64>,
 ) -> Result<(), String> {
-    info!("Stopping quick run: {quick_run_id} (job_id: {job_id:?})");
-    let manager = app.state::<AppSettingsManager>();
-
-    let qr = get_quick_run(&manager, &quick_run_id)?
-        .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
-
-    let empty_settings = json!({});
-
-    if qr.operation_type == OperationType::Mount {
-        let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-        if let Some(m) = mounted
-            .iter()
-            .find(|m| m.quick_run_id.as_deref() == Some(&quick_run_id))
-        {
-            crate::rclone::commands::mount::unmount_remote(
-                app.clone(),
-                m.mount_point.clone(),
-                qr.remote_name.clone(),
-            )
-            .await?;
-        } else if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
-            let mount_point = common.dest;
-            if !mount_point.is_empty() {
-                crate::rclone::commands::mount::unmount_remote(
+    let manager = app.state::<crate::rclone::backend::BackendManager>();
+    let mut stopped_any = false;
+    // The preset can be edited or deleted after starting. Its live resources,
+    // rather than today's definition or UI selection, identify what to stop.
+    for info in manager.list_all().await {
+        let Some(backend) = manager.get(&info.name).await else {
+            continue;
+        };
+        let cache = manager.remote_cache_for(&backend.name);
+        for mount in cache.get_mounted_remotes().await {
+            if mount.quick_run_id.as_deref() == Some(&quick_run_id) {
+                crate::rclone::commands::mount::unmount_remote_on_backend(
                     app.clone(),
-                    mount_point,
-                    qr.remote_name.clone(),
+                    backend.clone(),
+                    mount.mount_point,
+                    mount.fs,
                 )
                 .await?;
+                stopped_any = true;
             }
         }
-    } else if qr.operation_type == OperationType::Serve {
-        let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-        let running_serves = backend_manager.remote_cache.get_serves().await;
-        for s in running_serves {
-            if s.quick_run_id.as_deref() == Some(&quick_run_id) {
-                crate::rclone::commands::serve::stop_serve(
+        for serve in cache.get_serves().await {
+            if serve.quick_run_id.as_deref() == Some(&quick_run_id) {
+                let remote = serve
+                    .params
+                    .get("fs")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                crate::rclone::commands::serve::stop_serve_on_backend(
                     app.clone(),
-                    s.id,
-                    qr.remote_name.clone(),
+                    backend.clone(),
+                    serve.id,
+                    remote,
                 )
                 .await?;
+                stopped_any = true;
             }
         }
-    } else {
-        let mut job_ids_to_stop = Vec::new();
-
-        if let Some(jid) = job_id {
-            job_ids_to_stop.push(jid);
-        }
-
-        let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-        let running_jobs = backend_manager.job_cache.get_jobs().await;
-
-        for j in running_jobs {
-            if j.quick_run_id.as_deref() == Some(&quick_run_id)
-                && j.status == JobStatus::Running
-                && !job_ids_to_stop.contains(&j.jobid)
+        for job in manager.job_cache_for(&backend.name).get_active_jobs().await {
+            if job.quick_run_id.as_deref() == Some(&quick_run_id)
+                && job_id.is_none_or(|id| id == job.jobid)
             {
-                job_ids_to_stop.push(j.jobid);
-            }
-        }
-
-        if job_ids_to_stop.is_empty() {
-            warn!(
-                "No running jobs found to stop for quick run '{quick_run_id}' ({})",
-                qr.name
-            );
-        }
-
-        for jid in job_ids_to_stop {
-            info!("Stopping quick run job {jid} for {quick_run_id}");
-            crate::rclone::commands::job::stop_job(app.clone(), jid, qr.remote_name.clone())
+                crate::rclone::commands::job::stop_job_on_backend(
+                    app.clone(),
+                    backend.clone(),
+                    job.jobid,
+                    job.remote_name,
+                )
                 .await?;
+                stopped_any = true;
+            }
         }
     }
-
+    if !stopped_any {
+        warn!("No running resources found for quick run '{quick_run_id}'");
+    }
     Ok(())
 }
 
@@ -381,6 +371,10 @@ pub(crate) fn get_quick_run(
 }
 
 fn save_quick_run(manager: &AppSettingsManager, qr: &QuickRun) -> Result<(), String> {
+    crate::services::automation::engine::validate_enabled_cron(
+        qr.is_cron_enabled(),
+        qr.cron_expression().as_deref(),
+    )?;
     let sub = manager
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;
@@ -430,6 +424,25 @@ mod tests {
     use crate::utils::types::remotes::OperationType;
     use serde_json::json;
     use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn stopping_a_missing_preset_does_not_cancel_an_unrelated_job_with_the_same_id() {
+        use crate::rclone::backend::BackendManager;
+        let app = AppHandle::default();
+        app.manage(BackendManager::new());
+        let manager = app.state::<BackendManager>();
+        let jobs = manager.job_cache().await;
+        let metadata = JobMetadata::new("drive", JobType::Copy, vec!["src".into()], "dst")
+            .with_quick_run_id(Some("another-preset".into()));
+        jobs.create_job(7, metadata, "Local".into()).await;
+
+        // There is no settings manager: a deleted preset's definition must not
+        // be needed to locate (or rule out) its existing runtime resources.
+        stop_quick_run(app.clone(), "deleted-preset".into(), Some(7))
+            .await
+            .unwrap();
+        assert_eq!(jobs.get_job(7).await.unwrap().status, JobStatus::Running);
+    }
 
     fn test_manager() -> (TempDir, AppSettingsManager) {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

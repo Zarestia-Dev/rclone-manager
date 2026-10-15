@@ -124,8 +124,12 @@ export class ServeManagementService extends TauriBaseService {
    * Start a serve using a named profile
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
-  async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
-    const params = { remoteName, profileName };
+  async startServeProfile(
+    remoteName: string,
+    profileName: string,
+    backendName?: string
+  ): Promise<ServeStartResponse> {
+    const params = { remoteName, profileName, ...(backendName && { backendName }) };
     return this.invokeWithNotification<ServeStartResponse>(
       'start_serve_profile',
       { params },

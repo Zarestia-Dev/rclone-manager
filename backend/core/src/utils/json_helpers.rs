@@ -113,19 +113,24 @@ pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
 }
 
 /// Resolve profile options from a settings object.
-/// Looks up `settings[configs_key][profile_name]["options"]` and returns it as a `HashMap`.
+/// Looks up `settings[configs_key][profile_name]` and returns its options.
+/// An absent built-in Default means no overrides; a missing custom profile is an error.
 ///
 /// This is used by `from_config` methods to resolve filter, backend, and VFS profiles.
-#[must_use]
 pub fn resolve_profile_options(
     settings: &Value,
     profile_name: Option<&str>,
     configs_key: &str,
-) -> Option<HashMap<String, Value>> {
-    let name = profile_name?;
-    let configs = settings.get(configs_key)?.as_object()?;
-    let profile_cfg = configs.get(name)?;
-    json_to_hashmap(Some(profile_cfg))
+) -> Result<Option<HashMap<String, Value>>, String> {
+    let Some(name) = profile_name else {
+        return Ok(None);
+    };
+    match settings.get(configs_key).and_then(|configs| configs.get(name)) {
+        Some(profile) => json_to_hashmap(Some(profile)).map(Some).ok_or_else(||
+            crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}"))),
+        None if name == "Default" => Ok(None),
+        None => Err(crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("Missing profile: {configs_key}.{name}"))),
+    }
 }
 
 /// Safely extracts a string value from a nested JSON path.
@@ -283,11 +288,17 @@ mod tests {
             }
         });
 
-        assert!(resolve_profile_options(&settings, None, "vfsConfigs").is_none());
-        assert!(resolve_profile_options(&settings, Some("profile2"), "vfsConfigs").is_none());
-        assert!(resolve_profile_options(&settings, Some("profile1"), "missingConfigs").is_none());
+        assert!(
+            resolve_profile_options(&settings, None, "vfsConfigs")
+                .unwrap()
+                .is_none()
+        );
+        assert!(resolve_profile_options(&settings, Some("profile2"), "vfsConfigs").is_err());
+        assert!(resolve_profile_options(&settings, Some("profile1"), "missingConfigs").is_err());
 
-        let opts = resolve_profile_options(&settings, Some("profile1"), "vfsConfigs").unwrap();
+        let opts = resolve_profile_options(&settings, Some("profile1"), "vfsConfigs")
+            .unwrap()
+            .unwrap();
         assert_eq!(opts.get("vfs-cache-mode").unwrap(), "writes");
         assert_eq!(opts.get("read-only").unwrap(), &json!(true));
     }

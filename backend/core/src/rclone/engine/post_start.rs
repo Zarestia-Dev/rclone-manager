@@ -4,10 +4,7 @@ use log::{debug, error};
 use crate::{
     rclone::backend::BackendManager,
     services::initialization::apply_settings::apply_core_settings,
-    utils::types::{
-        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-        state::RcloneState,
-    },
+    utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
 };
 
 pub async fn run_post_start_setup(app: &AppHandle) {
@@ -30,13 +27,17 @@ pub async fn run_post_start_setup(app: &AppHandle) {
 }
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
-    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let active_name = backend_manager.get_active_name().await;
+    let backend = backend_manager.get_active().await;
+    let transport = crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
+        app.clone(),
+        backend.clone(),
+    );
+    let active_name = &backend.name;
 
     if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
         &backend_manager,
-        &active_name,
+        active_name,
         &*transport,
         None,
     )
@@ -45,7 +46,11 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
         error!("Post-start: Failed to fetch '{active_name}' backend runtime info: {e}");
     }
 
-    if let Err(e) = backend_manager.remote_cache.refresh_all(app.clone()).await {
+    if let Err(e) = backend_manager
+        .remote_cache_for(&backend.name)
+        .refresh_all(app.clone(), &backend)
+        .await
+    {
         error!("Post-start: Failed to refresh backend connection caches: {e}");
     } else {
         debug!("Post-start: Successfully refreshed backend connection caches");

@@ -12,6 +12,7 @@ use std::sync::{
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::TransportKind;
+use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::commands::job::JobMetadata;
 use crate::rclone::endpoints::operations;
 use crate::utils::app::notification::notify;
@@ -22,6 +23,8 @@ use crate::utils::types::state::RcloneState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct UploadBatchParams {
+    #[serde(skip)]
+    pub backend: Option<Backend>,
     pub remote: String,
     pub path: String,
     pub local_paths: Vec<String>,
@@ -243,6 +246,7 @@ pub async fn execute_upload_batch(
     params: UploadBatchParams,
 ) -> Result<String, String> {
     let UploadBatchParams {
+        backend,
         remote,
         path,
         local_paths,
@@ -268,10 +272,13 @@ pub async fn execute_upload_batch(
     );
 
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let transport = crate::rclone::commands::common::transport(&app);
+    let backend = match backend {
+        Some(backend) => backend,
+        None => backend_manager.get_active().await,
+    };
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
     let client = app.state::<RcloneState>().client.clone();
-    let job_cache = &backend_manager.job_cache;
+    let job_cache = backend_manager.job_cache_for(&backend.name);
 
     let discovery = discover_upload_entries(local_paths.clone(), path.clone()).await?;
 
@@ -585,6 +592,7 @@ pub async fn upload_local_drop_paths(
     execute_upload_batch(
         app,
         UploadBatchParams {
+            backend: None,
             remote,
             path,
             local_paths,
@@ -606,7 +614,8 @@ pub async fn upload_file(
     content: Vec<u8>,
 ) -> Result<String, String> {
     let state = app.state::<crate::utils::types::state::RcloneState>();
-    let transport = state.transport.clone();
+    let backend = app.state::<BackendManager>().get_active().await;
+    let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
     let remote_dir = if path.is_empty() {
         String::new()
     } else if path.ends_with('/') {
@@ -618,8 +627,6 @@ pub async fn upload_file(
     match transport.kind().await {
         // Desktop: use reqwest::multipart to stream the file bytes directly.
         TransportKind::HttpDaemon => {
-            let backend_manager = app.state::<BackendManager>();
-            let backend = backend_manager.get_active().await;
             let client = &state.client;
 
             let part = reqwest::multipart::Part::bytes(content)

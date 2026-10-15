@@ -59,7 +59,7 @@ pub async fn create_workflow(
 
     save_workflow_record(&manager, &record)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_workflow_automations_bg(&app).await;
+    sync_workflow_automations(&app).await?;
     Ok(record)
 }
 
@@ -89,7 +89,7 @@ pub async fn update_workflow(
 
     save_workflow_record(&manager, &existing)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_workflow_automations_bg(&app).await;
+    sync_workflow_automations(&app).await?;
     Ok(existing)
 }
 
@@ -99,7 +99,7 @@ pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), 
     let manager = app.state::<AppSettingsManager>();
     delete_workflow_by_id_sync(&manager, &workflow_id)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_workflow_automations_bg(&app).await;
+    sync_workflow_automations(&app).await?;
     Ok(())
 }
 
@@ -136,7 +136,7 @@ pub async fn duplicate_workflow(
 
     save_workflow_record(&manager, &duplicated)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_workflow_automations_bg(&app).await;
+    sync_workflow_automations(&app).await?;
     Ok(duplicated)
 }
 
@@ -153,7 +153,11 @@ pub async fn execute_workflow(
     workflow_id: String,
     dry_run: Option<bool>,
 ) -> Result<WorkflowExecutionResult, String> {
-    super::engine::execute_workflow(app, workflow_id, dry_run.unwrap_or(false)).await
+    let backend = app
+        .state::<crate::rclone::backend::BackendManager>()
+        .get_active()
+        .await;
+    super::engine::execute_workflow(app, backend, workflow_id, dry_run.unwrap_or(false)).await
 }
 
 /// Stops an actively running workflow.
@@ -197,7 +201,7 @@ pub async fn import_workflow(
 
     save_workflow_record(&manager, &parsed)?;
     bridge::emit(UPDATE_TRAY_MENU, ());
-    sync_workflow_automations_bg(&app).await;
+    sync_workflow_automations(&app).await?;
     Ok(parsed)
 }
 
@@ -271,6 +275,16 @@ pub fn save_workflow_record(
     manager: &AppSettingsManager,
     wf: &WorkflowDefinition,
 ) -> Result<(), String> {
+    for node in &wf.nodes {
+        if node.node_type == "cron" || node.node_type == "schedule_wait" {
+            crate::services::automation::engine::validate_enabled_cron(
+                true,
+                node.config
+                    .get("cronExpression")
+                    .and_then(serde_json::Value::as_str),
+            )?;
+        }
+    }
     let sub = manager
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
@@ -288,7 +302,7 @@ pub fn delete_workflow_by_id_sync(manager: &AppSettingsManager, id: &str) -> Res
         .map_err(|e| format!("Failed to delete workflow: {e}"))
 }
 
-pub async fn sync_workflow_automations_bg(app: &AppHandle) {
+pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
     use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
     use crate::services::automation::engine::apply_and_sync_automations;
     use crate::services::settings::AppSettingsManager;
@@ -298,11 +312,9 @@ pub async fn sync_workflow_automations_bg(app: &AppHandle) {
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
-    if let Ok(workflows) = get_all_workflows_sync(&manager)
-        && let Ok(result) = cache.load_from_workflows(&workflows, &backend_name).await
-    {
-        apply_and_sync_automations(app, &result).await;
-    }
+    let workflows = get_all_workflows_sync(&manager)?;
+    cache.load_from_workflows(&workflows, &backend_name).await?;
+    apply_and_sync_automations(app).await
 }
 
 #[cfg(test)]

@@ -56,8 +56,8 @@ describe('AndroidKeepAliveService', () => {
       updateKeepAliveNotification: vi.fn(),
     };
 
-    (window as Window & { __rclone__?: unknown }).__rclone__ = mockBridge;
-    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    vi.stubGlobal('__rclone__', mockBridge);
+    vi.stubGlobal('__TAURI_INTERNALS__', {});
 
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
       'Mozilla/5.0 (Linux; Android 14; Pixel 7)'
@@ -87,8 +87,7 @@ describe('AndroidKeepAliveService', () => {
   });
 
   afterEach(() => {
-    delete (window as Window & { __rclone__?: unknown }).__rclone__;
-    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.useRealTimers();
   });

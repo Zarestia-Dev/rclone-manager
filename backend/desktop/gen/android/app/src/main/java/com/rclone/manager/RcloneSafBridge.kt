@@ -21,11 +21,26 @@ data class SafRootItem(
 
 object RcloneSafBridge {
 
+  @Volatile
   var appContext: Context? = null
   private var isLibraryLoaded = false
+  private var isEnvironmentConfigured = false
 
-  fun loadNativeLibraries() {
+  @Synchronized
+  private fun loadNativeLibraries(context: Context) {
     if (isLibraryLoaded) return
+    if (!isEnvironmentConfigured) {
+      // Establish native paths before dlopen starts Rust/Go worker threads.
+      // JNI reinitialization and Activity recreation must never rewrite them.
+      val configPath = context.filesDir.absolutePath
+      val cachePath = context.cacheDir.absolutePath
+      android.system.Os.setenv("HOME", configPath, true)
+      android.system.Os.setenv("XDG_CONFIG_HOME", configPath, true)
+      android.system.Os.setenv("XDG_CACHE_HOME", cachePath, true)
+      android.system.Os.setenv("TMPDIR", cachePath, true)
+      android.system.Os.setenv("TMP", cachePath, true)
+      isEnvironmentConfigured = true
+    }
     try {
       System.loadLibrary("rclone")
     } catch (e: Throwable) {
@@ -50,12 +65,13 @@ object RcloneSafBridge {
   fun getActiveHandleCount(): Int = activeHandleCount.get()
 
   @JvmStatic
+  @Synchronized
   fun ensureInitialized(context: Context) {
     try {
-      loadNativeLibraries()
-      if (!isLibraryLoaded) return
       val appCtx = context.applicationContext
       appContext = appCtx
+      loadNativeLibraries(appCtx)
+      if (!isLibraryLoaded) return
       val configDirPath = appCtx.filesDir.absolutePath
       val cacheDirPath = appCtx.cacheDir.absolutePath
       nativeInitSaf(appCtx, configDirPath, cacheDirPath)
@@ -104,7 +120,8 @@ object RcloneSafBridge {
 
   fun rpc(endpoint: String, params: JSONObject = JSONObject()): JSONObject {
     return try {
-      loadNativeLibraries()
+      val context = appContext ?: return JSONObject().put("error", "SAF bridge not initialized")
+      loadNativeLibraries(context)
       if (!isLibraryLoaded) return JSONObject()
       val resStr = nativeRpc(endpoint, params.toString())
       JSONObject(resStr)

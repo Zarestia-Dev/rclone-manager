@@ -215,25 +215,41 @@ export class RemoteManagementService extends TauriBaseService {
   async createRemote(
     name: string,
     parameters: ConfigRecord,
-    opt?: Record<string, unknown>
+    opt?: Record<string, unknown>,
+    backendName?: string
   ): Promise<void> {
-    await this.writeRemote('create_remote', name, parameters, opt, {
-      successKey: 'backendSuccess.remote.created',
-      successParams: { name },
-      errorKey: 'backendErrors.remote.configFailed',
-    });
+    await this.writeRemote(
+      'create_remote',
+      name,
+      parameters,
+      opt,
+      {
+        successKey: 'backendSuccess.remote.created',
+        successParams: { name },
+        errorKey: 'backendErrors.remote.configFailed',
+      },
+      backendName
+    );
   }
 
   async updateRemote(
     name: string,
     parameters: ConfigRecord,
-    opt?: Record<string, unknown>
+    opt?: Record<string, unknown>,
+    backendName?: string
   ): Promise<void> {
-    await this.writeRemote('update_remote', name, parameters, opt, {
-      successKey: 'backendSuccess.remote.updated',
-      successParams: { name },
-      errorKey: 'backendErrors.remote.configFailed',
-    });
+    await this.writeRemote(
+      'update_remote',
+      name,
+      parameters,
+      opt,
+      {
+        successKey: 'backendSuccess.remote.updated',
+        successParams: { name },
+        errorKey: 'backendErrors.remote.configFailed',
+      },
+      backendName
+    );
   }
 
   private async writeRemote(
@@ -241,11 +257,12 @@ export class RemoteManagementService extends TauriBaseService {
     name: string,
     parameters: ConfigRecord,
     opt: Record<string, unknown> | undefined,
-    options: WriteRemoteOptions
+    options: WriteRemoteOptions,
+    backendName?: string
   ): Promise<void> {
     await this.invokeWithNotification(
       command,
-      { name, parameters, ...(opt && { opt }) },
+      { name, parameters, ...(opt && { opt }), ...(backendName && { backendName }) },
       {
         successKey: options.successKey,
         successParams: options.successParams,
@@ -254,8 +271,8 @@ export class RemoteManagementService extends TauriBaseService {
     );
   }
 
-  async deleteRemote(name: string): Promise<void> {
-    await this.invokeCommand('delete_remote', { name });
+  async deleteRemote(name: string, backendName?: string): Promise<void> {
+    await this.invokeCommand('delete_remote', { name, ...(backendName && { backendName }) });
   }
 
   async isLibrclone(): Promise<boolean> {
@@ -284,13 +301,15 @@ export class RemoteManagementService extends TauriBaseService {
     name: string,
     type: string,
     parameters?: Record<string, unknown>,
-    opt?: Record<string, unknown>
+    opt?: Record<string, unknown>,
+    backendName?: string
   ): Promise<RcConfigQuestionResponse> {
     return this.invokeCommand('create_remote_interactive', {
       name,
       rcloneType: type,
       ...(parameters !== undefined && { parameters }),
       ...(opt !== undefined && { opt }),
+      ...(backendName && { backendName }),
     });
   }
 
@@ -299,7 +318,8 @@ export class RemoteManagementService extends TauriBaseService {
     stateToken: string,
     result: unknown,
     parameters?: Record<string, unknown>,
-    opt?: Record<string, unknown>
+    opt?: Record<string, unknown>,
+    backendName?: string
   ): Promise<RcConfigQuestionResponse> {
     return this.invokeCommand('continue_create_remote_interactive', {
       name,
@@ -307,6 +327,7 @@ export class RemoteManagementService extends TauriBaseService {
       result,
       ...(parameters !== undefined && { parameters }),
       ...(opt !== undefined && { opt }),
+      ...(backendName && { backendName }),
     });
   }
 

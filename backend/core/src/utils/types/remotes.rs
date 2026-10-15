@@ -124,10 +124,15 @@ pub struct ListOptions {
 pub struct ProfileParams {
     pub remote_name: String,
     pub profile_name: String,
+    /// Expected owner for scheduled execution; omitted by interactive callers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend_name: Option<String>,
     pub source: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scoped_targets: Option<Vec<(String, String)>>,
+    #[serde(skip)]
+    pub execute_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]

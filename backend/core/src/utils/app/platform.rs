@@ -62,13 +62,8 @@ pub async fn get_active_operations_summary(
 ) -> Result<ActiveOperationsSummary, String> {
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
 
-    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
-    let active_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
-    let active_serves = backend_manager.remote_cache.get_serves().await;
-
-    let active_jobs_count = active_jobs.len();
-    let active_mounts_count = active_mounts.len();
-    let active_serves_count = active_serves.len();
+    let (active_jobs_count, active_mounts_count, active_serves_count) =
+        backend_manager.active_operation_counts().await;
 
     let has_active_operations =
         active_jobs_count > 0 || active_mounts_count > 0 || active_serves_count > 0;
@@ -184,7 +179,8 @@ mod exit_tests {
         let app = AppHandle::new(host.clone(), Default::default());
         let manager = BackendManager::new();
         manager
-            .job_cache
+            .job_cache()
+            .await
             .add_job(JobInfo {
                 jobid: 1,
                 job_type: JobType::Copy,
@@ -214,7 +210,8 @@ mod exit_tests {
         assert!(app.wait_for_exit().now_or_never().is_none());
         assert_eq!(
             app.state::<BackendManager>()
-                .job_cache
+                .job_cache()
+                .await
                 .get_active_jobs()
                 .await
                 .len(),

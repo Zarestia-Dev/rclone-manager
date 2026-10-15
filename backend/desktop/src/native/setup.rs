@@ -5,17 +5,6 @@ pub(crate) fn prepare(
     _app: &AppHandle,
     _app_paths: &crate::services::paths::AppPaths,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(target_os = "android")]
-    {
-        unsafe {
-            std::env::set_var("HOME", &_app_paths.config_dir);
-            std::env::set_var("XDG_CONFIG_HOME", &_app_paths.config_dir);
-            std::env::set_var("XDG_CACHE_HOME", &_app_paths.cache_dir);
-            std::env::set_var("TMPDIR", &_app_paths.cache_dir);
-            std::env::set_var("TMP", &_app_paths.cache_dir);
-        }
-    }
-
     // Clean up temporary file preview/viewer cache from previous sessions
     #[cfg(not(feature = "web-server"))]
     crate::native::files::cleanup_temp_views(_app);

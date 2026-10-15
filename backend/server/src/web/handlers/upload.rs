@@ -15,7 +15,13 @@ pub async fn stream_upload_handler(
     State(state): State<WebServerState>,
     multipart: Multipart,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    let (staging, params) = stage_upload(multipart).await?;
+    let backend = state
+        .app_handle
+        .state::<crate::rclone::backend::BackendManager>()
+        .get_active()
+        .await;
+    let (staging, mut params) = stage_upload(multipart).await?;
+    params.backend = Some(backend);
     // Once staging completes, a browser disconnect must not interrupt a remote
     // transfer and leave its job permanently running. The task owns its files.
     let result = crate::utils::spawn(async move {
@@ -107,6 +113,7 @@ async fn stage_upload_in(
     Ok((
         staging,
         UploadBatchParams {
+            backend: None,
             remote,
             path,
             local_paths,

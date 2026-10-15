@@ -125,7 +125,7 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         error!("Failed to reload automations: {e}");
     }
 
-    crate::services::flow::quick_run::commands::sync_quick_run_automations_bg(&app_handle).await;
+    crate::services::flow::quick_run::commands::sync_quick_run_automations(&app_handle).await?;
 
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
@@ -150,9 +150,10 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     info!("Phase 3: Refreshing caches...");
 
     let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
     if let Err(e) = backend_manager
-        .remote_cache
-        .refresh_all(app_handle.clone())
+        .remote_cache_for(&backend.name)
+        .refresh_all(app_handle.clone(), &backend)
         .await
     {
         error!("Failed to refresh backend caches: {e}");

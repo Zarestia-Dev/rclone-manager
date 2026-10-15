@@ -157,6 +157,14 @@ impl Default for GeneralSettings {
 /// Core settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
 #[schema(category = "core")]
+#[cfg_attr(
+    all(
+        feature = "librclone",
+        not(feature = "tray"),
+        any(target_os = "android", target_os = "ios")
+    ),
+    derive(Default)
+)]
 pub struct CoreSettings {
     #[setting(
         label = "settings.core.max_tray_items.label",
@@ -235,6 +243,11 @@ pub struct CoreSettings {
     pub skip_mount_plugin_check: bool,
 }
 
+#[cfg(not(all(
+    feature = "librclone",
+    not(feature = "tray"),
+    any(target_os = "android", target_os = "ios")
+)))]
 impl Default for CoreSettings {
     fn default() -> Self {
         Self {

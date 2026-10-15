@@ -121,35 +121,28 @@ describe('PathInspectionService', () => {
       });
     });
 
-    it('should return willCreate on API getStat error', async () => {
-      mockRemoteFileOps.getStat.mockRejectedValue(new Error('Network failure'));
-
-      const status = await service.inspect('/home/user/error-path', 'remote1');
-
-      expect(status).toEqual({
-        state: 'willCreate',
-        icon: 'folder-plus',
-        badgeClass: 'will-create',
-        labelKey: 'remoteConfig.pathStatus.willCreate',
-      });
-    });
-
-    it('should fall back to clean if getSize throws an error when directory exists', async () => {
-      mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'unreadable', IsDir: true } });
-      mockRemoteFileOps.getSize.mockRejectedValue(new Error('Permission denied'));
-
-      const status = await service.inspect('/home/user/unreadable', 'remote1');
-
-      expect(status).toEqual({
-        state: 'clean',
-        icon: 'check-circle',
-        badgeClass: 'clean',
-        labelKey: 'remoteConfig.pathStatus.clean',
+    it.each(['stat', 'size'])('reports an unavailable path on %s failure', async operation => {
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      (operation === 'stat'
+        ? mockRemoteFileOps.getStat
+        : mockRemoteFileOps.getSize
+      ).mockRejectedValue(new Error('Permission denied'));
+      expect(await service.inspect('/unreadable', 'drive')).toMatchObject({
+        state: 'unavailable',
+        labelKey: 'common.error',
       });
     });
   });
 
   describe('resolveDefaultPath', () => {
+    it('reports malformed replies as unavailable rather than clean or missing', async () => {
+      mockRemoteFileOps.getStat.mockResolvedValue({});
+      expect(await service.inspect('/path', 'drive')).toMatchObject({ state: 'unavailable' });
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      mockRemoteFileOps.getSize.mockResolvedValue({});
+      expect(await service.inspect('/path', 'drive')).toMatchObject({ state: 'unavailable' });
+    });
+
     it('should resolve default mount path using fallback home', async () => {
       mockApiClient.invoke.mockResolvedValue([{ name: '/home/testuser' }]);
 
@@ -184,14 +177,26 @@ describe('PathInspectionService', () => {
     it('should create directory via RemoteFileOperationsService', async () => {
       await service.createLocalDirectory('/home/user/path', false);
 
-      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith('/', 'home/user/path');
+      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith(
+        '/',
+        'home/user/path',
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('should create parent directory when parentOnly is true', async () => {
       await service.createLocalDirectory('/home/user/path', true);
 
       expect(mockPathService.getParentPath).toHaveBeenCalledWith('/home/user/path');
-      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith('/', 'home/user/path');
+      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith(
+        '/',
+        'home/user/path',
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('should do nothing for empty path', async () => {
@@ -199,6 +204,33 @@ describe('PathInspectionService', () => {
 
       expect(mockRemoteFileOps.makeDirectory).not.toHaveBeenCalled();
     });
+  });
+
+  it('propagates mkdir failure and sends the expected backend owner', async () => {
+    const error = new Error('denied');
+    mockRemoteFileOps.makeDirectory.mockRejectedValue(error);
+    await expect(
+      service.createRequiredDirectories(
+        {
+          mountConfigs: {
+            Default: { rclone: { mountPoint: '/mnt/test' } },
+          },
+        },
+        'A'
+      )
+    ).rejects.toBe(error);
+    expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith(
+      '/',
+      'home/user/path',
+      undefined,
+      undefined,
+      'A'
+    );
+  });
+
+  it('does not select an unchecked default directory', async () => {
+    mockRemoteFileOps.getStat.mockRejectedValue(new Error('offline'));
+    await expect(service.resolveDefaultPath('drive', 'mount')).rejects.toThrow('offline');
   });
 
   describe('createRequiredDirectories', () => {
@@ -237,7 +269,13 @@ describe('PathInspectionService', () => {
 
       await service.createRequiredDirectoriesForOperation('mount', rclone);
 
-      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith('/', 'home/user/path');
+      expect(mockRemoteFileOps.makeDirectory).toHaveBeenCalledWith(
+        '/',
+        'home/user/path',
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('should create required directories for bisync operation', async () => {

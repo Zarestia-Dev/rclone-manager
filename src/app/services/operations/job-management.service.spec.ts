@@ -17,6 +17,7 @@ describe('JobManagementService', () => {
 
   const createMockJob = (overrides: Partial<JobInfo>): JobInfo => ({
     jobid: 1,
+    backend_name: 'Local',
     execute_id: 'exec-1',
     job_type: 'sync',
     source: '/local/path',
@@ -198,6 +199,22 @@ describe('JobManagementService', () => {
   });
 
   describe('Job Stats Updates', () => {
+    it('ignores stats from another backend with the same job ID', async () => {
+      const initialJob = createMockJob({ jobid: 42, stats: { ...DEFAULT_JOB_STATS, bytes: 100 } });
+      mockApiClient.invoke.mockResolvedValueOnce([initialJob]);
+      await service.refreshJobs();
+      const jobs = service.jobs();
+
+      jobStatsUpdated$.next({
+        backendName: 'Other',
+        jobId: 42,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 900 },
+      });
+
+      expect(service.jobs()).toBe(jobs);
+      expect(service.jobs()[0].stats.bytes).toBe(100);
+    });
+
     it('updates job stats directly without invoking get_jobs', async () => {
       const initialJob = createMockJob({ jobid: 42, stats: { ...DEFAULT_JOB_STATS, bytes: 100 } });
       mockApiClient.invoke.mockResolvedValueOnce([initialJob]);
@@ -207,7 +224,7 @@ describe('JobManagementService', () => {
       mockApiClient.invoke.mockClear();
 
       const newStats = { ...DEFAULT_JOB_STATS, bytes: 500, speed: 50 };
-      jobStatsUpdated$.next({ jobId: 42, stats: newStats });
+      jobStatsUpdated$.next({ backendName: 'Local', jobId: 42, stats: newStats });
 
       expect(service.jobs()[0].stats.bytes).toBe(500);
       expect(service.jobs()[0].stats.speed).toBe(50);
@@ -292,6 +309,7 @@ describe('JobManagementService', () => {
       // Emit high-frequency transfer telemetry
       jobStatsUpdated$.next({
         jobId: 77,
+        backendName: 'Local',
         stats: { ...DEFAULT_JOB_STATS, bytes: 200, speed: 50 },
       });
 

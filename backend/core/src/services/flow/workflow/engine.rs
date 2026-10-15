@@ -22,10 +22,10 @@ use super::types::{
     WorkflowExecutionStateEvent, WorkflowNode, WorkflowNodeCategory, WorkflowNodeExecutionState,
     WorkflowNodeStateEvent, WorkflowPortType, WorkflowProgress, parse_delay_seconds,
 };
-use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::commands::{
-    common::{FromConfig, parse_common_config},
-    job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    common::parse_common_config,
+    job::JobMetadata,
     mount::{MountParams, mount_remote},
     serve::{ServeParams, start_serve},
     sync::submit_transfer_batch,
@@ -39,12 +39,12 @@ use crate::utils::{
         jobs::{JobStatus, JobType},
         origin::Origin,
         remotes::OperationType,
-        state::RcloneState,
     },
 };
 
 #[derive(Clone)]
 struct ActiveWorkflowState {
+    backend: Backend,
     cancel_flag: Arc<AtomicBool>,
     cancel_tx: tokio::sync::watch::Sender<bool>,
     active_job_ids: Arc<RwLock<HashSet<u64>>>,
@@ -73,20 +73,36 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
         let _ = state.cancel_tx.send(true);
         info!("Workflow cancellation requested for: {workflow_id}");
 
-        let active_jobs: Vec<u64> = state.active_job_ids.read().iter().copied().collect();
+        let mut active_jobs = state.active_job_ids.read().clone();
+        let backend = &state.backend;
         let backend_manager = app.state::<BackendManager>();
+        active_jobs.extend(
+            backend_manager
+                .job_cache_for(&backend.name)
+                .get_active_jobs()
+                .await
+                .into_iter()
+                .filter(|job| job.workflow_id.as_deref() == Some(workflow_id))
+                .map(|job| job.jobid),
+        );
         for job_id in active_jobs {
             info!("Stopping active Rclone job {job_id} associated with workflow '{workflow_id}'");
             let remote = backend_manager
-                .job_cache
+                .job_cache_for(&backend.name)
                 .get_job(job_id)
                 .await
                 .map(|j| j.remote_name)
                 .unwrap_or_default();
-            let _ = crate::rclone::commands::job::stop_job(app.clone(), job_id, remote).await;
+            let _ = crate::rclone::commands::job::stop_job_on_backend(
+                app.clone(),
+                backend.clone(),
+                job_id,
+                remote,
+            )
+            .await;
         }
 
-        cleanup_workflow_resources(app, workflow_id).await;
+        cleanup_workflow_resources(app, &state.backend, workflow_id).await;
 
         Ok(())
     } else {
@@ -96,22 +112,32 @@ pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), Str
 }
 
 /// Cleans up any lingering mount or serve resources spawned by the given workflow.
-pub async fn cleanup_workflow_resources(app: &AppHandle, workflow_id: &str) {
+async fn cleanup_workflow_resources(app: &AppHandle, backend: &Backend, workflow_id: &str) {
     let backend_manager = app.state::<BackendManager>();
-    let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+    let mounted = backend_manager
+        .remote_cache_for(&backend.name)
+        .get_mounted_remotes()
+        .await;
     for m in mounted {
         if m.workflow_id.as_deref() == Some(workflow_id) {
             info!(
                 "Unmounting mount '{}' spawned by workflow '{workflow_id}'",
                 m.mount_point
             );
-            let _ =
-                crate::rclone::commands::mount::unmount_remote(app.clone(), m.mount_point, m.fs)
-                    .await;
+            let _ = crate::rclone::commands::mount::unmount_remote_on_backend(
+                app.clone(),
+                backend.clone(),
+                m.mount_point,
+                m.fs,
+            )
+            .await;
         }
     }
 
-    let serves = backend_manager.remote_cache.get_serves().await;
+    let serves = backend_manager
+        .remote_cache_for(&backend.name)
+        .get_serves()
+        .await;
     for s in serves {
         if s.workflow_id.as_deref() == Some(workflow_id) {
             info!(
@@ -124,8 +150,13 @@ pub async fn cleanup_workflow_resources(app: &AppHandle, workflow_id: &str) {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_string();
-            let _ =
-                crate::rclone::commands::serve::stop_serve(app.clone(), s.id, remote_name).await;
+            let _ = crate::rclone::commands::serve::stop_serve_on_backend(
+                app.clone(),
+                backend.clone(),
+                s.id,
+                remote_name,
+            )
+            .await;
         }
     }
 }
@@ -173,26 +204,8 @@ fn extract_node_op_config<'a>(config: &'a Value) -> NodeOpConfig<'a> {
     NodeOpConfig {
         remote,
         config: op_config,
-        empty_settings: json!({}),
+        empty_settings: json!({"name": remote.trim_end_matches(':')}),
     }
-}
-
-pub(crate) fn build_archive_final_dest(source: &str, dest_base: &str, format: &str) -> String {
-    let mut final_dest = dest_base.to_string();
-    if !crate::rclone::commands::sync::has_archive_extension(&final_dest) {
-        let clean_src = source.trim_end_matches(':');
-        let folder_name = clean_src
-            .split(['/', '\\', ':'])
-            .rfind(|s| !s.is_empty())
-            .unwrap_or("archive");
-        let filename = format!("{}.{}", folder_name, format);
-        if final_dest.ends_with(':') || final_dest.ends_with('/') || final_dest.ends_with('\\') {
-            final_dest.push_str(&filename);
-        } else {
-            final_dest.push_str(&format!("/{filename}"));
-        }
-    }
-    final_dest
 }
 
 /// Activates downstream nodes based on outcome and port types.
@@ -462,6 +475,7 @@ fn build_job_execution_output(
 /// periodically checking the workflow cancellation flag.
 async fn await_rclone_job(
     app: &AppHandle,
+    backend: &Backend,
     job_id: u64,
     cancel_flag: &AtomicBool,
     mut cancel_rx: tokio::sync::watch::Receiver<bool>,
@@ -475,7 +489,7 @@ async fn await_rclone_job(
     };
 
     let backend_manager = app.state::<BackendManager>();
-    let job_cache = &backend_manager.job_cache;
+    let job_cache = backend_manager.job_cache_for(&backend.name);
 
     loop {
         if cancel_flag.load(Ordering::SeqCst) {
@@ -485,7 +499,13 @@ async fn await_rclone_job(
                 .await
                 .map(|j| j.remote_name)
                 .unwrap_or_default();
-            let _ = crate::rclone::commands::job::stop_job(app.clone(), job_id, remote).await;
+            let _ = crate::rclone::commands::job::stop_job_on_backend(
+                app.clone(),
+                backend.clone(),
+                job_id,
+                remote,
+            )
+            .await;
             return Err("Execution cancelled by user".to_string());
         }
 
@@ -518,7 +538,7 @@ async fn await_rclone_job(
                                 .await
                                 .map(|j| j.remote_name)
                                 .unwrap_or_default();
-                            let _ = crate::rclone::commands::job::stop_job(app.clone(), job_id, remote).await;
+                            let _ = crate::rclone::commands::job::stop_job_on_backend(app.clone(), backend.clone(), job_id, remote).await;
                             return Err("Execution cancelled by user".to_string());
                         }
                         _ = tokio::time::sleep(tokio::time::Duration::from_millis(250)) => {}
@@ -985,6 +1005,7 @@ pub(crate) async fn handle_exec_script_node(
 #[allow(clippy::too_many_arguments)]
 async fn execute_single_node(
     app: &AppHandle,
+    backend: &Backend,
     node: &WorkflowNode,
     workflow: &WorkflowDefinition,
     cancel_flag: &AtomicBool,
@@ -1153,17 +1174,20 @@ async fn execute_single_node(
                 })));
             }
 
-            let res = crate::services::flow::quick_run::commands::start_quick_run(
+            let res = crate::services::flow::quick_run::commands::start_quick_run_on_backend(
                 app.clone(),
+                backend.clone(),
                 qr_id.to_string(),
                 Some(workflow.id.clone()),
                 Some(node.id.clone()),
+                None,
             )
             .await?;
 
             if let Some(job_id) = res.job_id {
                 await_rclone_job(
                     app,
+                    backend,
                     job_id,
                     cancel_flag,
                     cancel_rx.clone(),
@@ -1206,9 +1230,9 @@ async fn execute_single_node(
                 })));
             }
 
-            let state = app.state::<RcloneState>();
+            let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
             let params = json!({ "fs": fs });
-            let rpc_fut = state.transport.rpc("operations/cleanup", Some(&params));
+            let rpc_fut = transport.rpc("operations/cleanup", Some(&params));
             let out = tokio::select! {
                 res = rpc_fut => res.map_err(|e| format!("Cleanup failed on '{fs}': {e}"))?,
                 _ = cancel_rx.changed() => return Err(format!("Workflow cancelled during cleanup on '{fs}'")),
@@ -1287,9 +1311,9 @@ async fn execute_single_node(
         "mount" => {
             let op = extract_node_op_config(config);
             let mut mount_params =
-                MountParams::from_config(op.remote.to_string(), op.config, &op.empty_settings)
-                    .ok_or_else(|| "Incomplete mount configuration".to_string())?;
+                MountParams::from_config(op.remote.to_string(), op.config, &op.empty_settings)?;
 
+            mount_params.backend = Some(backend.clone());
             mount_params.origin = Some(Origin::Flow);
             mount_params.workflow_id = Some(workflow.id.clone());
             mount_params.node_id = Some(node.id.clone());
@@ -1297,7 +1321,10 @@ async fn execute_single_node(
 
             let backend_manager = app.state::<BackendManager>();
             let is_already_mounted = {
-                let mounted = backend_manager.remote_cache.mounted.read().await;
+                let mounted = backend_manager
+                    .remote_cache_for(&backend.name)
+                    .get_mounted_remotes()
+                    .await;
                 mounted.iter().any(|m| {
                     (m.workflow_id.as_deref() == Some(&workflow.id)
                         && m.node_id.as_deref() == Some(&node.id))
@@ -1361,8 +1388,9 @@ async fn execute_single_node(
                 return Err("Missing 'mountPoint' in unmount node config and target node produced no mount point".to_string());
             }
 
-            crate::rclone::commands::mount::unmount_remote(
+            crate::rclone::commands::mount::unmount_remote_on_backend(
                 app.clone(),
+                backend.clone(),
                 mount_point.to_string(),
                 remote_name.to_string(),
             )
@@ -1379,9 +1407,9 @@ async fn execute_single_node(
         "serve" => {
             let op = extract_node_op_config(config);
             let mut serve_params =
-                ServeParams::from_config(op.remote.to_string(), op.config, &op.empty_settings)
-                    .ok_or_else(|| "Incomplete serve configuration".to_string())?;
+                ServeParams::from_config(op.remote.to_string(), op.config, &op.empty_settings)?;
 
+            serve_params.backend = Some(backend.clone());
             serve_params.origin = Some(Origin::Flow);
             serve_params.workflow_id = Some(workflow.id.clone());
             serve_params.node_id = Some(node.id.clone());
@@ -1389,7 +1417,10 @@ async fn execute_single_node(
 
             let backend_manager = app.state::<BackendManager>();
             let existing_serve = {
-                let serves = backend_manager.remote_cache.serves.read().await;
+                let serves = backend_manager
+                    .remote_cache_for(&backend.name)
+                    .get_serves()
+                    .await;
                 serves
                     .iter()
                     .find(|s| {
@@ -1459,8 +1490,9 @@ async fn execute_single_node(
             };
 
             if !server_id.is_empty() {
-                crate::rclone::commands::serve::stop_serve(
+                crate::rclone::commands::serve::stop_serve_on_backend(
                     app.clone(),
+                    backend.clone(),
                     server_id.to_string(),
                     remote_name.to_string(),
                 )
@@ -1472,7 +1504,10 @@ async fn execute_single_node(
                 })))
             } else if !remote_name.is_empty() {
                 let backend_manager = app.state::<BackendManager>();
-                let serves = backend_manager.remote_cache.serves.read().await.clone();
+                let serves = backend_manager
+                    .remote_cache_for(&backend.name)
+                    .get_serves()
+                    .await;
                 let matching_serves: Vec<_> = serves
                     .into_iter()
                     .filter(|s| {
@@ -1495,8 +1530,9 @@ async fn execute_single_node(
                 } else {
                     let mut stopped_count = 0;
                     for serve in matching_serves {
-                        if let Err(e) = crate::rclone::commands::serve::stop_serve(
+                        if let Err(e) = crate::rclone::commands::serve::stop_serve_on_backend(
                             app.clone(),
+                            backend.clone(),
                             serve.id.clone(),
                             remote_name.to_string(),
                         )
@@ -1527,8 +1563,8 @@ async fn execute_single_node(
 
             let params = parse_rc_params(config.get("params"))?;
 
-            let state = app.state::<RcloneState>();
-            let rpc_fut = state.transport.rpc(command, Some(&params));
+            let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
+            let rpc_fut = transport.rpc(command, Some(&params));
             let out = tokio::select! {
                 res = rpc_fut => res.map_err(|e| format!("RC command '{command}' failed: {e}"))?,
                 _ = cancel_rx.changed() => return Err(format!("Workflow cancelled during RC command '{command}'")),
@@ -1554,156 +1590,9 @@ async fn execute_single_node(
             Ok(NodeExecutionOutput::new(envelope))
         }
 
-        // Archive create transfer
-        "archivecreate" => {
-            let op = extract_node_op_config(config);
-            let common = parse_common_config(op.config, &op.empty_settings).ok_or_else(|| {
-                format!("Incomplete archive create config for node '{}'", node.title)
-            })?;
-
-            let source = common
-                .source
-                .first()
-                .cloned()
-                .filter(|s| !s.trim().is_empty())
-                .ok_or_else(|| {
-                    format!(
-                        "No source specified for archive create node '{}'",
-                        node.title
-                    )
-                })?;
-
-            let dest_base =
-                if !op.remote.is_empty() && !common.dest.is_empty() && !common.dest.contains(':') {
-                    format!("{}:{}", op.remote, common.dest)
-                } else {
-                    common.dest.clone()
-                };
-
-            if dest_base.trim().is_empty() {
-                return Err(format!(
-                    "No destination specified for archive create node '{}'",
-                    node.title
-                ));
-            }
-
-            let format = if let Value::Object(map) = &common.rclone_config {
-                map.get("format").and_then(|v| v.as_str()).unwrap_or("zip")
-            } else {
-                "zip"
-            };
-
-            let final_dest = build_archive_final_dest(&source, &dest_base, format);
-
-            let backend_manager = app.state::<BackendManager>();
-            let backend = backend_manager.get_active().await;
-
-            let (endpoint, payload) = if backend.is_librclone_local() {
-                let mut p = json!({
-                    "action": "create",
-                    "src": source,
-                    "dst": final_dest,
-                    "_async": true,
-                });
-                p["format"] = json!(format);
-                if let Value::Object(map) = &common.rclone_config {
-                    if let Some(pr) = map
-                        .get("prefix")
-                        .and_then(|v| v.as_str())
-                        .filter(|s| !s.is_empty())
-                    {
-                        p["prefix"] = json!(pr);
-                    }
-                    if let Some(fp) = map
-                        .get("fullPath")
-                        .or_else(|| map.get("full_path"))
-                        .and_then(|v| v.as_bool())
-                    {
-                        p["full_path"] = json!(fp);
-                    }
-                    if let Some(inc) = map.get("include") {
-                        p["include"] = inc.clone();
-                    }
-                }
-                if dry_run {
-                    p["dryRun"] = json!(true);
-                    p["dry_run"] = json!(true);
-                    p["_config"] = json!({ "DryRun": true });
-                }
-                (crate::rclone::endpoints::operations::ARCHIVE, p)
-            } else {
-                let mut args = vec!["create".to_string(), source.clone(), final_dest.clone()];
-                args.push(format!("--format={format}"));
-                if let Value::Object(map) = &common.rclone_config {
-                    if let Some(pr) = map
-                        .get("prefix")
-                        .and_then(|v| v.as_str())
-                        .filter(|s| !s.is_empty())
-                    {
-                        args.push(format!("--prefix={pr}"));
-                    }
-                    if map
-                        .get("fullPath")
-                        .or_else(|| map.get("full_path"))
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false)
-                    {
-                        args.push("--full-path".to_string());
-                    }
-                    if let Some(Value::Array(arr)) = map.get("include") {
-                        for item in arr {
-                            if let Some(s) = item.as_str() {
-                                args.push(format!("--include={s}"));
-                            }
-                        }
-                    }
-                }
-                if dry_run {
-                    args.push("--dry-run".to_string());
-                }
-                let os = backend_manager.get_runtime_os(&backend.name).await;
-                (
-                    crate::rclone::endpoints::core::COMMAND,
-                    backend.build_core_command_payload("archive", args, true, os),
-                )
-            };
-
-            let metadata = JobMetadata::new(
-                op.remote.to_string(),
-                JobType::ArchiveCreate,
-                vec![source.clone()],
-                final_dest.clone(),
-            )
-            .with_origin(Some(Origin::Flow))
-            .with_workflow_id(Some(workflow.id.clone()))
-            .with_node_id(Some(node.id.clone()))
-            .with_dry_run(dry_run)
-            .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
-
-            let (job_id, _, _) = submit_job_with_options(
-                app.clone(),
-                endpoint,
-                payload,
-                metadata,
-                SubmitJobOptions {
-                    wait_for_completion: false,
-                },
-            )
-            .await?;
-
-            await_rclone_job(
-                app,
-                job_id,
-                cancel_flag,
-                cancel_rx.clone(),
-                active_jobs,
-                &workflow.id,
-            )
-            .await
-        }
-
-        // Sync, Copy, Move, Bisync, Check, Delete, Copyurl, Cryptcheck transfers
-        "sync" | "copy" | "move" | "bisync" | "check" | "delete" | "copyurl" | "cryptcheck" => {
+        // All transfer nodes share option resolution and submission.
+        "sync" | "copy" | "move" | "bisync" | "check" | "delete" | "copyurl" | "cryptcheck"
+        | "archivecreate" => {
             let op_type = match node.node_type.as_str() {
                 "copy" => OperationType::Copy,
                 "move" => OperationType::Move,
@@ -1712,12 +1601,12 @@ async fn execute_single_node(
                 "delete" => OperationType::Delete,
                 "copyurl" => OperationType::Copyurl,
                 "cryptcheck" => OperationType::Cryptcheck,
+                "archivecreate" => OperationType::Archivecreate,
                 _ => OperationType::Sync,
             };
 
             let op = extract_node_op_config(config);
-            let common = parse_common_config(op.config, &op.empty_settings)
-                .ok_or_else(|| format!("Incomplete transfer config for node '{}'", node.title))?;
+            let common = parse_common_config(op.config, &op.empty_settings)?;
 
             let dest_resolved = if !op.remote.is_empty() && !common.dest.contains(':') {
                 if common.dest.is_empty() {
@@ -1748,6 +1637,7 @@ async fn execute_single_node(
 
             let job_id_str = submit_transfer_batch(
                 app.clone(),
+                backend.clone(),
                 op_type,
                 target_pairs,
                 &common,
@@ -1762,6 +1652,7 @@ async fn execute_single_node(
 
             await_rclone_job(
                 app,
+                backend,
                 job_id,
                 cancel_flag,
                 cancel_rx.clone(),
@@ -1964,6 +1855,7 @@ async fn execute_notification_node(
 /// Executes a workflow by ID from storage using dynamic, dependency-driven DAG scheduling.
 pub async fn execute_workflow(
     app: AppHandle,
+    backend: Backend,
     workflow_id: String,
     dry_run: bool,
 ) -> Result<WorkflowExecutionResult, String> {
@@ -2003,6 +1895,7 @@ pub async fn execute_workflow(
         ACTIVE_WORKFLOW_EXECUTIONS.write().insert(
             workflow_id.clone(),
             ActiveWorkflowState {
+                backend: backend.clone(),
                 cancel_flag: cancel_flag.clone(),
                 cancel_tx,
                 active_job_ids: active_job_ids.clone(),
@@ -2118,6 +2011,7 @@ pub async fn execute_workflow(
                     active_running_count += 1;
 
                     let app_clone = app.clone();
+                    let backend_clone = backend.clone();
                     let node_clone = node.clone();
                     let wf_clone = workflow.clone();
                     let cancel_clone = cancel_flag.clone();
@@ -2130,6 +2024,7 @@ pub async fn execute_workflow(
                         let node_start = Instant::now();
                         let outcome = execute_single_node(
                             &app_clone,
+                            &backend_clone,
                             &node_clone,
                             &wf_clone,
                             &cancel_clone,
@@ -2442,7 +2337,7 @@ pub async fn execute_workflow(
 
     if failed_nodes > 0 {
         // Clean up any orphan mounts or serves left behind by the failed workflow execution
-        cleanup_workflow_resources(&app, &workflow_id).await;
+        cleanup_workflow_resources(&app, &backend, &workflow_id).await;
 
         notify(
             &app,
@@ -2496,8 +2391,9 @@ pub async fn execute_workflow(
 
 // ── Job Event Trigger Support ───────────────────────────────────────────────
 
-static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<parking_lot::RwLock<HashSet<u64>>> =
-    std::sync::LazyLock::new(|| parking_lot::RwLock::new(HashSet::new()));
+static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<
+    parking_lot::RwLock<HashSet<(String, u64)>>,
+> = std::sync::LazyLock::new(|| parking_lot::RwLock::new(HashSet::new()));
 
 /// Helper function that checks whether a `job_event` node configuration matches a finished job.
 #[must_use]
@@ -2568,13 +2464,13 @@ pub async fn trigger_workflows_for_job_finish(
     // Deduplicate: each finished job ID should only trigger matching workflows once
     {
         let mut set = TRIGGERED_JOB_FINISH_EVENTS.write();
-        if set.contains(&job.jobid) {
+        if set.contains(&(job.backend_name.clone(), job.jobid)) {
             return;
         }
         if set.len() > 2000 {
             set.clear();
         }
-        set.insert(job.jobid);
+        set.insert((job.backend_name.clone(), job.jobid));
     }
 
     let manager = app.state::<AppSettingsManager>();
@@ -2617,14 +2513,11 @@ pub async fn trigger_workflows_for_job_finish(
             );
             let app_clone = app.clone();
             let wf_id = wf.id.clone();
+            let Some(backend) = app.state::<BackendManager>().get(&job.backend_name).await else {
+                continue;
+            };
             crate::utils::spawn(async move {
-                if let Err(e) = crate::services::flow::workflow::commands::execute_workflow(
-                    app_clone,
-                    wf_id.clone(),
-                    None,
-                )
-                .await
-                {
+                if let Err(e) = execute_workflow(app_clone, backend, wf_id.clone(), false).await {
                     log::error!("Failed to execute workflow '{wf_id}' triggered by job event: {e}");
                 }
             });
@@ -2636,6 +2529,47 @@ pub async fn trigger_workflows_for_job_finish(
 mod tests {
     use super::*;
     use crate::services::flow::workflow::types::*;
+
+    #[tokio::test]
+    async fn workflow_wait_reads_the_owning_backends_job_even_when_another_is_selected() {
+        let app = AppHandle::default();
+        app.manage(BackendManager::new());
+        let manager = app.state::<BackendManager>();
+        let backend = Backend::new_remote("workflow-owner", "127.0.0.1", 0);
+        let owner = manager.job_cache_for(&backend.name);
+        let metadata =
+            JobMetadata::new("drive", JobType::Copy, vec!["source".into()], "destination");
+        owner
+            .create_job(7, metadata.clone(), backend.name.clone())
+            .await;
+        owner
+            .update_job_stats(7, json!({"bytes": 123}))
+            .await
+            .unwrap();
+        owner.complete_job(7, true, None).await.unwrap();
+        let selected = manager.job_cache().await;
+        selected.create_job(7, metadata, "Local".into()).await;
+        let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let active_jobs = Arc::new(RwLock::new(HashSet::new()));
+
+        let output = await_rclone_job(
+            &app,
+            &backend,
+            7,
+            &AtomicBool::new(false),
+            cancel_rx,
+            &active_jobs,
+            "workflow",
+        )
+        .await
+        .unwrap();
+        assert_eq!(output.value["bytes"], 123);
+        assert_eq!(
+            selected.get_job(7).await.unwrap().status,
+            JobStatus::Running
+        );
+        assert!(active_jobs.read().is_empty());
+    }
 
     #[test]
     fn test_activate_outgoing_edges_branching() {
@@ -2830,7 +2764,7 @@ mod tests {
         assert_eq!(mount_params.mount_point, "/home/user/drive");
         assert_eq!(mount_params.source, "drive:");
 
-        let body = mount_params.to_rclone_body();
+        let body = mount_params.to_rclone_body().unwrap();
         assert_eq!(body.get("fs").and_then(Value::as_str), Some("drive:"));
         assert_eq!(
             body.get("mountPoint").and_then(Value::as_str),
@@ -3890,39 +3824,6 @@ mod tests {
             .await
             .unwrap_err();
         assert!(err.contains("cancelled during app_start delay"));
-    }
-
-    #[test]
-    fn test_build_archive_final_dest() {
-        // 1. With existing archive extension, keeps as is
-        assert_eq!(
-            build_archive_final_dest("/home/user/docs", "remote:backups/myarchive.zip", "zip"),
-            "remote:backups/myarchive.zip"
-        );
-        assert_eq!(
-            build_archive_final_dest(
-                "/home/user/docs",
-                "remote:backups/myarchive.tar.gz",
-                "tar.gz"
-            ),
-            "remote:backups/myarchive.tar.gz"
-        );
-
-        // 2. Trailing slash / folder destination, appends folder_name.format
-        assert_eq!(
-            build_archive_final_dest("/home/user/myfolder", "remote:backups/", "zip"),
-            "remote:backups/myfolder.zip"
-        );
-        assert_eq!(
-            build_archive_final_dest("gdrive:photos", "local:/backup", "tar"),
-            "local:/backup/photos.tar"
-        );
-
-        // 3. Trailing colon
-        assert_eq!(
-            build_archive_final_dest("/home/user/data", "gdrive:", "zip"),
-            "gdrive:data.zip"
-        );
     }
 
     #[test]

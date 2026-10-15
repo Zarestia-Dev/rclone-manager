@@ -50,13 +50,13 @@ export class JobManagementService extends TauriBaseService {
       .listenToJobStatsUpdated()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(event => {
-        this.updateJobStats(event.jobId, event.stats);
+        this.updateJobStats(event.backendName, event.jobId, event.stats);
       });
   }
 
-  private updateJobStats(jobId: number, stats: JobInfo['stats']): void {
+  private updateJobStats(backendName: string, jobId: number, stats: JobInfo['stats']): void {
     this._jobs.update(jobs => {
-      const idx = jobs.findIndex(j => j.jobid === jobId);
+      const idx = jobs.findIndex(j => j.backend_name === backendName && j.jobid === jobId);
       if (idx === -1) return jobs;
       const updated = [...jobs];
       updated[idx] = { ...updated[idx], stats };
@@ -140,6 +140,7 @@ export class JobManagementService extends TauriBaseService {
       profileName: string;
       source?: Origin;
       noCache?: boolean;
+      backendName?: string;
     }
   ): Promise<number> {
     const lowercaseType = transferType.toLowerCase();

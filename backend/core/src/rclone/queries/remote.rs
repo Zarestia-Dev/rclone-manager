@@ -3,10 +3,19 @@ use std::collections::HashMap;
 use crate::context::AppHandle;
 use serde_json::Value;
 
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::config;
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
-    let json = crate::rclone::commands::common::transport(&app)
+    let backend = app.state::<BackendManager>().get_active().await;
+    get_all_remote_configs_for_backend(app, &backend).await
+}
+
+pub async fn get_all_remote_configs_for_backend(
+    app: AppHandle,
+    backend: &Backend,
+) -> Result<Value, String> {
+    let json = RoutingTransport::for_backend(app, backend.clone())
         .rpc(config::DUMP, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;

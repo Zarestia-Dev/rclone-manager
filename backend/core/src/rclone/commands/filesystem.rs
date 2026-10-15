@@ -36,8 +36,13 @@ pub async fn mkdir(
     path: String,
     origin: Option<Origin>,
     group: Option<String>,
+    backend_name: Option<String>,
 ) -> Result<(), String> {
     debug!("mkdir: remote={remote} path={path}");
+    let backend = app
+        .state::<crate::rclone::backend::BackendManager>()
+        .get_active_checked(backend_name.as_deref())
+        .await?;
 
     let payload = json!({
         "fs": &remote,
@@ -53,6 +58,7 @@ pub async fn mkdir(
         metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
+            backend: Some(backend),
         },
     )
     .await?;
@@ -92,6 +98,7 @@ pub async fn cleanup(
         metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
+            ..Default::default()
         },
     )
     .await?;
@@ -134,6 +141,7 @@ pub async fn copy_url(
         metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
+            ..Default::default()
         },
     )
     .await?;
@@ -166,6 +174,7 @@ pub async fn remove_empty_dirs(
         metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
+            ..Default::default()
         },
     )
     .await?;
@@ -273,7 +282,13 @@ pub async fn transfer(
     .with_parent_job_id(parent_job_id)
     .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
+    crate::rclone::commands::job::submit_batch_job_with_options(
+        app,
+        inputs,
+        metadata,
+        Default::default(),
+    )
+    .await
 }
 
 pub async fn delete(
@@ -313,7 +328,13 @@ pub async fn delete(
         .with_group(group)
         .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
+    crate::rclone::commands::job::submit_batch_job_with_options(
+        app,
+        inputs,
+        metadata,
+        Default::default(),
+    )
+    .await
 }
 
 pub async fn rename(
@@ -368,5 +389,11 @@ pub async fn rename(
         .with_group(group)
         .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
-    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
+    crate::rclone::commands::job::submit_batch_job_with_options(
+        app,
+        inputs,
+        metadata,
+        Default::default(),
+    )
+    .await
 }

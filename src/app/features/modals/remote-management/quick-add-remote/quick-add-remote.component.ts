@@ -350,14 +350,15 @@ export class QuickAddRemoteComponent {
         );
         if (completed) {
           this.dialogRef.close(true);
-        } else {
+        } else if (this.interactiveFlowState().isActive) {
           this.currentStep.set('interactive');
         }
       } else {
         await this.remoteManagementService.createRemote(
           setupName,
           remoteData,
-          this.remoteManagementService.buildOpt(this.commandOptions())
+          this.remoteManagementService.buildOpt(this.commandOptions()),
+          this.orchestrator.backendName
         );
         await this.orchestrator.finalizeCreation();
         if (!this.isAuthCancelled()) {
@@ -366,13 +367,8 @@ export class QuickAddRemoteComponent {
       }
     } catch (error) {
       console.error('Error creating remote:', error);
-      if (requiresInteractiveFlow) {
-        // Match existing quick-add behavior: on interactive start failure, attempt to finalize
-        await this.orchestrator.finalizeCreation();
-        this.dialogRef.close(true);
-      } else {
-        this.notificationService.showError(error);
-      }
+      if (this.interactiveFlowState().isActive) this.currentStep.set('interactive');
+      this.notificationService.showError(error);
     } finally {
       if (!requiresInteractiveFlow || !this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
@@ -436,15 +432,13 @@ export class QuickAddRemoteComponent {
   // ── Interactive OAuth flow ─────────────────────────────────────────────────
 
   async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
+    if (this.interactiveFlowState().isProcessing) return;
     this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
-    try {
-      await this.orchestrator.submitInteractiveAnswer(answer, this.commandOptions());
-    } finally {
-      if (this.interactiveFlowState().isActive) {
-        this.interactiveFlowState.update(state => ({ ...state, isProcessing: false }));
-      }
-    }
-    if (!this.interactiveFlowState().isActive) this.dialogRef.close(true);
+    const completed = await this.orchestrator.submitInteractiveAnswer(
+      answer,
+      this.commandOptions()
+    );
+    if (completed) this.dialogRef.close(true);
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {

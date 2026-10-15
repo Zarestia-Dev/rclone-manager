@@ -261,6 +261,7 @@ pub enum ProvisionProgressPayload {
 #[serde(rename_all = "camelCase")]
 pub struct JobStatsUpdatedEvent {
     pub job_id: u64,
+    pub backend_name: String,
     pub stats: serde_json::Value,
 }
 
@@ -289,6 +290,8 @@ pub struct VaultStatePayload {
 #[serde(rename_all = "camelCase")]
 pub struct JobChangeEvent {
     pub job_id: String,
+    #[serde(default = "crate::rclone::backend::types::default_backend_name")]
+    pub backend_name: String,
     pub status: crate::utils::types::jobs::JobStatus,
     pub remote: Option<String>,
     pub source: Option<String>,
@@ -309,6 +312,7 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
     fn from(job: &crate::utils::types::jobs::JobInfo) -> Self {
         Self {
             job_id: job.jobid.to_string(),
+            backend_name: job.backend_name.clone(),
             status: job.status.clone(),
             remote: Some(job.remote_name.clone()),
             source: Some(job.source.join(", ")),
@@ -456,6 +460,7 @@ mod tests {
     fn test_job_stats_updated_event_serialization() {
         let ev = JobStatsUpdatedEvent {
             job_id: 585,
+            backend_name: "Local".to_string(),
             stats: json!({
                 "bytes": 1024,
                 "speed": 128.5,
