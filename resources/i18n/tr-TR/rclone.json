@@ -436,7 +436,7 @@
     "help": "--tpslimit için maks işlem patlaması"
   },
   "user_agent": {
-    "title": "User Agent",
+    "title": "Kullanıcı Aracısı",
     "help": "User-agent'ı belirtilen dizgeye ayarla"
   },
   "immutable": {
@@ -648,7 +648,7 @@
     "help": "Kopyalama işlemi sırasında yolları dönüştür."
   },
   "http_proxy": {
-    "title": "HTTP Proxy",
+    "title": "HTTP Vekil Sunucusu",
     "help": "HTTP proxy URL'si."
   },
   "debug_fuse": {
@@ -1208,7 +1208,7 @@
     "help": "NFS protokolü kullanarak bağlama"
   },
   "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
+    "title": "Depolama Erişim Çerçevesi (SAF)",
     "help": "Android yerel Depolama Erişimi Çerçevesi bağlaması"
   },
   "serve_type_http": {
@@ -1338,5 +1338,53 @@
   "conflict_suffix": {
     "title": "Çakışma Sonsözü",
     "help": "Kaybeden bir dosyayı yeniden adlandırırken kullanılacak son ek. Path1/Path2 için farklı son ekler atamak amacıyla tek bir dize veya virgülle ayrılmış iki dize olabilir (varsayılan: 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "Kimlik Eşlemeli Bağlamalara İzin Ver",
+    "help": "Kimlik eşlemeli bağlamalara izin ver (Linux 6.12 ve üzeri, yalnızca mount2)"
+  },
+  "files_from0": {
+    "title": "NUL Ayrımlı Dosya Listesi",
+    "help": "Kaynak dosya adlarını NUL ile ayrılmış bir dosyadan oku (standart girdiden okumak için - kullanın)"
+  },
+  "response_header": {
+    "title": "Yanıt Başlığı",
+    "help": "Tüm yanıtlar için HTTP başlığı ayarla; mevcut değerlerin üzerine yazılır"
+  },
+  "rc_response_header": {
+    "title": "RC Yanıt Başlığı",
+    "help": "Tüm yanıtlar için HTTP başlığı ayarla; mevcut değerlerin üzerine yazılır"
+  },
+  "metrics_response_header": {
+    "title": "Metrik Yanıt Başlığı",
+    "help": "Tüm yanıtlar için HTTP başlığı ayarla; mevcut değerlerin üzerine yazılır"
+  },
+  "metadata_max_objects": {
+    "title": "Bellekte Tutulacak Azami Üst Veri Nesnesi",
+    "help": "Bir kullanıcıya ait üst verileri bellekte tutulacak azami nesne sayısı; 0 sınırsızdır"
+  },
+  "multipart_expiry": {
+    "title": "Çok Parçalı Yükleme Zaman Aşımı",
+    "help": "Bu süreden uzun süre boşta kalan tamamlanmamış çok parçalı yüklemeleri iptal et; 0 süresiz saklar"
+  },
+  "multipart_max_uploads": {
+    "title": "Azami Akışlı Çok Parçalı Yükleme",
+    "help": "Bir kullanıcının aynı anda sürdürebileceği azami akışlı çok parçalı yükleme sayısı; 0 sınırsızdır"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Akışlı Çok Parçalı Yükleme Tampon Sınırı",
+    "help": "Her akışlı çok parçalı yüklemede sırası dışında gelen parçalar için bellekte tutulacak azami veri; 0 sınırsızdır"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Toplam Akışlı Çok Parçalı Yükleme Tampon Sınırı",
+    "help": "Bir kullanıcının tüm akışlı çok parçalı yüklemelerinde sırası dışında gelen parçalar için bellekte tutulacak azami toplam veri; 0 sınırsızdır"
+  },
+  "disable_multipart_streaming": {
+    "title": "Çok Parçalı Yükleme Akışını Devre Dışı Bırak",
+    "help": "Çok parçalı yüklemeleri arka uca akışla göndermek yerine bellekte tamponla"
+  },
+  "mount_type": {
+    "title": "Bağlama Türü",
+    "help": "Kullanılacak bağlama türü."
   }
 }

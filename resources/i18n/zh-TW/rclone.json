@@ -1208,7 +1208,7 @@
     "help": "使用 NFS 協議掛載"
   },
   "mount_type_saf": {
-    "title": "儲存訪問框架 (SAF)",
+    "title": "儲存空間存取架構（SAF）",
     "help": "Android 原生儲存訪問框架掛載"
   },
   "serve_type_http": {
@@ -1338,5 +1338,53 @@
   "conflict_suffix": {
     "title": "衝突字尾",
     "help": "重新命名衝突落敗者時使用的字尾。可以是一個字串，也可以是用逗號分隔的兩個字串，分別用於 Path1/Path2（預設：'conflict'）"
+  },
+  "allow_idmap": {
+    "title": "允許 ID 對應掛載",
+    "help": "允許使用 ID 對應掛載（Linux 6.12 以上，僅限 mount2）"
+  },
+  "files_from0": {
+    "title": "NUL 分隔的檔案清單",
+    "help": "從檔案讀取以 NUL 分隔的來源檔名清單（使用 - 從標準輸入讀取）"
+  },
+  "response_header": {
+    "title": "回應標頭",
+    "help": "為所有回應設定 HTTP 標頭，覆寫現有值"
+  },
+  "rc_response_header": {
+    "title": "RC 回應標頭",
+    "help": "為所有回應設定 HTTP 標頭，覆寫現有值"
+  },
+  "metrics_response_header": {
+    "title": "指標回應標頭",
+    "help": "為所有回應設定 HTTP 標頭，覆寫現有值"
+  },
+  "metadata_max_objects": {
+    "title": "中繼資料快取物件數上限",
+    "help": "每位使用者在記憶體中保留中繼資料的物件數量上限，0 表示無限制"
+  },
+  "multipart_expiry": {
+    "title": "分段上傳到期時間",
+    "help": "中止閒置時間超過此值的未完成分段上傳，0 表示永久保留"
+  },
+  "multipart_max_uploads": {
+    "title": "串流分段上傳數量上限",
+    "help": "每位使用者可同時進行的串流分段上傳數量上限，0 表示無限制"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "串流分段上傳緩衝區上限",
+    "help": "每個串流分段上傳用於緩衝亂序抵達分段的記憶體上限，0 表示無限制"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "串流分段上傳緩衝區總上限",
+    "help": "每位使用者的所有串流分段上傳用於緩衝亂序抵達分段的記憶體總上限，0 表示無限制"
+  },
+  "disable_multipart_streaming": {
+    "title": "停用分段上傳串流傳輸",
+    "help": "將分段上傳緩衝在記憶體中，而非串流傳輸至後端"
+  },
+  "mount_type": {
+    "title": "掛載型別",
+    "help": "要使用的掛載型別。"
   }
 }

@@ -382,7 +382,7 @@
       "os_toast_info": "Для нативних сповіщень ОС додаткове налаштування не потрібне. Використовуватиметься стандартна підсистема сповіщень системи.",
       "mode": "Режим",
       "provider": "Провайдер",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "API бота",
       "telegram_botless": "Без бота (CallMeBot)",
       "botToken": "Токен бота",
       "chatId": "ID чату",
@@ -1235,15 +1235,15 @@
       "addOption": "Додати параметр",
       "predefinedOptions": {
         "obscure": {
-          "label": "Obscure",
+          "label": "Приховати пароль",
           "description": "Обробляти паролі як звичайний текст і приховувати їх перед збереженням у конфігурацію"
         },
         "noObscure": {
-          "label": "No Obscure",
+          "label": "Не приховувати пароль",
           "description": "Паролі вже приховано - пропустити крок приховування"
         },
         "nonInteractive": {
-          "label": "Non-Interactive",
+          "label": "Неінтерактивний режим",
           "description": "Повертати JSON-блок із запитанням замість підказки; для керованих застосунком потоків конфігурації"
         },
         "all": {
@@ -1251,7 +1251,7 @@
           "description": "Ставити кожне запитання конфігурації, а не лише підмножину після конфігурації"
         },
         "noOutput": {
-          "label": "No Output",
+          "label": "Без виводу",
           "description": "Придушити будь-який вивід stdout від виклику RC config"
         }
       }
@@ -2143,7 +2143,7 @@
       "editBackend": "Редагувати бекенд",
       "active": "Активний",
       "connecting": "З'єднання...",
-      "local": "Local",
+      "local": "Локальний",
       "name": "Назва",
       "enableAuth": "Налаштувати автентифікацію",
       "selectConfigFile": "Вибрати файл конфігурації",
@@ -2288,7 +2288,7 @@
         "filter": "Фільтр",
         "vfs": "VFS",
         "backend": "Бекенд",
-        "runtimeRemote": "Runtime Remote"
+        "runtimeRemote": "Підключення під час виконання"
       },
       "advancedProfiles": {
         "title": "Розширені профілі",
@@ -3523,11 +3523,11 @@
         "jobEventProfile": "Цільовий профіль / завдання",
         "jobEventPlaceholder": "Оберіть профіль для відстеження",
         "unmountPlaceholder": "/mnt/remote або C:\\Mount",
-        "delayPreset5s": "5s",
-        "delayPreset15s": "15s",
-        "delayPreset30s": "30s",
-        "delayPreset1m": "1m",
-        "delayPreset5m": "5m",
+        "delayPreset5s": "5 с",
+        "delayPreset15s": "15 с",
+        "delayPreset30s": "30 с",
+        "delayPreset1m": "1 хв",
+        "delayPreset5m": "5 хв",
         "appStartDesc": "Автоматичний запуск при старті програми з можливості затримки.",
         "startupDelay": "Затримка запуску (секунди)",
         "delay0s": "Негайно (0 с)",

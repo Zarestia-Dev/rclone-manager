@@ -371,7 +371,7 @@
       "mqtt": "MQTT",
       "email": "電子郵件",
       "placeholderName": "輸入操作名稱",
-      "url": "Webhook URL",
+      "url": "Webhook 網址",
       "method": "HTTP/S 方法",
       "timeout": "逾時時間（秒）",
       "bodyTemplate": "正文模板 (JSON)",
@@ -385,7 +385,7 @@
       "os_toast_info": "作業系統原生通知不需要額外設定。它將使用標準的系統通知子系統。",
       "mode": "模式",
       "provider": "服務商",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "機器人 API",
       "telegram_botless": "無 Bot 模式 (CallMeBot)",
       "botToken": "機器人權杖 (Token) (Bot Token)",
       "chatId": "會話 ID (Chat ID)",
@@ -1158,7 +1158,7 @@
       "apply": "應用到欄位"
     },
     "presets": {
-      "noRemoteSelected": "Please select a remote first"
+      "noRemoteSelected": "請先選擇遠端"
     },
     "remoteConfig": {
       "remoteName": "遠端連線名稱",
@@ -3377,7 +3377,7 @@
     "cleared": "資料已清除"
   },
   "flow": {
-    "title": "Flow",
+    "title": "流程",
     "search": "搜尋流程...",
     "toggleSearch": "切換搜尋",
     "loading": "正在載入流程...",
@@ -3387,52 +3387,52 @@
       "description": "建立快捷執行或工作流以開始快速操作和管道。"
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "快速執行",
+      "new": "新增快速執行",
       "actions": {
-        "start": "Start",
-        "stop": "Stop",
+        "start": "啟動",
+        "stop": "停止",
         "createRemote": "建立遠程存儲 '{{remote}}'",
         "changeRemote": "更改遠程存儲"
       },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled",
+        "scheduled": "排程工作",
+        "watcher": "資料夾監控已啟用",
+        "watcherChangedOnly": "資料夾監控已啟用（僅限子目錄）",
+        "autostart": "自動啟動已啟用",
         "missingRemote": "Rclone 中缺少該遠程存儲"
       },
       "missingRemoteTitle": "Rclone 中未找到該遠程存儲",
       "missingRemoteDesc": "與此快捷執行關聯的遠程存儲 '{{remote}}' 在 Rclone 中不存在，但其設定已保留。",
       "status": {
-        "running": "Running"
+        "running": "執行中"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "快速執行總數"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "快速啟動",
+        "createFirst": "建立第一個快速執行，即可開始無需設定檔的快速操作。",
         "noRunsForRemote": "未為 {{remote}} 設定快速執行。",
         "createForRemote": "為 {{remote}} 建立快速執行"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "設定"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "建立快速執行",
+        "editTitle": "編輯快速執行",
+        "name": "名稱",
+        "nameRequired": "名稱為必填",
+        "description": "說明（選填）",
+        "remote": "遠端",
+        "noRemotes": "尚未設定遠端",
+        "remoteRequired": "遠端為必填",
+        "selectRemoteFirst": "請先選擇遠端以顯示自動完成建議",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote",
+        "tabFilter": "篩選器",
+        "tabBackend": "後端",
+        "tabRuntimeRemote": "執行階段遠端",
         "noProfiles": "沒有可用的設定檔案"
       },
       "errors": {
@@ -3562,11 +3562,11 @@
         "targetServeNode": "目標服務節點",
         "targetServeNodePlaceholder": "選擇服務節點",
         "unmountPlaceholder": "/mnt/remote 或 C:\\Mount",
-        "delayPreset5s": "5s",
-        "delayPreset15s": "15s",
-        "delayPreset30s": "30s",
-        "delayPreset1m": "1m",
-        "delayPreset5m": "5m",
+        "delayPreset5s": "5 秒",
+        "delayPreset15s": "15 秒",
+        "delayPreset30s": "30 秒",
+        "delayPreset1m": "1 分鐘",
+        "delayPreset5m": "5 分鐘",
         "openDetailed": "詳細設置",
         "openDetailedTooltip": "打開完整引數與旗標編輯器底欄",
         "activeConfig": "當前有效設定與旗標",

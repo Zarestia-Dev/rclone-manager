@@ -382,7 +382,7 @@
       "os_toast_info": "No se requiere configuración adicional para notificaciones nativas.",
       "mode": "Modo",
       "provider": "Proveedor",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "API del bot",
       "telegram_botless": "Sin Bot (CallMeBot)",
       "botToken": "Token del Bot",
       "chatId": "ID de chat",
@@ -397,7 +397,7 @@
       "telegram_botless_info": "El modo sin bot utiliza CallMeBot (https://api.callmebot.com) para enviar alertas de Telegram a tu usuario sin crear un token de bot.",
       "whatsapp_callmebot_info": "Envía alertas de WhatsApp a través de CallMeBot (https://api.callmebot.com). Introduce tu número de teléfono (con código de país) y tu clave API de CallMeBot.",
       "whatsapp_gateway_info": "Envía alertas de WhatsApp a través de tu gateway HTTP personalizado.",
-      "host": "Host",
+      "host": "Servidor",
       "port": "Puerto",
       "useTls": "Usar TLS",
       "topic": "Tema (Topic)",
@@ -805,7 +805,7 @@
       "show": "Mostrar búsqueda"
     },
     "urlPreview": {
-      "host": "Host",
+      "host": "Servidor",
       "destination": "Destino",
       "openViewer": "Abrir en visor",
       "openViewerTooltip": "Abrir vista previa completa de medios",
@@ -1735,7 +1735,7 @@
       "unmount": "Desmontar",
       "progress": "Progreso",
       "speed": "Velocidad",
-      "eta": "ETA",
+      "eta": "Tiempo restante",
       "files": "Archivos",
       "errors": "Errores",
       "duration": "Duración",
@@ -1855,7 +1855,7 @@
         "finished": "Finalizado",
         "duration": "Duración",
         "speed": "Velocidad",
-        "eta": "ETA",
+        "eta": "Tiempo restante",
         "files": "Archivos",
         "checks": "Comprobaciones",
         "deleted": "Eliminados",
@@ -1960,7 +1960,7 @@
       "memAlloc": "Asignado",
       "memTotalAlloc": "Total asignado",
       "memSys": "Sistema",
-      "memMallocs": "Mallocs",
+      "memMallocs": "Asignaciones de memoria",
       "memFrees": "Liberaciones",
       "heapMemory": "Memoria del montón",
       "memHeapAlloc": "Asignación del montón",
@@ -2115,7 +2115,7 @@
       "title": "Gestión del backend",
       "fields": {
         "host": {
-          "label": "Host",
+          "label": "Servidor",
           "placeholder": "p. ej., 127.0.0.1 o mi-nas.local"
         },
         "port": {
@@ -2767,7 +2767,7 @@
       },
       "progress": "Progreso:",
       "of": "de",
-      "eta": "ETA:",
+      "eta": "Tiempo restante:",
       "speed": "Velocidad de transferencia:",
       "transfers": "Transferencias:",
       "checks": "Comprobaciones:",

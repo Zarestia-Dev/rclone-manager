@@ -1204,11 +1204,11 @@
     "help": "go-fuse を使用した Go ネイティブ FUSE マウント"
   },
   "mount_type_nfsmount": {
-    "title": "NFS Mount",
-    "help": "Mount using NFS protocol"
+    "title": "NFSマウント",
+    "help": "NFSプロトコルでマウントする"
   },
   "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
+    "title": "ストレージアクセスフレームワーク（SAF）",
     "help": "Androidネイティブ Storage Access Framework マウント"
   },
   "serve_type_http": {
@@ -1338,5 +1338,53 @@
   "conflict_suffix": {
     "title": "競合ファイルのサフィックス",
     "help": "--conflict-loser によるリネーム時に使用するサフィックス。単一文字列、または Path1/Path2 別にカンマ区切りで2つ指定可能 (デフォルト: 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "IDマッピング付きマウントを許可",
+    "help": "IDマッピング付きマウントを許可する（Linux 6.12以降、mount2のみ）"
+  },
+  "files_from0": {
+    "title": "NUL区切りのファイル一覧",
+    "help": "NULで区切られたファイルからコピー元のファイル名一覧を読み込む（標準入力から読む場合は - を指定）"
+  },
+  "response_header": {
+    "title": "応答ヘッダー",
+    "help": "すべての応答にHTTPヘッダーを設定し、既存の値を上書きする"
+  },
+  "rc_response_header": {
+    "title": "RC応答ヘッダー",
+    "help": "すべての応答にHTTPヘッダーを設定し、既存の値を上書きする"
+  },
+  "metrics_response_header": {
+    "title": "メトリクス応答ヘッダー",
+    "help": "すべての応答にHTTPヘッダーを設定し、既存の値を上書きする"
+  },
+  "metadata_max_objects": {
+    "title": "メタデータ保持オブジェクト数の上限",
+    "help": "ユーザーごとにメタデータをメモリに保持するオブジェクト数の上限。0は無制限"
+  },
+  "multipart_expiry": {
+    "title": "マルチパートアップロードの有効期限",
+    "help": "この時間を超えて停止している未完了のマルチパートアップロードを中止する。0は無期限に保持"
+  },
+  "multipart_max_uploads": {
+    "title": "ストリーミングマルチパートアップロード数の上限",
+    "help": "ユーザーごとに同時実行できるストリーミングマルチパートアップロード数の上限。0は無制限"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "ストリーミングマルチパートバッファー上限",
+    "help": "順序どおりに届かないパートを保持する、ストリーミングマルチパートアップロードごとのメモリバッファー上限。0は無制限"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "ストリーミングマルチパートバッファーの合計上限",
+    "help": "ユーザーのすべてのストリーミングマルチパートアップロードで、順序どおりに届かないパートを保持するメモリバッファーの合計上限。0は無制限"
+  },
+  "disable_multipart_streaming": {
+    "title": "マルチパートストリーミングを無効化",
+    "help": "マルチパートアップロードをバックエンドにストリーミングせず、メモリにバッファーする"
+  },
+  "mount_type": {
+    "title": "マウント種別",
+    "help": "使用するマウントのタイプ"
   }
 }

@@ -232,7 +232,7 @@
       "openInExplorer": "Ouvrir dans l’explorateur de fichiers"
     },
     "jobs": {
-      "title": "Jobs",
+      "title": "Tâches",
       "dryRun": "Simulation",
       "status": {
         "running": "En cours",
@@ -382,7 +382,7 @@
       "os_toast_info": "Aucune configuration supplémentaire requise pour les notifications système.",
       "mode": "Mode",
       "provider": "Fournisseur",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "API du bot",
       "telegram_botless": "Sans Bot (CallMeBot)",
       "botToken": "Jeton de bot (Token)",
       "chatId": "ID de discussion",
@@ -675,7 +675,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Menu Ajouter un dépôt distant",
-    "home": "Home",
+    "home": "Accueil",
     "internetStatus": "État de la connexion Internet",
     "appMenu": "Menu de l’application",
     "minimize": "Minimiser la fenêtre",
@@ -701,7 +701,7 @@
       "export": "Exporter",
       "preferences": "Préférences",
       "advanced": "Paramètres avancés",
-      "flags": "Rclone Flags",
+      "flags": "Options Rclone",
       "vault": "Coffre-fort",
       "fileBrowser": "Explorateur de fichiers",
       "flowWorkspace": "Espace de travail Flow",
@@ -968,7 +968,7 @@
       "aria": {
         "item": "{{name}} élément {{index}}",
         "removeItem": "Retirer un élément {{name}}",
-        "date": "{{name}} date",
+        "date": "Date : {{name}}",
         "time": "{{name}} temps"
       },
       "errors": {
@@ -1735,7 +1735,7 @@
       "unmount": "Démonter",
       "progress": "Progression",
       "speed": "Débit",
-      "eta": "ETA",
+      "eta": "Temps restant",
       "files": "Fichiers",
       "errors": "Erreurs",
       "duration": "Durée",
@@ -1855,7 +1855,7 @@
         "finished": "Terminé",
         "duration": "Durée",
         "speed": "Débit",
-        "eta": "ETA",
+        "eta": "Temps restant",
         "files": "Fichiers",
         "checks": "Vérifié",
         "deleted": "Supprimé",
@@ -1960,7 +1960,7 @@
       "memAlloc": "Alloué",
       "memTotalAlloc": "Total alloué",
       "memSys": "Système",
-      "memMallocs": "Mallocs",
+      "memMallocs": "Allocations mémoire",
       "memFrees": "Libérations",
       "heapMemory": "Mémoire tas",
       "memHeapAlloc": "Tas alloué",
@@ -2028,7 +2028,7 @@
       },
       "tabs": {
         "general": "Général",
-        "core": "Core",
+        "core": "Moteur",
         "developer": "Développeur",
         "vault": "Coffre-fort"
       },
@@ -2437,7 +2437,7 @@
       "starred": "Favoris",
       "searchPlaceholder": "Rechercher des fichiers…",
       "local": "Local",
-      "cloud": "Cloud",
+      "cloud": "Stockage en ligne",
       "fileSystem": "Fichier Système",
       "bookmarks": "Signets",
       "localDisk": "Disque local",
@@ -3068,8 +3068,8 @@
     "stop": "Arrêter",
     "browse": "Parcourir",
     "browseInApp": "Parcourir (dans l'application)",
-    "jobsCount": "Jobs [{{active}}/{{total}}]",
-    "jobsNone": "Jobs [-]",
+    "jobsCount": "Tâches [{{active}}/{{total}}]",
+    "jobsNone": "Tâches [-]",
     "mountCount": "Montage [{{active}}/{{total}}]",
     "syncCount": "Synchronisation [{{active}}/{{total}}]",
     "copyCount": "Copie [{{active}}/{{total}}]",
@@ -3396,11 +3396,11 @@
       },
       "errors": {
         "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone",
-        "failedStop": "Échec de l'arrêt du Lancement Rapide \"{{name}}\" : {{error}}",
-        "failedStart": "Échec du démarrage de Quick Run « {{name }} » : {{error}}"
+        "failedStop": "Échec de l’arrêt de l’exécution rapide « {{name}} » : {{error}}",
+        "failedStart": "Échec du démarrage de l’exécution rapide « {{name}} » : {{error}}"
       },
       "success": {
-        "started": "Quick Run « {{name }} » démarré avec succès"
+        "started": "Exécution rapide « {{name}} » démarrée avec succès"
       }
     },
     "tabs": {

@@ -176,7 +176,7 @@
     "help": "Autoridad de certificado del cliente para verificar clientes"
   },
   "baseurl": {
-    "title": "Baseurl",
+    "title": "URL base",
     "help": "Prefijo para URLs - dejar vacío para raíz"
   },
   "min_tls_version": {
@@ -184,7 +184,7 @@
     "help": "Versión mínima de TLS que es aceptable"
   },
   "allow_origin": {
-    "title": "Allow Origin",
+    "title": "Origen permitido",
     "help": "Origen desde el que se puede ejecutar una solicitud de dominio cruzado (CORS)"
   },
   "htpasswd": {
@@ -192,7 +192,7 @@
     "help": "Archivo htpasswd - si no se proporciona no se realiza autenticación"
   },
   "realm": {
-    "title": "Realm",
+    "title": "Dominio de autenticación",
     "help": "Realm para autenticación"
   },
   "salt": {
@@ -240,7 +240,7 @@
     "help": "Facilidad para syslog, p. ej. KERN,USER"
   },
   "log_systemd": {
-    "title": "Log Systemd",
+    "title": "Registro en systemd",
     "help": "Activar integración con systemd para el logger"
   },
   "windows_event_log_level": {
@@ -292,16 +292,16 @@
     "help": "Traducir ligas simbólicas de archivos regulares con extensión '.rclonelink'."
   },
   "contimeout": {
-    "title": "Contimeout",
-    "help": "Connect timeout"
+    "title": "Tiempo de espera de conexión",
+    "help": "Tiempo de espera para establecer una conexión"
   },
   "timeout": {
     "title": "Tiempo de Espera",
     "help": "Tiempo de espera idle de IO"
   },
   "expect_continue_timeout": {
-    "title": "Expect Continue Timeout",
-    "help": "Timeout when using expect / 100-continue in HTTP"
+    "title": "Tiempo de espera de Expect/100-continue",
+    "help": "Tiempo de espera al usar Expect/100-continue en HTTP"
   },
   "no_check_certificate": {
     "title": "No Verificar Certificado",
@@ -468,8 +468,8 @@
     "help": "Límite de ancho de banda en KiB/s, o usar sufijo B|K|M|G|T|P o una tabla completa"
   },
   "bwlimit_file": {
-    "title": "Bandwidth Limit File",
-    "help": "Bandwidth limit per file in KiB/s, or use suffix B|K|M|G|T|P or a full timetable"
+    "title": "Límite de ancho de banda por archivo",
+    "help": "Límite de ancho de banda por archivo en KiB/s; también admite los sufijos B|K|M|G|T|P o un horario completo"
   },
   "buffer_size": {
     "title": "Tamaño de cache",
@@ -512,8 +512,8 @@
     "help": "Activar --stats-one-line y añadir prefijo de fecha/hora actual"
   },
   "stats_one_line_date_format": {
-    "title": "Statistics One Line Date Format",
-    "help": "Enable --stats-one-line-date and use custom formatted date: Enclose date string in double quotes (\"), see https://golang.org/pkg/time/#Time.Format"
+    "title": "Formato de fecha de estadísticas en una línea",
+    "help": "Activa --stats-one-line-date y usa un formato de fecha personalizado. Encierre la cadena de fecha entre comillas dobles (\"); consulte https://golang.org/pkg/time/#Time.Format"
   },
   "error_on_no_transfer": {
     "title": "Error sin transferencia",
@@ -553,7 +553,7 @@
   },
   "client_pass": {
     "title": "Contraseña del cliente",
-    "help": "Password for client SSL private key (PEM) for mutual TLS auth (obscured)"
+    "help": "Contraseña de la clave privada SSL del cliente (PEM) para autenticación TLS mutua (ofuscada)"
   },
   "multi_thread_cutoff": {
     "title": "Límite multihilo",
@@ -720,11 +720,11 @@
     "help": "Establecer el nombre del volumen (solo compatible con Windows y OS X)"
   },
   "noappledouble": {
-    "title": "Noappledouble",
+    "title": "Omitir archivos AppleDouble",
     "help": "Ignorar archivos Apple Double (._) y .DS_Store (solo compatible con OS X)"
   },
   "noapplexattr": {
-    "title": "Noapplexattr",
+    "title": "Omitir atributos extendidos de Apple",
     "help": "Ignorar todos los atributos extendidos \"com.apple.*\" (solo compatible con OSX)"
   },
   "network_mode": {
@@ -1176,8 +1176,8 @@
     "help": "Ruta 2: --backup-dir"
   },
   "disable_zip": {
-    "title": "Disable Zip",
-    "help": "Disable zip download of directories"
+    "title": "Desactivar ZIP",
+    "help": "Desactivar la descarga de directorios en formato ZIP"
   },
   "vfs_handle_caching": {
     "title": "Caché de manejadores VFS",
@@ -1208,7 +1208,7 @@
     "help": "Montaje usando protocolo NFS"
   },
   "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
+    "title": "Marco de acceso al almacenamiento (SAF)",
     "help": "Montaje nativo de Android Storage Access Framework"
   },
   "serve_type_http": {
@@ -1338,5 +1338,53 @@
   "conflict_suffix": {
     "title": "Sufijo de Conflicto",
     "help": "Sufijo a usar al renombrar un archivo perdedor de conflicto. Puede ser una cadena o dos cadenas separadas por comas para asignar diferentes sufijos a Path1/Path2. (por defecto: 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "Permitir montajes con asignación de ID",
+    "help": "Permitir montajes con asignación de ID (Linux 6.12 o posterior, solo mount2)"
+  },
+  "files_from0": {
+    "title": "Archivos desde lista separada por NUL",
+    "help": "Leer los nombres de archivos de origen de un archivo separado por NUL (use - para leer de la entrada estándar)"
+  },
+  "response_header": {
+    "title": "Cabecera de respuesta",
+    "help": "Establecer una cabecera HTTP para todas las respuestas, reemplazando los valores existentes"
+  },
+  "rc_response_header": {
+    "title": "Cabecera de respuesta RC",
+    "help": "Establecer una cabecera HTTP para todas las respuestas, reemplazando los valores existentes"
+  },
+  "metrics_response_header": {
+    "title": "Cabecera de respuesta de métricas",
+    "help": "Establecer una cabecera HTTP para todas las respuestas, reemplazando los valores existentes"
+  },
+  "metadata_max_objects": {
+    "title": "Máximo de objetos con metadatos en memoria",
+    "help": "Número máximo de objetos de un usuario cuyos metadatos se conservan en memoria; 0 significa sin límite"
+  },
+  "multipart_expiry": {
+    "title": "Caducidad de cargas multiparte",
+    "help": "Cancelar las cargas multiparte incompletas que lleven inactivas más de este tiempo; 0 las conserva indefinidamente"
+  },
+  "multipart_max_uploads": {
+    "title": "Máximo de cargas multiparte en streaming",
+    "help": "Número máximo de cargas multiparte en streaming simultáneas por usuario; 0 significa sin límite"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Límite de búfer por carga multiparte en streaming",
+    "help": "Memoria máxima de búfer por carga multiparte en streaming para partes que lleguen fuera de orden; 0 significa sin límite"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Límite total de búfer de cargas multiparte en streaming",
+    "help": "Memoria máxima total de búfer de todas las cargas multiparte en streaming de un usuario para partes que lleguen fuera de orden; 0 significa sin límite"
+  },
+  "disable_multipart_streaming": {
+    "title": "Desactivar streaming de cargas multiparte",
+    "help": "Almacenar las cargas multiparte en memoria en lugar de transmitirlas en streaming al backend"
+  },
+  "mount_type": {
+    "title": "Tipo de montaje",
+    "help": "Tipo de montaje a utilizar."
   }
 }

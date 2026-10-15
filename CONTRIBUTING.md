@@ -236,6 +236,14 @@ Instead of manually fetching and editing definitions, use the built-in sync scri
 
    This fetches option info from rclone and appends missing flag keys to `resources/i18n/*/rclone.json`.
 
+   To read definitions from the installed rclone without starting an RC server:
+
+   ```bash
+   npm run sync:flags -- --loopback
+   ```
+
+   If rclone cannot provide its schema, the command exits without changing translation files.
+
 3. **Sync Provider Definitions**:
 
    ```bash

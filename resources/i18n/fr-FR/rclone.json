@@ -1208,7 +1208,7 @@
     "help": "Montage utilisant le protocole NFS"
   },
   "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
+    "title": "Cadre d’accès au stockage (SAF)",
     "help": "Montage natif Android Storage Access Framework"
   },
   "serve_type_http": {
@@ -1338,5 +1338,53 @@
   "conflict_suffix": {
     "title": "Suffixe de Conflit",
     "help": "Suffixe à utiliser lors du renommage d'un perdant du conflit. Peut être une chaîne unique ou deux chaînes séparées par des virgules pour attribuer des suffixes différents à Path1/Path2. (par défaut : 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "Autoriser les montages avec mappage d’identifiants",
+    "help": "Autoriser les montages avec mappage d’identifiants (Linux 6.12 ou ultérieur, mount2 uniquement)"
+  },
+  "files_from0": {
+    "title": "Fichiers depuis une liste séparée par NUL",
+    "help": "Lire les noms des fichiers source depuis un fichier séparé par NUL (utiliser - pour lire l’entrée standard)"
+  },
+  "response_header": {
+    "title": "En-tête de réponse",
+    "help": "Définir un en-tête HTTP pour toutes les réponses en remplaçant les valeurs existantes"
+  },
+  "rc_response_header": {
+    "title": "En-tête de réponse RC",
+    "help": "Définir un en-tête HTTP pour toutes les réponses en remplaçant les valeurs existantes"
+  },
+  "metrics_response_header": {
+    "title": "En-tête de réponse des métriques",
+    "help": "Définir un en-tête HTTP pour toutes les réponses en remplaçant les valeurs existantes"
+  },
+  "metadata_max_objects": {
+    "title": "Nombre maximal d’objets avec métadonnées en mémoire",
+    "help": "Nombre maximal d’objets d’un utilisateur dont les métadonnées sont conservées en mémoire ; 0 pour illimité"
+  },
+  "multipart_expiry": {
+    "title": "Expiration des envois multiparties",
+    "help": "Annuler les envois multiparties incomplets inactifs depuis plus de cette durée ; 0 pour les conserver indéfiniment"
+  },
+  "multipart_max_uploads": {
+    "title": "Nombre maximal d’envois multiparties en continu",
+    "help": "Nombre maximal d’envois multiparties en continu simultanés par utilisateur ; 0 pour illimité"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Limite de tampon par envoi multiparties en continu",
+    "help": "Mémoire tampon maximale par envoi multiparties en continu pour les parties reçues dans le désordre ; 0 pour illimité"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Limite totale de tampon des envois multiparties en continu",
+    "help": "Mémoire tampon maximale cumulée pour les parties reçues dans le désordre de tous les envois multiparties en continu d’un utilisateur ; 0 pour illimité"
+  },
+  "disable_multipart_streaming": {
+    "title": "Désactiver les envois multiparties en continu",
+    "help": "Mettre les envois multiparties en mémoire tampon au lieu de les transmettre en continu au backend"
+  },
+  "mount_type": {
+    "title": "Type de montage",
+    "help": "Type de montage à utiliser."
   }
 }

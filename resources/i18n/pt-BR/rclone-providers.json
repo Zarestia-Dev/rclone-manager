@@ -103,11 +103,11 @@
       },
       "endpoint": {
         "help": "Endpoint para o serviço.\n\nDeixe em branco normalmente.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "env_auth": {
         "help": "Leia as credenciais do tempo de execução (variáveis de ambiente, CLI ou MSI). \n\nConsulte a [documentação de autenticação](/azureblob#authentication) para obter mais informações.",
-        "title": "Env Auth"
+        "title": "Autenticação pelo ambiente"
       },
       "key": {
         "help": "Chave Compartilhada da Conta de Armazenamento.\n\nDeixe em branco para usar a URL SAS ou o Emulador.",
@@ -131,7 +131,7 @@
       },
       "msi_mi_res_id": {
         "help": "ID de recurso do Azure do MSI atribuído pelo usuário para usar, se houver.\n\nDeixe em branco se msi_client_id ou msi_object_id estiver especificado.",
-        "title": "Msi Mi Res Id"
+        "title": "ID do recurso da identidade gerenciada"
       },
       "msi_object_id": {
         "help": "ID do objeto do MSI atribuído pelo usuário para usar, se houver.\n\nDeixe em branco se msi_client_id ou msi_mi_res_id estiver especificado.",
@@ -192,6 +192,14 @@
       "username": {
         "help": "Nome de usuário (normalmente um endereço de e-mail) \n\nDefina isso se estiver usando\n- Usuário com nome de usuário e senha",
         "title": "Nome de usuário"
+      },
+      "use_arrow_list": {
+        "title": "Usar listagens Apache Arrow",
+        "help": "Usar o formato de resposta ListBlobs Apache Arrow em vez de XML para listar diretórios. As respostas Arrow são menores e muito mais baratas de analisar, acelerando várias vezes a listagem de contêineres grandes. Combine com list_parallelism para obter o maior ganho.\n\n\"Blob Listing with Apache Arrow\" está em versão prévia pública na Microsoft e só é compatível com contas de espaço de nomes plano. Em contas com espaço de nomes hierárquico (ADLS Gen2), ou quando o recurso estiver indisponível, o servidor retorna XML e a listagem volta automaticamente ao método XML normal, com registro em nível de depuração."
+      },
+      "list_parallelism": {
+        "title": "Paralelismo de listagem",
+        "help": "Número de partições paralelas para listar um diretório.\n\nSe maior que 1, os nomes dos blobs de cada diretório são divididos em intervalos listados simultaneamente com os parâmetros Arrow startFrom/endBefore. Isso pode acelerar muito contêineres com milhões de objetos, tanto em listagens recursivas (ListR) quanto de um único diretório. A velocidade continua aumentando até um paralelismo de aproximadamente 30.\n\nSó tem efeito com use_arrow_list ativado, pois apenas Arrow suporta intervalos de nomes no servidor. Se a conta não suportar intervalos (por exemplo, com espaço de nomes hierárquico), a listagem volta a ser sequencial. O padrão 0, ou 1, lista sequencialmente."
       }
     },
     "azurefiles": {
@@ -241,11 +249,11 @@
       },
       "endpoint": {
         "help": "Endpoint para o serviço. \n\nDeixe em branco normalmente.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "env_auth": {
         "help": "Leia as credenciais do tempo de execução (variáveis de ambiente, CLI ou MSI).\n\nConsulte a [documentação de autenticação](/azurefiles#authentication) para mais informações.",
-        "title": "Env Auth"
+        "title": "Autenticação pelo ambiente"
       },
       "key": {
         "help": "Chave Compartilhada da Conta de Armazenamento.\n\nDeixe em branco para usar a URL SAS ou a string de conexão.",
@@ -343,11 +351,11 @@
       },
       "endpoint": {
         "help": "Endpoint para o serviço.\n\nDeixe em branco geralmente.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "hard_delete": {
         "help": "Exclua permanentemente arquivos em remoto de exclusão, caso contrário oculte arquivos.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "key": {
         "help": "Chave de Aplicação.",
@@ -547,7 +555,7 @@
       },
       "rps": {
         "help": "Limita o número de solicitações por segundo para a fonte FS (-1 para desativar).\n\nEste ajuste coloca um limite rígido no número de solicitações por segundo que o cache estará fazendo para o provedor remoto da nuvem e tenta respeitar esse valor ao definir atrasos entre as leituras.\n\nSe você encontrar que está sendo banido ou limitado pelo provedor da nuvem através do cache e souber que um número menor de solicitações por segundo permitirá que você trabalhe com ele, então pode usar esse ajuste para isso.\n\nUm bom equilíbrio de todos os outros ajustes deve tornar esse ajuste inútil, mas está disponível para ser configurado em casos especiais.\n\n**NOTA**: Isso limitará o número de solicitações durante streams, mas as outras chamadas API do provedor da nuvem, como listagens de diretórios, ainda passarão.",
-        "title": "Rps"
+        "title": "Requisições por segundo"
       },
       "tmp_upload_path": {
         "help": "Diretório para manter arquivos temporários até que sejam enviados.\n\nÉ o caminho onde o cache usará como armazenamento temporário para novos arquivos que precisam ser enviados ao provedor de nuvem.\n\nEspecificar um valor habilita essa característica. Sem ele, ela está completamente desabilitada e os arquivos serão enviados diretamente ao provedor de nuvem",
@@ -559,7 +567,7 @@
       },
       "workers": {
         "help": "Quantos workers devem executar em paralelo para baixar fragmentos.\n\nValores mais altos significam processamento paralelo maior (melhor CPU necessário)\ne mais solicitações concorrentes no provedor de nuvem.\nIsso impacta vários aspectos como as limitações da API do provedor de nuvem,\nmais estresse no hardware que o rclone executa, mas também significa que os\nstreams serão mais fluentes e os dados estarão disponíveis muito mais rápido para os leitores.\n\n**Nota:** Se a integração com Plex (opcional) for ativada, esse ajuste se adaptará ao tipo de leitura realizada e o valor especificado aqui será usado como número máximo de workers a serem usados.",
-        "title": "Workers"
+        "title": "Processos de trabalho"
       },
       "writes": {
         "help": "Armazenar dados de arquivo no cache ao escrever através do FS.\n\nSe precisar ler arquivos imediatamente após os subirem eles pelo cache, você pode habilitar essa flag para que seus dados sejam armazenados no armazenamento de cache ao mesmo tempo durante o upload.",
@@ -577,7 +585,7 @@
       },
       "fail_hard": {
         "help": "Trate arquivos com fragmentos ausentes ou inválidos.",
-        "title": "Fail Hard"
+        "title": "Falhar imediatamente"
       },
       "hash_type": {
         "help": "O chunker manipula somas de hash da seguinte forma: \n\nTodos os modos exceto \"nenhum\" exigem metadados.",
@@ -653,7 +661,7 @@
       },
       "upstreams": {
         "help": "Upstreams para combinar\n\nEsses devem estar na forma\n\n     dir=remoto:caminho dir2=remoto2:caminho\n\nOnde antes do = é especificado o diretório raiz e após é a remota para colocar lá.\n\nEspaços embutidos podem ser adicionados utilizando aspas\n\n     \"dir=remoto:caminho com espaço\" \"dir2=remoto2:caminho com espaço\"",
-        "title": "Upstreams"
+        "title": "Remotos de origem"
       }
     },
     "compress": {
@@ -725,7 +733,7 @@
       },
       "strict_names": {
         "help": "Se ativado, isso levanta um erro quando o crypt encontra um arquivo que não pode ser descriptografado.\n\n(Pelo padrão, o rclone só registra uma NOTICE e continua normalmente.)\nIsso pode acontecer se arquivos criptografados e não criptografados estiverem armazenados no mesmo diretório (o que não é recomendado). Isso também pode indicar um problema mais sério que deve ser investigado.",
-        "title": "Strict Names"
+        "title": "Nomes estritos"
       },
       "suffix": {
         "help": "Se isso for definido, o prefixo por padrão de \".bin\" será substituído.\n\nDefinir o sufixo como \"none\" resultará em um sufixo vazio. Isso pode ser útil quando o comprimento do caminho é critico.",
@@ -769,7 +777,7 @@
       },
       "hard_delete": {
         "help": "Apague os arquivos permanentemente em vez de colocá-los no lixo.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "list_chunk": {
         "help": "Número de itens para listar em cada chamada",
@@ -847,7 +855,7 @@
       },
       "env_auth": {
         "help": "Obtenha credenciais IAM do tempo de execução (variáveis de ambiente ou metadados da instância se não houver variáveis de ambiente). \n\nAplica-se apenas se o arquivo de conta de serviço e as credenciais da conta de serviço estiverem em branco.",
-        "title": "Env Auth"
+        "title": "Autenticação pelo ambiente"
       },
       "export_formats": {
         "help": "Lista separada por vírgula de formatos preferidos para download de arquivos do Google Docs.",
@@ -1086,6 +1094,18 @@
       "token_url": {
         "help": "URL do servidor de token.\n\nDeixe em branco para usar as configurações padrão do provedor.",
         "title": "URL do Token"
+      },
+      "impersonate_admin": {
+        "title": "Agir como administrador da equipe",
+        "help": "ID do membro da equipe para executar ações como administrador.\n\nDefine o cabeçalho Dropbox-API-Select-Admin com o ID informado (por exemplo, \"dbmid:...\"). Exige o ID do membro, não um endereço de e-mail.\n\nPara usar impersonate_admin, defina esta opção ao executar \"rclone config\" para solicitar o escopo \"team_data.member\", que normalmente não é solicitado. Um administrador do Dropbox deve aprovar esse escopo durante o fluxo OAuth.\n\nÉ necessário usar seu próprio aplicativo, com client_id e client_secret próprios, pois as permissões padrão do rclone não incluem \"team_data.member\"."
+      },
+      "skip_shared_folders": {
+        "title": "Ignorar pastas compartilhadas",
+        "help": "Ignorar todas as pastas compartilhadas.\n\nExclui das listagens qualquer ponto de montagem de pasta compartilhada, independentemente do proprietário. Útil para fazer backup dessas pastas separadamente com outro remoto configurado com o espaço de nomes da pasta compartilhada."
+      },
+      "skip_unowned_folders": {
+        "title": "Ignorar pastas compartilhadas de outros proprietários",
+        "help": "Ignorar pastas compartilhadas que não pertençam ao usuário atual.\n\nExclui das listagens os pontos de montagem de pastas compartilhadas de outros proprietários. Evita duplicar dados ao fazer backup de várias contas Dropbox que compartilham pastas.\n\nNo Dropbox Business, as pastas da equipe pertencem à equipe. Para membros padrão com acesso de edição ou visualização, elas são consideradas de outro proprietário e serão excluídas. Para incluí-las no backup, não use esta opção ou execute com uma conta de administrador da equipe.\n\nNão tem efeito com --dropbox-skip-shared-folders ativado. Faz uma chamada de API adicional por ponto de montagem compartilhado."
       }
     },
     "fichier": {
@@ -1329,7 +1349,7 @@
       },
       "socks_proxy": {
         "help": "Um provedor de proxy Socks 5.\n\nSuporta o formato user:pass@host:port, user@host:port, host:port.\n\nExemplo:\n\n    myUser:myPass@localhost:9005",
-        "title": "Socks Proxy"
+        "title": "Proxy SOCKS"
       },
       "tls": {
         "help": "Use FTPS Implicito (FTP sobre TLS).\n\nQuando usar o FTP implicito sobre TLS, o cliente conecta usando TLS desde o início, quebra a compatibilidade com servidores não conscientes de TLS. Isso é geralmente fornecido sobre porta 990 em vez da porta 21. Não pode ser usado em combinação com o FTPS explicito.",
@@ -1425,7 +1445,7 @@
       },
       "endpoint": {
         "help": "Endpoint personalizado para a API de armazenamento. Deixe em branco para usar o padrão do provedor.\n\nAo usar um endpoint personalizado que inclua uma subpasta (por exemplo, example.org/custom/endpoint),\na subpasta será ignorada durante as operações de upload devido a uma limitação na biblioteca cliente Go subjacente da Google API.\nAs operações de download e listagem funcionarão corretamente com o caminho do endpoint completo.\nSe você precisar de suporte à subpasta para uploads, evite usar subpastas em sua configuração do endpoint personalizado.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "env_auth": {
         "help": "Obtenha as credenciais do IAM do GCP do tempo de execução (variáveis de ambiente ou metadados da instância, se não houver variáveis de ambiente). \n\nAplica-se apenas se o arquivo de serviço de conta e as credenciais da conta de serviço estiverem em branco.",
@@ -1553,7 +1573,7 @@
       },
       "hashes": {
         "help": "Lista separada por vírgula de tipos de checksum suportados.",
-        "title": "Hashes"
+        "title": "Algoritmos de hash"
       },
       "max_age": {
         "help": "Tempo máximo para manter os checksums na memória cache (0 = sem cache, off = cache infinito).",
@@ -1625,7 +1645,7 @@
       },
       "endpoint": {
         "help": "Endpoint para o serviço.\n\nEsta é a URL que as chamadas da API serão feitas.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "root_prefix": {
         "help": "A pasta raiz/pai para todos os caminhos.\n\nPreencha para usar a pasta especificada como pai para todos os caminhos fornecidos para o remoto.\nAssim, o rclone pode usar qualquer pasta como ponto de partida.",
@@ -1777,7 +1797,7 @@
       },
       "endpoint": {
         "help": "Você pode encontrar o seu endpoint de URL do ImageKit.io na sua [dashboard](https://imagekit.io/dashboard/developer/api-keys)",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "only_signed": {
         "help": "Se você configurou \"Restrinja URLs de imagens não assinadas\" em suas configurações do dashboard, defina para true.",
@@ -1819,7 +1839,7 @@
       },
       "endpoint": {
         "help": "Endpoint IAS3.\n\nDeixe em branco para o valor padrão.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "front_endpoint": {
         "help": "Host do Frontend do InternetArchive.\n\nDeixe em branco para o valor padrão.",
@@ -1907,7 +1927,7 @@
       },
       "hard_delete": {
         "help": "Exclua arquivos permanentemente em vez de colocá-los na lixeira.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "md5_memory_limit": {
         "help": "Arquivos maiores do que este serão armazenados em disco para calcular o MD5 se for necessário.",
@@ -1945,11 +1965,11 @@
       },
       "endpoint": {
         "help": "O endpoint da API Koofr para usar.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "mountid": {
         "help": "ID de Montagem para usar na montagem.\n\nSe omitido, a montagem primária é usada.",
-        "title": "Mountid"
+        "title": "ID da montagem"
       },
       "password": {
         "help": "Sua senha para rclone gere uma em https://app.koofr.net/app/admin/preferences/password.",
@@ -1961,7 +1981,7 @@
       },
       "setmtime": {
         "help": "O backend suporta data da última modificação? \n\nDefina para false se você estiver usando um ID de Montagem que aponta para o backend da Dropbox ou Amazon Drive.",
-        "title": "Setmtime"
+        "title": "Definir data de modificação"
       },
       "user": {
         "help": "Seu nome de usuário.",
@@ -2013,7 +2033,7 @@
       },
       "hashes": {
         "help": "Lista separada por vírgula de tipos de checksum suportados.",
-        "title": "Hashes"
+        "title": "Algoritmos de hash"
       },
       "links": {
         "help": "Criar links simbólicos para/de à partir de arquivos regulares com a extensão '.rcloneLink' para o backend local.",
@@ -2111,7 +2131,7 @@
       },
       "quirks": {
         "help": "Lista separada por vírgula de flags de manutenção interna.\n\nEssa opção não deve ser usada por um usuário comum. Ela é destinada apenas para facilitar o diagnóstico remoto de problemas no backend. O significado estrito das flags não está documentado e não é garantido persistir entre releases. As peculiaridades serão removidas quando o backend se tornar estável.\nFlags suportadas: atomicmkdir binlist unknowndirs",
-        "title": "Quirks"
+        "title": "Ajustes de compatibilidade"
       },
       "speedup_enable": {
         "help": "Pule o upload integral se houver outro arquivo com o mesmo hash de dados.\n\nEssa característica é chamada de \"speedup\" ou \"put by hash\". É especialmente eficiente \nem caso de arquivos geralmente disponíveis, como livros populares, vídeos ou clipes de áudio,\nporque os arquivos são procurados pelo hash em todas os contas dos usuários do mailru.\nNão tem sentido e é inútil se o arquivo fonte for único ou criptografado.\n\nLembre-se que o rclone pode precisar da memória local e espaço em disco para calcular \no hash de conteúdo com antecedência e decidir se um upload integral é necessário.\n\nAlém disso, se o rclone não souber o tamanho do arquivo com antecedência (por exemplo, no caso de \nstreaming ou uploads parciais), ele nem tentará essa otimização.",
@@ -2143,7 +2163,7 @@
       },
       "user_agent": {
         "help": "User-Agent HTTP utilizado internamente pelo cliente.\n\nPadrão é \"rclone/VERSION\" ou \"--user-agent\" fornecido na linha de comando.",
-        "title": "User Agent"
+        "title": "Agente de usuário"
       }
     },
     "mega": {
@@ -2165,7 +2185,7 @@
       },
       "hard_delete": {
         "help": "Exclua arquivos permanentemente em vez de colocá-los no lixo.\n\nNormalmente, o backend do Mega irá colocar todos os deletos no lixo em vez de excluí-los permanentemente.  Se você especificar isso, o rclone excluirá objetos permanentemente em vez disso.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "master_key": {
         "help": "Chave mestre (uso interno apenas)",
@@ -2279,7 +2299,7 @@
       },
       "hard_delete": {
         "help": "Apagar arquivos permanentemente na remoção.\n\nNormalmente, os arquivos são enviados para a lixeira ao serem excluídos. Definir essa flag faz com que eles sejam apagados permanentemente. Use com cuidado.\n\nContas OneDrive pessoais não suportam a API permanentDelete, ela apenas é aplicada ao OneDrive para empresas e bibliotecas de documentos do SharePoint.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "hash_type": {
         "help": "Especifique o hash em uso para o backend.\n\nEste especifica o tipo de hash em uso. Se definido como \"auto\", ele usará o hash padrão, que é QuickXorHash.\n\nAntes da versão 1.62 do rclone, o SHA1 era usado por padrão para o OneDrive Personal. A partir da versão 1.62 e posterior, o padrão é usar o QuickXorHash para todos os tipos de OneDrive. Se desejado o uso de SHA1, defina essa opção conforme necessário.\n\nA partir de julho de 2023, o QuickXorHash será a única hash disponível tanto para o OneDrive Business quanto para o OneDrive Personal.\n\nIsso pode ser definido como \"none\" para não usar nenhum hash.\n\nSe o hash solicitado não existir no objeto, ele será retornado como uma string vazia, que é tratada como um hash faltante pelo rclone.",
@@ -2336,6 +2356,10 @@
       "upload_cutoff": {
         "help": "Limite de troca para upload em fragmentos.\n\nQualquer arquivo maior que este será enviado em fragmentos de chunk_size.\n\nIsso está desabilitado por padrão, pois o upload usando uploads de partes únicas\ncausa o rclone usar dois vezes mais armazenamento no Onedrive Business do que quando\nrclone seta a data de modificação após o upload. O Onedrive cria uma nova versão.\n\nVer: https://github.com/rclone/rclone/issues/1716",
         "title": "Corte de Upload"
+      },
+      "tenant_url": {
+        "title": "URL do locatário",
+        "help": "URL do locatário para acessar o OneDrive sem ser administrador.\n\nDefina a URL do locatário SharePoint para usar a API SharePoint v2.0 em vez do Microsoft Graph. Isso permite acessar o OneDrive corporativo sem consentimento do administrador.\n\nProcure \"driveAccessToken\" nas requisições de rede das ferramentas de desenvolvedor do navegador. O campo \".driveUrl\" contém a URL do locatário e o ID da unidade.\n\nExemplo: https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2407,7 +2431,7 @@
       },
       "endpoint": {
         "help": "Endpoint para a API de Object Storage.\n\nDeixe em branco para usar o endpoint padrão para a região.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "leave_parts_on_error": {
         "help": "Se verdadeiro, evite chamar o abortamento de upload em caso de falha, deixando todas as partes que foram bem-sucedidas para recuperação manual.\n\nDeve ser configurado como true para continuar uploads em sessões diferentes.\n\nATENÇÃO: Armazenar partes de um upload multiparte incompleto conta como uso de espaço no armazenamento de objetos e adicionará custos extras se não for limpo.",
@@ -2419,7 +2443,7 @@
       },
       "namespace": {
         "help": "Namespace do Object Storage",
-        "title": "Namespace"
+        "title": "Espaço de nomes"
       },
       "no_check_bucket": {
         "help": "Se definido, não tente verificar se o bucket existe ou o criar.\n\nIsso pode ser útil quando tentar minimizar o número de transações que o rclone faz se você sabe que o bucket já existe.\n\nTambém pode ser necessário se o usuário que você está usando não tem permissões para criar buckets.",
@@ -2455,7 +2479,7 @@
       },
       "storage_tier": {
         "help": "A classe de armazenamento a ser usada para o armazenamento de novos objetos em armazenamento. https://docs.oracle.com/en-us/iaas/Content/Object/Concepts/understandingstoragetiers.htm",
-        "title": "Storage Tier"
+        "title": "Camada de armazenamento"
       },
       "upload_concurrency": {
         "help": "Concorrência para upload multiparte.\n\nEste é o número de fragmentos do mesmo arquivo que estão sendo carregados simultaneamente.\n\nSe você estiver carregando pequenas quantidades de grandes arquivos por links de alta velocidade e essas transferências não utilizem completamente seu banda larga, então aumentar isso pode ajudar a acelerar as transferências.",
@@ -2464,6 +2488,10 @@
       "upload_cutoff": {
         "help": "Limite para trocar para upload em fragmento.\n\nQuaisquer arquivos maiores do que isso serão enviados em parcelas de chunk_size.\nO mínimo é 0 e o máximo é 5 GiB.",
         "title": "Corte de Upload"
+      },
+      "decompress": {
+        "title": "Descompactar",
+        "help": "Descompactar objetos codificados com gzip.\n\nÉ possível enviar objetos com \"Content-Encoding: gzip\". Normalmente o rclone baixa esses arquivos compactados.\n\nCom esta opção, o rclone descompacta os arquivos à medida que os recebe. Nesse caso, não pode verificar o tamanho nem o hash, mas o conteúdo ficará descompactado."
       }
     },
     "pcloud": {
@@ -2571,7 +2599,7 @@
       },
       "user_agent": {
         "help": "User-Agent HTTP para pikpak.\n\nPadrão é \"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0\", ou \"--pikpak-user-agent\" fornecido na linha de comando.",
-        "title": "User Agent"
+        "title": "Agente de usuário"
       }
     },
     "pixeldrain": {
@@ -2749,7 +2777,7 @@
       },
       "endpoint": {
         "help": "Insira uma URL de endpoint para conectar à API do QingStor.\n\nDeixe em branco para usar o valor padrão \"https://qingstor.com:443\".",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "env_auth": {
         "help": "Obter credenciais de QingStor do tempo de execução.\n\nAplica-se apenas se o acesso_key_id e a chave de acesso secreta estiverem em branco.",
@@ -2791,7 +2819,7 @@
       },
       "hard_delete": {
         "help": "Exclua os arquivos permanentemente em vez de colocá-los na lixeira",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "host": {
         "help": "Nome do hospedeiro da conta Quatrix",
@@ -2849,7 +2877,7 @@
       },
       "directory_bucket": {
         "help": "Se você está usando um Bucket de Diretório AWS, defina essa flag.\n\nIsso garantirá que nenhum cabeçalhos `Content-Md5` sejam enviados e garantir que os cabeçalhos `ETag` não sejam interpretados como somas MD5. O cabeçalho `X-Amz-Meta-Md5chksum` será definido em todos os objetos, independentemente de terem sido carregados single ou multipart.\n\nIsso também define `no_check_bucket = true`.\n\nObservação: Buckets de Diretório não suportam:\n\n- Versionamento\n- `Content-Encoding: gzip`\n\nLimitações do Rclone com Buckets de Diretório:\n\n- o rclone não suporta criar Buckets de Diretório com `rclone mkdir`\n- ... ou removê-los com `rclone rmdir` ainda\n- Os Buckets de Diretório não aparecem com `rclone lsf` no nível superior.\n- O Rclone não pode remover diretórios auto-criados ainda. Em teoria, isso deveria funcionar com `directory_markers = true`, mas não funciona.\n- Os diretórios não parecem aparecer em listagens recursivas (ListR)",
-        "title": "Directory Bucket"
+        "title": "Bucket de diretório"
       },
       "directory_markers": {
         "help": "Carregar um objeto vazio com uma barra final ao criar um diretório novo.\n\nOs diretórios vazios não são suportados para remotos baseados em buckets, essa opção cria um objeto vazio terminado com “/”, para persistir o diretório.",
@@ -2873,7 +2901,7 @@
       },
       "endpoint": {
         "help": "Endpoint da API do S3.\n\nÉ necessário quando se está usando um clone S3.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "env_auth": {
         "help": "Obtenha as credenciais do AWS do tempo de execução (variáveis de ambiente ou metadata do EC2/ECS se não houver variáveis de ambiente). \n\nAplica-se apenas se access_key_id e secret_access_key estiverem em branco.",
@@ -2945,7 +2973,7 @@
       },
       "no_head_object": {
         "help": "Se definido, não faça HEAD antes de GET ao obter objetos.",
-        "title": "No Head Object"
+        "title": "Desativar HeadObject"
       },
       "no_system_metadata": {
         "help": "Desativar o ajuste e leitura de metadados do sistema",
@@ -3025,7 +3053,7 @@
       },
       "sign_accept_encoding": {
         "help": "Definir se o rclone deve incluir Accept-Encoding como parte da assinatura.\n\nVocê pode alterar isso para evitar que o rclone inclua\nAccept-Encoding como parte da assinatura.\n\nIsso não deveria ser necessário em operação normal.\n\nIsso deve ser definido automaticamente corretamente para todos os provedores do qual rclone tem conhecimento - por favor, faça um relatório de bug se não for assim.\n",
-        "title": "Sign Accept Encoding"
+        "title": "Assinar Accept-Encoding"
       },
       "sse_customer_algorithm": {
         "help": "Se o AWS KMS for usado com SSE-C, o algoritmo de criptografia usado pelo servidor ao armazenar esse objeto no S3.",
@@ -3217,7 +3245,7 @@
       },
       "hashes": {
         "help": "Lista separada por vírgulas de tipos de checksum suportados.",
-        "title": "Hashes"
+        "title": "Algoritmos de hash"
       },
       "host": {
         "help": "Endereço do servidor SSH para se conectar.\n\nExemplo: \"exemplo.com\".",
@@ -3329,7 +3357,7 @@
       },
       "use_fstat": {
         "help": "Se estiver definido, use fstat em vez de stat.\n\nAlguns servidores limitam a quantidade de arquivos abertos e chamar Stat após abrir o arquivo lançará um erro do servidor. Definindo esta flag, será chamado fstat em vez de stat que é chamado no manipulador já aberto do arquivo.\n\nFoi encontrado que isso ajuda com os servidores SFTP da IBM Sterling cujo nível de \"extractability\" está definido para 1 o que significa que apenas 1 arquivo pode ser aberto a qualquer momento.\n",
-        "title": "Use Fstat"
+        "title": "Usar fstat"
       },
       "use_insecure_cipher": {
         "help": "Permite o uso de algoritmos de cifragem e troca de chaves inseguros.\n\nEste permite o uso dos seguintes algoritmos de cifragem e troca de chaves inseguros:\n\n- aes128-cbc\n- aes192-cbc\n- aes256-cbc\n- 3des-cbc\n- diffie-hellman-group-exchange-sha256\n- diffie-hellman-group-exchange-sha1\n\nEsses algoritmos são inseguros e podem permitir que um atacante recupere dados em texto claro.\n\nIsso deve ser falso se você usar opções avançadas de ciphers ou key_exchange.",
@@ -3346,6 +3374,18 @@
       "xxh128sum_command": {
         "help": "O comando utilizado para ler os hashes XXH128.\n\nDeixe em branco para detecção automática.",
         "title": "Comando Xxh128Sum"
+      },
+      "encoding": {
+        "help": "A codificação para o backend.\n\nConsulte a seção [codificação na visão geral](/overview/#encoding) para mais informações.",
+        "title": "Codificação"
+      },
+      "pin_host_key": {
+        "title": "Fixar chave do servidor",
+        "help": "Fixar a chave do servidor na primeira conexão (confiança no primeiro uso, TOFU).\n\nDestina-se ao uso único como --sftp-pin-host-key. O rclone grava a chave em host_keys. Nas execuções seguintes sem a opção, host_keys é consultado e qualquer divergência é recusada.\n\nNão é recomendável ativar esta opção permanentemente no arquivo de configuração: enquanto estiver ativa, novos algoritmos de chave apresentados pelo servidor também serão aceitos, ampliando a confiança além da chave inicial. Após uma alteração legítima da chave, execute novamente com a opção para fixar a nova chave.\n\nA primeira conexão não é autenticada. Prefira uma rede confiável ou compare a impressão digital registrada pelo rclone com uma obtida por um canal independente.\n\nSe known_hosts_file estiver definido, ele tem prioridade e esta opção é ignorada."
+      },
+      "host_keys": {
+        "title": "Chaves de servidor fixadas",
+        "help": "Chaves fixadas para verificar o servidor deste remoto.\n\nLista separada por vírgulas de entradas \"algo base64-key\", no formato do segundo e terceiro campos de uma linha known_hosts do OpenSSH. Normalmente é preenchida executando uma vez com --sftp-pin-host-key, mas uma chave pública obtida por um canal independente também pode ser inserida manualmente. Cada entrada é a chave pública completa, não sua impressão digital SHA256.\n\nSe não estiver vazia, a chave apresentada deve corresponder a uma entrada ou a conexão será recusada. Após uma alteração legítima, limpe este valor e reconecte com --sftp-pin-host-key ou edite-o diretamente.\n\nÉ possível fixar no máximo 16 chaves."
       }
     },
     "shade": {
@@ -3371,7 +3411,7 @@
       },
       "endpoint": {
         "help": "Endpoint para o serviço.\n\nDeixe em branco geralmente.",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "max_upload_parts": {
         "help": "Número máximo de partes em um upload multiparte.",
@@ -3421,7 +3461,7 @@
       },
       "endpoint": {
         "help": "Endpoint para chamadas da API.\n\nIsso é geralmente descoberto automaticamente como parte do processo OAuth, mas pode ser definido manualmente para algo como: https://XXX.sharefile.com",
-        "title": "Endpoint"
+        "title": "Ponto de acesso"
       },
       "root_folder_id": {
         "help": "ID da pasta raiz.\n\nDeixe em branco para acessar as \"Pastas Pessoais\". Você pode usar um dos valores padrão aqui ou qualquer código de identificação de pasta (ID hexadecimal longo).",
@@ -3459,7 +3499,7 @@
       },
       "user_agent": {
         "help": "User Agent do Siad\n\nO daemon Sia requer o agente de usuário \"Sia-Agent\" por padrão para segurança",
-        "title": "User Agent"
+        "title": "Agente de usuário"
       }
     },
     "smb": {
@@ -3573,7 +3613,7 @@
       },
       "hard_delete": {
         "help": "Excluir permanentemente os arquivos se verdadeiro,\ncaso contrário, coloque-os em arquivos excluídos.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "private_access_key": {
         "help": "Chave de Acesso Privada do Sugarsync.\n\nDeixe em branco para usar a chave do Rclone.",
@@ -3785,7 +3825,7 @@
       },
       "upstreams": {
         "help": "Lista de upstreams separados por espaço.\n\nPode ser 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', etc.",
-        "title": "Upstreams"
+        "title": "Remotos de origem"
       }
     },
     "webdav": {
@@ -3795,7 +3835,7 @@
       },
       "bearer_token": {
         "help": "Bearer token em vez de usuário/senha (por exemplo, um Macaroon).",
-        "title": "Bearer Token"
+        "title": "Token de portador"
       },
       "bearer_token_command": {
         "help": "Comando para executar e obter um bearer token.",
@@ -3877,7 +3917,7 @@
       },
       "hard_delete": {
         "help": "Deletar arquivos permanentemente em vez de colocá-los no lixo.",
-        "title": "Hard Delete"
+        "title": "Exclusão permanente"
       },
       "spoof_ua": {
         "help": "Defina o agente de usuário para corresponder a uma versão oficial do cliente do Yandex Disk. Pode ajudar com o desempenho da carga.",
@@ -3890,6 +3930,10 @@
       "token_url": {
         "help": "URL do servidor de token.\n\nDeixe em branco para usar os padrões do provedor.",
         "title": "URL do Token"
+      },
+      "upload_wait": {
+        "title": "Espera após o envio",
+        "help": "Tempo de espera após um envio antes de definir a data de modificação.\n\nO Yandex Disk finaliza o envio de forma assíncrona nos servidores. Definir a data durante essa finalização causa o erro 500 Internal Server Error.\n\nSe ocorrerem erros 500 no envio, 2s normalmente basta, ao custo de reduzir a velocidade dos envios. O suporte Yandex recomenda entre 1.5s e 3s."
       }
     },
     "zoho": {
@@ -3932,6 +3976,30 @@
       "upload_cutoff": {
         "help": "Limite de corte para mudança para a API de envio de arquivo grande (≥ 10 MiB).",
         "title": "Corte de Upload"
+      },
+      "root_folder_id": {
+        "title": "ID da pasta raiz",
+        "help": "ID da pasta raiz.\n\nNormalmente, deixe em branco. Preencha para usar uma pasta diferente da raiz como ponto de partida do rclone."
+      },
+      "tpslimit": {
+        "title": "Transações de API por segundo",
+        "help": "Máximo de transações de API por segundo.\n\nO Zoho WorkDrive retorna HTTP 429 (F7008, \"Request rate limit exceeded\") quando as chamadas são rápidas demais. As operações de dados (listar, enviar, baixar, copiar, mover, excluir) são reguladas por essa taxa.\n\n0 desativa o limite, como o --tpslimit global. A regulação não pode ser totalmente desativada: o recuo progressivo e Retry-After sempre se aplicam.\n\nO padrão 6 é sustentável. Valores maiores podem gerar longas esperas 429 Retry-After e piorar a vazão; aumente apenas se sua conta tolerar."
+      },
+      "tpslimit_burst": {
+        "title": "Rajada de chamadas de API",
+        "help": "Número de chamadas de API consecutivas sem pausa para --zoho-tpslimit.\n\nÉ a capacidade do balde de tokens. Mantenha em 1 para Zoho: um valor maior permite várias chamadas simultâneas após um período ocioso e pode causar grupos sincronizados de erros 429."
+      },
+      "list_folder_limit": {
+        "title": "Limite de listagens por pasta",
+        "help": "Máximo de listagens da MESMA pasta por --zoho-list-folder-window.\n\nO Zoho WorkDrive limita GET files/{id}/files por pasta, independentemente de --zoho-tpslimit. Repetir listagens rápido demais causa HTTP 429 (F7008) e Retry-After de vários minutos, mesmo com taxa global baixa. As medições permitem cerca de 19 listagens em uma janela móvel de aproximadamente 60s; a 20ª falha. Os padrões, 19 por 60s, reproduzem esse limite.\n\nCada janela permite primeiro --zoho-list-folder-burst listagens consecutivas; a rajada é renovada a cada janela. As restantes são espaçadas por --zoho-list-folder-window/(limit - burst), cerca de 4.6s por padrão. Um registro móvel mantém o limite também entre janelas. 0 desativa o limitador. Apenas listagens REPETIDAS da mesma pasta são atrasadas; outras pastas, ou as listadas menos de --zoho-list-folder-burst vezes, não esperam.\n\nUm valor MAIOR permite MAIS listagens, não mais segurança: ultrapassar 19 causa F7008. Reduza para obter mais margem, ao custo de menor agilidade nas listagens."
+      },
+      "list_folder_window": {
+        "title": "Janela de listagens por pasta",
+        "help": "Janela de tempo para --zoho-list-folder-limit.\n\nO padrão 60s (exibido como 1m0s) corresponde à janela móvel real do Zoho: em qualquer intervalo dessa duração, são permitidas no máximo --zoho-list-folder-limit listagens de uma pasta. Um número sem unidade é interpretado como segundos (\"60\" = \"60s\").\n\nAumente a duração ou reduza o limite para obter mais margem. O intervalo sustentado entre listagens da mesma pasta é window/(limit - burst)."
+      },
+      "list_folder_burst": {
+        "title": "Rajada de listagens por pasta",
+        "help": "Listagens consecutivas da mesma pasta antes da regulação por --zoho-list-folder-limit.\n\nA rajada faz parte do limite: aumentá-la nunca aumenta o total por janela. Essa quantidade passa imediatamente; as limit - burst restantes são espaçadas por window/(limit - burst). A rajada é RENOVADA em cada janela, mas o registro móvel continua impondo o limite. Uma pasta listada poucas vezes, como em uma sincronização comum, não espera.\n\nO padrão 6 é a maior rajada validada com 19 listagens por 60s: 4, 5 e 6 funcionaram; exceder o limite causou F7008 na 20ª listagem. Mantenha bem abaixo de cerca de 15: o Zoho também impõe um limite instantâneo de aproximadamente 15–16 chamadas consecutivas. Use 1 para regular a partir da segunda listagem. Valores maiores ou iguais ao limite são reduzidos a limit - 1."
       }
     }
   }
