@@ -16,12 +16,20 @@ pub fn setup_context(
     event_sink: Option<Arc<dyn crate::services::bridge::event::EventSink>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app;
+    #[cfg(feature = "updater")]
+    app.manage(services::updates::health::StartupHealth::default());
 
     let event_bridge = Arc::new(crate::services::bridge::EventBridge::new(1000, event_sink));
     crate::services::bridge::init_event_bridge(event_bridge.clone());
     app.manage(event_bridge.clone());
 
     let app_paths = AppPaths::setup(app_handle)?;
+
+    #[cfg(feature = "librclone")]
+    rclone::backend::rclone_ffi::configure_default_paths(
+        &app_paths.config_dir.join("rclone.conf"),
+        &app_paths.cache_dir,
+    )?;
 
     app.host().prepare(app, &app_paths)?;
 

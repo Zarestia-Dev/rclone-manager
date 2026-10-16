@@ -448,9 +448,6 @@ fn locate_ndk() -> Option<String> {
 
 // Backend translations share the canonical frontend sources.
 fn embed_translations() {
-    if std::env::var_os("CARGO_CFG_DEBUG_ASSERTIONS").is_some() {
-        return;
-    }
     let root = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("../../resources/i18n");
     println!("cargo:rerun-if-changed={}", root.display());

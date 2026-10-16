@@ -1486,6 +1486,7 @@
     "restoreFailed": "Не удалось восстановить резервную копию: {{error}}"
   },
   "updates": {
+    "discardDownload": "Удалить загруженное обновление",
     "cancelFailed": "Не удалось отменить загрузку обновления.",
     "installSuccess": "Обновление установлено. Перезапустите приложение.",
     "checkFailed": "Не удалось проверить обновления: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "Обновление {{version}} будет пропущено",
     "confirmApply": {
       "title": "Установка обновления",
-      "message": "Установить обновление? Приложение перезапустится для применения изменений.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Установить",
       "cancel": "Отмена"
     },
@@ -1981,7 +1982,8 @@
       "entries": "Активные записи",
       "clear": "Очистить",
       "cacheCleared": "Кэш успешно очищен",
-      "cacheClearFailed": "Не удалось очистить кэш"
+      "cacheClearFailed": "Не удалось очистить кэш",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Не удалось получить журналы приложения.",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "Не удалось повторно запустить приложение: {{error}}",
       "restartFailed": "Не удалось перезапустить: {{error}}",
       "notWritable": "Нет прав на запись в папку обновления",
-      "ioError": "Ошибка ввода-вывода: {{error}}"
+      "ioError": "Ошибка ввода-вывода: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Не удалось загрузить настройки: {{error}}",

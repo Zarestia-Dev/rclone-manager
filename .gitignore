@@ -8,6 +8,21 @@
 /target
 /manifests
 
+# Update staging and generated release packages
+.rcman-update-*/
+/updater-assets/
+/artifacts/
+/staging/
+/dist_apks/
+/RClone.Manager_*_portable/
+/RClone.Manager_*_portable.zip
+/RClone.Manager_*_portable.tar.gz
+
+# Local release signing material (public test fixtures remain tracked)
+/release.keystore
+/*.key
+/*.key.pub
+
 # Node
 /node_modules
 npm-debug.log

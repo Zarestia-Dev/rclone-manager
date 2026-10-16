@@ -12,7 +12,7 @@ path = "src/main.rs"
 tauri-winres = "0.3"
 
 [dependencies]
-rclone-manager-core = { path = "../core", default-features = false }
+rclone-manager-core = { path = "../core", default-features = false, features = ["updater"] }
 axum = { version = "0.8", features = ["multipart"] }
 tower-http = { version = "0.7", features = ["cors", "fs", "trace"] }
 async-stream = "0.3"

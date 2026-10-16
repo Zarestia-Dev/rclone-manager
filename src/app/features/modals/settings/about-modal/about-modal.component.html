@@ -196,6 +196,9 @@
           </div>
 
           @if (updaterEnabled()) {
+            @if (appInstallationFailure()) {
+              <div class="error-entry" role="alert">{{ appInstallationFailure() }}</div>
+            }
             @if (appReadyToRestart()) {
               <ng-container
                 *ngTemplateOutlet="
@@ -205,7 +208,8 @@
                     version: appUpdateAvailable()?.version,
                     desc: 'modals.about.restartDescription',
                     action: finishUpdate.bind(this),
-                    restarting: restartingApp(),
+                    restarting: restartingApp() || appIsCancelling(),
+                    discard: cancelAppUpdate.bind(this),
                   }
                 "
               ></ng-container>
@@ -259,7 +263,11 @@
                   <div class="managed-update-notice">
                     <div class="managed-info">
                       <mat-icon svgIcon="circle-info"></mat-icon>
-                      <p>{{ 'modals.about.managedBuildNotice' | translate }}</p>
+                      <p>
+                        {{
+                          appInstallationReason() || ('modals.about.managedBuildNotice' | translate)
+                        }}
+                      </p>
                     </div>
                     @if (instructions.command) {
                       <button
@@ -945,6 +953,7 @@
   let-desc="desc"
   let-action="action"
   let-restarting="restarting"
+  let-discard="discard"
 >
   <div class="update-card restart-required">
     <div class="update-header">
@@ -967,6 +976,11 @@
         }
         <span>{{ 'modals.about.restartNow' | translate }}</span>
       </button>
+      @if (discard) {
+        <button matButton="outlined" (click)="discard()" [disabled]="restarting">
+          {{ 'updates.discardDownload' | translate }}
+        </button>
+      }
     </div>
   </div>
 </ng-template>

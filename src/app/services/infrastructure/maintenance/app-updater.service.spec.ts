@@ -7,6 +7,7 @@ import {
   DownloadStateStatus,
   DownloadStatus,
   UpdateInfo,
+  UpdatePolicy,
   UpdaterStateChanged,
 } from '@app/types';
 import { AppUpdaterService } from './app-updater.service';
@@ -33,6 +34,7 @@ const download: DownloadStatus = {
 describe('AppUpdaterService state restoration', () => {
   let service: AppUpdaterService;
   let info: UpdateInfo | null;
+  let policy: UpdatePolicy;
   let changed: Subject<UpdaterStateChanged>;
   let ready: Subject<void>;
   let found: Subject<UpdateInfo>;
@@ -48,11 +50,11 @@ describe('AppUpdaterService state restoration', () => {
     found = new Subject();
     progress = new Subject();
     info = { ...available, status: BackendUpdateStatus.Downloading, download };
+    policy = { installation: 'portable', method: 'binary', canInstall: true };
     invoke.mockReset().mockImplementation(async (command: string) => {
-      if (command === 'get_app_update_info') return info;
+      if (command === 'get_app_update_info' || command === 'fetch_update') return info;
       if (command === 'is_librclone') return false;
-      if (command === 'can_auto_install') return true;
-      if (command === 'get_build_type') return 'portable';
+      if (command === 'get_update_policy') return policy;
       return null;
     });
     showError.mockReset();
@@ -102,6 +104,31 @@ describe('AppUpdaterService state restoration', () => {
     service = TestBed.inject(AppUpdaterService);
   });
 
+  it('confirms a rendered native frontend without waiting for vault unlock or updater settings', async () => {
+    Object.defineProperty(service, 'isTauri', { value: true });
+    await service.confirmStartup();
+    expect(invoke).toHaveBeenCalledWith('confirm_app_update_startup', undefined);
+    expect(invoke).not.toHaveBeenCalledWith('get_update_policy', undefined);
+  });
+
+  it('does not use browser sessions to confirm server startup', async () => {
+    Object.defineProperty(service, 'isTauri', { value: false });
+    await service.confirmStartup();
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('handles a missing native startup command without rejecting frontend startup', async () => {
+    Object.defineProperty(service, 'isTauri', { value: true });
+    invoke.mockRejectedValueOnce(new Error('IPC unavailable'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await expect(service.confirmStartup()).resolves.toBeUndefined();
+      expect(error).toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it('restores an active download with auto-check disabled and a skipped release', async () => {
     await service.initialize();
     expect(service.autoCheckEnabled()).toBe(false);
@@ -116,6 +143,13 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.readyToRestart()).toBe(true);
     expect(service.updateAvailable()).not.toBeNull();
     expect(service.updateInProgress()).toBe(false);
+  });
+
+  it('restores installation in progress even when availability is false', async () => {
+    info = { ...available, status: BackendUpdateStatus.Installing, updateAvailable: false };
+    await service.initialize();
+    expect(service.updateInProgress()).toBe(true);
+    expect(service.updateAvailable()).not.toBeNull();
   });
 
   it('follows completion and clearing from another window', async () => {
@@ -203,7 +237,7 @@ describe('AppUpdaterService state restoration', () => {
     const normal = invoke.getMockImplementation();
     if (!normal) throw new Error('Missing invoke mock');
     invoke.mockImplementation((command: string) =>
-      command === 'get_build_type' ? Promise.reject(new Error('unavailable')) : normal(command)
+      command === 'get_update_policy' ? Promise.reject(new Error('unavailable')) : normal(command)
     );
     await service.initialize();
     expect(service.updateInProgress()).toBe(true);
@@ -221,5 +255,150 @@ describe('AppUpdaterService state restoration', () => {
     await service.cancelUpdate();
     expect(service.updateInProgress()).toBe(false);
     expect(service.downloadStatus().downloadedBytes).toBe(0);
+  });
+
+  it('keeps installation disabled until backend policy has loaded', async () => {
+    expect(service.canAutoInstall()).toBe(false);
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(true);
+    expect(invoke).not.toHaveBeenCalledWith('get_build_type', undefined);
+    expect(invoke).not.toHaveBeenCalledWith('can_auto_install', undefined);
+  });
+
+  it('recovers eligibility and clears the old reason when a fresh policy permits installation', async () => {
+    info = { ...available };
+    policy = { ...policy, canInstall: false, reason: 'not writable' };
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(false);
+    expect(service.installationReason()).toBe('not writable');
+
+    info = { ...available, installation: { ...policy, canInstall: true, reason: null } };
+    await service.checkForUpdates();
+    expect(service.canAutoInstall()).toBe(true);
+    expect(service.installationReason()).toBe('');
+  });
+
+  it('accepts a fresh snapshot after the initial policy request failed', async () => {
+    const normal = invoke.getMockImplementation();
+    if (!normal) throw new Error('Missing invoke mock');
+    invoke.mockImplementation((command: string) =>
+      command === 'get_update_policy' ? Promise.reject(new Error('unavailable')) : normal(command)
+    );
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(false);
+    info = { ...available, installation: policy };
+    changed.next({ target: 'app' });
+    await Promise.resolve();
+    expect(service.canAutoInstall()).toBe(true);
+    expect(service.buildType()).toBe('portable');
+  });
+
+  it('keeps snapshot restrictions authoritative when the general policy permits installation', async () => {
+    info = {
+      ...available,
+      installation: { ...policy, canInstall: false, reason: 'missing artifact' },
+    };
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(false);
+    expect(service.installationReason()).toBe('missing artifact');
+  });
+
+  it.each(['native', 'android', 'appimage', 'server', 'unknown'] as const)(
+    'keeps the legacy build badge hidden for %s installations',
+    async installation => {
+      policy = { ...policy, installation };
+      await service.initialize();
+      expect(service.buildType()).toBeNull();
+    }
+  );
+
+  it('uses the latest snapshot for installation identity as well as eligibility', async () => {
+    info = {
+      ...available,
+      installation: { installation: 'pacman', method: 'unavailable', canInstall: false },
+    };
+    await service.initialize();
+    expect(service.buildType()).toBe('pacman');
+    expect(service.canAutoInstall()).toBe(false);
+  });
+
+  it('discards a staged APK and allows changing channel after backend confirmation', async () => {
+    info = { ...available, status: BackendUpdateStatus.ReadyToRestart };
+    await service.initialize();
+    const normal = invoke.getMockImplementation();
+    if (!normal) throw new Error('Missing invoke mock');
+    invoke.mockImplementation((command: string) => {
+      if (command === 'cancel_app_update') info = { ...available };
+      return normal(command);
+    });
+    await service.cancelUpdate();
+    expect(invoke).toHaveBeenCalledWith('cancel_app_update', undefined);
+    expect(service.readyToRestart()).toBe(false);
+    await service.setChannel('beta');
+    expect(saveSetting).toHaveBeenCalledWith('runtime', 'app_update_channel', 'beta');
+  });
+
+  it('keeps a staged update when the backend rejects discarding it', async () => {
+    info = { ...available, status: BackendUpdateStatus.ReadyToRestart };
+    await service.initialize();
+    invoke.mockRejectedValueOnce(new Error('unavailable'));
+    await service.cancelUpdate();
+    expect(service.readyToRestart()).toBe(true);
+    expect(service.isCancelling()).toBe(false);
+  });
+
+  it('does not offer installation when the release has no matching signed artifact', async () => {
+    info = {
+      ...available,
+      installation: {
+        installation: 'portable',
+        method: 'binary',
+        canInstall: false,
+        reason: 'missing artifact',
+      },
+    };
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(false);
+    expect(service.installationReason()).toBe('missing artifact');
+    invoke.mockClear();
+    await service.installUpdate();
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when backend policy detection fails', async () => {
+    const normal = invoke.getMockImplementation();
+    if (!normal) throw new Error('Missing invoke mock');
+    invoke.mockImplementation((command: string) =>
+      command === 'get_update_policy' ? Promise.reject(new Error('unavailable')) : normal(command)
+    );
+    await service.initialize();
+    expect(service.canAutoInstall()).toBe(false);
+    expect(service.updateInProgress()).toBe(true);
+  });
+
+  it('keeps installation failures visible and the verified payload retryable', async () => {
+    info = {
+      ...available,
+      status: BackendUpdateStatus.ReadyToRestart,
+      download: {
+        ...download,
+        state: { status: DownloadStateStatus.Failed, data: 'authorization declined' },
+      },
+    };
+    await service.initialize();
+    expect(service.readyToRestart()).toBe(true);
+    expect(service.installationFailure()).toBe('authorization declined');
+  });
+
+  it('restores installation in progress and prevents duplicate downloads or channel changes', async () => {
+    info = { ...available, status: BackendUpdateStatus.Installing };
+    await service.initialize();
+    expect(service.updateInProgress()).toBe(true);
+    invoke.mockClear();
+    await service.installUpdate();
+    await service.cancelUpdate();
+    await service.setChannel('beta');
+    expect(invoke).not.toHaveBeenCalled();
+    expect(saveSetting).not.toHaveBeenCalled();
   });
 });

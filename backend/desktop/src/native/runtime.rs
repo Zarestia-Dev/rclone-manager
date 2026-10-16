@@ -60,6 +60,15 @@ pub fn run() {
     #[cfg(not(feature = "web-server"))]
     {
         app.run(|app_handle, event| {
+            #[cfg(feature = "portable")]
+            if matches!(&event, tauri::RunEvent::Ready) {
+                let context =
+                    tauri::Manager::state::<rclone_manager_core::context::AppHandle>(app_handle);
+                if tauri::Manager::get_webview_window(app_handle, "main").is_some() {
+                    crate::services::updates::health::require_frontend(context.inner());
+                }
+                crate::services::updates::health::host_ready(context.inner());
+            }
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
                 let state = app_handle.backend_state::<RcloneState>();
                 if !state.is_shutting_down() {

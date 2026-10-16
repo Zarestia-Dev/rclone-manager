@@ -89,6 +89,7 @@ pub enum UpdateState {
     Available,
     Downloading,
     ReadyToRestart,
+    Installing,
 }
 
 /// Progress callback supplied by the shared updater state machine.
@@ -103,7 +104,21 @@ pub trait AppUpdate: Send + Sync {
     fn download_url(&self) -> &url::Url;
     async fn download(&self, on_progress: DownloadProgress)
     -> std::result::Result<Vec<u8>, String>;
-    fn install(&self, payload: Vec<u8>) -> std::result::Result<(), String>;
+    fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String>;
+}
+
+#[cfg(feature = "updater")]
+pub enum InstallOutcome {
+    Restart,
+    #[cfg(unix)]
+    RestartBinary {
+        executable: std::path::PathBuf,
+        previous: std::path::PathBuf,
+        arguments: Vec<std::ffi::OsString>,
+        working_directory: std::path::PathBuf,
+    },
+    Exit,
+    AwaitingUser,
 }
 
 #[cfg(feature = "updater")]
@@ -123,6 +138,7 @@ pub struct AppUpdaterData {
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub failure_message: Option<String>,
+    pub policy: Option<crate::services::updates::policy::UpdatePolicy>,
     #[cfg(feature = "updater")]
     pub pending_action: Option<PendingAppUpdate>,
     pub downloaded_payload: Option<Vec<u8>>,
@@ -155,6 +171,8 @@ pub struct UpdateInfo {
     pub status: UpdateState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub download: Option<DownloadStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installation: Option<crate::services::updates::policy::UpdatePolicy>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -201,10 +219,23 @@ pub struct RcloneUpdaterData {
 
 #[cfg(feature = "updater")]
 impl AppUpdaterState {
-    pub async fn cancel_download(&self) {
+    pub async fn cancel_update(&self) {
         let _operation = self.operation.lock().await;
         let handle = {
             let mut data = self.data.lock();
+            if data.state == UpdateState::ReadyToRestart {
+                data.state = if data.last_metadata.is_some() {
+                    UpdateState::Available
+                } else {
+                    UpdateState::Idle
+                };
+                data.downloaded_payload = None;
+                data.download_handle = None;
+                data.downloaded_bytes = 0;
+                data.total_bytes = 0;
+                data.failure_message = None;
+                return;
+            }
             if data.state != UpdateState::Downloading {
                 return;
             }
@@ -249,14 +280,23 @@ impl AppUpdaterData {
             metadata,
             status: self.state,
             download: self.download_status(),
+            installation: self.policy.clone(),
         })
     }
 
     pub fn download_status(&self) -> Option<DownloadStatus> {
+        if let Some(error) = &self.failure_message {
+            return Some(DownloadStatus {
+                downloaded_bytes: self.downloaded_bytes,
+                total_bytes: self.total_bytes,
+                percentage: 0.0,
+                state: DownloadState::Failed(error.clone()),
+            });
+        }
         match self.state {
             UpdateState::Downloading => Some(DownloadState::InProgress),
-            UpdateState::ReadyToRestart => Some(DownloadState::Complete),
-            _ => self.failure_message.clone().map(DownloadState::Failed),
+            UpdateState::ReadyToRestart | UpdateState::Installing => Some(DownloadState::Complete),
+            _ => None,
         }
         .map(|state| DownloadStatus {
             downloaded_bytes: self.downloaded_bytes,
@@ -279,6 +319,7 @@ impl RcloneUpdaterData {
             metadata,
             status: self.state,
             download: None,
+            installation: None,
         })
     }
 }
@@ -309,11 +350,11 @@ mod tests {
             Ok(vec![1, 2, 3])
         }
 
-        fn install(&self, payload: Vec<u8>) -> std::result::Result<(), String> {
+        fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String> {
             if payload.is_empty() {
                 Err("empty payload".into())
             } else {
-                Ok(())
+                Ok(InstallOutcome::Restart)
             }
         }
     }
@@ -340,8 +381,8 @@ mod tests {
         let (update, payload) = data.take_staged_update().unwrap();
         assert_eq!(update.version(), "1.2.0");
         assert_eq!(update.download_url().host_str(), Some("example.invalid"));
-        assert!(update.install(Vec::new()).is_err());
-        assert!(update.install(payload).is_ok());
+        assert!(update.install(&[]).is_err());
+        assert!(update.install(&payload).is_ok());
         assert!(data.take_staged_update().is_none());
         assert!(data.pending_action.is_none());
         assert!(data.downloaded_payload.is_none());
@@ -374,7 +415,7 @@ mod tests {
             data.download_handle = Some(handle);
         }
         started_rx.await.unwrap();
-        state.cancel_download().await;
+        state.cancel_update().await;
         assert!(dropped_rx.await.is_err());
         let data = state.data.lock();
         assert_eq!(data.state, UpdateState::Available);
@@ -384,20 +425,56 @@ mod tests {
 
     #[cfg(feature = "updater")]
     #[tokio::test]
-    async fn cancelling_preserves_an_already_staged_payload() {
+    async fn cancelling_discards_a_staged_payload_but_preserves_the_release_for_retry() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::ReadyToRestart;
+            data.downloaded_payload = Some(vec![1, 2, 3]);
+            data.last_metadata = Some(metadata());
+            data.pending_action = Some(std::sync::Arc::new(StubUpdate(
+                "https://example.invalid/update".parse().unwrap(),
+            )));
+            data.failure_message = Some("Permission denied".into());
+            data.downloaded_bytes = 3;
+            data.total_bytes = 3;
+        }
+        state.cancel_update().await;
+        let data = state.data.lock();
+        assert_eq!(data.state, UpdateState::Available);
+        assert!(data.downloaded_payload.is_none());
+        assert!(data.pending_action.is_some());
+        assert_eq!(data.info().unwrap().metadata.version, "1.2.0");
+        assert!(data.download_status().is_none());
+        assert_eq!(data.downloaded_bytes, 0);
+        assert_eq!(data.total_bytes, 0);
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn cancellation_cannot_discard_an_installation_in_progress() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::Installing;
+            data.last_metadata = Some(metadata());
+        }
+        state.cancel_update().await;
+        assert_eq!(state.data.lock().state, UpdateState::Installing);
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn discarding_an_orphaned_payload_returns_to_idle() {
         let state = AppUpdaterState::default();
         {
             let mut data = state.data.lock();
             data.state = UpdateState::ReadyToRestart;
             data.downloaded_payload = Some(vec![1, 2, 3]);
         }
-        state.cancel_download().await;
-        let data = state.data.lock();
-        assert_eq!(data.state, UpdateState::ReadyToRestart);
-        assert_eq!(
-            data.downloaded_payload.as_deref(),
-            Some([1, 2, 3].as_slice())
-        );
+        state.cancel_update().await;
+        assert_eq!(state.data.lock().state, UpdateState::Idle);
+        assert!(state.data.lock().downloaded_payload.is_none());
     }
 
     #[cfg(feature = "updater")]

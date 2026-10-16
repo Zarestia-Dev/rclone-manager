@@ -35,6 +35,8 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         crate::utils::i18n::init();
         crate::utils::i18n::set_language(crate::utils::i18n::DEFAULT_LANG);
         crate::utils::logging::log::init_logging("info", app_handle.clone())?;
+        #[cfg(feature = "updater")]
+        crate::services::updates::health::core_ready(&app_handle);
         return Ok(());
     }
 
@@ -56,6 +58,10 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         return Err(e);
     }
 
+    // Required local startup succeeded. Remote availability is not an update failure.
+    #[cfg(feature = "updater")]
+    crate::services::updates::health::core_ready(&app_handle);
+
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
@@ -69,7 +75,6 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         error!("Failed to initialize automations: {e}");
     }
 
-    #[cfg(feature = "updater")]
     crate::services::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
     info!("Phase 5: Applying runtime settings");

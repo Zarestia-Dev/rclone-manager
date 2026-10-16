@@ -1486,6 +1486,7 @@
     "restoreFailed": "バックアップの復元に失敗しました: {{error}}"
   },
   "updates": {
+    "discardDownload": "ダウンロードを破棄",
     "cancelFailed": "アップデートのダウンロードのキャンセルに失敗しました。",
     "installSuccess": "アップデートがインストールされました。アプリを再起動してください。",
     "checkFailed": "アップデートの確認に失敗しました: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "アップデート {{version}} はスキップされます",
     "confirmApply": {
       "title": "アップデートの適用",
-      "message": "アップデートを適用しますか? 変更を適用するためアプリケーションが再起動します。",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "適用",
       "cancel": "キャンセル"
     },
@@ -1981,7 +1982,8 @@
       "entries": "有効なエントリ数",
       "clear": "消去",
       "cacheCleared": "キャッシュを正常に消去しました",
-      "cacheClearFailed": "キャッシュの消去に失敗しました"
+      "cacheClearFailed": "キャッシュの消去に失敗しました",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "アプリログの取得に失敗しました。",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "再起動に失敗しました: {{error}}",
       "restartFailed": "再起動に失敗しました: {{error}}",
       "notWritable": "アップデート先のパスに書き込み権限がありません",
-      "ioError": "入出力(IO)エラー: {{error}}"
+      "ioError": "入出力(IO)エラー: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "設定の読み込みに失敗しました: {{error}}",

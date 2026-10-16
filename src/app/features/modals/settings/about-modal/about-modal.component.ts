@@ -109,6 +109,8 @@ export class AboutModalComponent implements OnInit {
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
   readonly appIsChecking = this.appUpdaterService.isChecking;
   readonly appIsCancelling = this.appUpdaterService.isCancelling;
+  readonly appInstallationReason = this.appUpdaterService.installationReason;
+  readonly appInstallationFailure = this.appUpdaterService.installationFailure;
 
   readonly appUpdateReleaseChannel = computed(() => {
     const tag = this.appUpdateAvailable()?.releaseTag;
@@ -467,6 +469,17 @@ export class AboutModalComponent implements OnInit {
 
     if (buildType) {
       switch (buildType) {
+        case 'pacman':
+          return {
+            command: undefined,
+            links: [
+              {
+                label: 'modals.about.openAur',
+                url: 'https://aur.archlinux.org/packages?K=rclone-manager',
+                primary: true,
+              },
+            ],
+          };
         case 'flatpak':
           return {
             command: 'flatpak update io.github.zarestia_dev.rclone-manager',

@@ -1486,6 +1486,7 @@
     "restoreFailed": "Не вдалося відновити резервну копію: {{error}}"
   },
   "updates": {
+    "discardDownload": "Видалити завантажене оновлення",
     "cancelFailed": "Не вдалося скасувати завантаження оновлення.",
     "installSuccess": "Оновлення встановлено. Перезапустіть застосунок.",
     "checkFailed": "Не вдалося перевірити оновлення: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "Оновлення {{version}} буде пропущено",
     "confirmApply": {
       "title": "Застосувати оновлення",
-      "message": "Бажаєте застосувати оновлення? Застосунок буде перезапущено для застосування змін.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Застосувати",
       "cancel": "Скасувати"
     },
@@ -1981,7 +1982,8 @@
       "entries": "Активні записи",
       "clear": "Очистити",
       "cacheCleared": "Кеш успішно очищено",
-      "cacheClearFailed": "Не вдалося очистити кеш"
+      "cacheClearFailed": "Не вдалося очистити кеш",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Не вдалося отримати журнали застосунку.",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "Не вдалося перезапустити: {{error}}",
       "restartFailed": "Не вдалося перезапустити: {{error}}",
       "notWritable": "Шлях оновлення недоступний для запису",
-      "ioError": "Помилка вводу-виводу: {{error}}"
+      "ioError": "Помилка вводу-виводу: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Не вдалося завантажити налаштування: {{error}}",

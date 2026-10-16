@@ -60,15 +60,14 @@ jobs:
 
       - name: Get Version
         id: get_version
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./backend/desktop/tauri.conf.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
 
       - name: Build & Package Android APKs (Per Architecture)
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
           RCLONE_SRC_DIR: ${{ github.workspace }}/rclone
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -82,11 +81,8 @@ jobs:
             KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
             KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
           else
-            echo "No repository keystore secret found. Generating temporary fallback keystore..."
-            keytool -genkeypair -v -keystore release.keystore -alias releasekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=ZarestiaDev, O=Zarestia, C=US"
-            KEYSTORE_PASS="android"
-            KEY_ALIAS="releasekey"
-            KEY_PASS="android"
+            echo "Production APK updates require the persistent release keystore."
+            exit 1
           fi
 
           APKSIGNER=$(find $ANDROID_HOME/build-tools/ -name "apksigner" | head -n 1)
@@ -107,11 +103,16 @@ jobs:
               out_name="RClone Manager_${VERSION}_${abi}.apk"
               "$APKSIGNER" sign --ks release.keystore --ks-pass "pass:$KEYSTORE_PASS" --ks-key-alias "$KEY_ALIAS" --key-pass "pass:$KEY_PASS" --out "dist_apks/$out_name" "$apk_path"
               echo "Successfully signed & packaged: dist_apks/$out_name"
+              node scripts/create-update-manifest.cjs android android "$target" "$VERSION" "dist_apks/$out_name" updater-assets
             else
               echo "Error: No APK found for target $target ($abi)"
               exit 1
             fi
           done
+
+      - name: Android updater unit tests
+        working-directory: backend/desktop/gen/android
+        run: ./gradlew :app:testArm64DebugUnitTest -x :app:rustBuildArm64Debug
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
@@ -125,8 +126,9 @@ jobs:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
           name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
           draft: true
-          prerelease: false
+          prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
           files: |
             dist_apks/*.apk
+            updater-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -49,11 +49,15 @@ impl RcApiEngine {
             self.process = None;
         }
 
-        // Mobile: finalize librclone (releases Go runtime resources).
+        // Mobile: request Go garbage collection after application cleanup.
         // Safe to call even if not initialized; RcloneFinalize is idempotent.
         #[cfg(feature = "librclone")]
         {
-            crate::rclone::backend::rclone_ffi::finalize();
+            if let Err(error) =
+                crate::utils::spawn_blocking(crate::rclone::backend::rclone_ffi::finalize).await
+            {
+                error!("Failed to finalize librclone: {error}");
+            }
         }
 
         self.mark_stopped();
@@ -483,9 +487,8 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
     let mut engine = engine_state.lock().await;
 
     // Desktop: kill the daemon process before restart.
-    // Mobile: librclone is in-process — "restart" = finalize + re-initialize
-    // (cheap), which clears all rclone state (remotes, VFS caches, in-flight
-    // jobs) and starts fresh.
+    // Mobile refreshes the config storage/initialization in the existing Go
+    // runtime. Upstream Finalize only runs GC; it does not cancel jobs or VFS.
     #[cfg(not(feature = "librclone"))]
     {
         if let Err(e) = engine.kill_process(app).await {
@@ -495,8 +498,9 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
     #[cfg(feature = "librclone")]
     {
         log::info!("Restarting librclone (finalize + initialize) for {change_type} change");
-        crate::rclone::backend::rclone_ffi::finalize();
-        crate::rclone::backend::rclone_ffi::initialize();
+        crate::utils::spawn_blocking(crate::rclone::backend::rclone_ffi::restart)
+            .await
+            .map_err(|error| EngineError::RestartFailed(error.to_string()))?;
     }
 
     if !engine.validate_config(app).await {

@@ -21,6 +21,12 @@ jobs:
       release-id: ${{ steps.release.outputs.result }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Read release version
+        id: metadata
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
       - name: Check release versions
         id: version
         shell: python
@@ -38,6 +44,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.metadata.outputs.PRERELEASE }}
         with:
           script: |
             const tag = `headless-v${process.env.VERSION}`;
@@ -47,6 +54,10 @@ jobs:
             const existing = releases.find(release => release.tag_name === tag);
             if (existing) {
               if (!existing.draft) throw new Error(`Refusing to replace published release ${tag}`);
+              await github.rest.repos.updateRelease({
+                ...context.repo, release_id: existing.id,
+                prerelease: process.env.PRERELEASE === 'true',
+              });
               return existing.id;
             }
             const { data } = await github.rest.repos.createRelease({
@@ -68,7 +79,7 @@ jobs:
                 'Stop standalone services before replacing the executable. Preserve application data.',
               ].join('\n'),
               draft: true,
-              prerelease: false,
+              prerelease: process.env.PRERELEASE === 'true',
             });
             return data.id;
 
@@ -149,6 +160,19 @@ jobs:
           else
             tar -czf "artifacts/$package.tar.gz" -C staging "$package"
           fi
+      - name: Sign standalone server update artifacts
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_OS: ${{ matrix.os }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_TARGET: ${{ matrix.target }}
+          UPDATE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          binary=rclone-manager-server
+          if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
+          node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: server-${{ matrix.target }}
@@ -180,4 +204,4 @@ jobs:
             exit 1
           fi
           sha256sum rclone-manager-server_* > server-SHA256SUMS
-          gh release upload "$tag" rclone-manager-server_* server-SHA256SUMS --clobber
+          gh release upload "$tag" ./* --clobber

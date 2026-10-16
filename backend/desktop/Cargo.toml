@@ -67,7 +67,7 @@ desktop = [
     "updater",
     "dep:zbus",
 ]
-mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile"]
+mobile = ["shared-tauri", "librclone", "rclone-manager-core/mobile", "rclone-manager-core/updater"]
 web-server = ["dep:rclone-manager-server"]
 
 # Distribution variants retain all default desktop functionality.

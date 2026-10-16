@@ -21,6 +21,13 @@ data class SafRootItem(
 
 object RcloneSafBridge {
 
+  @JvmStatic
+  @androidx.annotation.Keep
+  fun installUpdateApk(path: String): Int {
+    val context = appContext ?: return -1
+    return RcloneAppUpdater.install(context, path)
+  }
+
   @Volatile
   var appContext: Context? = null
   private var isLibraryLoaded = false
@@ -72,7 +79,8 @@ object RcloneSafBridge {
       appContext = appCtx
       loadNativeLibraries(appCtx)
       if (!isLibraryLoaded) return
-      val configDirPath = appCtx.filesDir.absolutePath
+      // Match Tauri PathPlugin.getDataDir(), including DocumentsProvider-only startup.
+      val configDirPath = appCtx.applicationInfo.dataDir
       val cacheDirPath = appCtx.cacheDir.absolutePath
       nativeInitSaf(appCtx, configDirPath, cacheDirPath)
       updateAppShortcuts(appCtx)

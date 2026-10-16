@@ -49,7 +49,17 @@ pub(super) async fn start_web_server(
     let handle = axum_server::Handle::new();
     let listener = serve(app, addr, tls_cert, tls_key, handle.clone());
     tokio::pin!(listener);
+    let ready_handle = handle.clone();
+    let ready_app = app_handle.clone();
+    let ready = async move {
+        if ready_handle.listening().await.is_some() {
+            crate::services::updates::health::host_ready(&ready_app);
+        }
+        std::future::pending::<()>().await;
+    };
+    tokio::pin!(ready);
     tokio::select! {
+        _ = &mut ready => unreachable!(),
         result = &mut listener => result,
         _ = app_handle.wait_for_exit() => {
             // SSE connections may remain open indefinitely; bound their drain time.

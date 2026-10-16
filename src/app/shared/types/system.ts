@@ -95,6 +95,25 @@ export enum BackendUpdateStatus {
   Downloading = 'downloading',
   ReadyToRestart = 'readyToRestart',
   Available = 'available',
+  Installing = 'installing',
+}
+
+export interface UpdatePolicy {
+  installation:
+    | 'native'
+    | 'portable'
+    | 'server'
+    | 'android'
+    | 'appimage'
+    | 'pacman'
+    | 'deb'
+    | 'rpm'
+    | 'flatpak'
+    | 'container'
+    | 'unknown';
+  method: 'unavailable' | 'tauri' | 'binary' | 'android';
+  canInstall: boolean;
+  reason?: string | null;
 }
 
 export interface UpdateInfo {
@@ -103,6 +122,7 @@ export interface UpdateInfo {
   updateAvailable: boolean;
   status: BackendUpdateStatus;
   download?: DownloadStatus;
+  installation?: UpdatePolicy;
   releaseTag?: string;
   releaseNotes?: string;
   releaseDate?: string;

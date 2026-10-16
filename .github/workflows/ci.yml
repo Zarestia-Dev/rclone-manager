@@ -46,6 +46,8 @@ jobs:
           path: dist/rclone-manager/browser
           retention-days: 1
       - run: npm run test:ci
+      - name: Release metadata and update manifest tests
+        run: node --test scripts/create-update-manifest.test.cjs scripts/release-version.test.cjs
 
   validate:
     name: Check on ${{ matrix.os }}
@@ -105,6 +107,8 @@ jobs:
         run: |
           cargo test --locked -p rclone-manager-core
           cargo test --locked -p rclone-manager-server --lib
+      - name: Updater unit tests
+        run: cargo test --locked -p rclone-manager-core --features updater --lib services::updates -- --test-threads=1
       - name: Native unit tests
         if: runner.os == 'Linux'
         run: |

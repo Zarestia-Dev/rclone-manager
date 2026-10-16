@@ -50,6 +50,9 @@ pub fn run() {
 struct ServerHost;
 #[async_trait::async_trait]
 impl rclone_manager_core::context::Host for ServerHost {
+    fn update_method(&self) -> services::updates::policy::UpdateMethod {
+        services::updates::policy::UpdateMethod::Binary
+    }
     fn resolve_paths(
         &self,
         app: &rclone_manager_core::context::AppHandle,

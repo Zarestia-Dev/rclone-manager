@@ -79,7 +79,6 @@ async fn shutdown(app_handle: AppHandle) {
         ),
     );
 
-    #[cfg(feature = "updater")]
     crate::services::lifecycle::auto_updater::stop_auto_updater(&app_handle);
 
     match scheduler_state.stop().await {
@@ -142,7 +141,7 @@ async fn shutdown(app_handle: AppHandle) {
     // Clear temporary file preview/viewer cache files
     app_handle.host().cleanup();
 
-    #[cfg(any(feature = "updater", not(feature = "librclone")))]
+    #[cfg(not(feature = "librclone"))]
     apply_pending_updates(&app_handle).await;
 }
 
@@ -154,11 +153,8 @@ pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
 }
 
 /// Applies any staged updates (app or rclone) during shutdown.
-#[cfg(any(feature = "updater", not(feature = "librclone")))]
+#[cfg(not(feature = "librclone"))]
 async fn apply_pending_updates(app_handle: &AppHandle) {
-    #[cfg(feature = "updater")]
-    crate::services::updates::install::install_staged_update(app_handle);
-
     // Rclone update (binary swap — only available on desktop).
     #[cfg(not(feature = "librclone"))]
     if let Err(e) =

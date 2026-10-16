@@ -1486,6 +1486,7 @@
     "restoreFailed": "恢复备份失败: {{error}}"
   },
   "updates": {
+    "discardDownload": "丢弃下载",
     "cancelFailed": "取消更新下载失败。",
     "installSuccess": "更新已安装，请重启应用",
     "checkFailed": "检查更新失败：{{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "将跳过更新 {{version}}",
     "confirmApply": {
       "title": "应用更新",
-      "message": "是否应用更新？应用将重新启动以使更改生效。",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "应用",
       "cancel": "取消"
     },
@@ -1981,7 +1982,8 @@
       "entries": "活动条目",
       "clear": "清空",
       "cacheCleared": "缓存已清空",
-      "cacheClearFailed": "清空缓存失败"
+      "cacheClearFailed": "清空缓存失败",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "获取应用日志失败。",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "重新启动失败：{{error}}",
       "restartFailed": "重启失败：{{error}}",
       "notWritable": "更新路径不可写",
-      "ioError": "IO 错误：{{error}}"
+      "ioError": "IO 错误：{{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "加载设置失败：{{error}}",

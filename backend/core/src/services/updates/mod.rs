@@ -1,5 +1,18 @@
+#[cfg(all(feature = "updater", target_os = "android"))]
+mod android;
+#[cfg(feature = "updater")]
+pub mod binary;
+#[cfg(feature = "updater")]
+pub mod health;
 #[cfg(feature = "updater")]
 pub mod install;
+pub mod policy;
+#[cfg(feature = "updater")]
+mod process_tree;
+#[cfg(feature = "updater")]
+mod signed;
+#[cfg(feature = "updater")]
+mod supervisor;
 
 use crate::context::AppHandle;
 use crate::services::settings::AppSettingsManager;
@@ -38,11 +51,17 @@ async fn fetch_update_inner(
     channel: &str,
     updater_state: &AppUpdaterState,
 ) -> Result<Option<UpdateInfo>> {
+    #[cfg(feature = "updater")]
+    let _operation = updater_state.operation.lock().await;
+    let installation = policy::get_update_policy(app.clone()).await;
     {
         let mut data = updater_state.data.lock();
         if matches!(
             data.state,
-            UpdateState::Downloading | UpdateState::ReadyToRestart | UpdateState::Checking
+            UpdateState::Downloading
+                | UpdateState::ReadyToRestart
+                | UpdateState::Installing
+                | UpdateState::Checking
         ) {
             return Ok(data.info());
         }
@@ -61,7 +80,14 @@ async fn fetch_update_inner(
 
     info!("Checking for app updates on channel: {channel}");
 
-    let releases = github_client::get_releases(OWNER, REPO).await?;
+    let releases = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        github_client::get_releases(OWNER, REPO),
+    )
+    .await
+    .map_err(|error| {
+        crate::utils::types::updater::UpdaterError::UpdateUnavailable(error.to_string())
+    })??;
     let Some(release) = releases
         .into_iter()
         .filter(|r| !r.draft)
@@ -96,24 +122,59 @@ async fn fetch_update_inner(
     };
 
     #[cfg(feature = "updater")]
-    let (pending_action, update_metadata) = if crate::utils::app::platform::can_auto_install() {
+    let (pending_action, update_metadata, installation) = {
+        let mut installation = installation;
         let mut meta = update_metadata;
-        let action = app.host().check_update(&release, &mut meta).await;
-        (action, meta)
-    } else {
-        (None, update_metadata)
+        let action = if installation.can_install {
+            let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
+                match installation.method {
+                    policy::UpdateMethod::Tauri => {
+                        app.host().check_update(&release, &mut meta).await
+                    }
+                    policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
+                        signed::check(app, &release, &installation).await
+                    }
+                    policy::UpdateMethod::Unavailable => Ok(None),
+                }
+            })
+            .await
+            .unwrap_or_else(|error| Err(error.to_string()));
+            match result {
+                Ok(Some(action)) => Some(action),
+                Ok(None) => {
+                    installation.can_install = false;
+                    installation.reason = Some(crate::localized_error!(
+                        "backendErrors.updater.missingArtifact"
+                    ));
+                    None
+                }
+                Err(error) => {
+                    log::warn!("Update installation preparation failed: {error}");
+                    installation.can_install = false;
+                    installation.reason = Some(
+                        crate::localized_error!("backendErrors.updater.updateUnavailable", "error" => error),
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        (action, meta, installation)
     };
 
     let update_info = UpdateInfo {
         metadata: update_metadata.clone(),
         status: UpdateState::Available,
         download: None,
+        installation: Some(installation.clone()),
     };
 
     {
         let mut data = updater_state.data.lock();
         data.state = UpdateState::Available;
         data.last_metadata = Some(update_metadata);
+        data.policy = Some(installation);
         #[cfg(feature = "updater")]
         {
             data.pending_action = pending_action;

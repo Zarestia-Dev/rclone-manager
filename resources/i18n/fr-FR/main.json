@@ -1486,6 +1486,7 @@
     "restoreFailed": "Échec de la restauration de la sauvegarde: {{error}}"
   },
   "updates": {
+    "discardDownload": "Supprimer le téléchargement",
     "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",
     "installSuccess": "Mise à jour installée. Veuillez redémarrer l'application.",
     "checkFailed": "Échec de la vérification des mises à jour: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "La mise à jour {{version}} sera ignorée",
     "confirmApply": {
       "title": "Appliquer la mise à jour",
-      "message": "Voulez-vous appliquer la mise à jour ? L'application va redémarrer pour appliquer les modifications.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Appliquer",
       "cancel": "Annuler"
     },
@@ -1981,7 +1982,8 @@
       "entries": "Entrées actives",
       "clear": "Effacer",
       "cacheCleared": "Cache effacé avec succès",
-      "cacheClearFailed": "Échec du vidage du cache"
+      "cacheClearFailed": "Échec du vidage du cache",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Impossible de récupérer les logs de l'application.",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "La relance a échoué : {{error}}",
       "restartFailed": "Redémarrage échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
-      "ioError": "IO erreur : {{error}}"
+      "ioError": "IO erreur : {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Échec du chargement des paramètres : {{error}}",

@@ -1486,6 +1486,7 @@
     "restoreFailed": "Error al restaurar la copia de seguridad: {{error}}"
   },
   "updates": {
+    "discardDownload": "Descartar descarga",
     "cancelFailed": "Error al cancelar la descarga de actualización.",
     "installSuccess": "Actualización instalada. Reinicia la aplicación.",
     "checkFailed": "Error al buscar actualizaciones: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "Se omitirá la actualización {{version}}",
     "confirmApply": {
       "title": "Aplicar actualización",
-      "message": "¿Desea aplicar la actualización? La aplicación se reiniciará para aplicar los cambios.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
@@ -1981,7 +1982,8 @@
       "entries": "Entradas activas",
       "clear": "Borrar",
       "cacheCleared": "Caché borrada correctamente",
-      "cacheClearFailed": "Error al borrar la caché"
+      "cacheClearFailed": "Error al borrar la caché",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Error al obtener los registros de la aplicación.",
@@ -2942,7 +2944,13 @@
       "relaunchFailed": "Error al reiniciar la aplicación: {{error}}",
       "restartFailed": "Error al reiniciar: {{error}}",
       "notWritable": "La ruta de actualización no tiene permisos de escritura",
-      "ioError": "Error de E/S: {{error}}"
+      "ioError": "Error de E/S: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Error al cargar configuraciones: {{error}}",

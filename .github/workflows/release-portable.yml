@@ -66,12 +66,23 @@ jobs:
 
       - name: Get Version
         id: get_version
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./backend/desktop/tauri.conf.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
 
       # --- Packaging for Windows ---
+      - name: Sign portable update artifacts
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_OS: ${{ matrix.os }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_TARGET: ${{ matrix.rust_target }}
+          UPDATE_VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          binary=rclone-manager
+          if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
+          node scripts/create-update-manifest.cjs portable "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" updater-assets
+
       - name: Prepare Package (Windows)
         if: matrix.os == 'windows'
         shell: pwsh
@@ -152,9 +163,10 @@ jobs:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
           name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
           draft: true
-          prerelease: false
+          prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
           files: |
             *.zip
             *.tar.gz
+            updater-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

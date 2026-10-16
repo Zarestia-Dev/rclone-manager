@@ -23,7 +23,7 @@ impl RoutingTransport {
     pub fn for_backend(app: AppHandle, backend: Backend) -> Arc<dyn RcloneTransport> {
         #[cfg(feature = "librclone")]
         if backend.is_local {
-            return Arc::new(RcloneLibBackend::new(app));
+            return Arc::new(RcloneLibBackend);
         }
         Arc::new(RcHttpBackend::new(app).for_backend(backend))
     }
@@ -32,7 +32,7 @@ impl RoutingTransport {
         Self {
             http_transport: RcHttpBackend::new(app.clone()),
             #[cfg(feature = "librclone")]
-            lib_transport: RcloneLibBackend::new(app.clone()),
+            lib_transport: RcloneLibBackend,
             app,
         }
     }

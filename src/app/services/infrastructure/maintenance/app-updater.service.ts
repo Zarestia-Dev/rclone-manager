@@ -1,7 +1,13 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../system/event-listeners.service';
-import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
+import {
+  UpdateInfo,
+  UpdatePolicy,
+  DownloadStatus,
+  BackendUpdateStatus,
+  DownloadStateStatus,
+} from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { UpdateSettingsManager } from './update-settings-manager';
@@ -31,15 +37,32 @@ export class AppUpdaterService extends TauriBaseService {
 
   public readonly isUpdaterEnabled = signal<boolean>(true).asReadonly();
   private readonly _isCancelling = signal<boolean>(false);
-  private readonly _buildType = signal<string | null>(null);
   private readonly _updateState = signal<UpdateInfo | null>(null);
-  private readonly _canAutoInstall = signal<boolean>(true);
+  private readonly _policy = signal<UpdatePolicy | null>(null);
   private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
   private readonly _isChecking = signal<boolean>(false);
 
   public readonly isCancelling = this._isCancelling.asReadonly();
-  public readonly canAutoInstall = this._canAutoInstall.asReadonly();
-  public readonly buildType = this._buildType.asReadonly();
+  private readonly installationPolicy = computed(
+    () => this._updateState()?.installation ?? this._policy()
+  );
+  public readonly canAutoInstall = computed(() => this.installationPolicy()?.canInstall === true);
+  public readonly installationReason = computed(() => {
+    const reason = this.installationPolicy()?.reason;
+    return reason ? this.backendTranslation.translateBackendMessage(reason) : '';
+  });
+  public readonly installationFailure = computed(() => {
+    const status = this._downloadStatus().state;
+    return status.status === DownloadStateStatus.Failed
+      ? this.backendTranslation.translateBackendMessage(status.data)
+      : '';
+  });
+  public readonly buildType = computed(() => {
+    const kind = this.installationPolicy()?.installation;
+    return kind && ['portable', 'flatpak', 'container', 'pacman', 'deb', 'rpm'].includes(kind)
+      ? kind
+      : null;
+  });
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
 
@@ -49,7 +72,9 @@ export class AppUpdaterService extends TauriBaseService {
 
   public readonly hasUpdates = computed(() => !!this.updateAvailable());
   public readonly updateInProgress = computed(
-    () => this._updateState()?.status === BackendUpdateStatus.Downloading
+    () =>
+      this._updateState()?.status === BackendUpdateStatus.Downloading ||
+      this._updateState()?.status === BackendUpdateStatus.Installing
   );
   public readonly readyToRestart = computed(
     () => this._updateState()?.status === BackendUpdateStatus.ReadyToRestart
@@ -107,6 +132,7 @@ export class AppUpdaterService extends TauriBaseService {
       !result ||
       (!result.updateAvailable &&
         result.status !== BackendUpdateStatus.Downloading &&
+        result.status !== BackendUpdateStatus.Installing &&
         result.status !== BackendUpdateStatus.ReadyToRestart)
     ) {
       this._updateState.set(null);
@@ -120,6 +146,7 @@ export class AppUpdaterService extends TauriBaseService {
       result.updateAvailable &&
       !options.silent &&
       result.status !== BackendUpdateStatus.Downloading &&
+      result.status !== BackendUpdateStatus.Installing &&
       result.status !== BackendUpdateStatus.ReadyToRestart &&
       !this.settings.isVersionSkipped(result.version)
     ) {
@@ -132,6 +159,12 @@ export class AppUpdaterService extends TauriBaseService {
 
   async installUpdate(): Promise<void> {
     if (this.updateInProgress() || this.readyToRestart() || this.isChecking()) return;
+    if (!this.canAutoInstall()) {
+      this.notificationService.showWarning(
+        this.installationReason() || this.translate.instant('modals.about.managedBuildNotice')
+      );
+      return;
+    }
     const update = this.updateAvailable();
     if (!update) {
       this.notificationService.showWarning(this.translate.instant('updates.noUpdateAvailable'));
@@ -154,7 +187,11 @@ export class AppUpdaterService extends TauriBaseService {
   }
 
   async cancelUpdate(): Promise<void> {
-    if (!this.updateInProgress() || this._isCancelling()) return;
+    if (
+      (this._updateState()?.status !== BackendUpdateStatus.Downloading && !this.readyToRestart()) ||
+      this._isCancelling()
+    )
+      return;
     this._isCancelling.set(true);
     try {
       await this.invokeWithNotification('cancel_app_update', undefined, {
@@ -170,6 +207,7 @@ export class AppUpdaterService extends TauriBaseService {
 
   /** Restarts the app and applies the staged update. */
   async finishUpdate(): Promise<void> {
+    if (!this.canAutoInstall() || !this.readyToRestart()) return;
     try {
       const confirmed = await this.notificationService.confirmModal(
         'updates.confirmApply.title',
@@ -184,6 +222,8 @@ export class AppUpdaterService extends TauriBaseService {
       });
     } catch (error) {
       console.error('Failed to apply update and restart:', error);
+    } finally {
+      await this.syncUpdateStatus();
     }
   }
 
@@ -227,17 +267,24 @@ export class AppUpdaterService extends TauriBaseService {
     }
   }
 
+  async confirmStartup(): Promise<void> {
+    if (!this.isTauri) return;
+    try {
+      await this.invokeCommand<void>('confirm_app_update_startup');
+    } catch (error) {
+      console.error('Failed to confirm application startup:', error);
+    }
+  }
+
   async initialize(): Promise<void> {
     try {
       await this.syncUpdateStatus();
       await this.settings.initialize();
-      this._buildType.set(await this.invokeCommand<string | null>('get_build_type'));
-
       try {
-        const canAuto = await this.invokeCommand<boolean>('can_auto_install');
-        this._canAutoInstall.set(canAuto);
+        const policy = await this.invokeCommand<UpdatePolicy>('get_update_policy');
+        this._policy.set(policy);
       } catch {
-        this._canAutoInstall.set(false);
+        this._policy.set(null);
       }
     } catch (error) {
       console.error('Failed to initialize updater service:', error);

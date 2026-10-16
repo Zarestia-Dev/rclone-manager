@@ -28,7 +28,7 @@ describe('FileViewerService media URLs', () => {
   const releaseHistory = vi.fn();
   const convertFileSrc = vi.fn();
   afterEach(() => {
-    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: undefined, configurable: true });
+    Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
   });
   beforeEach(() => {
     Object.defineProperty(window, '__TAURI_INTERNALS__', { value: undefined, configurable: true });

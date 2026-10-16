@@ -1486,6 +1486,7 @@
     "restoreFailed": "Failed to restore backup: {{error}}"
   },
   "updates": {
+    "discardDownload": "Discard download",
     "cancelFailed": "Failed to cancel the update download.",
     "installSuccess": "Update installed. Please restart the app.",
     "checkFailed": "Failed to check for updates: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "Update {{version}} will be skipped",
     "confirmApply": {
       "title": "Apply Update",
-      "message": "Do you want to apply the update? The application will restart to apply the changes.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Apply",
       "cancel": "Cancel"
     },
@@ -2022,7 +2023,8 @@
       "entries": "Active Entries",
       "clear": "Clear",
       "cacheCleared": "Cache cleared successfully",
-      "cacheClearFailed": "Failed to clear cache"
+      "cacheClearFailed": "Failed to clear cache",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Failed to fetch application logs.",
@@ -2983,7 +2985,13 @@
       "relaunchFailed": "Relaunch failed: {{error}}",
       "restartFailed": "Restart failed: {{error}}",
       "notWritable": "Update path is not writable",
-      "ioError": "IO error: {{error}}"
+      "ioError": "IO error: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Failed to load settings: {{error}}",

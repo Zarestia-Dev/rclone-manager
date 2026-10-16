@@ -3,6 +3,21 @@ use rclone_manager_core::context::{AppHandle as CoreHandle, ExitDecision, Host};
 pub(crate) struct NativeHost(pub AppHandle);
 #[async_trait::async_trait]
 impl Host for NativeHost {
+    fn is_portable_installation(&self) -> bool {
+        cfg!(feature = "portable")
+    }
+    fn update_method(&self) -> crate::services::updates::policy::UpdateMethod {
+        use crate::services::updates::policy::UpdateMethod;
+        if cfg!(target_os = "android") {
+            UpdateMethod::Android
+        } else if cfg!(feature = "portable") {
+            UpdateMethod::Binary
+        } else if cfg!(feature = "updater") {
+            UpdateMethod::Tauri
+        } else {
+            UpdateMethod::Unavailable
+        }
+    }
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<crate::services::paths::AppPaths, String> {
         #[cfg(feature = "portable")]
         {
@@ -15,6 +30,22 @@ impl Host for NativeHost {
     }
     fn restart(&self, _app: &CoreHandle) -> Result<(), String> {
         super::lifecycle::restart(&self.0)
+    }
+    #[cfg(all(unix, feature = "portable"))]
+    fn restart_updated_binary(
+        &self,
+        executable: &std::path::Path,
+        previous: &std::path::Path,
+        arguments: &[std::ffi::OsString],
+        working_directory: &std::path::Path,
+    ) -> Result<(), String> {
+        self.0.cleanup_before_exit();
+        crate::services::updates::binary::restart(
+            executable,
+            previous,
+            arguments,
+            working_directory,
+        )
     }
     fn exit(&self, code: i32) {
         self.0.exit(code);
@@ -113,7 +144,7 @@ impl Host for NativeHost {
         &self,
         release: &crate::utils::github_client::Release,
         metadata: &mut crate::utils::types::updater::UpdateMetadata,
-    ) -> Option<crate::utils::types::updater::PendingAppUpdate> {
+    ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
         super::updater::check_native_updater(&self.0, release, metadata).await
     }
 }

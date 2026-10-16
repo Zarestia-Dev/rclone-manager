@@ -1486,6 +1486,7 @@
     "restoreFailed": "Yedekleme geri yüklenemedi: {{error}}"
   },
   "updates": {
+    "discardDownload": "İndirilen güncellemeyi sil",
     "cancelFailed": "Güncelleme indirmesi iptal edilemedi.",
     "installSuccess": "Güncelleme kuruldu. Lütfen uygulamayı yeniden başlatın.",
     "checkFailed": "Güncellemeler kontrol edilemedi: {{error}}",
@@ -1496,7 +1497,7 @@
     "skipVersion": "{{version}} sürümü atlanacak",
     "confirmApply": {
       "title": "Güncellemeyi Uygula",
-      "message": "Güncellemeyi uygulamak istiyor musunuz? Değişiklikleri uygulamak için uygulama yeniden başlatılacaktır.",
+      "message": "Güncelleme uygulansın mı? Uygulama yeniden başlayabilir. Aktif aktarımlar, bağlamalar, sunumlar ve iş akışları kesintiye uğrayabilir.",
       "confirm": "Uygula",
       "cancel": "İptal"
     },
@@ -2022,7 +2023,8 @@
       "entries": "Aktif Girdi",
       "clear": "Temizle",
       "cacheCleared": "Önbellek başarıyla temizlendi",
-      "cacheClearFailed": "Önbellek temizlenemedi"
+      "cacheClearFailed": "Önbellek temizlenemedi",
+      "openAur": "AUR sayfasını aç"
     },
     "logs": {
       "fetchError": "Uygulama günlükleri alınamadı.",
@@ -2983,7 +2985,13 @@
       "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",
       "restartFailed": "Yeniden başlatma başarısız: {{error}}",
       "notWritable": "Güncelleme yolu yazılabilir değil",
-      "ioError": "Giriş/Çıkış hatası: {{error}}"
+      "ioError": "Giriş/Çıkış hatası: {{error}}",
+      "externallyManaged": "Bu kurulum paket yöneticisi veya dağıtım sistemi üzerinden güncellenir.",
+      "disabledByAdministrator": "Uygulama güncellemeleri yönetici tarafından devre dışı bırakıldı.",
+      "unsupportedInstallation": "Bu kurulum otomatik güncelleme yüklemeyi desteklemiyor.",
+      "missingArtifact": "Bu sürümde kurulumunuza uygun imzalı güncelleme paketi bulunmuyor.",
+      "androidInstallPermission": "Android ayarlarında bu uygulamanın güncelleme yüklemesine izin verin ve yüklemeyi yeniden deneyin.",
+      "invalidAndroidPackage": "APK, aynı yayıncı tarafından imzalanmış bu uygulamanın daha yeni bir sürümü olmalıdır."
     },
     "settings": {
       "loadFailed": "Ayarlar yüklenemedi: {{error}}",

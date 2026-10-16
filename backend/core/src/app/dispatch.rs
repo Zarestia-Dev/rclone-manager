@@ -1,6 +1,9 @@
 //! Transport-neutral invoke adapter for the shared command contract.
 /// Internal helper macro to handle different function signatures (sync/async, with/without `AppHandle`)
 macro_rules! call_internal {
+    ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [infallible]) => {
+        $path($app.clone(), $($args.$arg),*).await
+    };
     // Sync + No AppHandle
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync, no_app]) => {
         $path($($args.$arg),*).map_err(command_error)?
@@ -93,6 +96,17 @@ mod tests {
                 .unwrap(),
             json!(crate::utils::app::platform::get_build_type())
         );
+        assert_eq!(
+            bridge_dispatch(&app, "can_auto_install", json!({}))
+                .await
+                .unwrap(),
+            json!(false)
+        );
+        let policy = bridge_dispatch(&app, "get_update_policy", json!({}))
+            .await
+            .unwrap();
+        assert_eq!(policy["canInstall"], false);
+        assert_eq!(policy["method"], "unavailable");
     }
 
     #[tokio::test]

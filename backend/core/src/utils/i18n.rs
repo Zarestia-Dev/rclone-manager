@@ -6,10 +6,9 @@
 
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::LazyLock;
 use std::sync::RwLock;
+use std::sync::{Arc, LazyLock};
 
-#[cfg(not(debug_assertions))]
 include!(concat!(env!("OUT_DIR"), "/translations.rs"));
 pub const DEFAULT_LANG: &str = "en-US";
 
@@ -18,24 +17,23 @@ fn translation_source(lang: &str) -> Option<std::borrow::Cow<'static, str>> {
     if lang.is_empty() || !lang.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-') {
         return None;
     }
-    #[cfg(debug_assertions)]
-    {
-        std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../resources/i18n")
-                .join(lang)
-                .join("main.json"),
-        )
-        .ok()
-        .map(std::borrow::Cow::Owned)
+    #[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
+    if let Ok(content) = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../resources/i18n")
+            .join(lang)
+            .join("main.json"),
+    ) {
+        return Some(std::borrow::Cow::Owned(content));
     }
-    #[cfg(not(debug_assertions))]
-    {
-        TRANSLATION_SOURCES
-            .iter()
-            .find(|(name, _)| *name == lang)
-            .map(|(_, source)| std::borrow::Cow::Borrowed(*source))
-    }
+    embedded_translation_source(lang)
+}
+
+fn embedded_translation_source(lang: &str) -> Option<std::borrow::Cow<'static, str>> {
+    TRANSLATION_SOURCES
+        .iter()
+        .find(|(name, _)| *name == lang)
+        .map(|(_, source)| std::borrow::Cow::Borrowed(*source))
 }
 
 /// Global translations state
@@ -43,7 +41,7 @@ static TRANSLATIONS: LazyLock<Translations> = LazyLock::new(Translations::new);
 
 struct Translations {
     current_lang: RwLock<String>,
-    cache: RwLock<HashMap<String, Value>>,
+    cache: RwLock<HashMap<String, Option<Arc<Value>>>>,
 }
 
 impl Translations {
@@ -60,75 +58,58 @@ impl Translations {
 
     /// Cache only the sections needed by backend OS integrations.
     fn load_language(&self, lang: &str) -> bool {
-        let Some(content) = translation_source(lang) else {
-            log::warn!("Translation source not found: {lang}");
+        let Ok(mut cache) = self.cache.write() else {
+            log::error!("i18n cache lock poisoned for {lang}");
             return false;
         };
-        let map = match serde_json::from_str::<Value>(&content) {
-            Ok(Value::Object(map)) => map,
-            result => {
-                log::warn!("Invalid translation source for {lang}: {result:?}");
-                return false;
-            }
-        };
-        let backend_translations: serde_json::Map<String, Value> = map
-            .into_iter()
-            .filter(|(key, _)| {
-                matches!(
-                    key.as_str(),
-                    "tray" | "notification" | "powerInhibitor" | "alerts" | "backendErrors"
-                )
-            })
-            .collect();
-        if backend_translations.is_empty() {
-            return false;
+        if let Some(dict) = cache.get(lang) {
+            return dict.is_some();
         }
-        match self.cache.write() {
-            Ok(mut cache) => {
-                cache.insert(lang.to_string(), Value::Object(backend_translations));
-                true
-            }
-            Err(_) => {
-                log::error!("i18n cache lock poisoned for {lang}");
-                false
-            }
+        let dict = translation_source(lang).and_then(|content| {
+            let map = match serde_json::from_str::<Value>(&content) {
+                Ok(Value::Object(map)) => map,
+                result => {
+                    log::warn!("Invalid translation source for {lang}: {result:?}");
+                    return None;
+                }
+            };
+            let backend: serde_json::Map<String, Value> = map
+                .into_iter()
+                .filter(|(key, _)| {
+                    matches!(
+                        key.as_str(),
+                        "tray" | "notification" | "powerInhibitor" | "alerts" | "backendErrors"
+                    )
+                })
+                .collect();
+            (!backend.is_empty()).then(|| Arc::new(Value::Object(backend)))
+        });
+        if dict.is_none() {
+            log::warn!("Backend translations unavailable: {lang}");
         }
+        let loaded = dict.is_some();
+        // Remember unavailable languages too, so notifications don't repeat failed I/O.
+        cache.insert(lang.to_owned(), dict);
+        loaded
     }
 
-    fn get_dict(&self, lang: &str) -> Option<Value> {
-        // Try to get from cache
-        match self.cache.read() {
-            Ok(cache) => {
-                if let Some(dict) = cache.get(lang) {
-                    return Some(dict.clone());
-                }
-            }
-            Err(_) => log::error!("❌ i18n cache lock poisoned in get_dict (initial read)"),
+    fn get_dict(&self, lang: &str) -> Option<Arc<Value>> {
+        // The common path needs only a shared lock and an Arc clone.
+        if let Ok(cache) = self.cache.read()
+            && let Some(dict) = cache.get(lang)
+            && let Some(dict) = dict
+        {
+            return Some(dict.clone());
         }
-
-        // Not in cache, try to load
-        if self.load_language(lang) {
-            match self.cache.read() {
-                Ok(cache) => {
-                    return cache.get(lang).cloned();
-                }
-                Err(_) => log::error!("❌ i18n cache lock poisoned in get_dict (read after load)"),
+        self.load_language(lang);
+        let dict = self.cache.read().ok()?.get(lang).cloned().flatten();
+        dict.or_else(|| {
+            if lang != DEFAULT_LANG {
+                self.get_dict(DEFAULT_LANG)
+            } else {
+                None
             }
-        }
-
-        // Fallback to default language
-        if lang != DEFAULT_LANG {
-            match self.cache.read() {
-                Ok(cache) => {
-                    return cache.get(DEFAULT_LANG).cloned();
-                }
-                Err(_) => {
-                    log::error!("❌ i18n cache lock poisoned in get_dict (fallback read)");
-                }
-            }
-        }
-
-        None
+        })
     }
 
     fn resolve(&self, key: &str) -> String {
@@ -144,7 +125,7 @@ impl Translations {
             None => return key.to_string(),
         };
 
-        let mut current = &dict;
+        let mut current = dict.as_ref();
         for part in key.split('.') {
             match current.get(part) {
                 Some(v) => current = v,
@@ -233,8 +214,10 @@ pub fn init() {
 pub fn set_language(lang: &str) {
     match TRANSLATIONS.current_lang.write() {
         Ok(mut current) => {
-            *current = lang.to_string();
-            log::info!("🌐 Backend language set to: {lang}");
+            if *current != lang {
+                *current = lang.to_string();
+                log::info!("🌐 Backend language set to: {lang}");
+            }
         }
         Err(_) => log::error!("❌ i18n current_lang lock poisoned in set_language"),
     }
@@ -274,7 +257,7 @@ pub fn init_test_translations() {
 #[cfg(test)]
 pub fn set_test_translations(lang: &str, dict: Value) {
     let mut cache = TRANSLATIONS.cache.write().unwrap();
-    cache.insert(lang.to_string(), dict);
+    cache.insert(lang.to_string(), Some(Arc::new(dict)));
 }
 
 /// Translates a backend error message (structured JSON, translation key, or raw string)
@@ -350,6 +333,54 @@ macro_rules! localized_success {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn embedded_sources_resolve_notification_text_without_host_files() {
+        let source = embedded_translation_source(DEFAULT_LANG).unwrap();
+        assert!(matches!(source, std::borrow::Cow::Borrowed(_)));
+        let dict: Value = serde_json::from_str(&source).unwrap();
+        assert_eq!(
+            dict["notification"]["title"]["jobStarted"],
+            "{{type}} Process Started"
+        );
+        assert!(embedded_translation_source("missing-language").is_none());
+        for invalid in ["", "../en-US", "/en-US", "en-US/main.json", "en_US"] {
+            assert!(translation_source(invalid).is_none());
+        }
+    }
+
+    #[test]
+    fn cached_languages_are_reused_and_fallback_is_loaded_lazily() {
+        let translations = Translations::new();
+        let first = translations.get_dict(DEFAULT_LANG).unwrap();
+        translations.init();
+        assert!(Arc::ptr_eq(
+            &first,
+            &translations.get_dict(DEFAULT_LANG).unwrap()
+        ));
+        assert!(first.get("notification").is_some());
+        assert!(first.get("settings").is_none());
+
+        let fresh = Translations::new();
+        let fallback = fresh.get_dict("missing-language").unwrap();
+        assert!(Arc::ptr_eq(
+            &fallback,
+            &fresh.get_dict("missing-language").unwrap()
+        ));
+        assert!(
+            fresh
+                .cache
+                .read()
+                .unwrap()
+                .get("missing-language")
+                .unwrap()
+                .is_none()
+        );
+        assert!(Arc::ptr_eq(
+            &fallback,
+            &fresh.get_dict(DEFAULT_LANG).unwrap()
+        ));
+    }
 
     #[test]
     fn translation_sources_filter_sections_and_fall_back() {

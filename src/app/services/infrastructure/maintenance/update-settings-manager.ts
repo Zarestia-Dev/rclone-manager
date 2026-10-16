@@ -67,6 +67,7 @@ export class UpdateSettingsManager {
   computeAvailableUpdate(update: UpdateInfo | null): UpdateInfo | null {
     if (!update) return null;
     return update.status === BackendUpdateStatus.Downloading ||
+      update.status === BackendUpdateStatus.Installing ||
       update.status === BackendUpdateStatus.ReadyToRestart ||
       !this.isVersionSkipped(update.version)
       ? update

@@ -16,7 +16,10 @@ macro_rules! MASTER_COMMAND_LIST {
 
             // PLATFORM
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
-            (can_auto_install, $crate::utils::app::platform::can_auto_install, [], [sync, no_app, infallible]);
+            (can_auto_install, $crate::services::updates::policy::can_auto_install, [], [infallible]);
+            #[cfg(feature = "updater")]
+            (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [infallible]);
+            (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
             (check_pending_app_exit, $crate::utils::app::platform::check_pending_app_exit, [], [sync, no_app, infallible]);
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]

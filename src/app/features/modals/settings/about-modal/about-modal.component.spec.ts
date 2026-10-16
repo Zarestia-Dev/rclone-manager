@@ -20,10 +20,14 @@ describe('AboutModalComponent', () => {
 
   let buildType: WritableSignal<string | null>;
   let canAutoInstall: WritableSignal<boolean>;
+  let readyToRestart: WritableSignal<boolean>;
+  const cancelUpdate = vi.fn();
 
   beforeEach(async () => {
     buildType = signal<string | null>(null);
     canAutoInstall = signal(true);
+    readyToRestart = signal(false);
+    cancelUpdate.mockReset().mockResolvedValue(undefined);
     dialogRefSpy = { close: vi.fn() };
 
     const mockSystemInfoService = {
@@ -36,12 +40,16 @@ describe('AboutModalComponent', () => {
       updateInProgress: signal(false),
       updateChannel: signal('stable'),
       skippedVersions: signal([]),
-      readyToRestart: signal(false),
+      readyToRestart,
+      isCancelling: signal(false),
+      cancelUpdate,
       downloadStatus: signal(null),
       isChecking: signal(false),
       buildType,
       isUpdaterEnabled: signal(true),
       canAutoInstall,
+      installationReason: signal(''),
+      installationFailure: signal(''),
     };
 
     const mockRcloneUpdateService = {
@@ -130,6 +138,15 @@ describe('AboutModalComponent', () => {
     expect(component.updateInstructions()?.command).toBe(command);
   });
 
+  it('directs AUR installations to the package source', () => {
+    buildType.set('pacman');
+    canAutoInstall.set(false);
+    expect(component.updateInstructions()?.links[0].url).toBe(
+      'https://aur.archlinux.org/packages?K=rclone-manager'
+    );
+    expect(component.updateInstructions()?.command).toBeUndefined();
+  });
+
   it('provides the download page for portable installations', () => {
     buildType.set('portable');
     canAutoInstall.set(false);
@@ -157,6 +174,22 @@ describe('AboutModalComponent', () => {
   it('should initialize successfully', () => {
     expect(component).toBeTruthy();
     expect(component.rCloneManagerVersion).toBeDefined();
+  });
+
+  it('offers a discard action for a staged application update', async () => {
+    readyToRestart.set(true);
+    component.navigateTo('about-app');
+    fixture.detectChanges();
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+        '.restart-required button'
+      )
+    );
+    const discard = buttons.find(button => button.textContent?.includes('updates.discardDownload'));
+    expect(discard).toBeDefined();
+    discard?.click();
+    await fixture.whenStable();
+    expect(cancelUpdate).toHaveBeenCalledOnce();
   });
 
   it('should have contributors list defined with expected entries', () => {

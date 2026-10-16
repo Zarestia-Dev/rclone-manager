@@ -80,6 +80,10 @@ jobs:
         shell: bash
         run: rm -rf backend/desktop/capabilities || true
 
+      - name: Read release version
+        id: release_version
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
+
       - name: Build and Release Headless
         uses: tauri-apps/tauri-action@v0
         env:
@@ -94,7 +98,7 @@ jobs:
           releaseName: 'RClone Manager Headless v__VERSION__'
           releaseBody: 'RClone Manager Headless v__VERSION__'
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ steps.release_version.outputs.PRERELEASE }}
           args: >-
             --config tauri.conf.headless.json
             --features web-server,tray,updater

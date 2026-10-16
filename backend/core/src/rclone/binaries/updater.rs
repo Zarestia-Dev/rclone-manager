@@ -167,6 +167,7 @@ async fn perform_check_rclone_update(
                 metadata: data.pending_update.clone().unwrap_or_default(),
                 status: data.state,
                 download: None,
+                installation: None,
             });
         }
         data.state = UpdateState::Checking;
@@ -211,6 +212,7 @@ async fn perform_check_rclone_update(
         metadata,
         status,
         download: None,
+        installation: None,
     })
 }
 
@@ -313,6 +315,7 @@ async fn update_rclone_inner(
                 metadata,
                 status: UpdateState::Available,
                 download: None,
+                installation: None,
             }
         }
         _ => perform_check_rclone_update(app_handle.clone(), channel).await?,

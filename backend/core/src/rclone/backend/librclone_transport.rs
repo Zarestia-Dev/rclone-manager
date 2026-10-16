@@ -1,4 +1,3 @@
-use crate::context::AppHandle;
 use crate::utils::io::file_stream::{FILE_CHUNK_SIZE, file_metadata, file_reader};
 use async_trait::async_trait;
 use serde_json::{Map, Value};
@@ -7,37 +6,7 @@ use crate::rclone::backend::transport::{BackendError, TransportKind};
 use crate::rclone::backend::{RcloneTransport, rclone_ffi};
 
 #[derive(Clone)]
-pub struct RcloneLibBackend {
-    app: AppHandle,
-}
-
-impl RcloneLibBackend {
-    pub fn new(app: AppHandle) -> Self {
-        rclone_ffi::initialize();
-        log::info!("RcloneLibBackend created");
-        let backend = Self { app };
-        backend.ensure_default_config_path();
-        backend
-    }
-
-    fn ensure_default_config_path(&self) {
-        if let Ok(paths) = crate::services::paths::AppPaths::from_app_handle(&self.app) {
-            use crate::rclone::endpoints::config;
-            let conf_path = paths.config_dir.join("rclone.conf");
-            let path_str = conf_path.to_string_lossy().to_string();
-            let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
-                "_path": config::SETPATH,
-                "path": path_str
-            }));
-            let cache_str = paths.cache_dir.to_string_lossy().to_string();
-            let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
-                "_path": "config/setcachedir",
-                "path": cache_str
-            }));
-            log::info!("Set librclone config path to {}", conf_path.display());
-        }
-    }
-}
+pub struct RcloneLibBackend;
 
 #[async_trait]
 impl RcloneTransport for RcloneLibBackend {

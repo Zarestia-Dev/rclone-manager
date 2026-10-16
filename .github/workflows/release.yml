@@ -114,6 +114,10 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
+      - name: Read release version
+        id: release_version
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
+
       - uses: tauri-apps/tauri-action@v0
         env:
           TAURI_FRONTEND_PATH: ${{ github.workspace }}
@@ -128,5 +132,5 @@ jobs:
           releaseName: 'RClone Manager v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ steps.release_version.outputs.PRERELEASE }}
           args: ${{ matrix.args }}

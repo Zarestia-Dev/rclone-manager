@@ -96,11 +96,6 @@ pub async fn relaunch_app(app: crate::context::AppHandle) -> Result<(), String> 
     app.host().restart(&app)
 }
 
-#[must_use]
-pub fn can_auto_install() -> bool {
-    cfg!(feature = "updater") && get_build_type().is_none()
-}
-
 #[cfg(test)]
 mod installation_tests {
     use super::installation_type;

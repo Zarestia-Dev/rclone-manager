@@ -4,8 +4,8 @@
 //! It provides Rust bindings to the four C symbols that librclone exports
 //! (built from `rclone/librclone/`):
 //!
-//! - `RcloneInitialize()` — initialize Go runtime + rclone. Idempotent.
-//! - `RcloneFinalize()` — graceful shutdown of rclone.
+//! - `RcloneInitialize()` — initialize rclone logging, config storage and accounting.
+//! - `RcloneFinalize()` — request Go garbage collection (does not stop jobs).
 //! - `RcloneRpc(input: *const c_char, output: *mut *mut c_char) -> c_int` —
 //!   execute an rc call. `input` is JSON with `_path` set to the endpoint.
 //!   Returns HTTP-equivalent status (200 = success). Caller frees `output`
@@ -14,11 +14,11 @@
 //!
 //! # Thread safety
 //!
-//! librclone's `RcloneRpc` is safe to call from multiple threads concurrently —
-//! the Go runtime handles its own scheduling. However, we wrap every call in
-//! `tokio::task::spawn_blocking` because `RcloneRpc` is a synchronous C call
-//! that blocks the calling OS thread (it internally runs Go goroutines but the
-//! C-to-Go boundary is synchronous).
+//! Ordinary RPC calls may run concurrently. A library lock excludes synchronous
+//! RPCs during initialization, finalization and config/cache path changes.
+//! It does not synchronize background Go jobs or direct VFS handle operations.
+//! Async callers use `crate::utils::spawn_blocking` because the C-to-Go boundary
+//! blocks the calling OS thread.
 //!
 //! # Memory management
 //!
@@ -33,9 +33,9 @@
 //! `backend/core/librclone/<target-triple>/librclone.a`. The `build.rs` script
 //! links it. See `scripts/build-librclone.sh` for how to produce the archive.
 
+use parking_lot::RwLock;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::Value;
 
@@ -64,32 +64,115 @@ fn sync_env(key: &str) {
     }
 }
 
-/// Tracks whether librclone is currently initialized.
-static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
+#[derive(Default)]
+struct LibraryState {
+    initialized: bool,
+    paths_configured: bool,
+}
 
-/// Initialize librclone. Idempotent — safe to call multiple times.
-///
-/// This should be called at app startup (from `setup_app` when
-/// constructing `RcloneLibBackend`) and upon restart.
-#[allow(clippy::disallowed_methods)]
-pub fn initialize() {
-    if !IS_INITIALIZED.swap(true, Ordering::AcqRel) {
+static LIBRARY: RwLock<LibraryState> = RwLock::new(LibraryState {
+    initialized: false,
+    paths_configured: false,
+});
+
+impl LibraryState {
+    // The write lock publishes readiness only after all initialization finishes.
+    #[allow(clippy::disallowed_methods)]
+    fn initialize(&mut self) {
+        if self.initialized {
+            return;
+        }
         log::info!("Initializing librclone (RcloneInitialize)");
         unsafe {
             std::env::set_var("RCLONE_ASK_PASSWORD", "false");
         }
         sync_env("RCLONE_ASK_PASSWORD");
         unsafe { RcloneInitialize() };
+        self.initialized = true;
     }
 }
 
-/// Finalize librclone. Releases Go runtime resources.
-///
-/// Call this at app shutdown (from `RcApiEngine::shutdown`) or before re-initialization.
+/// Initialize the library and set default paths once, shared by Tauri and SAF.
+/// Explicit config/setpath calls must survive later transport/SAF lookups.
+pub fn configure_default_paths(
+    config: &std::path::Path,
+    cache: &std::path::Path,
+) -> Result<(), BackendError> {
+    {
+        let state = LIBRARY.read();
+        if state.initialized && state.paths_configured {
+            return Ok(());
+        }
+    }
+    let mut state = LIBRARY.write();
+    state.initialize();
+    if state.paths_configured {
+        return Ok(());
+    }
+    rpc_initialized(&serde_json::json!({"_path": "config/setpath", "path": config}))?;
+    rpc_initialized(&serde_json::json!({"_path": "config/setcachedir", "path": cache}))?;
+    state.paths_configured = true;
+    log::info!(
+        "Configured librclone paths: config={}, cache={}",
+        config.display(),
+        cache.display()
+    );
+    Ok(())
+}
+
+/// Request Go garbage collection after application-owned jobs/services stop.
+/// Upstream Finalize does not cancel async jobs or destroy the Go runtime.
 pub fn finalize() {
-    if IS_INITIALIZED.swap(false, Ordering::AcqRel) {
+    let mut state = LIBRARY.write();
+    if state.initialized {
         log::info!("Finalizing librclone (RcloneFinalize)");
         unsafe { RcloneFinalize() };
+        state.initialized = false;
+    }
+}
+
+/// Refresh library initialization without allowing RPCs through the transition.
+/// Config paths survive; this does not promise cancellation of existing jobs/VFS.
+pub fn restart() {
+    let mut state = LIBRARY.write();
+    if state.initialized {
+        unsafe { RcloneFinalize() };
+        state.initialized = false;
+    }
+    state.initialize();
+}
+
+fn with_library<T>(
+    method: &str,
+    call: impl FnOnce() -> Result<T, BackendError>,
+) -> Result<T, BackendError> {
+    let check = |state: &LibraryState| {
+        if state.initialized && state.paths_configured {
+            Ok(())
+        } else {
+            Err(BackendError::NotConnected(
+                "librclone startup is incomplete".into(),
+            ))
+        }
+    };
+    if matches!(method, "config/setpath" | "config/setcachedir") {
+        let state = LIBRARY.write();
+        check(&state)?;
+        call()
+    } else {
+        // Cancellation must reach an active RPC even when a lifecycle writer is
+        // waiting for it. Recursive reads admit these control calls alongside
+        // existing readers, while still excluding an acquired write lock.
+        let state = if matches!(
+            method,
+            "operations/cancelread" | "job/stop" | "job/stopgroup"
+        ) {
+            LIBRARY.read_recursive()
+        } else {
+            LIBRARY.read()
+        };
+        check(&state)?;
+        call()
     }
 }
 
@@ -107,6 +190,14 @@ pub fn finalize() {
 /// MUST wrap it in `tokio::task::spawn_blocking` to avoid stalling the tokio
 /// runtime. The `RcloneLibBackend::rpc` impl does this automatically.
 pub fn rpc(input: &Value) -> Result<Value, BackendError> {
+    let method = input
+        .get("_path")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    with_library(method, || rpc_initialized(input))
+}
+
+fn rpc_initialized(input: &Value) -> Result<Value, BackendError> {
     sync_env("RCLONE_CONFIG_PASS");
 
     // Extract endpoint name from the "_path" field
@@ -192,6 +283,11 @@ pub fn rpc(input: &Value) -> Result<Value, BackendError> {
 /// Execute a raw rc call via librclone FFI returning the JSON string directly without intermediate serde_json parsing.
 #[cfg(target_os = "android")]
 pub fn rpc_raw(method: &str, input_json: &str) -> Result<String, BackendError> {
+    with_library(method, || rpc_raw_initialized(method, input_json))
+}
+
+#[cfg(target_os = "android")]
+fn rpc_raw_initialized(method: &str, input_json: &str) -> Result<String, BackendError> {
     sync_env("RCLONE_CONFIG_PASS");
 
     let c_method = CString::new(method)
@@ -220,4 +316,182 @@ pub fn rpc_raw(method: &str, input_json: &str) -> Result<String, BackendError> {
     unsafe { RcloneFreeString(output_ptr) };
 
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        sync::{Arc, Barrier, mpsc},
+        time::Duration,
+    };
+
+    #[test]
+    fn native_library_fixture() {
+        let Ok(mode) = std::env::var("RCMAN_FFI_TEST_MODE") else {
+            return;
+        };
+        assert!(matches!(
+            rpc(&serde_json::json!({"_path":"core/version"})),
+            Err(BackendError::NotConnected(_))
+        ));
+        assert!(matches!(
+            rpc(&serde_json::json!({"_path":"operations/cancelread", "readToken":"early"})),
+            Err(BackendError::NotConnected(_))
+        ));
+        let directory = tempfile::tempdir().unwrap();
+        let original = directory.path().join("rclone.conf");
+        let selected = directory.path().join("selected.conf");
+        let cache = directory.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        std::fs::write(&original, b"[original]\ntype = local\n").unwrap();
+        std::fs::write(&selected, b"[selected]\ntype = local\n").unwrap();
+        configure_default_paths(&original, &cache).unwrap();
+
+        if mode == "paths" {
+            rpc(&serde_json::json!({"_path":"config/setpath", "path": selected})).unwrap();
+            for _ in 0..5 {
+                configure_default_paths(&original, &cache).unwrap();
+                assert_eq!(
+                    rpc(&serde_json::json!({"_path":"config/paths"})).unwrap()["config"],
+                    selected.to_string_lossy().as_ref()
+                );
+            }
+            restart();
+            assert_eq!(
+                rpc(&serde_json::json!({"_path":"config/paths"})).unwrap()["config"],
+                selected.to_string_lossy().as_ref()
+            );
+            let remotes = rpc(&serde_json::json!({"_path":"config/listremotes"})).unwrap();
+            assert_eq!(remotes["remotes"], serde_json::json!(["selected"]));
+            finalize();
+            assert!(matches!(
+                rpc(&serde_json::json!({"_path":"core/version"})),
+                Err(BackendError::NotConnected(_))
+            ));
+            configure_default_paths(&original, &cache).unwrap();
+            assert_eq!(
+                rpc(&serde_json::json!({"_path":"config/paths"})).unwrap()["config"],
+                selected.to_string_lossy().as_ref()
+            );
+        } else if mode == "cancellation" {
+            for method in ["operations/cancelread", "job/stop", "job/stopgroup"] {
+                let (entered, reading) = mpsc::channel();
+                let (release, released) = mpsc::channel();
+                let reader = std::thread::spawn(move || {
+                    with_library("operations/readfile", || {
+                        entered.send(()).unwrap();
+                        released.recv_timeout(Duration::from_secs(5)).unwrap();
+                        Ok(())
+                    })
+                    .unwrap();
+                });
+                reading.recv_timeout(Duration::from_secs(2)).unwrap();
+                let writer = std::thread::spawn(|| {
+                    with_library("config/setpath", || Ok(())).unwrap();
+                });
+                // A queued writer blocks ordinary new readers. Keep the active
+                // read alive until cancellation can get through that queue.
+                let deadline = std::time::Instant::now() + Duration::from_secs(2);
+                while LIBRARY.try_read().is_some() {
+                    assert!(std::time::Instant::now() < deadline, "Writer did not queue");
+                    std::thread::yield_now();
+                }
+                let (cancelled, cancellation) = mpsc::channel();
+                let cancel_release = release.clone();
+                let cancel = std::thread::spawn(move || {
+                    with_library(method, || {
+                        cancelled.send(()).unwrap();
+                        cancel_release.send(()).unwrap();
+                        Ok(())
+                    })
+                    .unwrap();
+                });
+                let result = cancellation.recv_timeout(Duration::from_secs(2));
+                // Unblock the threads even if the assertion would fail.
+                if result.is_err() {
+                    let _ = release.send(());
+                }
+                reader.join().unwrap();
+                writer.join().unwrap();
+                cancel.join().unwrap();
+                assert!(result.is_ok(), "{method} was blocked by the queued writer");
+            }
+        } else {
+            // Concurrent read RPCs are allowed; a lifecycle change waits for both.
+            let release = Arc::new(Barrier::new(3));
+            let (entered, waiting) = mpsc::channel();
+            let readers: Vec<_> = (0..2)
+                .map(|_| {
+                    let release = release.clone();
+                    let entered = entered.clone();
+                    std::thread::spawn(move || {
+                        with_library("core/version", || {
+                            entered.send(()).unwrap();
+                            release.wait();
+                            Ok(())
+                        })
+                        .unwrap()
+                    })
+                })
+                .collect();
+            waiting.recv_timeout(Duration::from_secs(2)).unwrap();
+            waiting.recv_timeout(Duration::from_secs(2)).unwrap();
+            assert!(LIBRARY.try_write().is_none());
+            let (done, finished) = mpsc::channel();
+            let restarting = std::thread::spawn(move || {
+                restart();
+                done.send(()).unwrap();
+            });
+            assert!(finished.recv_timeout(Duration::from_millis(100)).is_err());
+            release.wait();
+            for reader in readers {
+                reader.join().unwrap();
+            }
+            finished.recv_timeout(Duration::from_secs(5)).unwrap();
+            restarting.join().unwrap();
+            rpc(&serde_json::json!({"_path":"core/version"})).unwrap();
+
+            with_library("config/setpath", || {
+                assert!(LIBRARY.try_read().is_none());
+                assert!(LIBRARY.try_read_recursive().is_none());
+                Ok(())
+            })
+            .unwrap();
+        }
+        finalize();
+    }
+
+    fn run_fixture(mode: &str) {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "rclone::backend::rclone_ffi::tests::native_library_fixture",
+                "--nocapture",
+            ])
+            .env("RCMAN_FFI_TEST_MODE", mode)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn repeated_defaults_and_restart_preserve_the_selected_config() {
+        run_fixture("paths");
+    }
+
+    #[test]
+    fn lifecycle_changes_wait_for_calls_without_serializing_readers() {
+        run_fixture("concurrency");
+    }
+
+    #[test]
+    fn cancellation_reaches_active_calls_while_a_config_writer_waits() {
+        run_fixture("cancellation");
+    }
 }

@@ -6,6 +6,31 @@ static ANDROID_APP_CONTEXT: std::sync::OnceLock<jni::objects::Global<jni::object
 static NDK_CONTEXT_INITIALIZED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
+#[cfg(feature = "updater")]
+pub fn install_update_apk(path: &str) -> Result<i32, String> {
+    let vm = JAVA_VM.get().ok_or("Java VM not initialized")?;
+    let cls = BRIDGE_CLASS.get().ok_or("Android bridge not initialized")?;
+    vm.attach_current_thread(|env| {
+        use jni::{jni_sig, jni_str};
+        let path = env.new_string(path)?;
+        let cls: &jni::objects::JClass = cls.as_ref();
+        let result = env.call_static_method(
+            cls,
+            jni_str!("installUpdateApk"),
+            jni_sig!("(Ljava/lang/String;)I"),
+            &[(&path).into()],
+        );
+        match result {
+            Ok(result) => result.i(),
+            Err(error) => {
+                env.exception_clear();
+                Err(error)
+            }
+        }
+    })
+    .map_err(|e| e.to_string())
+}
+
 fn cache_java_vm(env: &mut jni::Env) {
     if JAVA_VM.get().is_none()
         && let Ok(vm) = env.get_java_vm()
@@ -222,16 +247,9 @@ mod jni_impl {
             let conf_path = path.join("rclone.conf");
             let _ = std::fs::create_dir_all(&cache_path);
 
-            rclone_ffi::initialize();
-
-            let _ = rclone_ffi::rpc(&serde_json::json!({
-                "_path": "config/setpath",
-                "path": conf_path.to_string_lossy().to_string(),
-            }));
-            let _ = rclone_ffi::rpc(&serde_json::json!({
-                "_path": "config/setcachedir",
-                "path": cache_path.to_string_lossy().to_string(),
-            }));
+            if let Err(error) = rclone_ffi::configure_default_paths(&conf_path, &cache_path) {
+                log::error!("SAF librclone initialization failed: {error}");
+            }
 
             Ok::<(), jni::errors::Error>(())
         });

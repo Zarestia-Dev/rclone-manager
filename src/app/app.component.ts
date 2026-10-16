@@ -1,5 +1,14 @@
 import { AppNavigationService } from './services/ui/app-navigation.service';
-import { ChangeDetectionStrategy, Component, effect, inject, OnInit, signal } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  Injector,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -74,6 +83,8 @@ export class AppComponent implements OnInit {
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly injector = inject(Injector);
+  private startupConfirmationScheduled = false;
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly androidShareService = inject(AndroidShareService);
   private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
@@ -150,7 +161,11 @@ export class AppComponent implements OnInit {
       if (!this.vaultService.isStatusKnown()) {
         return;
       }
-      if (this.vaultService.isVaultLocked() || this.appInitialized) return;
+      if (this.vaultService.isVaultLocked()) {
+        this.confirmStartupAfterRender();
+        return;
+      }
+      if (this.appInitialized) return;
 
       await this.appSettingsService.loadSettings();
       await this.appSettingsService.applySavedLanguage();
@@ -182,9 +197,18 @@ export class AppComponent implements OnInit {
               : null;
         this.navigation.initialize(standalone);
       }
+      if (this.appInitialized) this.confirmStartupAfterRender();
       this.initializing.set(false);
       this.appInitializing = false;
     }
+  }
+
+  private confirmStartupAfterRender(): void {
+    if (this.startupConfirmationScheduled) return;
+    this.startupConfirmationScheduled = true;
+    afterNextRender(() => void this.appUpdaterService.confirmStartup(), {
+      injector: this.injector,
+    });
   }
 
   private setupDefaultViewListener(): void {
