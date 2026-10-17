@@ -1,24 +1,27 @@
+:host {
+  display: block;
+  flex-shrink: 0;
+}
+
 .search-container {
   height: 0;
+  overflow: hidden;
   padding: 0 var(--space-md);
   background: var(--view-bg-color);
-  transition:
-    height var(--transition-cubic),
-    padding var(--transition-cubic);
+  transition: var(--transition-standard);
 
   &.visible {
-    height: 40px;
+    height: auto;
     padding: var(--space-md);
   }
 
   mat-form-field {
+    width: 100%;
     min-height: 0;
     overflow: hidden;
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
-    transition:
-      opacity var(--transition-cubic),
-      transform var(--transition-cubic);
+    transition: var(--transition-standard);
 
     --mat-form-field-container-height: 40px;
     --mat-form-field-container-vertical-padding: 10px;

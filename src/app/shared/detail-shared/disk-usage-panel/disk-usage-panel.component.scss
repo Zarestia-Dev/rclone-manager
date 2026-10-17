@@ -11,42 +11,10 @@
   gap: var(--space-xs);
 }
 
-// ── Usage badge (% in title row) ──────────────────────────────────────
-.usage-badge {
-  min-width: 44px;
-  height: 22px;
-  padding: 0 var(--space-xs);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  transition:
-    background 0.3s ease,
-    color 0.3s ease;
-
-  &.healthy {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.1);
-  }
-
-  &.warning {
-    color: var(--yellow);
-    background: rgba(var(--yellow-rgb), 0.12);
-  }
-
-  &.high {
-    color: var(--orange);
-    background: rgba(var(--orange-rgb), 0.12);
-  }
-
-  &.critical {
-    color: var(--warn-color);
-    background: rgba(var(--warn-color-rgb), 0.12);
-  }
+// Reserve space while the percentage is loading.
+.header-actions .skeleton {
+  min-width: 3rem;
 }
-
 // ── Inline status: error / not-supported ─────────────────────────────
 .inline-status {
   display: flex;
@@ -110,11 +78,7 @@
   }
 
   &.healthy {
-    background: linear-gradient(
-      90deg,
-      var(--primary-color),
-      var(--light-green, var(--primary-color))
-    );
+    background: linear-gradient(90deg, var(--primary-color), var(--light-green));
   }
 
   &.warning {

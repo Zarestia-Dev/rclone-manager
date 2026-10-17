@@ -24,7 +24,7 @@
   </mat-expansion-panel-header>
 
   @if (isLoadingStats()) {
-    <div class="loading fade-in" aria-live="polite">
+    <div class="loading-container fade-in" aria-live="polite">
       <mat-icon
         svgIcon="spinner"
         [attr.aria-label]="'generalOverview.jobs.aria.loading' | translate"
@@ -98,7 +98,7 @@
           <div class="section-heading">
             <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
             <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
-            <span class="app-pill p-primary pill-sm">{{ runningJobs().length }}</span>
+            <span class="count-badge">{{ runningJobs().length }}</span>
           </div>
 
           <div class="running-jobs-list">
@@ -120,16 +120,16 @@
 
                     <div class="job-details">
                       <div class="job-title-row">
-                        <span class="job-title">{{ vm.label }}</span>
-                        <span class="job-tag job-id">#{{ vm.job.jobid }}</span>
+                        <span class="job-title truncate">{{ vm.label }}</span>
+                        <span class="app-pill p-dim pill-sm truncate">#{{ vm.job.jobid }}</span>
                         @if (vm.job.remote_name) {
-                          <span class="job-tag remote" [attr.title]="vm.job.remote_name">
+                          <span class="app-pill p-dim pill-sm" [attr.title]="vm.job.remote_name">
                             <mat-icon svgIcon="cloud"></mat-icon>
-                            <span>{{ vm.job.remote_name }}</span>
+                            <span class="truncate">{{ vm.job.remote_name }}</span>
                           </span>
                         }
                         @if (vm.job.profile) {
-                          <span class="job-tag profile">{{ vm.job.profile }}</span>
+                          <span class="app-pill p-dim pill-sm truncate">{{ vm.job.profile }}</span>
                         }
                         <span class="app-pill {{ vm.originBadgeClass }} pill-sm">
                           {{ vm.originLabel }}
@@ -143,7 +143,9 @@
 
                       <div class="job-path-row" [attr.title]="vm.job.destination || vm.job.source">
                         <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
-                        <span class="path-text">{{ vm.job.destination || vm.job.source }}</span>
+                        <span class="path-text truncate">{{
+                          vm.job.destination || vm.job.source
+                        }}</span>
                       </div>
                     </div>
                   </div>
@@ -199,7 +201,7 @@
                 <div class="card-metrics-row">
                   @if (jStats) {
                     <div
-                      class="metric-pill speed"
+                      class="app-pill pill-sm p-primary"
                       [attr.title]="'generalOverview.jobs.speed' | translate"
                     >
                       <mat-icon svgIcon="bolt"></mat-icon>
@@ -212,7 +214,7 @@
 
                     @if (jStats.eta && jStats.eta > 0) {
                       <div
-                        class="metric-pill eta"
+                        class="app-pill pill-sm p-accent"
                         [attr.title]="'generalOverview.jobs.eta' | translate"
                       >
                         <mat-icon svgIcon="clock"></mat-icon>
@@ -222,7 +224,7 @@
 
                     @if (jStats.totalTransfers > 0) {
                       <div
-                        class="metric-pill transfers"
+                        class="app-pill pill-sm p-dim"
                         [attr.title]="'generalOverview.jobs.transfers' | translate"
                       >
                         <mat-icon svgIcon="file"></mat-icon>
@@ -232,7 +234,7 @@
 
                     @if (jStats.errors > 0) {
                       <div
-                        class="metric-pill error"
+                        class="app-pill pill-sm p-warn"
                         [attr.title]="'generalOverview.jobs.errors' | translate"
                       >
                         <mat-icon svgIcon="circle-exclamation"></mat-icon>
@@ -240,7 +242,7 @@
                       </div>
                     }
                   } @else {
-                    <div class="metric-pill speed">
+                    <div class="app-pill pill-sm p-primary">
                       <mat-icon svgIcon="bolt"></mat-icon>
                       <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
                     </div>

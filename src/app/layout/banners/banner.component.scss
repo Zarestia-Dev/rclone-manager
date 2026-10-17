@@ -11,6 +11,8 @@ mat-toolbar {
   gap: var(--space-xs) var(--space-sm);
 
   .banner-text-group {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
@@ -61,8 +63,8 @@ mat-toolbar {
       opacity 0.25s ease;
 
     &.visible {
-      min-height: 44px;
-      max-height: 120px;
+      min-height: calc(var(--titlebar-height) + var(--space-xxs));
+      max-height: none;
       padding: var(--banner-padding);
       opacity: 1;
     }

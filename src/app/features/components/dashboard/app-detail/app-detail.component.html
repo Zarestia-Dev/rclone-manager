@@ -29,7 +29,7 @@
             "
           >
             <mat-icon [svgIcon]="iconService.getIconName(selectedRemote().type)"></mat-icon>
-            <span>{{ quickRun()?.remoteName }}</span>
+            <span class="truncate">{{ quickRun()?.remoteName }}</span>
           </button>
         } @else {
           {{ selectedRemote().type | titlecase }}
@@ -106,11 +106,12 @@
               class="operation-toggle"
               [class]="opType"
               [class.is-selected]="selectedSyncOperation() === opType"
+              [attr.aria-pressed]="selectedSyncOperation() === opType"
               [class.is-running]="operation.isActive"
               (click)="onSyncOpSelect(opType)"
               [attr.title]="operation.description | translate"
             >
-              <span>{{ operation.typeLabel | translate }}</span>
+              <span class="truncate">{{ operation.typeLabel | translate }}</span>
             </button>
           }
         }
@@ -124,7 +125,7 @@
           [cdkMenuTriggerFor]="moreMenu"
           [attr.title]="moreButtonTooltip()"
         >
-          <span>{{ moreButtonLabel() }}</span>
+          <span class="truncate">{{ moreButtonLabel() }}</span>
           <mat-icon svgIcon="chevron-down" class="more-chevron"></mat-icon>
         </button>
 
@@ -167,12 +168,12 @@
     <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
         @if (mode() === 'remote' && showProfileSelector()) {
-          <div class="profile-selector-container" [class]="operationColorClass()">
+          <div class="profile-selector-container">
             <div class="profile-selector-header">
               <span class="profile-selector-label">{{
                 'dashboard.appDetail.selectedProfile' | translate
               }}</span>
-              <span class="profile-count">{{
+              <span class="count-badge">{{
                 'dashboard.appDetail.profilesCount'
                   | translate: { count: enrichedProfiles().length }
               }}</span>
@@ -183,6 +184,7 @@
                 <button
                   class="app-pill interactive"
                   [class.is-selected]="selectedProfile() === profile.name"
+                  [attr.aria-pressed]="selectedProfile() === profile.name"
                   [class.p-primary]="profile.status === 'running'"
                   [class.p-orange]="profile.status === 'scheduled'"
                   (click)="onProfileSelect(profile.name)"

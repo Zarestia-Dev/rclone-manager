@@ -2,11 +2,9 @@
 
 :host {
   display: block;
-  height: 100%;
+  min-height: 100%;
   width: 100%;
-  overflow-y: auto;
   padding: var(--panel-padding);
-  background: var(--window-bg-color);
   box-sizing: border-box;
   position: relative;
 }
@@ -35,10 +33,6 @@
 }
 
 /* Modular Panels Layout */
-.layout-grid {
-  width: 100%;
-}
-
 .quick-runs-panel {
   ::ng-deep {
     .mat-expansion-panel-body {
@@ -54,17 +48,17 @@
     margin-right: 0;
   }
 
-  .filter-chips {
+  .remote-filters {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    padding: 0 24px var(--space-sm);
+    padding: 0 var(--space-xl) var(--space-sm);
     overflow-x: auto;
   }
 
-  .grid,
   .quick-runs-grid {
     @include overview-cards-grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
   }
 
   .empty-actions {
@@ -77,10 +71,9 @@
 }
 
 @media (max-width: 768px) {
-  .quick-runs-panel .grid,
   .quick-runs-panel .quick-runs-grid {
     gap: var(--space-sm);
-    padding: 2px 16px 16px;
+    padding: var(--space-xxs) var(--space-md) var(--space-md);
   }
 }
 

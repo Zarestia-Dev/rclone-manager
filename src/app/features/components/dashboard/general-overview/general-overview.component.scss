@@ -10,6 +10,10 @@
   gap: var(--section-gap);
   padding: var(--panel-padding);
 
+  .overview-header {
+    width: 100%;
+  }
+
   .overview-content {
     display: flex;
     flex-direction: column;
@@ -43,6 +47,6 @@
 
 @media (max-width: 480px) {
   .general-overview {
-    padding: 12px;
+    padding: var(--space-sm);
   }
 }

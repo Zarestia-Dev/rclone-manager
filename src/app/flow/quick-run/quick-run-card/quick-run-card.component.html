@@ -8,7 +8,7 @@
       ></mat-icon>
     </div>
     <div class="card-details">
-      <h4 class="card-name" [attr.title]="quickRun().name">
+      <h4 class="card-name truncate" [attr.title]="quickRun().name">
         {{ quickRun().name }}
       </h4>
       <span class="card-meta">
@@ -28,7 +28,7 @@
           "
         >
           <mat-icon [svgIcon]="isRemoteMissing() ? 'warning' : remoteIcon()"></mat-icon>
-          <span class="remote-name-text">{{ quickRun().remoteName }}</span>
+          <span class="remote-name-text truncate">{{ quickRun().remoteName }}</span>
         </button>
       </span>
     </div>

@@ -1,6 +1,6 @@
 .job-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr));
   gap: var(--panel-gap);
 }
 
@@ -22,6 +22,7 @@
 }
 
 .detail-value {
+  overflow-wrap: anywhere;
   font-size: var(--font-size-md);
   color: var(--window-fg-color);
   font-weight: 600;

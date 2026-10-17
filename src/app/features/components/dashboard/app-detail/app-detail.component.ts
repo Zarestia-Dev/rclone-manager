@@ -355,12 +355,6 @@ export class AppDetailComponent {
     return op === 'check' || op === 'cryptcheck' ? 'check' : op;
   });
 
-  // CSS class for operation-colored containers (profile selector, cron label).
-  protected readonly operationColorClass = computed((): string => {
-    const op = this.currentOpType();
-    return `operation-${op === 'cryptcheck' ? 'check' : op}`;
-  });
-
   // --- Derived: Sync Operations ---
   readonly primarySyncOps = computed<SyncOperationType[]>(() => {
     const remote = this.selectedRemote();

@@ -163,7 +163,7 @@
                       {{ 'shared.vfsControl.queue.size' | translate }}
                     </th>
                     <td mat-cell *matCellDef="let item">
-                      <span class="size-badge">{{ item.size | formatFileSize }}</span>
+                      <span class="app-pill p-dim pill-sm">{{ item.size | formatFileSize }}</span>
                     </td>
                   </ng-container>
 
@@ -178,7 +178,7 @@
                             {{ item.status }}
                           </span>
                           @if (item.tries > 0) {
-                            <span class="tries-badge"
+                            <span class="app-pill p-orange pill-sm"
                               >{{ item.tries }}
                               {{ 'shared.vfsControl.queue.tries' | translate }}</span
                             >
@@ -419,7 +419,7 @@
         }
       }
     } @else if (loading()) {
-      <div class="loading-shade">
+      <div class="loading-container">
         <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
         <p>{{ 'shared.vfsControl.loading' | translate }}</p>
       </div>

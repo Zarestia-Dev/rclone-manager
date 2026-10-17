@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .remote-details {
   display: flex;
   flex-direction: column;
@@ -12,12 +17,16 @@
   gap: var(--space-md);
   margin-bottom: var(--panel-gap);
   align-self: center;
+  max-width: 100%;
 
   .remote-text-info {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-xxs);
+
+    min-width: 0;
+    max-width: 100%;
 
     .remote-name {
       font-size: var(--font-size-xl);
@@ -29,6 +38,9 @@
     }
 
     .remote-type {
+      min-width: 0;
+      max-width: 100%;
+      flex-wrap: wrap;
       font-size: var(--font-size-base);
       color: var(--dim-color);
       font-weight: 400;
@@ -38,6 +50,8 @@
 
       .remote-link-btn {
         display: inline-flex;
+        min-width: 0;
+        max-width: 100%;
         align-items: center;
         gap: 4px;
         padding: 2px 6px;
@@ -46,6 +60,10 @@
         color: var(--dim-color);
         cursor: pointer;
         transition: var(--transition-fast);
+
+        .truncate {
+          display: block;
+        }
 
         mat-icon {
           width: var(--icon-size-sm);
@@ -71,7 +89,7 @@
   justify-content: center;
   width: var(--icon-container-size);
   height: var(--icon-container-size);
-  border-radius: var(--icon-radius, var(--radius-sm));
+  border-radius: var(--icon-radius);
   background: var(--sidebar-bg-color);
   transition: var(--transition-standard);
 
@@ -169,9 +187,6 @@
     span {
       display: block;
       width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       text-align: center;
     }
 
@@ -285,14 +300,12 @@
 
 .operation-monitor,
 .configuration-content {
-  display: flex;
-  flex-direction: column;
   gap: var(--panel-gap);
   padding: var(--space-md);
 
   .serves-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
     gap: var(--space-md);
     padding: var(--space-md);
     background: var(--view-bg-color);
@@ -301,29 +314,9 @@
   }
 }
 
-// ─── Operation color token ────────────────────────────────────────────────────
-
-.profile-selector-container {
-  --op-color: var(--primary-color);
-
-  &.operation-bisync {
-    --op-color: var(--purple);
-  }
-  &.operation-move {
-    --op-color: var(--orange);
-  }
-  &.operation-copy {
-    --op-color: var(--yellow);
-  }
-  &.operation-check,
-  &.operation-copyurl,
-  &.operation-mount,
-  &.operation-serve {
-    --op-color: var(--accent-color);
-  }
-  &.operation-delete {
-    --op-color: var(--warn-color);
-  }
+.operation-monitor {
+  display: flex;
+  flex-direction: column;
 }
 
 // ─── Profile selector container ───────────────────────────────────────────────
@@ -341,6 +334,7 @@
 
 .profile-selector-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
@@ -351,15 +345,6 @@
   font-weight: 600;
   color: var(--dim-color);
   letter-spacing: 0.5px;
-}
-
-.profile-count {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: var(--dim-color);
-  padding: 4px 8px;
-  background: var(--selected-bg-color);
-  border-radius: 10px;
 }
 
 // ─── Profile pills ────────────────────────────────────────────────────────────
@@ -496,7 +481,7 @@
       align-items: center;
 
       .remote-name {
-        max-width: calc(100vw - 120px);
+        max-width: 100%;
       }
     }
   }
@@ -508,10 +493,6 @@
 
   .profile-selector-container {
     padding: var(--space-sm);
-  }
-
-  .serves-grid {
-    grid-template-columns: 1fr;
   }
 }
 

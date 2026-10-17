@@ -73,7 +73,7 @@
 
   .bandwidth-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
     gap: 16px;
   }
 
@@ -116,13 +116,6 @@
     font-size: clamp(14px, 2.5vw, 16px);
     min-width: 0;
   }
-}
-
-.loading {
-  @include flex-center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 8px;
 }
 
 .error-text {

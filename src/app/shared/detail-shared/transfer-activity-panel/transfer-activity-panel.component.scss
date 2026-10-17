@@ -1,0 +1,13 @@
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  .panel-content {
+    padding: 0;
+    overflow: hidden;
+  }
+  .search-open {
+    background: rgba(var(--accent-color-rgb), 0.1) !important;
+    color: var(--accent-color) !important;
+  }
+}

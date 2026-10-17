@@ -1,4 +1,4 @@
-<mat-icon style="align-self: baseline" [svgIcon]="resolvedIcon()" />
+<mat-icon class="alert-icon" [svgIcon]="resolvedIcon()" />
 <div class="alert-content">
   @if (title()) {
     <strong>{{ title() }}</strong>
@@ -8,7 +8,7 @@
   }
   <ng-content></ng-content>
   @if (linkUrl()) {
-    <a [href]="linkUrl()" target="_blank">
+    <a [href]="linkUrl()" target="_blank" rel="noopener noreferrer">
       {{ linkText() || linkUrl() }}
       <mat-icon svgIcon="open-link" />
     </a>

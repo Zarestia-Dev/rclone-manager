@@ -4,13 +4,6 @@
 }
 
 // Small pill size modifier for .app-pill
-.app-pill.pill-sm {
-  font-size: var(--font-size-xs);
-  padding: 2px var(--space-xs);
-  min-height: unset;
-  line-height: 1.2;
-}
-
 // Main Panel Layout
 .job-grid {
   display: flex;
@@ -50,7 +43,7 @@
 // Stats Grid
 .job-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: var(--space-md);
 }
 
@@ -79,7 +72,7 @@
 
   .running-jobs-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 21.25rem), 1fr));
     gap: var(--space-sm);
 
     @media (max-width: 540px) {
@@ -170,6 +163,10 @@
   }
 
   .job-title-row {
+    > .app-pill {
+      min-width: 0;
+      max-width: 100%;
+    }
     display: flex;
     align-items: center;
     gap: var(--space-xs);
@@ -182,52 +179,10 @@
     font-weight: 700;
     color: var(--window-fg-color);
     text-transform: capitalize;
-    white-space: nowrap;
+    max-width: 100%;
   }
 
   // Unified metadata tag (id, remote, profile)
-  .job-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--dim-color);
-    background: color-mix(in srgb, var(--window-fg-color) 6%, transparent);
-    padding: 2px var(--space-xs);
-    border-radius: var(--radius-xxs);
-    max-width: 140px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    &.job-id {
-      font-weight: 700;
-    }
-
-    &.remote {
-      color: var(--window-fg-color);
-
-      mat-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
-        color: var(--primary-color);
-        flex-shrink: 0;
-      }
-    }
-
-    &.profile {
-      max-width: 110px;
-    }
-
-    span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-
   .job-path-row {
     display: flex;
     align-items: center;
@@ -243,12 +198,6 @@
       flex-shrink: 0;
       opacity: 0.7;
     }
-
-    .path-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 
   .card-progress-section {
@@ -257,6 +206,8 @@
     gap: var(--space-xs);
 
     .progress-info-row {
+      flex-wrap: wrap;
+      gap: var(--space-xs);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -294,59 +245,6 @@
     gap: var(--space-xs);
     padding-top: var(--space-xs);
     border-top: 1px solid var(--border-color);
-
-    .metric-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xxs);
-      padding: 2px var(--space-xs);
-      border-radius: var(--radius-xxs);
-      font-size: var(--font-size-xs);
-      font-weight: 500;
-      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
-      color: var(--dim-color);
-
-      mat-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
-        opacity: 0.8;
-      }
-
-      &.speed {
-        color: var(--window-fg-color);
-
-        mat-icon {
-          color: var(--primary-color);
-          opacity: 1;
-        }
-      }
-
-      &.eta {
-        color: var(--window-fg-color);
-
-        mat-icon {
-          color: var(--accent-color);
-          opacity: 1;
-        }
-      }
-
-      &.transfers {
-        mat-icon {
-          opacity: 0.7;
-        }
-      }
-
-      &.error {
-        color: var(--warn-color);
-        background: rgba(var(--warn-color-rgb), 0.1);
-
-        mat-icon {
-          color: var(--warn-color);
-          opacity: 1;
-        }
-      }
-    }
   }
 }
 
@@ -381,12 +279,3 @@
 }
 
 // Feedback States
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  color: var(--dim-color);
-  text-align: center;
-}

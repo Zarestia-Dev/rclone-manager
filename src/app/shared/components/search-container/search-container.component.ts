@@ -18,22 +18,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-search-container',
   imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslatePipe],
-  template: `
-    <div class="search-container" [class.visible]="visible()">
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-icon matPrefix svgIcon="search"></mat-icon>
-        <input
-          #searchInput
-          matInput
-          [ngModel]="searchText()"
-          (ngModelChange)="searchTextChange.emit($event)"
-          [ngModelOptions]="{ standalone: true }"
-          [placeholder]="placeholder() | translate"
-          [attr.aria-label]="ariaLabel() | translate"
-        />
-      </mat-form-field>
-    </div>
-  `,
+  templateUrl: './search-container.component.html',
   styleUrls: ['./search-container.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -4,60 +4,16 @@
 }
 
 // ============================================================================
-// STATUS INDICATOR — dot + text, no background, no border
-// ============================================================================
-
-.status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  padding: var(--space-xxs) var(--space-xs);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: currentColor;
-  }
-
-  &.status-enabled {
-    color: var(--primary-color);
-    background-color: rgba(var(--primary-color-rgb), var(--active-opacity));
-  }
-
-  &.status-running {
-    color: var(--accent-color);
-    background-color: rgba(var(--accent-color-rgb), var(--active-opacity));
-  }
-
-  &.status-disabled {
-    color: var(--dim-color);
-    background-color: rgba(var(--dim-color-rgb), var(--active-opacity));
-  }
-
-  &.status-stopping {
-    color: var(--orange);
-    background-color: rgba(var(--orange-rgb), var(--active-opacity));
-  }
-
-  &.status-failed {
-    color: var(--warn-color);
-    background-color: rgba(var(--warn-color-rgb), var(--active-opacity));
-  }
-}
-
-// ============================================================================
 // BASE CARD
 // ============================================================================
 
 .automation-card {
+  .automation-header .app-pill {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   background: var(--card-bg-color);
   border-radius: var(--card-border-radius);
   box-shadow: var(--box-shadow);
@@ -119,6 +75,7 @@
   }
 
   .automation-header {
+    flex-wrap: wrap;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -148,19 +105,10 @@
     min-width: 0;
   }
 
-  .origin-pill {
-    font-size: 10px;
-    padding: 1px 6px;
-    font-weight: 500;
-  }
-
   .automation-name {
     font-weight: 600;
     font-size: var(--font-size-md);
     color: var(--window-fg-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .automation-subtitle {
@@ -168,9 +116,6 @@
     align-items: center;
     font-size: var(--font-size-xs);
     color: var(--dim-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 
     .watcher-mini-badge {
       display: inline-flex;
@@ -197,6 +142,8 @@
   }
 
   .automation-footer {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -206,6 +153,7 @@
   }
 
   .automation-stats {
+    flex-wrap: wrap;
     display: flex;
     gap: var(--space-md);
   }
@@ -276,24 +224,17 @@
         min-width: 0;
 
         h4 {
+          min-width: 0;
           margin: 0;
           font-size: var(--font-size-lg);
           font-weight: 600;
           color: var(--window-fg-color);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .origin-pill {
-          font-size: 10px;
-          padding: 1px 6px;
-          font-weight: 500;
         }
       }
     }
 
     .automation-type-label {
+      overflow-wrap: anywhere;
       font-size: var(--font-size-sm);
       color: var(--dim-color);
     }
@@ -314,12 +255,14 @@
 
   .detail-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr));
     gap: var(--space-md);
     align-items: baseline;
   }
 
   .detail-item {
+    min-width: 0;
+    overflow-wrap: anywhere;
     padding: var(--space-sm) var(--space-md);
     display: flex;
     flex-direction: column;
@@ -350,11 +293,13 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-md);
   }
 
   .stat-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
     padding: var(--space-md);
     text-align: center;
     border-radius: var(--radius-sm);
@@ -444,7 +389,7 @@
 
     .automation-title-row {
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto minmax(0, 1fr);
       gap: var(--space-xs) var(--space-sm);
       align-items: center;
 
@@ -455,7 +400,7 @@
         }
       }
 
-      .status-indicator {
+      > .app-pill {
         grid-column: 1 / span 2;
         justify-self: flex-start;
       }
@@ -467,7 +412,7 @@
     }
 
     .stats-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-sm);
     }
 

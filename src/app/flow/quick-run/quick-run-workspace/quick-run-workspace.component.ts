@@ -43,7 +43,6 @@ import { QuickRunOverviewComponent } from '../quick-run-overview/quick-run-overv
     QuickRunOverviewComponent,
   ],
   templateUrl: './quick-run-workspace.component.html',
-  styleUrl: './quick-run-workspace.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickRunWorkspaceComponent {

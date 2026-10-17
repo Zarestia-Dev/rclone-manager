@@ -1,9 +1,11 @@
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.375rem), 1fr));
   gap: var(--panel-gap);
 
   .stat-item {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -69,7 +71,7 @@
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-sm);
 
     .stat-item {

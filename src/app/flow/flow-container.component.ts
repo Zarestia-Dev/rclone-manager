@@ -27,6 +27,7 @@ import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quic
 import { WorkflowWorkspaceComponent } from './workflow/components/workflow-workspace/workflow-workspace.component';
 import { WorkflowStateService } from '../services/flow/workflow-state.service';
 import { BannerComponent } from '../layout/banners/banner.component';
+import { WorkspaceShellComponent } from '../layout/workspace-shell/workspace-shell.component';
 
 @Component({
   selector: 'app-flow-container',
@@ -42,9 +43,10 @@ import { BannerComponent } from '../layout/banners/banner.component';
     QuickRunWorkspaceComponent,
     WorkflowWorkspaceComponent,
     BannerComponent,
+    WorkspaceShellComponent,
   ],
   templateUrl: './flow-container.component.html',
-  styleUrl: './flow-container.component.scss',
+  host: { class: 'workspace-container' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlowContainerComponent {

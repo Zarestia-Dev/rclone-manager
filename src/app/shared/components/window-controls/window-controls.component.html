@@ -4,6 +4,7 @@
       matIconButton
       (click)="control.action()"
       [attr.aria-label]="control.label | translate"
+      [attr.title]="control.label | translate"
       [class]="control.class ?? null"
       data-tauri-drag-region="false"
     >

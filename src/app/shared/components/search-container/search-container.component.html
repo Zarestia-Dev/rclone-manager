@@ -1,0 +1,19 @@
+<div
+  class="search-container"
+  [class.visible]="visible()"
+  [inert]="!visible()"
+  [attr.aria-hidden]="!visible()"
+>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-icon matPrefix svgIcon="search"></mat-icon>
+    <input
+      #searchInput
+      matInput
+      [ngModel]="searchText()"
+      (ngModelChange)="searchTextChange.emit($event)"
+      [ngModelOptions]="{ standalone: true }"
+      [placeholder]="placeholder() | translate"
+      [attr.aria-label]="ariaLabel() | translate"
+    />
+  </mat-form-field>
+</div>

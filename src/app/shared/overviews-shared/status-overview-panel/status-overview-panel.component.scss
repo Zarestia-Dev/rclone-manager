@@ -38,24 +38,6 @@
   font-size: var(--font-size-md);
   font-weight: 600;
   color: var(--window-fg-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.total-badge {
-  flex-shrink: 0;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 var(--space-xs);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--dim-color);
-  background: var(--bg-elevated-2);
 }
 
 .progress-track {

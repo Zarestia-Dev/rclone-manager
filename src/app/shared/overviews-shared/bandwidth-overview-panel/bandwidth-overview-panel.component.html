@@ -25,7 +25,7 @@
 
   @let bandwidth = bandwidthLimit();
   @if (bandwidth?.loading) {
-    <div class="loading fade-in" aria-live="polite">
+    <div class="loading-container fade-in" aria-live="polite">
       <mat-icon
         svgIcon="spinner"
         [attr.aria-label]="'generalOverview.bandwidth.aria.loading' | translate"

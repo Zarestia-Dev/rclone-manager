@@ -36,7 +36,7 @@ sys-locale = "0.3"
 dirs = "6"
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.2", path = "../../../rcman", features = ["backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
+rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
 
 urlencoding = "2"
 futures = "0.3"

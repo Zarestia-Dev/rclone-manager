@@ -11,11 +11,11 @@
         <!-- Title row: remote name + protocol badge + profile badge -->
         <div class="serve-title-row">
           @if (showRemoteName()) {
-            <span class="serve-remote-name">{{ remoteName() }}</span>
+            <span class="serve-remote-name truncate">{{ remoteName() }}</span>
           }
-          <span class="protocol-badge">{{ serve().params.type | uppercase }}</span>
+          <span class="app-pill p-primary pill-sm">{{ serve().params.type | uppercase }}</span>
           @if (serve().profile) {
-            <span class="profile-badge">{{ serve().profile }}</span>
+            <span class="app-pill p-accent pill-sm">{{ serve().profile }}</span>
           }
           <span
             class="origin-mini-badge"
@@ -30,17 +30,17 @@
         <!-- URL or address -->
         @if (serveUrl(); as url) {
           <span
-            class="serve-url"
+            class="serve-url truncate"
             [attr.title]="'shared.serveCard.tooltips.copyUrl' | translate"
             [appCopyToClipboard]="url"
             >{{ url }}</span
           >
         } @else {
-          <span class="serve-address">{{ serve().addr }}</span>
+          <span class="serve-address truncate">{{ serve().addr }}</span>
         }
 
         <!-- Filesystem path -->
-        <span class="serve-fs">{{ serve().params.fs }}</span>
+        <span class="serve-fs truncate">{{ serve().params.fs }}</span>
       </div>
     </div>
 
@@ -61,7 +61,7 @@
       <mat-icon svgIcon="fingerprint" class="meta-icon" aria-hidden="true"></mat-icon>
       <span class="meta-label">{{ 'shared.serveCard.labels.id' | translate }}</span>
       <span
-        class="meta-value"
+        class="meta-value truncate"
         [attr.title]="'shared.serveCard.tooltips.copyId' | translate"
         [appCopyToClipboard]="serve().id"
         >{{ serve().id }}</span
@@ -72,7 +72,7 @@
       <div class="meta-item">
         <mat-icon svgIcon="gear" class="meta-icon" aria-hidden="true"></mat-icon>
         <span class="meta-label">{{ 'shared.serveCard.labels.options' | translate }}</span>
-        <span class="meta-value options-value" [attr.title]="optionsData().tooltip">
+        <span class="meta-value options-value truncate" [attr.title]="optionsData().tooltip">
           {{ optionsData().keys.length }}&thinsp;{{ 'shared.serveCard.labels.active' | translate }}
         </span>
       </div>
