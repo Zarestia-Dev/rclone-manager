@@ -410,7 +410,16 @@ fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> 
         backend_to_save.password = None;
     }
 
-    let value = serde_json::to_value(&backend_to_save).map_err(|e| e.to_string())?;
+    let mut value = serde_json::to_value(&backend_to_save).map_err(|e| e.to_string())?;
+    // rcman preserves omitted secrets. Write their schema defaults explicitly
+    // when the connection no longer has a password so stored credentials clear.
+    value["password"] = serde_json::json!(backend_to_save.password.as_deref().unwrap_or_default());
+    value["config_password"] = serde_json::json!(
+        backend_to_save
+            .config_password
+            .as_deref()
+            .unwrap_or_default()
+    );
     connections
         .set(&backend.name, &value)
         .map_err(|e| e.to_string())?;
@@ -569,6 +578,79 @@ async fn revert_to_local(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn settings_manager() -> (tempfile::TempDir, AppSettingsManager) {
+        let directory = tempfile::tempdir().unwrap();
+        let manager = rcman::SettingsManager::builder("backend-secrets-test", "1")
+            .with_config_dir(directory.path())
+            .with_schema::<crate::services::settings::schema::AppSettings>()
+            .with_credential_config(rcman::CredentialConfig::Custom(std::sync::Arc::new(
+                rcman::MemoryBackend::new(),
+            )))
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("connections").with_schema::<Backend>(),
+            )
+            .build()
+            .unwrap();
+        (directory, manager)
+    }
+
+    #[test]
+    fn clearing_connection_passwords_removes_credentials_and_tracking() {
+        let (directory, manager) = settings_manager();
+        let mut backend = Backend::new_remote("Test", "localhost", 51900);
+        backend.password = Some("api-secret".into());
+        backend.config_password = Some("config-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        backend.password = None;
+        backend.config_password = None;
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        let credentials = manager.credentials().unwrap();
+        for field in ["password", "config_password"] {
+            let key = format!("sub.connections.Test.{field}");
+            assert_eq!(credentials.get(&key).unwrap(), None);
+            assert!(
+                !credentials
+                    .get_tracked_secrets(None)
+                    .unwrap()
+                    .contains(&key)
+            );
+        }
+        let saved = std::fs::read_to_string(directory.path().join("connections.json")).unwrap();
+        assert!(!saved.contains("api-secret"));
+        assert!(!saved.contains("config-secret"));
+    }
+
+    #[test]
+    fn generated_auth_clears_saved_api_password_and_preserves_config_password() {
+        let (_directory, manager) = settings_manager();
+        let mut backend = Backend::new_local(LOCAL_BACKEND_NAME);
+        backend.password = Some("old-api-secret".into());
+        backend.config_password = Some("config-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        backend.is_auth_generated = true;
+        backend.password = Some("runtime-only-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        let credentials = manager.credentials().unwrap();
+        assert_eq!(
+            credentials.get("sub.connections.Local.password").unwrap(),
+            None
+        );
+        assert_eq!(
+            credentials
+                .get("sub.connections.Local.config_password")
+                .unwrap()
+                .as_deref(),
+            Some("config-secret")
+        );
+        let tracked = credentials.get_tracked_secrets(None).unwrap();
+        assert!(!tracked.contains("sub.connections.Local.password"));
+        assert!(tracked.contains("sub.connections.Local.config_password"));
+    }
 
     #[test]
     fn test_params_deserialize_camelcase() {

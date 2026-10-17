@@ -36,7 +36,7 @@ pub fn emit_vault_state(manager: &AppSettingsManager, event: &str) {
 
 fn vault_error(error: rcman::Error) -> String {
     match error {
-        rcman::Error::InvalidPassword => {
+        rcman::Error::InvalidPassword | rcman::Error::VaultUnlockFailed => {
             crate::localized_error!("backendErrors.vault.invalidPassword")
         }
         rcman::Error::VaultNotEnabled => crate::localized_error!("backendErrors.vault.notEnabled"),
@@ -194,6 +194,14 @@ mod tests {
         let value = serde_json::to_value(event).unwrap();
         assert!(value.get("lockTimeout").is_some());
         assert_eq!(value["lockTimeout"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn unlock_failure_uses_the_password_error_message() {
+        assert_eq!(
+            vault_error(rcman::Error::VaultUnlockFailed),
+            "backendErrors.vault.invalidPassword"
+        );
     }
 
     #[test]

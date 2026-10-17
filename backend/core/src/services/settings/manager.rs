@@ -56,9 +56,7 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         }
     };
     if let Some(source) = password_source {
-        builder = builder
-            .with_vault_password_source(source)
-            .map_err(|error| format!("Failed to read vault startup password: {error}"))?;
+        builder = builder.with_vault_password_source(source);
     }
 
     builder
