@@ -137,17 +137,7 @@
     </mat-card>
   }
 
-  <app-jobs-panel
-    [config]="jobsPanelConfig()"
-    (stopJob)="
-      stopJob.emit({
-        type: $event.type,
-        remoteName: $event.remoteName,
-        profileName: $event.profileName,
-      })
-    "
-    (deleteJob)="deleteJob.emit($event)"
-  >
+  <app-jobs-panel [config]="jobsPanelConfig()" (deleteJob)="deleteJob.emit($event)">
   </app-jobs-panel>
 
   @if (hasAutomations()) {

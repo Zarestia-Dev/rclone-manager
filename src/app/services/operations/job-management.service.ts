@@ -232,6 +232,12 @@ export function areJobGroupsEqual(
         p.job_type !== n.job_type ||
         p.profile !== n.profile ||
         p.parent_job_id !== n.parent_job_id ||
+        p.origin !== n.origin ||
+        p.quick_run_id !== n.quick_run_id ||
+        p.workflow_id !== n.workflow_id ||
+        p.execute_id !== n.execute_id ||
+        p.backend_name !== n.backend_name ||
+        p.start_time !== n.start_time ||
         p.error !== n.error
       ) {
         return false;

@@ -5,7 +5,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { RemoteAboutModalComponent } from './remote-about-modal.component';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -18,8 +18,8 @@ describe('RemoteAboutModalComponent', () => {
   let dialogRefSpy: { close: ReturnType<typeof vi.fn> };
   let remoteOpsSpy: { getSize: ReturnType<typeof vi.fn> };
   let remoteFacadeSpy: {
-    diskUsageSignal: ReturnType<typeof vi.fn>;
-    getCachedOrFetchDiskUsage: ReturnType<typeof vi.fn>;
+    usage: ReturnType<typeof vi.fn>;
+    load: ReturnType<typeof vi.fn>;
   };
   let remoteManagementSpy: {
     clearCache: ReturnType<typeof vi.fn>;
@@ -62,7 +62,7 @@ describe('RemoteAboutModalComponent', () => {
     dialogRefSpy = { close: vi.fn() };
     remoteOpsSpy = { getSize: vi.fn().mockResolvedValue({ count: 42, bytes: 2048 }) };
     remoteFacadeSpy = {
-      diskUsageSignal: vi.fn().mockReturnValue(
+      usage: vi.fn().mockReturnValue(
         signal({
           total: 100000,
           used: 40000,
@@ -70,7 +70,7 @@ describe('RemoteAboutModalComponent', () => {
           loading: false,
         })
       ),
-      getCachedOrFetchDiskUsage: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn().mockResolvedValue(undefined),
     };
     remoteManagementSpy = {
       clearCache: vi.fn(),
@@ -90,7 +90,7 @@ describe('RemoteAboutModalComponent', () => {
         { provide: MatDialogRef, useValue: dialogRefSpy },
         { provide: MAT_DIALOG_DATA, useValue: mockRemoteData },
         { provide: RemoteFileOperationsService, useValue: remoteOpsSpy },
-        { provide: RemoteFacadeService, useValue: remoteFacadeSpy },
+        { provide: RemoteDiskUsageService, useValue: remoteFacadeSpy },
         { provide: RemoteManagementService, useValue: remoteManagementSpy },
         { provide: JobManagementService, useValue: jobManagementSpy },
         { provide: RcloneValueMapperService, useValue: mapperSpy },
@@ -148,12 +148,9 @@ describe('RemoteAboutModalComponent', () => {
 
   it('should trigger fetchDiskUsage when requested', async () => {
     await component.fetchDiskUsage(true);
-    expect(remoteFacadeSpy.getCachedOrFetchDiskUsage).toHaveBeenCalledWith(
-      'my-drive',
-      'my_drive',
-      'dashboard',
-      expect.any(String),
-      true
-    );
+    expect(remoteFacadeSpy.load).toHaveBeenCalledWith('my_drive', {
+      group: expect.any(String),
+      force: true,
+    });
   });
 });

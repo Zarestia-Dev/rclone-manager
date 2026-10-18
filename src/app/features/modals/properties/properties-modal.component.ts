@@ -17,7 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
 import { NautilusService } from '../../../services/ui/nautilus.service';
-import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { RemoteDiskUsageService } from '../../../services/remote/remote-disk-usage.service';
 import { IconService } from '../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../services/remote/remote-management.service';
 import { PathService } from '../../../services/infrastructure/platform/path.service';
@@ -62,7 +62,7 @@ export class PropertiesModalComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly nautilusService = inject(NautilusService);
-  private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly capacity = inject(RemoteDiskUsageService);
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly remoteService = inject(RemoteManagementService);
@@ -251,12 +251,10 @@ export class PropertiesModalComponent implements OnInit {
     try {
       // For remote paths, use centralized caching method on the remote root
       if (!isLocal) {
-        const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
-          remoteName,
-          this.pathService.normalizeRemoteForRclone(remoteName),
-          'filemanager',
-          this.readJobGroup
-        );
+        const diskUsage = await this.capacity.load(remoteName, {
+          source: 'filemanager',
+          group: this.readJobGroup,
+        });
 
         if (diskUsage) {
           this.diskUsage.set(diskUsage);
@@ -291,11 +289,10 @@ export class PropertiesModalComponent implements OnInit {
 
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
       if (!features || !features.Hashes || features.Hashes.length === 0) {
-        features = await this.remoteService.getFeatures(
-          baseName,
-          this.data.remoteType,
-          'filemanager'
-        );
+        features = await this.remoteService.getFeatures(baseName, {
+          source: 'filemanager',
+          group: this.readJobGroup,
+        });
       }
 
       // Update supported hashes

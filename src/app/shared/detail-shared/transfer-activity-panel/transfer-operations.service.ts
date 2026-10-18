@@ -389,7 +389,7 @@ export class TransferOperationsService {
       }
     }
     for (const remote of remotes) {
-      void this.remoteManagement.getFeatures(remote);
+      this.remoteManagement.getFeaturesSignal(remote);
     }
   }
 }

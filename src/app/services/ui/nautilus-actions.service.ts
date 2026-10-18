@@ -1,3 +1,4 @@
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -24,6 +25,7 @@ export class NautilusActionsService {
   private readonly notificationService = inject(NotificationService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathSvc = inject(PathService);
+  private readonly remoteMetadata = inject(RemoteManagementService);
   private readonly remoteFacadeSvc = inject(RemoteFacadeService);
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
@@ -117,7 +119,7 @@ export class NautilusActionsService {
     const baseName = this.pathSvc.normalizeRemoteName(
       item?.meta.remote ?? this.tabSvc.activeRemote()?.name ?? ''
     );
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
+    const features = this.remoteMetadata.getFeaturesSignal(baseName)() as RemoteFeatures;
 
     this.modalService.openProperties({
       remoteName,
@@ -295,7 +297,7 @@ export class NautilusActionsService {
     const isLocal = item?.meta.isLocal ?? remote?.isLocal ?? true;
     if (isLocal) return false;
     const baseName = this.pathSvc.normalizeRemoteName(activeRemoteName);
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
+    const features = this.remoteMetadata.getFeaturesSignal(baseName)() as RemoteFeatures;
     return !!features?.PublicLink;
   });
 

@@ -1,3 +1,4 @@
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
@@ -57,6 +58,7 @@ describe('Nautilus action refresh destination', () => {
           NotificationService,
           RemoteFileOperationsService,
           RemoteFacadeService,
+          RemoteManagementService,
           ModalService,
           DownloadService,
           Clipboard,

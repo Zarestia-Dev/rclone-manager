@@ -235,7 +235,7 @@ export class AppDetailComponent {
     if (this.mode() === 'quickRun') {
       const qr = this.quickRun();
       const remoteName = qr?.remoteName ?? '';
-      const found = this.remoteFacade.activeRemotes().find((r: Remote) => r.name === remoteName);
+      const found = this.remoteFacade.getRemote(remoteName);
       if (found) return found;
       return {
         name: remoteName || 'Remote',

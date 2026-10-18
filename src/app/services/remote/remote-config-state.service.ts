@@ -767,7 +767,7 @@ export class RemoteConfigStateService {
       }
     } else if (dialogData?.name !== undefined && dialogData?.name !== null) {
       this.initialConfig = {
-        config: this.remoteFacade.activeRemotes().find(r => r.name === dialogData.name)?.config,
+        config: this.remoteFacade.getRemote(dialogData.name)?.config,
         ...this.remoteFacade.getRemoteSettings(dialogData.name),
       };
     } else {

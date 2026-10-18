@@ -1,4 +1,7 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { isAbortError } from 'src/app/shared/utils/abortable-request.util';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import {
   FLAG_TYPES,
   FlagType,
@@ -54,7 +57,7 @@ export class FlagConfigService extends TauriBaseService {
       await Promise.all(
         FLAG_TYPES.map(async type => {
           const dynamicFlags = await this.loadFlagFields(type);
-          const staticFlags = staticFlagDefinitions[type] || [];
+          const staticFlags = (staticFlagDefinitions[type] || []).map(option => ({ ...option }));
           result[type] = [...staticFlags, ...dynamicFlags];
         })
       );
@@ -84,6 +87,30 @@ export class FlagConfigService extends TauriBaseService {
     return map;
   });
 
+  constructor() {
+    super();
+    const events = inject(EventListenersService);
+    events
+      .listenToBackendSwitched()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.invalidate());
+    events
+      .listenToVaultState()
+      .pipe(takeUntilDestroyed())
+      .subscribe(state => {
+        if (state.isLocked) this.invalidate();
+      });
+    inject(DestroyRef).onDestroy(() => this.invalidate());
+  }
+
+  private invalidate(): void {
+    this.mountTypesLoader.invalidate();
+    this.serveTypesLoader.invalidate();
+    this.allFlagFieldsLoader.invalidate();
+    this.groupedOptionsLoader.invalidate();
+    for (const loader of this.serveFlagsLoaders().values()) loader.invalidate();
+  }
+
   private getOrCreateServeFlagsLoader(serveType: string): MemoizedLoader<RcConfigOption[]> {
     const existing = this.serveFlagsLoaders().get(serveType);
     if (existing) return existing;
@@ -94,12 +121,13 @@ export class FlagConfigService extends TauriBaseService {
           this.invokeCommand<RcConfigOption[]>('get_serve_flags', { serveType }),
           this.serveTypesLoader.load(),
         ]);
-        const staticFlags = staticFlagDefinitions['serve'] || [];
+        const staticFlags = (staticFlagDefinitions['serve'] || []).map(option => ({ ...option }));
         const combined = [...staticFlags, ...(flags ?? [])];
         this.decorateServeTypeOption(combined, serveTypes);
         return combined;
       } catch (error) {
-        console.error(`Error loading serve flags for ${serveType}:`, error);
+        if (!isAbortError(error))
+          console.error(`Error loading serve flags for ${serveType}:`, error);
         throw error;
       }
     });

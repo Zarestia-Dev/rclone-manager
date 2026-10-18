@@ -88,9 +88,7 @@ export class QuickRunCardComponent {
     return !!rName && !this.remoteFacade.isRemoteActive(rName);
   });
 
-  readonly remote = computed(() =>
-    this.remoteFacade.orderedRemotes().find(r => r.name === this.quickRun().remoteName)
-  );
+  readonly remote = computed(() => this.remoteFacade.getRemoteSummary(this.quickRun().remoteName));
 
   readonly remoteIcon = computed(() => {
     const rem = this.remote();

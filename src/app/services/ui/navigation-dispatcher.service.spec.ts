@@ -25,7 +25,7 @@ describe('NavigationDispatcherService', () => {
     setTab: ReturnType<typeof vi.fn>;
     setSelectedRemote: ReturnType<typeof vi.fn>;
   };
-  let mockRemoteFacade: { activeRemotes: ReturnType<typeof vi.fn> };
+  let mockRemoteFacade: { getRemote: ReturnType<typeof vi.fn> };
   let mockPathService: { getRemoteNameFromFs: ReturnType<typeof vi.fn> };
   let mockQuickRunService: {
     quickRuns: ReturnType<typeof vi.fn>;
@@ -70,7 +70,7 @@ describe('NavigationDispatcherService', () => {
       setSelectedRemote: vi.fn(),
     };
     mockRemoteFacade = {
-      activeRemotes: vi.fn().mockReturnValue([mockRemote]),
+      getRemote: vi.fn((name: string) => (name === mockRemote.name ? mockRemote : undefined)),
     };
     mockPathService = {
       getRemoteNameFromFs: vi.fn(),

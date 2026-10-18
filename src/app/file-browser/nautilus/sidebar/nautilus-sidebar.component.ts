@@ -18,7 +18,7 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE, fileBrowserItemKey } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
@@ -64,7 +64,7 @@ export class NautilusSidebarComponent {
   private readonly elementRef = inject(ElementRef);
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
-  private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly remoteMetadata = inject(RemoteManagementService);
   protected readonly settings = inject(NautilusSettingsService);
   private readonly dialog = inject(MatDialog);
 
@@ -146,13 +146,13 @@ export class NautilusSidebarComponent {
     effect(() => {
       const remotes = this.displayCloudRemotes();
       for (const remote of remotes) {
-        this.remoteFacadeService.featuresSignal(remote.name, remote.type);
+        this.remoteMetadata.getFeaturesSignal(remote.name);
       }
     });
   }
 
   hasFeature(remote: ExplorerRoot, feature: string): boolean {
-    return this.remoteFacadeService.hasFeature(remote.name, feature, remote.type);
+    return this.remoteMetadata.hasFeature(remote.name, feature);
   }
 
   readonly driveTooltips = computed<Map<string, string>>(() => {

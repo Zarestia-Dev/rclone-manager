@@ -1,3 +1,4 @@
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
@@ -34,7 +35,10 @@ describe('QuickRunWorkspaceComponent', () => {
 
   const mockRemoteFacade = {
     selectedRemote: selectedRemoteSignal,
-    orderedRemotes: orderedRemotesSignal,
+    getRemote: (name: string): Remote | undefined =>
+      [...orderedRemotesSignal(), ...activeRemotesSignal()].find(
+        r => r.name === name.replace(/:$/, '')
+      ),
     activeRemotes: activeRemotesSignal,
     canEmptyTrash: vi.fn(),
     emptyTrash: vi.fn().mockResolvedValue(true),
@@ -87,6 +91,7 @@ describe('QuickRunWorkspaceComponent', () => {
     await TestBed.configureTestingModule({
       imports: [QuickRunWorkspaceComponent],
       providers: [
+        { provide: RemoteDiskUsageService, useValue: { load: vi.fn() } },
         provideTranslateService(),
         { provide: QuickRunService, useValue: mockQuickRunService },
         { provide: RemoteFacadeService, useValue: mockRemoteFacade },

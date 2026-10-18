@@ -106,9 +106,7 @@ export class NavigationDispatcherService {
    */
   navigateToRemote(remoteOrName: Remote | string, tab: AppTab = 'general'): void {
     const remote =
-      typeof remoteOrName === 'string'
-        ? this.remoteFacade.activeRemotes().find(r => r.name === remoteOrName)
-        : remoteOrName;
+      typeof remoteOrName === 'string' ? this.remoteFacade.getRemote(remoteOrName) : remoteOrName;
 
     if (remote) {
       this.uiStateService.setMainView('main_menu');

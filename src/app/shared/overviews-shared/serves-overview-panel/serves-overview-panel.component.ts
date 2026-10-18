@@ -12,9 +12,9 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 
-import { Origin, ServeListItem } from '@app/types';
+import { Origin, ServeListItem, getExecutionOrigin } from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
-import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 @Component({
@@ -42,7 +42,7 @@ export class ServesOverviewPanelComponent {
   readonly serveClick = output<ServeListItem>();
   readonly stopServe = output<ServeListItem>();
 
-  private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly serveService = inject(ServeManagementService);
 
   readonly selectedOriginFilter = linkedSignal<string>(() => {
     const def = this.defaultOriginFilter();
@@ -51,29 +51,14 @@ export class ServesOverviewPanelComponent {
     return 'all';
   });
 
-  readonly rawServes = computed(() => {
-    const provided = this.serves();
-    if (provided !== undefined) return provided;
-    return this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? []);
-  });
+  readonly rawServes = computed(() => this.serves() ?? this.serveService.runningServes());
 
   readonly allServes = computed(() => {
     const all = this.rawServes();
     const filter = this.selectedOriginFilter();
     if (filter === 'all') return all;
 
-    if (filter === 'flow') {
-      return all.filter(s => s.origin === 'flow' || !!s.workflow_id);
-    }
-    if (filter === 'quickrun') {
-      return all.filter(s => (s.origin === 'quickrun' || !!s.quick_run_id) && !s.workflow_id);
-    }
-    if (filter === 'dashboard') {
-      return all.filter(
-        s => (s.origin === 'dashboard' || !s.origin) && !s.quick_run_id && !s.workflow_id
-      );
-    }
-    return all.filter(s => s.origin === filter);
+    return all.filter(s => getExecutionOrigin(s) === filter);
   });
 
   onServeClick(serve: ServeListItem): void {

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { PathService } from './path.service';
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { BackendService } from '../system/backend.service';
-import { signal } from '@angular/core';
+import { signal, computed } from '@angular/core';
 
 /**
  * Mock BackendService with a writable `isWindows` signal so each test can
@@ -48,6 +48,23 @@ describe('PathService', () => {
   });
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  it('updates path classification reactively without invalidating unchanged name sets', () => {
+    let reads = 0;
+    const local = computed(() => {
+      reads++;
+      return service.isLocalPath('drive:photos');
+    });
+    expect(local()).toBe(true);
+    service.setRemoteNames(['drive', 's3']);
+    expect(local()).toBe(false);
+    const afterChange = reads;
+    service.setRemoteNames(['s3', 'drive']);
+    expect(local()).toBe(false);
+    expect(reads).toBe(afterChange);
+    service.setRemoteNames([]);
+    expect(local()).toBe(true);
   });
 
   it('parses paths of the remote being created before it exists in the backend list', () => {

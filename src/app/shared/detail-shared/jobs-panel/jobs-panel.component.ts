@@ -7,15 +7,10 @@ import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { timer } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  JobInfo,
-  JobsPanelConfig,
-  StopJobEvent,
-  JOB_STATUS_BADGE_MAP,
-  JOB_ICON_MAP,
-} from '@app/types';
+import { JobInfo, JobsPanelConfig, JOB_STATUS_BADGE_MAP, JOB_ICON_MAP } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -36,10 +31,10 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 export class JobsPanelComponent {
   readonly config = input.required<JobsPanelConfig>();
 
-  readonly stopJob = output<StopJobEvent>();
   readonly deleteJob = output<number>();
 
   private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
   private readonly translate = inject(TranslateService);
   private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
   private readonly nowTick = toSignal(timer(0, 1000), { initialValue: 0 });
@@ -97,12 +92,12 @@ export class JobsPanelComponent {
     return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
   }
 
-  onStopJob(job: JobInfo): void {
-    this.stopJob.emit({
-      type: job.job_type,
-      remoteName: job.remote_name,
-      profileName: job.profile,
-    });
+  async onStopJob(job: JobInfo): Promise<void> {
+    try {
+      await this.jobService.stopJob(job.jobid, job.remote_name);
+    } catch (error) {
+      console.error('Failed to stop job:', error);
+    }
   }
 
   showJobDetails(job: JobInfo): void {

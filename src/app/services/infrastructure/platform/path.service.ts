@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import {
   ExplorerRoot,
   FileBrowserItem,
@@ -25,14 +25,13 @@ export type {
 
 @Injectable({ providedIn: 'root' })
 export class PathService {
-  private readonly remoteNames = new Set<string>();
+  private readonly remoteNames = signal(new Set<string>(), {
+    equal: (a, b) => a.size === b.size && [...a].every(name => b.has(name)),
+  });
   private readonly backendService = inject(BackendService);
 
   setRemoteNames(names: string[]): void {
-    this.remoteNames.clear();
-    for (const name of names) {
-      this.remoteNames.add(this.normalizeRemoteName(name));
-    }
+    this.remoteNames.set(new Set(names.map(name => this.normalizeRemoteName(name))));
   }
 
   enginePathStyle(): PathStyle {
@@ -88,15 +87,15 @@ export class PathService {
   }
 
   isLocalPath(path: string | string[]): boolean {
-    return pathUtils.isLocalPath(path, this.remoteNames, this.enginePathStyle());
+    return pathUtils.isLocalPath(path, this.remoteNames(), this.enginePathStyle());
   }
 
   isTrulyLocalPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): boolean {
-    return pathUtils.isTrulyLocalPath(path, this.remoteNames, pathStyle);
+    return pathUtils.isTrulyLocalPath(path, this.remoteNames(), pathStyle);
   }
 
   splitFsPath(fullPath: string | string[]): { remote: string; path: string } {
-    return pathUtils.splitFsPath(fullPath, this.remoteNames, this.enginePathStyle());
+    return pathUtils.splitFsPath(fullPath, this.remoteNames(), this.enginePathStyle());
   }
 
   splitLocalPath(

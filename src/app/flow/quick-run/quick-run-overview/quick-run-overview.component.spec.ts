@@ -6,7 +6,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { QuickRunOverviewComponent } from './quick-run-overview.component';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
@@ -32,11 +31,6 @@ describe('QuickRunOverviewComponent', () => {
     start: ReturnType<typeof vi.fn>;
     stop: ReturnType<typeof vi.fn>;
     openEditor: ReturnType<typeof vi.fn>;
-  };
-
-  let mockJobService: {
-    activeJobs: ReturnType<typeof signal>;
-    jobs: ReturnType<typeof signal>;
   };
 
   let mockAppSettingsService: {
@@ -75,7 +69,7 @@ describe('QuickRunOverviewComponent', () => {
   };
 
   let mockRemoteFacade: {
-    orderedRemotes: typeof orderedRemotesSignal;
+    remoteSummaries: typeof orderedRemotesSignal;
     openRemoteInFiles: ReturnType<typeof vi.fn>;
   };
 
@@ -85,7 +79,6 @@ describe('QuickRunOverviewComponent', () => {
       providers: [
         provideTranslateService(),
         { provide: QuickRunService, useValue: mockQuickRunService },
-        { provide: JobManagementService, useValue: mockJobService },
         { provide: AppSettingsService, useValue: mockAppSettingsService },
         { provide: LocalStorageService, useValue: mockLocalStorage },
         { provide: MatSnackBar, useValue: mockSnackBar },
@@ -125,11 +118,6 @@ describe('QuickRunOverviewComponent', () => {
       openEditor: vi.fn(),
     };
 
-    mockJobService = {
-      activeJobs: signal([]),
-      jobs: signal([]),
-    };
-
     mockAppSettingsService = {
       getSettingValue: vi.fn().mockResolvedValue(null),
       saveSetting: vi.fn().mockResolvedValue(undefined),
@@ -166,7 +154,7 @@ describe('QuickRunOverviewComponent', () => {
     };
 
     mockRemoteFacade = {
-      orderedRemotes: orderedRemotesSignal,
+      remoteSummaries: orderedRemotesSignal,
       openRemoteInFiles: vi.fn(),
     };
   });

@@ -284,6 +284,18 @@ describe('JobManagementService', () => {
       expect(areJobGroupsEqual({ r1: [jobA] }, { r1: [jobDifferentError] })).toBe(false);
     });
 
+    it.each<Partial<JobInfo>>([
+      { origin: 'quickrun' },
+      { quick_run_id: 'qr' },
+      { workflow_id: 'workflow' },
+      { execute_id: 'replacement' },
+      { backend_name: 'Other' },
+      { start_time: '2026-10-17T00:00:00Z' },
+    ])('invalidates groups when execution ownership or identity changes: %j', changes => {
+      const job = createMockJob({ remote_name: 'drive' });
+      expect(areJobGroupsEqual({ drive: [job] }, { drive: [{ ...job, ...changes }] })).toBe(false);
+    });
+
     it('returns false when remotes count, keys, or array lengths differ', () => {
       const job1 = createMockJob({ jobid: 1, remote_name: 'r1' });
       const job2 = createMockJob({ jobid: 2, remote_name: 'r2' });

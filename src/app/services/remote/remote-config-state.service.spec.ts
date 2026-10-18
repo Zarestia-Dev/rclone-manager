@@ -111,7 +111,7 @@ describe('RemoteConfigStateService', () => {
           provide: RemoteFacadeService,
           useValue: {
             loadRemotes: vi.fn().mockResolvedValue([]),
-            activeRemotes: signal([]),
+            getRemote: vi.fn(),
             cloneRemote: vi.fn().mockResolvedValue(null),
             getRemoteSettings: vi.fn().mockReturnValue({}),
           },

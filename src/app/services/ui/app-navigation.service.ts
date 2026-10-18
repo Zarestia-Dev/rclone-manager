@@ -33,7 +33,7 @@ export class AppNavigationService {
     this.history.restored$.pipe(takeUntilDestroyed()).subscribe(({ main }) => {
       this.ui.setTab(main.tab);
       this.ui.setFlowSubMode(main.flowMode);
-      const remote = this.remotes.activeRemotes().find(remote => remote.name === main.remote);
+      const remote = this.remotes.getRemote(main.remote);
       this.pendingRemote.set(main.remote && !remote ? main.remote : null);
       this.ui.setSelectedRemote(remote ?? null);
       this.quickRuns.select(main.quickRun);
@@ -50,7 +50,7 @@ export class AppNavigationService {
         this.pendingRemote.set(null);
         return;
       }
-      const remote = this.remotes.activeRemotes().find(remote => remote.name === name);
+      const remote = this.remotes.getRemote(name);
       if (remote) {
         untracked(() => {
           this.ui.setSelectedRemote(remote);

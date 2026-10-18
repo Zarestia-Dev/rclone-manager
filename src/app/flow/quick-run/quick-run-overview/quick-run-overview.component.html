@@ -204,7 +204,6 @@
                   [expanded]="panelOpenStates()['jobs']"
                   (expandedChange)="setPanelOpenState('jobs', $event)"
                   [showFilterChips]="true"
-                  (stopJob)="handleStopJob($event)"
                 ></app-jobs-overview-panel>
               }
               @case ('serves') {

@@ -473,7 +473,13 @@ describe('NavigationHistoryService', () => {
           },
         },
         { provide: QuickRunService, useValue: { selectedId: quickRun, select: quickRun.set } },
-        { provide: RemoteFacadeService, useValue: { activeRemotes: signal([remote()]) } },
+        {
+          provide: RemoteFacadeService,
+          useValue: {
+            getRemote: (name: string): Remote | null | undefined =>
+              name === remote()?.name ? remote() : undefined,
+          },
+        },
         {
           provide: WorkflowStateService,
           useValue: { currentWorkflow: signal(null), loadWorkflow: vi.fn() },
@@ -583,7 +589,7 @@ describe('Workspace restoration on startup', () => {
           },
         },
         { provide: QuickRunService, useValue: { selectedId: quickRun, select: quickRun.set } },
-        { provide: RemoteFacadeService, useValue: { activeRemotes: signal<Remote[]>([]) } },
+        { provide: RemoteFacadeService, useValue: { getRemote: (): undefined => undefined } },
         {
           provide: WorkflowStateService,
           useValue: { currentWorkflow: signal(null), loadWorkflow: vi.fn() },

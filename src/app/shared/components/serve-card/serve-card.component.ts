@@ -4,7 +4,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
+import {
+  ServeListItem,
+  TYPE_INFO,
+  DEFAULT_ICON,
+  URL_BASED_PROTOCOLS,
+  getExecutionOrigin,
+} from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
@@ -35,14 +41,13 @@ export class ServeCardComponent {
   cardClick = output<ServeListItem>();
 
   readonly isFlow = computed(() => {
-    const s = this.serve();
-    return s.origin === 'flow' || !!s.workflow_id;
+    return getExecutionOrigin(this.serve()) === 'flow';
   });
 
   readonly isQuickRun = computed(() => {
     if (this.isFlow()) return false;
     const s = this.serve();
-    if (s.origin === 'quickrun' || !!s.quick_run_id) return true;
+    if (getExecutionOrigin(s) === 'quickrun') return true;
     const profile = s.profile;
     if (!profile) return false;
     return this.quickRunService

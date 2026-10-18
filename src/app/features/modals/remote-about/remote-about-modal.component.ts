@@ -17,7 +17,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -62,7 +62,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly capacity = inject(RemoteDiskUsageService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly translate = inject(TranslateService);
   private readonly mapper = inject(RcloneValueMapperService);
@@ -84,7 +84,7 @@ export class RemoteAboutModalComponent implements OnInit {
   readonly errorAbout = signal<string | null>(null);
 
   // Facade signals — direct reference, no unnecessary computed wrapper
-  readonly diskUsage = this.remoteFacadeService.diskUsageSignal(this.displayName);
+  readonly diskUsage = this.capacity.usage(this.normalizedName);
 
   readonly usedPercentage = computed(() => {
     const usage = this.diskUsage();
@@ -217,13 +217,10 @@ export class RemoteAboutModalComponent implements OnInit {
   }
 
   async fetchDiskUsage(forceRefresh = false): Promise<void> {
-    await this.remoteFacadeService.getCachedOrFetchDiskUsage(
-      this.displayName,
-      this.normalizedName,
-      'dashboard',
-      this.readJobGroup,
-      forceRefresh
-    );
+    await this.capacity.load(this.normalizedName, {
+      group: this.readJobGroup,
+      force: forceRefresh,
+    });
   }
 
   private async stopReadJobs(): Promise<void> {

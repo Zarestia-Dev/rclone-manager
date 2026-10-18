@@ -102,7 +102,12 @@ describe('AppNavigationService', () => {
           },
         },
         { provide: QuickRunService, useValue: { selectedId: quickRun, select: quickRun.set } },
-        { provide: RemoteFacadeService, useValue: { activeRemotes: remotes } },
+        {
+          provide: RemoteFacadeService,
+          useValue: {
+            getRemote: (name: string): Remote | undefined => remotes().find(r => r.name === name),
+          },
+        },
       ],
     });
     service = TestBed.inject(AppNavigationService);
