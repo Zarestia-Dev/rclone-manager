@@ -1,4 +1,4 @@
-name: 'Release Server'
+name: "Release Server"
 
 on:
   workflow_dispatch:
@@ -67,10 +67,10 @@ jobs:
               name: `RClone Manager Headless v${process.env.VERSION}`,
               body: [
                 '## Server',
-                '`rclone-manager-server_*` archives contain the standalone web server with embedded browser UI, translations, and templates.',
+                '`server-<os>-<arch>-<version>` executables contain the standalone web server with embedded browser UI, translations, and templates (.exe on Windows).',
                 'Linux, Windows, and macOS: x86_64 and aarch64. No Tauri or desktop session required.',
                 'Linux: glibc 2.35+ and the D-Bus runtime library; FUSE is needed for mounts.',
-                'Extract the whole archive and run rclone-manager-server (with .exe on Windows).',
+                'Download the executable for your OS and architecture. On Linux/macOS, run chmod +x on the downloaded file before starting it.',
                 '',
                 '## Server + Tray',
                 'The rclone-manager-headless native installers include a tray and native updater.',
@@ -130,7 +130,7 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: './backend -> target'
+          workspaces: "./backend -> target"
           key: server-${{ matrix.target }}
       - name: Build browser UI
         run: |
@@ -138,29 +138,7 @@ jobs:
           npm run build
       - name: Build standalone server
         run: cargo build --locked --release --manifest-path backend/Cargo.toml -p rclone-manager-server --target ${{ matrix.target }}
-      - name: Package server with resources
-        shell: bash
-        env:
-          VERSION: ${{ needs.prepare-release.outputs.version }}
-          TARGET: ${{ matrix.target }}
-          PACKAGE_OS: ${{ matrix.os }}
-          PACKAGE_ARCH: ${{ matrix.arch }}
-        run: |
-          set -euo pipefail
-          package="rclone-manager-server_${VERSION}_${PACKAGE_OS}_${PACKAGE_ARCH}"
-          binary=rclone-manager-server
-          if [ "$PACKAGE_OS" = windows ]; then binary="$binary.exe"; fi
-          mkdir -p "staging/$package" artifacts
-          cp "backend/target/$TARGET/release/$binary" "staging/$package/"
-          cp backend/server/README.md "staging/$package/README.md"
-          cp LICENSE "staging/$package/"
-          if [ "$PACKAGE_OS" = windows ]; then
-            export SERVER_PACKAGE="$package"
-            pwsh -NoProfile -Command 'Compress-Archive -Path "staging/$env:SERVER_PACKAGE" -DestinationPath "artifacts/$env:SERVER_PACKAGE.zip"'
-          else
-            tar -czf "artifacts/$package.tar.gz" -C staging "$package"
-          fi
-      - name: Sign standalone server update artifacts
+      - name: Prepare signed standalone server executable
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -185,13 +163,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
       - uses: actions/download-artifact@v4
         with:
           pattern: server-*
           path: artifacts
-          merge-multiple: true
-      - name: Attach server archives to the shared draft
-        working-directory: artifacts
+      - name: Attach server executables to the shared draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -203,5 +183,5 @@ jobs:
             echo "Refusing to change a published release" >&2
             exit 1
           fi
-          sha256sum rclone-manager-server_* > server-SHA256SUMS
-          gh release upload "$tag" ./* --clobber
+          find artifacts -type f ! -name updater.json -exec gh release upload "$tag" --clobber {} +
+          node scripts/publish-custom-updater.cjs "$tag" "$VERSION" artifacts

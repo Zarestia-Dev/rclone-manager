@@ -1,4 +1,4 @@
-name: 'Release Portable'
+name: "Release Portable"
 
 on:
   workflow_dispatch:
@@ -12,23 +12,32 @@ jobs:
       matrix:
         include:
           # --- Windows ---
-          - platform: 'windows-latest'
-            os: 'windows'
-            arch: 'x86_64'
-            rust_target: 'x86_64-pc-windows-msvc'
-          - platform: 'windows-latest'
-            os: 'windows'
-            arch: 'aarch64'
-            rust_target: 'aarch64-pc-windows-msvc'
+          - platform: "windows-latest"
+            os: "windows"
+            arch: "x86_64"
+            rust_target: "x86_64-pc-windows-msvc"
+          - platform: "windows-latest"
+            os: "windows"
+            arch: "aarch64"
+            rust_target: "aarch64-pc-windows-msvc"
           # --- Linux ---
-          - platform: 'ubuntu-22.04'
-            os: 'linux'
-            arch: 'x86_64'
-            rust_target: 'x86_64-unknown-linux-gnu'
-          - platform: 'ubuntu-22.04-arm'
-            os: 'linux'
-            arch: 'aarch64'
-            rust_target: 'aarch64-unknown-linux-gnu'
+          - platform: "ubuntu-22.04"
+            os: "linux"
+            arch: "x86_64"
+            rust_target: "x86_64-unknown-linux-gnu"
+          - platform: "ubuntu-22.04-arm"
+            os: "linux"
+            arch: "aarch64"
+            rust_target: "aarch64-unknown-linux-gnu"
+          # --- macOS ---
+          - platform: "macos-15-intel"
+            os: "macos"
+            arch: "x86_64"
+            rust_target: "x86_64-apple-darwin"
+          - platform: "macos-15"
+            os: "macos"
+            arch: "aarch64"
+            rust_target: "aarch64-apple-darwin"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -38,13 +47,13 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.os == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils zip
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -54,34 +63,24 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './backend -> target'
+          workspaces: "./backend -> target"
           key: portable-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
         run: npm install
 
       - name: Build Tauri (Portable)
+        if: matrix.os != 'macos'
         run: |
           npm run tauri build -- --features portable --target ${{ matrix.rust_target }} --no-bundle
+
+      - name: Build portable macOS app bundle
+        if: matrix.os == 'macos'
+        run: npm run tauri build -- --features portable --target ${{ matrix.rust_target }} --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Get Version
         id: get_version
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
-
-      # --- Packaging for Windows ---
-      - name: Sign portable update artifacts
-        shell: bash
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          UPDATE_OS: ${{ matrix.os }}
-          UPDATE_ARCH: ${{ matrix.arch }}
-          UPDATE_TARGET: ${{ matrix.rust_target }}
-          UPDATE_VERSION: ${{ steps.get_version.outputs.VERSION }}
-        run: |
-          binary=rclone-manager
-          if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
-          node scripts/create-update-manifest.cjs portable "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" updater-assets
 
       - name: Prepare Package (Windows)
         if: matrix.os == 'windows'
@@ -90,7 +89,8 @@ jobs:
           $version = "${{ steps.get_version.outputs.VERSION }}"
           $arch = "${{ matrix.arch }}"
           $os = "${{ matrix.os }}"
-          $dirName = "RClone.Manager_${version}_${arch}_${os}_portable"
+          $dirName = "RCloneManager"
+          New-Item -ItemType Directory -Force -Path updater-assets
 
           # Create structure
           New-Item -ItemType Directory -Force -Path $dirName
@@ -112,13 +112,13 @@ jobs:
           Copy-Item "backend/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
 
           # 3. Copy Localized READMEs (all supported languages)
-          Get-ChildItem "resources/portable/README_*" -Exclude "*linux*" | ForEach-Object {
+          Get-ChildItem "resources/portable/README_*" -Exclude "*linux*", "*macos*" | ForEach-Object {
               $destName = $_.Name
               (Get-Content $_.FullName).Replace('${VERSION}', $version) | Set-Content "$dirName/$destName"
           }
 
           # Zip it
-          Compress-Archive -Path $dirName -DestinationPath "${dirName}.zip"
+          Compress-Archive -Path $dirName -DestinationPath "updater-assets/portable-${os}-${arch}-${version}.zip"
 
       # --- Packaging for Linux ---
       - name: Prepare Package (Linux)
@@ -128,10 +128,10 @@ jobs:
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           ARCH="${{ matrix.arch }}"
           OS="${{ matrix.os }}"
-          DIR_NAME="RClone.Manager_${VERSION}_${ARCH}_${OS}_portable"
+          DIR_NAME="RCloneManager"
 
           # Create structure
-          mkdir -p "$DIR_NAME/config"
+          mkdir -p "$DIR_NAME/config" updater-assets
 
           # 1. Create settings.json
           echo '{
@@ -154,19 +154,90 @@ jobs:
           done
 
           # Compress
-          tar -czvf "${DIR_NAME}.tar.gz" "$DIR_NAME"
+          zip -qr "updater-assets/portable-${OS}-${ARCH}-${VERSION}.zip" "$DIR_NAME"
+
+      - name: Prepare Package (macOS)
+        if: matrix.os == 'macos'
+        shell: bash
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          ARCH: ${{ matrix.arch }}
+          TARGET: ${{ matrix.rust_target }}
+        run: |
+          mkdir -p updater-assets
+          "backend/target/$TARGET/release/bundle/macos/RClone Manager.app/Contents/MacOS/rclone-manager" --help
+          ditto -c -k --norsrc --keepParent "backend/target/$TARGET/release/bundle/macos/RClone Manager.app" "updater-assets/portable-macos-${ARCH}-${VERSION}.zip"
+
+      - name: Sign portable archive and executable
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATE_OS: ${{ matrix.os }}
+          UPDATE_ARCH: ${{ matrix.arch }}
+          UPDATE_TARGET: ${{ matrix.rust_target }}
+          UPDATE_VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          binary="backend/target/$UPDATE_TARGET/release/rclone-manager"
+          member=RCloneManager/RCloneManager
+          if [ "$UPDATE_OS" = windows ]; then
+            binary="$binary.exe"
+            member="$member.exe"
+          elif [ "$UPDATE_OS" = macos ]; then
+            member='RClone Manager.app/Contents/MacOS/rclone-manager'
+            binary="backend/target/$UPDATE_TARGET/release/bundle/macos/$member"
+          fi
+          archive="updater-assets/portable-$UPDATE_OS-$UPDATE_ARCH-$UPDATE_VERSION.zip"
+          node scripts/create-update-manifest.cjs portable "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "$binary" updater-assets "$archive" "$member"
 
       # --- Upload ---
-      - name: Upload to Release
+      - name: Collect portable release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.os }}-${{ matrix.arch }}
+          path: updater-assets/*
+          if-no-files-found: error
+
+  upload-portable:
+    needs: build-portable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Android publishes into the same updater.json. Serialize read/merge/upload.
+    concurrency:
+      group: publish-custom-updater-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: portable-*
+          path: artifacts
+      - name: Get Version
+        id: get_version
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
+      - name: Check release before uploading packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: node scripts/publish-custom-updater.cjs --check "v$VERSION" "$VERSION"
+      - name: Upload portable packages
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
+          name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
-          files: |
-            *.zip
-            *.tar.gz
-            updater-assets/*
+          files: artifacts/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish custom update catalog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: node scripts/publish-custom-updater.cjs "v$VERSION" "$VERSION" artifacts

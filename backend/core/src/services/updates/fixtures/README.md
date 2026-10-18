@@ -16,6 +16,14 @@ access or release secrets.
 The payload signature is stored in `manifest.json`; no separate signature file
 is needed for the payload.
 
+`portable-catalog.json`, `portable-public.key`, and the three `portable-*.zip`
+archives exercise the release producer and consumer together. Each ZIP contains
+the harmless `payload.txt` under its platform's executable path and a sample
+configuration or app bundle. Metadata, ZIP bytes, and executable bytes have
+independent Tauri signatures from a separate disposable key. Tests check both
+verification stages and full macOS bundle replacement/rollback, including
+`Info.plist` and signature resources. The private key was discarded.
+
 `process-app.sh`, `process-99.0.0.json`, `process-99.0.1.json`, their manifest
 signatures, and `process-public.key` form a second fixture set. Linux x86_64
 process tests install this signed shell script and exercise startup commitment,

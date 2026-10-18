@@ -118,7 +118,7 @@ jobs:
         id: release_version
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           TAURI_FRONTEND_PATH: ${{ github.workspace }}
           TAURI_APP_PATH: ${{ github.workspace }}/backend/desktop
@@ -128,6 +128,7 @@ jobs:
           TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: true
         with:
           projectPath: backend/desktop
+          uploadUpdaterSignatures: false
           tagName: v__VERSION__
           releaseName: 'RClone Manager v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'

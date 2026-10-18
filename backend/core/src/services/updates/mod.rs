@@ -3,9 +3,13 @@ mod android;
 #[cfg(feature = "updater")]
 pub mod binary;
 #[cfg(feature = "updater")]
+mod download;
+#[cfg(feature = "updater")]
 pub mod health;
 #[cfg(feature = "updater")]
 pub mod install;
+#[cfg(feature = "updater")]
+mod manifest;
 pub mod policy;
 #[cfg(feature = "updater")]
 mod process_tree;
@@ -88,11 +92,7 @@ async fn fetch_update_inner(
     .map_err(|error| {
         crate::utils::types::updater::UpdaterError::UpdateUnavailable(error.to_string())
     })??;
-    let Some(release) = releases
-        .into_iter()
-        .filter(|r| !r.draft)
-        .find(|r| is_release_for_channel(r, channel, app.product().release_prefix))
-    else {
+    let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
         updater_state.data.lock().state = UpdateState::Idle;
         return Ok(None);
@@ -129,10 +129,10 @@ async fn fetch_update_inner(
             let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
                 match installation.method {
                     policy::UpdateMethod::Tauri => {
-                        app.host().check_update(&release, &mut meta).await
+                        app.host().check_update(release, &mut meta).await
                     }
                     policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
-                        signed::check(app, &release, &installation).await
+                        signed::check(app, release, &installation).await
                     }
                     policy::UpdateMethod::Unavailable => Ok(None),
                 }
@@ -237,9 +237,73 @@ fn is_release_for_channel(
     }
 }
 
+fn latest_release<'a>(
+    releases: &'a [github_client::Release],
+    channel: &str,
+    release_prefix: &str,
+) -> Option<&'a github_client::Release> {
+    releases
+        .iter()
+        .filter(|release| {
+            !release.draft && is_release_for_channel(release, channel, release_prefix)
+        })
+        .reduce(|latest, candidate| {
+            if is_version_newer(&latest.tag_name, &candidate.tag_name) {
+                candidate
+            } else {
+                latest
+            }
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn latest_release_compares_versions_independently_of_list_order() {
+        let mut releases: Vec<_> = [
+            "v1.2.2",
+            "v1.3.0",
+            "v1.10.0",
+            "v1.11.0-beta.1",
+            "headless-v9.0.0",
+        ]
+        .into_iter()
+        .map(|tag| github_client::Release {
+            tag_name: tag.into(),
+            prerelease: false,
+            draft: false,
+            assets: vec![],
+            body: None,
+            published_at: None,
+            html_url: String::new(),
+        })
+        .collect();
+        let mut draft = releases[0].clone();
+        draft.tag_name = "v99.0.0".into();
+        draft.draft = true;
+        releases.push(draft);
+        for _ in 0..releases.len() {
+            assert_eq!(
+                latest_release(&releases, "stable", "v").unwrap().tag_name,
+                "v1.10.0"
+            );
+            assert_eq!(
+                latest_release(&releases, "beta", "v").unwrap().tag_name,
+                "v1.11.0-beta.1"
+            );
+            assert_eq!(
+                latest_release(&releases, "stable", "headless-v")
+                    .unwrap()
+                    .tag_name,
+                "headless-v9.0.0"
+            );
+            releases.rotate_left(1);
+        }
+        assert!(latest_release(&[], "stable", "v").is_none());
+        assert!(latest_release(&releases, "stable", "other-v").is_none());
+    }
 
     #[test]
     fn release_stream_follows_host_not_compiled_features() {

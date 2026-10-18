@@ -47,7 +47,7 @@ jobs:
           retention-days: 1
       - run: npm run test:ci
       - name: Release metadata and update manifest tests
-        run: node --test scripts/create-update-manifest.test.cjs scripts/release-version.test.cjs
+        run: node --test scripts/create-update-manifest.test.cjs scripts/publish-custom-updater.test.cjs scripts/release-version.test.cjs
 
   validate:
     name: Check on ${{ matrix.os }}

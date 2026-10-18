@@ -1,5 +1,6 @@
 //! Installation ownership is independent of the UI/runtime and of file writability.
 use crate::context::AppHandle;
+use crate::utils::app::paths::{app_bundle_path, installation_directory};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -181,10 +182,23 @@ pub(crate) fn writable_binary(path: &std::path::Path) -> std::io::Result<()> {
             ));
         }
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| std::io::Error::other("Missing installation directory"))?;
-    tempfile::NamedTempFile::new_in(parent)?.close()
+    if let Some(bundle) = app_bundle_path(path) {
+        let metadata = std::fs::symlink_metadata(bundle)?;
+        if !metadata.is_dir() {
+            return Err(std::io::Error::other("Invalid app bundle"));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            if metadata.uid() != unsafe { libc::geteuid() } {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "App bundle belongs to another user",
+                ));
+            }
+        }
+    }
+    tempfile::NamedTempFile::new_in(installation_directory(path)?)?.close()
 }
 
 #[cfg(target_os = "linux")]
@@ -241,6 +255,33 @@ fn package_owner(_path: &std::path::Path) -> Option<InstallationKind> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn bundle_permissions_are_checked_at_the_directory_that_will_be_replaced() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let binary = root
+            .path()
+            .join("Portable.app/Contents/MacOS/rclone-manager");
+        let inner = binary.parent().unwrap();
+        std::fs::create_dir_all(inner).unwrap();
+        std::fs::write(&binary, b"app").unwrap();
+        assert!(writable_binary(&binary).is_ok());
+
+        std::fs::set_permissions(inner, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let with_read_only_inner = writable_binary(&binary);
+        std::fs::set_permissions(inner, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(with_read_only_inner.is_ok());
+
+        // Root bypasses directory permissions; the other assertions still apply there.
+        if unsafe { libc::geteuid() } != 0 {
+            std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+            let with_read_only_parent = writable_binary(&binary);
+            std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+            assert!(with_read_only_parent.is_err());
+        }
+    }
 
     #[test]
     fn package_ownership_overrides_repackaged_and_portable_builds() {

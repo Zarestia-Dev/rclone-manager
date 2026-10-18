@@ -1,4 +1,9 @@
 pub mod app;
+#[cfg(any(
+    feature = "updater",
+    not(any(target_os = "android", target_os = "ios"))
+))]
+pub(crate) mod archive;
 pub mod constants;
 pub mod format;
 pub mod github_client;

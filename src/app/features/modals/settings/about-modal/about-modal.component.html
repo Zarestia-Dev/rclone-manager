@@ -195,188 +195,181 @@
             }
           </div>
 
-          @if (updaterEnabled()) {
-            @if (appInstallationFailure()) {
-              <div class="error-entry" role="alert">{{ appInstallationFailure() }}</div>
-            }
-            @if (appReadyToRestart()) {
-              <ng-container
-                *ngTemplateOutlet="
-                  restartCard;
-                  context: {
-                    title: 'modals.about.readyToRestart',
-                    version: appUpdateAvailable()?.version,
-                    desc: 'modals.about.restartDescription',
-                    action: finishUpdate.bind(this),
-                    restarting: restartingApp() || appIsCancelling(),
-                    discard: cancelAppUpdate.bind(this),
-                  }
-                "
-              ></ng-container>
-            } @else if (appUpdateAvailable()) {
-              @let update = appUpdateAvailable()!;
-              <div class="update-card available">
-                <div class="update-header">
-                  <mat-icon svgIcon="circle-up"></mat-icon>
-                  <div class="update-title">
-                    <h4>{{ 'modals.about.updateAvailable' | translate }}</h4>
-                    <span class="new-version">
-                      {{ 'modals.about.version' | translate }}
-                      {{ update.version }}
-                      @if (appUpdateReleaseChannel()) {
-                        <span class="release-badge badge-{{ appUpdateReleaseChannel() }}">
-                          {{ getChannelLabel(appUpdateReleaseChannel()) | translate }}
-                        </span>
-                      }
+          @if (appInstallationFailure()) {
+            <div class="error-entry" role="alert">{{ appInstallationFailure() }}</div>
+          }
+          @if (appReadyToRestart()) {
+            <ng-container
+              *ngTemplateOutlet="
+                restartCard;
+                context: {
+                  title: 'modals.about.readyToRestart',
+                  version: appUpdateAvailable()?.version,
+                  desc: 'modals.about.restartDescription',
+                  action: finishUpdate.bind(this),
+                  restarting: restartingApp() || appIsCancelling(),
+                  discard: cancelAppUpdate.bind(this),
+                }
+              "
+            ></ng-container>
+          } @else if (appUpdateAvailable()) {
+            @let update = appUpdateAvailable()!;
+            <div class="update-card available">
+              <div class="update-header">
+                <mat-icon svgIcon="circle-up"></mat-icon>
+                <div class="update-title">
+                  <h4>{{ 'modals.about.updateAvailable' | translate }}</h4>
+                  <span class="new-version">
+                    {{ 'modals.about.version' | translate }}
+                    {{ update.version }}
+                    @if (appUpdateReleaseChannel()) {
+                      <span class="release-badge badge-{{ appUpdateReleaseChannel() }}">
+                        {{ getChannelLabel(appUpdateReleaseChannel()) | translate }}
+                      </span>
+                    }
+                  </span>
+                </div>
+              </div>
+
+              @if (update.releaseNotes) {
+                <button matButton="outlined" class="whats-new-button" (click)="showWhatsNew('app')">
+                  <mat-icon svgIcon="file-lines"></mat-icon>
+                  {{ 'modals.about.whatsNew' | translate }}
+                </button>
+              }
+
+              @if (appDownloadInProgress()) {
+                <div class="download-progress">
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="appDownloadPercentage()"
+                  ></mat-progress-bar>
+                  <div class="progress-info">
+                    <span>{{ 'modals.about.downloading' | translate }}</span>
+                    <span>
+                      {{ appDownloadProgress() | formatFileSize }} /
+                      {{ appDownloadTotal() | formatFileSize }}
                     </span>
                   </div>
                 </div>
+              }
 
-                @if (update.releaseNotes) {
-                  <button
-                    matButton="outlined"
-                    class="whats-new-button"
-                    (click)="showWhatsNew('app')"
-                  >
-                    <mat-icon svgIcon="file-lines"></mat-icon>
-                    {{ 'modals.about.whatsNew' | translate }}
+              @if (updateInstructions(); as instructions) {
+                <div class="managed-update-notice">
+                  <div class="managed-info">
+                    <mat-icon svgIcon="circle-info"></mat-icon>
+                    <p>
+                      {{
+                        appInstallationReason() || ('modals.about.managedBuildNotice' | translate)
+                      }}
+                    </p>
+                  </div>
+                  @if (instructions.command) {
+                    <button
+                      class="command-block"
+                      [appCopyToClipboard]="instructions.command"
+                      [attr.title]="'common.copy' | translate"
+                    >
+                      <code>{{ instructions.command }}</code>
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
+                  }
+                </div>
+                <div class="update-buttons">
+                  @for (link of instructions.links; track link.url) {
+                    <a
+                      matButton="filled"
+                      [href]="link.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <mat-icon svgIcon="open-link"></mat-icon>
+                      {{ link.label | translate }}
+                    </a>
+                  }
+                  <button matButton="outlined" (click)="skipUpdate()">
+                    {{ 'modals.about.skipVersion' | translate }}
                   </button>
-                }
-
-                @if (appDownloadInProgress()) {
-                  <div class="download-progress">
-                    <mat-progress-bar
-                      mode="determinate"
-                      [value]="appDownloadPercentage()"
-                    ></mat-progress-bar>
-                    <div class="progress-info">
-                      <span>{{ 'modals.about.downloading' | translate }}</span>
-                      <span>
-                        {{ appDownloadProgress() | formatFileSize }} /
-                        {{ appDownloadTotal() | formatFileSize }}
-                      </span>
-                    </div>
-                  </div>
-                }
-
-                @if (updateInstructions(); as instructions) {
-                  <div class="managed-update-notice">
-                    <div class="managed-info">
-                      <mat-icon svgIcon="circle-info"></mat-icon>
-                      <p>
-                        {{
-                          appInstallationReason() || ('modals.about.managedBuildNotice' | translate)
-                        }}
-                      </p>
-                    </div>
-                    @if (instructions.command) {
-                      <button
-                        class="command-block"
-                        [appCopyToClipboard]="instructions.command"
-                        [attr.title]="'common.copy' | translate"
-                      >
-                        <code>{{ instructions.command }}</code>
-                        <mat-icon svgIcon="copy"></mat-icon>
-                      </button>
+                </div>
+              } @else {
+                <div class="update-buttons">
+                  <button
+                    matButton="filled"
+                    (click)="installUpdate()"
+                    [disabled]="appUpdateInProgress() || appDownloadInProgress()"
+                  >
+                    <mat-icon
+                      [svgIcon]="
+                        appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'circle-up'
+                      "
+                    ></mat-icon>
+                    @if (appUpdateInProgress() || appDownloadInProgress()) {
+                      {{
+                        appDownloadInProgress()
+                          ? ('modals.about.downloading' | translate)
+                          : ('modals.about.installing' | translate)
+                      }}
+                    } @else {
+                      {{ 'modals.about.installUpdate' | translate }}
                     }
-                  </div>
-                  <div class="update-buttons">
-                    @for (link of instructions.links; track link.url) {
-                      <a
-                        matButton="filled"
-                        [href]="link.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <mat-icon svgIcon="open-link"></mat-icon>
-                        {{ link.label | translate }}
-                      </a>
-                    }
+                  </button>
+                  @if (appDownloadInProgress()) {
+                    <button
+                      matButton="outlined"
+                      color="warn"
+                      (click)="cancelAppUpdate()"
+                      [disabled]="appIsCancelling()"
+                    >
+                      <mat-icon [svgIcon]="appIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
+                      {{ 'common.cancel' | translate }}
+                    </button>
+                  } @else {
                     <button matButton="outlined" (click)="skipUpdate()">
                       {{ 'modals.about.skipVersion' | translate }}
                     </button>
-                  </div>
-                } @else {
-                  <div class="update-buttons">
-                    <button
-                      matButton="filled"
-                      (click)="installUpdate()"
-                      [disabled]="appUpdateInProgress() || appDownloadInProgress()"
-                    >
-                      <mat-icon
-                        [svgIcon]="
-                          appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'circle-up'
-                        "
-                      ></mat-icon>
-                      @if (appUpdateInProgress() || appDownloadInProgress()) {
-                        {{
-                          appDownloadInProgress()
-                            ? ('modals.about.downloading' | translate)
-                            : ('modals.about.installing' | translate)
-                        }}
-                      } @else {
-                        {{ 'modals.about.installUpdate' | translate }}
-                      }
-                    </button>
-                    @if (appDownloadInProgress()) {
-                      <button
-                        matButton="outlined"
-                        color="warn"
-                        (click)="cancelAppUpdate()"
-                        [disabled]="appIsCancelling()"
-                      >
-                        <mat-icon [svgIcon]="appIsCancelling() ? 'spinner' : 'ban'"></mat-icon>
-                        {{ 'common.cancel' | translate }}
-                      </button>
-                    } @else {
-                      <button matButton="outlined" (click)="skipUpdate()">
-                        {{ 'modals.about.skipVersion' | translate }}
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-            } @else {
-              <ng-container
-                *ngTemplateOutlet="upToDateCard; context: { $implicit: 'modals.about.upToDate' }"
-              ></ng-container>
-            }
-
-            <button
-              matButton="outlined"
-              (click)="checkForUpdates()"
-              [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
-            >
-              <mat-icon [svgIcon]="appIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
-              {{
-                (appIsChecking() ? 'modals.about.checking' : 'modals.about.checkUpdates')
-                  | translate
-              }}
-            </button>
-
-            <div class="settings-section">
-              <h4>{{ 'modals.about.updateSettings' | translate }}</h4>
-              <ng-container
-                *ngTemplateOutlet="
-                  settingsControls;
-                  context: {
-                    autoCheck: appAutoCheckUpdates(),
-                    channel: appUpdateChannel(),
-                    channels: channels,
-                    disabled: appIsChecking() || appDownloadInProgress() || appReadyToRestart(),
                   }
-                "
+                </div>
+              }
+            </div>
+          } @else {
+            <ng-container
+              *ngTemplateOutlet="upToDateCard; context: { $implicit: 'modals.about.upToDate' }"
+            ></ng-container>
+          }
+
+          <button
+            matButton="outlined"
+            (click)="checkForUpdates()"
+            [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
+          >
+            <mat-icon [svgIcon]="appIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
+            {{
+              (appIsChecking() ? 'modals.about.checking' : 'modals.about.checkUpdates') | translate
+            }}
+          </button>
+
+          <div class="settings-section">
+            <h4>{{ 'modals.about.updateSettings' | translate }}</h4>
+            <ng-container
+              *ngTemplateOutlet="
+                settingsControls;
+                context: {
+                  autoCheck: appAutoCheckUpdates(),
+                  channel: appUpdateChannel(),
+                  channels: channels,
+                  disabled: appIsChecking() || appDownloadInProgress() || appReadyToRestart(),
+                }
+              "
+            ></ng-container>
+          </div>
+
+          @if (appSkippedVersions().length > 0) {
+            <div class="skipped-section">
+              <h4>{{ 'modals.about.skippedUpdates' | translate }}</h4>
+              <ng-container
+                *ngTemplateOutlet="skippedList; context: { versions: appSkippedVersions() }"
               ></ng-container>
             </div>
-
-            @if (appSkippedVersions().length > 0) {
-              <div class="skipped-section">
-                <h4>{{ 'modals.about.skippedUpdates' | translate }}</h4>
-                <ng-container
-                  *ngTemplateOutlet="skippedList; context: { versions: appSkippedVersions() }"
-                ></ng-container>
-              </div>
-            }
           }
         </div>
       }

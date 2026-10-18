@@ -1,5 +1,6 @@
 //! Stage verified artifacts; only the helper replaces a stopped application.
-use super::signed::{Manifest, PUBLIC_KEY, verify_signature};
+use super::manifest::{Manifest, PUBLIC_KEY};
+use crate::utils::app::paths::{app_bundle_path, installation_directory};
 use crate::utils::types::updater::InstallOutcome;
 use std::{
     io::Write,
@@ -37,7 +38,7 @@ pub(crate) fn prepare(
     prune_completed(&target);
     let directory = tempfile::Builder::new()
         .prefix(".rcman-update-")
-        .tempdir_in(target.parent().ok_or("Missing installation directory")?)
+        .tempdir_in(installation_directory(&target).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
     let plan = StagedUpdate {
         kind: kind.into(),
@@ -188,10 +189,9 @@ fn preserve_previous(directory: &Path, target: &Path) -> std::io::Result<()> {
 fn read_manifest(directory: &Path, expected_kind: &str, key: &str) -> std::io::Result<Manifest> {
     let bytes = std::fs::read(directory.join("manifest.json"))?;
     let signature = std::fs::read_to_string(directory.join("manifest.sig"))?;
-    verify_signature(&bytes, &signature, key).map_err(std::io::Error::other)?;
-    let manifest: Manifest = serde_json::from_slice(&bytes)?;
+    let manifest = Manifest::from_signed(&bytes, &signature, key).map_err(std::io::Error::other)?;
     manifest
-        .validate(&manifest.version, expected_kind, &super::signed::target())
+        .validate(&manifest.version, expected_kind, &super::manifest::target())
         .map_err(std::io::Error::other)?;
     Ok(manifest)
 }
@@ -206,16 +206,52 @@ fn install_staged(
     if !super::is_version_newer(current_version, &manifest.version) {
         return Err("Update version must increase across supervisor handoffs".into());
     }
-    manifest.verify_payload_with_key(
-        &std::fs::read(directory.join("payload")).map_err(|e| e.to_string())?,
-        key,
-    )?;
-    replace_verified(directory, &plan.target).map_err(|e| e.to_string())?;
+    let payload = std::fs::read(directory.join("payload")).map_err(|e| e.to_string())?;
+    manifest.verify_install_payload(&payload, key)?;
+    if let Some(root) = manifest.bundle_root() {
+        replace_bundle(directory, &plan.target, &payload, root, &manifest, key)?;
+    } else {
+        replace_verified(directory, &plan.target).map_err(|e| e.to_string())?;
+    }
     manifest.verify_payload_with_key(
         &std::fs::read(&plan.target).map_err(|e| e.to_string())?,
         key,
     )?;
     Ok(manifest.version)
+}
+
+fn replace_bundle(
+    directory: &Path,
+    target: &Path,
+    payload: &[u8],
+    root: &str,
+    manifest: &Manifest,
+    key: &str,
+) -> Result<(), String> {
+    use crate::utils::archive::extract_zip_bundle;
+    super::policy::writable_binary(target).map_err(|e| e.to_string())?;
+    let bundle = app_bundle_path(target).ok_or("Portable app is not in a macOS bundle")?;
+    if !directory.join("previous").is_file() {
+        return Err("Missing previous executable".into());
+    }
+    let candidate = directory.join("candidate");
+    extract_zip_bundle(payload, &candidate, root)?;
+    let candidate_bundle = candidate.join(root);
+    let binary = candidate_bundle.join(target.strip_prefix(bundle).map_err(|e| e.to_string())?);
+    if !candidate_bundle.join("Contents/Info.plist").is_file() {
+        return Err("Portable app bundle has no Info.plist".into());
+    }
+    manifest.verify_payload_with_key(&std::fs::read(&binary).map_err(|e| e.to_string())?, key)?;
+    std::fs::set_permissions(
+        &binary,
+        std::fs::metadata(target)
+            .map_err(|e| e.to_string())?
+            .permissions(),
+    )
+    .map_err(|e| e.to_string())?;
+    std::fs::rename(bundle, directory.join("previous.app")).map_err(|e| e.to_string())?;
+    std::fs::rename(candidate_bundle, bundle).map_err(|e| e.to_string())?;
+    sync_parent(bundle).map_err(|e| e.to_string())
 }
 
 fn replace_verified(directory: &Path, target: &Path) -> std::io::Result<()> {
@@ -255,6 +291,15 @@ fn sync_parent(target: &Path) -> std::io::Result<()> {
 }
 
 pub(super) fn restore_previous(directory: &Path, target: &Path) -> std::io::Result<()> {
+    if let Some(bundle) = app_bundle_path(target)
+        && directory.join("previous.app").is_dir()
+    {
+        if bundle.exists() {
+            std::fs::remove_dir_all(bundle)?;
+        }
+        std::fs::rename(directory.join("previous.app"), bundle)?;
+        return sync_parent(bundle);
+    }
     let previous = directory.join("previous");
     if !previous.is_file() {
         return Err(std::io::Error::other("Missing previous executable"));
@@ -274,7 +319,7 @@ pub(super) fn restore_previous(directory: &Path, target: &Path) -> std::io::Resu
 pub(super) fn validate_stage(directory: &Path, target: &Path) -> std::io::Result<()> {
     let metadata = std::fs::symlink_metadata(directory)?;
     if !metadata.is_dir()
-        || directory.parent() != target.parent()
+        || directory.parent() != Some(installation_directory(target)?)
         || !directory
             .file_name()
             .is_some_and(|n| n.to_string_lossy().starts_with(".rcman-update-"))
@@ -323,7 +368,7 @@ fn supervisor_active(directory: &Path, target: &Path) -> bool {
 }
 
 fn prune_completed(target: &Path) {
-    let Some(parent) = target.parent() else {
+    let Ok(parent) = installation_directory(target) else {
         return;
     };
     let Ok(entries) = std::fs::read_dir(parent) else {
@@ -400,7 +445,7 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
             write_private(&directory.join("helper-ready"), b"").map_err(|e| e.to_string())?;
             parent.wait().map_err(|e| e.to_string())?;
         }
-        let result = install_loop(directory.clone(), plan, &PUBLIC_KEY);
+        let result = install_loop(directory.clone(), plan, PUBLIC_KEY);
         drop(initial_lock);
         if result.is_ok() && directory.join("committed").is_file() {
             let _ = remove_completed(&directory);
@@ -452,6 +497,60 @@ mod process_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_bundle_replacement_and_rollback_preserve_settings_and_all_bundle_files() {
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("Renamed.app");
+        let target = bundle.join("Contents/MacOS/rclone-manager");
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(&target, b"old executable").unwrap();
+        std::fs::write(bundle.join("Contents/Info.plist"), b"old bundle metadata").unwrap();
+        std::fs::create_dir(root.path().join("config")).unwrap();
+        let settings = root.path().join("config/settings.json");
+        std::fs::write(&settings, b"private user settings").unwrap();
+        let stage = tempfile::Builder::new()
+            .prefix(".rcman-update-")
+            .tempdir_in(root.path())
+            .unwrap();
+        assert_eq!(installation_directory(&target).unwrap(), root.path());
+        validate_stage(stage.path(), &target).unwrap();
+        preserve_previous(stage.path(), &target).unwrap();
+        let manifest = super::super::manifest::test_portable_manifest("macos-aarch64");
+        let payload = include_bytes!("fixtures/portable-macos-aarch64-99.0.0.zip");
+        let key = include_str!("fixtures/portable-public.key");
+        manifest.verify_install_payload(payload, key).unwrap();
+        replace_bundle(
+            stage.path(),
+            &target,
+            payload,
+            manifest.bundle_root().unwrap(),
+            &manifest,
+            key,
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(&target).unwrap(),
+            include_bytes!("fixtures/payload.txt")
+        );
+        assert_eq!(
+            std::fs::read(bundle.join("Contents/Info.plist")).unwrap(),
+            b"<plist/>"
+        );
+        assert_eq!(
+            std::fs::read(bundle.join("Contents/_CodeSignature/CodeResources")).unwrap(),
+            b"fixture signature resource"
+        );
+        assert_eq!(std::fs::read(&settings).unwrap(), b"private user settings");
+        restore_previous(stage.path(), &target).unwrap();
+        assert_eq!(std::fs::read(&target).unwrap(), b"old executable");
+        assert_eq!(
+            std::fs::read(bundle.join("Contents/Info.plist")).unwrap(),
+            b"old bundle metadata"
+        );
+        assert!(!bundle.join("Contents/_CodeSignature").exists());
+        assert_eq!(std::fs::read(&settings).unwrap(), b"private user settings");
+    }
 
     #[cfg(unix)]
     #[test]

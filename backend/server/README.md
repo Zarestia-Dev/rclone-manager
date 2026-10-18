@@ -16,17 +16,20 @@ The desktop executable is `rclone-manager`. The pure server is
 Windows adds `.exe`.
 
 Two independent workflows upload to the same `headless-v<version>` release:
-`release-server.yml` builds Server archives; `release-headless.yml` builds
+`release-server.yml` builds Server executables; `release-headless.yml` builds
 Server + Tray installers. A failure in one does not block the other.
 
-- **Server:** `rclone-manager-server_<version>_<os>_<arch>.tar.gz` (Linux/macOS)
-  or `.zip` (Windows), including the executable with embedded UI, translations, and HTML templates.
+- **Server:** `server-<os>-<arch>-<version>` (Linux/macOS) or
+  `server-windows-<arch>-<version>.exe` (Windows). The executable embeds the UI,
+  translations, and HTML templates. The same file is used for downloads and updates.
 - **Server + Tray:** native installers named `rclone-manager-headless`.
 
-Server archives target Linux, Windows, and macOS on x86_64 and aarch64.
-Download the archive for your operating system and processor, extract all files
-into one directory, then run `./rclone-manager-server` (`.exe` on Windows).
-Linux archives require glibc 2.35+ and the D-Bus runtime library; mounting also
+Server executables target Linux, Windows, and macOS on x86_64 and aarch64.
+Download the file for your operating system and processor. You can run it under its
+downloaded name, or rename it to `rclone-manager-server` (`.exe` on Windows) to use
+the commands and service template below. On Linux/macOS, grant execute permission
+with `chmod +x ./rclone-manager-server`, then run `./rclone-manager-server`.
+Linux executables require glibc 2.35+ and the D-Bus runtime library; mounting also
 requires FUSE. They are not static binaries for Alpine/musl.
 The Dockerfile builds the pure server. Existing published releases are unchanged.
 See [platform TODOs](https://github.com/Zarestia-Dev/rclone-manager/blob/master/backend/TODO.md) for additional targets still under review.

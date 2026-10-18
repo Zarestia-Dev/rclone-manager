@@ -35,7 +35,6 @@ export class AppUpdaterService extends TauriBaseService {
 
   private _latestCheckId = 0;
 
-  public readonly isUpdaterEnabled = signal<boolean>(true).asReadonly();
   private readonly _isCancelling = signal<boolean>(false);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _policy = signal<UpdatePolicy | null>(null);
@@ -318,7 +317,6 @@ export class AppUpdaterService extends TauriBaseService {
       .listenToAppDownloadProgress()
       .pipe(takeUntilDestroyed())
       .subscribe(status => {
-        if (!this.isUpdaterEnabled()) return;
         this._downloadStatus.set(status);
 
         if (status.state.status === DownloadStateStatus.InProgress) {

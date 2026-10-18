@@ -6,6 +6,7 @@ use tokio_util::sync::CancellationToken;
 use crate::rclone::binaries::downloader::stream_download_to_file;
 use crate::services::paths::AppPaths;
 use crate::services::settings::operations::core::save_setting;
+use crate::utils::archive::extract_rclone_zip;
 use crate::utils::github_client;
 use crate::utils::types::provision::ProvisionComponent;
 use crate::utils::types::provision::ProvisionStage;
@@ -13,10 +14,7 @@ use crate::utils::types::provision::ProvisionState;
 use crate::utils::types::provision::ProvisionStatus;
 use crate::utils::types::state::RcloneState;
 
-use super::{
-    extractor::extract_rclone_zip,
-    util::{RCLONE_EXECUTABLE, get_arch, safe_copy_rclone, verify_rclone_sha256},
-};
+use super::util::{RCLONE_EXECUTABLE, get_arch, safe_copy_rclone, verify_rclone_sha256};
 
 pub async fn provision_rclone(
     app_handle: crate::context::AppHandle,

@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    concurrency:
+      group: publish-custom-updater-main
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
@@ -118,8 +121,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rclone-manager-android-apks
-          path: dist_apks/*.apk
+          path: updater-assets/*.apk
 
+      - name: Check release before uploading APKs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: node scripts/publish-custom-updater.cjs --check "v$VERSION" "$VERSION"
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
@@ -127,8 +136,12 @@ jobs:
           name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
-          files: |
-            dist_apks/*.apk
-            updater-assets/*
+          files: updater-assets/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish custom update catalog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: node scripts/publish-custom-updater.cjs "v$VERSION" "$VERSION" updater-assets

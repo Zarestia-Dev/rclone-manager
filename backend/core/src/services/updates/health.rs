@@ -72,20 +72,23 @@ fn report_if_ready(health: &StartupHealth) {
     let result = (|| -> Result<(), Box<dyn std::error::Error>> {
         let executable = std::env::current_exe()?.canonicalize()?;
         let directory = directory.canonicalize()?;
-        // Never write to an arbitrary directory supplied by an environment variable.
-        if directory.parent() != executable.parent()
-            || !directory
-                .file_name()
-                .is_some_and(|name| name.to_string_lossy().starts_with(".rcman-update-"))
-        {
-            return Err("Invalid update health directory".into());
-        }
-        write_receipt(&directory, &token, env!("CARGO_PKG_VERSION"))?;
+        confirm_startup(&directory, &executable, &token, env!("CARGO_PKG_VERSION"))?;
         Ok(())
     })();
     if let Err(error) = result {
         log::error!("Could not confirm updated application startup: {error}");
     }
+}
+
+fn confirm_startup(
+    directory: &Path,
+    executable: &Path,
+    token: &str,
+    version: &str,
+) -> std::io::Result<()> {
+    // Share the helper's path checks before writing to an environment-supplied directory.
+    super::binary::validate_stage(directory, executable)?;
+    write_receipt(directory, token, version)
 }
 
 fn write_receipt(directory: &Path, token: &str, version: &str) -> std::io::Result<()> {
@@ -122,6 +125,34 @@ pub(super) fn confirmed(directory: &Path, token: &str, version: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn startup_receipts_use_the_same_staging_directory_as_the_installer() {
+        let root = tempfile::tempdir().unwrap();
+        let stage = tempfile::Builder::new()
+            .prefix(".rcman-update-")
+            .tempdir_in(root.path())
+            .unwrap();
+        for member in ["app", "Renamed.app/Contents/MacOS/rclone-manager"] {
+            let executable = root.path().join(member);
+            confirm_startup(stage.path(), &executable, "attempt", "1.2.3").unwrap();
+            assert!(confirmed(stage.path(), "attempt", "1.2.3"));
+            std::fs::remove_file(stage.path().join("ready.json")).unwrap();
+        }
+        let bundle_binary = root
+            .path()
+            .join("Renamed.app/Contents/MacOS/rclone-manager");
+        std::fs::create_dir_all(bundle_binary.parent().unwrap()).unwrap();
+        let inside_bundle = tempfile::Builder::new()
+            .prefix(".rcman-update-")
+            .tempdir_in(bundle_binary.parent().unwrap())
+            .unwrap();
+        assert!(confirm_startup(inside_bundle.path(), &bundle_binary, "attempt", "1.2.3").is_err());
+        let unrelated = tempfile::tempdir().unwrap();
+        assert!(confirm_startup(unrelated.path(), &bundle_binary, "attempt", "1.2.3").is_err());
+        assert!(!inside_bundle.path().join("ready.json").exists());
+        assert!(!unrelated.path().join("ready.json").exists());
+    }
 
     #[test]
     fn receipt_requires_the_current_attempt_and_exact_build_version() {

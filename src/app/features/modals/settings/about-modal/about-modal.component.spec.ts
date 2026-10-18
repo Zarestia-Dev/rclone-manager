@@ -46,7 +46,6 @@ describe('AboutModalComponent', () => {
       downloadStatus: signal(null),
       isChecking: signal(false),
       buildType,
-      isUpdaterEnabled: signal(true),
       canAutoInstall,
       installationReason: signal(''),
       installationFailure: signal(''),

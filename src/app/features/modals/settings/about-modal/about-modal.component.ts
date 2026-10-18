@@ -177,7 +177,6 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   readonly buildType = this.appUpdaterService.buildType;
-  readonly updaterEnabled = this.appUpdaterService.isUpdaterEnabled;
   readonly rcloneUpdateEnabled = this.rcloneUpdateService.isUpdaterEnabled;
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);

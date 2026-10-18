@@ -229,6 +229,8 @@ async fn monitor(
                     // Rollback is no longer possible after commitment.
                     if let Err(error) = std::fs::remove_file(directory.join("previous"))
                         && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed backup: {error}"); }
+                    if let Err(error) = std::fs::remove_dir_all(directory.join("previous.app"))
+                        && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed app bundle backup: {error}"); }
                 }
                 if !trial.committed && trial.ready_since.is_none() && elapsed >= deadline {
                     // Kill the isolated trial tree before restoring and reopening the old build.

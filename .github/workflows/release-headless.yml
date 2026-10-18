@@ -85,7 +85,7 @@ jobs:
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
 
       - name: Build and Release Headless
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           TAURI_FRONTEND_PATH: ${{ github.workspace }}
           TAURI_APP_PATH: ${{ github.workspace }}/backend/desktop
@@ -94,6 +94,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: backend/desktop
+          uploadUpdaterSignatures: false
           tagName: headless-v__VERSION__
           releaseName: 'RClone Manager Headless v__VERSION__'
           releaseBody: 'RClone Manager Headless v__VERSION__'
