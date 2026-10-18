@@ -12,10 +12,16 @@ test('preflight permits new and draft releases and rejects published releases be
       const calls = [];
       checkRelease(tag, '1.2.3', args => {
         calls.push(args);
-        return JSON.stringify([[{ tag_name: 'v9.0.0', draft: false }], releases]);
+        return releases.map(release => JSON.stringify(release)).join('\n');
       });
       assert.deepEqual(calls, [
-        ['api', 'repos/{owner}/{repo}/releases?per_page=100', '--paginate', '--slurp'],
+        [
+          'api',
+          'repos/{owner}/{repo}/releases?per_page=100',
+          '--paginate',
+          '--jq',
+          `.[] | select(.tag_name == ${JSON.stringify(tag)}) | {tag_name, draft}`,
+        ],
       ]);
     }
     const calls = [];
@@ -23,7 +29,7 @@ test('preflight permits new and draft releases and rejects published releases be
       () =>
         checkRelease(tag, '1.2.3', args => {
           calls.push(args);
-          return JSON.stringify([[], [{ tag_name: tag, draft: false }]]);
+          return JSON.stringify({ tag_name: tag, draft: false });
         }),
       /published release/
     );
@@ -33,7 +39,16 @@ test('preflight permits new and draft releases and rejects published releases be
 });
 
 test('preflight fails closed on API errors, malformed data and unexpected tags', () => {
-  for (const response of ['not JSON', '{}', '[{}]']) {
+  for (const response of [
+    'not JSON',
+    '{}',
+    '[{}]',
+    '[null]',
+    '[[{"tag_name":"v1.2.3","draft":true}]]',
+    '{"tag_name":"v1.2.3"}',
+    '{"tag_name":"v1.2.3","draft":"true"}',
+    '{"tag_name":"v9.0.0","draft":true}',
+  ]) {
     assert.throws(() => checkRelease('v1.2.3', '1.2.3', () => response));
   }
   assert.throws(
@@ -49,6 +64,25 @@ test('preflight fails closed on API errors, malformed data and unexpected tags',
         assert.fail('Invalid tags must not call GitHub');
       }),
     /Unexpected release tag/
+  );
+});
+
+test('preflight handles empty pages and rejects published or invalid records on later lines', () => {
+  const draft = JSON.stringify({ tag_name: 'v1.2.3', draft: true });
+  checkRelease('v1.2.3', '1.2.3', () => `\n \n${draft}\n\n`);
+  checkRelease('v1.2.3', '1.2.3', () => '\n \n');
+  assert.throws(
+    () =>
+      checkRelease(
+        'v1.2.3',
+        '1.2.3',
+        () => `${draft}\n${JSON.stringify({ tag_name: 'v1.2.3', draft: false })}\n`
+      ),
+    /published release/
+  );
+  assert.throws(
+    () => checkRelease('v1.2.3', '1.2.3', () => `${draft}\n{}\n`),
+    /Invalid release list/
   );
 });
 

@@ -14,13 +14,21 @@ function validateTag(tag, version) {
 // A missing release is allowed: the following upload step creates it as a draft.
 function checkRelease(tag, version, gh = runGh) {
   validateTag(tag, version);
-  const pages = JSON.parse(
-    gh(['api', 'repos/{owner}/{repo}/releases?per_page=100', '--paginate', '--slurp'])
-  );
-  if (!Array.isArray(pages) || pages.some(page => !Array.isArray(page)))
+  // Filter inside gh: full release histories include large bodies and asset lists.
+  const releases = gh([
+    'api',
+    'repos/{owner}/{repo}/releases?per_page=100',
+    '--paginate',
+    '--jq',
+    `.[] | select(.tag_name == ${JSON.stringify(tag)}) | {tag_name, draft}`,
+  ])
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => JSON.parse(line));
+  if (releases.some(release => release?.tag_name !== tag || typeof release.draft !== 'boolean'))
     throw new Error('Invalid release list');
-  const release = pages.flat().find(release => release.tag_name === tag);
-  if (release && release.draft !== true) throw new Error('Refusing to change a published release');
+  if (releases.some(release => !release.draft))
+    throw new Error('Refusing to change a published release');
 }
 
 function readCatalogs(directory) {

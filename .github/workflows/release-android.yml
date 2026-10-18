@@ -7,10 +7,10 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
-    concurrency:
-      group: publish-custom-updater-main
-      cancel-in-progress: false
+      contents: read
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+      prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
 
     steps:
       - name: Checkout repository
@@ -118,24 +118,47 @@ jobs:
         run: ./gradlew :app:testArm64DebugUnitTest -x :app:rustBuildArm64Debug
 
       - name: Upload APK Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rclone-manager-android-apks
-          path: updater-assets/*.apk
+          path: updater-assets/*
+          if-no-files-found: error
+
+  upload-android:
+    name: Publish Android APKs
+    needs: build-android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Portable publishes into the same updater.json. Serialize read/merge/upload.
+    concurrency:
+      group: publish-custom-updater-main
+      cancel-in-progress: false
+      queue: max
+    env:
+      VERSION: ${{ needs.build-android.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - uses: actions/download-artifact@v8
+        with:
+          name: rclone-manager-android-apks
+          path: updater-assets
 
       - name: Check release before uploading APKs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: node scripts/publish-custom-updater.cjs --check "v$VERSION" "$VERSION"
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.get_version.outputs.VERSION }}
-          name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
+          tag_name: v${{ needs.build-android.outputs.version }}
+          name: 'RClone Manager v${{ needs.build-android.outputs.version }}'
           draft: true
-          prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
+          prerelease: ${{ needs.build-android.outputs.prerelease }}
           files: updater-assets/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -143,5 +166,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: node scripts/publish-custom-updater.cjs "v$VERSION" "$VERSION" updater-assets

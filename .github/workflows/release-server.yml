@@ -6,19 +6,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: release-headless
-  cancel-in-progress: false
-
 # Shares the release tag with tray packages, but has no dependency on their builds.
 jobs:
-  prepare-release:
+  release-metadata:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
-      release-id: ${{ steps.release.outputs.result }}
+      prerelease: ${{ steps.metadata.outputs.PRERELEASE }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -39,52 +33,9 @@ jobs:
               raise SystemExit(f'Server version {version} differs from tray version {native}')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'version={version}\n')
-      - name: Prepare shared draft release
-        id: release
-        uses: actions/github-script@v8
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          PRERELEASE: ${{ steps.metadata.outputs.PRERELEASE }}
-        with:
-          script: |
-            const tag = `headless-v${process.env.VERSION}`;
-            const releases = await github.paginate(github.rest.repos.listReleases, {
-              ...context.repo, per_page: 100,
-            });
-            const existing = releases.find(release => release.tag_name === tag);
-            if (existing) {
-              if (!existing.draft) throw new Error(`Refusing to replace published release ${tag}`);
-              await github.rest.repos.updateRelease({
-                ...context.repo, release_id: existing.id,
-                prerelease: process.env.PRERELEASE === 'true',
-              });
-              return existing.id;
-            }
-            const { data } = await github.rest.repos.createRelease({
-              ...context.repo,
-              tag_name: tag,
-              target_commitish: context.sha,
-              name: `RClone Manager Headless v${process.env.VERSION}`,
-              body: [
-                '## Server',
-                '`server-<os>-<arch>-<version>` executables contain the standalone web server with embedded browser UI, translations, and templates (.exe on Windows).',
-                'Linux, Windows, and macOS: x86_64 and aarch64. No Tauri or desktop session required.',
-                'Linux: glibc 2.35+ and the D-Bus runtime library; FUSE is needed for mounts.',
-                'Download the executable for your OS and architecture. On Linux/macOS, run chmod +x on the downloaded file before starting it.',
-                '',
-                '## Server + Tray',
-                'The rclone-manager-headless native installers include a tray and native updater.',
-                'These require desktop runtime libraries and a display session on Linux.',
-                '',
-                'Stop standalone services before replacing the executable. Preserve application data.',
-              ].join('\n'),
-              draft: true,
-              prerelease: process.env.PRERELEASE === 'true',
-            });
-            return data.id;
 
   build-server:
-    needs: prepare-release
+    needs: release-metadata
     strategy:
       fail-fast: false
       matrix:
@@ -146,36 +97,83 @@ jobs:
           UPDATE_OS: ${{ matrix.os }}
           UPDATE_ARCH: ${{ matrix.arch }}
           UPDATE_TARGET: ${{ matrix.target }}
-          UPDATE_VERSION: ${{ needs.prepare-release.outputs.version }}
+          UPDATE_VERSION: ${{ needs.release-metadata.outputs.version }}
         run: |
           binary=rclone-manager-server
           if [ "$UPDATE_OS" = windows ]; then binary="$binary.exe"; fi
           node scripts/create-update-manifest.cjs server "$UPDATE_OS" "$UPDATE_ARCH" "$UPDATE_VERSION" "backend/target/$UPDATE_TARGET/release/$binary" artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: server-${{ matrix.target }}
           path: artifacts/*
           if-no-files-found: error
 
   upload-server:
-    needs: [prepare-release, build-server]
+    needs: [release-metadata, build-server]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    concurrency:
+      group: release-headless
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: server-*
           path: artifacts
+      - name: Prepare shared draft release
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ needs.release-metadata.outputs.version }}
+          PRERELEASE: ${{ needs.release-metadata.outputs.prerelease }}
+        with:
+          script: |
+            const tag = `headless-v${process.env.VERSION}`;
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            });
+            const existing = releases.find(release => release.tag_name === tag);
+            if (existing) {
+              if (!existing.draft) throw new Error(`Refusing to replace published release ${tag}`);
+              await github.rest.repos.updateRelease({
+                ...context.repo, release_id: existing.id,
+                prerelease: process.env.PRERELEASE === 'true',
+              });
+              return existing.id;
+            }
+            const { data } = await github.rest.repos.createRelease({
+              ...context.repo,
+              tag_name: tag,
+              target_commitish: context.sha,
+              name: `RClone Manager Headless v${process.env.VERSION}`,
+              body: [
+                '## Server',
+                '`server-<os>-<arch>-<version>` executables contain the standalone web server with embedded browser UI, translations, and templates (.exe on Windows).',
+                'Linux, Windows, and macOS: x86_64 and aarch64. No Tauri or desktop session required.',
+                'Linux: glibc 2.35+ and the D-Bus runtime library; FUSE is needed for mounts.',
+                'Download the executable for your OS and architecture. On Linux/macOS, run chmod +x on the downloaded file before starting it.',
+                '',
+                '## Server + Tray',
+                'The rclone-manager-headless native installers include a tray and native updater.',
+                'These require desktop runtime libraries and a display session on Linux.',
+                '',
+                'Stop standalone services before replacing the executable. Preserve application data.',
+              ].join('\n'),
+              draft: true,
+              prerelease: process.env.PRERELEASE === 'true',
+            });
+            return data.id;
+
       - name: Attach server executables to the shared draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          VERSION: ${{ needs.prepare-release.outputs.version }}
+          VERSION: ${{ needs.release-metadata.outputs.version }}
         run: |
           set -euo pipefail
           tag="headless-v$VERSION"

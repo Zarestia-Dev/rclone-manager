@@ -36,13 +36,20 @@ It refuses to modify a published release. Payloads must be uploaded before the c
 Portable and Android workflows run the publisher's `--check tag version` mode
 before uploading any release payloads. This read-only check allows a missing or
 draft release and fails on a published release or an API error. Catalog publication
-also checks the release state again.
+also checks the release state again. Preflight filters the paginated release list
+inside `gh`, returning only the requested tag and draft status to Node so release
+bodies and asset lists cannot overflow its process-output buffer.
 
-Portable upload and Android jobs share the `publish-custom-updater-main` concurrency
-group to serialize the catalog's read/merge/upload operation. Server publication uses
-the existing `release-headless` workflow concurrency group. Any additional writer must
-join the relevant group. These jobs do not publish the local signature sidecars or
-individual per-target JSON files.
+Portable and Android upload jobs share the `publish-custom-updater-main` concurrency
+group to serialize the catalog's read/merge/upload operation. Their builds run outside
+the lock; Android transfers its APKs and signed catalog together as a workflow artifact.
+Server builds also run outside the lock, and their upload job prepares the shared
+draft and publishes under the `release-headless` group. The headless installer workflow
+retains its workflow-level lock because Tauri's action builds, uploads, and merges
+`latest.json` in one step. Both groups use `queue: max` so additional pending publishers
+do not replace earlier queued jobs. Any additional writer must join the relevant
+group. These jobs do not publish the local signature sidecars or individual per-target
+JSON files.
 
 New clients can still read legacy per-target manifests when a release has no catalog.
 Already installed clients that only understand legacy filenames need a manual update

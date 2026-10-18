@@ -9,6 +9,7 @@ permissions:
 concurrency:
   group: release-headless
   cancel-in-progress: false
+  queue: max
 
 jobs:
   build-headless:

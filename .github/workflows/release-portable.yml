@@ -192,7 +192,7 @@ jobs:
 
       # --- Upload ---
       - name: Collect portable release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: portable-${{ matrix.os }}-${{ matrix.arch }}
           path: updater-assets/*
@@ -207,12 +207,13 @@ jobs:
     concurrency:
       group: publish-custom-updater-main
       cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: portable-*
           path: artifacts
