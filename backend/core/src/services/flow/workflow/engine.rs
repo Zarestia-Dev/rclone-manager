@@ -2984,13 +2984,7 @@ mod tests {
 
     #[test]
     fn test_dry_run_job_metadata_propagation() {
-        let mut backend_opts = HashMap::new();
         let dry_run = true;
-        if dry_run {
-            backend_opts.insert("DryRun".to_string(), json!(true));
-        }
-
-        assert_eq!(backend_opts.get("DryRun"), Some(&json!(true)));
 
         let metadata = JobMetadata::new(
             "test_remote".to_string(),
@@ -3151,31 +3145,28 @@ mod tests {
         assert_eq!(rem_fallback, "fallback-remote");
     }
 
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     #[tokio::test]
     async fn test_system_power_dry_run_simulation() {
-        let dry_run = true;
-        let config = json!({ "action": "sleep" });
-        let action = config
-            .get("action")
-            .and_then(Value::as_str)
-            .unwrap_or("sleep");
-
-        let result = if dry_run {
-            Ok(NodeExecutionOutput::new(json!({
-                "powerAction": action,
-                "executed": false,
-                "dryRun": true,
-                "message": format!("Dry run simulation: power action '{action}' skipped")
-            })))
-        } else {
-            crate::services::power::actions::execute_system_power_internal(action)
-                .await
-                .map(|_| {
-                    NodeExecutionOutput::new(json!({ "powerAction": action, "executed": true }))
-                })
+        let node = WorkflowNode {
+            node_type: "system_power".into(),
+            config: json!({ "action": "sleep" }),
+            ..Default::default()
         };
-
-        let output = result.expect("Dry run system power node should succeed");
+        let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let output = execute_single_node(
+            &AppHandle::default(),
+            &Backend::new_remote("test", "127.0.0.1", 0),
+            &node,
+            &WorkflowDefinition::default(),
+            &AtomicBool::new(false),
+            cancel_rx,
+            &Arc::new(RwLock::new(HashSet::new())),
+            &Arc::new(RwLock::new(HashMap::new())),
+            true,
+        )
+        .await
+        .expect("Dry run system power node should succeed");
         assert_eq!(
             output.value.get("powerAction").and_then(Value::as_str),
             Some("sleep")

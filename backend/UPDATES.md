@@ -21,8 +21,18 @@ disk cache entries remain available for a later retry.
 
 `get_update_policy` returns the installation kind, installer method, eligibility,
 and localized reason. `can_auto_install` remains available for older callers.
-Each release's update snapshot also carries installation eligibility: finding a
-new release does not mean that a compatible signed artifact exists.
+An update is announced only after a compatible artifact is found for the current
+installation and architecture. Direct installers require valid updater metadata
+and its referenced release asset. Missing targets produce no update; network or
+metadata validation failures report a check error without announcing an update.
+Read-only or administratively disabled installations still check artifact
+availability, while installation remains disabled.
+
+External installations announce upstream availability using a matching Linux
+server executable for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
+for RPM installations. Desktop and headless products and package architecture
+names are matched separately. This does not confirm that the corresponding
+container image, Flathub build, or AUR package has already been published there.
 
 Linux detection checks ownership of the running executable using the available
 package managers, including AUR packages repackaged from upstream DEBs. The host
@@ -37,10 +47,10 @@ grants privileges.
 ## Signed artifacts and release workflows
 
 Portable, server, and APK release workflows run
-`scripts/create-update-manifest.cjs`. For each target they publish:
-
-- A raw, versioned executable or APK and its `.sig`.
-- `<kind>-<os>-<arch>.json` and its `.sig`.
+`scripts/create-update-manifest.cjs`. They publish a shared signed catalog
+(`updater.json`) and versioned ZIPs, executables, or APKs. Signatures are embedded
+in the catalog rather than published as sidecars. See
+[release update manifests](../scripts/UPDATER.md) for the schema and packaging.
 
 Kinds are `portable`, `server`, and `android`. Architecture names are `x86_64`,
 `aarch64`, `armv7`, and `i686`. OS names match Rust (`linux`, `windows`, `macos`,
@@ -57,8 +67,7 @@ Production workflows require `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Android additionally requires its existing,
 persistent release keystore secrets. A missing Android release key fails the
 build rather than generating a key incompatible with earlier installations.
-Older releases without these new manifests remain discoverable but cannot be
-installed through the direct-artifact path.
+Direct installers do not announce older releases without matching update metadata.
 
 The public fixtures under `core/src/services/updates/fixtures/` test signatures
 without network access or production secrets. Their public key is never trusted
@@ -67,7 +76,7 @@ by production installation code.
 ## Prerelease versions
 
 Keep the Cargo workspace, main/headless Tauri configurations and package version
-in sync, for example `0.3.4-beta.1`. All five release workflows use
+in sync, for example `0.3.3`. All five release workflows use
 `scripts/release-version.cjs` to set the GitHub prerelease flag from the version.
 Releases remain drafts until explicitly published. The stable update channel
 excludes prereleases; the beta channel includes prereleases and stable versions.
@@ -95,7 +104,8 @@ compatibility with previously installed versionCodes.
 ## Replacement and restart
 
 The direct installer never extracts an archive over the application directory.
-Only the executable is replaced. A private `.rcman-update-*` directory on the
+Windows/Linux replace the executable; macOS portable updates replace the complete
+authenticated app bundle. A private `.rcman-update-*` directory on the
 same filesystem holds staging files and the previous executable. Unix file
 permissions are preserved; the executable must belong to the effective user.
 
@@ -127,6 +137,13 @@ readiness requires the HTTP/TLS listener to bind. A visible portable window wait
 for Angular initialization (including settings/navigation) and the subsequent
 render; a known locked-vault screen is also accepted. Tray-only startup does not
 require a webview. This receipt is a startup check, not a continuous heartbeat.
+
+Debug logs identify the installation policy, selected release and target,
+manifest verification, payload cache use, ZIP and binary verification, and staging
+paths. The update helper initializes file logging before normal application setup
+and writes to the same application log directory. Its info logs record binary
+replacement, startup receipt verification, `Update committed` after the stability
+window, and the reason for any rollback. Startup tokens are never logged.
 
 Trial processes have an isolated Unix process group or a Windows Job Object.
 Windows startup is gated until the process has been assigned to its job. A failed

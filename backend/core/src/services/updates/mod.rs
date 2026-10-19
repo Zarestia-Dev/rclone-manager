@@ -1,5 +1,6 @@
 #[cfg(all(feature = "updater", target_os = "android"))]
 mod android;
+mod availability;
 #[cfg(feature = "updater")]
 pub mod binary;
 #[cfg(feature = "updater")]
@@ -35,19 +36,25 @@ pub(crate) fn emit_state_changed() {
     crate::services::bridge::emit(UPDATER_STATE_CHANGED, UpdaterStateChanged::App);
 }
 
+/// Cancellation or a panicking dependency must not leave future checks blocked.
+struct CheckingGuard<'a>(&'a AppUpdaterState);
+
+impl Drop for CheckingGuard<'_> {
+    fn drop(&mut self) {
+        let mut data = self.0.data.lock();
+        if data.state == UpdateState::Checking {
+            data.state = UpdateState::Idle;
+        }
+        drop(data);
+        emit_state_changed();
+    }
+}
+
 pub use crate::utils::version::{clean_app_version, is_version_newer};
 
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();
-    let result = fetch_update_inner(&app, &channel, &updater_state).await;
-    if result.is_err() {
-        let mut data = updater_state.data.lock();
-        if data.state == UpdateState::Checking {
-            data.state = UpdateState::Idle;
-        }
-    }
-    emit_state_changed();
-    result
+    fetch_update_inner(&app, &channel, &updater_state).await
 }
 
 async fn fetch_update_inner(
@@ -82,7 +89,19 @@ async fn fetch_update_inner(
         }
     }
 
+    let _checking = CheckingGuard(updater_state);
     info!("Checking for app updates on channel: {channel}");
+    log::debug!(
+        "Update context: current={}, product={}, installation={:?}, method={:?}, target={}-{}, can_install={}, reason={:?}",
+        env!("CARGO_PKG_VERSION"),
+        app.product().release_prefix,
+        installation.installation,
+        installation.method,
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        installation.can_install,
+        installation.reason,
+    );
 
     let releases = tokio::time::timeout(
         std::time::Duration::from_secs(30),
@@ -92,19 +111,28 @@ async fn fetch_update_inner(
     .map_err(|error| {
         crate::utils::types::updater::UpdaterError::UpdateUnavailable(error.to_string())
     })??;
+    log::debug!("Received {} releases", releases.len());
     let Some(release) = latest_release(&releases, channel, app.product().release_prefix) else {
         info!("No suitable release found for channel: {channel}");
-        updater_state.data.lock().state = UpdateState::Idle;
         return Ok(None);
     };
 
+    update_for_release(app, channel, release, installation, updater_state).await
+}
+
+async fn update_for_release(
+    app: &AppHandle,
+    channel: &str,
+    release: &github_client::Release,
+    installation: policy::UpdatePolicy,
+    updater_state: &AppUpdaterState,
+) -> Result<Option<UpdateInfo>> {
     let current_version_str = env!("CARGO_PKG_VERSION").to_string();
     let release_version_str = clean_app_version(&release.tag_name);
 
     let is_newer = is_version_newer(&current_version_str, release_version_str);
     if !is_newer {
         info!("App is up to date (current: {current_version_str}, latest: {release_version_str})");
-        updater_state.data.lock().state = UpdateState::Idle;
         return Ok(None);
     }
 
@@ -121,47 +149,79 @@ async fn fetch_update_inner(
         channel: Some(channel.to_string()),
     };
 
-    #[cfg(feature = "updater")]
-    let (pending_action, update_metadata, installation) = {
-        let mut installation = installation;
-        let mut meta = update_metadata;
-        let action = if installation.can_install {
-            let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
-                match installation.method {
-                    policy::UpdateMethod::Tauri => {
-                        app.host().check_update(release, &mut meta).await
-                    }
-                    policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
-                        signed::check(app, release, &installation).await
-                    }
-                    policy::UpdateMethod::Unavailable => Ok(None),
-                }
-            })
-            .await
-            .unwrap_or_else(|error| Err(error.to_string()));
-            match result {
-                Ok(Some(action)) => Some(action),
-                Ok(None) => {
-                    installation.can_install = false;
-                    installation.reason = Some(crate::localized_error!(
-                        "backendErrors.updater.missingArtifact"
-                    ));
-                    None
-                }
-                Err(error) => {
-                    log::warn!("Update installation preparation failed: {error}");
-                    installation.can_install = false;
-                    installation.reason = Some(
-                        crate::localized_error!("backendErrors.updater.updateUnavailable", "error" => error),
-                    );
-                    None
-                }
-            }
-        } else {
-            None
+    let externally_managed = matches!(
+        installation.installation,
+        policy::InstallationKind::Container
+            | policy::InstallationKind::Flatpak
+            | policy::InstallationKind::Pacman
+            | policy::InstallationKind::Deb
+            | policy::InstallationKind::Rpm
+    );
+    if externally_managed {
+        let asset = availability::external_asset(
+            release,
+            installation.installation,
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+        );
+        let Some(asset) = asset else {
+            info!(
+                "No matching upstream package in {} for {:?} on {}-{}",
+                release.tag_name,
+                installation.installation,
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            );
+            return Ok(None);
         };
-        (action, meta, installation)
+        log::debug!("External update announcement matched upstream asset: {asset}");
+    }
+    #[cfg(not(feature = "updater"))]
+    if !externally_managed {
+        return Ok(None);
+    }
+
+    #[cfg(feature = "updater")]
+    let mut update_metadata = update_metadata;
+    #[cfg(feature = "updater")]
+    let pending_action = if externally_managed {
+        None
+    } else {
+        let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
+            match installation.method {
+                policy::UpdateMethod::Tauri => {
+                    app.host().check_update(release, &mut update_metadata).await
+                }
+                policy::UpdateMethod::Binary | policy::UpdateMethod::Android => {
+                    signed::check(app, release, &installation).await
+                }
+                policy::UpdateMethod::Unavailable => Ok(None),
+            }
+        })
+        .await
+        .unwrap_or_else(|error| Err(error.to_string()));
+        match result {
+            Ok(Some(action)) => installation.can_install.then_some(action),
+            Ok(None) => {
+                info!(
+                    "No compatible update artifact in {}; suppressing update announcement",
+                    release.tag_name
+                );
+                return Ok(None);
+            }
+            Err(error) => {
+                log::warn!(
+                    "Could not verify update availability for {}: {error}",
+                    release.tag_name
+                );
+                return Err(crate::utils::types::updater::UpdaterError::UpdateUnavailable(error));
+            }
+        }
     };
+    info!(
+        "Update available: version={}, installation={:?}, can_install={}",
+        update_metadata.version, installation.installation, installation.can_install
+    );
 
     let update_info = UpdateInfo {
         metadata: update_metadata.clone(),
@@ -259,6 +319,240 @@ fn latest_release<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_panicking_update_check_returns_to_idle_and_can_be_retried() {
+        let state = std::sync::Arc::new(AppUpdaterState::default());
+        state.data.lock().state = UpdateState::Checking;
+        let checking = state.clone();
+        let task = crate::utils::spawn(async move {
+            let _guard = CheckingGuard(&checking);
+            panic!("TLS initialization failure fixture");
+        });
+        assert!(task.await.unwrap_err().is_panic());
+        assert_eq!(state.data.lock().state, UpdateState::Idle);
+        state.data.lock().state = UpdateState::Checking;
+        let guard = CheckingGuard(&state);
+        state.data.lock().state = UpdateState::Available;
+        drop(guard);
+        assert_eq!(state.data.lock().state, UpdateState::Available);
+    }
+
+    #[tokio::test]
+    async fn cancellation_clears_checking_without_overwriting_other_update_states() {
+        let state = std::sync::Arc::new(AppUpdaterState::default());
+        state.data.lock().state = UpdateState::Checking;
+        let checking = state.clone();
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let task = crate::utils::spawn(async move {
+            let _guard = CheckingGuard(&checking);
+            started.send(()).unwrap();
+            std::future::pending::<()>().await;
+        });
+        ready.await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        assert_eq!(state.data.lock().state, UpdateState::Idle);
+        for status in [
+            UpdateState::Available,
+            UpdateState::Downloading,
+            UpdateState::ReadyToRestart,
+            UpdateState::Installing,
+        ] {
+            state.data.lock().state = status;
+            drop(CheckingGuard(&state));
+            assert_eq!(state.data.lock().state, status);
+        }
+    }
+
+    fn candidate() -> github_client::Release {
+        github_client::Release {
+            tag_name: "v99.0.0".into(),
+            prerelease: false,
+            draft: false,
+            assets: vec![],
+            body: None,
+            published_at: None,
+            html_url: String::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn externally_managed_installations_do_not_announce_unrelated_packages() {
+        let app = AppHandle::default();
+        for installation in [
+            policy::InstallationKind::Flatpak,
+            policy::InstallationKind::Pacman,
+            policy::InstallationKind::Container,
+            policy::InstallationKind::Deb,
+            policy::InstallationKind::Rpm,
+        ] {
+            let state = AppUpdaterState::default();
+            let mut release = candidate();
+            release.assets.push(github_client::Asset {
+                name: "android-aarch64-99.0.0.apk".into(),
+                browser_download_url: String::new(),
+                api_url: None,
+            });
+            let policy = policy::UpdatePolicy {
+                installation,
+                method: policy::UpdateMethod::Unavailable,
+                can_install: false,
+                reason: Some("Externally managed".into()),
+            };
+            assert!(
+                update_for_release(&app, "stable", &release, policy, &state)
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+            assert_eq!(state.data.lock().state, UpdateState::Idle);
+            assert!(state.data.lock().last_metadata.is_none());
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn matching_external_packages_announce_without_an_in_app_installer() {
+        let arch = match std::env::consts::ARCH {
+            "x86_64" => "amd64",
+            "aarch64" => "arm64",
+            _ => return,
+        };
+        for installation in [
+            policy::InstallationKind::Flatpak,
+            policy::InstallationKind::Pacman,
+            policy::InstallationKind::Deb,
+        ] {
+            let app = AppHandle::default();
+            let state = AppUpdaterState::default();
+            let mut release = candidate();
+            release.assets.push(github_client::Asset {
+                name: format!("RClone.Manager_99.0.0_{arch}.deb"),
+                browser_download_url: String::new(),
+                api_url: None,
+            });
+            let policy = policy::UpdatePolicy {
+                installation,
+                method: policy::UpdateMethod::Unavailable,
+                can_install: false,
+                reason: Some("Externally managed".into()),
+            };
+            let info = update_for_release(&app, "stable", &release, policy, &state)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(info.metadata.update_available);
+            assert!(!info.installation.unwrap().can_install);
+        }
+    }
+
+    #[cfg(feature = "updater")]
+    mod native_discovery {
+        use super::*;
+        use crate::utils::types::updater::{
+            AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate,
+        };
+        use std::sync::Arc;
+
+        #[derive(Clone, Copy)]
+        enum Check {
+            Found,
+            Missing,
+            Failed,
+        }
+        struct TestHost(Check);
+        struct TestUpdate(url::Url);
+        #[async_trait::async_trait]
+        impl AppUpdate for TestUpdate {
+            fn version(&self) -> &str {
+                "99.0.0"
+            }
+            fn download_url(&self) -> &url::Url {
+                &self.0
+            }
+            async fn download(&self, _: DownloadProgress) -> std::result::Result<Vec<u8>, String> {
+                panic!("Discovery must not download a payload")
+            }
+            fn install(&self, _: &[u8]) -> std::result::Result<InstallOutcome, String> {
+                panic!("Discovery must not install")
+            }
+        }
+        #[async_trait::async_trait]
+        impl crate::context::Host for TestHost {
+            fn resolve_paths(
+                &self,
+                _: &AppHandle,
+            ) -> std::result::Result<crate::services::paths::AppPaths, String> {
+                Err("Not needed".into())
+            }
+            fn restart(&self, _: &AppHandle) -> std::result::Result<(), String> {
+                panic!("Discovery must not restart")
+            }
+            async fn check_update(
+                &self,
+                _: &github_client::Release,
+                _: &mut UpdateMetadata,
+            ) -> std::result::Result<Option<PendingAppUpdate>, String> {
+                match self.0 {
+                    Check::Missing => Ok(None),
+                    Check::Failed => Err("Invalid manifest signature".into()),
+                    Check::Found => Ok(Some(Arc::new(TestUpdate(
+                        "https://example.invalid/update".parse().unwrap(),
+                    )))),
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn missing_or_invalid_artifacts_never_create_available_metadata() {
+            for check in [Check::Missing, Check::Failed] {
+                let app = AppHandle::new(Arc::new(TestHost(check)), Default::default());
+                let state = AppUpdaterState::default();
+                state.data.lock().state = UpdateState::Checking;
+                let policy = policy::UpdatePolicy {
+                    installation: policy::InstallationKind::Native,
+                    method: policy::UpdateMethod::Tauri,
+                    can_install: true,
+                    reason: None,
+                };
+                let checking = CheckingGuard(&state);
+                let result = update_for_release(&app, "beta", &candidate(), policy, &state).await;
+                drop(checking);
+                match check {
+                    Check::Missing => assert!(result.unwrap().is_none()),
+                    Check::Failed => assert!(result.is_err()),
+                    Check::Found => unreachable!(),
+                }
+                let data = state.data.lock();
+                assert_eq!(data.state, UpdateState::Idle);
+                assert!(data.last_metadata.is_none());
+                assert!(data.pending_action.is_none());
+            }
+        }
+
+        #[tokio::test]
+        async fn valid_artifacts_are_discovered_even_when_installation_is_disabled() {
+            for can_install in [true, false] {
+                let app = AppHandle::new(Arc::new(TestHost(Check::Found)), Default::default());
+                let state = AppUpdaterState::default();
+                let policy = policy::UpdatePolicy {
+                    installation: policy::InstallationKind::Native,
+                    method: policy::UpdateMethod::Tauri,
+                    can_install,
+                    reason: (!can_install).then(|| "Disabled by administrator".into()),
+                };
+                let info = update_for_release(&app, "beta", &candidate(), policy, &state)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(info.status, UpdateState::Available);
+                assert!(info.metadata.update_available);
+                assert_eq!(info.installation.unwrap().can_install, can_install);
+                assert_eq!(state.data.lock().pending_action.is_some(), can_install);
+            }
+        }
+    }
 
     #[test]
     fn latest_release_compares_versions_independently_of_list_order() {

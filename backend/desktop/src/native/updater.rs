@@ -2,7 +2,7 @@
 use crate::context::{AppHandle, BackendContext};
 use crate::services::lifecycle::shutdown::handle_shutdown;
 use crate::utils::{
-    github_client::{self, OWNER, REPO},
+    github_client,
     types::updater::{
         AppUpdate, DownloadProgress, InstallOutcome, PendingAppUpdate, UpdateMetadata,
     },
@@ -47,17 +47,14 @@ pub(crate) async fn check_native_updater(
     release: &github_client::Release,
     metadata: &mut UpdateMetadata,
 ) -> Result<Option<PendingAppUpdate>, String> {
-    let json_url = release
-        .assets
-        .iter()
-        .find(|a| a.name == "latest.json")
-        .map(|a| a.browser_download_url.clone())
-        .unwrap_or_else(|| {
-            format!(
-                "https://github.com/{OWNER}/{REPO}/releases/download/{}/latest.json",
-                release.tag_name
-            )
-        });
+    let Some(manifest) = release.assets.iter().find(|a| a.name == "latest.json") else {
+        log::debug!(
+            "Release {} has no native updater manifest",
+            release.tag_name
+        );
+        return Ok(None);
+    };
+    let json_url = &manifest.browser_download_url;
 
     info!("Using update manifest: {json_url}");
 
@@ -85,17 +82,44 @@ pub(crate) async fn check_native_updater(
         .build()
         .map_err(|error| error.to_string())?
         .check()
-        .await
-        .map_err(|error| error.to_string())?;
+        .await;
+    let check_result = match check_result {
+        Ok(update) => update,
+        Err(tauri_plugin_updater::Error::TargetNotFound(target)) => {
+            log::debug!("Native updater manifest has no matching target: {target}");
+            return Ok(None);
+        }
+        Err(error) => return Err(error.to_string()),
+    };
 
     if let Some(mut u) = check_result {
         adjust_download_url(&mut u, &release.tag_name);
+        if !release_has_download(release, &u.download_url) {
+            log::debug!(
+                "Native update references an absent release asset: {}",
+                u.download_url
+            );
+            return Ok(None);
+        }
+        log::debug!(
+            "Native update matched version {} and asset {}",
+            u.version,
+            u.download_url
+        );
         metadata.version = u.version.clone();
         metadata.current_version = u.current_version.clone();
         Ok(Some(std::sync::Arc::new(NativeUpdate(u))))
     } else {
         Ok(None)
     }
+}
+
+fn release_has_download(release: &github_client::Release, download: &url::Url) -> bool {
+    release.assets.iter().any(|asset| {
+        std::iter::once(asset.browser_download_url.as_str())
+            .chain(asset.api_url.as_deref())
+            .any(|candidate| candidate.parse::<url::Url>().ok().as_ref() == Some(download))
+    })
 }
 
 fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bool {
@@ -120,7 +144,54 @@ fn adjust_download_url(update: &mut tauri_plugin_updater::Update, tag: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::manifest_matches_release;
+    use super::{manifest_matches_release, release_has_download};
+
+    #[test]
+    fn native_update_requires_its_actual_asset_in_the_selected_release() {
+        use crate::utils::github_client::{Asset, Release};
+        let download =
+            "https://github.com/Zarestia-Dev/rclone-manager/releases/download/v1.2.3/app.AppImage";
+        let mut release = Release {
+            tag_name: "v1.2.3".into(),
+            prerelease: false,
+            draft: false,
+            assets: vec![],
+            body: None,
+            published_at: None,
+            html_url: String::new(),
+        };
+        let url = download.parse().unwrap();
+        assert!(!release_has_download(&release, &url));
+        for other in [
+            "not a URL",
+            &format!("{download}.sig"),
+            &download.replace("v1.2.3", "v1.2.4"),
+        ] {
+            release.assets = vec![Asset {
+                name: "app.AppImage".into(),
+                browser_download_url: other.into(),
+                api_url: None,
+            }];
+            assert!(!release_has_download(&release, &url));
+        }
+        release.assets = vec![Asset {
+            name: "app.AppImage".into(),
+            browser_download_url: download.into(),
+            api_url: Some(
+                "https://api.github.com/repos/Zarestia-Dev/rclone-manager/releases/assets/42"
+                    .into(),
+            ),
+        }];
+        assert!(release_has_download(&release, &url));
+        let api = release.assets[0].api_url.as_ref().unwrap().parse().unwrap();
+        assert!(release_has_download(&release, &api));
+        assert!(!release_has_download(
+            &release,
+            &"https://api.github.com/repos/Zarestia-Dev/rclone-manager/releases/assets/43"
+                .parse()
+                .unwrap()
+        ));
+    }
 
     #[test]
     fn native_manifest_cannot_substitute_a_different_version() {

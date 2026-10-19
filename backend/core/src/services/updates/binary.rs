@@ -15,6 +15,8 @@ pub(super) struct StagedUpdate {
     pub(super) working_directory: PathBuf,
     #[serde(default)]
     pub(super) parent_pid: u32,
+    #[serde(default)]
+    pub(super) log_directory: Option<PathBuf>,
 }
 
 pub(crate) fn prepare(
@@ -22,6 +24,7 @@ pub(crate) fn prepare(
     manifest: &[u8],
     signature: &str,
     payload: &[u8],
+    log_directory: &Path,
 ) -> Result<InstallOutcome, String> {
     let target = std::env::current_exe()
         .and_then(|p| p.canonicalize())
@@ -46,6 +49,7 @@ pub(crate) fn prepare(
         args: std::env::args_os().skip(1).collect(),
         working_directory: std::env::current_dir().map_err(|e| e.to_string())?,
         parent_pid: std::process::id(),
+        log_directory: Some(log_directory.to_owned()),
     };
     let stage = directory.path();
     for (name, bytes) in [
@@ -64,6 +68,12 @@ pub(crate) fn prepare(
         write_private(&stage.join(name), bytes).map_err(|e| e.to_string())?;
     }
     preserve_previous(stage, &plan.target).map_err(|e| e.to_string())?;
+    log::info!(
+        "Update staged: target={}, staging={}, payload_bytes={}; original executable preserved",
+        plan.target.display(),
+        stage.display(),
+        payload.len()
+    );
     if let Some(active) = supervisor {
         // The existing supervisor consumes this only after its child exits cleanly.
         write_private(
@@ -72,6 +82,7 @@ pub(crate) fn prepare(
         )
         .map_err(|e| e.to_string())?;
         let _ = directory.keep();
+        log::info!("Handing staged update to the active supervisor");
         return Ok(InstallOutcome::Exit);
     }
     #[cfg(windows)]
@@ -208,6 +219,12 @@ fn install_staged(
     }
     let payload = std::fs::read(directory.join("payload")).map_err(|e| e.to_string())?;
     manifest.verify_install_payload(&payload, key)?;
+    log::info!(
+        "Installing verified update: {} -> {}, target={}",
+        current_version,
+        manifest.version,
+        plan.target.display()
+    );
     if let Some(root) = manifest.bundle_root() {
         replace_bundle(directory, &plan.target, &payload, root, &manifest, key)?;
     } else {
@@ -217,6 +234,11 @@ fn install_staged(
         &std::fs::read(&plan.target).map_err(|e| e.to_string())?,
         key,
     )?;
+    log::info!(
+        "Installed executable verified: version={}, target={}",
+        manifest.version,
+        plan.target.display()
+    );
     Ok(manifest.version)
 }
 
@@ -291,27 +313,29 @@ fn sync_parent(target: &Path) -> std::io::Result<()> {
 }
 
 pub(super) fn restore_previous(directory: &Path, target: &Path) -> std::io::Result<()> {
-    if let Some(bundle) = app_bundle_path(target)
+    let restored = if let Some(bundle) = app_bundle_path(target)
         && directory.join("previous.app").is_dir()
     {
         if bundle.exists() {
             std::fs::remove_dir_all(bundle)?;
         }
         std::fs::rename(directory.join("previous.app"), bundle)?;
-        return sync_parent(bundle);
-    }
-    let previous = directory.join("previous");
-    if !previous.is_file() {
-        return Err(std::io::Error::other("Missing previous executable"));
-    }
-    #[cfg(windows)]
-    if target.exists() {
-        std::fs::remove_file(target)?;
-    }
-    std::fs::rename(previous, target)?;
+        bundle
+    } else {
+        let previous = directory.join("previous");
+        if !previous.is_file() {
+            return Err(std::io::Error::other("Missing previous executable"));
+        }
+        #[cfg(windows)]
+        if target.exists() {
+            std::fs::remove_file(target)?;
+        }
+        std::fs::rename(previous, target)?;
+        target
+    };
     // The original is installed even if the filesystem cannot confirm durability.
-    if let Err(error) = sync_parent(target) {
-        log::error!("Restored executable; directory sync failed: {error}");
+    if let Err(error) = sync_parent(restored) {
+        log::error!("Restored application; directory sync failed: {error}");
     }
     Ok(())
 }
@@ -436,6 +460,17 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
         }
         let initial_lock = stage_lock(&directory).map_err(|e| e.to_string())?;
         let plan = read_plan(&directory, None, expected_kind)?;
+        if let Err(error) =
+            crate::utils::logging::log::init_helper_logging(plan.log_directory.as_deref())
+        {
+            eprintln!("Could not initialize update helper logging: {error}");
+        }
+        log::info!(
+            "Update helper started: kind={}, target={}, staging={}",
+            plan.kind,
+            plan.target.display(),
+            directory.display()
+        );
         #[cfg(windows)]
         {
             // Open a real parent handle BEFORE acknowledging readiness. PID reuse
@@ -455,6 +490,7 @@ pub fn run_helper_if_requested(expected_kind: &str) -> bool {
     match result {
         Ok(code) => std::process::exit(code),
         Err(error) => {
+            log::error!("Application update failed: {error}");
             eprintln!("Application update failed: {error}");
             std::process::exit(1);
         }
@@ -563,6 +599,7 @@ mod tests {
             b"manifest fixture",
             "signature fixture",
             b"candidate",
+            std::env::temp_dir().as_path(),
         )
         .unwrap();
         let InstallOutcome::RestartBinary {
@@ -742,6 +779,7 @@ mod tests {
             args: vec![],
             working_directory: root.path().into(),
             parent_pid: 1,
+            log_directory: None,
         };
         write_private(
             &stage.path().join("plan.json"),

@@ -109,8 +109,6 @@ export class AppUpdaterService extends TauriBaseService {
       this.processUpdateResult(result, { silent: false });
       return result;
     } catch (error) {
-      if (checkId !== this._latestCheckId) return null;
-
       console.error('Failed to check for updates:', error);
       const translatedError = this.backendTranslation.translateBackendMessage(error);
       this.notificationService.showError(
@@ -120,9 +118,7 @@ export class AppUpdaterService extends TauriBaseService {
       );
       return null;
     } finally {
-      if (checkId === this._latestCheckId) {
-        this._isChecking.set(false);
-      }
+      this._isChecking.set(false);
     }
   }
 
@@ -261,8 +257,6 @@ export class AppUpdaterService extends TauriBaseService {
     } catch (error) {
       console.error('Failed to sync app update status:', error);
       return this._updateState();
-    } finally {
-      if (request === this._latestCheckId) this._isChecking.set(false);
     }
   }
 
@@ -309,7 +303,6 @@ export class AppUpdaterService extends TauriBaseService {
         if (current?.version === metadata.version) return;
 
         ++this._latestCheckId;
-        this._isChecking.set(false);
         this.processUpdateResult(metadata, { silent: false });
       });
 

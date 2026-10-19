@@ -24,10 +24,7 @@
         </mat-form-field>
 
         @if (validationError(); as error) {
-          <div class="error-entry">
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
-            <span>{{ error | translate }}</span>
-          </div>
+          <app-alert-banner severity="error" [description]="error | translate" />
         }
 
         <div class="actions">

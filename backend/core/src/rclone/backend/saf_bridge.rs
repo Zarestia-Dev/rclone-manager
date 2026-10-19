@@ -228,31 +228,34 @@ mod jni_impl {
         files_dir: jstring,
         cache_dir: jstring,
     ) {
-        let _ = env_unowned.with_env(|env| {
-            super::cache_java_vm(env);
-            super::init_android_context(env, &context);
-            let dir_jstr = unsafe { jni::objects::JString::from_raw(env, files_dir) };
-            let dir_str: String = dir_jstr
-                .mutf8_chars(env)
-                .map(Into::into)
-                .unwrap_or_default();
-            let path = std::path::PathBuf::from(&dir_str);
+        env_unowned
+            .with_env(|env| {
+                super::cache_java_vm(env);
+                super::init_android_context(env, &context);
+                rustls_platform_verifier::android::init_with_env(env, context)?;
+                let dir_jstr = unsafe { jni::objects::JString::from_raw(env, files_dir) };
+                let dir_str: String = dir_jstr
+                    .mutf8_chars(env)
+                    .map(Into::into)
+                    .unwrap_or_default();
+                let path = std::path::PathBuf::from(&dir_str);
 
-            let cache_jstr = unsafe { jni::objects::JString::from_raw(env, cache_dir) };
-            let cache_str: String = cache_jstr
-                .mutf8_chars(env)
-                .map(Into::into)
-                .unwrap_or_default();
-            let cache_path = std::path::PathBuf::from(&cache_str);
-            let conf_path = path.join("rclone.conf");
-            let _ = std::fs::create_dir_all(&cache_path);
+                let cache_jstr = unsafe { jni::objects::JString::from_raw(env, cache_dir) };
+                let cache_str: String = cache_jstr
+                    .mutf8_chars(env)
+                    .map(Into::into)
+                    .unwrap_or_default();
+                let cache_path = std::path::PathBuf::from(&cache_str);
+                let conf_path = path.join("rclone.conf");
+                let _ = std::fs::create_dir_all(&cache_path);
 
-            if let Err(error) = rclone_ffi::configure_default_paths(&conf_path, &cache_path) {
-                log::error!("SAF librclone initialization failed: {error}");
-            }
+                if let Err(error) = rclone_ffi::configure_default_paths(&conf_path, &cache_path) {
+                    log::error!("SAF librclone initialization failed: {error}");
+                }
 
-            Ok::<(), jni::errors::Error>(())
-        });
+                Ok::<(), jni::errors::Error>(())
+            })
+            .resolve::<jni::errors::ThrowRuntimeExAndDefault>();
     }
 
     #[unsafe(no_mangle)]

@@ -1,13 +1,8 @@
-use serde_json::Value;
 use std::path::Path;
 
 use crate::services::settings::AppSettingsManager;
+use crate::services::settings::remote::manager::migrate_to_multi_profile;
 use crate::services::settings::schema::AppSettings;
-
-/// Migrator for `remotes` sub-settings: delegates to `migrate_to_multi_profile`.
-pub fn migrate_remote_sub_settings(val: Value) -> Value {
-    crate::services::settings::remote::manager::migrate_to_multi_profile(val)
-}
 
 /// Creates a new `AppSettingsManager` with all necessary sub-settings.
 pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, String> {
@@ -19,7 +14,7 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         .with_sub_settings(
             rcman::SubSettingsConfig::new("remotes")
                 .with_profiles()
-                .with_migrator(migrate_remote_sub_settings),
+                .with_migrator(migrate_to_multi_profile),
         )
         .with_sub_settings(rcman::SubSettingsConfig::singlefile("backend").with_profiles())
         .with_sub_settings(
@@ -62,46 +57,4 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
     builder
         .build()
         .map_err(|e| format!("Failed to create rcman settings manager: {e}"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn test_migrate_remote_sub_settings_double_nested() {
-        let legacy = json!({
-            "runtimeRemoteConfigs": {
-                "Default": {
-                    "One Drive": {
-                        "token": "secret_token",
-                        "client_credentials": true
-                    }
-                }
-            }
-        });
-
-        let migrated = migrate_remote_sub_settings(legacy);
-        let default_profile = &migrated["runtimeRemoteConfigs"]["Default"];
-
-        assert_eq!(default_profile["One Drive"]["token"], "secret_token");
-        assert_eq!(default_profile["One Drive"]["client_credentials"], true);
-        assert!(default_profile.get("One Drive").is_some());
-    }
-
-    #[test]
-    fn test_migrate_remote_sub_settings_already_flat() {
-        let flat = json!({
-            "runtimeRemoteConfigs": {
-                "Default": {
-                    "token": "secret_token",
-                    "client_credentials": true
-                }
-            }
-        });
-
-        let migrated = migrate_remote_sub_settings(flat.clone());
-        assert_eq!(migrated, flat);
-    }
 }

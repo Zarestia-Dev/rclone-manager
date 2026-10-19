@@ -75,8 +75,13 @@ fn report_if_ready(health: &StartupHealth) {
         confirm_startup(&directory, &executable, &token, env!("CARGO_PKG_VERSION"))?;
         Ok(())
     })();
-    if let Err(error) = result {
-        log::error!("Could not confirm updated application startup: {error}");
+    match result {
+        Ok(()) => log::info!(
+            "Updated application confirmed startup: version={}, receipt_directory={}",
+            env!("CARGO_PKG_VERSION"),
+            directory.display()
+        ),
+        Err(error) => log::error!("Could not confirm updated application startup: {error}"),
     }
 }
 

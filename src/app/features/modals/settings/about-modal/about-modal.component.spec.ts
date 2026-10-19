@@ -21,12 +21,14 @@ describe('AboutModalComponent', () => {
   let buildType: WritableSignal<string | null>;
   let canAutoInstall: WritableSignal<boolean>;
   let readyToRestart: WritableSignal<boolean>;
+  let installationFailure: WritableSignal<string>;
   const cancelUpdate = vi.fn();
 
   beforeEach(async () => {
     buildType = signal<string | null>(null);
     canAutoInstall = signal(true);
     readyToRestart = signal(false);
+    installationFailure = signal('');
     cancelUpdate.mockReset().mockResolvedValue(undefined);
     dialogRefSpy = { close: vi.fn() };
 
@@ -48,7 +50,7 @@ describe('AboutModalComponent', () => {
       buildType,
       canAutoInstall,
       installationReason: signal(''),
-      installationFailure: signal(''),
+      installationFailure,
     };
 
     const mockRcloneUpdateService = {
@@ -189,6 +191,27 @@ describe('AboutModalComponent', () => {
     discard?.click();
     await fixture.whenStable();
     expect(cancelUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('shows installation errors in an alert banner and removes it when cleared', () => {
+    component.navigateTo('about-app');
+    fixture.detectChanges();
+    const view = fixture.nativeElement as HTMLElement;
+    expect(view.querySelector('app-alert-banner')).toBeNull();
+
+    const message =
+      'The APK must be a newer version of this application signed by the same publisher.';
+    installationFailure.set(message);
+    fixture.detectChanges();
+    const banner = view.querySelector('app-alert-banner');
+    expect(banner?.getAttribute('role')).toBe('alert');
+    expect(banner?.classList.contains('error')).toBe(true);
+    expect(banner?.textContent).toContain(message);
+    expect(view.querySelector('.error-entry')).toBeNull();
+
+    installationFailure.set('');
+    fixture.detectChanges();
+    expect(view.querySelector('app-alert-banner')).toBeNull();
   });
 
   it('should have contributors list defined with expected entries', () => {

@@ -1,4 +1,6 @@
 # Add project specific ProGuard rules here.
+# The TLS verifier is called through JNI and must survive release minification.
+-keep, includedescriptorclasses class org.rustls.platformverifier.** { *; }
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #

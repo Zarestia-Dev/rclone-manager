@@ -41,6 +41,7 @@ fn stage(root: &Path, target: &Path, mode: &str, version: &str, next: &Path) -> 
         ],
         working_directory: root.to_owned(),
         parent_pid: 0,
+        log_directory: Some(root.join("logs")),
     };
     write_private(
         &directory.join("plan.json"),
@@ -98,6 +99,7 @@ fn helper_fixture() {
     let directory = PathBuf::from(directory);
     let _lock = stage_lock(&directory).unwrap();
     let plan = read_plan(&directory, None, "portable").unwrap();
+    crate::utils::logging::log::init_helper_logging(plan.log_directory.as_deref()).unwrap();
     // Production entry points always pass PUBLIC_KEY. Only this test process
     // trusts the disposable fixture key; no runtime key override is exposed.
     std::process::exit(install_loop(directory, plan, KEY).unwrap());
@@ -117,6 +119,15 @@ fn signed_update_replaces_the_binary_and_commits_after_startup_confirmation() {
     );
     assert!(!directory.join("previous").exists());
     assert!(!root.path().join("recovered").exists());
+    let logs = std::fs::read_to_string(root.path().join("logs/rclone-manager.log")).unwrap();
+    for message in [
+        "Installing verified update",
+        "Installed executable verified",
+        "Startup receipt verified",
+        "Update committed",
+    ] {
+        assert!(logs.contains(message), "Missing helper log: {message}");
+    }
 }
 
 #[test]
@@ -130,6 +141,9 @@ fn signed_update_that_crashes_restores_and_relaunches_the_original() {
     assert!(root.path().join("recovered").is_file());
     assert!(directory.join("failure.txt").is_file());
     assert!(!directory.join("committed").exists());
+    let logs = std::fs::read_to_string(root.path().join("logs/rclone-manager.log")).unwrap();
+    assert!(logs.contains("Rolling back update"));
+    assert!(logs.contains("Previous executable restored"));
 }
 
 #[test]
@@ -150,7 +164,7 @@ fn production_key_rejects_the_process_fixture_before_replacement() {
     let root = tempfile::tempdir().unwrap();
     let target = original(root.path());
     let directory = stage(root.path(), &target, "ready", "99.0.0", root.path());
-    assert!(read_manifest(&directory, "portable", &PUBLIC_KEY).is_err());
+    assert!(read_manifest(&directory, "portable", PUBLIC_KEY).is_err());
     assert_eq!(std::fs::read(&target).unwrap(), ORIGINAL);
 }
 

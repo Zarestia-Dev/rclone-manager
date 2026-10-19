@@ -9,6 +9,7 @@ import { Automation } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 
 const AUTOMATION_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
   sync: { icon: 'refresh', colorClass: 'sync-color' },
@@ -38,6 +39,7 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
     TranslatePipe,
     DatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './automation-card.component.html',
   styleUrl: './automation-card.component.scss',

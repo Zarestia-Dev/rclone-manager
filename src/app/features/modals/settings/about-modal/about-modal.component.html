@@ -196,7 +196,7 @@
           </div>
 
           @if (appInstallationFailure()) {
-            <div class="error-entry" role="alert">{{ appInstallationFailure() }}</div>
+            <app-alert-banner severity="error" [description]="appInstallationFailure()" />
           }
           @if (appReadyToRestart()) {
             <ng-container

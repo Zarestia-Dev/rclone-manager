@@ -202,9 +202,6 @@ impl RcApiEngine {
             EngineError::WrongPassword | EngineError::PasswordRequired => {
                 self.mark_password_failed();
             }
-            EngineError::RcAuthFailed(msg) => {
-                self.mark_auth_failed(msg.clone());
-            }
             other => {
                 self.mark_other_failed(other.to_string());
             }

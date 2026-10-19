@@ -10,6 +10,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
 import { JobInfo, CompletedTransfer, JOB_ICON_MAP } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -65,6 +66,7 @@ interface JobViewModel {
     FormatRateValuePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],

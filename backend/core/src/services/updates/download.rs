@@ -33,6 +33,7 @@ pub(super) async fn fetch(
     if url.scheme() != "https" {
         return Err("Update download requires HTTPS".into());
     }
+    log::debug!("Fetching update resource: {url}, size_limit={limit}");
     let response = client()?
         .get(url)
         .send()
@@ -54,6 +55,7 @@ pub(super) async fn fetch(
         progress(chunk.len(), length);
         bytes.extend_from_slice(&chunk);
     }
+    log::debug!("Update resource download complete: {} bytes", bytes.len());
     Ok(bytes)
 }
 
@@ -247,6 +249,7 @@ mod tests {
             prerelease: false,
             draft: false,
             assets: vec![crate::utils::github_client::Asset {
+                api_url: None,
                 name: "portable-linux-x86_64.json".into(),
                 browser_download_url: url.clone(),
             }],

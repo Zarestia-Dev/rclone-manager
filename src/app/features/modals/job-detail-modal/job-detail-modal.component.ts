@@ -15,6 +15,7 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 @Component({
@@ -34,6 +35,7 @@ import { EscapeCloseDirective } from '../../../shared/directives/escape-close.di
     TransferActivityPanelComponent,
     PathDisplayComponent,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './job-detail-modal.component.html',

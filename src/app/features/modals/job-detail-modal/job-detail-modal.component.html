@@ -213,10 +213,12 @@
         <mat-icon svgIcon="circle-exclamation"></mat-icon>
         {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <pre class="error-entry" [appCopyToClipboard]="err" [attr.title]="'common.copy' | translate">
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-        <span>{{ err }}</span>
-      </pre>
+      <app-alert-banner
+        severity="error"
+        [description]="err"
+        [appCopyToClipboard]="err"
+        [attr.title]="'common.copy' | translate"
+      />
     </section>
   }
 </main>

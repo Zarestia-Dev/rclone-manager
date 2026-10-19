@@ -131,8 +131,18 @@ impl Manifest {
     fn read_verified_archive(&self, bytes: &[u8], key: &str) -> Result<Vec<u8>, String> {
         let archive = self.archive.as_ref().ok_or("Missing portable ZIP")?;
         archive.verify(bytes, key)?;
+        log::debug!(
+            "Verified portable ZIP size, SHA-256 and signature: {} ({} bytes)",
+            self.asset,
+            bytes.len()
+        );
         let binary = read_zip_member(bytes, &archive.binary_path, self.size, self.bundle_root())?;
         self.verify_payload_with_key(&binary, key)?;
+        log::debug!(
+            "Verified ZIP member size, SHA-256 and signature: {} ({} bytes)",
+            archive.binary_path,
+            binary.len()
+        );
         Ok(binary)
     }
 

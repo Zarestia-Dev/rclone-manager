@@ -225,6 +225,48 @@ describe('AppUpdaterService state restoration', () => {
     expect(service.isChecking()).toBe(false);
   });
 
+  it('keeps a manual check active across snapshots and reports its failure', async () => {
+    info = null;
+    await service.initialize();
+    let reject!: (error: Error) => void;
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        })
+    );
+    const check = service.checkForUpdates();
+    changed.next({ target: 'app' });
+    await Promise.resolve();
+    expect(service.isChecking()).toBe(true);
+    await service.checkForUpdates();
+    expect(invoke.mock.calls.filter(([command]) => command === 'fetch_update')).toHaveLength(1);
+
+    reject(new Error('Invalid update manifest'));
+    await check;
+    expect(showError).toHaveBeenCalledWith('updates.checkFailed');
+    expect(service.isChecking()).toBe(false);
+  });
+
+  it('keeps a manual check active when an update-found event arrives before its response', async () => {
+    info = null;
+    await service.initialize();
+    let resolve!: (value: UpdateInfo) => void;
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        })
+    );
+    const check = service.checkForUpdates();
+    found.next({ ...available, version: '1.3.0' });
+    expect(service.isChecking()).toBe(true);
+    resolve(available);
+    await check;
+    expect(service.updateAvailable()?.version).toBe('1.3.0');
+    expect(service.isChecking()).toBe(false);
+  });
+
   it('restores byte counts and continues live progress without restarting the download', async () => {
     await service.initialize();
     expect(service.downloadStatus()).toEqual(download);

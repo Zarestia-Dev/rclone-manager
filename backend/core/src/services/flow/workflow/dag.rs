@@ -14,8 +14,6 @@ pub fn has_cycles(nodes: &[WorkflowNode], edges: &[WorkflowEdge]) -> bool {
         return false;
     }
 
-    let node_ids: HashSet<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
-
     // Calculate in-degree for each node
     let mut in_degree: HashMap<&str, usize> = HashMap::with_capacity(nodes.len());
     let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::with_capacity(nodes.len());
@@ -34,7 +32,7 @@ pub fn has_cycles(nodes: &[WorkflowNode], edges: &[WorkflowEdge]) -> bool {
             return true;
         }
 
-        if node_ids.contains(src) && node_ids.contains(tgt) {
+        if in_degree.contains_key(src) && in_degree.contains_key(tgt) {
             if let Some(entry) = in_degree.get_mut(tgt) {
                 *entry += 1;
             }
@@ -229,6 +227,22 @@ mod tests {
         ];
 
         assert!(!has_cycles(&nodes, &edges));
+    }
+
+    #[test]
+    fn cycle_detection_ignores_edges_to_missing_nodes() {
+        let nodes = vec![
+            create_test_node("n1", "Start", WorkflowNodeCategory::Trigger),
+            create_test_node("n2", "Task", WorkflowNodeCategory::Task),
+        ];
+        let mut edges = vec![
+            create_test_edge("n1", "missing"),
+            create_test_edge("missing", "n1"),
+            create_test_edge("n2", "n1"),
+        ];
+        assert!(!has_cycles(&nodes, &edges));
+        edges.push(create_test_edge("n1", "n2"));
+        assert!(has_cycles(&nodes, &edges));
     }
 
     #[test]

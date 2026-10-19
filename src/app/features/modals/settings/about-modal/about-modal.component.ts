@@ -33,6 +33,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import {
   isHeadlessMode,
   isMobile,
@@ -61,6 +62,7 @@ renderer.link = ({ href, title, text }): string => {
     FormatFileSizePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],

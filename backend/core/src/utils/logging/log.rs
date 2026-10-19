@@ -112,6 +112,17 @@ pub fn update_log_level(log_level: &str) {
     log::set_max_level(level);
 }
 
+/// Update helpers start before runtime setup and only need console/file logging.
+#[cfg(feature = "updater")]
+pub(crate) fn init_helper_logging(directory: Option<&std::path::Path>) -> Result<(), String> {
+    log::set_logger(&DynamicLogger).map_err(|error| error.to_string())?;
+    update_log_level("info");
+    if let Some(directory) = directory {
+        super::file_writer::init_file_writer(directory).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn log_operation(
     level: LogLevel,
     remote_name: Option<String>,

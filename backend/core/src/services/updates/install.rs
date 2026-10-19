@@ -102,6 +102,11 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
         let st = app_clone.state::<AppUpdaterState>();
         match res {
             Ok(downloaded_payload) => {
+                info!(
+                    "App update ready to install: version={}, payload_bytes={}",
+                    update.version(),
+                    downloaded_payload.len()
+                );
                 let progress = {
                     let mut data = st.data.lock();
                     data.state = UpdateState::ReadyToRestart;
@@ -146,6 +151,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 }
 
 pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
+    info!("Cancelling application update");
     let updater_state = app.state::<AppUpdaterState>();
     updater_state.cancel_update().await;
 
@@ -178,6 +184,11 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
         staged
     };
     emit_state_changed();
+    info!(
+        "Applying app update: version={}, payload_bytes={}",
+        update.version(),
+        payload.len()
+    );
     let result = crate::utils::spawn_blocking(move || {
         let result = update.install(&payload);
         (update, payload, result)
@@ -197,6 +208,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
     };
     match result {
         Err(error) => {
+            warn!("App update installation failed: {error}");
             let failure = failure_message(&error);
             let mut data = state.data.lock();
             data.state = UpdateState::ReadyToRestart;

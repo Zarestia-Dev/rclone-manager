@@ -106,6 +106,8 @@ pub(super) fn run(
                 });
             }
         };
+        log::info!("Started updated application: version={version}, pid={:?}; startup deadline={}s, stability window={}s",
+            child.id(), STARTUP_DEADLINE.as_secs(), STABILITY_WINDOW.as_secs());
         match monitor(
             &mut child,
             directory,
@@ -148,9 +150,14 @@ pub(super) fn recover(
     restart: bool,
     reason: &str,
 ) -> Result<i32, String> {
+    log::warn!(
+        "Rolling back update: target={}, restart={restart}, reason={reason}",
+        plan.target.display()
+    );
     let _ = std::fs::write(directory.join("failure.txt"), reason);
     super::binary::restore_previous(directory, &plan.target)
         .map_err(|e| format!("{reason}; restoring previous executable failed: {e}"))?;
+    log::info!("Previous executable restored: {}", plan.target.display());
     if !restart {
         return Ok(0);
     }
@@ -199,6 +206,7 @@ async fn monitor(
         tokio::select! {
             biased;
             signal = &mut stop => {
+                log::info!("Update supervisor received shutdown: signal={signal}, committed={}", trial.committed);
                 stop_child(child, &tree, signal).await?;
                 return Ok(if trial.committed { Decision::Exit(0) } else {
                     Decision::Rollback { restart: false, reason: "Update startup interrupted by shutdown".into() }
@@ -207,6 +215,7 @@ async fn monitor(
             status = child.wait() => {
                 let status = status.map_err(|e| e.to_string())?;
                 let code = status.code().unwrap_or(1);
+                log::info!("Updated application exited: code={code}, committed={}", trial.committed);
                 if trial.committed && code == 0 {
                     match std::fs::read(directory.join("next.json")) {
                         Ok(bytes) => return serde_json::from_slice(&bytes).map(Decision::Next).map_err(|e| e.to_string()),
@@ -223,9 +232,14 @@ async fn monitor(
             }
             _ = tick.tick(), if !trial.committed => {
                 let elapsed = started.elapsed();
-                if trial.observe(elapsed, health::confirmed(directory, token, version), stability) {
+                let ready = health::confirmed(directory, token, version);
+                if ready && trial.ready_since.is_none() {
+                    log::info!("Startup receipt verified for {version}; observing stability window");
+                }
+                if trial.observe(elapsed, ready, stability) {
                     super::binary::write_private(&directory.join("committed"), version.as_bytes())
                         .map_err(|e| e.to_string())?;
+                    log::info!("Update committed: version={version}, startup and stability checks passed");
                     // Rollback is no longer possible after commitment.
                     if let Err(error) = std::fs::remove_file(directory.join("previous"))
                         && error.kind() != std::io::ErrorKind::NotFound { log::warn!("Could not remove committed backup: {error}"); }

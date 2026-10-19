@@ -216,7 +216,7 @@
               <div class="error-text">
                 <span class="detail-label">{{ 'fileBrowser.operations.failed' | translate }}</span>
                 <div class="errors-list">
-                  <span class="value error-entry">{{ vm.job.error }}</span>
+                  <app-alert-banner severity="error" [description]="vm.formattedError ?? ''" />
                 </div>
               </div>
               <button
