@@ -15,7 +15,7 @@ unsafe impl Sync for MacosActivityToken {}
 pub struct PowerInhibitorState {
     is_inhibited: AtomicBool,
     #[cfg(target_os = "linux")]
-    linux_fd: tokio::sync::Mutex<Option<zbus::zvariant::OwnedFd>>,
+    linux_fd: tokio::sync::Mutex<Option<zbus::OwnedFd>>,
     #[cfg(target_os = "macos")]
     macos_activity: tokio::sync::Mutex<Option<MacosActivityToken>>,
     #[cfg(target_os = "windows")]
@@ -93,7 +93,7 @@ impl PowerInhibitorState {
                         // 3. Allows clean desktop shutdown/reboot without black-screen hangs on KDE Plasma 6.
                         // 4. Safely allows laptops to suspend when the lid is closed to prevent overheating in bags.
                         match proxy
-                            .call::<_, _, zbus::zvariant::OwnedFd>(
+                            .call::<_, _, zbus::OwnedFd>(
                                 "Inhibit",
                                 &("idle", "RClone Manager", reason, "block"),
                             )

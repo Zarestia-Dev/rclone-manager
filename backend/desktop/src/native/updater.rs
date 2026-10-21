@@ -123,7 +123,7 @@ fn release_has_download(release: &github_client::Release, download: &url::Url) -
 }
 
 fn manifest_matches_release(current: &str, manifest: &str, expected: &str) -> bool {
-    manifest == expected && crate::services::updates::is_version_newer(current, manifest)
+    manifest == expected && crate::utils::version::is_version_newer(current, manifest)
 }
 
 // Rewrites the download URL to use the release tag path instead of the generic

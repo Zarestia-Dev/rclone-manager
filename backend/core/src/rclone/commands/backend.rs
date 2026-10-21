@@ -6,13 +6,13 @@ use log::{debug, info, warn};
 use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::types::Backend;
 use crate::rclone::backend::types::BackendInfo;
-use crate::rclone::backend::types::LOCAL_BACKEND_NAME;
 use crate::rclone::endpoints::config;
 use crate::rclone::endpoints::core;
 use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::services::automation::engine::AutomationScheduler;
 use crate::services::settings::AppSettingsManager;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use crate::utils::types::events::BACKEND_SWITCHED;
 use crate::utils::types::state::RcloneState;
 

@@ -1,6 +1,7 @@
 import { SharedProfileType } from '@app/types';
 import { ImportResult } from '../cli-flag-mapper.service';
 import { OPERATION_PATH_MAPPINGS } from './profile-mapper.utils';
+import { getRuntimeRemoteProfiles } from '../../../shared/utils/profile-config.util';
 
 export const LINKED_OPTION_TYPES: ReadonlySet<SharedProfileType> = new Set([
   'vfs',
@@ -24,8 +25,11 @@ export function mergeImportedProfile(
 
   // runtimeRemote scopes options under { [remoteName]: opts }.
   if (type === 'runtimeRemote') {
-    const opts = (existing[remoteName] as Record<string, unknown>) ?? existing;
-    return { ...existing, [remoteName]: mergeImportedFlags(opts, result, type) };
+    const profiles = getRuntimeRemoteProfiles(existing, remoteName);
+    return {
+      ...profiles,
+      [remoteName]: mergeImportedFlags(profiles[remoteName] ?? {}, result, type),
+    };
   }
 
   // Operation types store options under { app, rclone }.

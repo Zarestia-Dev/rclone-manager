@@ -1125,7 +1125,7 @@ mod tests {
                 .unwrap();
             assert_eq!(
                 resolved.backend.name,
-                crate::rclone::backend::types::LOCAL_BACKEND_NAME
+                crate::utils::constants::LOCAL_BACKEND_NAME
             );
             assert_eq!(resolved.params.profile.as_deref(), Some("Daily"));
             assert_eq!(

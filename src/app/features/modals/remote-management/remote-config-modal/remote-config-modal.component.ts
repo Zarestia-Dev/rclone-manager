@@ -32,7 +32,7 @@ import {
   DialogData,
 } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
-import { retargetProfilesRemote } from '../../../../services/remote/utils/remote-config.utils';
+import { retargetProfilesRemote } from '../../../../services/remote/utils/profile-mapper.utils';
 import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,

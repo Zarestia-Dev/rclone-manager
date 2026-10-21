@@ -115,36 +115,40 @@ impl LinkChecker {
 #[must_use]
 pub fn is_metered() -> bool {
     std::thread::spawn(|| {
-        use zbus::blocking::{Connection, Proxy};
+        crate::utils::block_on(async {
+            use zbus::{Connection, Proxy};
 
-        let connection = match Connection::system() {
-            Ok(c) => c,
-            Err(e) => {
-                log::debug!("Failed to connect to D-Bus for metered network check: {e}");
-                return false;
-            }
-        };
+            let connection = match Connection::system().await {
+                Ok(c) => c,
+                Err(e) => {
+                    log::debug!("Failed to connect to D-Bus for metered network check: {e}");
+                    return false;
+                }
+            };
 
-        let proxy = match Proxy::new(
-            &connection,
-            "org.freedesktop.NetworkManager",
-            "/org/freedesktop/NetworkManager",
-            "org.freedesktop.NetworkManager",
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                log::debug!("NetworkManager D-Bus proxy error: {e}");
-                return false;
-            }
-        };
+            let proxy = match Proxy::new(
+                &connection,
+                "org.freedesktop.NetworkManager",
+                "/org/freedesktop/NetworkManager",
+                "org.freedesktop.NetworkManager",
+            )
+            .await
+            {
+                Ok(p) => p,
+                Err(e) => {
+                    log::debug!("NetworkManager D-Bus proxy error: {e}");
+                    return false;
+                }
+            };
 
-        match proxy.get_property::<u32>("Metered") {
-            Ok(status) => matches!(status, 1 | 3),
-            Err(e) => {
-                log::debug!("Failed to read Metered property: {e}");
-                false
+            match proxy.get_property::<u32>("Metered").await {
+                Ok(status) => matches!(status, 1 | 3),
+                Err(e) => {
+                    log::debug!("Failed to read Metered property: {e}");
+                    false
+                }
             }
-        }
+        })
     })
     .join()
     .unwrap_or(false)

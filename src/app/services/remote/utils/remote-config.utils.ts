@@ -2,10 +2,6 @@ import { RcConfigOption, RcConfigExample } from '@app/types';
 
 import { TYPE_DEFAULT_EXAMPLES } from './remote-config-examples.constant';
 
-// Re-export modular domain utilities for 100% backward compatibility
-export * from './interactive-flow.utils';
-export * from './profile-mapper.utils';
-
 export function resolveOptionExamples(opt: RcConfigOption | null | undefined): RcConfigExample[] {
   if (!opt) return [];
   if (opt.Examples && opt.Examples.length > 0) {

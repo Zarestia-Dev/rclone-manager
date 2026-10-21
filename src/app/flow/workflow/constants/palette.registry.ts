@@ -115,7 +115,6 @@ function getOperationDefaultConfig(opKey: string): Record<string, unknown> {
     config: {
       app: {
         autoStart: false,
-        showOnTray: true,
         cronEnabled: false,
         cronExpression: null,
         watchEnabled: false,

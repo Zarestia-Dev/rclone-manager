@@ -17,19 +17,17 @@ describe('profile changes', () => {
       const baseline = createProfileBaseline(settings);
       const request = buildProfileChanges(draftsFrom(baseline), baseline);
       expect(request.settings).toEqual({});
-      expect(request.expectedSettings).toEqual({});
       expect(baseline.sync).toEqual({});
     }
   );
 
-  it('sends only changed profiles and the corresponding previous values', () => {
+  it('sends complete changed sections including their untouched sibling profiles', () => {
     const old = { rclone: { srcFs: '/old', dstFs: 'drive:' } };
     const baseline = createProfileBaseline({ syncConfigs: { Daily: old, Untouched: {} } });
     const drafts = draftsFrom(baseline);
     drafts.sync = { Daily: { rclone: { srcFs: '/new', dstFs: 'drive:' } }, Untouched: {} };
     const request = buildProfileChanges(drafts, baseline);
-    expect(request.settings).toEqual({ syncConfigs: { Daily: drafts.sync['Daily'] } });
-    expect(request.expectedSettings).toEqual({ syncConfigs: { Daily: old } });
+    expect(request.settings).toEqual({ syncConfigs: drafts.sync });
     expect(baseline.sync?.['Daily']).toEqual(old);
   });
 
@@ -41,7 +39,6 @@ describe('profile changes', () => {
     drafts.filter = { "New 'name'": { include: ['*.txt'] } };
     const request = buildProfileChanges(drafts, baseline);
     expect(request.settings).toEqual({ filterConfigs: drafts.filter });
-    expect(request.expectedSettings).toEqual({ filterConfigs: baseline.filter });
   });
 
   it('retains deletion intent until the returned baseline is adopted', () => {
@@ -49,10 +46,9 @@ describe('profile changes', () => {
     const drafts = draftsFrom(baseline);
     drafts.sync = {};
     const first = buildProfileChanges(drafts, baseline);
-    expect(first.settings).toEqual({});
-    expect(first.expectedSettings).toEqual({ syncConfigs: { Daily: {} } });
-    expect(buildProfileChanges(drafts, baseline).expectedSettings).toEqual(first.expectedSettings);
-    expect(buildProfileChanges(drafts, first.nextBaseline).expectedSettings).toEqual({});
+    expect(first.settings).toEqual({ syncConfigs: {} });
+    expect(buildProfileChanges(drafts, baseline).settings).toEqual(first.settings);
+    expect(buildProfileChanges(drafts, first.nextBaseline).settings).toEqual({});
   });
 
   it('treats the first edit of a displayed default as a new profile', () => {
@@ -61,10 +57,9 @@ describe('profile changes', () => {
     drafts.backend = { Default: { transfers: 2 } };
     const first = buildProfileChanges(drafts, baseline);
     expect(first.settings).toEqual({ backendConfigs: { Default: { transfers: 2 } } });
-    expect(first.expectedSettings).toEqual({});
     drafts.backend = { Default: { transfers: 4 } };
     const second = buildProfileChanges(drafts, first.nextBaseline);
-    expect(second.expectedSettings).toEqual({ backendConfigs: { Default: { transfers: 2 } } });
+    expect(second.settings).toEqual({ backendConfigs: { Default: { transfers: 4 } } });
   });
 
   it('keeps absent sections absent after saving another section', () => {
@@ -75,7 +70,6 @@ describe('profile changes', () => {
     drafts.filter = { Default: { include: ['*.jpg'] } };
     const second = buildProfileChanges(drafts, first.nextBaseline);
     expect(second.settings).toEqual({ filterConfigs: drafts.filter });
-    expect(second.expectedSettings).toEqual({});
   });
 
   it('saves an explicitly created empty Default and can delete a persisted empty Default', () => {
@@ -84,11 +78,9 @@ describe('profile changes', () => {
     drafts.filter = { Default: {} };
     const created = buildProfileChanges(drafts, baseline);
     expect(created.settings).toEqual({ filterConfigs: { Default: {} } });
-    expect(created.expectedSettings).toEqual({});
     drafts.filter = {};
     const removed = buildProfileChanges(drafts, created.nextBaseline);
-    expect(removed.settings).toEqual({});
-    expect(removed.expectedSettings).toEqual({ filterConfigs: { Default: {} } });
+    expect(removed.settings).toEqual({ filterConfigs: {} });
   });
 
   it('isolates the baseline and submitted values from later draft mutations', () => {

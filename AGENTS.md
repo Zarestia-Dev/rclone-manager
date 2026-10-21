@@ -129,8 +129,13 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
 
 15. **Zero-Dependency Semantic Version Comparison (Rust)**
     - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
-    - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) in `backend/core/src/utils/version.rs` (re-exported in `crate::services::updates`).
+    - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
     - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
+
+16. **Default Profile Name (CRITICAL)**
+    - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
+    - **DO NOT** hardcode `'Default'` or `'default'` as a default profile name, define local aliases, or duplicate the constant. For example, use `cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME`.
+    - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
 
 ---
 

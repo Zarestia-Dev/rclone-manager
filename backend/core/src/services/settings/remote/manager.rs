@@ -13,71 +13,11 @@ use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 use crate::utils::types::remotes::OperationType;
 
-/// Merge profile mutations with compare-and-set semantics. Only names present in
-/// the desired/expected maps are touched; omitted profiles retain newer edits.
-fn merge_settings(
-    existing: &Value,
-    desired: &Value,
-    expected: Option<&Value>,
-) -> Result<Value, String> {
-    let mut merged = existing.as_object().cloned().unwrap_or_default();
+/// Replace supplied settings sections while preserving omitted sections.
+fn merge_settings(existing: &Value, desired: &Value) -> Result<Value, String> {
     let desired = desired.as_object().ok_or_else(|| crate::localized_error!("backendErrors.settings.saveFailed", "error" => "Invalid settings object"))?;
-    let Some(expected) = expected else {
-        merged.extend(desired.clone());
-        return Ok(Value::Object(merged));
-    };
-    let expected = expected.as_object().ok_or_else(|| crate::localized_error!("backendErrors.settings.saveFailed", "error" => "Invalid expected settings"))?;
-    let keys: std::collections::HashSet<_> = desired.keys().chain(expected.keys()).collect();
-    for key in keys {
-        if !OperationType::ALL
-            .iter()
-            .any(|operation| operation.config_key() == key)
-            && !crate::utils::types::remotes::helper_config_keys::ALL.contains(&key.as_str())
-        {
-            return Err(
-                crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Invalid profile section: {key}")),
-            );
-        }
-        let desired_profiles = desired.get(key).and_then(Value::as_object);
-        let expected_profiles = expected.get(key).and_then(Value::as_object);
-        if desired.get(key).is_some() && desired_profiles.is_none()
-            || expected.get(key).is_some() && expected_profiles.is_none()
-        {
-            return Err(
-                crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Invalid profile section: {key}")),
-            );
-        }
-        let mut profiles = merged
-            .get(key)
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default();
-        let names: std::collections::HashSet<_> = desired_profiles
-            .into_iter()
-            .flat_map(|profiles| profiles.keys())
-            .chain(
-                expected_profiles
-                    .into_iter()
-                    .flat_map(|profiles| profiles.keys()),
-            )
-            .collect();
-        for name in names {
-            let next = desired_profiles.and_then(|profiles| profiles.get(name));
-            let base = expected_profiles.and_then(|profiles| profiles.get(name));
-            let actual = profiles.get(name);
-            if actual != base && actual != next {
-                return Err(
-                    crate::localized_error!("backendErrors.settings.saveFailed", "error" => format!("Concurrent update: {key}.{name}")),
-                );
-            }
-            if let Some(next) = next {
-                profiles.insert(name.clone(), next.clone());
-            } else {
-                profiles.remove(name);
-            }
-        }
-        merged.insert(key.clone(), Value::Object(profiles));
-    }
+    let mut merged = existing.as_object().cloned().unwrap_or_default();
+    merged.extend(desired.clone());
     Ok(Value::Object(merged))
 }
 
@@ -85,7 +25,6 @@ pub async fn save_remote_settings(
     app: AppHandle,
     remote_name: String,
     settings: Value,
-    expected_settings: Option<Value>,
     backend_name: Option<String>,
 ) -> Result<(), String> {
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
@@ -104,7 +43,7 @@ pub async fn save_remote_settings(
     let existing = remotes
         .get_value(&remote_name)
         .unwrap_or_else(|_| serde_json::json!({}));
-    let mut settings = merge_settings(&existing, &settings, expected_settings.as_ref())?;
+    let mut settings = merge_settings(&existing, &settings)?;
     settings["name"] = Value::String(remote_name.clone());
     settings = migrate_to_multi_profile(settings);
     let parsed: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(settings)
@@ -424,16 +363,12 @@ fn migrate_profiles_format(obj: &mut serde_json::Map<String, Value>) {
         }
     }
 
-    // 7. Partition operational profiles to {"app": ..., "rclone": ...}
-    for config_key in &[
-        "syncConfigs",
-        "copyConfigs",
-        "moveConfigs",
-        "bisyncConfigs",
-        "mountConfigs",
-        "serveConfigs",
-    ] {
-        if let Some(configs) = obj.get_mut(*config_key).and_then(|v| v.as_object_mut()) {
+    // Partition every operation using the canonical registry.
+    for operation in OperationType::ALL {
+        if let Some(configs) = obj
+            .get_mut(operation.config_key())
+            .and_then(Value::as_object_mut)
+        {
             for profile in configs.values_mut() {
                 partition_profile_to_app_and_rclone(profile);
             }
@@ -504,7 +439,7 @@ mod tests {
             let mut update = original.clone();
             update["syncConfigs"]["Default"]["app"] = invalid;
             assert!(
-                save_remote_settings(app.clone(), "drive".into(), update, None, None)
+                save_remote_settings(app.clone(), "drive".into(), update, None)
                     .await
                     .is_err()
             );
@@ -519,29 +454,45 @@ mod tests {
     }
 
     #[test]
-    fn profile_compare_and_set_preserves_other_clients_and_supports_retry_and_delete() {
-        let base = json!({"mountConfigs": {"Default": {"rclone": {"fs": "old:"}}}, "syncConfigs": {"Default": {"rclone": {"srcFs": "old:"}}}});
-        let mount_expected = json!({"mountConfigs": base["mountConfigs"]});
-        let mount = json!({"mountConfigs": {"Default": {"rclone": {"fs": "new:"}}}});
-        let after_mount = merge_settings(&base, &mount, Some(&mount_expected)).unwrap();
-        let sync_expected = json!({"syncConfigs": base["syncConfigs"]});
-        let sync = json!({"syncConfigs": {"Default": {"rclone": {"srcFs": "new:"}}}});
-        let combined = merge_settings(&after_mount, &sync, Some(&sync_expected)).unwrap();
-        assert_eq!(combined["mountConfigs"], mount["mountConfigs"]);
-        assert_eq!(combined["syncConfigs"], sync["syncConfigs"]);
-        assert_eq!(
-            merge_settings(&combined, &sync, Some(&sync_expected)).unwrap(),
-            combined
-        );
-        let conflict = json!({"mountConfigs": {"Default": {"rclone": {"fs": "stale:"}}}});
-        assert!(merge_settings(&combined, &conflict, Some(&mount_expected)).is_err());
-        let deleted = merge_settings(&combined, &json!({}), Some(&mount)).unwrap();
-        assert!(deleted["mountConfigs"].get("Default").is_none());
-        assert_eq!(deleted["syncConfigs"], sync["syncConfigs"]);
-        assert!(merge_settings(&combined, &json!({"name":"wrong"}), Some(&json!({}))).is_err());
-        assert!(
-            merge_settings(&combined, &json!({"syncConfigs": null}), Some(&json!({}))).is_err()
-        );
+    fn saves_replace_supplied_sections_and_preserve_omitted_settings() {
+        let stored = json!({
+            "name": "drive",
+            "serveConfigs": {"Default": {"app": {"autoStart": false, "cronExpression": null}}},
+            "filterConfigs": {"Photos": {"include": ["*.jpg"]}}
+        });
+        let desired = json!({"serveConfigs": {"Default": {
+            "app": {}, "rclone": {"fs": "drive:"}
+        }}});
+        let saved = merge_settings(&stored, &desired).unwrap();
+        assert_eq!(saved["serveConfigs"], desired["serveConfigs"]);
+        assert_eq!(saved["filterConfigs"], stored["filterConfigs"]);
+        assert_eq!(saved["name"], "drive");
+        assert_eq!(merge_settings(&saved, &desired).unwrap(), saved);
+
+        let deleted = merge_settings(&saved, &json!({"serveConfigs": {}})).unwrap();
+        assert_eq!(deleted["serveConfigs"], json!({}));
+        assert_eq!(deleted["filterConfigs"], stored["filterConfigs"]);
+        assert!(merge_settings(&saved, &Value::Null).is_err());
+        assert!(merge_settings(&saved, &json!([])).is_err());
+    }
+
+    #[test]
+    fn migration_partitions_every_registered_operation() {
+        for operation in OperationType::ALL {
+            let key = operation.config_key();
+            let settings = json!({key: {"Default": {
+                "autoStart": true, "cronEnabled": false, "srcFs": "drive:photos"
+            }}});
+            let migrated = migrate_to_multi_profile(settings);
+            assert_eq!(
+                migrated[key]["Default"],
+                json!({
+                    "app": {"autoStart": true, "cronEnabled": false},
+                    "rclone": {"srcFs": "drive:photos"}
+                })
+            );
+            assert_eq!(migrate_to_multi_profile(migrated.clone()), migrated);
+        }
     }
 
     #[test]

@@ -291,6 +291,124 @@ describe('RemoteManagementService', () => {
     expect((await service.getRemoteConfigFields('drive'))[0].Name).toBe('new');
   });
 
+  it.each(['getRemoteTypes', 'getOAuthSupportedRemotes'] as const)(
+    '%s preserves embedded overview data and tolerates older providers',
+    async method => {
+      const overview = { Tier: 'Tier 1', Features: ['Copy'], Hashes: ['md5'], Virtual: false };
+      const Options = [{ Name: 'token', Help: 'OAuth Access Token as a JSON blob.' }];
+      vi.mocked(TestBed.inject(ApiClientService).invoke).mockResolvedValueOnce({
+        providers: [
+          { Name: 'drive', Description: 'Google Drive', Overview: overview, Options },
+          { Name: 'legacy', Description: 'Legacy', Options },
+          { Name: 'empty', Description: 'Empty', Overview: null, Options },
+        ],
+      });
+      expect(await service[method]()).toEqual([
+        { name: 'drive', description: 'Google Drive', overview },
+        { name: 'legacy', description: 'Legacy', overview: undefined },
+        { name: 'empty', description: 'Empty', overview: null },
+      ]);
+    }
+  );
+
+  it('shares one provider request between OAuth, type and configuration-field readers', async () => {
+    const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+    const options = [{ Name: 'token', Help: 'OAuth Access Token as a JSON blob.' }];
+    const overview = { Tier: 'Tier 1' };
+    api.mockResolvedValueOnce({
+      providers: [
+        { Name: 'drive', Description: 'Google Drive', Options: options, Overview: overview },
+        { Name: 'local', Description: 'Local' },
+      ],
+    });
+    const [types, oauth, fields] = await Promise.all([
+      service.getRemoteTypes(),
+      service.getOAuthSupportedRemotes(),
+      service.getRemoteConfigFields('drive'),
+    ]);
+    expect(types).toHaveLength(2);
+    expect(oauth).toEqual([{ name: 'drive', description: 'Google Drive', overview }]);
+    expect(fields).toEqual(options);
+    expect(await service.getOAuthSupportedRemotes()).toEqual(oauth);
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(api.mock.calls[0][0]).toBe('get_remote_types');
+  });
+
+  it('matches the existing OAuth schema filter without treating every token field as OAuth', async () => {
+    const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+    api.mockResolvedValueOnce({
+      providers: [
+        { Name: 'missing-options', Description: '', Options: null },
+        { Name: 'empty-options', Description: '', Options: [] },
+        { Name: 'missing-help', Description: '', Options: [{ Name: 'token' }] },
+        { Name: 'null-help', Description: '', Options: [{ Name: 'token', Help: null }] },
+        { Name: 'api-token', Description: '', Options: [{ Name: 'token', Help: 'API token' }] },
+        {
+          Name: 'other-option',
+          Description: '',
+          Options: [{ Name: 'other', Help: 'OAuth Access Token as a JSON blob' }],
+        },
+        {
+          Name: 'oauth',
+          Description: 'OAuth provider',
+          Options: [
+            { Name: 'token', Help: 'Help: OAuth Access Token as a JSON blob.\nMore help.' },
+          ],
+        },
+      ],
+    });
+    expect(await service.getOAuthSupportedRemotes()).toEqual([
+      { name: 'oauth', description: 'OAuth provider', overview: undefined },
+    ]);
+  });
+
+  it('refreshes the OAuth catalogue when the active backend changes', async () => {
+    const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+    const Options = [{ Name: 'token', Help: 'OAuth Access Token as a JSON blob' }];
+    api.mockResolvedValueOnce({ providers: [{ Name: 'drive', Description: 'Drive', Options }] });
+    await service.getRemoteTypes();
+    expect((await service.getOAuthSupportedRemotes())[0].name).toBe('drive');
+    switched.next();
+    api.mockResolvedValueOnce({ providers: [{ Name: 'pcloud', Description: 'pCloud', Options }] });
+    expect((await service.getOAuthSupportedRemotes())[0].name).toBe('pcloud');
+    expect(api).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows OAuth catalogue reads to retry after provider loading fails', async () => {
+    const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+    api.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ providers: [] });
+    await expect(service.getOAuthSupportedRemotes()).rejects.toThrow('offline');
+    expect(await service.getOAuthSupportedRemotes()).toEqual([]);
+    expect(api).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects stale OAuth readers and retains the new backend catalogue', async () => {
+    const api = vi.mocked(TestBed.inject(ApiClientService).invoke);
+    let finish!: (value: unknown) => void;
+    api.mockReturnValueOnce(
+      new Promise(resolve => {
+        finish = resolve;
+      })
+    );
+    const stale = service.getOAuthSupportedRemotes();
+    const rejected = expect(stale).rejects.toMatchObject({ name: 'AbortError' });
+    switched.next();
+    api.mockResolvedValueOnce({ providers: [] });
+    expect(await service.getOAuthSupportedRemotes()).toEqual([]);
+    finish({
+      providers: [
+        {
+          Name: 'stale',
+          Description: 'Stale',
+          Options: [{ Name: 'token', Help: 'OAuth Access Token as a JSON blob' }],
+        },
+      ],
+    });
+    await rejected;
+    expect(await service.getOAuthSupportedRemotes()).toEqual([]);
+    expect(api).toHaveBeenCalledTimes(2);
+  });
+
   it('releases metadata queue slots after invalidation even if old transports never complete', async () => {
     vi.useFakeTimers();
     const names = ['a', 'b', 'c', 'd', 'fresh'];

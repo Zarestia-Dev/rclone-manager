@@ -12,7 +12,7 @@ import { RcloneValueMapperService } from '../../../../services/remote/rclone-val
 import { AuthStateService } from '../../../../services/security/auth-state.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
-import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/remote-config.utils';
+import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/interactive-flow.utils';
 
 describe('RemoteConfigModalComponent', () => {
   let component: RemoteConfigModalComponent;

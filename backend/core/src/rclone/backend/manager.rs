@@ -7,11 +7,12 @@ use parking_lot::RwLock as SyncRwLock;
 use tokio::sync::RwLock;
 
 use crate::services::settings::AppSettingsManager;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
 use super::{
     runtime::RuntimeInfo,
-    types::{Backend, BackendInfo, LOCAL_BACKEND_NAME},
+    types::{Backend, BackendInfo},
 };
 
 /// Live caches stay with their owner; only options are copied on backend selection.

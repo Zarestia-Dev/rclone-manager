@@ -42,8 +42,8 @@ fn inspect_portable_zip<'a>(
     }
     for index in 0..archive.len() {
         let entry = archive.by_index(index).map_err(|e| e.to_string())?;
-        let path = entry.name();
-        if !safe_member_path(path)
+        let path = entry.name().map_err(|e| e.to_string())?;
+        if !safe_member_path(&path)
             || entry.unix_mode().is_some_and(|mode| {
                 mode & 0o170000 != 0 && !matches!(mode & 0o170000, 0o100000 | 0o040000)
             })
@@ -181,6 +181,43 @@ mod tests {
 
     #[cfg(feature = "updater")]
     #[test]
+    fn portable_reader_handles_unicode_empty_and_legacy_named_entries() {
+        let mut archive = ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, contents) in [("bundle/ünicode", b"abc".as_slice()), ("bundle/empty", b"")] {
+            archive
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            archive.write_all(contents).unwrap();
+        }
+        let bytes = archive.finish().unwrap().into_inner();
+        assert_eq!(
+            read_zip_member(&bytes, "bundle/ünicode", 3, Some("bundle")).unwrap(),
+            b"abc"
+        );
+        assert!(
+            read_zip_member(&bytes, "bundle/empty", 0, Some("bundle"))
+                .unwrap()
+                .is_empty()
+        );
+
+        let mut archive = ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        archive
+            .start_file("cafX", SimpleFileOptions::default())
+            .unwrap();
+        archive.write_all(b"abc").unwrap();
+        let mut bytes = archive.finish().unwrap().into_inner();
+        // Encode é as CP437 in both the local and central directory filenames.
+        for index in 0..bytes.len() - 3 {
+            if &bytes[index..index + 4] == b"cafX" {
+                bytes[index + 3] = 0x82;
+            }
+        }
+        let mut archive = inspect_portable_zip(&bytes, None).unwrap();
+        assert_eq!(archive.by_index(0).unwrap().name().unwrap(), "café");
+    }
+
+    #[cfg(feature = "updater")]
+    #[test]
     fn portable_reader_selects_only_the_binary_and_enforces_size_and_paths() {
         let bytes = include_bytes!("../services/updates/fixtures/portable-linux-x86_64-99.0.0.zip");
         let member = "RCloneManager/RCloneManager";
@@ -201,6 +238,7 @@ mod tests {
             "a/./b",
             "a//b",
             "a\nb",
+            "a\0b",
         ] {
             assert!(!safe_member_path(path));
         }

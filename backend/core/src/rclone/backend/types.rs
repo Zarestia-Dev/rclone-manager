@@ -63,7 +63,7 @@ impl Default for Backend {
     }
 }
 
-pub use crate::utils::constants::LOCAL_BACKEND_NAME;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 
 pub fn default_backend_name() -> String {
     LOCAL_BACKEND_NAME.to_string()

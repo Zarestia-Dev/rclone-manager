@@ -1254,6 +1254,25 @@
           "label": "Sem Saída",
           "description": "Suprima qualquer saída de stdout do chamada para o config do RC"
         }
+      },
+      "providerOverview": {
+        "title": "Recursos do provedor",
+        "supportTier": "Nível de suporte do rclone (não é seu plano de armazenamento)",
+        "hashes": "Somas de verificação",
+        "noHashes": "Nenhum algoritmo de soma de verificação informado",
+        "features": "Recursos informados",
+        "noFeatures": "Nenhum recurso informado para este resumo",
+        "generalNote": "Informações gerais do provedor fornecidas pelo rclone. O suporte real pode variar conforme a configuração.",
+        "virtualNote": "Os recursos dependem do remoto subjacente e da configuração.",
+        "documentation": "Ver visão geral dos recursos do rclone",
+        "copy": "Cópia no servidor",
+        "move": "Movimentação no servidor",
+        "publicLink": "Compartilhamento de links",
+        "emptyDirectories": "Pastas vazias",
+        "caseInsensitive": "Nomes sem distinção entre maiúsculas e minúsculas",
+        "duplicateFiles": "Nomes de arquivo duplicados",
+        "readMetadata": "Leitura de metadados",
+        "writeMetadata": "Gravação de metadados"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "Metadados do Sistema",
         "standard": "Metadados Padrão"
+      },
+      "supportInfo": "O nível de suporte do rclone reflete a manutenção e a estabilidade do provedor.",
+      "providerDocumentation": "Documentação do provedor",
+      "liveFeatures": "Recursos compatíveis com este remoto configurado.",
+      "featureLabels": {
+        "about": "Uso do armazenamento",
+        "bucketBased": "Armazenamento baseado em buckets",
+        "bucketRoot": "Acesso pela raiz do armazenamento",
+        "purge": "Excluir árvores de pastas",
+        "dirMove": "Mover pastas no servidor",
+        "cleanUp": "Limpeza do armazenamento",
+        "listR": "Listagem recursiva",
+        "listP": "Listagem paginada",
+        "putStream": "Envio em fluxo",
+        "openChunkWriter": "Envio em várias partes",
+        "openWriterAt": "Envio com acesso aleatório",
+        "readMimeType": "Ler tipos de conteúdo",
+        "writeMimeType": "Gravar tipos de conteúdo",
+        "changeNotify": "Notificações de alterações",
+        "setTier": "Alterar classe de armazenamento",
+        "getTier": "Ler classe de armazenamento",
+        "overlay": "Encapsula outros remotos"
       }
     },
     "properties": {

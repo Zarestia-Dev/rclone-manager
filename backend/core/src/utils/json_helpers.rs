@@ -122,9 +122,8 @@ pub fn resolve_profile_options(
     profile_name: Option<&str>,
     configs_key: &str,
 ) -> Result<Option<HashMap<String, Value>>, String> {
-    let Some(name) = profile_name else {
-        return Ok(None);
-    };
+    // Omitted references use the same Default selection as the configuration form.
+    let name = profile_name.unwrap_or("Default");
     match settings.get(configs_key).and_then(|configs| configs.get(name)) {
         Some(profile) => json_to_hashmap(Some(profile)).map(Some).ok_or_else(||
             crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}"))),
@@ -301,6 +300,23 @@ mod tests {
             .unwrap();
         assert_eq!(opts.get("vfs-cache-mode").unwrap(), "writes");
         assert_eq!(opts.get("read-only").unwrap(), &json!(true));
+    }
+
+    #[test]
+    fn omitted_profile_reference_resolves_default_options() {
+        for section in ["vfsConfigs", "filterConfigs", "backendConfigs"] {
+            let settings = json!({section: {"Default": {"read_only": true}}});
+            let implicit = resolve_profile_options(&settings, None, section).unwrap();
+            let explicit = resolve_profile_options(&settings, Some("Default"), section).unwrap();
+            assert_eq!(implicit, explicit);
+            assert_eq!(implicit.unwrap()["read_only"], true);
+            assert!(
+                resolve_profile_options(&json!({}), None, section)
+                    .unwrap()
+                    .is_none()
+            );
+            assert!(resolve_profile_options(&json!({}), Some("Missing"), section).is_err());
+        }
     }
 
     #[test]

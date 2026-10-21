@@ -32,12 +32,13 @@ import {
   CommandOption,
   WizardStep,
   OperationType,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import { INITIAL_COMMAND_OPTIONS } from 'src/app/services/remote/utils/command-options.util';
-import { mapFormToConfigProfile } from '../../../../services/remote/utils/remote-config.utils';
+import { mapFormToConfigProfile } from '../../../../services/remote/utils/profile-mapper.utils';
 import { createConfigFormGroup } from 'src/app/services/remote/utils/config-form.utils';
 
 const QUICK_SYNC_OPS = ['sync', 'copy', 'bisync', 'move'] as const;
@@ -204,6 +205,7 @@ export class QuickAddRemoteComponent {
         oauthSupportedRemotes.map(remote => ({
           value: remote.name,
           label: remote.description,
+          overview: remote.overview,
         }))
       );
       this.existingRemotes.set(existingRemotes);
@@ -317,26 +319,24 @@ export class QuickAddRemoteComponent {
       }
     }
 
-    const profileName = 'Default';
-
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
-        [profileName]: mountProfile,
+        [DEFAULT_PROFILE_NAME]: mountProfile,
       },
       ...Object.fromEntries(
         QUICK_SYNC_OPS.map(type => [
           REMOTE_CONFIG_KEYS[type],
-          { [profileName]: buildProfile(type, operations[type]) },
+          { [DEFAULT_PROFILE_NAME]: buildProfile(type, operations[type]) },
         ])
       ),
       [REMOTE_CONFIG_KEYS.serve]: {
-        [profileName]: buildProfile('serve', operations.serve),
+        [DEFAULT_PROFILE_NAME]: buildProfile('serve', operations.serve),
       },
       ...(preset.vfs && Object.keys(preset.vfs).length
-        ? { [REMOTE_CONFIG_KEYS.vfs]: { [profileName]: preset.vfs } }
+        ? { [REMOTE_CONFIG_KEYS.vfs]: { [DEFAULT_PROFILE_NAME]: preset.vfs } }
         : {}),
       ...(preset.backend && Object.keys(preset.backend).length
-        ? { [REMOTE_CONFIG_KEYS.backend]: { [profileName]: preset.backend } }
+        ? { [REMOTE_CONFIG_KEYS.backend]: { [DEFAULT_PROFILE_NAME]: preset.backend } }
         : {}),
       showOnTray: true,
     } as unknown as RemoteConfigSections;

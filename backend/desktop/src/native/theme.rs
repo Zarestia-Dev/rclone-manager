@@ -341,19 +341,19 @@ fn detect_other_de_theme() -> Option<bool> {
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-pub fn extract_portal_color_scheme(val: &zbus::zvariant::Value) -> Option<bool> {
+pub fn extract_portal_color_scheme(val: &zbus::Variant) -> Option<bool> {
     match val {
-        zbus::zvariant::Value::U32(1)
-        | zbus::zvariant::Value::U8(1)
-        | zbus::zvariant::Value::I32(1)
-        | zbus::zvariant::Value::I64(1)
-        | zbus::zvariant::Value::U64(1) => Some(true),
-        zbus::zvariant::Value::U32(2)
-        | zbus::zvariant::Value::U8(2)
-        | zbus::zvariant::Value::I32(2)
-        | zbus::zvariant::Value::I64(2)
-        | zbus::zvariant::Value::U64(2) => Some(false),
-        zbus::zvariant::Value::Value(inner) => extract_portal_color_scheme(inner),
+        zbus::Variant::U32(1)
+        | zbus::Variant::U8(1)
+        | zbus::Variant::I32(1)
+        | zbus::Variant::I64(1)
+        | zbus::Variant::U64(1) => Some(true),
+        zbus::Variant::U32(2)
+        | zbus::Variant::U8(2)
+        | zbus::Variant::I32(2)
+        | zbus::Variant::I64(2)
+        | zbus::Variant::U64(2) => Some(false),
+        zbus::Variant::Variant(inner) => extract_portal_color_scheme(inner),
         _ => None,
     }
 }
@@ -459,10 +459,7 @@ async fn run_linux_portal_watcher() {
     };
 
     if let Ok(res) = proxy
-        .call::<_, _, zbus::zvariant::OwnedValue>(
-            "Read",
-            &("org.freedesktop.appearance", "color-scheme"),
-        )
+        .call::<_, _, zbus::OwnedVariant>("Read", &("org.freedesktop.appearance", "color-scheme"))
         .await
         && let Some(is_dark) = extract_portal_color_scheme(&res)
     {
@@ -483,7 +480,7 @@ async fn run_linux_portal_watcher() {
     while let Some(msg) = signal_stream.next().await {
         if let Ok((namespace, key, value)) = msg
             .body()
-            .deserialize::<(String, String, zbus::zvariant::OwnedValue)>()
+            .deserialize::<(String, String, zbus::OwnedVariant)>()
             && namespace == "org.freedesktop.appearance"
             && key == "color-scheme"
         {
@@ -725,18 +722,39 @@ gtk-application-prefer-dark-theme=0
     #[cfg(all(feature = "desktop", target_os = "linux"))]
     #[test]
     fn test_extract_portal_color_scheme() {
-        use zbus::zvariant::Value;
+        use zbus::Variant;
 
-        let dark_val = Value::U32(1);
-        assert_eq!(extract_portal_color_scheme(&dark_val), Some(true));
-
-        let light_val = Value::U32(2);
-        assert_eq!(extract_portal_color_scheme(&light_val), Some(false));
-
-        let default_val = Value::U32(0);
-        assert_eq!(extract_portal_color_scheme(&default_val), None);
-
-        let nested_dark = Value::Value(Box::new(Value::U32(1)));
-        assert_eq!(extract_portal_color_scheme(&nested_dark), Some(true));
+        for value in [
+            Variant::U8(1),
+            Variant::U32(1),
+            Variant::I32(1),
+            Variant::I64(1),
+            Variant::U64(1),
+        ] {
+            assert_eq!(extract_portal_color_scheme(&value), Some(true));
+        }
+        for value in [
+            Variant::U8(2),
+            Variant::U32(2),
+            Variant::I32(2),
+            Variant::I64(2),
+            Variant::U64(2),
+        ] {
+            assert_eq!(extract_portal_color_scheme(&value), Some(false));
+        }
+        for value in [
+            Variant::U32(0),
+            Variant::U32(3),
+            Variant::I32(-1),
+            Variant::from("dark"),
+            Variant::from(false),
+        ] {
+            assert_eq!(extract_portal_color_scheme(&value), None);
+        }
+        for (value, expected) in [(1, Some(true)), (2, Some(false)), (0, None)] {
+            let nested =
+                Variant::Variant(Box::new(Variant::Variant(Box::new(Variant::U32(value)))));
+            assert_eq!(extract_portal_color_scheme(&nested), expected);
+        }
     }
 }

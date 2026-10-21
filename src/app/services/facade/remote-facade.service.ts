@@ -30,7 +30,7 @@ import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status
 import { NotificationService } from '../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
-import { retargetProfilesRemote } from '../remote/utils/remote-config.utils';
+import { retargetProfilesRemote } from '../remote/utils/profile-mapper.utils';
 import {
   Remote,
   JobActionType,

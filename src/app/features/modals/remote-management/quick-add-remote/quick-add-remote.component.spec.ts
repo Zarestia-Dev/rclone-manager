@@ -12,7 +12,7 @@ import { IconService } from '../../../../services/ui/icon.service';
 import { PathService } from '../../../../services/infrastructure/platform/path.service';
 import { BackendService } from '../../../../services/infrastructure/system/backend.service';
 import { PresetValues, RemotePresetsService } from '../../../../services/remote/remote-presets';
-import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/remote-config.utils';
+import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/interactive-flow.utils';
 
 describe('QuickAddRemoteComponent submission', () => {
   let component: QuickAddRemoteComponent;
@@ -78,6 +78,15 @@ describe('QuickAddRemoteComponent submission', () => {
       component.commandOptions()
     );
     expect(close).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it('passes OAuth provider overviews to the shared remote configuration step', async () => {
+    const overview = { Tier: 'Tier 1', Hashes: ['md5'], Features: ['Copy'] };
+    vi.mocked(TestBed.inject(RemoteManagementService).getOAuthSupportedRemotes).mockResolvedValue([
+      { name: 'drive', description: 'Google Drive', overview },
+    ]);
+    await component.initializeComponent();
+    expect(component.remoteTypes()).toEqual([{ value: 'drive', label: 'Google Drive', overview }]);
   });
 
   it('shows errors and retains the form when creation fails', async () => {

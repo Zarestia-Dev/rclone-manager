@@ -1257,6 +1257,25 @@
           "label": "無輸出",
           "description": "禁止來自 RC 設定呼叫的任何標準輸出"
         }
+      },
+      "providerOverview": {
+        "title": "提供者功能",
+        "supportTier": "rclone 支援等級（非儲存方案）",
+        "hashes": "校驗和",
+        "noHashes": "未回報校驗和演算法",
+        "features": "已回報的功能",
+        "noFeatures": "此摘要未回報任何功能",
+        "generalNote": "由 rclone 提供的提供者一般資訊。實際支援情況可能因設定而異。",
+        "virtualNote": "功能取決於底層遠端儲存和設定。",
+        "documentation": "檢視 rclone 功能概覽",
+        "copy": "伺服器端複製",
+        "move": "伺服器端移動",
+        "publicLink": "連結分享",
+        "emptyDirectories": "空資料夾",
+        "caseInsensitive": "名稱不區分大小寫",
+        "duplicateFiles": "同名檔案",
+        "readMetadata": "讀取中繼資料",
+        "writeMetadata": "寫入中繼資料"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "系統中繼資料",
         "standard": "標準中繼資料"
+      },
+      "supportInfo": "rclone 支援等級反映提供者的維護狀況和穩定性。",
+      "providerDocumentation": "提供者文件",
+      "liveFeatures": "此已設定遠端儲存的功能支援情況。",
+      "featureLabels": {
+        "about": "儲存使用情況",
+        "bucketBased": "以儲存桶為基礎的儲存",
+        "bucketRoot": "從儲存根目錄存取",
+        "purge": "刪除目錄樹",
+        "dirMove": "伺服器端移動資料夾",
+        "cleanUp": "清理儲存",
+        "listR": "遞迴列出",
+        "listP": "分頁列出",
+        "putStream": "串流上傳",
+        "openChunkWriter": "分段上傳",
+        "openWriterAt": "隨機存取上傳",
+        "readMimeType": "讀取內容類型",
+        "writeMimeType": "寫入內容類型",
+        "changeNotify": "變更通知",
+        "setTier": "變更儲存層級",
+        "getTier": "讀取儲存層級",
+        "overlay": "封裝其他遠端儲存"
       }
     },
     "properties": {

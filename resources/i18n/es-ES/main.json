@@ -1254,6 +1254,25 @@
           "label": "Sin salida",
           "description": "Suprimir cualquier salida estándar de la llamada de configuración de RC"
         }
+      },
+      "providerOverview": {
+        "title": "Funciones del proveedor",
+        "supportTier": "Nivel de soporte de rclone (no es tu plan de almacenamiento)",
+        "hashes": "Sumas de verificación",
+        "noHashes": "No se indican algoritmos de suma de verificación",
+        "features": "Funciones indicadas",
+        "noFeatures": "No se indican funciones para este resumen",
+        "generalNote": "Información general del proveedor proporcionada por rclone. La compatibilidad real puede variar según la configuración.",
+        "virtualNote": "Las funciones dependen del remoto subyacente y de la configuración.",
+        "documentation": "Ver resumen de funciones de rclone",
+        "copy": "Copia en el servidor",
+        "move": "Movimiento en el servidor",
+        "publicLink": "Compartir enlaces",
+        "emptyDirectories": "Carpetas vacías",
+        "caseInsensitive": "Nombres sin distinción de mayúsculas",
+        "duplicateFiles": "Nombres de archivo duplicados",
+        "readMetadata": "Lectura de metadatos",
+        "writeMetadata": "Escritura de metadatos"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "Metadatos del sistema",
         "standard": "Metadatos estándar"
+      },
+      "supportInfo": "El nivel de soporte de rclone refleja el mantenimiento y la estabilidad del proveedor.",
+      "providerDocumentation": "Documentación del proveedor",
+      "liveFeatures": "Funciones compatibles con este remoto configurado.",
+      "featureLabels": {
+        "about": "Uso del almacenamiento",
+        "bucketBased": "Almacenamiento basado en buckets",
+        "bucketRoot": "Acceso desde la raíz del almacenamiento",
+        "purge": "Eliminar árboles de carpetas",
+        "dirMove": "Mover carpetas en el servidor",
+        "cleanUp": "Limpieza del almacenamiento",
+        "listR": "Listado recursivo",
+        "listP": "Listado paginado",
+        "putStream": "Carga en flujo",
+        "openChunkWriter": "Carga multiparte",
+        "openWriterAt": "Carga de acceso aleatorio",
+        "readMimeType": "Leer tipos de contenido",
+        "writeMimeType": "Escribir tipos de contenido",
+        "changeNotify": "Notificaciones de cambios",
+        "setTier": "Cambiar nivel de almacenamiento",
+        "getTier": "Leer nivel de almacenamiento",
+        "overlay": "Envuelve otros remotos"
       }
     },
     "properties": {

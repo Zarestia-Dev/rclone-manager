@@ -1,4 +1,4 @@
-import { AppConfig, ProfileConfig } from '@app/types';
+import { APP_CONFIG_DEFAULTS, AppConfig, ProfileConfig } from '../types/remote-config';
 
 export type RcloneSubConfig = NonNullable<ProfileConfig['rclone']>;
 
@@ -7,25 +7,41 @@ export interface ConfigWithSubConfigs {
   rclone?: Record<string, unknown>;
 }
 
-/** Internal helper shared by both getAppCfg and getRcloneCfg — avoids the previous duplication. */
-function pickSubConfig<TKey extends 'app' | 'rclone'>(
-  config: unknown,
-  key: TKey
-): TKey extends 'app' ? AppConfig | null : RcloneSubConfig | null {
-  if (!config || typeof config !== 'object') return null;
+function pickSubConfig<T>(config: unknown, key: 'app' | 'rclone'): T | null {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
   const value = (config as ConfigWithSubConfigs)[key];
-  // `value && typeof value === 'object'` filters out null/undefined/primitives.
-  return value && typeof value === 'object'
-    ? (value as TKey extends 'app' ? AppConfig : RcloneSubConfig)
-    : null;
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as T) : null;
 }
 
 export function getAppCfg(config: unknown): AppConfig | null {
-  return pickSubConfig(config, 'app');
+  return pickSubConfig<AppConfig>(config, 'app');
 }
 
 export function getRcloneCfg(config: unknown): RcloneSubConfig | null {
-  return pickSubConfig(config, 'rclone');
+  return pickSubConfig<RcloneSubConfig>(config, 'rclone');
+}
+
+/** Resolve only application fields, preserving explicit false and zero overrides. */
+export function getAppConfigValues(
+  config: Partial<Record<keyof AppConfig, unknown>>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(APP_CONFIG_DEFAULTS).map(([key, defaultValue]) => {
+      const value = config[key as keyof AppConfig];
+      return [key, value === '' ? defaultValue : (value ?? defaultValue)];
+    })
+  );
+}
+
+/** Normalize legacy flat runtime options into the same remote-scoped map as saved profiles. */
+export function getRuntimeRemoteProfiles(
+  config: Record<string, unknown>,
+  remoteName: string
+): Record<string, Record<string, unknown>> {
+  const scoped = Object.values(config).every(
+    value => value && typeof value === 'object' && !Array.isArray(value)
+  );
+  return scoped ? (config as Record<string, Record<string, unknown>>) : { [remoteName]: config };
 }
 
 export function parseTypedValue(val: string): unknown {

@@ -5,8 +5,6 @@ import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
 import { PathService } from './path.service';
 
-export type { DefaultPathOp, PathInspectionStatus };
-
 const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
 const BISYNC_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}-bisync';
 const HOME_FALLBACK_POSIX = '/root/rclone-manager';

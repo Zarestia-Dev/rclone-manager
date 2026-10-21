@@ -154,7 +154,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (remove_rclone_backend_option, $crate::services::settings::rclone_backend::remove_rclone_backend_option, [block: String, option: String]);
 
             // REMOTE SETTINGS
-            (save_remote_settings, $crate::services::settings::remote::manager::save_remote_settings, [remote_name: String, settings: serde_json::Value, expected_settings: Option<serde_json::Value>, backend_name: Option<String>]);
+            (save_remote_settings, $crate::services::settings::remote::manager::save_remote_settings, [remote_name: String, settings: serde_json::Value, backend_name: Option<String>]);
             (delete_remote_settings, $crate::services::settings::remote::manager::delete_remote_settings, [remote_name: String]);
 
             // BACKUP & RESTORE

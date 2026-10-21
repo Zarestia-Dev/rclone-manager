@@ -2,7 +2,7 @@ import { DestroyRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { describe, expect, it, vi } from 'vitest';
-import { ALL_PRIMARY_ACTIONS, RcConfigOption } from '@app/types';
+import { ALL_PRIMARY_ACTIONS, APP_CONFIG_DEFAULTS, RcConfigOption } from '@app/types';
 import {
   createConfigFormGroup,
   patchConfigOptions,
@@ -33,6 +33,8 @@ describe('configuration forms', () => {
     expect(group.get('source')).toBeTruthy();
     expect(group.get('options')).toBeInstanceOf(FormGroup);
     expect(group.get('watchDelay')?.value).toBe(5);
+    expect(group.getRawValue()).toMatchObject(APP_CONFIG_DEFAULTS);
+    expect(group.get('showOnTray')).toBeNull();
   });
 
   it('uses single paths for archive creation and arrays for cryptcheck', () => {

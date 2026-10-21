@@ -30,17 +30,20 @@ import {
   TranslationResult,
   ChipDef,
   LINKED_PROFILE_TYPES,
+  type PathGroup,
 } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import {
   matchesConfigSearch,
-  OPERATION_PATH_MAPPINGS,
-  getTopLevelKeysForProfile,
   resolveOptionExamples,
 } from 'src/app/services/remote/utils/remote-config.utils';
+import {
+  OPERATION_PATH_MAPPINGS,
+  getTopLevelKeysForProfile,
+} from 'src/app/services/remote/utils/profile-mapper.utils';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { PathService, PathGroup } from '../../../services/infrastructure/platform/path.service';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 import { AlertBannerComponent } from '../alert-banner/alert-banner.component';

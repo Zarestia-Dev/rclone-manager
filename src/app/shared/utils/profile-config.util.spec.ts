@@ -6,7 +6,10 @@ import {
   formatValueDisplay,
   extractProfileSource,
   extractProfileDest,
+  getAppConfigValues,
+  getRuntimeRemoteProfiles,
 } from './profile-config.util';
+import { APP_CONFIG_DEFAULTS } from '../types/remote-config';
 
 describe('profile-config.util', () => {
   describe('extractProfileSource', () => {
@@ -83,6 +86,42 @@ describe('profile-config.util', () => {
       expect(getRcloneCfg(undefined)).toBeNull();
       expect(getRcloneCfg({ rclone: 'not-an-object' })).toBeNull();
     });
+
+    it.each([null, undefined, false, 0, '', [], ['invalid']])(
+      'rejects invalid partitions: %j',
+      value => {
+        expect(getAppCfg({ app: value })).toBeNull();
+        expect(getRcloneCfg({ rclone: value })).toBeNull();
+      }
+    );
+  });
+
+  it('resolves application defaults without consuming path or flag fields', () => {
+    const values = {
+      autoStart: true,
+      showOnTray: false,
+      watchDelay: 0,
+      filterProfile: '',
+      source: 'drive:',
+      options: {},
+    };
+    const resolved = getAppConfigValues(values);
+    expect(resolved).toEqual({ ...APP_CONFIG_DEFAULTS, autoStart: true, watchDelay: 0 });
+    expect(resolved['showOnTray']).toBeUndefined();
+    expect(values.filterProfile).toBe('');
+    resolved['autoStart'] = false;
+    expect(getAppConfigValues(values)['autoStart']).toBe(true);
+    expect(getAppConfigValues({})).toEqual(APP_CONFIG_DEFAULTS);
+  });
+
+  it('distinguishes legacy runtime flags from profiles scoped to other remotes', () => {
+    expect(getRuntimeRemoteProfiles({}, 'drive')).toEqual({});
+    expect(getRuntimeRemoteProfiles({ region: 'us', env_auth: false }, 'drive')).toEqual({
+      drive: { region: 'us', env_auth: false },
+    });
+    const scoped = { other: { region: 'eu' } };
+    expect(getRuntimeRemoteProfiles(scoped, 'drive')).toEqual(scoped);
+    expect(getRuntimeRemoteProfiles(scoped, 'drive')['drive']).toBeUndefined();
   });
 
   describe('parseTypedValue & formatValueDisplay', () => {

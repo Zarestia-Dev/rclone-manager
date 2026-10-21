@@ -82,6 +82,16 @@ describe('AppSettingsService', () => {
     service = createService();
   });
 
+  it('saves remote sections with their backend without a previous-profile payload', async () => {
+    const settings = { serveConfigs: { Default: { app: {}, rclone: { fs: 'drive:' } } } };
+    await service.saveRemoteSettings('drive', settings, 'Local');
+    expect(apiClientMock.invoke).toHaveBeenCalledWith('save_remote_settings', {
+      remoteName: 'drive',
+      settings,
+      backendName: 'Local',
+    });
+  });
+
   afterEach(() => {
     delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });

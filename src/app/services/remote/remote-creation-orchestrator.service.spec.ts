@@ -104,7 +104,7 @@ describe('RemoteCreationOrchestrator', () => {
     remoteService.startRemoteConfigInteractive.mockResolvedValue(complete);
     expect(await service.startInteractiveCreation(remote, config, [])).toBe(true);
     await service.finalizeCreation();
-    expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, undefined, 'Local');
+    expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, 'Local');
     expect(auth.resetAuthState).toHaveBeenCalledOnce();
     expect(service.interactiveFlowState().isActive).toBe(false);
   });
@@ -112,7 +112,7 @@ describe('RemoteCreationOrchestrator', () => {
   it('reports success only after the last answer and settings have been saved', async () => {
     await service.startInteractiveCreation(remote, config, []);
     expect(await service.submitInteractiveAnswer('yes', [])).toBe(true);
-    expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, undefined, 'Local');
+    expect(saveSettings).toHaveBeenCalledExactlyOnceWith(remote.name, config, 'Local');
     expect(auth.resetAuthState).toHaveBeenCalledOnce();
     expect(service.interactiveFlowState().isActive).toBe(false);
   });
@@ -188,7 +188,7 @@ describe('RemoteCreationOrchestrator', () => {
       config,
       'Local'
     );
-    expect(saveSettings).toHaveBeenCalledWith(remote.name, config, undefined, 'Local');
+    expect(saveSettings).toHaveBeenCalledWith(remote.name, config, 'Local');
   });
 
   it('does not save or auto-start when directory preparation fails', async () => {

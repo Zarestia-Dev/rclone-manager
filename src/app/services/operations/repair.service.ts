@@ -11,8 +11,6 @@ import {
   DEFAULT_REPAIR_UI_CONFIG,
 } from './repair-ui.config';
 
-export type { RepairDetailItem, RepairUiItem };
-
 /**
  * Service for handling repair operations
  * Manages various system repair tasks including rclone installation,

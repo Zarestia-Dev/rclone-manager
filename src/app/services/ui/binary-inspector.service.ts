@@ -1,13 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as binaryUtil from '../../shared/utils/binary-signature.util';
 
-export type {
-  DetectedFormat,
-  DetectedSignature,
-  HexDumpRow,
-  BinaryInspectionResult,
-} from '../../shared/utils/binary-signature.util';
-
 @Injectable({
   providedIn: 'root',
 })

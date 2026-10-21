@@ -8,7 +8,6 @@ import {
   output,
   linkedSignal,
   signal,
-  effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -24,6 +23,7 @@ import {
   CompletedTransfer,
   GlobalStats,
   DEFAULT_JOB_STATS,
+  DEFAULT_PROFILE_NAME,
   JobInfo,
   JobInfoConfig,
   OperationColor,
@@ -77,6 +77,7 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
@@ -150,36 +151,11 @@ export class AppDetailComponent {
   private readonly dialog = inject(MatDialog);
   private readonly modalService = inject(ModalService);
   private readonly automationService = inject(AutomationService);
+  private readonly backendService = inject(BackendService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly systemHealth = inject(SystemHealthService);
 
   readonly mountWarningDismissed = signal(false);
-
-  private readonly _cronNextRun = signal<string | null>(null);
-
-  constructor() {
-    effect(() => {
-      const cron = this.selectedCronSchedule()?.cronExpression;
-      if (!cron) {
-        this._cronNextRun.set(null);
-        return;
-      }
-      this.automationService
-        .validateCron(cron)
-        .then(res => {
-          if (res.isValid && res.nextRun) {
-            try {
-              this._cronNextRun.set(new Date(res.nextRun).toLocaleString());
-            } catch {
-              this._cronNextRun.set(res.nextRun);
-            }
-          } else {
-            this._cronNextRun.set(null);
-          }
-        })
-        .catch(() => this._cronNextRun.set(null));
-    });
-  }
 
   readonly isMissingRemote = computed<boolean>(() => {
     if (this.mode() !== 'quickRun') return false;
@@ -228,7 +204,7 @@ export class AppDetailComponent {
       return current;
     }
 
-    return profiles[0]?.name ?? 'default';
+    return profiles[0]?.name ?? DEFAULT_PROFILE_NAME;
   });
 
   protected readonly selectedRemote = computed<Remote>(() => {
@@ -409,18 +385,24 @@ export class AppDetailComponent {
     const names = profileMap ? Object.keys(profileMap).sort() : [];
     return names.length > 0
       ? names.map(name => ({ name, label: name }))
-      : [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
+      : [
+          {
+            name: DEFAULT_PROFILE_NAME,
+            label: this.translate.instant('dashboard.appDetail.default'),
+          },
+        ];
   });
 
   readonly enrichedProfiles = computed(() => {
-    const configs = this.getProfileConfigMap<ProfileConfig>(this.currentOpType());
-
     return this.profiles().map(p => {
-      const cfg = configs?.[p.name];
+      const automation = this.findAutomation(p.name);
       const isActive = this.isOperationActive(this.currentOpType(), p.name);
-      const hasSchedule = !!(cfg?.app?.cronEnabled && cfg?.app?.cronExpression);
-      const hasWatcher = !!cfg?.app?.watchEnabled;
-      const isMonitored = hasSchedule || hasWatcher;
+      const hasSchedule = !!automation?.cronExpression;
+      const hasWatcher = !!automation?.watchEnabled;
+      const isMonitored =
+        automation?.status !== 'disabled' &&
+        automation?.status !== 'stopping' &&
+        (hasSchedule || hasWatcher);
       return {
         ...p,
         isActive,
@@ -442,13 +424,12 @@ export class AppDetailComponent {
     if (!this.isOperationsType()) return undefined;
     const state = this.getOpState(this.selectedSyncOperation()) as RemoteOperationState;
     if (!state) return undefined;
-    const profile = this.selectedProfile() ?? 'default';
+    const profile = this.selectedProfile();
     return state.activeProfiles?.[profile] ?? state.lastRunProfiles?.[profile];
   });
 
   readonly currentGroupName = computed(
-    () =>
-      `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile() ?? 'default'}`
+    () => `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile()}`
   );
 
   readonly activeGroupJob = computed<JobInfo | null>(() => {
@@ -468,7 +449,7 @@ export class AppDetailComponent {
     }
     return this.jobService.getLatestJobForRemote(
       this.selectedRemote().name,
-      this.selectedProfile() ?? 'default',
+      this.selectedProfile(),
       this.currentOpType()
     );
   });
@@ -527,7 +508,7 @@ export class AppDetailComponent {
     return Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / 1000));
   });
 
-  // --- Derived: Active App Config (Cron, Watcher, Settings) ---
+  // --- Derived: Profile settings and runtime automations ---
   readonly currentAppConfig = computed<AppConfig | undefined>(() => {
     if (this.mode() === 'quickRun') {
       return this.quickRun()?.config?.app;
@@ -539,35 +520,29 @@ export class AppDetailComponent {
 
   readonly selectedCronSchedule = computed(() => {
     this._lang();
-    const app = this.currentAppConfig();
-    if (!app?.cronEnabled || !app?.cronExpression) return null;
+    const automation = this.matchingAutomation();
+    const cronExpression = automation?.cronExpression;
+    if (!cronExpression) return null;
 
     let humanReadable = 'Invalid schedule';
     try {
-      humanReadable = cronstrue(app.cronExpression, {
+      humanReadable = cronstrue(cronExpression, {
         locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
       });
     } catch {
-      console.warn(`Invalid cron expression: ${app.cronExpression}`);
+      console.warn(`Invalid cron expression: ${cronExpression}`);
     }
 
-    const profileName =
-      this.mode() === 'quickRun' ? (this.quickRun()?.name ?? 'Quick Run') : this.selectedProfile();
-
-    return { profileName, cronExpression: app.cronExpression, humanReadable };
+    return { profileName: automation.profileName, cronExpression, humanReadable };
   });
 
   readonly selectedWatcher = computed(() => {
-    const app = this.currentAppConfig();
-    if (!app?.watchEnabled) return null;
-
-    const profileName =
-      this.mode() === 'quickRun' ? (this.quickRun()?.name ?? 'Quick Run') : this.selectedProfile();
-
+    const automation = this.matchingAutomation();
+    if (!automation?.watchEnabled) return null;
     return {
-      profileName,
-      watchDelay: app.watchDelay ?? 5,
-      watchChangedOnly: app.watchChangedOnly ?? false,
+      profileName: automation.profileName,
+      watchDelay: automation.watchDelay ?? 5,
+      watchChangedOnly: automation.watchChangedOnly ?? false,
     };
   });
 
@@ -579,23 +554,27 @@ export class AppDetailComponent {
     return !!this.selectedCronSchedule() || !!this.selectedWatcher() || this.isAutoStartEnabled();
   });
 
-  readonly matchingAutomation = computed<Automation | undefined>(() => {
+  readonly matchingAutomation = computed(() => this.findAutomation(this.selectedProfile()));
+
+  private findAutomation(profile: string): Automation | undefined {
     if (this.mode() === 'quickRun') {
       const qrId = this.quickRun()?.id;
-      return this.automationService.automations().find(a => qrId && a.id.includes(qrId));
+      return this.automationService.automations().find(a => a.id === qrId);
     }
     const remote = this.selectedRemote()?.name;
-    const profile = this.selectedProfile();
     const op = this.currentOpType();
+    const backend = this.backendService.activeBackend();
     return this.automationService
       .automations()
       .find(
         a =>
+          a.backendName === backend &&
+          a.args.source === 'automation' &&
           a.remoteName === remote &&
-          (a.profileName === profile || a.profileName?.toLowerCase() === profile?.toLowerCase()) &&
-          a.automationType?.toLowerCase() === op?.toLowerCase()
+          a.profileName === profile &&
+          a.automationType === op
       );
-  });
+  }
 
   readonly isAutomationDisabled = computed(() => {
     return this.matchingAutomation()?.status === 'disabled';
@@ -623,7 +602,7 @@ export class AppDetailComponent {
         return auto.nextRun;
       }
     }
-    return this._cronNextRun();
+    return null;
   });
 
   async onToggleAutomation(event?: Event): Promise<void> {
@@ -974,7 +953,7 @@ export class AppDetailComponent {
     if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
       const profiles = this.getProfileConfigMap<ProfileConfig>(opType) ?? {};
       const cfg = profiles[profile];
-      const backendProfileName = cfg?.app?.backendProfile || 'default';
+      const backendProfileName = cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
       const existingBackend = backendConfigs[backendProfileName] ?? {};
@@ -1076,7 +1055,7 @@ export class AppDetailComponent {
       );
     }
     if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
-      const backendProfileName = this.currentAppConfig()?.backendProfile || 'default';
+      const backendProfileName = this.currentAppConfig()?.backendProfile || DEFAULT_PROFILE_NAME;
       const backendConfigs =
         (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
       const bOpts = backendConfigs[backendProfileName];

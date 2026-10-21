@@ -123,11 +123,6 @@ pub struct QuickRunInput {
     pub config: Value,
 }
 
-pub use crate::utils::types::remotes::OperationExecutionResult;
-
-/// Response returned by `start_quick_run`.
-pub type StartQuickRunResponse = OperationExecutionResult;
-
 #[cfg(test)]
 mod tests {
     use super::*;

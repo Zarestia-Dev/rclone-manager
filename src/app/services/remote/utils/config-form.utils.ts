@@ -13,6 +13,7 @@ import { FlagType, PathGroup, RcConfigOption } from '@app/types';
 import { requiredIfCronEnabled, requiredIfWatchEnabled } from 'src/app/shared/validators';
 import { OPERATION_PATH_MAPPINGS } from './profile-mapper.utils';
 import { staticFlagDefinitions } from '../flag-definitions';
+import { getAppConfigValues } from '../../../shared/utils/profile-config.util';
 
 export function createPathFormGroup(
   fb: FormBuilder,
@@ -60,17 +61,7 @@ export function createConfigFormGroup(
     ...(values['options'] as Record<string, unknown>),
   });
   const group = fb.group({
-    autoStart: values['autoStart'] ?? false,
-    showOnTray: values['showOnTray'] ?? true,
-    cronEnabled: values['cronEnabled'] ?? false,
-    cronExpression: values['cronExpression'] ?? null,
-    watchEnabled: values['watchEnabled'] ?? false,
-    watchDelay: values['watchDelay'] ?? 5,
-    watchChangedOnly: values['watchChangedOnly'] ?? false,
-    vfsProfile: values['vfsProfile'] ?? 'Default',
-    filterProfile: values['filterProfile'] ?? 'Default',
-    backendProfile: values['backendProfile'] ?? 'Default',
-    runtimeRemoteProfile: values['runtimeRemoteProfile'] ?? 'Default',
+    ...getAppConfigValues(values),
     source,
     ...(mapping.destKey ? { dest: path(values['dest'], 'local') } : {}),
     options,

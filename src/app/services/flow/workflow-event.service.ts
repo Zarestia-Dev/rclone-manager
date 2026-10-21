@@ -6,8 +6,6 @@ import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload } from '@app/types';
 
-export type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload };
-
 @Injectable({ providedIn: 'root' })
 export class WorkflowEventService extends TauriBaseService {
   private readonly stateService = inject(WorkflowStateService);

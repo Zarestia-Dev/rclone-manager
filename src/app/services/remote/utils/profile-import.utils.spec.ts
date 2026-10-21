@@ -83,6 +83,18 @@ describe('profile import', () => {
     });
   });
 
+  it('imports a runtime profile without nesting another remote under the current one', () => {
+    const existing = { other: { region: 'eu' } };
+    const imported: ImportResult = { classified: [flag('runtimeRemote', 'env_auth', false)] };
+    expect(
+      mergeImportedProfile('runtimeRemote', existing, imported, false, false, 'drive')
+    ).toEqual({ other: { region: 'eu' }, drive: { env_auth: false } });
+    expect(existing).toEqual({ other: { region: 'eu' } });
+    expect(
+      mergeImportedProfile('runtimeRemote', { region: 'us' }, imported, false, false, 'drive')
+    ).toEqual({ drive: { region: 'us', env_auth: false } });
+  });
+
   it.each([
     [
       'mount',

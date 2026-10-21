@@ -158,6 +158,7 @@ form,
 
 .fields-mode-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
@@ -197,6 +198,44 @@ form,
   display: flex;
   align-items: center;
   gap: var(--space-xxs);
+}
+
+.provider-overview {
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-gnome);
+  font-size: var(--font-size-md);
+
+  .section-title,
+  p {
+    margin: 0;
+  }
+
+  .section-title {
+    color: var(--window-fg-color);
+    font-size: var(--font-size-sm);
+  }
+
+  > h3.section-title {
+    font-size: var(--font-size-md);
+  }
+
+  p {
+    color: var(--dim-color);
+    line-height: 1.5;
+  }
+
+  > .detail-section {
+    gap: var(--space-xs);
+  }
+}
+
+.provider-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .contextual-action-wrapper:not(.visible) {

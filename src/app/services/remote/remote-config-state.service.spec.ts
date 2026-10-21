@@ -171,13 +171,12 @@ describe('RemoteConfigStateService', () => {
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenLastCalledWith(
         'drive',
         { syncConfigs: { Default: next } },
-        { syncConfigs: { Default: saved } },
         'Local'
       );
       expect(initial.syncConfigs.Default.rclone.srcFs).toBe('/old');
     });
 
-    it('sends only changed profiles with their original values and backend owner', async () => {
+    it('sends changed sections with their backend owner', async () => {
       const original = {
         syncConfigs: { Default: { app: {}, rclone: { srcFs: '/old', dstFs: 'drive:' } } },
         mountConfigs: { Default: { app: {}, rclone: { fs: 'drive:', mountPoint: '/mnt' } } },
@@ -195,7 +194,6 @@ describe('RemoteConfigStateService', () => {
         {
           syncConfigs: { Default: { app: {}, rclone: { srcFs: '/new', dstFs: 'drive:' } } },
         },
-        { syncConfigs: original.syncConfigs },
         'Local'
       );
       expect(
@@ -212,25 +210,13 @@ describe('RemoteConfigStateService', () => {
       service.initProfiles({ remoteType: 'drive' });
       service.profiles.update(profiles => ({ ...profiles, sync: {} }));
       const save = vi.mocked(TestBed.inject(AppSettingsService).saveRemoteSettings);
-      const conflict = new Error('conflict');
-      save.mockRejectedValueOnce(conflict);
+      const failure = new Error('save failed');
+      save.mockRejectedValueOnce(failure);
       expect(await service.saveRemoteProfiles('drive')).toBe(false);
-      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledWith(conflict);
+      expect(TestBed.inject(NotificationService).showError).toHaveBeenCalledWith(failure);
       expect(await service.saveRemoteProfiles('drive')).toBe(true);
-      expect(save).toHaveBeenNthCalledWith(
-        1,
-        'drive',
-        {},
-        { syncConfigs: original.syncConfigs },
-        'Local'
-      );
-      expect(save).toHaveBeenNthCalledWith(
-        2,
-        'drive',
-        {},
-        { syncConfigs: original.syncConfigs },
-        'Local'
-      );
+      expect(save).toHaveBeenNthCalledWith(1, 'drive', { syncConfigs: {} }, 'Local');
+      expect(save).toHaveBeenNthCalledWith(2, 'drive', { syncConfigs: {} }, 'Local');
     });
   });
 
@@ -251,12 +237,11 @@ describe('RemoteConfigStateService', () => {
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
         'drive',
         {},
-        {},
         'Local'
       );
     });
 
-    it('materializes an edited default without sending a fictional previous value', async () => {
+    it('materializes an edited default in the saved section', async () => {
       service.dynamicFlagFields.update(fields => ({ ...fields, filter: [field('include', '')] }));
       service.addDynamicFieldsToForm();
       const control = service.remoteConfigForm.get('filterConfig.options.include') as FormControl;
@@ -266,7 +251,6 @@ describe('RemoteConfigStateService', () => {
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
         'drive',
         { filterConfigs: { Default: { include: '*.jpg' } } },
-        {},
         'Local'
       );
     });
@@ -276,7 +260,35 @@ describe('RemoteConfigStateService', () => {
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
         'drive',
         { filterConfigs: { Default: {} } },
-        {},
+        'Local'
+      );
+    });
+
+    it('saves serve defaults sparsely and removes autoStart when switched back off', async () => {
+      service.remoteForm.patchValue({ name: 'drive' });
+      await service.selectProfile('serve', 'Default');
+      const group = service.getOperationConfigGroup('serve');
+      const save = vi.mocked(TestBed.inject(AppSettingsService).saveRemoteSettings);
+      expect(await service.saveRemoteProfiles('drive', 'serve')).toBe(true);
+      const defaults = { app: {}, rclone: { fs: 'drive:' } };
+      expect(save).toHaveBeenLastCalledWith(
+        'drive',
+        { serveConfigs: { Default: defaults } },
+        'Local'
+      );
+      group.get('autoStart')?.setValue(true);
+      expect(await service.saveRemoteProfiles('drive', 'serve')).toBe(true);
+      const enabled = { app: { autoStart: true }, rclone: { fs: 'drive:' } };
+      expect(save).toHaveBeenLastCalledWith(
+        'drive',
+        { serveConfigs: { Default: enabled } },
+        'Local'
+      );
+      group.get('autoStart')?.setValue(false);
+      expect(await service.saveRemoteProfiles('drive', 'serve')).toBe(true);
+      expect(save).toHaveBeenLastCalledWith(
+        'drive',
+        { serveConfigs: { Default: defaults } },
         'Local'
       );
     });
@@ -293,8 +305,7 @@ describe('RemoteConfigStateService', () => {
       expect(await service.saveRemoteProfiles('drive')).toBe(true);
       expect(TestBed.inject(AppSettingsService).saveRemoteSettings).toHaveBeenCalledWith(
         'drive',
-        {},
-        { filterConfigs: { Default: {} } },
+        { filterConfigs: {} },
         'Local'
       );
     });
@@ -490,9 +501,13 @@ describe('RemoteConfigStateService', () => {
         expect(service.remoteConfigForm.get('syncConfig.filterProfile')?.value).toBe(name);
         expect(service.selectedProfileName().filter).toBe(name);
         expect(service.profiles().sync[name]).toMatchObject({
-          app: { filterProfile: name },
+          app: name === 'Default' ? {} : { filterProfile: name },
           rclone: { srcFs: 'my-drive:photos', dstFs: '/backup' },
         });
+        expect(
+          (service.profiles().sync[name] as { app: { filterProfile?: string } }).app
+            .filterProfile ?? 'Default'
+        ).toBe(name);
         expect(service.profiles().filter[name]).toEqual({ include: ['*.txt'] });
       }
     );
@@ -660,6 +675,15 @@ describe('RemoteConfigStateService', () => {
       .mockReturnValue({ config: { name: 'drive', type: 'drive' } });
     await service.init({ name: 'drive', remoteType: 'drive', editTarget: 'remote' });
     expect(TestBed.inject(FlagConfigService).loadConfigFields).not.toHaveBeenCalled();
+  });
+
+  it('passes provider overviews to the shared remote configuration step', async () => {
+    const overview = { Tier: 'Tier 2', Features: ['Copy'], Hashes: ['md5'] };
+    vi.mocked(TestBed.inject(RemoteManagementService).getRemoteTypes).mockResolvedValue([
+      { name: 'drive', description: 'Google Drive', overview },
+    ]);
+    await service.init(undefined);
+    expect(service.remoteTypes()).toEqual([{ value: 'drive', label: 'Google Drive', overview }]);
   });
 
   it('retains common serve options when subtype metadata is reconciled', () => {

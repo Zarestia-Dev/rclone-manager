@@ -1254,6 +1254,25 @@
           "label": "Aucune sortie",
           "description": "Supprimer toute sortie stdout de l'appel de configuration RC"
         }
+      },
+      "providerOverview": {
+        "title": "Fonctionnalités du fournisseur",
+        "supportTier": "Niveau de support rclone (pas votre forfait de stockage)",
+        "hashes": "Sommes de contrôle",
+        "noHashes": "Aucun algorithme de somme de contrôle indiqué",
+        "features": "Fonctionnalités indiquées",
+        "noFeatures": "Aucune fonctionnalité indiquée pour ce résumé",
+        "generalNote": "Informations générales du fournisseur fournies par rclone. La prise en charge réelle peut varier selon votre configuration.",
+        "virtualNote": "Les fonctionnalités dépendent du distant sous-jacent et de la configuration.",
+        "documentation": "Voir les fonctionnalités de rclone",
+        "copy": "Copie côté serveur",
+        "move": "Déplacement côté serveur",
+        "publicLink": "Partage de liens",
+        "emptyDirectories": "Dossiers vides",
+        "caseInsensitive": "Noms insensibles à la casse",
+        "duplicateFiles": "Noms de fichiers en double",
+        "readMetadata": "Lecture des métadonnées",
+        "writeMetadata": "Écriture des métadonnées"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "Métadonnées système",
         "standard": "Métadonnées standard"
+      },
+      "supportInfo": "Le niveau de support rclone reflète la maintenance et la stabilité du fournisseur.",
+      "providerDocumentation": "Documentation du fournisseur",
+      "liveFeatures": "Fonctionnalités prises en charge par ce distant configuré.",
+      "featureLabels": {
+        "about": "Utilisation du stockage",
+        "bucketBased": "Stockage par compartiments",
+        "bucketRoot": "Accès depuis la racine du stockage",
+        "purge": "Supprimer des arborescences",
+        "dirMove": "Déplacer des dossiers côté serveur",
+        "cleanUp": "Nettoyage du stockage",
+        "listR": "Liste récursive",
+        "listP": "Liste paginée",
+        "putStream": "Envoi en flux",
+        "openChunkWriter": "Envoi en plusieurs parties",
+        "openWriterAt": "Envoi à accès aléatoire",
+        "readMimeType": "Lire les types de contenu",
+        "writeMimeType": "Écrire les types de contenu",
+        "changeNotify": "Notifications de modifications",
+        "setTier": "Modifier la classe de stockage",
+        "getTier": "Lire la classe de stockage",
+        "overlay": "Encapsule d’autres distants"
       }
     },
     "properties": {

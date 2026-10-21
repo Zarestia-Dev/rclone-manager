@@ -19,6 +19,7 @@ import { abortableRequest, isAbortError } from 'src/app/shared/utils/abortable-r
 import { memoizedLoader, MemoizedLoader } from './utils/memoized-loader.util';
 import {
   RemoteProvider,
+  RemoteProviderOverview,
   ConfigRecord,
   RcConfigOption,
   RcConfigQuestionResponse,
@@ -35,6 +36,7 @@ interface RawProvider {
   Name: string;
   Description: string;
   Options?: RcConfigOption[];
+  Overview?: RemoteProviderOverview | null;
 }
 
 type ProvidersResponse = Record<string, RawProvider[]>;
@@ -217,19 +219,27 @@ export class RemoteManagementService extends TauriBaseService {
     return Object.fromEntries(userOptions.map(o => [o.key, o.value]));
   }
 
-  private mapProviders(response: ProvidersResponse): RemoteProvider[] {
-    return Object.values(response)
-      .flat()
-      .map(p => ({ name: p.Name, description: p.Description }));
+  private mapProviders(providers: RawProvider[]): RemoteProvider[] {
+    return providers.map(p => ({ name: p.Name, description: p.Description, overview: p.Overview }));
   }
 
   async getRemoteTypes(): Promise<RemoteProvider[]> {
-    return this.mapProviders(await this.providersLoader.load());
+    const response = await this.providersLoader.load();
+    return this.mapProviders(Object.values(response).flat());
   }
 
   async getOAuthSupportedRemotes(): Promise<RemoteProvider[]> {
+    const response = await this.providersLoader.load();
     return this.mapProviders(
-      await this.invokeCommand<ProvidersResponse>('get_oauth_supported_remotes')
+      Object.values(response)
+        .flat()
+        // Match the existing backend command's OAuth detection.
+        .filter(provider =>
+          provider.Options?.some(
+            option =>
+              option.Name === 'token' && option.Help?.includes('OAuth Access Token as a JSON blob')
+          )
+        )
     );
   }
 

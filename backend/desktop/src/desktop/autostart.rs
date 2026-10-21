@@ -15,7 +15,7 @@ use tauri_plugin_autostart::ManagerExt;
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
 pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
     use std::collections::HashMap;
-    use zbus::zvariant::Value;
+    use zbus::Variant;
     use zbus::{Connection, Proxy};
 
     // Attempt to connect to the session DBus
@@ -44,30 +44,30 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
     };
 
     // Prepare the options dictionary (a{sv})
-    let mut options: HashMap<&str, Value> = HashMap::new();
+    let mut options: HashMap<&str, Variant> = HashMap::new();
     options.insert(
         "reason",
-        Value::from("RClone Manager needs to run in the background to handle scheduled jobs and serve remotes."),
+        Variant::from("RClone Manager needs to run in the background to handle scheduled jobs and serve remotes."),
     );
-    options.insert("autostart", Value::from(enable));
-    options.insert("dbus-activatable", Value::from(false));
+    options.insert("autostart", Variant::from(enable));
+    options.insert("dbus-activatable", Variant::from(false));
 
-    let autostart_cmd: zbus::zvariant::Array = {
-        use zbus::zvariant::{Array, Signature};
+    let autostart_cmd: zbus::Array = {
+        use zbus::{Array, Signature};
         let sig = Signature::try_from("s").expect("valid sig");
         let mut arr = Array::new(&sig);
         for token in &[env!("CARGO_PKG_NAME"), "--tray"] {
-            arr.append(Value::from(*token))
+            arr.append(Variant::from(*token))
                 .expect("homogeneous string array");
         }
         arr
     };
-    options.insert("commandline", Value::from(autostart_cmd));
+    options.insert("commandline", Variant::from(autostart_cmd));
 
     // Call RequestBackground(parent_window: String, options: a{sv}) -> (ObjectPath)
     // We pass an empty string for parent_window since we don't track the X11/Wayland window ID here.
     match proxy
-        .call::<_, _, zbus::zvariant::OwnedObjectPath>("RequestBackground", &("", &options))
+        .call::<_, _, zbus::OwnedObjectPath>("RequestBackground", &("", &options))
         .await
     {
         Ok(path) => {

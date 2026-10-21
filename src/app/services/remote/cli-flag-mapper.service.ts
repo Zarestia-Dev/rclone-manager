@@ -5,9 +5,7 @@ import { RemoteManagementService } from './remote-management.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 
 import * as cliParser from '../../shared/utils/cli-parser.util';
-import { ParsedCLIFlag, ParsedCLI } from '../../shared/utils/cli-parser.util';
-
-export type { ParsedCLIFlag, ParsedCLI };
+import { ParsedCLI } from '../../shared/utils/cli-parser.util';
 
 export type FlagStatus = 'mapped' | 'unknown';
 

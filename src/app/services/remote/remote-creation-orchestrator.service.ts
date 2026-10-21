@@ -30,7 +30,7 @@ import {
   createInitialInteractiveFlowState,
   getDefaultAnswerFromQuestion,
   updateInteractiveAnswer,
-} from './utils/remote-config.utils';
+} from './utils/interactive-flow.utils';
 
 interface PendingConfig {
   remoteData: PendingRemoteData;
@@ -199,7 +199,6 @@ export class RemoteCreationOrchestrator {
     await this.appSettingsService.saveRemoteSettings(
       remoteData.name,
       finalConfig,
-      undefined,
       this.backendName
     );
     if (this.pendingConfig !== pending) return;

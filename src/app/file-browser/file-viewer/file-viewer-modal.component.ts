@@ -35,11 +35,7 @@ import { OpenerService } from 'src/app/services/infrastructure/platform/opener.s
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import {
-  BinaryInspectorService,
-  DetectedSignature,
-  HexDumpRow,
-} from 'src/app/services/ui/binary-inspector.service';
+import { BinaryInspectorService } from 'src/app/services/ui/binary-inspector.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -49,6 +45,7 @@ import {
   isHeadlessMode,
   isMobile,
 } from 'src/app/services/infrastructure/platform/api-client.service';
+import type { DetectedSignature, HexDumpRow } from 'src/app/shared/utils/binary-signature.util';
 
 @Component({
   selector: 'app-file-viewer-modal',

@@ -1257,6 +1257,25 @@
           "label": "No Output",
           "description": "Suppress any stdout output from the RC config call"
         }
+      },
+      "providerOverview": {
+        "title": "Provider features",
+        "supportTier": "Rclone support tier (not your storage plan)",
+        "hashes": "Checksums",
+        "noHashes": "No checksum algorithms reported",
+        "features": "Reported capabilities",
+        "noFeatures": "No capabilities reported for this summary",
+        "generalNote": "General provider information from rclone. Actual support may vary with your configuration.",
+        "virtualNote": "Capabilities depend on the underlying remote and configuration.",
+        "documentation": "View rclone feature overview",
+        "copy": "Server-side copy",
+        "move": "Server-side move",
+        "publicLink": "Link sharing",
+        "emptyDirectories": "Empty directories",
+        "caseInsensitive": "Case insensitive names",
+        "duplicateFiles": "Duplicate file names",
+        "readMetadata": "Read metadata",
+        "writeMetadata": "Write metadata"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "System Metadata",
         "standard": "Standard Metadata"
+      },
+      "supportInfo": "Rclone's support tier reflects the provider's maintenance and stability.",
+      "providerDocumentation": "Provider documentation",
+      "liveFeatures": "Feature support for this configured remote.",
+      "featureLabels": {
+        "about": "Storage usage",
+        "bucketBased": "Bucket-based storage",
+        "bucketRoot": "Access from storage root",
+        "purge": "Delete directory trees",
+        "dirMove": "Server-side folder move",
+        "cleanUp": "Storage cleanup",
+        "listR": "Recursive listing",
+        "listP": "Paged listing",
+        "putStream": "Streaming upload",
+        "openChunkWriter": "Multipart upload",
+        "openWriterAt": "Random-access upload",
+        "readMimeType": "Read content types",
+        "writeMimeType": "Write content types",
+        "changeNotify": "Change notifications",
+        "setTier": "Change storage tier",
+        "getTier": "Read storage tier",
+        "overlay": "Wraps other remotes"
       }
     },
     "properties": {

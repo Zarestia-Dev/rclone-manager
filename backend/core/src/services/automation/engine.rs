@@ -576,11 +576,9 @@ mod tests {
 
     #[tokio::test]
     async fn backend_reconciliation_preserves_running_cron_and_suspends_other_backends() {
-        use crate::rclone::backend::{
-            BackendManager,
-            types::{Backend, LOCAL_BACKEND_NAME},
-        };
+        use crate::rclone::backend::{BackendManager, types::Backend};
         use crate::services::settings::{AppSettingsManager, schema::AppSettings};
+        use crate::utils::constants::LOCAL_BACKEND_NAME;
         use crate::utils::types::remotes::RemoteSettings;
 
         let directory = tempfile::tempdir().unwrap();

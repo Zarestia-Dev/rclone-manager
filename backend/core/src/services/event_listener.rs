@@ -387,7 +387,7 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
         spawn(async move {
             let mounts = app
                 .state::<BackendManager>()
-                .remote_cache_for(crate::rclone::backend::types::LOCAL_BACKEND_NAME)
+                .remote_cache_for(crate::utils::constants::LOCAL_BACKEND_NAME)
                 .get_mounted_remotes()
                 .await;
             crate::rclone::backend::saf_bridge::update_mounted_remotes(&mounts);

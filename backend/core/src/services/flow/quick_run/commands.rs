@@ -13,7 +13,7 @@ use crate::{
     },
     services::{
         bridge,
-        flow::quick_run::types::{QuickRun, QuickRunInput, StartQuickRunResponse},
+        flow::quick_run::types::{QuickRun, QuickRunInput},
         settings::AppSettingsManager,
     },
     utils::{
@@ -22,7 +22,7 @@ use crate::{
             events::UPDATE_TRAY_MENU,
             jobs::{JobStatus, JobType},
             origin::Origin,
-            remotes::OperationType,
+            remotes::{OperationExecutionResult, OperationType},
         },
     },
 };
@@ -121,7 +121,7 @@ pub async fn start_quick_run(
     quick_run_id: String,
     workflow_id: Option<String>,
     node_id: Option<String>,
-) -> Result<StartQuickRunResponse, String> {
+) -> Result<OperationExecutionResult, String> {
     let backend = app
         .state::<crate::rclone::backend::BackendManager>()
         .get_active()
@@ -136,7 +136,7 @@ pub(crate) async fn start_quick_run_on_backend(
     workflow_id: Option<String>,
     node_id: Option<String>,
     execute_id: Option<String>,
-) -> Result<StartQuickRunResponse, String> {
+) -> Result<OperationExecutionResult, String> {
     info!("Starting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
 
@@ -160,7 +160,7 @@ pub(crate) async fn start_quick_run_on_backend(
 
         mount_remote(app.clone(), mount_params).await?;
 
-        return Ok(StartQuickRunResponse {
+        return Ok(OperationExecutionResult {
             execute_id,
             origin: Origin::QuickRun,
             operation_type: OperationType::Mount,
@@ -190,7 +190,7 @@ pub(crate) async fn start_quick_run_on_backend(
 
         let serve_res = start_serve(app.clone(), serve_params).await?;
 
-        return Ok(StartQuickRunResponse {
+        return Ok(OperationExecutionResult {
             execute_id,
             origin: Origin::QuickRun,
             operation_type: OperationType::Serve,
@@ -251,7 +251,7 @@ pub(crate) async fn start_quick_run_on_backend(
         .parse::<u64>()
         .map_err(|e| format!("Invalid job ID returned by backend: {e}"))?;
 
-    Ok(StartQuickRunResponse {
+    Ok(OperationExecutionResult {
         execute_id,
         origin: Origin::QuickRun,
         operation_type: qr.operation_type,

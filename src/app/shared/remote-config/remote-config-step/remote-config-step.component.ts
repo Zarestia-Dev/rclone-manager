@@ -39,6 +39,13 @@ import {
 } from 'src/app/services/remote/utils/config-metadata.utils';
 import { ConfigCommandOptionsComponent } from '../config-command-options/config-command-options.component';
 import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
+import { generatePrefixedId } from 'src/app/shared/utils';
+import { MatDivider } from '@angular/material/divider';
+import {
+  getProviderTier,
+  PROVIDER_SUMMARY_FEATURES,
+  REMOTE_FEATURE_LABEL_KEYS,
+} from 'src/app/services/remote/utils/provider-metadata.utils';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -54,6 +61,7 @@ import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config
     JsonEditorComponent,
     TranslatePipe,
     MatIcon,
+    MatDivider,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
@@ -114,6 +122,8 @@ export class RemoteConfigStepComponent {
   readonly selectedProvider = signal<string | undefined>(undefined);
   readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly showCommandOptions = signal(false);
+  readonly showProviderOverview = signal(false);
+  readonly providerOverviewId = generatePrefixedId('provider-overview');
   readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
   readonly randomIcon = signal('cloud');
   readonly animTrigger = signal(0);
@@ -140,6 +150,21 @@ export class RemoteConfigStepComponent {
   });
 
   readonly providerField = computed(() => resolveProviderField(this.remoteFields()));
+
+  readonly providerOverview = computed(
+    () => this.remoteTypes().find(type => type.value === this.remoteTypeValue())?.overview
+  );
+
+  readonly providerTier = computed(() => getProviderTier(this.providerOverview()?.Tier));
+
+  readonly providerCapabilities = computed(() => {
+    const overview = this.providerOverview();
+    if (overview?.Virtual) return [];
+    const features = overview?.Features ?? [];
+    return PROVIDER_SUMMARY_FEATURES.filter(feature => features.includes(feature)).map(
+      feature => REMOTE_FEATURE_LABEL_KEYS[feature]
+    );
+  });
 
   readonly filteredProvidersView = computed(() => {
     const field = this.providerField();
@@ -181,6 +206,7 @@ export class RemoteConfigStepComponent {
       if (!typeCtrl) return;
 
       const updateType = (value: string): void => {
+        if (untracked(this.remoteTypeValue) !== (value || '')) this.showProviderOverview.set(false);
         this.remoteTypeValue.set(value || '');
         this.remoteSearchCtrl.setValue(this.displayRemote(value), { emitEvent: false });
       };

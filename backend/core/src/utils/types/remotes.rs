@@ -138,7 +138,7 @@ pub struct ProfileParams {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub auto_start: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cron_enabled: Option<bool>,
@@ -150,8 +150,6 @@ pub struct AppConfig {
     pub watch_delay: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watch_changed_only: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub show_on_tray: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vfs_profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -432,7 +430,7 @@ pub const APP_PARTITION_KEYS: &[&str] = &[
     "watchEnabled",
     "watchDelay",
     "watchChangedOnly",
-    "showOnTray",
+    "showOnTray", // Legacy profile metadata; never forward it as an rclone option.
     "vfsProfile",
     "filterProfile",
     "backendProfile",
@@ -545,6 +543,48 @@ impl RemoteSettings {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn default_app_config_does_not_materialize_auto_start_on_save() {
+        for value in [json!({}), json!({"autoStart": false})] {
+            let app: AppConfig = serde_json::from_value(value).unwrap();
+            assert!(!app.auto_start);
+            assert_eq!(serde_json::to_value(&app).unwrap(), json!({}));
+        }
+        let profile: ProfileConfig = serde_json::from_value(json!({
+            "app": {}, "rclone": {"fs": "drive:"}
+        }))
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(profile).unwrap(),
+            json!({
+                "app": {}, "rclone": {"fs": "drive:"}
+            })
+        );
+        let app: AppConfig = serde_json::from_value(json!({"autoStart": true})).unwrap();
+        assert!(app.auto_start);
+        assert_eq!(
+            serde_json::to_value(app).unwrap(),
+            json!({"autoStart": true})
+        );
+    }
+
+    #[test]
+    fn tray_visibility_is_not_part_of_operation_profiles() {
+        for visible in [true, false] {
+            let settings: RemoteSettings = serde_json::from_value(json!({
+                "showOnTray": visible,
+                "syncConfigs": {"Default": {
+                    "app": {"showOnTray": !visible}, "rclone": {"srcFs": "drive:"}
+                }}
+            }))
+            .unwrap();
+            let saved = serde_json::to_value(settings).unwrap();
+            assert_eq!(saved["syncConfigs"]["Default"]["app"], json!({}));
+            #[cfg(feature = "tray")]
+            assert_eq!(saved["showOnTray"], visible);
+        }
+    }
 
     #[test]
     fn test_profile_config_source_dest_helpers() {

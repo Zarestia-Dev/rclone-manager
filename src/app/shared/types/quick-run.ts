@@ -37,7 +37,7 @@ export type FlowSubMode = 'builder' | 'quick_run';
  */
 export interface QuickRunConfig extends ConfigWithSubConfigs {
   /** App-level config: autostart, cron schedule, watch, etc. */
-  app: AppConfig;
+  app: AppConfig & { showOnTray?: boolean };
   /** Categorized or flat rclone config (opType, vfs, filter, backend). */
   rclone: Record<string, unknown>;
 }

@@ -13,6 +13,17 @@ export interface RemoteConfig {
 export interface RemoteProvider {
   name: string;
   description: string;
+  overview?: RemoteProviderOverview | null;
+}
+
+/** General backend capabilities embedded in rclone, rather than a configured remote's fsinfo. */
+export interface RemoteProviderOverview {
+  Name?: string;
+  Backend?: string;
+  Tier?: string;
+  Features?: string[] | null;
+  Hashes?: string[] | null;
+  Virtual?: boolean;
 }
 
 export type ConfigRecord = Record<string, unknown>;

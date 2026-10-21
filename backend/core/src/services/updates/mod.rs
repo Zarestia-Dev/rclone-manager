@@ -50,7 +50,7 @@ impl Drop for CheckingGuard<'_> {
     }
 }
 
-pub use crate::utils::version::{clean_app_version, is_version_newer};
+use crate::utils::version::{clean_app_version, is_version_newer};
 
 pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
     let updater_state = app.state::<AppUpdaterState>();

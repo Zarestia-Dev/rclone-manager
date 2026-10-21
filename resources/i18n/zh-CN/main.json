@@ -1254,6 +1254,25 @@
           "label": "无输出",
           "description": "禁止来自 RC 配置调用的任何标准输出"
         }
+      },
+      "providerOverview": {
+        "title": "提供商功能",
+        "supportTier": "rclone 支持级别（非存储套餐）",
+        "hashes": "校验和",
+        "noHashes": "未报告校验和算法",
+        "features": "已报告的功能",
+        "noFeatures": "此摘要未报告任何功能",
+        "generalNote": "由 rclone 提供的提供商通用信息。实际支持情况可能因配置而异。",
+        "virtualNote": "功能取决于底层远程存储和配置。",
+        "documentation": "查看 rclone 功能概览",
+        "copy": "服务器端复制",
+        "move": "服务器端移动",
+        "publicLink": "链接共享",
+        "emptyDirectories": "空文件夹",
+        "caseInsensitive": "名称不区分大小写",
+        "duplicateFiles": "同名文件",
+        "readMetadata": "读取元数据",
+        "writeMetadata": "写入元数据"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "系统元数据",
         "standard": "标准元数据"
+      },
+      "supportInfo": "rclone 支持级别反映提供商的维护状况和稳定性。",
+      "providerDocumentation": "提供商文档",
+      "liveFeatures": "此已配置远程存储的功能支持情况。",
+      "featureLabels": {
+        "about": "存储使用情况",
+        "bucketBased": "基于存储桶的存储",
+        "bucketRoot": "从存储根目录访问",
+        "purge": "删除目录树",
+        "dirMove": "服务器端移动文件夹",
+        "cleanUp": "清理存储",
+        "listR": "递归列出",
+        "listP": "分页列出",
+        "putStream": "流式上传",
+        "openChunkWriter": "分段上传",
+        "openWriterAt": "随机访问上传",
+        "readMimeType": "读取内容类型",
+        "writeMimeType": "写入内容类型",
+        "changeNotify": "更改通知",
+        "setTier": "更改存储层级",
+        "getTier": "读取存储层级",
+        "overlay": "封装其他远程存储"
       }
     },
     "properties": {

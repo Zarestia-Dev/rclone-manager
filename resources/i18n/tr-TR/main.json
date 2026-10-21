@@ -1254,6 +1254,25 @@
           "label": "Çıktı Yok",
           "description": "RC yapılandırma çağrısından gelen herhangi bir standart çıktıyı bastır"
         }
+      },
+      "providerOverview": {
+        "title": "Sağlayıcı özellikleri",
+        "supportTier": "Rclone destek seviyesi (depolama paketiniz değildir)",
+        "hashes": "Sağlama toplamları",
+        "noHashes": "Bildirilen sağlama toplamı algoritması yok",
+        "features": "Bildirilen özellikler",
+        "noFeatures": "Bu özet için bildirilen özellik yok",
+        "generalNote": "Rclone tarafından sağlanan genel sağlayıcı bilgileri. Gerçek destek yapılandırmanıza göre değişebilir.",
+        "virtualNote": "Özellikler, alttaki remote ve yapılandırmaya bağlıdır.",
+        "documentation": "Rclone özelliklerine genel bakış",
+        "copy": "Sunucu tarafında kopyalama",
+        "move": "Sunucu tarafında taşıma",
+        "publicLink": "Bağlantı paylaşımı",
+        "emptyDirectories": "Boş klasörler",
+        "caseInsensitive": "Büyük/küçük harfe duyarsız adlar",
+        "duplicateFiles": "Aynı adlı dosyalar",
+        "readMetadata": "Metadata okuma",
+        "writeMetadata": "Metadata yazma"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "Sistem Meta Verileri",
         "standard": "Standart Meta Veriler"
+      },
+      "supportInfo": "Rclone destek seviyesi, sağlayıcının bakım durumunu ve kararlılığını yansıtır.",
+      "providerDocumentation": "Sağlayıcı dokümantasyonu",
+      "liveFeatures": "Bu yapılandırılmış remote’un özellik desteği.",
+      "featureLabels": {
+        "about": "Depolama kullanımı",
+        "bucketBased": "Kova tabanlı depolama",
+        "bucketRoot": "Depolama kökünden erişim",
+        "purge": "Klasör ağacını silme",
+        "dirMove": "Sunucu tarafında klasör taşıma",
+        "cleanUp": "Depolama temizliği",
+        "listR": "Özyinelemeli listeleme",
+        "listP": "Sayfalı listeleme",
+        "putStream": "Akış halinde yükleme",
+        "openChunkWriter": "Çok parçalı yükleme",
+        "openWriterAt": "Rastgele erişimli yükleme",
+        "readMimeType": "İçerik türlerini okuma",
+        "writeMimeType": "İçerik türlerini yazma",
+        "changeNotify": "Değişiklik bildirimleri",
+        "setTier": "Depolama katmanını değiştirme",
+        "getTier": "Depolama katmanını okuma",
+        "overlay": "Diğer remote’ları sarmalama"
       }
     },
     "properties": {

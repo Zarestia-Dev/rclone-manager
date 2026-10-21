@@ -61,18 +61,7 @@ impl<'de> Deserialize<'de> for ProfileConfig {
         // Deserialize using ProfileConfig or fall back if unpartitioned
         let profile = crate::utils::types::remotes::ProfileConfig::parse_from_value(&val);
 
-        let source = profile.source_value().cloned();
-        let dest = profile.dest_value().cloned();
-
-        Ok(ProfileConfig {
-            cron_enabled: profile.app.cron_enabled,
-            cron_expression: profile.app.cron_expression,
-            watch_enabled: profile.app.watch_enabled,
-            watch_delay: profile.app.watch_delay,
-            watch_changed_only: profile.app.watch_changed_only,
-            source,
-            dest,
-        })
+        Ok(Self::from_profile(&profile))
     }
 }
 

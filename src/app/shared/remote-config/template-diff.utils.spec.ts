@@ -1,54 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import {
-  computeTemplateDiff,
-  filterTemplateValues,
-  isValueEmpty,
-  getApplicableTemplateCategories,
-} from './template-diff.utils';
-import { TemplateCategory, TEMPLATE_CATEGORIES } from '@app/types';
+import { computeTemplateDiff, filterTemplateValues, isValueEmpty } from './template-diff.utils';
+import { TemplateCategory } from '@app/types';
 
 describe('template-diff.utils', () => {
-  describe('getApplicableTemplateCategories', () => {
-    it('should return all categories when context is null or undefined', () => {
-      expect(getApplicableTemplateCategories(null)).toEqual(TEMPLATE_CATEGORIES);
-      expect(getApplicableTemplateCategories(undefined)).toEqual(TEMPLATE_CATEGORIES);
-    });
-
-    it('should return only remote category for remote context', () => {
-      expect(getApplicableTemplateCategories('remote')).toEqual(['remote']);
-    });
-
-    it('should return only shared category for shared profiles', () => {
-      expect(getApplicableTemplateCategories('vfs')).toEqual(['vfs']);
-      expect(getApplicableTemplateCategories('filter')).toEqual(['filter']);
-      expect(getApplicableTemplateCategories('backend')).toEqual(['backend']);
-      expect(getApplicableTemplateCategories('runtimeRemote')).toEqual([]);
-    });
-
-    it('should return operation and linked profiles without vfs for non-vfs operations like sync and copy', () => {
-      expect(getApplicableTemplateCategories('sync')).toEqual(['sync', 'filter', 'backend']);
-      expect(getApplicableTemplateCategories('copy')).toEqual(['copy', 'filter', 'backend']);
-      expect(getApplicableTemplateCategories('move')).toEqual(['move', 'filter', 'backend']);
-      expect(getApplicableTemplateCategories('bisync')).toEqual(['bisync', 'filter', 'backend']);
-      expect(getApplicableTemplateCategories('check')).toEqual(['check', 'filter', 'backend']);
-    });
-
-    it('should return operation with vfs, filter, and backend for operations supporting vfs (mount, serve)', () => {
-      expect(getApplicableTemplateCategories('mount')).toEqual([
-        'mount',
-        'vfs',
-        'filter',
-        'backend',
-      ]);
-      expect(getApplicableTemplateCategories('serve')).toEqual([
-        'serve',
-        'vfs',
-        'filter',
-        'backend',
-      ]);
-    });
-  });
-
   describe('isValueEmpty', () => {
     it('should correctly identify empty and non-empty values', () => {
       expect(isValueEmpty(undefined)).toBe(true);

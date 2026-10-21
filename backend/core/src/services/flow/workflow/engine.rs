@@ -183,7 +183,7 @@ struct NodeFinishedEvent {
     duration_ms: u64,
 }
 
-pub use crate::utils::format::format_file_size;
+use crate::utils::format::format_file_size;
 
 /// Helper struct consolidating duplicate node config extraction logic.
 struct NodeOpConfig<'a> {

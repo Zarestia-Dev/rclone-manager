@@ -1,7 +1,17 @@
-import { RcConfigOption, OperationType, SharedProfileType, RCLONE_PATH_KEYS } from '@app/types';
-import { staticFlagDefinitions } from '../flag-definitions';
-import { PathGroup } from '../../infrastructure/platform/path.service';
 import {
+  RcConfigOption,
+  OperationType,
+  SharedProfileType,
+  RCLONE_PATH_KEYS,
+  APP_CONFIG_DEFAULTS,
+  DEFAULT_PROFILE_NAME,
+  type PathGroup,
+} from '@app/types';
+import { staticFlagDefinitions } from '../flag-definitions';
+import {
+  getAppConfigValues,
+  getAppCfg,
+  getRcloneCfg,
   extractProfileSource,
   extractProfileDest,
 } from '../../../shared/utils/profile-config.util';
@@ -27,24 +37,13 @@ export const OPERATION_PATH_MAPPINGS: Partial<Record<SharedProfileType, PathMapp
 };
 
 const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
-  ...Object.values(OPERATION_PATH_MAPPINGS).flatMap(m =>
-    m ? [m.sourceKey, m.destKey].filter((k): k is string => !!k) : []
-  ),
+  ...RCLONE_PATH_KEYS,
+  ...Object.keys(APP_CONFIG_DEFAULTS),
   'app',
   'rclone',
+  'showOnTray', // Legacy profile metadata must not become an rclone option.
   'mountType',
   'type',
-  'autoStart',
-  'showOnTray',
-  'cronEnabled',
-  'cronExpression',
-  'watchEnabled',
-  'watchDelay',
-  'watchChangedOnly',
-  'vfsProfile',
-  'filterProfile',
-  'backendProfile',
-  'runtimeRemoteProfile',
   'name',
   'url',
   'filenames',
@@ -89,7 +88,6 @@ export interface FormToConfigContext {
   pathService: {
     buildPathString(p: PathGroup | string, remoteName: string): string;
     buildPathStrings(p: PathGroup | PathGroup[] | null | undefined, remoteName: string): string[];
-    joinPath(...segments: string[]): string;
   };
   cleanData?: (
     options: Record<string, unknown>,
@@ -99,25 +97,14 @@ export interface FormToConfigContext {
 }
 
 function buildAppConfig(formData: Record<string, unknown>): Record<string, unknown> {
-  const app: Record<string, unknown> = {
-    autoStart: formData['autoStart'] ?? false,
-    showOnTray: formData['showOnTray'] !== undefined ? formData['showOnTray'] : true,
-    cronEnabled: formData['cronEnabled'] ?? false,
-    cronExpression: formData['cronExpression'] ?? null,
-    watchEnabled: formData['watchEnabled'] ?? false,
-    watchDelay: formData['watchDelay'] ?? 5,
-    watchChangedOnly: formData['watchChangedOnly'] ?? false,
-    vfsProfile: formData['vfsProfile'] || undefined,
-    filterProfile: formData['filterProfile'] || undefined,
-    backendProfile: formData['backendProfile'] || undefined,
-  };
-
-  if ('runtimeRemoteProfile' in formData) {
-    const selectedProfile = String(formData['runtimeRemoteProfile'] || '').trim();
-    app['runtimeRemoteProfile'] = selectedProfile || undefined;
-  }
-
-  return app;
+  const values = getAppConfigValues(formData);
+  values['runtimeRemoteProfile'] =
+    String(formData['runtimeRemoteProfile'] || '').trim() || DEFAULT_PROFILE_NAME;
+  return Object.fromEntries(
+    Object.entries(APP_CONFIG_DEFAULTS)
+      .filter(([key, defaultValue]) => values[key] !== defaultValue)
+      .map(([key]) => [key, values[key]])
+  );
 }
 
 function mapCopyUrlPaths(
@@ -194,7 +181,7 @@ function cleanOptions(
   delete cleanedOptions['autoFilename'];
   delete cleanedOptions['app'];
   delete cleanedOptions['rclone'];
-  return Object.keys(cleanedOptions).length > 0 ? cleanedOptions : {};
+  return cleanedOptions;
 }
 
 export function mapFormToConfigProfile(
@@ -246,22 +233,6 @@ export interface ConfigToFormContext {
     ): PathGroup;
     getFilename(path: string): string;
     getParentPath(path: string): string;
-  };
-}
-
-function buildAppConfigResult(appConfig: Record<string, unknown>): Record<string, unknown> {
-  return {
-    autoStart: appConfig['autoStart'] ?? false,
-    showOnTray: appConfig['showOnTray'] !== undefined ? appConfig['showOnTray'] : true,
-    cronEnabled: appConfig['cronEnabled'] ?? false,
-    cronExpression: appConfig['cronExpression'] ?? null,
-    watchEnabled: appConfig['watchEnabled'] ?? false,
-    watchDelay: appConfig['watchDelay'] ?? 5,
-    watchChangedOnly: appConfig['watchChangedOnly'] ?? false,
-    vfsProfile: appConfig['vfsProfile'] || 'Default',
-    filterProfile: appConfig['filterProfile'] || 'Default',
-    backendProfile: appConfig['backendProfile'] || 'Default',
-    runtimeRemoteProfile: appConfig['runtimeRemoteProfile'] || 'Default',
   };
 }
 
@@ -376,15 +347,15 @@ export function mapConfigToFormProfile(
   config: Record<string, unknown>,
   ctx: ConfigToFormContext
 ): Record<string, unknown> {
-  const appConfig = (config['app'] as Record<string, unknown>) || config;
-  const rawRclone = (config['rclone'] as Record<string, unknown>) || config;
+  const appConfig = getAppCfg(config) ?? config;
+  const rawRclone = getRcloneCfg(config) ?? config;
   const nested = rawRclone[type];
   const rcloneConfig = {
     ...(nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : {}),
     ...rawRclone,
   };
 
-  const result: Record<string, unknown> = buildAppConfigResult(appConfig);
+  const result = getAppConfigValues(appConfig);
 
   const mapping = OPERATION_PATH_MAPPINGS[type as SharedProfileType];
   if (mapping) {
@@ -421,35 +392,31 @@ function retargetPath(val: unknown, oldRemote: string, newRemote: string): unkno
   return val;
 }
 
-export function retargetProfileRemote(
-  profile: Record<string, unknown>,
+function retargetRemoteKey(
+  scoped: Record<string, unknown>,
   oldRemote: string,
   newRemote: string
-): Record<string, unknown> {
-  if (!profile || !oldRemote || !newRemote || oldRemote === newRemote) return profile;
+): void {
+  if (Object.hasOwn(scoped, oldRemote)) {
+    scoped[newRemote] = scoped[oldRemote];
+    delete scoped[oldRemote];
+  }
+}
 
-  const updated = structuredClone(profile);
-  const patchKeys = (target: Record<string, unknown>): void => {
-    for (const key of RCLONE_PATH_KEYS) {
-      if (key in target) target[key] = retargetPath(target[key], oldRemote, newRemote);
+function retargetProfilePaths(
+  target: Record<string, unknown>,
+  oldRemote: string,
+  newRemote: string
+): void {
+  for (const key of RCLONE_PATH_KEYS) {
+    if (key in target) target[key] = retargetPath(target[key], oldRemote, newRemote);
+  }
+  for (const key of ['remotes', 'runtimeRemote']) {
+    const scoped = target[key];
+    if (scoped && typeof scoped === 'object' && !Array.isArray(scoped)) {
+      retargetRemoteKey(scoped as Record<string, unknown>, oldRemote, newRemote);
     }
-  };
-
-  if (
-    updated['rclone'] &&
-    typeof updated['rclone'] === 'object' &&
-    !Array.isArray(updated['rclone'])
-  ) {
-    patchKeys(updated['rclone'] as Record<string, unknown>);
   }
-  patchKeys(updated);
-
-  if (oldRemote in updated) {
-    updated[newRemote] = updated[oldRemote];
-    delete updated[oldRemote];
-  }
-
-  return updated;
 }
 
 export function retargetProfilesRemote<T extends Record<string, unknown>>(
@@ -460,25 +427,20 @@ export function retargetProfilesRemote<T extends Record<string, unknown>>(
   if (!sections || !oldRemote || !newRemote || oldRemote === newRemote) return sections;
 
   const updated = structuredClone(sections) as Record<string, unknown>;
-  for (const [secKey, secVal] of Object.entries(updated)) {
-    if (!secVal || typeof secVal !== 'object' || Array.isArray(secVal)) continue;
-
-    const isRuntime = secKey === 'runtimeRemote' || secKey === 'runtimeRemoteConfigs';
-    const newMap: Record<string, unknown> = {};
-
-    for (const [pName, pData] of Object.entries(secVal as Record<string, unknown>)) {
-      if (pData && typeof pData === 'object' && !Array.isArray(pData)) {
-        const targetName = isRuntime && pName === oldRemote ? newRemote : pName;
-        newMap[targetName] = retargetProfileRemote(
-          pData as Record<string, unknown>,
-          oldRemote,
-          newRemote
-        );
-      } else {
-        newMap[pName] = pData;
+  for (const [sectionName, section] of Object.entries(updated)) {
+    if (!section || typeof section !== 'object' || Array.isArray(section)) continue;
+    for (const profile of Object.values(section)) {
+      if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+        const config = profile as Record<string, unknown>;
+        if (sectionName === 'runtimeRemote' || sectionName === 'runtimeRemoteConfigs') {
+          retargetRemoteKey(config, oldRemote, newRemote);
+        } else {
+          retargetProfilePaths(config, oldRemote, newRemote);
+          const rclone = getRcloneCfg(config);
+          if (rclone) retargetProfilePaths(rclone, oldRemote, newRemote);
+        }
       }
     }
-    updated[secKey] = newMap;
   }
   return updated as T;
 }

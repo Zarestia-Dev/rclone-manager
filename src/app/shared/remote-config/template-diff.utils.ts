@@ -1,6 +1,5 @@
 import { TemplateCategory, isTemplateCategory } from '@app/types';
 import { deepEqual, formatValueDisplay } from 'src/app/shared/utils';
-export { getConfigCategories as getApplicableTemplateCategories } from 'src/app/services/remote/utils/config-metadata.utils';
 
 export type DiffStatus = 'added' | 'modified' | 'unchanged';
 export type ApplyStrategy = 'overwrite' | 'fill-empty';

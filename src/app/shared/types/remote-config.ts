@@ -1,6 +1,7 @@
 import { OPERATION_REGISTRY } from './operation-registry';
 import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
+import { RemoteProviderOverview } from './remotes';
 
 // Dynamic extraction of FlagTypes based on registry
 export type FlagType =
@@ -185,6 +186,7 @@ export interface LoadingState {
 export interface RemoteType {
   value: string;
   label: string;
+  overview?: RemoteProviderOverview | null;
 }
 
 export interface RemoteConfigStepVisibility {
@@ -196,8 +198,7 @@ export interface RemoteConfigStepVisibility {
 }
 
 export interface AppConfig {
-  autoStart: boolean;
-  showOnTray?: boolean;
+  autoStart?: boolean;
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;
@@ -208,6 +209,21 @@ export interface AppConfig {
   backendProfile?: string;
   runtimeRemoteProfile?: string;
 }
+
+export const DEFAULT_PROFILE_NAME = 'Default';
+
+export const APP_CONFIG_DEFAULTS: Readonly<Required<AppConfig>> = Object.freeze({
+  autoStart: false,
+  cronEnabled: false,
+  cronExpression: null,
+  watchEnabled: false,
+  watchDelay: 5,
+  watchChangedOnly: false,
+  vfsProfile: DEFAULT_PROFILE_NAME,
+  filterProfile: DEFAULT_PROFILE_NAME,
+  backendProfile: DEFAULT_PROFILE_NAME,
+  runtimeRemoteProfile: DEFAULT_PROFILE_NAME,
+});
 
 export interface ProfileConfig {
   app?: AppConfig;

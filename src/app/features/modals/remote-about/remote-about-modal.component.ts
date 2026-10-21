@@ -23,8 +23,12 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { FsInfo, RemoteAboutData } from '@app/types';
+import { FsInfo, RemoteAboutData, RemoteProvider } from '@app/types';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
+import {
+  getProviderTier,
+  getRemoteFeatureLabelKey,
+} from 'src/app/services/remote/utils/provider-metadata.utils';
 
 export interface MetadataItem {
   Help?: string;
@@ -78,6 +82,7 @@ export class RemoteAboutModalComponent implements OnInit {
 
   // Signals
   readonly aboutInfo = signal<FsInfo | null>(null);
+  readonly provider = signal<RemoteProvider | null>(null);
   readonly sizeInfo = signal<{ count: number; bytes: number } | null>(null);
   readonly loadingAbout = signal(true);
   readonly loadingSize = signal(true);
@@ -95,6 +100,20 @@ export class RemoteAboutModalComponent implements OnInit {
   // Derived computed signals — strongly typed
   readonly root = computed(() => this.aboutInfo()?.Root || '/');
 
+  readonly providerName = computed(
+    () => this.provider()?.description || this.provider()?.overview?.Name || this.data.remote.type
+  );
+
+  readonly providerTier = computed(() => getProviderTier(this.provider()?.overview?.Tier));
+
+  readonly providerDocumentationUrl = computed(() => {
+    const provider = this.provider();
+    const backend = (provider?.overview?.Backend || provider?.name || '').replace(/\s/g, '');
+    return /^[a-z0-9][a-z0-9-]*$/.test(backend)
+      ? `https://rclone.org/${backend}/`
+      : 'https://rclone.org/overview/';
+  });
+
   readonly precision = computed(() => {
     const ns = this.aboutInfo()?.Precision;
     return ns != null ? this.mapper.nanosecondsToDuration(ns) : '-';
@@ -105,12 +124,16 @@ export class RemoteAboutModalComponent implements OnInit {
     return Array.isArray(h) ? h : [];
   });
 
-  readonly features = computed<{ key: string; value: boolean }[]>(() => {
+  readonly features = computed<{ key: string; value: boolean; labelKey?: string }[]>(() => {
     const features = this.aboutInfo()?.Features;
     if (!features) return [];
     return Object.entries(features)
       .filter(([key]) => key !== 'IsLocal')
-      .map(([key, value]) => ({ key, value: !!value }))
+      .map(([key, value]) => ({
+        key,
+        value: !!value,
+        labelKey: getRemoteFeatureLabelKey(key),
+      }))
       .sort((a, b) => a.key.localeCompare(b.key));
   });
 
@@ -161,7 +184,21 @@ export class RemoteAboutModalComponent implements OnInit {
 
   ngOnInit(): void {
     this.remoteService.clearCache(this.displayName);
+    void this.loadProvider();
     this.loadData();
+  }
+
+  private async loadProvider(): Promise<void> {
+    const type = this.data.remote.type;
+    if (!type) return;
+    try {
+      const providers = await this.remoteService.getRemoteTypes();
+      if (!this.isDestroyed) {
+        this.provider.set(providers.find(provider => provider.name === type) ?? null);
+      }
+    } catch {
+      // Provider metadata is optional; live remote information remains available.
+    }
   }
 
   async loadData(): Promise<void> {

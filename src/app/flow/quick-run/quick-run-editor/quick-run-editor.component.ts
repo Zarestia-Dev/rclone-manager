@@ -24,7 +24,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
-  AppConfig,
   FlagType,
   FLAG_TYPES,
   OperationDefinition,
@@ -164,6 +163,7 @@ export class QuickRunEditorComponent implements OnInit {
   readonly dynamicServeFields = signal<RcConfigOption[]>([]);
   readonly isLoadingServeFields = computed(() => this.metadata.isLoading('serve'));
   private seedRcloneConfig?: Record<string, unknown>;
+  private showOnTray = true;
   private fieldsReady: Promise<void> = Promise.resolve();
   private seedRemoteName = '';
   private readonly runtimeDrafts = new Map<
@@ -413,6 +413,7 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   private populateFormFromSeed(seed?: QuickRunConfig): void {
+    this.showOnTray = seed?.app?.showOnTray ?? true;
     if (!seed || !seed.rclone) return;
     const rawRclone = seed.rclone as Record<string, unknown>;
     this.seedRcloneConfig = rawRclone;
@@ -729,7 +730,8 @@ export class QuickRunEditorComponent implements OnInit {
       cleanData: (options, definitions) => this.valueMapper.cleanData(options, definitions),
       dynamicFields: this.getFlagFields(opType),
     });
-    const app = mapped['app'] as AppConfig;
+    const app = mapped['app'] as QuickRunConfig['app'];
+    if (!this.isWorkflowMode() && !this.showOnTray) app.showOnTray = false;
     const rclone = mapped['rclone'] as Record<string, unknown>;
 
     const sharedTypes = this.applicableCategories().filter(

@@ -404,6 +404,46 @@ describe('QuickRunEditorComponent', () => {
     }
   );
 
+  it.each([undefined, true, false])(
+    'preserves Quick Run tray visibility (%s) outside operation forms',
+    async showOnTray => {
+      dialogData.cloneData = {
+        name: 'Saved run',
+        remoteName: 'test-remote',
+        operationType: 'sync',
+        config: { app: { showOnTray }, rclone: { srcFs: 'test-remote:photos', dstFs: '/backup' } },
+      };
+      const opened = TestBed.createComponent(QuickRunEditorComponent);
+      opened.detectChanges();
+      await opened.whenStable();
+      const editor = opened.componentInstance as unknown as { buildInput(): QuickRunInput };
+      const saved = editor.buildInput();
+      expect(saved.config.app.showOnTray ?? true).toBe(showOnTray ?? true);
+      expect(saved.config.app.showOnTray).toBe(showOnTray === false ? false : undefined);
+      expect(opened.componentInstance.getOpFormGroup('sync').get('showOnTray')).toBeNull();
+    }
+  );
+
+  it('discards profile tray metadata when editing a workflow operation', async () => {
+    const opened = TestBed.createComponent(QuickRunEditorComponent);
+    opened.componentRef.setInput('workflowNode', {
+      id: 'sync-node',
+      type: 'sync',
+      title: 'Sync',
+      config: {
+        remoteName: 'test-remote',
+        config: {
+          app: { showOnTray: false },
+          rclone: { srcFs: 'test-remote:photos', dstFs: '/backup' },
+        },
+      },
+    });
+    opened.detectChanges();
+    await opened.whenStable();
+    const editor = opened.componentInstance as unknown as { buildInput(): QuickRunInput };
+    expect(editor.buildInput().config.app.showOnTray).toBeUndefined();
+  });
+
   it('preserves saved serve values after initial metadata loading', async () => {
     dialogData.cloneData = {
       name: 'Saved serve',

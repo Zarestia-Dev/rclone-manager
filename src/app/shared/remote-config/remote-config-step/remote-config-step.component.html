@@ -173,7 +173,29 @@
             <span>{{ 'wizards.remoteConfig.fields' | translate }}</span>
           }
         </div>
+        @if (providerTier(); as tier) {
+          <span
+            class="app-pill"
+            [class]="tier.colorClass"
+            [attr.title]="'wizards.remoteConfig.providerOverview.supportTier' | translate"
+            >{{ tier.label }}</span
+          >
+        }
         <div class="mode-actions">
+          @if (providerOverview()) {
+            <button
+              type="button"
+              class="action-button"
+              (click)="showProviderOverview.set(!showProviderOverview())"
+              [attr.title]="'wizards.remoteConfig.providerOverview.title' | translate"
+              [attr.aria-label]="'wizards.remoteConfig.providerOverview.title' | translate"
+              [attr.aria-expanded]="showProviderOverview()"
+              [attr.aria-pressed]="showProviderOverview()"
+              [attr.aria-controls]="showProviderOverview() ? providerOverviewId : null"
+            >
+              <mat-icon svgIcon="info" />
+            </button>
+          }
           <div
             class="contextual-action-wrapper"
             [class.visible]="showAdvancedToggle() && !showJson"
@@ -228,6 +250,61 @@
           </button>
         </div>
       </div>
+      @if (showProviderOverview()) {
+        @if (providerOverview(); as overview) {
+          <section class="provider-overview detail-section anim-panel" [id]="providerOverviewId">
+            <h3 class="section-title">
+              {{ 'wizards.remoteConfig.providerOverview.title' | translate }}
+            </h3>
+            <p>
+              {{
+                (overview.Virtual
+                  ? 'wizards.remoteConfig.providerOverview.virtualNote'
+                  : 'wizards.remoteConfig.providerOverview.generalNote'
+                ) | translate
+              }}
+            </p>
+            <mat-divider></mat-divider>
+
+            @if (!overview.Virtual) {
+              <div class="detail-section">
+                <span class="section-title">{{
+                  'wizards.remoteConfig.providerOverview.hashes' | translate
+                }}</span>
+                <div class="provider-capabilities">
+                  @for (hash of overview.Hashes ?? []; track $index) {
+                    <span class="app-pill pill-sm p-dim">{{ hash }}</span>
+                  } @empty {
+                    <span>{{ 'wizards.remoteConfig.providerOverview.noHashes' | translate }}</span>
+                  }
+                </div>
+              </div>
+              <mat-divider></mat-divider>
+
+              <div class="detail-section">
+                <span class="section-title">{{
+                  'wizards.remoteConfig.providerOverview.features' | translate
+                }}</span>
+                <div class="provider-capabilities">
+                  @for (label of providerCapabilities(); track label) {
+                    <span class="app-pill pill-sm p-dim">{{ label | translate }}</span>
+                  } @empty {
+                    <span>{{
+                      'wizards.remoteConfig.providerOverview.noFeatures' | translate
+                    }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <mat-divider></mat-divider>
+
+            <a href="https://rclone.org/overview/" target="_blank" rel="noopener noreferrer">
+              {{ 'wizards.remoteConfig.providerOverview.documentation' | translate }}
+            </a>
+          </section>
+        }
+      }
     }
   </div>
 

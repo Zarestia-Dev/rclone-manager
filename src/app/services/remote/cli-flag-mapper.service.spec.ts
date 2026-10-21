@@ -2,11 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { CliFlagMapperService, ParsedCLI } from './cli-flag-mapper.service';
+import { CliFlagMapperService } from './cli-flag-mapper.service';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { RcConfigOption, SharedProfileType } from '@app/types';
+import type { ParsedCLI } from 'src/app/shared/utils/cli-parser.util';
 
 // The spec exercises the pure-logic methods (tokenize / parse / classify /
 // buildLookupTable). None of them touch the network, so we stub out the two

@@ -18,6 +18,7 @@ import {
   PendingRemoteData,
   TemplateCategory,
   OPERATION_REGISTRY,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 import {
   createConfigFormGroup,
@@ -37,7 +38,6 @@ import { findUniqueName } from './utils/unique-name.util';
 import {
   buildProfileChanges,
   createProfileBaseline,
-  DEFAULT_PROFILE_NAME,
   ProfileCollection,
   ProfileConfigMap,
 } from './utils/profile-changes.utils';
@@ -51,11 +51,8 @@ import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
-import {
-  mapFormToConfigProfile,
-  mapConfigToFormProfile,
-  matchesConfigSearch,
-} from './utils/remote-config.utils';
+import { mapFormToConfigProfile, mapConfigToFormProfile } from './utils/profile-mapper.utils';
+import { matchesConfigSearch } from './utils/remote-config.utils';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -65,7 +62,12 @@ import { IconService } from '../ui/icon.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RemotePresetsService } from './remote-presets';
-import { getAppCfg, getRcloneCfg } from 'src/app/shared/utils/profile-config.util';
+import {
+  getAppConfigValues,
+  getAppCfg,
+  getRcloneCfg,
+  getRuntimeRemoteProfiles,
+} from 'src/app/shared/utils/profile-config.util';
 import { ImportResult } from './cli-flag-mapper.service';
 import {
   LINKED_OPTION_TYPES,
@@ -97,22 +99,6 @@ interface ProfileUsage {
 
 const PROFILE_TYPES: readonly SharedProfileType[] = [...FLAG_TYPES, 'runtimeRemote'];
 const JOB_TYPES: ReadonlySet<SharedProfileType> = new Set(SYNC_TYPES);
-
-// Fields patched when populating a profile form (excluding `source`/`dest` which are
-// handled separately because their shape varies per operation).
-const PROFILE_FORM_FIELDS = [
-  'autoStart',
-  'showOnTray',
-  'cronEnabled',
-  'cronExpression',
-  'watchEnabled',
-  'watchDelay',
-  'watchChangedOnly',
-  'vfsProfile',
-  'filterProfile',
-  'backendProfile',
-  'runtimeRemoteProfile',
-] as const;
 
 @Injectable()
 export class RemoteConfigStateService {
@@ -589,16 +575,6 @@ export class RemoteConfigStateService {
     );
   }
 
-  private getRuntimeRemoteOptions(
-    remoteName: string,
-    config: Record<string, unknown>
-  ): Record<string, unknown> {
-    const scoped = config[remoteName];
-    return scoped && typeof scoped === 'object' && !Array.isArray(scoped)
-      ? (scoped as Record<string, unknown>)
-      : config;
-  }
-
   private buildProfileConfig(
     type: SharedProfileType,
     remoteName: string,
@@ -686,7 +662,9 @@ export class RemoteConfigStateService {
     await this.safeLoad(
       () => this.remoteManagementService.getRemoteTypes(),
       value => {
-        this.remoteTypes.set(value.map(p => ({ value: p.name, label: p.description })));
+        this.remoteTypes.set(
+          value.map(p => ({ value: p.name, label: p.description, overview: p.overview }))
+        );
       }
     );
   }
@@ -1219,10 +1197,7 @@ export class RemoteConfigStateService {
       );
     }
 
-    const { settings, expectedSettings, nextBaseline } = buildProfileChanges(
-      this.profiles(),
-      this.profileBaseline
-    );
+    const { settings, nextBaseline } = buildProfileChanges(this.profiles(), this.profileBaseline);
 
     try {
       // Watch roots must exist before the backend applies the saved configuration.
@@ -1233,13 +1208,13 @@ export class RemoteConfigStateService {
       await this.appSettingsService.saveRemoteSettings(
         remote,
         settings,
-        expectedSettings,
         this.profileBackend || this.backendService.activeBackend()
       );
       this.profileBaseline = nextBaseline;
       this.remoteConfigForm.markAsPristine();
       await this.remoteFacade.loadRemotes();
-      const selName = (activeType && this.selectedProfileName()[activeType]) || 'Default';
+      const selName =
+        (activeType && this.selectedProfileName()[activeType]) || DEFAULT_PROFILE_NAME;
       this.notificationService.showSuccess(
         this.translate.instant('modals.remoteConfig.profileSaved', { profile: selName, remote }) ||
           `Profile "${selName}" saved for remote "${remote}"`
@@ -1601,7 +1576,7 @@ export class RemoteConfigStateService {
       });
 
       this.patchProfileFields(group, vals);
-      this.populateProfilePaths(group, vals);
+      patchConfigPaths(group, vals);
       this.populateProfileOptions(group, type, vals);
       group.markAsPristine();
       if (profileName) this.profileFormOwners.set(type, profileName);
@@ -1632,7 +1607,7 @@ export class RemoteConfigStateService {
     generation: number
   ): Promise<boolean> {
     const rName = this.currentRemoteName();
-    const opts = this.getRuntimeRemoteOptions(rName, config);
+    const opts = getRuntimeRemoteProfiles(config, rName)[rName] ?? {};
     const rType = String(
       this.remoteForm.get('type')?.value || opts['type'] || config['type'] || ''
     ).trim();
@@ -1653,13 +1628,7 @@ export class RemoteConfigStateService {
   }
 
   private patchProfileFields(group: FormGroup, vals: Record<string, unknown>): void {
-    const patch: Record<string, unknown> = {};
-    for (const key of PROFILE_FORM_FIELDS) patch[key] = vals[key];
-    group.patchValue(patch, { emitEvent: false });
-  }
-
-  private populateProfilePaths(group: FormGroup, vals: Record<string, unknown>): void {
-    patchConfigPaths(group, vals);
+    group.patchValue(getAppConfigValues(vals), { emitEvent: false });
   }
 
   private populateProfileOptions(

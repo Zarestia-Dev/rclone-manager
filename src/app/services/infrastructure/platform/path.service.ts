@@ -6,22 +6,10 @@ import {
   PathGroupType,
   PathSegment,
   PathStyle,
-  DefaultPathOp,
-  PathInspectionStatus,
   MountPathCollision,
 } from '@app/types';
 import { BackendService } from '../system/backend.service';
 import * as pathUtils from '../../../shared/utils/path.utils';
-
-export type {
-  PathSegment,
-  PathStyle,
-  PathGroupType,
-  PathGroup,
-  DefaultPathOp,
-  PathInspectionStatus,
-  MountPathCollision,
-};
 
 @Injectable({ providedIn: 'root' })
 export class PathService {

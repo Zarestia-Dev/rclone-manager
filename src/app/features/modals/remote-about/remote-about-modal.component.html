@@ -18,6 +18,35 @@
     <!-- OVERVIEW TAB -->
     <mat-tab [label]="'fileBrowser.remoteAbout.tabs.overview' | translate">
       <div class="tab-content">
+        @if (provider(); as providerInfo) {
+          <section class="card-section provider-summary">
+            <div class="card-section-header">
+              <div class="header-info">
+                <mat-icon [svgIcon]="iconService.getIconName(data.remote.type)" />
+                <span class="card-section-title">{{ providerName() }}</span>
+              </div>
+              @if (providerTier(); as tier) {
+                <span
+                  class="app-pill pill-sm"
+                  [class]="tier.colorClass"
+                  [attr.title]="'wizards.remoteConfig.providerOverview.supportTier' | translate"
+                  >{{ tier.label }}</span
+                >
+              }
+            </div>
+            <div class="provider-description">
+              @if (providerTier()) {
+                <p>{{ 'fileBrowser.remoteAbout.supportInfo' | translate }}</p>
+              }
+              @if (providerInfo.overview?.Virtual) {
+                <p>{{ 'wizards.remoteConfig.providerOverview.virtualNote' | translate }}</p>
+              }
+              <a [href]="providerDocumentationUrl()" target="_blank" rel="noopener noreferrer">
+                {{ 'fileBrowser.remoteAbout.providerDocumentation' | translate }}
+              </a>
+            </div>
+          </section>
+        }
         @if (loadingAbout()) {
           <div class="loading-container">
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
@@ -145,7 +174,7 @@
             <div class="info-list">
               <div class="info-row">
                 <span class="info-label">{{ 'fileBrowser.remoteAbout.type' | translate }}</span>
-                <span class="app-pill p-primary">{{
+                <span class="app-pill p-primary pill-sm">{{
                   data.remote.type || ('fileBrowser.remoteAbout.unknown' | translate) | titlecase
                 }}</span>
               </div>
@@ -204,6 +233,7 @@
           </div>
         } @else if (features().length > 0) {
           <div class="features-header">
+            <p>{{ 'fileBrowser.remoteAbout.liveFeatures' | translate }}</p>
             <span class="count-badge">
               {{ supportedFeaturesCount() }} / {{ features().length }}
             </span>
@@ -219,7 +249,9 @@
                   class="feature-icon"
                   [svgIcon]="feat.value ? 'check-circle' : 'circle-xmark'"
                 ></mat-icon>
-                <span class="feature-name" [attr.title]="feat.key">{{ feat.key }}</span>
+                <span class="feature-name" [attr.title]="feat.key">{{
+                  feat.labelKey ? (feat.labelKey | translate) : feat.key
+                }}</span>
               </div>
             }
           </div>

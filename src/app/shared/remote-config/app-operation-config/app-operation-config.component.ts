@@ -36,6 +36,8 @@ import {
   CORE_SYNC_OPS,
   MULTI_SOURCE_OPS,
   FILE_SOURCE_OPS,
+  type PathGroup,
+  type PathInspectionStatus,
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -45,11 +47,7 @@ import {
   PathSelectionService,
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
-import {
-  PathService,
-  PathGroup,
-  PathInspectionStatus,
-} from 'src/app/services/infrastructure/platform/path.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';

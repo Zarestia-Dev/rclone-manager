@@ -1254,6 +1254,25 @@
           "label": "出力なし (No Output)",
           "description": "RC設定呼び出しからの標準出力を抑制します"
         }
+      },
+      "providerOverview": {
+        "title": "プロバイダーの機能",
+        "supportTier": "rcloneのサポートレベル（ストレージプランではありません）",
+        "hashes": "チェックサム",
+        "noHashes": "チェックサムアルゴリズムの情報はありません",
+        "features": "報告された機能",
+        "noFeatures": "この概要に記載された機能はありません",
+        "generalNote": "rcloneが提供するプロバイダーの一般情報です。実際の対応状況は設定によって異なる場合があります。",
+        "virtualNote": "機能は基盤となるリモートと設定に依存します。",
+        "documentation": "rcloneの機能概要を見る",
+        "copy": "サーバー側コピー",
+        "move": "サーバー側移動",
+        "publicLink": "リンク共有",
+        "emptyDirectories": "空のフォルダー",
+        "caseInsensitive": "大文字と小文字を区別しない名前",
+        "duplicateFiles": "同名ファイル",
+        "readMetadata": "メタデータの読み取り",
+        "writeMetadata": "メタデータの書き込み"
       }
     },
     "appOperation": {
@@ -1533,6 +1552,28 @@
       "metadata": {
         "system": "システムメタデータ",
         "standard": "標準メタデータ"
+      },
+      "supportInfo": "rcloneのサポートレベルは、プロバイダーの保守状況と安定性を表します。",
+      "providerDocumentation": "プロバイダーのドキュメント",
+      "liveFeatures": "この設定済みリモートの機能対応状況です。",
+      "featureLabels": {
+        "about": "ストレージ使用量",
+        "bucketBased": "バケット型ストレージ",
+        "bucketRoot": "ストレージルートからのアクセス",
+        "purge": "フォルダーツリーの削除",
+        "dirMove": "サーバー側のフォルダー移動",
+        "cleanUp": "ストレージのクリーンアップ",
+        "listR": "再帰的な一覧取得",
+        "listP": "ページ単位の一覧取得",
+        "putStream": "ストリーミングアップロード",
+        "openChunkWriter": "マルチパートアップロード",
+        "openWriterAt": "ランダムアクセスアップロード",
+        "readMimeType": "コンテンツタイプの読み取り",
+        "writeMimeType": "コンテンツタイプの書き込み",
+        "changeNotify": "変更通知",
+        "setTier": "ストレージクラスの変更",
+        "getTier": "ストレージクラスの読み取り",
+        "overlay": "他のリモートをラップ"
       }
     },
     "properties": {

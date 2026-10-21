@@ -43,15 +43,6 @@ import {
 import { RemoteCardActionsComponent } from './remote-card-actions.component';
 import { RemoteCardProfileDetailsComponent } from './remote-card-profile-details.component';
 
-export type {
-  StatusIndicatorViewModel,
-  ProfilePathViewModel,
-  ProfileChipViewModel,
-  DetailedOperationViewModel,
-  ProfilePickerEntry,
-  ProfilePickerGroup,
-};
-
 @Component({
   selector: 'app-remote-card',
   standalone: true,

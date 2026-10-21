@@ -17,13 +17,35 @@ const field = (name: string, extra: Partial<RcConfigOption> = {}): RcConfigOptio
 });
 
 describe('configuration metadata', () => {
-  it('derives linked sections from operation capabilities', () => {
-    expect(getConfigCategories('mount')).toEqual(['mount', 'vfs', 'filter', 'backend']);
-    expect(getConfigCategories('sync')).toEqual(['sync', 'filter', 'backend']);
-    expect(getConfigCategories('vfs')).toEqual(['vfs']);
-    expect(getConfigCategories('remote')).toEqual(['remote']);
-    expect(getConfigCategories('runtimeRemote')).toEqual([]);
-    expect(getConfigCategories(null)).toEqual(TEMPLATE_CATEGORIES);
+  describe('getConfigCategories', () => {
+    it('should return all categories when context is null or undefined', () => {
+      expect(getConfigCategories(null)).toEqual(TEMPLATE_CATEGORIES);
+      expect(getConfigCategories(undefined)).toEqual(TEMPLATE_CATEGORIES);
+    });
+
+    it('should return only remote category for remote context', () => {
+      expect(getConfigCategories('remote')).toEqual(['remote']);
+    });
+
+    it('should return only shared category for shared profiles', () => {
+      expect(getConfigCategories('vfs')).toEqual(['vfs']);
+      expect(getConfigCategories('filter')).toEqual(['filter']);
+      expect(getConfigCategories('backend')).toEqual(['backend']);
+      expect(getConfigCategories('runtimeRemote')).toEqual([]);
+    });
+
+    it('should return operation and linked profiles without vfs for non-vfs operations like sync and copy', () => {
+      expect(getConfigCategories('sync')).toEqual(['sync', 'filter', 'backend']);
+      expect(getConfigCategories('copy')).toEqual(['copy', 'filter', 'backend']);
+      expect(getConfigCategories('move')).toEqual(['move', 'filter', 'backend']);
+      expect(getConfigCategories('bisync')).toEqual(['bisync', 'filter', 'backend']);
+      expect(getConfigCategories('check')).toEqual(['check', 'filter', 'backend']);
+    });
+
+    it('should return operation with vfs, filter, and backend for operations supporting vfs (mount, serve)', () => {
+      expect(getConfigCategories('mount')).toEqual(['mount', 'vfs', 'filter', 'backend']);
+      expect(getConfigCategories('serve')).toEqual(['serve', 'vfs', 'filter', 'backend']);
+    });
   });
 
   it('selects an explicit provider or the metadata discriminator', () => {

@@ -9,7 +9,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
-zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "multipart", "stream", "query"] }
 log = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
@@ -33,7 +33,7 @@ rustls-native-certs = "0.8"
 rustls = { version = "0.23", features = ["ring"] }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
 sys-locale = "0.3"
-dirs = "6"
+dirs = "7"
 
 # rcman - Rust Config Manager library
 rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file", "vault"] }
@@ -43,15 +43,16 @@ futures = "0.3"
 http = "1"
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
+# Keep per-call recursive reads for librclone cancellation; 0.13 removes this API.
 parking_lot = "0.12"
-minisign-verify = { version = "0.2", optional = true }
+minisign-verify = { version = "0.3", optional = true }
 notify = "8"
 
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 [target.'cfg(target_os = "linux")'.dependencies]
-zbus = { version = "5", optional = true }
+zbus = { version = "6", optional = true }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", optional = true }
 objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"], optional = true }

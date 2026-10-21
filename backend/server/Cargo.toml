@@ -28,7 +28,7 @@ rustls = { version = "0.23", features = ["ring"] }
 uuid = { version = "1", features = ["v4"] }
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
-dirs = "6"
+dirs = "7"
 clap = { version = "4", features = ["derive", "env"] }
 async-trait = "0.1"
 tempfile = "3"
