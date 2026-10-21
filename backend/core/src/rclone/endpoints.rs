@@ -735,14 +735,12 @@ pub mod operations {
     /// Perform cryptcheck on encrypted remotes directly in process. (librclone custom patch)
     pub const CRYPTCHECK: &str = "operations/cryptcheck";
 
-    // /// Remove files in the path
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // ///
-    // /// See the [delete](/commands/rclone_delete/) command for more information on the above.
-    // pub const DELETE: &str = "operations/delete";
+    /// Remove files matching the filters, preserving directories.
+    ///
+    /// - fs - the complete filesystem path e.g. "drive:folder"
+    ///
+    /// See the [delete](/commands/rclone_delete/) command for more information.
+    pub const DELETE: &str = "operations/delete";
 
     /// Remove the single file pointed to
     ///

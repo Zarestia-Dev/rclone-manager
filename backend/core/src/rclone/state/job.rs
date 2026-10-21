@@ -35,6 +35,25 @@ impl JobCache {
     pub fn new() -> Self {
         Self {
             jobs: RwLock::new(HashMap::new()),
+            uploads: parking_lot::Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub(crate) async fn cancel_upload(&self, jobid: u64) -> Result<bool, String> {
+        let upload = self.uploads.lock().get(&jobid).cloned();
+        let Some(mut upload) = upload else {
+            return Ok(false);
+        };
+        upload.token.cancel();
+        loop {
+            if let Some(result) = upload.result.borrow_and_update().clone() {
+                return result.map(|()| true);
+            }
+            upload
+                .result
+                .changed()
+                .await
+                .map_err(|_| "Upload ended without confirming cancellation".to_string())?;
         }
     }
 

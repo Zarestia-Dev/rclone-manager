@@ -133,7 +133,7 @@ describe('entity.validators', () => {
       expect(validator(cronExpression)).toBeNull();
     });
 
-    it('should require positive number only when watchEnabled is true', () => {
+    it('requires a non-negative delay only when watching is enabled', () => {
       const watchEnabled = new FormControl(false);
       const watchDelay = new FormControl('');
       new FormGroup({
@@ -147,8 +147,14 @@ describe('entity.validators', () => {
       watchEnabled.setValue(true);
       expect(validator(watchDelay)).toEqual({ required: true });
 
+      watchDelay.setValue('-1');
+      expect(validator(watchDelay)).toEqual({ min: { min: 0, actual: '-1' } });
+
       watchDelay.setValue('0');
-      expect(validator(watchDelay)).toEqual({ min: { min: 1, actual: '0' } });
+      expect(validator(watchDelay)).toBeNull();
+
+      watchDelay.setValue('Infinity');
+      expect(validator(watchDelay)).not.toBeNull();
 
       watchDelay.setValue('10');
       expect(validator(watchDelay)).toBeNull();

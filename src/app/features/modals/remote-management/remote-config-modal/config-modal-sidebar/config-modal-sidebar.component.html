@@ -74,7 +74,7 @@
         <mat-nav-list class="step-indicator">
           <button
             mat-list-item
-            [disabled]="state.isActiveStepInvalid()"
+            [disabled]="state.isActiveStepInvalid() || state.isStepNavigationLocked()"
             (click)="returnFromShared.emit()"
             [attr.aria-label]="translatedPrevTarget"
             [attr.title]="translatedPrevTarget"
@@ -99,7 +99,7 @@
             <button
               mat-list-item
               [activated]="isActive"
-              [disabled]="state.isActiveStepInvalid()"
+              [disabled]="state.isActiveStepInvalid() || state.isStepNavigationLocked()"
               (click)="profileSelected.emit({ type: targetType, name: profile.name })"
               [attr.aria-selected]="isActive"
               [attr.title]="profile.name"
@@ -125,14 +125,14 @@
           @for (item of state.sharedSidebarTypes(); track item.type) {
             <button
               mat-list-item
-              [disabled]="state.isActiveStepInvalid()"
+              [disabled]="state.isActiveStepInvalid() || state.isStepNavigationLocked()"
               (click)="sharedNavigated.emit(item.type)"
               [activated]="state.editTarget() === item.type"
               [attr.title]="item.label | translate"
             >
               <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
               <span matListItemTitle>{{ item.label | translate }}</span>
-              <span matListItemMeta class="sidebar-profile-count">{{
+              <span matListItemMeta class="count-badge">{{
                 state.profileLists()[item.type].length
               }}</span>
             </button>

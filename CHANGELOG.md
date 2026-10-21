@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Cryptcheck Task Options**: Cryptcheck Quick Runs now forward task-specific Include/Exclude filters and backend options, including retry settings, to the `core/command` invocation. Intentionally excluded files no longer cause missing-file failures. Fixes #323.
+- **Quick Run Delete Filters**: Directory Delete operations now use `operations/delete` instead of `operations/purge`, respecting Include/Exclude filters and preserving nonmatching files and directories. Fixes #322.
 - **Linux X11 Rendering**: Stop automatically disabling WebKitGTK compositing and DMABUF on NVIDIA X11 sessions, avoiding partial rendering after the WebKitGTK 2.54 upgrade. Respect explicit `GDK_BACKEND=x11` and retain existing Wayland workarounds and user environment overrides. Fixes #316.
 
 - **Update Download State**: Improved application and Rclone update cancellation and concurrent request handling so update checks do not overwrite active downloads or staged updates.

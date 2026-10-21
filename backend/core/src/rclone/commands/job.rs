@@ -27,7 +27,6 @@ use crate::utils::types::origin::Origin;
 
 use super::common::redact_value;
 use super::job_parser::{JobOutcome, parse_job_response, resolve_job_outcome};
-use super::system::RcloneError;
 
 const JOB_POLL_INTERVAL_MS: u64 = 500;
 const MAX_CONSECUTIVE_ERRORS: u8 = 3;
@@ -225,76 +224,52 @@ impl JobMetadata {
         self.origin.clone().unwrap_or(Origin::Internal)
     }
 
-    fn create_job_stage<F>(&self, backend: String, stage_fn: F) -> NotificationEvent
-    where
-        F: FnOnce(
-            String,
-            String,
-            Option<String>,
-            JobType,
-            Origin,
-            Option<String>,
-            Option<String>,
-        ) -> JobStage,
-    {
-        NotificationEvent::Job(stage_fn(
-            backend,
-            self.remote_name.clone(),
-            self.profile.clone(),
-            self.job_type.clone(),
-            self.resolved_origin(),
-            Some(self.source.join(", ")),
-            Some(self.destination.clone()),
-        ))
-    }
-
     pub fn started_event(&self, backend: String) -> NotificationEvent {
-        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Started {
-            backend: b,
-            remote: r,
-            profile: p,
-            job_type: jt,
-            origin: o,
-            source: s,
-            destination: d,
+        NotificationEvent::Job(JobStage::Started {
+            backend,
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            job_type: self.job_type.clone(),
+            origin: self.resolved_origin(),
+            source: Some(self.source.join(", ")),
+            destination: Some(self.destination.clone()),
         })
     }
 
     pub fn completed_event(&self, backend: String) -> NotificationEvent {
-        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Completed {
-            backend: b,
-            remote: r,
-            profile: p,
-            job_type: jt,
-            origin: o,
-            source: s,
-            destination: d,
+        NotificationEvent::Job(JobStage::Completed {
+            backend,
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            job_type: self.job_type.clone(),
+            origin: self.resolved_origin(),
+            source: Some(self.source.join(", ")),
+            destination: Some(self.destination.clone()),
         })
     }
 
     pub fn failed_event(&self, backend: String, error_msg: &str) -> NotificationEvent {
-        let error = error_msg.to_string();
-        self.create_job_stage(backend, move |b, r, p, jt, o, s, d| JobStage::Failed {
-            backend: b,
-            remote: r,
-            profile: p,
-            job_type: jt,
-            error,
-            origin: o,
-            source: s,
-            destination: d,
+        NotificationEvent::Job(JobStage::Failed {
+            backend,
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            job_type: self.job_type.clone(),
+            origin: self.resolved_origin(),
+            source: Some(self.source.join(", ")),
+            destination: Some(self.destination.clone()),
+            error: error_msg.to_string(),
         })
     }
 
-    fn stopped_event(&self, backend: String) -> NotificationEvent {
-        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Stopped {
-            backend: b,
-            remote: r,
-            profile: p,
-            job_type: jt,
-            origin: o,
-            source: s,
-            destination: d,
+    pub(crate) fn stopped_event(&self, backend: String) -> NotificationEvent {
+        NotificationEvent::Job(JobStage::Stopped {
+            backend,
+            remote: self.remote_name.clone(),
+            profile: self.profile.clone(),
+            job_type: self.job_type.clone(),
+            origin: self.resolved_origin(),
+            source: Some(self.source.join(", ")),
+            destination: Some(self.destination.clone()),
         })
     }
 }
@@ -387,7 +362,9 @@ pub async fn submit_job_with_options(
         Some(
             monitor_job(context, metadata, jobid, app)
                 .await
-                .map_err(|error| error.to_string())?,
+                .map_err(|error| {
+                    crate::rclone::engine::error_mapper::map_or_wrap_job_error(&error)
+                })?,
         )
     } else {
         crate::utils::spawn(async move {
@@ -469,12 +446,51 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
         .await
 }
 
+/// A successful batch HTTP response may still contain an RC error for job/status.
+fn monitor_status(batch: &Value) -> Result<&Value, String> {
+    let status = batch
+        .get("results")
+        .and_then(Value::as_array)
+        .and_then(|results| results.first())
+        .filter(|value| value.is_object())
+        .ok_or_else(|| "Missing job status in batch response".to_string())?;
+    if let Some(error) = status
+        .get("error")
+        .and_then(Value::as_str)
+        .filter(|error| !error.is_empty())
+    {
+        // Finished jobs carry their own failure; the completion handler must see it.
+        if status.get("finished").and_then(Value::as_bool) != Some(true) {
+            return Err(error.into());
+        }
+    }
+    if status
+        .get("status")
+        .and_then(Value::as_u64)
+        .is_some_and(|code| code >= 400)
+    {
+        return Err(status
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("Job status request failed")
+            .into());
+    }
+    let finished = status
+        .get("finished")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| "Invalid job status response".to_string())?;
+    if finished && status.get("success").and_then(Value::as_bool).is_none() {
+        return Err("Missing job completion outcome".into());
+    }
+    Ok(status)
+}
+
 async fn monitor_job(
     context: JobContext,
     metadata: JobMetadata,
     jobid: u64,
     app: AppHandle,
-) -> Result<Value, RcloneError> {
+) -> Result<Value, String> {
     let transport = &context.transport;
     let job_cache = &context.cache;
 
@@ -515,91 +531,57 @@ async fn monitor_job(
 
         let poll_result = transport
             .rpc(job::BATCH, Some(&json!({ "inputs": &inputs })))
-            .await;
+            .await
+            .map_err(|error| error.to_string())
+            .and_then(|batch| {
+                let status = monitor_status(&batch)?.clone();
+                Ok((status, batch))
+            });
 
         match poll_result {
-            Ok(batch_resp) => {
+            Ok((status, batch)) => {
                 consecutive_errors = 0;
-
-                if let Some(results) = batch_resp["results"].as_array() {
-                    if results.is_empty() {
-                        warn!("Job {jobid} batch returned empty results array");
-                        consecutive_errors += 1;
-                        sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
-                        continue;
+                let mut last_stats = None;
+                if !metadata.no_cache
+                    && let Some(results) = batch["results"].as_array()
+                    && results.len() >= 3
+                    && results[1].is_object()
+                    && results[1]
+                        .get("status")
+                        .and_then(Value::as_u64)
+                        .is_none_or(|code| code < 400)
+                {
+                    let mut stats = results[1].clone();
+                    stats["completed"] =
+                        results[2].get("transferred").cloned().unwrap_or(json!([]));
+                    if status["finished"] == true {
+                        last_stats = Some(stats.clone());
                     }
-
-                    let status_result = &results[0];
-
-                    if status_result.is_null() {
-                        warn!("Job {jobid} status result is null");
-                        consecutive_errors += 1;
-                        sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
-                        continue;
-                    }
-
-                    if !metadata.no_cache && results.len() >= 3 {
-                        let stats_result = &results[1];
-                        let trans_result = &results[2];
-
-                        if !stats_result.is_null() {
-                            let mut stats_val = stats_result.clone();
-                            if let Some(obj) = stats_val.as_object_mut() {
-                                obj.insert(
-                                    "completed".to_string(),
-                                    trans_result
-                                        .get("transferred")
-                                        .cloned()
-                                        .unwrap_or(json!([])),
-                                );
-                            }
-                            let _ = job_cache.update_job_stats(jobid, stats_val).await;
-                        }
-                    }
-
-                    if status_result["finished"].as_bool().unwrap_or(false) {
-                        return handle_job_completion(
-                            &context,
-                            jobid,
-                            &metadata,
-                            status_result.clone(),
-                            &app,
-                            None,
-                        )
-                        .await;
-                    }
+                    let _ = job_cache.update_job_stats(jobid, stats).await;
+                }
+                if status["finished"] == true {
+                    return handle_job_completion(
+                        &context, jobid, &metadata, status, &app, last_stats,
+                    )
+                    .await;
                 }
             }
-            Err(e) => {
+            Err(error) => {
                 consecutive_errors += 1;
                 warn!(
-                    "Job {jobid} monitor error ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}"
+                    "Job {jobid} monitor error ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {error}"
                 );
-
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                    let error_msg =
-                        format!("Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts: {e}");
-
-                    if !metadata.no_cache {
-                        let dummy_status = json!({
-                            "finished": true,
-                            "success": false,
-                            "error": error_msg
-                        });
-                        let _ = handle_job_completion(
-                            &context,
-                            jobid,
-                            &metadata,
-                            dummy_status,
-                            &app,
-                            None,
-                        )
-                        .await;
-                    }
-
-                    return Err(RcloneError::JobError(
-                        crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
-                    ));
+                    let message = crate::localized_error!("backendErrors.job.monitoringFailed", "error" => error);
+                    return handle_job_completion(
+                        &context,
+                        jobid,
+                        &metadata,
+                        json!({"finished": true, "success": false, "error": message}),
+                        &app,
+                        None,
+                    )
+                    .await;
                 }
             }
         }
@@ -615,7 +597,7 @@ async fn handle_job_completion(
     job_status: Value,
     app: &AppHandle,
     last_stats: Option<Value>,
-) -> Result<Value, RcloneError> {
+) -> Result<Value, String> {
     let outcome = resolve_job_outcome(&job_status, &metadata.job_type, &metadata.source);
 
     if !metadata.no_cache {
@@ -641,7 +623,7 @@ async fn handle_job_completion(
         metadata.execute_id.as_deref(),
         &outcome,
     )
-    .await?;
+    .await;
 
     dispatch_job_completion_effects(
         app,
@@ -653,7 +635,7 @@ async fn handle_job_completion(
     )?;
 
     if !outcome.success {
-        return Err(RcloneError::JobError(outcome.error_msg.unwrap_or_else(|| crate::localized_error!("backendErrors.job.executionFailed", "error" => "Job stopped"))));
+        return Err(outcome.error_msg.unwrap_or_else(|| crate::localized_error!("backendErrors.job.executionFailed", "error" => "Job stopped")));
     }
     Ok(job_status.get("output").cloned().unwrap_or(json!({})))
 }
@@ -697,9 +679,9 @@ async fn update_associated_automation(
     backend_name: &str,
     execute_id: Option<&str>,
     outcome: &JobOutcome,
-) -> Result<(), RcloneError> {
+) {
     let Some(execute_id) = execute_id else {
-        return Ok(());
+        return;
     };
     let Some(automation) = app
         .state::<AutomationsCache>()
@@ -718,7 +700,7 @@ async fn update_associated_automation(
         })
         .await
     else {
-        return Ok(());
+        return;
     };
     let event = if outcome.success {
         AutomationStage::Completed {
@@ -747,7 +729,6 @@ async fn update_associated_automation(
         }
     };
     notify(app, NotificationEvent::Automation(event));
-    Ok(())
 }
 
 fn dispatch_job_completion_effects(
@@ -757,7 +738,7 @@ fn dispatch_job_completion_effects(
     metadata: &JobMetadata,
     outcome: &JobOutcome,
     job_status: &Value,
-) -> Result<(), RcloneError> {
+) -> Result<(), String> {
     if outcome.stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
         if !metadata.no_cache {
@@ -776,14 +757,17 @@ fn dispatch_job_completion_effects(
                 Some(metadata.remote_name.clone()),
                 Some(metadata.job_type.to_string()),
                 format!("{} Job {jobid} failed: {raw_err}", metadata.job_type),
-                Some(json!({"jobid": jobid, "status": job_status})),
+                Some(redact_value(
+                    &json!({"jobid": jobid, "status": job_status}),
+                    app,
+                )),
             );
             notify(
                 app,
                 metadata.failed_event(backend_name.to_string(), &error_for_notify),
             );
         }
-        return Err(RcloneError::JobError(raw_err.to_string()));
+        return Err(raw_err.to_string());
     }
 
     if !metadata.no_cache {
@@ -792,7 +776,10 @@ fn dispatch_job_completion_effects(
             Some(metadata.remote_name.clone()),
             Some(metadata.job_type.to_string()),
             format!("{} Job {jobid} completed successfully", metadata.job_type),
-            Some(json!({"jobid": jobid, "status": job_status})),
+            Some(redact_value(
+                &json!({"jobid": jobid, "status": job_status}),
+                app,
+            )),
         );
         if metadata.job_type != JobType::Mount {
             notify(app, metadata.completed_event(backend_name.to_string()));
@@ -861,6 +848,10 @@ pub(crate) async fn stop_job_on_backend(
     let transport = &context.transport;
     let job_cache = &context.cache;
 
+    if job_cache.cancel_upload(jobid).await? {
+        return job_cache.stop_job(jobid).await;
+    }
+
     let stop_result = transport
         .rpc_with_timeout(
             job::STOP,
@@ -892,7 +883,7 @@ pub(crate) async fn stop_job_on_backend(
         }
     }
 
-    job_cache.stop_job(jobid).await.map_err(|e| e.clone())?;
+    job_cache.stop_job(jobid).await?;
 
     log_operation(
         LogLevel::Info,
@@ -913,21 +904,37 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
 
     info!("Stopping all jobs in group: {group}");
 
-    let stop_result = transport
-        .rpc_with_timeout(
-            job::STOPGROUP,
-            Some(&json!({ "group": group })),
-            Duration::from_secs(10),
-        )
-        .await;
+    let mut cancelled_upload = false;
+    let mut has_native_jobs = false;
+    for job in job_cache.get_active_jobs().await {
+        if job.group == group {
+            if job_cache.cancel_upload(job.jobid).await? {
+                cancelled_upload = true;
+                job_cache.stop_job(job.jobid).await?;
+            } else {
+                has_native_jobs = true;
+            }
+        }
+    }
 
-    match stop_result {
-        Ok(_) => {}
-        Err(BackendError::Rpc { ref message, .. }) if message.contains("no jobs in group") => {}
-        Err(e) => {
-            let error = e.to_string();
-            error!("Failed to stop jobs in group {group}: {error}");
-            return Err(error);
+    // Synthetic uploads cancel their own requests and underlying copy jobs.
+    if !cancelled_upload || has_native_jobs {
+        let stop_result = transport
+            .rpc_with_timeout(
+                job::STOPGROUP,
+                Some(&json!({ "group": group })),
+                Duration::from_secs(10),
+            )
+            .await;
+
+        match stop_result {
+            Ok(_) => {}
+            Err(BackendError::Rpc { ref message, .. }) if message.contains("no jobs in group") => {}
+            Err(e) => {
+                let error = e.to_string();
+                error!("Failed to stop jobs in group {group}: {error}");
+                return Err(error);
+            }
         }
     }
 
@@ -1028,6 +1035,53 @@ pub async fn update_job_stats(
 mod tests {
     use super::*;
 
+    #[test]
+    fn monitor_validates_inner_rc_status_and_completion_fields() {
+        for batch in [
+            json!({}),
+            json!({"results": []}),
+            json!({"results": [null]}),
+            json!({"results": [{"status": 500, "error": "job not found"}]}),
+            json!({"results": [{"finished": true}]}),
+            json!({"results": [{"finished": "yes"}]}),
+        ] {
+            assert!(monitor_status(&batch).is_err(), "{batch}");
+        }
+        for status in [
+            json!({"finished": false}),
+            json!({"finished": true, "success": false, "error": "copy failed"}),
+            json!({"finished": true, "success": true, "error": ""}),
+        ] {
+            assert_eq!(
+                monitor_status(&json!({"results": [status.clone()]})).unwrap(),
+                &status
+            );
+        }
+    }
+
+    #[test]
+    fn notifications_preserve_job_identity_and_operation_fields() {
+        let metadata = JobMetadata::new(
+            "drive",
+            JobType::Copy,
+            vec!["src:a".into(), "src:b".into()],
+            "dst:",
+        )
+        .with_profile(Some("daily".into()))
+        .with_origin(Some(Origin::Dashboard));
+        for event in [
+            metadata.started_event("backend".into()),
+            metadata.completed_event("backend".into()),
+            metadata.failed_event("backend".into(), "failure"),
+            metadata.stopped_event("backend".into()),
+        ] {
+            let json = serde_json::to_value(event).unwrap().to_string();
+            for value in ["backend", "drive", "daily", "src:a, src:b", "dst:"] {
+                assert!(json.contains(value), "{json}");
+            }
+        }
+    }
+
     async fn run_backend_switch_during_submission(batch: bool, success: bool) {
         use crate::rclone::backend::types::Backend;
         use crate::services::settings::{AppSettingsManager, schema::AppSettings};
@@ -1118,7 +1172,7 @@ mod tests {
         let server = crate::utils::spawn(async move {
             let mut groups = Vec::new();
             let mut request_index = 0;
-            while request_index < 5 {
+            while request_index < 4 {
                 let (mut stream, _) = listener.accept().await.unwrap();
                 let mut request = Vec::new();
                 let (header_end, content_length) = loop {
@@ -1135,7 +1189,7 @@ mod tests {
                                 name.eq_ignore_ascii_case("content-length")
                                     .then(|| value.trim().parse::<usize>().unwrap())
                             })
-                            .unwrap();
+                            .unwrap_or(0);
                         break (index + 4, length);
                     }
                 };
@@ -1147,8 +1201,14 @@ mod tests {
                 }
                 let headers = String::from_utf8_lossy(&request[..header_end]);
                 let path = headers.split_whitespace().nth(1).unwrap();
-                let body: Value = serde_json::from_slice(&request[header_end..]).unwrap();
-                let response = if path == "/operations/stat" {
+                let body: Value = if content_length == 0 {
+                    json!({})
+                } else {
+                    serde_json::from_slice(&request[header_end..]).unwrap()
+                };
+                let response = if path == "/core/version" {
+                    json!({"os": "linux"})
+                } else if path == "/operations/stat" {
                     assert!(batch);
                     json!({"item": {"IsDir": true}})
                 } else {
@@ -1237,7 +1297,7 @@ mod tests {
             let groups = server.await.unwrap();
             // The same group must be used for starting, polling and final stats.
             assert_eq!(groups[0], groups[3]);
-            assert_eq!(groups[0], groups[4]);
+            assert_eq!(groups.len(), 4);
             loop {
                 if a_cache
                     .get_job(7)

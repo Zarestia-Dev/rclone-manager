@@ -24,6 +24,7 @@ describe('RemoteCreationOrchestrator', () => {
     startRemoteConfigInteractive: ReturnType<typeof vi.fn>;
     continueRemoteConfigInteractive: ReturnType<typeof vi.fn>;
     getRemotes: ReturnType<typeof vi.fn>;
+    createRemote: ReturnType<typeof vi.fn>;
     buildOpt: ReturnType<typeof vi.fn>;
   };
   let saveSettings: ReturnType<typeof vi.fn>;
@@ -32,6 +33,7 @@ describe('RemoteCreationOrchestrator', () => {
     isAuthCancelled: WritableSignal<boolean>;
     oauthUrl: WritableSignal<string | null>;
     resetAuthState: ReturnType<typeof vi.fn>;
+    startAuth: ReturnType<typeof vi.fn>;
     cancelAuth: ReturnType<typeof vi.fn>;
   };
   let startBatch: ReturnType<typeof vi.fn>;
@@ -42,6 +44,7 @@ describe('RemoteCreationOrchestrator', () => {
       startRemoteConfigInteractive: vi.fn().mockResolvedValue(question),
       continueRemoteConfigInteractive: vi.fn().mockResolvedValue(complete),
       getRemotes: vi.fn().mockResolvedValue(['my-drive']),
+      createRemote: vi.fn().mockResolvedValue(undefined),
       buildOpt: vi.fn().mockReturnValue({}),
     };
     saveSettings = vi.fn().mockResolvedValue(undefined);
@@ -49,7 +52,8 @@ describe('RemoteCreationOrchestrator', () => {
       isAuthInProgress: signal(true),
       isAuthCancelled: signal(false),
       oauthUrl: signal(null),
-      resetAuthState: vi.fn(),
+      resetAuthState: vi.fn(() => auth.isAuthInProgress.set(false)),
+      startAuth: vi.fn(async () => auth.isAuthInProgress.set(true)),
       cancelAuth: vi.fn().mockResolvedValue(undefined),
     };
     startBatch = vi.fn().mockResolvedValue(undefined);
@@ -243,5 +247,37 @@ describe('RemoteCreationOrchestrator', () => {
       profileName: 'Valid',
       backendName: 'Local',
     });
+  });
+  it('owns non-interactive creation, finalization and auth cleanup', async () => {
+    auth.isAuthInProgress.set(false);
+    expect(await service.createRemote(remote, config, [])).toBe(true);
+    expect(auth.startAuth).toHaveBeenCalledWith(remote.name, false);
+    expect(remoteService.createRemote).toHaveBeenCalledOnce();
+    expect(saveSettings).toHaveBeenCalledOnce();
+    expect(auth.resetAuthState).toHaveBeenCalledOnce();
+  });
+
+  it('keeps interactive creation open until its questions are answered', async () => {
+    auth.isAuthInProgress.set(false);
+    expect(
+      await service.createRemote(remote, config, [{ key: 'nonInteractive', value: true }])
+    ).toBe(false);
+    expect(remoteService.startRemoteConfigInteractive).toHaveBeenCalledOnce();
+    expect(remoteService.createRemote).not.toHaveBeenCalled();
+    expect(auth.resetAuthState).not.toHaveBeenCalled();
+  });
+
+  it('does not save settings when creating the remote fails', async () => {
+    auth.isAuthInProgress.set(false);
+    remoteService.createRemote.mockRejectedValue(new Error('offline'));
+    await expect(service.createRemote(remote, config, [])).rejects.toThrow('offline');
+    expect(saveSettings).not.toHaveBeenCalled();
+    expect(auth.resetAuthState).toHaveBeenCalledOnce();
+  });
+
+  it('does not create a second remote while authentication is already in progress', async () => {
+    expect(await service.createRemote(remote, config, [])).toBe(false);
+    expect(remoteService.createRemote).not.toHaveBeenCalled();
+    expect(auth.startAuth).not.toHaveBeenCalled();
   });
 });

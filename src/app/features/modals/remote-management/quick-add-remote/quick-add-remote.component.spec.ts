@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
+import { signal } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuickAddRemoteComponent } from './quick-add-remote.component';
@@ -13,69 +13,50 @@ import { PathService } from '../../../../services/infrastructure/platform/path.s
 import { BackendService } from '../../../../services/infrastructure/system/backend.service';
 import { PresetValues, RemotePresetsService } from '../../../../services/remote/remote-presets';
 import { createInitialInteractiveFlowState } from '../../../../services/remote/utils/remote-config.utils';
-import { InteractiveFlowState } from '@app/types';
 
 describe('QuickAddRemoteComponent submission', () => {
   let component: QuickAddRemoteComponent;
-  let close: ReturnType<typeof vi.fn>;
-  let notifyError: ReturnType<typeof vi.fn>;
-  let orchestrator: {
-    interactiveFlowState: WritableSignal<InteractiveFlowState>;
-    isInteractiveContinueDisabled: WritableSignal<boolean>;
-    oauthHelperUrl: WritableSignal<string | null>;
-    startInteractiveCreation: ReturnType<typeof vi.fn>;
-    finalizeCreation: ReturnType<typeof vi.fn>;
-    setPendingConfig: ReturnType<typeof vi.fn>;
-    submitInteractiveAnswer: ReturnType<typeof vi.fn>;
-  };
-  let createRemote: ReturnType<typeof vi.fn>;
-  let resetAuthState: ReturnType<typeof vi.fn>;
+  const close = vi.fn();
+  const notifyError = vi.fn();
+  const createRemote = vi.fn();
+  const submitAnswer = vi.fn();
+  const flow = signal(createInitialInteractiveFlowState());
 
   beforeEach(async () => {
-    close = vi.fn();
-    notifyError = vi.fn();
-    const inProgress = signal(false);
-    resetAuthState = vi.fn(() => inProgress.set(false));
-    createRemote = vi.fn().mockResolvedValue(undefined);
-    orchestrator = {
-      interactiveFlowState: signal(createInitialInteractiveFlowState()),
-      isInteractiveContinueDisabled: signal(false),
-      oauthHelperUrl: signal(null),
-      startInteractiveCreation: vi.fn().mockResolvedValue(true),
-      finalizeCreation: vi.fn().mockResolvedValue(undefined),
-      setPendingConfig: vi.fn(),
-      submitInteractiveAnswer: vi.fn().mockResolvedValue(false),
-    };
+    close.mockReset();
+    notifyError.mockReset();
+    createRemote.mockReset().mockResolvedValue(true);
+    submitAnswer.mockReset().mockResolvedValue(false);
+    flow.set(createInitialInteractiveFlowState());
     TestBed.configureTestingModule({
       providers: [
         { provide: MatDialogRef, useValue: { close } },
-        { provide: RemoteCreationOrchestrator, useValue: orchestrator },
+        {
+          provide: RemoteCreationOrchestrator,
+          useValue: {
+            createRemote,
+            interactiveFlowState: flow,
+            isInteractiveContinueDisabled: signal(false),
+            oauthHelperUrl: signal(null),
+            submitInteractiveAnswer: submitAnswer,
+            cancelAuth: vi.fn().mockResolvedValue(undefined),
+          },
+        },
         {
           provide: RemoteManagementService,
           useValue: {
             getOAuthSupportedRemotes: vi.fn().mockResolvedValue([]),
             getRemotes: vi.fn().mockResolvedValue([]),
-            createRemote,
-            buildOpt: vi.fn().mockReturnValue({}),
           },
         },
         {
           provide: AuthStateService,
-          useValue: {
-            isAuthInProgress: inProgress,
-            isAuthCancelled: signal(false),
-            startAuth: vi.fn(async () => inProgress.set(true)),
-            resetAuthState,
-            cancelAuth: vi.fn().mockResolvedValue(undefined),
-          },
+          useValue: { isAuthInProgress: signal(false), isAuthCancelled: signal(false) },
         },
         { provide: NotificationService, useValue: { showError: notifyError } },
         {
           provide: ValidatorRegistryService,
-          useValue: {
-            setupOperationValidation: vi.fn(),
-            createRemoteNameValidator: vi.fn().mockReturnValue(() => null),
-          },
+          useValue: { createRemoteNameValidator: vi.fn().mockReturnValue(() => null) },
         },
         { provide: IconService, useValue: {} },
         PathService,
@@ -85,23 +66,41 @@ describe('QuickAddRemoteComponent submission', () => {
     });
     component = TestBed.runInInjectionContext(() => new QuickAddRemoteComponent());
     await Promise.resolve();
+    await Promise.resolve();
     component.setupFormGroup.patchValue({ name: 'new-remote', type: 'drive' });
-    component.commandOptions.set([{ key: 'nonInteractive', value: true }]);
   });
 
-  it('shows an initial interactive error without finalizing or closing as a success', async () => {
-    const error = new Error('connection failed');
-    orchestrator.startInteractiveCreation.mockRejectedValue(error);
+  it('delegates complete remote creation and closes only on explicit success', async () => {
     await component.onSubmit();
-    expect(orchestrator.finalizeCreation).not.toHaveBeenCalled();
-    expect(close).not.toHaveBeenCalled();
-    expect(notifyError).toHaveBeenCalledWith(error);
-    expect(resetAuthState).toHaveBeenCalledOnce();
+    expect(createRemote).toHaveBeenCalledWith(
+      { name: 'new-remote', type: 'drive' },
+      expect.objectContaining({ showOnTray: true, mountConfigs: expect.any(Object) }),
+      component.commandOptions()
+    );
+    expect(close).toHaveBeenCalledExactlyOnceWith(true);
   });
 
-  it('keeps a completed backend flow available to retry a failed settings save', async () => {
-    orchestrator.startInteractiveCreation.mockImplementation(async () => {
-      orchestrator.interactiveFlowState.update(state => ({
+  it('shows errors and retains the form when creation fails', async () => {
+    const error = new Error('offline');
+    createRemote.mockRejectedValue(error);
+    await component.onSubmit();
+    expect(notifyError).toHaveBeenCalledWith(error);
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('shows pending interactive questions without claiming completion', async () => {
+    createRemote.mockImplementation(async () => {
+      flow.update(state => ({ ...state, isActive: true }));
+      return false;
+    });
+    await component.onSubmit();
+    expect(component.currentStep()).toBe('interactive');
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed settings finalization available for interactive retry', async () => {
+    createRemote.mockImplementation(async () => {
+      flow.update(state => ({
         ...state,
         isActive: true,
         question: { State: '', Option: null, Error: '' },
@@ -111,44 +110,40 @@ describe('QuickAddRemoteComponent submission', () => {
     await component.onSubmit();
     expect(component.currentStep()).toBe('interactive');
     expect(close).not.toHaveBeenCalled();
-    expect(resetAuthState).not.toHaveBeenCalled();
   });
 
-  it('closes after a successful interactive creation', async () => {
+  it('blocks navigation and submission while metadata is loading or unavailable', async () => {
+    component.isInitializing.set(true);
+    component.nextStep();
     await component.onSubmit();
-    expect(close).toHaveBeenCalledExactlyOnceWith(true);
-    expect(orchestrator.finalizeCreation).not.toHaveBeenCalled();
-  });
-
-  it('does not finalize a failed non-interactive remote creation', async () => {
-    component.commandOptions.set([]);
-    createRemote.mockRejectedValue(new Error('unreachable'));
+    expect(component.currentStep()).toBe('setup');
+    expect(createRemote).not.toHaveBeenCalled();
+    component.isInitializing.set(false);
+    component.loadFailed.set(true);
     await component.onSubmit();
-    expect(orchestrator.finalizeCreation).not.toHaveBeenCalled();
-    expect(close).not.toHaveBeenCalled();
+    expect(createRemote).not.toHaveBeenCalled();
   });
 
-  it('finalizes a successful non-interactive remote creation', async () => {
-    component.commandOptions.set([]);
+  it('requires a schedule when its automation is enabled', async () => {
+    component.quickAddForm.get('operations.sync.cronEnabled')?.setValue(true);
     await component.onSubmit();
-    expect(orchestrator.finalizeCreation).toHaveBeenCalledOnce();
-    expect(close).toHaveBeenCalledExactlyOnceWith(true);
+    expect(createRemote).not.toHaveBeenCalled();
   });
 
-  it('does not infer success merely because the interactive flow is inactive', async () => {
+  it('does not infer success from an inactive interactive flow', async () => {
     await component.onInteractiveContinue(null);
     expect(close).not.toHaveBeenCalled();
   });
 
-  it('closes when answer submission explicitly succeeds', async () => {
-    orchestrator.submitInteractiveAnswer.mockResolvedValue(true);
+  it('closes only when continuation explicitly succeeds', async () => {
+    submitAnswer.mockResolvedValue(true);
     await component.onInteractiveContinue('yes');
     expect(close).toHaveBeenCalledExactlyOnceWith(true);
   });
 
   it('ignores repeated continuation clicks while processing', async () => {
-    orchestrator.interactiveFlowState.update(state => ({ ...state, isProcessing: true }));
+    flow.update(state => ({ ...state, isProcessing: true }));
     await component.onInteractiveContinue('yes');
-    expect(orchestrator.submitInteractiveAnswer).not.toHaveBeenCalled();
+    expect(submitAnswer).not.toHaveBeenCalled();
   });
 });

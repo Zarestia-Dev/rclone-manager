@@ -469,4 +469,11 @@ pub struct JobListResponse {
 #[derive(Debug)]
 pub struct JobCache {
     pub jobs: tokio::sync::RwLock<HashMap<u64, JobInfo>>,
+    pub(crate) uploads: parking_lot::Mutex<HashMap<u64, UploadCancellation>>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct UploadCancellation {
+    pub token: tokio_util::sync::CancellationToken,
+    pub result: tokio::sync::watch::Receiver<Option<Result<(), String>>>,
 }

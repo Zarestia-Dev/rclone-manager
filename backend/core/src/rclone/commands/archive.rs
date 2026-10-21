@@ -12,7 +12,6 @@ use crate::utils::logging::log::log_operation;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
-use crate::utils::types::state::RcloneState;
 
 pub async fn archive_create(
     app: AppHandle,
@@ -152,7 +151,10 @@ pub async fn archive_list(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
+        app.clone(),
+        backend.clone(),
+    );
 
     let (endpoint, payload) = if backend.is_librclone_local() {
         let mut p = json!({

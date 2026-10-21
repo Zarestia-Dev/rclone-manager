@@ -1,9 +1,8 @@
 import { Injectable, inject, DestroyRef } from '@angular/core';
-import { AbstractControl, ValidatorFn, FormGroup, FormArray } from '@angular/forms';
+import { ValidatorFn, FormGroup } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { REMOTE_NAME_REGEX } from '@app/types';
-import { Observable, merge } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { setupOperationValidation } from '../../remote/utils/config-form.utils';
 import {
   ValidationMessageResolver,
   arrayValidator,
@@ -165,48 +164,7 @@ export class ValidatorRegistryService {
   }
 
   setupOperationValidation(opGroup: FormGroup, destroyRef: DestroyRef): void {
-    const autoStartCtrl = opGroup.get('autoStart');
-    const cronEnabledCtrl = opGroup.get('cronEnabled');
-    const cronExpressionCtrl = opGroup.get('cronExpression');
-    const watchEnabledCtrl = opGroup.get('watchEnabled');
-    const watchDelayCtrl = opGroup.get('watchDelay');
-    const sourceCtrl = opGroup.get('source');
-    const destCtrl = opGroup.get('dest');
-
-    if (cronExpressionCtrl) {
-      cronExpressionCtrl.setValidators(this.requiredIfCronEnabled());
-    }
-    if (watchDelayCtrl) {
-      watchDelayCtrl.setValidators(this.requiredIfWatchEnabled());
-    }
-
-    const updatePathsValidity = (): void => {
-      if (sourceCtrl instanceof FormArray) {
-        sourceCtrl.controls.forEach((c: AbstractControl) =>
-          c.get('path')?.updateValueAndValidity()
-        );
-      } else if (sourceCtrl instanceof FormGroup) {
-        sourceCtrl.get('path')?.updateValueAndValidity();
-      }
-      if (destCtrl instanceof FormGroup) {
-        destCtrl.get('path')?.updateValueAndValidity();
-      }
-    };
-
-    const triggers: Observable<unknown>[] = [];
-    if (autoStartCtrl) triggers.push(autoStartCtrl.valueChanges);
-    if (cronEnabledCtrl) triggers.push(cronEnabledCtrl.valueChanges);
-    if (watchEnabledCtrl) triggers.push(watchEnabledCtrl.valueChanges);
-
-    if (triggers.length > 0) {
-      merge(...triggers)
-        .pipe(takeUntilDestroyed(destroyRef))
-        .subscribe(() => {
-          cronExpressionCtrl?.updateValueAndValidity();
-          watchDelayCtrl?.updateValueAndValidity();
-          updatePathsValidity();
-        });
-    }
+    setupOperationValidation(opGroup, destroyRef);
   }
 
   private urlArrayValidator(): ValidatorFn {

@@ -26,45 +26,21 @@ export class FlagConfigService extends TauriBaseService {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly serveManagementService = inject(ServeManagementService);
 
-  private readonly mountTypesLoader: MemoizedLoader<string[]> = memoizedLoader(async () => {
-    try {
-      return await this.mountManagementService.getMountTypes();
-    } catch (err) {
-      console.warn('[FlagConfigService] Failed to load mount types:', err);
-      return [];
-    }
-  });
+  private readonly mountTypesLoader: MemoizedLoader<string[]> = memoizedLoader(() =>
+    this.mountManagementService.getMountTypes()
+  );
   readonly mountTypes = this.mountTypesLoader.signal;
 
-  private readonly serveTypesLoader: MemoizedLoader<string[]> = memoizedLoader(async () => {
-    try {
-      return await this.serveManagementService.getServeTypes();
-    } catch (err) {
-      console.warn('[FlagConfigService] Failed to load serve types:', err);
-      return [];
-    }
-  });
+  private readonly serveTypesLoader: MemoizedLoader<string[]> = memoizedLoader(() =>
+    this.serveManagementService.getServeTypes()
+  );
   readonly availableServeTypes = this.serveTypesLoader.signal;
 
+  private readonly fieldLoaders = new Map<FlagType, MemoizedLoader<RcConfigOption[]>>();
   private readonly allFlagFieldsLoader: MemoizedLoader<Record<FlagType, RcConfigOption[]>> =
-    memoizedLoader(async () => {
-      const [mountTypes, serveTypes] = await Promise.all([
-        this.mountTypesLoader.load(),
-        this.serveTypesLoader.load(),
-      ]);
-
-      const result = {} as Record<FlagType, RcConfigOption[]>;
-      await Promise.all(
-        FLAG_TYPES.map(async type => {
-          const dynamicFlags = await this.loadFlagFields(type);
-          const staticFlags = (staticFlagDefinitions[type] || []).map(option => ({ ...option }));
-          result[type] = [...staticFlags, ...dynamicFlags];
-        })
-      );
-
-      this.decorateFlagOptions(result, mountTypes, serveTypes);
-      return result;
-    });
+    memoizedLoader(
+      async () => this.loadConfigFields(FLAG_TYPES) as Promise<Record<FlagType, RcConfigOption[]>>
+    );
   readonly allFlagFields = this.allFlagFieldsLoader.signal;
 
   private readonly groupedOptionsLoader: MemoizedLoader<GroupedRCloneOptions> = memoizedLoader(() =>
@@ -109,6 +85,7 @@ export class FlagConfigService extends TauriBaseService {
     this.allFlagFieldsLoader.invalidate();
     this.groupedOptionsLoader.invalidate();
     for (const loader of this.serveFlagsLoaders().values()) loader.invalidate();
+    for (const loader of this.fieldLoaders.values()) loader.invalidate();
   }
 
   private getOrCreateServeFlagsLoader(serveType: string): MemoizedLoader<RcConfigOption[]> {
@@ -198,23 +175,41 @@ export class FlagConfigService extends TauriBaseService {
     return this.getOrCreateServeFlagsLoader(serveType).load();
   }
 
-  private decorateFlagOptions(
-    record: Record<string, RcConfigOption[]>,
-    mountTypes: string[],
-    serveTypes: string[]
-  ): void {
-    const mOpt = record['mount']?.find(f => f.Name === 'mountType' || f.FieldName === 'mountType');
-    if (mOpt && mountTypes.length) {
-      mOpt.Examples = mountTypes.map(t => ({
-        Value: t,
-        Help: this.translate.instant(`mount_type_${t}.title`) || t,
-      }));
-    }
-
-    const sOpt = record['serve']?.find(f => f.Name === 'type' || f.FieldName === 'type');
-    if (sOpt && serveTypes.length) {
-      this.decorateServeTypeOption(record['serve'], serveTypes);
-    }
+  /** Loads only requested sections, sharing the same cache with full configuration editors. */
+  async loadConfigFields(
+    types: readonly FlagType[]
+  ): Promise<Partial<Record<FlagType, RcConfigOption[]>>> {
+    const entries = await Promise.all(
+      [...new Set(types)].map(async type => {
+        if (type === 'serve') return [type, await this.loadServeFlagFields('http')] as const;
+        let loader = this.fieldLoaders.get(type);
+        if (!loader) {
+          loader = memoizedLoader(async () => {
+            const [dynamic, mountTypes] = await Promise.all([
+              this.loadFlagFields(type),
+              type === 'mount' ? this.mountTypesLoader.load() : Promise.resolve([]),
+            ]);
+            const fields = [
+              ...(staticFlagDefinitions[type] ?? []).map(field => ({ ...field })),
+              ...dynamic,
+            ];
+            const mount = fields.find(
+              field => field.Name === 'mountType' || field.FieldName === 'mountType'
+            );
+            if (mount && mountTypes.length) {
+              mount.Examples = mountTypes.map(value => ({
+                Value: value,
+                Help: this.translate.instant(`mount_type_${value}.title`),
+              }));
+            }
+            return fields;
+          });
+          this.fieldLoaders.set(type, loader);
+        }
+        return [type, await loader.load()] as const;
+      })
+    );
+    return Object.fromEntries(entries);
   }
 
   private decorateServeTypeOption(options: RcConfigOption[], serveTypes: string[]): void {

@@ -2,6 +2,7 @@ import {
   Component,
   ChangeDetectionStrategy,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
@@ -9,34 +10,23 @@ import {
   output,
   signal,
   untracked,
-  afterNextRender,
   OnInit,
 } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  FormControl,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   AppConfig,
   FlagType,
+  FLAG_TYPES,
   OperationDefinition,
   PrimaryActionType,
   QuickRun,
@@ -48,8 +38,6 @@ import {
   ALL_PRIMARY_ACTIONS,
   OPERATION_REGISTRY,
   WorkflowNode,
-  PathGroup,
-  isRclonePathKey,
 } from '@app/types';
 import { WorkflowStateService } from 'src/app/services/flow/workflow-state.service';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
@@ -64,7 +52,9 @@ import {
   PresetTemplateBarComponent,
   ApplyTemplateEvent,
 } from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
-import { getApplicableTemplateCategories } from 'src/app/shared/remote-config/template-diff.utils';
+import { getConfigCategories } from 'src/app/services/remote/utils/config-metadata.utils';
+import { ConfigResourceState } from 'src/app/services/remote/utils/config-resource-state';
+import { ConfigEditorTools } from 'src/app/shared/remote-config/config-editor-tools';
 import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -72,56 +62,43 @@ import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { QuickRunEditorModalOptions } from 'src/app/services/ui/modal.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
-import {
-  syncResponsiveSidebar,
-  extractProfileSource,
-  extractProfileDest,
-} from 'src/app/shared/utils';
+import { syncResponsiveSidebar } from 'src/app/shared/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   mapConfigToFormProfile,
   mapFormToConfigProfile,
-  OPERATION_PATH_MAPPINGS,
 } from 'src/app/services/remote/utils/profile-mapper.utils';
 
-const ALL_FLAG_TYPES = [
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-  'mount',
-  'serve',
-  'check',
-  'delete',
-  'copyurl',
-  'vfs',
-  'filter',
-  'backend',
-] as const;
+import {
+  createConfigFormGroup,
+  reconcileDynamicControls,
+  patchConfigOptions,
+  patchConfigPaths,
+} from 'src/app/services/remote/utils/config-form.utils';
+import {
+  mergeImportedFlags,
+  mergeImportedProfile,
+} from 'src/app/services/remote/utils/profile-import.utils';
 
-/**
- * Inline editor panel for the Flow workspace's Quick Run feature.
- */
+import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
+
 @Component({
   selector: 'app-quick-run-editor',
   hostDirectives: [EscapeCloseDirective],
   imports: [
+    ConfigFormSkeletonComponent,
     ReactiveFormsModule,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatDividerModule,
-    MatTabsModule,
     MatListModule,
-    MatProgressBarModule,
     MatSidenavModule,
-    CdkMenuModule,
     TranslatePipe,
     OperationConfigComponent,
     FlagConfigStepComponent,
@@ -138,6 +115,7 @@ const ALL_FLAG_TYPES = [
 })
 export class QuickRunEditorComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly quickRunService = inject(QuickRunService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly remoteManagementService = inject(RemoteManagementService);
@@ -149,7 +127,7 @@ export class QuickRunEditorComponent implements OnInit {
   private readonly valueMapper = inject(RcloneValueMapperService);
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly workflowStateService = inject(WorkflowStateService, { optional: true });
+  private readonly workflowStateService = inject(WorkflowStateService);
   private readonly dialogRef = inject(MatDialogRef<QuickRunEditorComponent>, { optional: true });
   private readonly dialogData = inject<QuickRunEditorModalOptions | null>(MAT_DIALOG_DATA, {
     optional: true,
@@ -171,7 +149,10 @@ export class QuickRunEditorComponent implements OnInit {
   // ── Form ──────────────────────────────────────────────────────────────────
 
   readonly runtimeRemoteFields = signal<RcConfigOption[]>([]);
-  readonly isLoadingRuntimeRemoteFields = signal(false);
+  private readonly metadata = new ConfigResourceState(this.destroyRef, error =>
+    this.notificationService.showError(error)
+  );
+  readonly isLoadingRuntimeRemoteFields = computed(() => this.metadata.isLoading('runtimeRemote'));
   readonly runtimeRemoteForm = signal<FormGroup>(
     this.fb.group({
       type: [''],
@@ -181,24 +162,35 @@ export class QuickRunEditorComponent implements OnInit {
   readonly availableServeTypes = this.flagConfigService.availableServeTypes;
   readonly selectedServeType = signal('http');
   readonly dynamicServeFields = signal<RcConfigOption[]>([]);
-  readonly isLoadingServeFields = signal(false);
-  private readonly _serveLoadToken = { token: 0 };
+  readonly isLoadingServeFields = computed(() => this.metadata.isLoading('serve'));
   private seedRcloneConfig?: Record<string, unknown>;
-  private destPathGeneration = 0;
+  private fieldsReady: Promise<void> = Promise.resolve();
+  private seedRemoteName = '';
+  private readonly runtimeDrafts = new Map<
+    string,
+    { type: string; fields: RcConfigOption[]; form: FormGroup }
+  >();
+  readonly runtimeRemoteIdentity = signal('');
+  readonly flagLoadFailed = computed(
+    () => this.metadata.hasFailed('flags') || this.metadata.hasFailed('serve')
+  );
+  readonly runtimeLoadFailed = computed(() => this.metadata.hasFailed('runtimeRemote'));
+  private readonly isSubmitting = signal(false);
 
   // ── UI state ──────────────────────────────────────────────────────────────
 
-  readonly isSaving = computed(() =>
-    this.isWorkflowMode() ? false : this.quickRunService.isSaving()
+  readonly isSaving = computed(
+    () => this.isSubmitting() || (!this.isWorkflowMode() && this.quickRunService.isSaving())
   );
-  readonly showSearch = signal(false);
-  readonly showCliImport = signal(false);
-  readonly showObscureTool = signal(false);
+  readonly tools = new ConfigEditorTools();
+  readonly showSearch = this.tools.searchVisible;
+  readonly showCliImport = this.tools.cliImportVisible;
+  readonly showObscureTool = this.tools.obscureVisible;
   readonly activeTab = signal<FlagType | 'runtimeRemote'>('sync');
   readonly isSidebarOpen = signal(true);
   readonly sidebarMode = signal<MatDrawerMode>('side');
-  readonly isLoadingFlags = signal(false);
-  readonly searchQuery = signal('');
+  readonly isLoadingFlags = computed(() => this.metadata.isLoading('flags'));
+  readonly searchQuery = this.tools.searchQuery;
   readonly currentOpType = signal<PrimaryActionType>('sync');
   readonly currentRemoteName = signal<string>('');
 
@@ -210,7 +202,7 @@ export class QuickRunEditorComponent implements OnInit {
     return this.valueMapper.extractSensitiveFields(fields);
   });
 
-  readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes());
+  readonly remotes = computed(() => this.remoteFacade.remoteSummaries());
   readonly existingRemoteNames = computed(() => this.remotes().map(r => r.name));
 
   /**
@@ -232,7 +224,6 @@ export class QuickRunEditorComponent implements OnInit {
   /** Dynamic flag fields per FlagType (operation + vfs + filter + backend). */
   readonly dynamicFlagFields = signal<Record<string, RcConfigOption[]>>({});
 
-  readonly existingProfiles = signal<Record<string, string[]>>({});
   readonly highlightedFields = signal<Set<string>>(new Set());
 
   /**
@@ -241,64 +232,49 @@ export class QuickRunEditorComponent implements OnInit {
    */
   readonly flagTabs = computed<{ key: FlagType | 'runtimeRemote'; label: string; icon: string }[]>(
     () => {
-      const op = this.currentOpType() as FlagType;
-      const tabs: { key: FlagType | 'runtimeRemote'; label: string; icon: string }[] = [
-        { key: op, label: this.getOperationLabel(op), icon: PROFILE_ICONS[op] ?? 'operations' },
-      ];
-
-      if (op === 'mount' || op === 'serve') {
-        tabs.push({
-          key: 'vfs',
-          label: 'flow.quickRun.editor.tabVfs',
-          icon: PROFILE_ICONS['vfs'] ?? 'vfs',
-        });
-      }
-
-      tabs.push(
-        {
-          key: 'filter',
-          label: 'flow.quickRun.editor.tabFilter',
-          icon: PROFILE_ICONS['filter'] ?? 'filter',
-        },
-        {
-          key: 'backend',
-          label: 'flow.quickRun.editor.tabBackend',
-          icon: PROFILE_ICONS['backend'] ?? 'database',
-        },
-        {
-          key: 'runtimeRemote',
-          label: 'flow.quickRun.editor.tabRuntimeRemote',
-          icon: PROFILE_ICONS['runtimeRemote'] ?? 'gear',
-        }
-      );
+      const op = this.currentOpType();
+      const labels: Partial<Record<FlagType, string>> = {
+        vfs: 'flow.quickRun.editor.tabVfs',
+        filter: 'flow.quickRun.editor.tabFilter',
+        backend: 'flow.quickRun.editor.tabBackend',
+      };
+      const tabs: { key: FlagType | 'runtimeRemote'; label: string; icon: string }[] =
+        getConfigCategories(op).map(category => ({
+          key: category as FlagType,
+          label: labels[category as FlagType] ?? this.getOperationLabel(category),
+          icon: PROFILE_ICONS[category as FlagType],
+        }));
+      tabs.push({
+        key: 'runtimeRemote',
+        label: 'flow.quickRun.editor.tabRuntimeRemote',
+        icon: 'gear',
+      });
 
       return tabs;
     }
   );
 
   constructor() {
-    afterNextRender(() => {
-      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef);
-    });
+    syncResponsiveSidebar(
+      768,
+      this.sidebarMode,
+      this.isSidebarOpen,
+      this.destroyRef,
+      this.hostEl.nativeElement
+    );
 
     effect(() => {
-      const all = this.flagConfigService.allFlagFields();
-      if (all) {
-        this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
-        untracked(() => this.syncAllDynamicControls());
-      }
-    });
-
-    effect(() => {
+      const remote = this.currentRemoteName();
       const type = this.selectedRemoteType();
-      if (!type) {
-        this.runtimeRemoteFields.set([]);
-        this.runtimeRemoteForm.set(this.fb.group({ type: [''] }));
-      } else {
-        untracked(() => {
-          void this.loadRuntimeRemoteFields(type);
-        });
-      }
+      untracked(() => {
+        void this.loadRuntimeRemoteFields(type, remote);
+      });
+    });
+
+    effect(onCleanup => {
+      const form = this.runtimeRemoteForm();
+      const sub = form.statusChanges.subscribe(() => this.formVersion.update(value => value + 1));
+      onCleanup(() => sub.unsubscribe());
     });
 
     this.form.valueChanges
@@ -309,166 +285,77 @@ export class QuickRunEditorComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    const targetNode = this.targetNode();
-    const target = this.targetQuickRun();
-    const cloneData = this.dialogData?.cloneData;
-    const initOp = this.dialogData?.initialOpType;
-    const initRemote = this.dialogData?.initialRemoteName;
-
-    if (targetNode) {
-      const cfg = targetNode.config || {};
-      const opType = (targetNode.type as PrimaryActionType) || initOp || 'sync';
-      const remote = (cfg['remoteName'] ?? cfg['remote'] ?? initRemote ?? '') as string;
-      const seed =
-        (cfg['config'] as QuickRunConfig | undefined) ?? (cfg as unknown as QuickRunConfig);
-
-      this.form.patchValue({
-        name: targetNode.title,
-        description: targetNode.subtitle ?? '',
+    const node = this.targetNode();
+    const target = this.targetQuickRun() ?? this.dialogData?.cloneData;
+    const cfg = node?.config ?? {};
+    const opType = node
+      ? (node.type as PrimaryActionType)
+      : (target?.operationType ?? this.dialogData?.initialOpType ?? 'sync');
+    const remote = node
+      ? String(cfg['remoteName'] ?? cfg['remote'] ?? this.dialogData?.initialRemoteName ?? '')
+      : (target?.remoteName ?? this.dialogData?.initialRemoteName ?? '');
+    this.form.patchValue(
+      {
+        name: node?.title ?? target?.name ?? '',
+        description: node?.subtitle ?? target?.description ?? '',
         operationType: opType,
         remoteName: remote,
-      });
-      this.currentOpType.set(opType);
-      this.activeTab.set(opType as FlagType);
-      this.currentRemoteName.set(remote);
+      },
+      { emitEvent: false }
+    );
+    this.currentOpType.set(opType);
+    this.activeTab.set(opType);
+    this.currentRemoteName.set(remote);
+    const seed = node
+      ? ((cfg['config'] as QuickRunConfig | undefined) ?? (cfg as unknown as QuickRunConfig))
+      : target?.config;
+    this.populateFormFromSeed(seed);
+    this.fieldsReady = this.loadAllFlagFields();
 
-      this.populateFormFromSeed(seed);
-    } else if (target) {
-      this.form.patchValue({
-        name: target.name,
-        description: target.description ?? '',
-        operationType: target.operationType,
-        remoteName: target.remoteName,
+    this.form.controls['operationType'].valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value: PrimaryActionType) => {
+        const previous = this.currentOpType();
+        if (previous === value) return;
+        this.currentOpType.set(value);
+        if (
+          this.activeTab() === previous ||
+          !this.flagTabs().some(tab => tab.key === this.activeTab())
+        )
+          this.activeTab.set(value);
       });
-      this.currentOpType.set(target.operationType);
-      this.activeTab.set(target.operationType as FlagType);
-      this.currentRemoteName.set(target.remoteName);
-      this.populateFormFromSeed(target.config);
-    } else if (cloneData) {
-      this.form.patchValue({
-        name: cloneData.name,
-        description: cloneData.description ?? '',
-        operationType: cloneData.operationType,
-        remoteName: cloneData.remoteName,
+    this.form.controls['remoteName'].valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((name: string) => {
+        this.currentRemoteName.set(name ?? '');
       });
-      this.currentOpType.set(cloneData.operationType);
-      this.activeTab.set(cloneData.operationType as FlagType);
-      this.currentRemoteName.set(cloneData.remoteName);
-      this.populateFormFromSeed(cloneData.config);
-    } else {
-      if (initOp) {
-        this.selectOperation(initOp);
-      }
-      if (initRemote) {
-        this.form.patchValue({ remoteName: initRemote });
-        this.currentRemoteName.set(initRemote);
-      }
-    }
-
-    void this.loadAllFlagFields();
-
-    const opCtrl = this.form.get('operationType');
-    if (opCtrl) {
-      opCtrl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((op: unknown) => {
-        const opType = op as PrimaryActionType;
-        const prevOp = this.currentOpType();
-        this.currentOpType.set(opType);
-        if (prevOp !== opType) {
-          this.rebuildOpConfigGroup(prevOp, opType);
-        }
-        this.syncAllDynamicControls();
-        this.checkAndSetDefaultDestPath();
-        if (opType === 'serve') {
-          void this.loadServeFields();
-        }
-        if (this.activeTab() === (prevOp as FlagType)) {
-          this.activeTab.set(opType as FlagType);
-        }
-      });
-    }
-
-    const remoteCtrl = this.form.get('remoteName');
-    if (remoteCtrl) {
-      remoteCtrl.valueChanges
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((name: unknown) => {
-          const rName = (name as string) ?? '';
-          this.currentRemoteName.set(rName);
-          this.checkAndSetDefaultDestPath();
-        });
-    }
   }
 
   // ── Form creation ─────────────────────────────────────────────────────────
 
   private createForm(): FormGroup {
-    const configControls: Record<string, FormGroup> = {};
-    for (const flag of ALL_FLAG_TYPES) {
-      const isShared = flag === 'vfs' || flag === 'filter' || flag === 'backend';
-      configControls[`${flag}Config`] = isShared
-        ? this.createSharedConfigGroup()
-        : this.createOpConfigGroup(flag as PrimaryActionType);
-    }
-
-    const mountOpts = configControls['mountConfig']?.get('options') as FormGroup | null;
-    if (mountOpts && !mountOpts.contains('mountType')) {
-      mountOpts.addControl('mountType', new FormControl('mount'));
-    }
-    const serveOpts = configControls['serveConfig']?.get('options') as FormGroup | null;
-    if (serveOpts && !serveOpts.contains('type')) {
-      serveOpts.addControl('type', new FormControl('http'));
-    }
-
     return this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(1)]],
+      name: ['', [Validators.required, Validators.pattern(/\S/)]],
       description: [''],
       operationType: ['sync' as PrimaryActionType, Validators.required],
       remoteName: ['', Validators.required],
-      ...configControls,
+      ...Object.fromEntries(
+        FLAG_TYPES.map(type => [
+          `${type}Config`,
+          createConfigFormGroup(this.fb, type, this.destroyRef),
+        ])
+      ),
     });
   }
 
   getOpFormGroup(opType: string): FormGroup {
-    return (this.form.get(`${opType}Config`) as FormGroup) ?? this.fb.group({});
-  }
-
-  private rebuildOpConfigGroup(prevOp: PrimaryActionType, newOp: PrimaryActionType): void {
-    const prevGroup = this.form.get(`${prevOp}Config`) as FormGroup | null;
-    const prevRaw = prevGroup?.getRawValue() as Record<string, unknown> | undefined;
-
-    // Build a seed from the shared app-config fields so they carry over.
-    const seed: QuickRunConfig | undefined = prevRaw
-      ? {
-          app: {
-            autoStart: !!prevRaw['autoStart'],
-            showOnTray: prevRaw['showOnTray'] !== undefined ? !!prevRaw['showOnTray'] : true,
-            cronEnabled: !!prevRaw['cronEnabled'],
-            cronExpression: (prevRaw['cronExpression'] as string | null) ?? null,
-            watchEnabled: !!prevRaw['watchEnabled'],
-            watchDelay: (prevRaw['watchDelay'] as number) ?? 5,
-            watchChangedOnly: !!prevRaw['watchChangedOnly'],
-          },
-          rclone: {},
-        }
-      : undefined;
-
-    const newGroup = this.createOpConfigGroup(newOp, seed);
-    this.form.setControl(`${newOp}Config`, newGroup);
-    if (newOp === 'serve') {
-      const sType = (newGroup.get('options.type')?.value as string) || 'http';
-      this.selectedServeType.set(sType);
-      void this.loadServeFields();
-    }
-  }
-
-  private createSharedConfigGroup(): FormGroup {
-    return this.fb.group({
-      options: this.fb.group({}),
-    });
+    const group = this.form.get(`${opType}Config`);
+    if (!(group instanceof FormGroup)) throw new Error(`Unsupported operation: ${opType}`);
+    return group;
   }
 
   private createOpConfigGroup(opType: PrimaryActionType, seed?: QuickRunConfig): FormGroup {
-    const mapped = mapConfigToFormProfile(
+    const values = mapConfigToFormProfile(
       opType,
       seed ? { app: seed.app, rclone: seed.rclone } : {},
       {
@@ -477,76 +364,60 @@ export class QuickRunEditorComponent implements OnInit {
         pathService: this.pathService,
       }
     );
-    const mapping = OPERATION_PATH_MAPPINGS[opType];
-    if (!mapping) throw new Error(`Unsupported operation: ${opType}`);
-    const createPath = (path: PathGroup & { filename?: string }): FormGroup =>
-      this.fb.group({ ...path, filename: path.filename ?? '' });
-    const mappedSource = mapped['source'] as PathGroup | PathGroup[];
-    const source = mapping.isSourceArray
-      ? this.fb.array(
-          (Array.isArray(mappedSource) && mappedSource.length
-            ? mappedSource
-            : [{ type: 'currentRemote' as const, path: '', remote: '' }]
-          ).map(createPath)
-        )
-      : createPath(mappedSource as PathGroup);
-    const dest = mapping.destKey ? createPath(mapped['dest'] as PathGroup) : null;
-    const optionsGroup = this.fb.group({});
-    for (const [key, value] of Object.entries(mapped['options'] as Record<string, unknown>)) {
-      optionsGroup.addControl(key, new FormControl(value));
-    }
-
-    const group: Record<string, unknown> = {
-      autoStart: [mapped['autoStart']],
-      showOnTray: [mapped['showOnTray']],
-      cronEnabled: [mapped['cronEnabled']],
-      cronExpression: [mapped['cronExpression']],
-      watchEnabled: [mapped['watchEnabled']],
-      watchDelay: [mapped['watchDelay']],
-      watchChangedOnly: [mapped['watchChangedOnly']],
-      source,
-      options: optionsGroup,
-    };
-    if (dest) group['dest'] = dest;
-
-    return this.fb.group(group);
+    return createConfigFormGroup(this.fb, opType, this.destroyRef, values);
   }
 
-  private async loadRuntimeRemoteFields(type: string): Promise<void> {
-    this.isLoadingRuntimeRemoteFields.set(true);
-    try {
-      const fields = await this.remoteManagementService.getRemoteConfigFields(type);
-      this.runtimeRemoteFields.set(fields);
-
-      const group: FormGroup = this.fb.group({
-        type: [type],
-      });
-      const remote = this.currentRemoteName();
-      const scoped = this.seedRcloneConfig?.['remotes'] as
-        Record<string, Record<string, unknown>> | undefined;
-      const legacy = this.seedRcloneConfig?.['runtimeRemote'] as
-        Record<string, unknown> | undefined;
-      const runtimeSeed =
-        scoped?.[remote] ?? (legacy?.[remote] as Record<string, unknown> | undefined) ?? legacy;
-      for (const f of fields) {
-        const key = f.Name || f.FieldName;
-        if (!key || key === 'type') continue;
-        const seedVal = runtimeSeed?.[key];
-        const val = seedVal !== undefined ? seedVal : (f.Value ?? f.Default ?? null);
-        group.addControl(key, new FormControl(val, f.Required ? [Validators.required] : []));
-      }
-      this.runtimeRemoteForm.set(group);
-    } catch (err) {
-      console.warn('[QuickRunEditor] loadRuntimeRemoteFields failed:', err);
-    } finally {
-      this.isLoadingRuntimeRemoteFields.set(false);
+  private async loadRuntimeRemoteFields(
+    type: string,
+    remote = this.currentRemoteName()
+  ): Promise<void> {
+    this.runtimeRemoteIdentity.set('');
+    if (!remote || !type) {
+      this.metadata.clear('runtimeRemote');
+      this.runtimeRemoteFields.set([]);
+      this.runtimeRemoteForm.set(this.fb.group({ type: [''] }));
+      return;
     }
+    const draft = this.runtimeDrafts.get(remote);
+    await this.metadata.load(
+      'runtimeRemote',
+      () =>
+        draft?.type === type
+          ? Promise.resolve(draft.fields)
+          : this.remoteManagementService.getRemoteConfigFields(type),
+      definitions => {
+        const fields = definitions.map(field => ({ ...field, Required: false }));
+        const group = draft?.type === type ? draft.form : this.fb.group({ type: [type] });
+        if (draft?.type !== type) {
+          const scoped = this.seedRcloneConfig?.['remotes'] as
+            Record<string, Record<string, unknown>> | undefined;
+          const legacy = this.seedRcloneConfig?.['runtimeRemote'] as
+            Record<string, unknown> | undefined;
+          const legacyScoped = legacy?.[remote];
+          const seed =
+            scoped?.[remote] ??
+            (legacyScoped && typeof legacyScoped === 'object'
+              ? (legacyScoped as Record<string, unknown>)
+              : remote === this.seedRemoteName
+                ? legacy
+                : undefined);
+          reconcileDynamicControls(group, fields, { required: false });
+          if (seed) patchConfigOptions(group, seed);
+        }
+        this.runtimeDrafts.set(remote, { type, fields, form: group });
+        this.runtimeRemoteFields.set(fields);
+        this.runtimeRemoteForm.set(group);
+        this.runtimeRemoteIdentity.set(remote);
+      }
+    );
   }
 
   private populateFormFromSeed(seed?: QuickRunConfig): void {
     if (!seed || !seed.rclone) return;
     const rawRclone = seed.rclone as Record<string, unknown>;
     this.seedRcloneConfig = rawRclone;
+    this.seedRemoteName = this.currentRemoteName();
+    this.runtimeDrafts.clear();
     const opType = this.currentOpType();
 
     const opGroup = this.createOpConfigGroup(opType, seed);
@@ -567,136 +438,69 @@ export class QuickRunEditorComponent implements OnInit {
       const optsGroup = this.form.get(`${shared}Config.options`) as FormGroup | null;
       if (!optsGroup) continue;
 
-      for (const [k, v] of Object.entries(sharedObj)) {
-        if (!optsGroup.contains(k)) {
-          optsGroup.addControl(k, new FormControl(v));
-        } else {
-          optsGroup.get(k)?.setValue(v);
-        }
-      }
+      patchConfigOptions(optsGroup, sharedObj);
     }
   }
 
   private async loadServeFields(): Promise<void> {
-    const t = this.selectedServeType() || 'http';
-    const token = ++this._serveLoadToken.token;
-    this.isLoadingServeFields.set(true);
-    try {
-      const fields = await this.flagConfigService.loadServeFlagFields(t);
-      if (token !== this._serveLoadToken.token) return;
-      this.dynamicServeFields.set(fields);
-      this.rebuildServeOptionsGroup();
-    } catch (err) {
-      console.warn('[QuickRunEditor] loadServeFields failed:', err);
-    } finally {
-      if (token === this._serveLoadToken.token) {
-        this.isLoadingServeFields.set(false);
+    const type = this.selectedServeType() || 'http';
+    await this.metadata.load(
+      'serve',
+      () => this.flagConfigService.loadServeFlagFields(type),
+      fields => {
+        this.dynamicServeFields.set(fields);
+        this.rebuildServeOptionsGroup();
       }
-    }
+    );
   }
 
   async onServeTypeChange(type: string): Promise<void> {
-    if (this.selectedServeType() === type) return;
-    this.selectedServeType.set(type || 'http');
-    const typeCtrl = this.form.get('serveConfig.options.type');
-    if (typeCtrl && typeCtrl.value !== type) {
-      typeCtrl.setValue(type, { emitEvent: false });
-    }
+    const normalized = type || 'http';
+    if (this.selectedServeType() === normalized) return;
+    this.selectedServeType.set(normalized);
+    this.form.get('serveConfig.options.type')?.setValue(normalized, { emitEvent: false });
     await this.loadServeFields();
   }
 
   rebuildServeOptionsGroup(): void {
-    const g = this.form.get('serveConfig.options') as FormGroup | null;
-    if (!g) return;
-    this.syncDynamicControls(g, this.dynamicServeFields(), {
-      preserveKeys: new Set(['type']),
-    });
+    reconcileDynamicControls(
+      this.getOpFormGroup('serve').get('options') as FormGroup,
+      this.dynamicServeFields(),
+      {
+        preserveKeys: new Set(['type']),
+        prune: true,
+      }
+    );
   }
 
   private async loadAllFlagFields(): Promise<void> {
-    this.isLoadingFlags.set(true);
-    try {
-      const [all] = await Promise.all([
-        this.flagConfigService.loadAllFlagFields(),
-        this.loadServeFields(),
-      ]);
-      this.dynamicFlagFields.set(all as Record<string, RcConfigOption[]>);
-      this.syncAllDynamicControls();
-    } catch (err) {
-      console.warn('[QuickRunEditor] loadAllFlagFields failed:', err);
-    } finally {
-      this.isLoadingFlags.set(false);
-    }
-  }
-
-  /**
-   * Sync dynamic flag controls into the `options` FormGroup of EVERY flag
-   * type (operation + vfs + filter + backend). This is the equivalent of
-   * `RemoteConfigStateService.addDynamicFieldsToForm()`.
-   */
-  private syncAllDynamicControls(): void {
-    const fields = this.dynamicFlagFields();
-    if (!fields) return;
-
-    for (const type of ALL_FLAG_TYPES) {
-      const configKey = `${type}Config`;
-      const configGroup = this.form.get(configKey) as FormGroup | null;
-      if (!configGroup) continue;
-      const optionsGroup = configGroup.get('options') as FormGroup | null;
-      if (!optionsGroup) continue;
-      const typeFields = type === 'serve' ? this.dynamicServeFields() : (fields[type] ?? []);
-      this.syncDynamicControls(optionsGroup, typeFields);
-    }
-  }
-
-  /**
-   * Add FormControl instances for each field that doesn't already exist on
-   * the group. Existing controls are preserved.
-   */
-  private syncDynamicControls(
-    group: FormGroup,
-    fields: RcConfigOption[],
-    opts?: { preserveKeys?: Set<string> }
-  ): void {
-    if (opts?.preserveKeys) {
-      for (const k of Object.keys(group.controls)) {
-        if (!opts.preserveKeys.has(k)) {
-          group.removeControl(k);
-        }
-      }
-    }
-    for (const f of fields) {
-      const key = f.Name || f.FieldName;
-      if (!key || group.contains(key)) continue;
-      group.addControl(
-        key,
-        new FormControl(f.Value ?? f.Default ?? null, f.Required ? [Validators.required] : [])
-      );
-    }
-  }
-
-  private checkAndSetDefaultDestPath(): void {
-    if (this.targetQuickRun() || this.dialogData?.cloneData) return;
-    const opType = this.currentOpType();
-    const remoteName = this.currentRemoteName();
-    if (!remoteName || (opType !== 'mount' && opType !== 'bisync')) return;
-
-    const opKey = `${opType}Config`;
-    const opGroup = this.form.get(opKey) as FormGroup | null;
-    const destGroup = opGroup?.get('dest') as FormGroup | null;
-    const pathCtrl = destGroup?.get('path');
-
-    if (destGroup && pathCtrl && (!pathCtrl.value || pathCtrl.pristine)) {
-      const gen = ++this.destPathGeneration;
-      void this.pathInspectionService
-        .resolveDefaultPath(remoteName, opType as DefaultPathOp)
-        .then(defaultPath => {
-          if (gen !== this.destPathGeneration) return;
-          if (destGroup && pathCtrl && (!pathCtrl.value || pathCtrl.pristine)) {
-            destGroup.patchValue({ type: 'local', path: defaultPath });
+    const operation = this.currentOpType();
+    const types = this.applicableCategories().filter(
+      (type): type is FlagType => type !== 'remote' && type !== 'serve'
+    );
+    if (operation !== 'serve') this.metadata.clear('serve');
+    await Promise.all([
+      this.metadata.load(
+        'flags',
+        () => this.flagConfigService.loadConfigFields(types),
+        fields => {
+          for (const [type, definitions] of Object.entries(fields)) {
+            if (this.dynamicFlagFields()[type] === definitions) continue;
+            reconcileDynamicControls(
+              this.getOpFormGroup(type).get('options') as FormGroup,
+              definitions
+            );
           }
-        });
-    }
+          this.dynamicFlagFields.update(current => ({ ...current, ...fields }));
+        }
+      ),
+      operation === 'serve' ? this.loadServeFields() : Promise.resolve(),
+    ]);
+  }
+
+  async retryLoading(): Promise<void> {
+    this.fieldsReady = this.metadata.retryFailed();
+    await this.fieldsReady;
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -718,6 +522,7 @@ export class QuickRunEditorComponent implements OnInit {
     if (prevOp === newOp) return;
 
     this.form.get('operationType')?.setValue(newOp);
+    this.fieldsReady = this.loadAllFlagFields();
   }
 
   close(): void {
@@ -725,79 +530,91 @@ export class QuickRunEditorComponent implements OnInit {
     this.dialogRef?.close();
   }
 
+  readonly isActiveTabInvalid = computed(() => {
+    this.formVersion();
+    const tab = this.activeTab();
+    return tab === 'runtimeRemote'
+      ? this.runtimeRemoteForm().invalid
+      : this.getOpFormGroup(tab).invalid;
+  });
+
+  readonly isSubmitDisabled = computed(() => {
+    this.formVersion();
+    if (
+      this.isSaving() ||
+      this.isLoadingFlags() ||
+      this.isLoadingServeFields() ||
+      this.isLoadingRuntimeRemoteFields() ||
+      this.flagLoadFailed() ||
+      this.runtimeLoadFailed() ||
+      !this.selectedRemoteType() ||
+      this.runtimeRemoteIdentity() !== this.currentRemoteName()
+    )
+      return true;
+    return (
+      this.form.controls['name'].invalid ||
+      this.form.controls['remoteName'].invalid ||
+      this.applicableCategories().some(type => this.getOpFormGroup(type).invalid) ||
+      [...this.runtimeDrafts.values()].some(draft => draft.form.invalid)
+    );
+  });
+
   async submit(): Promise<void> {
-    const opGroup = this.getOpFormGroup(this.currentOpType());
-    if (this.form.get('name')?.invalid || this.form.get('remoteName')?.invalid || opGroup.invalid) {
+    if (this.isSubmitDisabled()) {
       this.form.markAllAsTouched();
+      this.runtimeRemoteForm().markAllAsTouched();
       return;
     }
-    const input = this.buildInput();
-
+    this.isSubmitting.set(true);
     try {
+      const input = this.buildInput();
+      this.form.disable({ emitEvent: false });
+      this.runtimeRemoteForm().disable({ emitEvent: false });
       await this.pathInspectionService.createRequiredDirectoriesForOperation(
         input.operationType,
         input.config.rclone as Record<string, unknown>
       );
-    } catch (err) {
-      this.notificationService.showError(err);
-      return;
-    }
-
-    const node = this.targetNode();
-    if (this.isWorkflowMode() && node) {
-      if (this.workflowStateService) {
+      const node = this.targetNode();
+      if (this.isWorkflowMode() && node) {
         this.workflowStateService.updateNode(node.id, {
           title: input.name,
           subtitle: input.description,
-          config: {
-            remoteName: input.remoteName,
-            config: input.config,
-          },
+          config: { remoteName: input.remoteName, config: input.config },
         });
-      }
-      this.notificationService.showSuccess(
-        this.translate.instant('flow.workflow.editor.nodeSaved')
-      );
+        this.notificationService.showSuccess(
+          this.translate.instant('flow.workflow.editor.nodeSaved')
+        );
+      } else if (!(await this.quickRunService.save(input))) return;
       this.closed.emit();
       this.dialogRef?.close(true);
-      return;
+    } catch (error) {
+      this.notificationService.showError(error);
+    } finally {
+      this.isSubmitting.set(false);
+      if (!this.destroyRef.destroyed) {
+        this.form.enable();
+        this.runtimeRemoteForm().enable();
+      }
     }
-
-    const saved = await this.quickRunService.save(input);
-    if (!saved) return;
-    this.closed.emit();
-    this.dialogRef?.close(true);
   }
 
   toggleSearch(): void {
-    this.showSearch.update(v => !v);
-    if (!this.showSearch()) {
-      this.searchQuery.set('');
-    } else {
-      this.showCliImport.set(false);
-      this.showObscureTool.set(false);
-    }
-    if (this.sidebarMode() === 'over') {
-      this.isSidebarOpen.set(false);
-    }
+    this.tools.toggle('search');
+    this.closeSidebarIfOver();
   }
 
   toggleCliImport(): void {
-    this.showCliImport.update(v => !v);
-    if (this.showCliImport()) {
-      this.showSearch.set(false);
-      this.showObscureTool.set(false);
-      if (this.sidebarMode() === 'over') this.isSidebarOpen.set(false);
-    }
+    this.tools.toggle('cliImport');
+    this.closeSidebarIfOver();
   }
 
   toggleObscureTool(): void {
-    this.showObscureTool.update(v => !v);
-    if (this.showObscureTool()) {
-      this.showSearch.set(false);
-      this.showCliImport.set(false);
-      if (this.sidebarMode() === 'over') this.isSidebarOpen.set(false);
-    }
+    this.tools.toggle('obscure');
+    this.closeSidebarIfOver();
+  }
+
+  private closeSidebarIfOver(): void {
+    if (this.sidebarMode() === 'over') this.isSidebarOpen.set(false);
   }
 
   applyObscuredValue(key: string, value: string): void {
@@ -822,99 +639,75 @@ export class QuickRunEditorComponent implements OnInit {
     }
   }
 
-  private parseAndSetPath(targetGroup: FormGroup, rawPath: string, currentRemote: string): void {
-    const existingRemotes = this.existingRemoteNames() || [];
-    const defaultType = currentRemote ? 'currentRemote' : 'local';
-    const parsed = this.pathService.parseFsString(
-      rawPath.trim(),
-      defaultType,
-      currentRemote,
-      existingRemotes
-    );
-
-    targetGroup.patchValue({
-      type: parsed.type,
-      path: parsed.path,
-      ...(targetGroup.contains('remote') ? { remote: parsed.remote } : {}),
-    });
-    targetGroup.markAsDirty();
-  }
-
-  onCliImportApply(event: {
+  async onCliImportApply(event: {
     result: ImportResult;
     importSourcePath: boolean;
     importDestPath: boolean;
-  }): void {
+  }): Promise<void> {
     const { result, importSourcePath, importDestPath } = event;
-
-    if (result.verb && result.verb !== this.currentOpType()) {
-      if (ALL_PRIMARY_ACTIONS.includes(result.verb as PrimaryActionType)) {
-        this.selectOperation(result.verb as PrimaryActionType);
-      }
-    }
-
-    const currentOp = this.currentOpType();
-    const opGroup = this.getOpFormGroup(currentOp);
-    const remoteName = this.currentRemoteName();
-
-    if (importSourcePath && result.sourcePath && opGroup) {
-      const sourceCtrl = opGroup.get('source');
-      if (sourceCtrl instanceof FormArray && sourceCtrl.length > 0) {
-        this.parseAndSetPath(sourceCtrl.at(0) as FormGroup, result.sourcePath, remoteName);
-      } else if (sourceCtrl instanceof FormGroup) {
-        this.parseAndSetPath(sourceCtrl, result.sourcePath, remoteName);
-      }
-    }
-
-    if (importDestPath && result.destPath && opGroup) {
-      const destCtrl = opGroup.get('dest') as FormGroup | null;
-      if (destCtrl) {
-        this.parseAndSetPath(destCtrl, result.destPath, remoteName);
-      }
-    }
-
-    const newHighlighted = new Set<string>();
-    let appliedCount = 0;
-
-    for (const cls of result.classified) {
-      if (cls.status !== 'mapped' || !cls.fieldName) continue;
-
-      const flagType = cls.flagType || currentOp;
-      const targetGroup =
-        flagType === 'runtimeRemote'
-          ? this.runtimeRemoteForm()
-          : (this.form.get(`${flagType}Config.options`) as FormGroup | null);
-
-      if (targetGroup) {
-        const key = cls.fieldName;
-        if (!targetGroup.contains(key)) {
-          targetGroup.addControl(key, new FormControl(cls.coercedValue));
-        } else {
-          targetGroup.get(key)?.setValue(cls.coercedValue);
-        }
-        targetGroup.get(key)?.markAsDirty();
-        newHighlighted.add(key);
-        appliedCount++;
-      }
-    }
-
-    if (result.mountSubtype && currentOp === 'mount') {
-      const mountOpts = this.form.get('mountConfig.options') as FormGroup | null;
-      mountOpts?.get('mountType')?.setValue(result.mountSubtype);
-    }
-    if (result.serveSubtype && currentOp === 'serve') {
-      void this.onServeTypeChange(result.serveSubtype);
-    }
-
-    this.highlightedFields.set(newHighlighted);
-    this.showCliImport.set(false);
-
-    const msg = this.translate.instant('wizards.cliImport.appliedToast', { count: appliedCount });
-    this.notificationService.showSuccess(
-      msg !== 'wizards.cliImport.appliedToast'
-        ? msg
-        : `Successfully imported ${appliedCount} option(s)`
+    if (result.verb && ALL_PRIMARY_ACTIONS.includes(result.verb as PrimaryActionType))
+      this.selectOperation(result.verb);
+    const op = this.currentOpType();
+    await this.fieldsReady;
+    if (this.flagLoadFailed() || this.currentOpType() !== op) return;
+    const group = this.getOpFormGroup(op);
+    const existing = mapFormToConfigProfile(op, group.getRawValue(), {
+      remoteName: this.currentRemoteName(),
+      pathService: this.pathService,
+    });
+    const merged = mergeImportedProfile(
+      op,
+      existing,
+      result,
+      importSourcePath,
+      importDestPath,
+      this.currentRemoteName()
     );
+    await this.applyOperationConfig(op, merged);
+    for (const type of this.applicableCategories()) {
+      if (type === op) continue;
+      patchConfigOptions(
+        this.getOpFormGroup(type).get('options') as FormGroup,
+        mergeImportedFlags({}, result, type as FlagType),
+        this.getFlagFields(type)
+      );
+    }
+    if (this.runtimeRemoteIdentity() === this.currentRemoteName()) {
+      patchConfigOptions(this.runtimeRemoteForm(), mergeImportedFlags({}, result, 'runtimeRemote'));
+    }
+    const imported = result.classified.flatMap(flag =>
+      flag.status === 'mapped' && flag.fieldName ? [flag.fieldName] : []
+    );
+    this.highlightedFields.set(new Set(imported));
+    this.tools.close();
+    this.notificationService.showSuccess(
+      this.translate.instant('wizards.cliImport.appliedToast', { count: imported.length })
+    );
+  }
+
+  private async applyOperationConfig(
+    type: PrimaryActionType,
+    config: Record<string, unknown>
+  ): Promise<void> {
+    const values = mapConfigToFormProfile(type, config, {
+      remoteName: this.currentRemoteName(),
+      existingRemotes: this.existingRemoteNames(),
+      pathService: this.pathService,
+    });
+    if (type === 'serve') {
+      await this.onServeTypeChange(
+        String((values['options'] as Record<string, unknown>)['type'] ?? 'http')
+      );
+      if (this.flagLoadFailed()) return;
+    }
+    const group = this.getOpFormGroup(type);
+    patchConfigPaths(group, values);
+    patchConfigOptions(
+      group.get('options') as FormGroup,
+      values['options'] as Record<string, unknown>,
+      this.getFlagFields(type)
+    );
+    group.markAsDirty();
   }
 
   /**
@@ -939,10 +732,9 @@ export class QuickRunEditorComponent implements OnInit {
     const app = mapped['app'] as AppConfig;
     const rclone = mapped['rclone'] as Record<string, unknown>;
 
-    const sharedTypes =
-      opType === 'mount' || opType === 'serve'
-        ? (['vfs', 'filter', 'backend'] as const)
-        : (['filter', 'backend'] as const);
+    const sharedTypes = this.applicableCategories().filter(
+      (type): type is FlagType => type !== 'remote' && type !== opType
+    );
 
     for (const flagType of sharedTypes) {
       const groupKey = `${flagType}Config`;
@@ -960,15 +752,22 @@ export class QuickRunEditorComponent implements OnInit {
       }
     }
 
-    const runtimeRaw = this.runtimeRemoteForm().getRawValue() as Record<string, unknown>;
-    delete runtimeRaw['type'];
-    const cleanedRuntime = this.valueMapper.cleanData(runtimeRaw, this.runtimeRemoteFields());
     const remotes = {
       ...((this.seedRcloneConfig?.['remotes'] as Record<string, unknown> | undefined) ?? {}),
     };
-    if (Object.keys(cleanedRuntime).length > 0) remotes[remoteName] = cleanedRuntime;
+    const currentRaw = this.runtimeRemoteForm().getRawValue() as Record<string, unknown>;
+    delete currentRaw['type'];
+    const currentCleaned = this.valueMapper.cleanData(currentRaw, this.runtimeRemoteFields());
+    if (Object.keys(currentCleaned).length) remotes[remoteName] = currentCleaned;
     else delete remotes[remoteName];
-    if (Object.keys(remotes).length > 0) rclone['remotes'] = remotes;
+    for (const [name, draft] of this.runtimeDrafts) {
+      const raw = draft.form.getRawValue() as Record<string, unknown>;
+      delete raw['type'];
+      const cleaned = this.valueMapper.cleanData(raw, draft.fields);
+      if (Object.keys(cleaned).length) remotes[name] = cleaned;
+      else delete remotes[name];
+    }
+    if (Object.keys(remotes).length) rclone['remotes'] = remotes;
 
     return {
       id: this.targetQuickRun()?.id,
@@ -996,20 +795,14 @@ export class QuickRunEditorComponent implements OnInit {
 
   private readonly formVersion = signal(0);
 
-  readonly applicableCategories = computed(() =>
-    getApplicableTemplateCategories(this.currentOpType())
-  );
+  readonly applicableCategories = computed(() => getConfigCategories(this.currentOpType()));
 
-  readonly currentValues = computed(() => {
-    this.formVersion();
-    const raw = this.form.getRawValue();
+  readonly currentValues = (): Partial<Record<TemplateCategory, Record<string, unknown>>> => {
     const fields = this.dynamicFlagFields();
     const applicable = new Set(this.applicableCategories());
 
     const getCleanOptions = (flagType: string): Record<string, unknown> => {
-      const opts =
-        (raw[`${flagType}Config`] as { options?: Record<string, unknown> } | undefined)?.options ??
-        {};
+      const opts = this.getOpFormGroup(flagType).get('options')?.getRawValue() ?? {};
       const typeFields =
         flagType === 'serve' ? this.dynamicServeFields() : (fields[flagType as FlagType] ?? []);
       return this.valueMapper.cleanData(opts, typeFields);
@@ -1021,83 +814,33 @@ export class QuickRunEditorComponent implements OnInit {
     }
 
     return res;
-  });
+  };
 
-  private patchGroupOptions(
-    configKey: string,
-    opts?: Record<string, unknown>,
-    ignoredKeys?: readonly string[]
-  ): void {
-    if (!opts) return;
-    const groupKey = configKey.endsWith('Config') ? configKey : `${configKey}Config`;
-    const configGroup = this.form.get(groupKey) as FormGroup | null;
-    if (!configGroup) return;
-
-    const optsGroup = configGroup.get('options') as FormGroup | null;
-    if (optsGroup) {
-      for (const [k, v] of Object.entries(opts)) {
-        if (ignoredKeys ? ignoredKeys.includes(k) : isRclonePathKey(k)) continue;
-        if (!optsGroup.contains(k)) {
-          optsGroup.addControl(k, new FormControl(v));
-        } else {
-          optsGroup.get(k)?.setValue(v);
-        }
+  async onApplyTemplate(event: ApplyTemplateEvent): Promise<void> {
+    const operation = this.currentOpType();
+    await this.fieldsReady;
+    if (this.flagLoadFailed() || operation !== this.currentOpType()) return;
+    for (const category of this.applicableCategories()) {
+      const values = event.values[category];
+      if (!values) continue;
+      const group = this.getOpFormGroup(category);
+      if (category === operation) {
+        const current = mapFormToConfigProfile(operation, group.getRawValue(), {
+          remoteName: this.currentRemoteName(),
+          pathService: this.pathService,
+        });
+        await this.applyOperationConfig(operation, {
+          ...current,
+          rclone: { ...(current['rclone'] as Record<string, unknown>), ...values },
+        });
+      } else {
+        patchConfigOptions(group.get('options') as FormGroup, values, this.getFlagFields(category));
+        group.markAsDirty();
       }
     }
-  }
-
-  onApplyTemplate(event: ApplyTemplateEvent): void {
-    const { values } = event;
-    const allowed = new Set(this.applicableCategories());
-
-    if (values.vfs && allowed.has('vfs')) this.patchGroupOptions('vfsConfig', values.vfs);
-    if (values.mount && allowed.has('mount')) this.patchGroupOptions('mountConfig', values.mount);
-    if (values.backend && allowed.has('backend'))
-      this.patchGroupOptions('backendConfig', values.backend);
-    if (values.filter && allowed.has('filter'))
-      this.patchGroupOptions('filterConfig', values.filter);
-    if (values.sync && allowed.has('sync')) this.patchGroupOptions('syncConfig', values.sync);
-    if (values.copy && allowed.has('copy')) this.patchGroupOptions('copyConfig', values.copy);
-    if (values.remote && allowed.has('remote')) {
-      const rtGroup = this.runtimeRemoteForm();
-      for (const [k, v] of Object.entries(values.remote)) {
-        if (rtGroup.contains(k)) {
-          rtGroup.get(k)?.setValue(v);
-        }
-      }
-    }
-    const serveValues = (values as Record<string, Record<string, unknown> | undefined>)['serve'];
-    if (serveValues && allowed.has('serve')) {
-      this.patchGroupOptions('serveConfig', serveValues);
-      const sType = serveValues['type'] as string | undefined;
-      if (sType) void this.onServeTypeChange(sType);
-    }
-
-    const currentOp = this.currentOpType();
-    if (currentOp && allowed.has(currentOp as TemplateCategory)) {
-      const opGroup = this.getOpFormGroup(currentOp);
-      const opOpts = (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
-      if (opOpts && typeof opOpts === 'object') {
-        this.patchGroupOptions(`${currentOp}Config`, opOpts);
-
-        const srcPath = extractProfileSource(opOpts) as string | undefined;
-        if (srcPath && typeof srcPath === 'string') {
-          const sourceCtrl = opGroup.get('source');
-          if (sourceCtrl instanceof FormArray && sourceCtrl.length > 0) {
-            (sourceCtrl.at(0) as FormGroup).get('path')?.setValue(srcPath);
-          } else if (sourceCtrl instanceof FormGroup) {
-            sourceCtrl.get('path')?.setValue(srcPath);
-          }
-        }
-        const dstPath = extractProfileDest(opOpts) as string | undefined;
-        if (dstPath && typeof dstPath === 'string') {
-          const destCtrl = opGroup.get('dest') as FormGroup | null;
-          destCtrl?.get('path')?.setValue(dstPath);
-        }
-      }
-    }
-
-    const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
-    this.notificationService.showSuccess(msg);
+    if (!this.flagLoadFailed())
+      this.notificationService.showSuccess(
+        this.translate.instant('templates.applySuccess', { name: event.sourceName })
+      );
   }
 }

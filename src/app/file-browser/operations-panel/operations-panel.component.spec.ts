@@ -4,6 +4,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { OperationsPanelComponent } from './operations-panel.component';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import {
+  PendingWebUpload,
+  RemoteFileOperationsService,
+} from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobInfo, GlobalStats } from '@app/types';
 
@@ -11,6 +15,7 @@ describe('OperationsPanelComponent', () => {
   let fixture: ComponentFixture<OperationsPanelComponent>;
   let component: OperationsPanelComponent;
   let mockJobsSignal: ReturnType<typeof signal<JobInfo[]>>;
+  let pendingUploads: ReturnType<typeof signal<PendingWebUpload[]>>;
   let jobManagementMock: {
     nautilusJobs: ReturnType<typeof signal<JobInfo[]>>;
     refreshJobs: ReturnType<typeof vi.fn>;
@@ -80,6 +85,7 @@ describe('OperationsPanelComponent', () => {
 
   beforeEach(() => {
     mockJobsSignal = signal<JobInfo[]>([sampleRunningJob, sampleCompletedJob]);
+    pendingUploads = signal<PendingWebUpload[]>([]);
     jobManagementMock = {
       nautilusJobs: mockJobsSignal,
       refreshJobs: vi.fn().mockResolvedValue(undefined),
@@ -95,12 +101,14 @@ describe('OperationsPanelComponent', () => {
       providers: [
         provideTranslateService(),
         { provide: JobManagementService, useValue: jobManagementMock },
+        { provide: RemoteFileOperationsService, useValue: { pendingWebUploads: pendingUploads } },
         { provide: PathService, useValue: pathServiceMock },
       ],
     });
 
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {
+      shared: { transferActivity: { status: { preparing: 'Preparing' } } },
       fileBrowser: {
         operations: {
           running: 'Running',
@@ -113,6 +121,7 @@ describe('OperationsPanelComponent', () => {
             delete: 'Delete',
             move: 'Move',
             sync: 'Sync',
+            upload: 'Upload',
           },
           details: {
             deletedFiles: 'Deleted files',
@@ -163,6 +172,48 @@ describe('OperationsPanelComponent', () => {
     expect(completedVM.transferredFiles.length).toBe(2);
     expect(completedVM.transferredLabel).toBe('fileBrowser.operations.details.deletedFiles');
     expect(completedVM.actualFileName).toBe('2 files');
+  });
+
+  it('shows preparation immediately even when no backend job exists', () => {
+    mockJobsSignal.set([]);
+    pendingUploads.set([
+      { group: 'upload-1', remote: 'drive:', path: 'özel folder', origin: 'filemanager' },
+    ]);
+    fixture.detectChanges();
+
+    expect(component.hasJobs()).toBe(true);
+    expect(component.activeCount()).toBe(1);
+    const status = fixture.nativeElement.querySelector('[role="status"]') as HTMLElement;
+    expect(status.textContent).toContain('Preparing');
+    expect(status.textContent).toContain('drive:özel folder');
+    expect(status.querySelector('mat-progress-bar')?.getAttribute('mode')).toBe('indeterminate');
+
+    pendingUploads.set([]);
+    fixture.detectChanges();
+    expect(component.hasJobs()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('replaces preparation with its backend job while keeping concurrent uploads visible', () => {
+    pendingUploads.set([
+      { group: 'upload-1', remote: 'drive:', path: '', origin: 'filemanager' },
+      { group: 'upload-2', remote: 'drive:', path: '', origin: 'filemanager' },
+      { group: 'other-origin', remote: 'drive:', path: '' },
+    ]);
+    mockJobsSignal.set([{ ...sampleRunningJob, job_type: 'upload', group: 'upload-1' }]);
+    fixture.detectChanges();
+
+    expect(component.preparingUploads().map(upload => upload.group)).toEqual(['upload-2']);
+    expect(component.activeCount()).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(component.jobViewModels()).toHaveLength(1);
+  });
+
+  it('does not show preparation again if the backend job completes before the response', () => {
+    pendingUploads.set([{ group: 'upload-1', remote: 'drive:', path: '', origin: 'filemanager' }]);
+    mockJobsSignal.set([{ ...sampleCompletedJob, job_type: 'upload', group: 'upload-1' }]);
+    expect(component.preparingUploads()).toEqual([]);
+    expect(component.activeCount()).toBe(0);
   });
 
   it('should handle multi-source formatted string correctly', () => {

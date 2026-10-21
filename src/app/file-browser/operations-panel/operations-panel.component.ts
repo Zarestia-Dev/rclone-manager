@@ -8,6 +8,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
@@ -73,6 +74,7 @@ interface JobViewModel {
 })
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
 
@@ -85,8 +87,15 @@ export class OperationsPanelComponent {
   contextMenuJobId = signal<number | null>(null);
 
   // Computed State
+  readonly preparingUploads = computed(() => {
+    const jobGroups = new Set(this.jobs().map(job => job.group));
+    return this.remoteOps
+      .pendingWebUploads()
+      .filter(upload => upload.origin === 'filemanager' && !jobGroups.has(upload.group));
+  });
   activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
-  hasJobs = computed(() => this.jobs().length > 0);
+  readonly activeCount = computed(() => this.activeJobs().length + this.preparingUploads().length);
+  hasJobs = computed(() => this.jobs().length > 0 || this.preparingUploads().length > 0);
 
   /** Pre-computed view models for the main job list (one entry per `jobs()` item). */
   readonly jobViewModels = computed<JobViewModel[]>(() => {

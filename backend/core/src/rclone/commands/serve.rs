@@ -134,7 +134,10 @@ pub async fn start_serve(
     let mut payload = params.to_rclone_body()?;
 
     // Auto-inject our custom template for web-based protocols if not already specified
-    if (serve_type == "http" || serve_type == "webdav") && payload.get("template").is_none() {
+    if backend.is_local
+        && (serve_type == "http" || serve_type == "webdav")
+        && payload.get("template").is_none()
+    {
         let app_paths = app.state::<AppPaths>();
         let template_path = app_paths.serve_template_path()?;
 
@@ -165,7 +168,10 @@ pub async fn start_serve(
         Some(log_context),
     );
 
-    debug!("📦 Serve request payload: {payload:#?}");
+    debug!(
+        "📦 Serve request payload: {:#?}",
+        redact_value(&payload, &app)
+    );
 
     let backend_name_for_err = backend.name.clone();
 
@@ -359,15 +365,21 @@ pub(crate) async fn stop_serve_on_backend(
     Ok(crate::localized_success!("backendSuccess.serve.stopSuccess", "serverId" => &server_id))
 }
 
-/// Stop all running serve instances
+/// Stop all serves on the backend selected when the command starts.
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     info!("🗑️ Stopping all serves");
 
+    let backend = app.state::<BackendManager>().get_active().await;
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
 
     if let Err(e) = transport.rpc(serve::STOPALL, None).await {
-        warn!("Failed to stop all serves: {e}");
+        if !context.is_shutdown() {
+            // rclone removes server registrations even when Shutdown returns an error.
+            refresh_serves_quietly(&app, &backend).await;
+            return Err(crate::localized_error!("backendErrors.serve.stopFailed", "error" => e));
+        }
+        warn!("Failed to stop all serves during shutdown: {e}");
+        return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
     }
 
     if !context.is_shutdown() {

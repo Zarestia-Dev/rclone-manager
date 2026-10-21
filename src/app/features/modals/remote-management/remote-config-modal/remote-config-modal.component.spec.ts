@@ -4,7 +4,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EditTarget, RcConfigOption } from '@app/types';
+import { EditTarget } from '@app/types';
 import { RemoteConfigModalComponent } from './remote-config-modal.component';
 import { RemoteConfigStateService } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
@@ -49,17 +49,23 @@ describe('RemoteConfigModalComponent', () => {
             remoteConfigForm: configForm,
             remoteEditVisibleSections: signal(new Set()),
             activeStepType: activeStep,
-            getDynamicFlagFields: (): RcConfigOption[] => [],
+            getProfileTemplateValues: (type: string): Record<string, unknown> =>
+              configForm.get(`${type}Config.options`)?.getRawValue() ?? {},
             cleanFormData: (data: Record<string, unknown>): Record<string, unknown> => data,
             interactiveFlowState: signal(createInitialInteractiveFlowState()),
             commandOptions: signal([]),
             init: vi.fn().mockResolvedValue(undefined),
             isInitializing: signal(true),
+            loadFailed: signal(false),
+            isSaveDisabled: signal(true),
           },
         },
         {
           provide: RemoteCreationOrchestrator,
-          useValue: { submitInteractiveAnswer: submitAnswer },
+          useValue: {
+            submitInteractiveAnswer: submitAnswer,
+            cancelAuth: vi.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: AuthStateService,

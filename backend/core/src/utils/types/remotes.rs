@@ -301,7 +301,7 @@ impl OperationType {
             Self::Move => Some(crate::rclone::endpoints::sync::MOVE),
             Self::Bisync => Some(crate::rclone::endpoints::sync::BISYNC),
             Self::Check => Some(crate::rclone::endpoints::operations::CHECK),
-            Self::Delete => Some(crate::rclone::endpoints::operations::PURGE),
+            Self::Delete => Some(crate::rclone::endpoints::operations::DELETE),
             Self::Copyurl => Some(crate::rclone::endpoints::operations::COPYURL),
             Self::Cryptcheck => Some(crate::rclone::endpoints::operations::CRYPTCHECK),
             Self::Archivecreate => Some(crate::rclone::endpoints::operations::ARCHIVE),

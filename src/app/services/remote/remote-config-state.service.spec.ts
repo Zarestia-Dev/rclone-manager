@@ -21,7 +21,7 @@ import { RemotePresetsService } from './remote-presets';
 import { RemoteCreationOrchestrator } from './remote-creation-orchestrator.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { RcConfigOption } from '@app/types';
+import { createDefaultRemoteFeatures, createDefaultRemoteStatus, RcConfigOption } from '@app/types';
 import { ImportResult } from './cli-flag-mapper.service';
 
 describe('RemoteConfigStateService', () => {
@@ -66,6 +66,7 @@ describe('RemoteConfigStateService', () => {
           provide: FlagConfigService,
           useValue: {
             loadAllFlagFields: vi.fn().mockResolvedValue({}),
+            loadConfigFields: vi.fn().mockResolvedValue({}),
             loadServeFlagFields: vi.fn().mockResolvedValue([]),
           },
         },
@@ -436,7 +437,7 @@ describe('RemoteConfigStateService', () => {
       options.addControl('customFlag', new FormControl('keep'));
 
       service.applyTemplate({ mount: { read_only: true } }, 'mount');
-      await Promise.resolve();
+      await vi.waitFor(() => expect(service.isPopulatingForm()).toBe(false));
 
       expect(service.remoteConfigForm.get('mountConfig.autoStart')?.value).toBe(true);
       expect(service.remoteConfigForm.get('mountConfig.dest.path')?.value).toBe('/chosen mount');
@@ -641,5 +642,143 @@ describe('RemoteConfigStateService', () => {
 
       expect(notificationService.showError).toHaveBeenCalled();
     });
+  });
+  it('blocks save and navigation until initialization finishes', () => {
+    setDialogData({ name: 'drive', remoteType: 'drive', editTarget: 'vfs' });
+    service.editTarget.set('vfs');
+    expect(service.isSaveDisabled()).toBe(true);
+    expect(service.isStepClickable(2)).toBe(false);
+    service.isInitializing.set(false);
+    expect(service.isSaveDisabled()).toBe(false);
+    service.initializationFailed.set(true);
+    expect(service.isSaveDisabled()).toBe(true);
+  });
+
+  it('does not request operation flags when editing provider credentials', async () => {
+    TestBed.inject(RemoteFacadeService).getRemote = vi
+      .fn()
+      .mockReturnValue({ config: { name: 'drive', type: 'drive' } });
+    await service.init({ name: 'drive', remoteType: 'drive', editTarget: 'remote' });
+    expect(TestBed.inject(FlagConfigService).loadConfigFields).not.toHaveBeenCalled();
+  });
+
+  it('retains common serve options when subtype metadata is reconciled', () => {
+    const options = service.remoteConfigForm.get('serveConfig.options') as FormGroup;
+    const user = new FormControl("a'b,c", Validators.required);
+    options.addControl('user', user);
+    options.addControl('oldFlag', new FormControl('old'));
+    service.dynamicServeFields.set([field('type', 'http'), field('user')]);
+    service.rebuildServeOptionsGroup();
+    expect(options.get('user')).toBe(user);
+    expect(user.value).toBe("a'b,c");
+    expect(user.hasValidator(Validators.required)).toBe(true);
+    expect(options.get('oldFlag')).toBeNull();
+  });
+  it('keeps profile ownership consistent when selections overlap', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.remoteForm.patchValue({ name: 'drive', type: 'drive' });
+    service.updateProfileConfig('vfs', 'A', { cache: 'a' });
+    service.updateProfileConfig('vfs', 'B', { cache: 'b' });
+    service.updateProfileConfig('vfs', 'C', { cache: 'c' });
+    await service.selectProfile('vfs', 'A');
+    const selectingB = service.selectProfile('vfs', 'B');
+    const selectingC = service.selectProfile('vfs', 'C');
+    await Promise.all([selectingB, selectingC]);
+    expect(service.profiles().vfs['B']).toEqual({ cache: 'b' });
+    expect(service.selectedProfileName().vfs).toBe('C');
+    expect(service.remoteConfigForm.get('vfsConfig.options.cache')?.value).toBe('c');
+  });
+
+  it('loads the provider selection screen without unrelated operation flags', async () => {
+    await service.init(undefined);
+    expect(TestBed.inject(FlagConfigService).loadConfigFields).not.toHaveBeenCalled();
+    expect(TestBed.inject(RemoteManagementService).getRemoteConfigFields).not.toHaveBeenCalled();
+    service.currentStep.set(service.stepConfigs().findIndex(step => step.type === 'sync') + 1);
+    await service.loadActiveProfile();
+    expect(TestBed.inject(FlagConfigService).loadConfigFields).toHaveBeenCalledExactlyOnceWith([
+      'sync',
+    ]);
+    expect(service.activeFieldsReady()).toBe(true);
+  });
+
+  it('retries every failed metadata resource before clearing the failure state', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.editTarget.set('vfs');
+    service.remoteForm.patchValue({ type: 'drive' });
+    const remoteFields = vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields);
+    const flags = vi.mocked(TestBed.inject(FlagConfigService).loadConfigFields);
+    remoteFields.mockRejectedValueOnce(new Error('provider unavailable'));
+    flags.mockRejectedValueOnce(new Error('flags unavailable'));
+    await service.onRemoteTypeChange();
+    await service.selectProfile('vfs', 'Default');
+    expect(service.loadFailed()).toBe(true);
+    await service.retryActiveFields();
+    expect(remoteFields).toHaveBeenCalledTimes(2);
+    expect(flags).toHaveBeenCalledTimes(2);
+    expect(service.loadFailed()).toBe(false);
+  });
+
+  it('does not populate hidden linked forms when selecting an operation profile', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.remoteForm.patchValue({ type: 'drive' });
+    service.updateProfileConfig('sync', 'Backup', { app: { filterProfile: 'Photos' } });
+    service.updateProfileConfig('filter', 'Photos', { include: ['*.jpg'] });
+    await service.selectProfile('sync', 'Backup');
+    expect(service.selectedProfileName().filter).toBe('Photos');
+    expect(TestBed.inject(FlagConfigService).loadConfigFields).toHaveBeenCalledExactlyOnceWith([
+      'sync',
+    ]);
+    expect(TestBed.inject(RemoteManagementService).getRemoteConfigFields).not.toHaveBeenCalled();
+  });
+
+  it('includes stored linked profiles in template snapshots before their forms are opened', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.updateProfileConfig('mount', 'Default', { app: { filterProfile: 'Photos' } });
+    service.updateProfileConfig('filter', 'Photos', { include: ['*.jpg'], custom: "a'b,c" });
+    await service.selectProfile('mount', 'Default');
+    const snapshot = service.getProfileTemplateValues('filter');
+    expect(snapshot).toEqual({ include: ['*.jpg'], custom: "a'b,c" });
+    expect(service.remoteConfigForm.get('filterConfig.options.include')).toBeNull();
+    (snapshot['include'] as string[]).push('*.png');
+    expect(service.profiles().filter['Photos']).toEqual({ include: ['*.jpg'], custom: "a'b,c" });
+  });
+
+  it('snapshots unsaved edits from the owning form instead of its stored profile', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.updateProfileConfig('filter', 'Photos', { include: ['*.jpg'] });
+    await service.selectProfile('filter', 'Photos');
+    service.remoteConfigForm.get('filterConfig.options.include')?.setValue(['*.png']);
+    expect(service.getProfileTemplateValues('filter')).toEqual({ include: ['*.png'] });
+    expect(service.profiles().filter['Photos']).toEqual({ include: ['*.jpg'] });
+  });
+
+  it('loads a saved serve subtype directly without first requesting HTTP flags', async () => {
+    service.initProfiles({ remoteType: 'drive' });
+    service.updateProfileConfig('serve', 'WebDAV', { rclone: { type: 'webdav', user: 'alice' } });
+    await service.selectProfile('serve', 'WebDAV');
+    expect(TestBed.inject(FlagConfigService).loadConfigFields).not.toHaveBeenCalled();
+    expect(TestBed.inject(FlagConfigService).loadServeFlagFields).toHaveBeenCalledExactlyOnceWith(
+      'webdav'
+    );
+    expect(service.remoteConfigForm.get('serveConfig.options.user')?.value).toBe('alice');
+  });
+  it('preserves saved credentials when their initial metadata request needs a retry', async () => {
+    vi.mocked(TestBed.inject(RemoteFacadeService).getRemote).mockReturnValue({
+      name: 'drive',
+      type: 'drive',
+      config: { name: 'drive', type: 'drive', token: "saved a'b,c" },
+      status: createDefaultRemoteStatus(),
+      features: createDefaultRemoteFeatures(),
+      primaryActions: [],
+      syncActions: [],
+    });
+    vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue([field('token')]);
+    await service.init({ name: 'drive', remoteType: 'drive', editTarget: 'remote' });
+    expect(service.loadFailed()).toBe(true);
+    await service.retryActiveFields();
+    expect(service.loadFailed()).toBe(false);
+    expect(service.remoteForm.get('token')?.value).toBe("saved a'b,c");
   });
 });

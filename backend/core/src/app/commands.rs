@@ -111,7 +111,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // FILESYSTEM COMMANDS
             (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, backend_name: Option<String>]);
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
+            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: $crate::rclone::commands::filesystem::TransferMode, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);

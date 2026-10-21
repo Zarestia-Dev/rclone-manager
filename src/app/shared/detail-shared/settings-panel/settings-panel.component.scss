@@ -54,19 +54,6 @@ mat-expansion-panel {
     }
   }
 
-  .setting-key {
-    display: inline-flex;
-    align-items: center;
-    color: var(--dim-color);
-    font-weight: 500;
-    min-width: 0;
-    max-width: 12.5rem;
-
-    .truncate {
-      display: block;
-    }
-  }
-
   .setting-value {
     color: var(--window-fg-color);
     font-weight: 500;

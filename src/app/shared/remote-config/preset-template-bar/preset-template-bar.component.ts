@@ -10,6 +10,9 @@ import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 
+export type ConfigValues = Partial<Record<TemplateCategory, Record<string, unknown>>>;
+export type ConfigValuesSource = ConfigValues | (() => ConfigValues);
+
 export interface ApplyTemplateEvent {
   sourceName: string;
   values: Partial<Record<TemplateCategory, Record<string, unknown>>>;
@@ -31,9 +34,14 @@ export class PresetTemplateBarComponent {
   readonly remoteType = input<string>();
   readonly vendor = input<string>();
   readonly applicableCategories = input<readonly TemplateCategory[]>();
-  readonly currentValues = input<Partial<Record<TemplateCategory, Record<string, unknown>>>>({});
+  readonly currentValues = input<ConfigValuesSource>({});
 
   readonly applyTemplate = output<ApplyTemplateEvent>();
+
+  private snapshotValues(): ConfigValues {
+    const values = this.currentValues();
+    return typeof values === 'function' ? values() : values;
+  }
 
   onSelectTemplate(tpl: UserPresetTemplate): void {
     this.openApplyModal(tpl);
@@ -73,7 +81,7 @@ export class PresetTemplateBarComponent {
   private openApplyModal(tpl: UserPresetTemplate): void {
     const dialogRef = this.modalService.openApplyTemplate({
       template: tpl,
-      currentValues: this.currentValues(),
+      currentValues: this.snapshotValues(),
       applicableCategories: this.applicableCategories(),
     });
 
@@ -90,7 +98,7 @@ export class PresetTemplateBarComponent {
   openSaveDialog(): void {
     this.modalService.openTemplateManager({
       mode: 'save',
-      currentValues: this.currentValues(),
+      currentValues: this.snapshotValues(),
     });
   }
 

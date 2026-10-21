@@ -555,7 +555,7 @@ mod tests {
             is_dir: true,
             dry_run: None,
         }
-        .to_rclone_body()
+        .to_rclone_body(false)
         .unwrap();
 
         let obj = body.as_object().unwrap();

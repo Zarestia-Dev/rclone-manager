@@ -6,11 +6,8 @@ import {
   ElementRef,
   inject,
   signal,
-  afterNextRender,
 } from '@angular/core';
-import { ReactiveFormsModule, FormGroup } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
+import { ReactiveFormsModule } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,7 +32,6 @@ import {
   DialogData,
 } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
-import { RcloneValueMapperService } from '../../../../services/remote/rclone-value-mapper.service';
 import { retargetProfilesRemote } from '../../../../services/remote/utils/remote-config.utils';
 import {
   RemoteConfigSections,
@@ -44,7 +40,6 @@ import {
   PROFILE_ICONS,
   EditTarget,
   TemplateCategory,
-  FlagType,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
@@ -52,13 +47,16 @@ import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
-import { getApplicableTemplateCategories } from '../../../../shared/remote-config/template-diff.utils';
+import { getConfigCategories } from '../../../../services/remote/utils/config-metadata.utils';
 import { syncResponsiveSidebar } from 'src/app/shared/utils';
+
+import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
 
 @Component({
   selector: 'app-remote-config-modal',
   hostDirectives: [EscapeCloseDirective],
   imports: [
+    ConfigFormSkeletonComponent,
     ReactiveFormsModule,
     TranslatePipe,
     MatIconModule,
@@ -99,15 +97,12 @@ export class RemoteConfigModalComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
-  private readonly valueMapper = inject(RcloneValueMapperService);
-  private readonly formChanges = toSignal(
-    merge(this.state.remoteForm.valueChanges, this.state.remoteConfigForm.valueChanges)
-  );
 
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
   readonly PROFILE_ICONS = PROFILE_ICONS;
 
+  readonly hasInitialized = signal(false);
   readonly isSidebarOpen = signal(true);
   readonly sidebarMode = signal<MatDrawerMode>('side');
 
@@ -124,17 +119,24 @@ export class RemoteConfigModalComponent {
   readonly visibleSections = this.state.remoteEditVisibleSections;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
-    afterNextRender(() =>
-      syncResponsiveSidebar(768, this.sidebarMode, this.isSidebarOpen, this.destroyRef)
+    this.destroyRef.onDestroy(() => {
+      void this.orchestrator.cancelAuth();
+    });
+    syncResponsiveSidebar(
+      768,
+      this.sidebarMode,
+      this.isSidebarOpen,
+      this.destroyRef,
+      this.hostEl.nativeElement
     );
     this.initializeState();
   }
 
   private async initializeState(): Promise<void> {
+    this.state.isInitializing.set(true);
     try {
       await this.state.init(this.dialogData);
-      this.state.isInitializing.set(false);
+      if (!this.state.loadFailed()) this.hasInitialized.set(true);
     } catch (error) {
       console.error('Failed to initialize remote config state:', error);
       const errorMsg = this.translate.instant('modals.remoteConfig.errors.loadFailed');
@@ -143,18 +145,25 @@ export class RemoteConfigModalComponent {
           ? errorMsg
           : 'Failed to load remote configuration settings'
       );
-      this.close();
+      this.state.initializationFailed.set(true);
+    } finally {
+      this.state.isInitializing.set(false);
     }
+  }
+
+  async retryLoading(): Promise<void> {
+    if (this.hasInitialized()) await this.state.retryActiveFields();
+    else await this.initializeState();
   }
 
   goToStep(step: number): void {
     if (!this.state.isStepClickable(step)) return;
     this.saveCurrentStepProfile();
     this.state.currentStep.set(step);
+    void this.state.loadActiveProfile();
     this.scrollToTop();
     if (step === 1 && !this.state.editTarget()) {
-      this.state.showObscureTool.set(false);
-      this.state.showCliImport.set(false);
+      this.state.tools.close();
     }
   }
 
@@ -179,7 +188,7 @@ export class RemoteConfigModalComponent {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.state.isAuthInProgress()) return;
+    if (this.state.isSaveDisabled()) return;
     try {
       const result = this.state.isEditingExisting()
         ? await this.handleEditMode()
@@ -198,7 +207,11 @@ export class RemoteConfigModalComponent {
       }
       this.notificationService.showError(errorMessage);
     } finally {
-      if (!this.state.interactiveFlowState().isActive) {
+      if (
+        this.state.isEditingExisting() &&
+        this.state.isAuthInProgress() &&
+        !this.state.interactiveFlowState().isActive
+      ) {
         this.authStateService.resetAuthState();
       }
     }
@@ -210,28 +223,12 @@ export class RemoteConfigModalComponent {
 
   private async handleCreateMode(): Promise<{ success: boolean }> {
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
-    const finalConfig = this.buildFinalConfig();
-    await this.authStateService.startAuth(remoteData.name, false);
-
-    if (!this.requiresInteractiveFlow()) {
-      await this.remoteManagementService.createRemote(
-        remoteData.name,
-        remoteData,
-        this.remoteManagementService.buildOpt(this.state.commandOptions()),
-        this.orchestrator.backendName
-      );
-      this.orchestrator.setPendingConfig(remoteData, finalConfig);
-      await this.orchestrator.finalizeCreation();
-      return { success: true };
-    }
-
-    this.orchestrator.setPendingConfig(remoteData, finalConfig);
-    const completed = await this.orchestrator.startInteractiveCreation(
+    const success = await this.orchestrator.createRemote(
       remoteData,
-      finalConfig,
+      this.buildFinalConfig(),
       this.state.commandOptions()
     );
-    return { success: completed };
+    return { success };
   }
 
   private async handleEditMode(): Promise<{ success: boolean }> {
@@ -323,8 +320,7 @@ export class RemoteConfigModalComponent {
   }
 
   toggleSearchVisibility(): void {
-    this.state.isSearchVisible.update(visible => !visible);
-    if (!this.state.isSearchVisible()) this.state.searchQuery.set('');
+    this.state.tools.toggle('search');
   }
 
   onSearchInput(query: string): void {
@@ -387,21 +383,11 @@ export class RemoteConfigModalComponent {
     if (this.state.showObscureTool()) this.closeSidebarIfOver();
   }
 
-  readonly applicableCategories = computed(() =>
-    getApplicableTemplateCategories(this.state.activeStepType())
-  );
+  readonly applicableCategories = computed(() => getConfigCategories(this.state.activeStepType()));
 
-  readonly currentValues = computed(() => {
-    this.formChanges();
-    const rcf = this.state.remoteConfigForm;
+  readonly currentValues = (): Partial<Record<TemplateCategory, Record<string, unknown>>> => {
     const applicable = new Set(this.applicableCategories());
     const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
-
-    const getCleanOptions = (configKey: string, flagType: FlagType): Record<string, unknown> => {
-      const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
-      const fields = this.state.getDynamicFlagFields(flagType);
-      return this.valueMapper.cleanData(opts, fields);
-    };
 
     if (applicable.has('remote')) {
       const remoteRaw = this.state.remoteForm.getRawValue();
@@ -415,11 +401,11 @@ export class RemoteConfigModalComponent {
 
     for (const cat of applicable) {
       if (cat === 'remote') continue;
-      result[cat] = getCleanOptions(`${cat}Config`, cat);
+      result[cat] = this.state.getProfileTemplateValues(cat);
     }
 
     return result;
-  });
+  };
 
   onApplyTemplate(event: ApplyTemplateEvent): void {
     this.state.applyTemplate(event.values, this.state.activeStepType());

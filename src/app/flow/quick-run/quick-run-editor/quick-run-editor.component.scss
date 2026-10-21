@@ -1,9 +1,5 @@
 @use "../../../styles/mixins" as *;
 
-:host {
-  --sidebar-icon-width: 56px;
-}
-
 main {
   flex-direction: column;
   padding: 0 !important;
@@ -23,6 +19,8 @@ main {
 
 .modal-content {
   position: relative;
+  container-type: inline-size;
+  min-width: 0;
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -32,7 +30,7 @@ main {
 
 /* ── Top Configuration Bar ── */
 .top-config-section {
-  background: var(--surface-variant);
+  background: var(--bg-elevated);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -42,7 +40,7 @@ main {
     grid-template-columns: 1fr 1fr 1fr;
     padding: var(--space-sm) var(--space-md) 0;
     gap: var(--space-sm);
-    @media (max-width: 768px) {
+    @container (max-width: 40rem) {
       grid-template-columns: 1fr;
     }
   }
@@ -60,14 +58,6 @@ main {
       padding: var(--space-xxs) var(--space-md);
     }
   }
-}
-
-.op-option-icon {
-  margin-right: var(--space-xs);
-  vertical-align: middle;
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
 }
 
 /* ── Config Tabs Section ── */

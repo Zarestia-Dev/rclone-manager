@@ -48,7 +48,7 @@
                 [class.is-sensitive]="entry.isSensitive"
                 [attr.title]="entry.tooltip"
               >
-                <span class="setting-key">
+                <code class="setting-key">
                   @if (entry.isSensitive) {
                     <mat-icon
                       svgIcon="lock"
@@ -56,10 +56,10 @@
                       [attr.title]="'detailShared.settings.restricted' | translate"
                     ></mat-icon>
                   }
-                  <span class="truncate">{{ entry.key }}</span>
-                </span>
+                  {{ entry.key }}
+                </code>
                 <strong>:</strong>
-                <span class="setting-value truncate">{{ entry.display }}</span>
+                <code class="setting-value truncate">{{ entry.display }}</code>
               </div>
             }
           </div>

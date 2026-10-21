@@ -77,6 +77,34 @@ export class RemoteCreationOrchestrator {
     this.pendingConfig = { remoteData, finalConfig };
   }
 
+  async createRemote(
+    remoteData: PendingRemoteData,
+    finalConfig: RemoteConfigSections,
+    commandOptions: CommandOption[]
+  ): Promise<boolean> {
+    if (this.authStateService.isAuthInProgress()) return false;
+    this.setPendingConfig(remoteData, finalConfig);
+    try {
+      await this.authStateService.startAuth(remoteData.name, false);
+      if (commandOptions.some(option => option.key === 'nonInteractive' && option.value === true)) {
+        return await this.startInteractiveCreation(remoteData, finalConfig, commandOptions);
+      }
+      const pending = this.pendingConfig;
+      await this.remoteManagementService.createRemote(
+        remoteData.name,
+        remoteData,
+        this.remoteManagementService.buildOpt(commandOptions),
+        this.backendName
+      );
+      if (this.pendingConfig !== pending || this.authStateService.isAuthCancelled()) return false;
+      await this.finalizeCreation();
+      return true;
+    } finally {
+      if (!this.interactiveFlowState().isActive && this.authStateService.isAuthInProgress())
+        this.authStateService.resetAuthState();
+    }
+  }
+
   async startInteractiveCreation(
     remoteData: PendingRemoteData,
     finalConfig: RemoteConfigSections,

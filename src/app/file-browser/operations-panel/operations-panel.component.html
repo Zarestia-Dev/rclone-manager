@@ -10,13 +10,35 @@
         <mat-panel-title>
           <mat-icon svgIcon="download"></mat-icon>
           <span>{{ 'fileBrowser.operations.title' | translate }}</span>
-          @if (activeJobs().length > 0) {
-            <span class="job-count">{{ activeJobs().length }}</span>
+          @if (activeCount() > 0) {
+            <span class="job-count">{{ activeCount() }}</span>
           }
         </mat-panel-title>
       </mat-expansion-panel-header>
 
       <div class="panel-content">
+        @for (upload of preparingUploads(); track upload.group) {
+          <div class="card-row-item" role="status" aria-live="polite" aria-busy="true">
+            <div class="card-header">
+              <div class="card-info-left">
+                <mat-icon class="card-primary-icon" svgIcon="file-arrow-up"></mat-icon>
+                <span class="truncate">{{
+                  'fileBrowser.operations.types.upload' | translate
+                }}</span>
+              </div>
+            </div>
+            <span class="truncate" [title]="upload.remote + upload.path">{{
+              upload.remote + upload.path
+            }}</span>
+            <span class="percentage-text preparing">{{
+              'shared.transferActivity.status.preparing' | translate
+            }}</span>
+            <mat-progress-bar
+              mode="indeterminate"
+              [attr.aria-label]="'shared.transferActivity.status.preparing' | translate"
+            ></mat-progress-bar>
+          </div>
+        }
         @for (vm of jobViewModels(); track vm.job.jobid) {
           <div
             class="job-item"

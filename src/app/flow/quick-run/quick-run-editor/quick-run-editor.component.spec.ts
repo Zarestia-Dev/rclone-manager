@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Signal, signal } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { QuickRunEditorModalOptions } from 'src/app/services/ui/modal.service';
 import { provideTranslateService } from '@ngx-translate/core';
 import { QuickRunEditorComponent } from './quick-run-editor.component';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
@@ -16,7 +18,13 @@ import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-m
 import { MountManagementService } from 'src/app/services/operations/mount-management.service';
 import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { RcConfigOption, QuickRunInput, QuickRunConfig, PrimaryActionType } from '@app/types';
+import {
+  RcConfigOption,
+  QuickRunInput,
+  QuickRunConfig,
+  PrimaryActionType,
+  FlagType,
+} from '@app/types';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 
 describe('QuickRunEditorComponent', () => {
@@ -82,6 +90,26 @@ describe('QuickRunEditorComponent', () => {
   const allFlagsMock: Record<string, RcConfigOption[]> = {
     mount: mockMountFields,
     serve: mockServeBaseFields,
+    archivecreate: [
+      {
+        Name: 'format',
+        FieldName: 'format',
+        Type: 'string',
+        Help: '',
+        Default: 'zip',
+        DefaultStr: 'zip',
+      },
+    ],
+    cryptcheck: [
+      {
+        Name: 'oneWay',
+        FieldName: 'oneWay',
+        Type: 'bool',
+        Help: '',
+        Default: false,
+        DefaultStr: 'false',
+      },
+    ],
     sync: [],
     copy: [],
     vfs: [],
@@ -89,19 +117,19 @@ describe('QuickRunEditorComponent', () => {
     backend: [],
   };
 
-  const allFlagFieldsSignal = signal<Record<string, RcConfigOption[]> | null>(allFlagsMock);
+  let dialogData: QuickRunEditorModalOptions;
 
   let mountServiceMock: { getMountTypes: ReturnType<typeof vi.fn> };
   let serveServiceMock: { getServeTypes: ReturnType<typeof vi.fn> };
   let flagConfigServiceMock: {
     mountTypes: Signal<string[]>;
     availableServeTypes: Signal<string[]>;
-    allFlagFields: ReturnType<typeof vi.fn>;
-    loadAllFlagFields: ReturnType<typeof vi.fn>;
+    loadConfigFields: ReturnType<typeof vi.fn>;
     loadServeFlagFields: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
+    dialogData = {};
     mountServiceMock = {
       getMountTypes: vi.fn().mockResolvedValue(['mount', 'cmount', 'saf']),
     };
@@ -113,8 +141,11 @@ describe('QuickRunEditorComponent', () => {
     flagConfigServiceMock = {
       mountTypes: signal(['mount', 'cmount', 'saf']),
       availableServeTypes: signal(['http', 'webdav', 'ftp', 'sftp']),
-      allFlagFields: vi.fn().mockImplementation(() => allFlagFieldsSignal()),
-      loadAllFlagFields: vi.fn().mockResolvedValue(allFlagsMock),
+      loadConfigFields: vi
+        .fn()
+        .mockImplementation(async (types: FlagType[]) =>
+          Object.fromEntries(types.map(type => [type, allFlagsMock[type] ?? []]))
+        ),
       loadServeFlagFields: vi.fn().mockImplementation((type: string) => {
         if (type === 'webdav') return Promise.resolve(mockWebdavFields);
         return Promise.resolve(mockServeBaseFields);
@@ -125,6 +156,7 @@ describe('QuickRunEditorComponent', () => {
       imports: [QuickRunEditorComponent],
       providers: [
         provideTranslateService(),
+        { provide: MAT_DIALOG_DATA, useValue: dialogData },
         {
           provide: QuickRunService,
           useValue: {
@@ -142,7 +174,11 @@ describe('QuickRunEditorComponent', () => {
         {
           provide: RemoteFacadeService,
           useValue: {
-            orderedVisibleRemotes: signal([{ name: 'test-remote', type: 'drive' }]),
+            remoteSummaries: signal([
+              { name: 'test-remote', type: 'drive' },
+              { name: 'other', type: 'drive' },
+              { name: 'hidden', type: 's3' },
+            ]),
           },
         },
         {
@@ -159,11 +195,15 @@ describe('QuickRunEditorComponent', () => {
           },
         },
         PathService,
-        { provide: BackendService, useValue: { isWindows: signal(false) } },
+        {
+          provide: BackendService,
+          useValue: { isWindows: signal(false), isLocalBackend: signal(true) },
+        },
         {
           provide: PathInspectionService,
           useValue: {
             resolveDefaultPath: vi.fn().mockResolvedValue('/tmp/test'),
+            createRequiredDirectoriesForOperation: vi.fn().mockResolvedValue(undefined),
           },
         },
         { provide: RcloneValueMapperService, useClass: RcloneValueMapperService },
@@ -176,7 +216,9 @@ describe('QuickRunEditorComponent', () => {
           },
         },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(QuickRunEditorComponent, { set: { template: '', imports: [] } })
+      .compileComponents();
 
     TestBed.inject(PathService).setRemoteNames(['test-remote', 'other']);
     fixture = TestBed.createComponent(QuickRunEditorComponent);
@@ -200,10 +242,13 @@ describe('QuickRunEditorComponent', () => {
       ]);
       const editor = component as unknown as {
         seedRcloneConfig: Record<string, unknown>;
+        seedRemoteName: string;
         loadRuntimeRemoteFields(type: string): Promise<void>;
       };
       editor.seedRcloneConfig = config;
+      editor.seedRemoteName = 'test-remote';
       await editor.loadRuntimeRemoteFields('drive');
+      await fixture.whenStable();
       expect(component.runtimeRemoteForm().get('region')?.value).toBe('eu');
     }
   );
@@ -333,5 +378,167 @@ describe('QuickRunEditorComponent', () => {
     expect(serveOpts?.get('type')?.value).toBe('webdav');
     expect(serveOpts?.contains('user')).toBe(true);
     expect(serveOpts?.contains('pass')).toBe(true);
+  });
+  it.each(['mount', 'archivecreate', 'cryptcheck'] as const)(
+    'initializes the requested %s operation before loading fields',
+    async operation => {
+      dialogData.initialOpType = operation;
+      dialogData.initialRemoteName = 'test-remote';
+      const opened = TestBed.createComponent(QuickRunEditorComponent);
+      opened.detectChanges();
+      await opened.whenStable();
+      expect(opened.componentInstance.currentOpType()).toBe(operation);
+      expect(opened.componentInstance.activeTab()).toBe(operation);
+      expect(opened.componentInstance.form.get('operationType')?.value).toBe(operation);
+      expect(flagConfigServiceMock.loadConfigFields).toHaveBeenCalledWith(
+        expect.arrayContaining([operation])
+      );
+      if (operation === 'archivecreate')
+        expect(opened.componentInstance.form.get('archivecreateConfig.options.format')?.value).toBe(
+          'zip'
+        );
+      if (operation === 'cryptcheck')
+        expect(opened.componentInstance.form.get('cryptcheckConfig.options.oneWay')?.value).toBe(
+          false
+        );
+    }
+  );
+
+  it('preserves saved serve values after initial metadata loading', async () => {
+    dialogData.cloneData = {
+      name: 'Saved serve',
+      remoteName: 'test-remote',
+      operationType: 'serve',
+      config: {
+        app: { autoStart: false },
+        rclone: { type: 'webdav', fs: 'test-remote:photos', user: "a'b,c", pass: 'secret' },
+      },
+    };
+    const opened = TestBed.createComponent(QuickRunEditorComponent);
+    opened.detectChanges();
+    await opened.whenStable();
+    expect(opened.componentInstance.form.get('serveConfig.options.user')?.value).toBe("a'b,c");
+    expect(opened.componentInstance.form.get('serveConfig.options.pass')?.value).toBe('secret');
+  });
+
+  it('applies template values after changing the serve subtype', async () => {
+    component.selectOperation('serve');
+    await fixture.whenStable();
+    await component.onApplyTemplate({
+      sourceName: 'WebDAV',
+      values: { serve: { type: 'webdav', user: 'alice', fs: 'other:photos' } },
+    });
+    expect(component.form.get('serveConfig.options.user')?.value).toBe('alice');
+    expect(component.form.get('serveConfig.source.remote')?.value).toBe('other');
+    expect(component.form.get('serveConfig.source.path')?.value).toBe('photos');
+  });
+
+  it('retains separate runtime drafts for remotes sharing a provider', async () => {
+    vi.mocked(TestBed.inject(RemoteManagementService).getRemoteConfigFields).mockResolvedValue([
+      {
+        Name: 'region',
+        FieldName: 'region',
+        Type: 'string',
+        Help: '',
+        Default: '',
+        DefaultStr: '',
+      },
+    ]);
+    component.form.patchValue({ name: 'Drafts', remoteName: 'test-remote' });
+    await fixture.whenStable();
+    component.runtimeRemoteForm().get('region')?.setValue('eu');
+    component.form.get('remoteName')?.setValue('other');
+    await fixture.whenStable();
+    expect(component.runtimeRemoteForm().get('region')?.value).toBe('');
+    component.runtimeRemoteForm().get('region')?.setValue('us');
+    component.form.get('remoteName')?.setValue('test-remote');
+    await fixture.whenStable();
+    expect(component.runtimeRemoteForm().get('region')?.value).toBe('eu');
+    const input = (component as unknown as { buildInput(): QuickRunInput }).buildInput();
+    expect(input.config.rclone['remotes']).toEqual({
+      'test-remote': { region: 'eu' },
+      other: { region: 'us' },
+    });
+  });
+
+  it('resolves provider metadata for hidden catalogue remotes', async () => {
+    component.form.get('remoteName')?.setValue('hidden');
+    await fixture.whenStable();
+    expect(component.selectedRemoteType()).toBe('s3');
+    expect(TestBed.inject(RemoteManagementService).getRemoteConfigFields).toHaveBeenCalledWith(
+      's3'
+    );
+  });
+
+  it('validates submitted sections while ignoring inactive operations', async () => {
+    component.form.patchValue({ name: 'Active sync', remoteName: 'test-remote' });
+    await fixture.whenStable();
+    const inactive = component.form.get('serveConfig.options') as FormGroup;
+    inactive.addControl('invalid', new FormControl('', Validators.required));
+    expect(component.form.invalid).toBe(true);
+    expect(component.isSubmitDisabled()).toBe(false);
+    component.form.get('syncConfig.cronEnabled')?.setValue(true);
+    expect(component.isSubmitDisabled()).toBe(true);
+  });
+
+  it('blocks saving on metadata errors and allows a retry', async () => {
+    flagConfigServiceMock.loadConfigFields.mockRejectedValueOnce(new Error('offline'));
+    component.selectOperation('mount');
+    await fixture.whenStable();
+    expect(component.flagLoadFailed()).toBe(true);
+    expect(component.isSubmitDisabled()).toBe(true);
+    await component.retryLoading();
+    expect(component.flagLoadFailed()).toBe(false);
+  });
+
+  it('guards repeated submissions during directory preparation', async () => {
+    component.form.patchValue({ name: 'Once', remoteName: 'test-remote' });
+    await fixture.whenStable();
+    let finish: () => void = () => {
+      /* assigned below */
+    };
+    vi.mocked(
+      TestBed.inject(PathInspectionService).createRequiredDirectoriesForOperation
+    ).mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve;
+        })
+    );
+    vi.mocked(TestBed.inject(QuickRunService).save).mockResolvedValue({ id: 'saved' } as Awaited<
+      ReturnType<QuickRunService['save']>
+    >);
+    const first = component.submit();
+    await component.submit();
+    expect(component.isSaving()).toBe(true);
+    finish();
+    await first;
+    expect(TestBed.inject(QuickRunService).save).toHaveBeenCalledOnce();
+  });
+  it('does not reload metadata when selecting the current operation', async () => {
+    await (component as unknown as { fieldsReady: Promise<void> }).fieldsReady;
+    const load = vi.mocked(TestBed.inject(FlagConfigService).loadConfigFields);
+    const count = load.mock.calls.length;
+    component.selectOperation(component.currentOpType());
+    expect(load).toHaveBeenCalledTimes(count);
+    expect(component.flagLoadFailed()).toBe(false);
+  });
+
+  it('treats a pending operation change as loading rather than failure', async () => {
+    await (component as unknown as { fieldsReady: Promise<void> }).fieldsReady;
+    let finish!: (value: Partial<Record<FlagType, RcConfigOption[]>>) => void;
+    vi.mocked(TestBed.inject(FlagConfigService).loadConfigFields).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    component.selectOperation('mount');
+    expect(component.isLoadingFlags()).toBe(true);
+    expect(component.flagLoadFailed()).toBe(false);
+    finish({ mount: [], vfs: [], filter: [], backend: [] });
+    await (component as unknown as { fieldsReady: Promise<void> }).fieldsReady;
+    expect(component.isLoadingFlags()).toBe(false);
+    expect(component.flagLoadFailed()).toBe(false);
   });
 });

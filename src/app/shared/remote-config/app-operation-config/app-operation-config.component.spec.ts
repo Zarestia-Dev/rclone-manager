@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
@@ -102,7 +103,26 @@ describe('OperationConfigComponent', () => {
           useValue: { showError: vi.fn(), showWarning: vi.fn(), showSuccess: vi.fn() },
         },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(OperationConfigComponent, {
+        set: {
+          providers: [
+            {
+              provide: PathSelectionService,
+              useValue: {
+                resetPath: vi.fn(),
+                unregisterField: vi.fn(),
+                registerField: vi
+                  .fn()
+                  .mockImplementation((id: string, remoteName: string) =>
+                    signal({ id, remoteName, currentPath: '', options: [], isLoading: false })
+                  ),
+              },
+            },
+          ],
+        },
+      })
+      .compileComponents();
   });
 
   const setupComponent = (
@@ -259,14 +279,14 @@ describe('OperationConfigComponent', () => {
     expect(form.get('dest.path')?.value).toBe('/home/user/rclone-bisync/backup-drive');
   });
 
-  it('should not auto-resolve path if isNewRemote is false', async () => {
+  it('resolves a missing default for an existing profile through the shared owner', async () => {
     const { form } = setupComponent('mount', 'my-drive', false);
 
     await Promise.resolve();
     fixture.detectChanges();
 
-    expect(pathInspectionServiceMock.resolveDefaultPath).not.toHaveBeenCalled();
-    expect(form.get('dest.path')?.value).toBe('');
+    expect(pathInspectionServiceMock.resolveDefaultPath).toHaveBeenCalledWith('my-drive', 'mount');
+    expect(form.get('dest.path')?.value).toBe('/home/user/rclone-mount/my-drive');
   });
 
   it('should not auto-resolve path for sync operation', async () => {

@@ -11,49 +11,6 @@ use crate::utils::types::events::RCLONE_CONFIG_UNLOCKED;
 use crate::utils::types::rclone::BandwidthLimitResponse;
 use crate::utils::types::state::RcloneState;
 
-#[derive(Debug)]
-pub enum RcloneError {
-    RequestFailed(String),
-    ParseError(String),
-    JobError(String),
-}
-
-impl From<reqwest::Error> for RcloneError {
-    fn from(err: reqwest::Error) -> Self {
-        RcloneError::RequestFailed(err.to_string())
-    }
-}
-
-impl From<serde_json::Error> for RcloneError {
-    fn from(err: serde_json::Error) -> Self {
-        RcloneError::ParseError(err.to_string())
-    }
-}
-
-impl std::fmt::Display for RcloneError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RcloneError::RequestFailed(e) => write!(
-                f,
-                "{}",
-                crate::rclone::engine::error_mapper::map_rclone_error(e).unwrap_or_else(|| {
-                    crate::localized_error!("backendErrors.request.failed", "error" => e)
-                })
-            ),
-            RcloneError::ParseError(e) => write!(
-                f,
-                "{}",
-                crate::localized_error!("backendErrors.serve.parseFailed", "error" => e)
-            ),
-            RcloneError::JobError(e) => write!(
-                f,
-                "{}",
-                crate::rclone::engine::error_mapper::map_or_wrap_job_error(e)
-            ),
-        }
-    }
-}
-
 /// Try to auto-unlock config for remote backends with stored password.
 /// This is only for remote backends — local backends use `RCLONE_CONFIG_PASS` env var.
 pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
@@ -70,7 +27,10 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
     };
 
     let payload = json!({ "configPassword": password });
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
+        app.clone(),
+        backend,
+    );
 
     transport
         .rpc(config::UNLOCK, Some(&payload))

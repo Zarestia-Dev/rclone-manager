@@ -2,6 +2,18 @@ use serde_json::Value;
 
 use crate::utils::types::jobs::JobType;
 
+/// Message boundaries emitted by rclone's check/cryptcheck implementations.
+const CRYPTCHECK_ERROR_BOUNDARIES: &[&str] = &[
+    ": file not in ",
+    ": hashes differ",
+    ": Sizes differ",
+    ": sizes differ",
+    ": MD5 differ",
+    ": files differ",
+    ": error ",
+    ": Failed ",
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobOutcome {
     pub success: bool,
@@ -55,7 +67,12 @@ pub fn parse_cryptcheck_output(raw_result: &str) -> Value {
                 .or_else(|| line.find("ERROR:").map(|p| p + 6));
             if let Some(start_idx) = pos {
                 let rest = &line[start_idx..];
-                if let Some(colon_pos) = rest.find(':') {
+                // The filename can contain colons. Match rclone's message boundary.
+                let boundary = CRYPTCHECK_ERROR_BOUNDARIES
+                    .iter()
+                    .filter_map(|marker| rest.find(marker))
+                    .min();
+                if let Some(colon_pos) = boundary {
                     let path = rest[..colon_pos].trim().to_string();
                     let msg = rest[colon_pos + 1..].trim();
 
@@ -68,6 +85,8 @@ pub fn parse_cryptcheck_output(raw_result: &str) -> Value {
                     } else {
                         error_list.push(format!("{}: {}", path, msg));
                     }
+                } else {
+                    error_list.push(rest.trim().to_string());
                 }
             }
         } else if is_notice {
@@ -338,6 +357,34 @@ pub fn resolve_job_outcome(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn cryptcheck_message_paths_do_not_override_the_error_boundary() {
+        for suffix in [": Failed backup", ": error archive", ": hashes differ"] {
+            let output = parse_cryptcheck_output(&format!(
+                "ERROR : a.txt: file not in Local file system at /tmp/root{suffix}"
+            ));
+            assert_eq!(output["results"][0]["missingOnSrc"], json!(["a.txt"]));
+            assert_eq!(output["results"][0]["error"], json!([]));
+        }
+    }
+
+    #[test]
+    fn cryptcheck_reports_keep_colons_in_file_names() {
+        let text = "2026/10/20 12:00:00 ERROR : folder/a:b.txt: file not in Encrypted drive 'dst:'\n2026/10/20 12:00:00 ERROR : folder/a: b.txt: hashes differ (dst:path)\n2026/10/20 12:00:00 ERROR : other:c.txt: file not in Local file system at /src\n";
+        let output = parse_cryptcheck_output(text);
+        let result = &output["results"][0];
+        assert_eq!(result["missingOnDst"], json!(["folder/a:b.txt"]));
+        assert_eq!(result["differ"], json!(["folder/a: b.txt"]));
+        assert_eq!(result["missingOnSrc"], json!(["other:c.txt"]));
+        assert_eq!(result["success"], false);
+        let output = parse_cryptcheck_output("ERROR : file:a: unfamiliar failure with: details");
+        assert_eq!(
+            output["results"][0]["error"],
+            json!(["file:a: unfamiliar failure with: details"])
+        );
+    }
 
     #[test]
     fn test_parse_job_response_numeric() {

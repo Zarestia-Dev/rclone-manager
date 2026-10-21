@@ -20,13 +20,15 @@ import { SettingControlComponent } from 'src/app/shared/components/setting-contr
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
-import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+
+import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
 
 @Component({
   selector: 'app-flag-config-step',
   imports: [
+    ConfigFormSkeletonComponent,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -43,7 +45,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 })
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
-  readonly state = inject(RemoteConfigStateService, { optional: true });
   private readonly uiStateService = inject(UiStateService);
 
   readonly form = input.required<FormGroup>();
@@ -53,6 +54,8 @@ export class FlagConfigStepComponent {
   readonly searchQuery = input<string>('');
   readonly dynamicFlagFields = input<RcConfigOption[]>([]);
   readonly isLoadingServeFields = input<boolean>(false);
+  readonly isLoading = input(false);
+  readonly isInvalid = input(false);
   readonly highlightedFields = input<Set<string>>(new Set());
 
   readonly serveTypeChange = output<string>();

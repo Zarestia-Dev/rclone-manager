@@ -172,8 +172,8 @@ export function requiredIfWatchEnabled(): ValidatorFn {
       return { required: true };
     }
     const val = Number(control.value);
-    if (isNaN(val) || val < 1) {
-      return { min: { min: 1, actual: control.value } };
+    if (!Number.isFinite(val) || val < 0) {
+      return { min: { min: 0, actual: control.value } };
     }
     return null;
   };

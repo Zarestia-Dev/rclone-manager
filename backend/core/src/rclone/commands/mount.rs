@@ -139,7 +139,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 "mount_point": &mount_point,
                 "remote_name": &params.remote_name,
                 "mount_type": &params.mount_type,
-                "payload": &payload,
+                "payload": super::common::redact_value(&payload, &app),
             })),
         );
 

@@ -1,9 +1,5 @@
 @use "../../../../styles/mixins" as *;
 
-:host {
-  --sidebar-icon-width: 56px;
-}
-
 // =============================================
 // MAIN / MODAL BODY (Sidebar + Content Area)
 // =============================================
@@ -22,89 +18,13 @@ main {
   @include wizard-modal-sidebar;
 }
 
-.init-skeleton {
-  display: flex;
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-
-  &__sidebar {
-    width: var(--sidebar-width);
-    flex-shrink: 0;
-    background: var(--sidebar-bg-color);
-    box-shadow:
-      inset -1px 0 0 0 var(--border-color),
-      inset -5px 0 10px -5px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: var(--space-sm) var(--space-xs);
-  }
-
-  &__content-container {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    background: var(--window-bg-color);
-  }
-
-  &__nav-item,
-  &__heading,
-  &__field,
-  &__block {
-    background: var(--bg-elevated-3);
-  }
-
-  &__nav-item {
-    height: 40px;
-    border-radius: var(--radius-sm);
-  }
-
-  &__content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-    padding: var(--space-sm) var(--space-lg);
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  &__heading {
-    height: 18px;
-    width: 38%;
-    border-radius: var(--radius-xs);
-  }
-
-  &__field {
-    height: 56px;
-    width: 100%;
-    border-radius: var(--radius-md);
-
-    &--short {
-      width: 55%;
-    }
-
-    &--mid {
-      width: 72%;
-    }
-  }
-
-  &__block {
-    height: 112px;
-    width: 100%;
-    border-radius: var(--radius-md);
-  }
-}
-
 // =============================================
 // MODAL CONTENT
 // =============================================
 .modal-content {
   position: relative;
+  container-type: inline-size;
+  min-width: 0;
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -116,26 +36,16 @@ main {
     display: flex;
     flex-direction: column;
     padding: var(--space-sm) var(--space-lg);
-    max-width: 900px;
+    max-width: 100%;
     gap: var(--space-md);
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
 
     .linked-profiles-panel {
-      .profile-count {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--primary-color);
-        background: rgba(var(--primary-color-rgb), 0.1);
-        padding: 2px 10px;
-        border-radius: var(--radius-xxs);
-        letter-spacing: 0.5px;
-      }
-
       .linked-profiles-content {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--space-2xl) * 8)), 1fr));
         gap: var(--space-lg);
       }
     }
@@ -148,9 +58,10 @@ main {
   }
 
   .step-container.interactive {
-    width: 90vw;
+    width: 100%;
+    box-sizing: border-box;
     margin: 0 auto;
-    max-width: 800px;
+    max-width: 100%;
     padding: var(--space-md);
   }
 }
@@ -158,22 +69,8 @@ main {
 // =============================================
 // RESPONSIVE STATES
 // =============================================
-@media (max-width: 800px) and (min-width: 641px) {
-  .init-skeleton__sidebar {
-    width: var(--sidebar-icon-width);
-  }
-}
-
-@media (max-width: 640px) {
+@container (max-width: 40rem) {
   .step-container:not(.interactive) {
     padding: var(--space-md) !important;
-  }
-
-  .init-skeleton {
-    flex-direction: column;
-
-    &__content {
-      padding: var(--space-md) !important;
-    }
   }
 }

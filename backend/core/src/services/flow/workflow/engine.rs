@@ -2866,7 +2866,7 @@ mod tests {
             is_dir: false,
             dry_run: None,
         }
-        .to_rclone_body()
+        .to_rclone_body(false)
         .expect("Failed to generate copyurl rclone body");
 
         assert_eq!(
@@ -3022,7 +3022,7 @@ mod tests {
         };
 
         let bisync_body = bisync_params
-            .to_rclone_body()
+            .to_rclone_body(false)
             .expect("Bisync body generation must succeed");
         let bisync_obj = bisync_body
             .as_object()
@@ -3070,7 +3070,7 @@ mod tests {
         };
 
         let sync_body = sync_params
-            .to_rclone_body()
+            .to_rclone_body(false)
             .expect("Sync body generation must succeed");
         let sync_obj = sync_body
             .as_object()

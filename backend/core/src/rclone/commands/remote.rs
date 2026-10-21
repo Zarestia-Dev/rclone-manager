@@ -2,6 +2,7 @@ use crate::context::AppHandle;
 use log::{info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
+use std::time::Duration;
 
 use crate::rclone::backend::{
     BackendManager, RcloneTransport, routing_transport::RoutingTransport,
@@ -22,6 +23,9 @@ use crate::utils::types::logs::LogCache;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::state::RcloneState;
 
+const OAUTH_POLL_INTERVAL: Duration = Duration::from_millis(200);
+const OAUTH_POLL_TIMEOUT: Duration = Duration::from_secs(300);
+
 struct OAuthPollerGuard(tokio::task::JoinHandle<()>);
 
 impl Drop for OAuthPollerGuard {
@@ -38,19 +42,14 @@ fn spawn_oauth_status_poller(
     transport: std::sync::Arc<dyn RcloneTransport>,
 ) -> OAuthPollerGuard {
     let handle = crate::utils::spawn(async move {
-        use std::time::Duration;
-
-        const POLL_INTERVAL: Duration = Duration::from_millis(200);
-        const POLL_TIMEOUT: Duration = Duration::from_secs(300);
-
         let mut url_emitted = false;
         let start = std::time::Instant::now();
 
-        log::debug!("Starting OAuth status poller (timeout: {POLL_TIMEOUT:?})");
+        log::debug!("Starting OAuth status poller (timeout: {OAUTH_POLL_TIMEOUT:?})");
 
         loop {
-            if start.elapsed() > POLL_TIMEOUT {
-                log::warn!("OAuth status poller timed out after {POLL_TIMEOUT:?}");
+            if start.elapsed() > OAUTH_POLL_TIMEOUT {
+                log::warn!("OAuth status poller timed out after {OAUTH_POLL_TIMEOUT:?}");
                 return;
             }
 
@@ -63,7 +62,7 @@ fn spawn_oauth_status_poller(
                 Ok(s) => s,
                 Err(e) => {
                     log::debug!("oauthstatus poll error (will retry): {e}");
-                    tokio::time::sleep(POLL_INTERVAL).await;
+                    tokio::time::sleep(OAUTH_POLL_INTERVAL).await;
                     continue;
                 }
             };
@@ -95,7 +94,7 @@ fn spawn_oauth_status_poller(
                 return;
             }
 
-            tokio::time::sleep(POLL_INTERVAL).await;
+            tokio::time::sleep(OAUTH_POLL_INTERVAL).await;
         }
     });
 
@@ -126,6 +125,45 @@ fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
     Value::Object(map)
 }
 
+async fn add_oauth_template(
+    app: &AppHandle,
+    is_local: bool,
+    parameters: &mut HashMap<String, Value>,
+) -> Result<(), String> {
+    if parameters.contains_key("config_template_file") || parameters.contains_key("config_template")
+    {
+        return Ok(());
+    }
+    if let Ok(paths) = crate::services::paths::AppPaths::from_app_handle(app) {
+        let template = paths.oauth_template_path().map_err(
+            |error| crate::localized_error!("backendErrors.request.failed", "error" => error),
+        )?;
+        if is_local {
+            if template.exists() {
+                parameters.insert("config_template_file".into(), json!(template));
+            }
+        } else {
+            match tokio::fs::read_to_string(&template).await {
+                Ok(content) => {
+                    // config/create and config/update reject CR/LF even in ephemeral values.
+                    // The bundled template uses block comments and explicit JS semicolons.
+                    parameters.insert(
+                        "config_template".into(),
+                        json!(content.replace(['\r', '\n'], " ")),
+                    );
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(
+                        crate::localized_error!("backendErrors.request.failed", "error" => error),
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn create_remote_interactive(
     app: AppHandle,
     name: String,
@@ -138,6 +176,7 @@ pub async fn create_remote_interactive(
         .state::<BackendManager>()
         .get_active_checked(backend_name.as_deref())
         .await?;
+    let is_local = backend.is_local;
     let transport = RoutingTransport::for_backend(app.clone(), backend);
     log_operation(
         LogLevel::Info,
@@ -150,20 +189,7 @@ pub async fn create_remote_interactive(
     let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
 
     let mut params_map = parameters.unwrap_or_default();
-    if !params_map.contains_key("config_template_file")
-        && !params_map.contains_key("config_template")
-    {
-        let paths_res = crate::services::paths::AppPaths::from_app_handle(&app);
-        if let Ok(paths) = paths_res {
-            let oauth_tmpl = paths.oauth_template_path()?;
-            if oauth_tmpl.exists() {
-                params_map.insert(
-                    "config_template_file".to_string(),
-                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
-                );
-            }
-        }
-    }
+    add_oauth_template(&app, is_local, &mut params_map).await?;
 
     let body = json!({
         "name": name,
@@ -198,6 +224,7 @@ pub async fn continue_create_remote_interactive(
         .state::<BackendManager>()
         .get_active_checked(backend_name.as_deref())
         .await?;
+    let is_local = backend.is_local;
     let transport = RoutingTransport::for_backend(app.clone(), backend);
     log_operation(
         LogLevel::Info,
@@ -210,20 +237,7 @@ pub async fn continue_create_remote_interactive(
     let _poller = spawn_oauth_status_poller(app.clone(), transport.clone());
 
     let mut params_map = parameters.unwrap_or_default();
-    if !params_map.contains_key("config_template_file")
-        && !params_map.contains_key("config_template")
-    {
-        let paths_res = crate::services::paths::AppPaths::from_app_handle(&app);
-        if let Ok(paths) = paths_res {
-            let oauth_tmpl = paths.oauth_template_path()?;
-            if oauth_tmpl.exists() {
-                params_map.insert(
-                    "config_template_file".to_string(),
-                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
-                );
-            }
-        }
-    }
+    add_oauth_template(&app, is_local, &mut params_map).await?;
 
     let body = json!({
         "name": name,
@@ -269,6 +283,7 @@ pub async fn create_remote(
         .state::<BackendManager>()
         .get_active_checked(backend_name.as_deref())
         .await?;
+    let is_local = backend.is_local;
     let transport = RoutingTransport::for_backend(app.clone(), backend);
     let Some(remote_type) = parameters
         .get("type")
@@ -279,20 +294,7 @@ pub async fn create_remote(
     };
 
     let mut params_map = parameters;
-    if !params_map.contains_key("config_template_file")
-        && !params_map.contains_key("config_template")
-    {
-        let paths_res = crate::services::paths::AppPaths::from_app_handle(&app);
-        if let Ok(paths) = paths_res {
-            let oauth_tmpl = paths.oauth_template_path()?;
-            if oauth_tmpl.exists() {
-                params_map.insert(
-                    "config_template_file".to_string(),
-                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
-                );
-            }
-        }
-    }
+    add_oauth_template(&app, is_local, &mut params_map).await?;
 
     let mut body = json!({
         "name":       name,
@@ -361,26 +363,14 @@ pub async fn update_remote(
         .state::<BackendManager>()
         .get_active_checked(backend_name.as_deref())
         .await?;
+    let is_local = backend.is_local;
     let transport = RoutingTransport::for_backend(app.clone(), backend);
     let Some(_remote_type) = parameters.get("type").and_then(|v| v.as_str()) else {
         return Err("Missing remote type".into());
     };
 
     let mut params_map = parameters;
-    if !params_map.contains_key("config_template_file")
-        && !params_map.contains_key("config_template")
-    {
-        let paths_res = crate::services::paths::AppPaths::from_app_handle(&app);
-        if let Ok(paths) = paths_res {
-            let oauth_tmpl = paths.oauth_template_path()?;
-            if oauth_tmpl.exists() {
-                params_map.insert(
-                    "config_template_file".to_string(),
-                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
-                );
-            }
-        }
-    }
+    add_oauth_template(&app, is_local, &mut params_map).await?;
 
     let mut body = json!({ "name": name, "parameters": params_map });
 
@@ -491,6 +481,64 @@ pub async fn delete_remote(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn oauth_templates_preserve_explicit_settings_and_missing_paths() {
+        let app = AppHandle::default();
+        let mut parameters = HashMap::new();
+        add_oauth_template(&app, false, &mut parameters)
+            .await
+            .unwrap();
+        assert!(parameters.is_empty());
+        parameters.insert("config_template_file".into(), json!("/remote/custom.html"));
+        add_oauth_template(&app, true, &mut parameters)
+            .await
+            .unwrap();
+        assert_eq!(parameters["config_template_file"], "/remote/custom.html");
+        let mut parameters =
+            HashMap::from([("config_template".into(), json!("<p>Özel {{.Title}}</p>"))]);
+        add_oauth_template(&app, false, &mut parameters)
+            .await
+            .unwrap();
+        assert_eq!(parameters["config_template"], "<p>Özel {{.Title}}</p>");
+    }
+
+    #[tokio::test]
+    async fn oauth_templates_use_paths_locally_and_content_remotely() {
+        let directory = tempfile::tempdir().unwrap();
+        let paths = crate::services::paths::AppPaths {
+            config_dir: directory.path().into(),
+            cache_dir: directory.path().into(),
+            logs_dir: directory.path().into(),
+            resource_dir: directory.path().into(),
+        };
+        let template = paths.oauth_template_path().unwrap();
+        let content = tokio::fs::read_to_string(&template).await.unwrap();
+        let app = AppHandle::default();
+        app.manage(paths);
+        for is_local in [true, false] {
+            let mut parameters = HashMap::new();
+            add_oauth_template(&app, is_local, &mut parameters)
+                .await
+                .unwrap();
+            if is_local {
+                assert_eq!(parameters["config_template_file"], json!(template));
+                assert!(!parameters.contains_key("config_template"));
+            } else {
+                assert_eq!(
+                    parameters["config_template"],
+                    content.replace(['\r', '\n'], " ")
+                );
+                assert!(
+                    !parameters["config_template"]
+                        .as_str()
+                        .unwrap()
+                        .contains(['\r', '\n'])
+                );
+                assert!(!parameters.contains_key("config_template_file"));
+            }
+        }
+    }
 
     #[tokio::test]
     async fn stale_owner_is_rejected_before_config_or_filesystem_requests() {

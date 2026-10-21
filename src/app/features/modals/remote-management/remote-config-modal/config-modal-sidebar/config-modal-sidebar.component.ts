@@ -9,6 +9,7 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 import {
   PresetTemplateBarComponent,
   ApplyTemplateEvent,
+  ConfigValuesSource,
 } from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
 
 @Component({
@@ -34,7 +35,7 @@ export class ConfigModalSidebarComponent {
   readonly visibleSections = input<Set<string>>(new Set());
   readonly profileIcons = input<Readonly<Record<string, string>>>({});
   readonly applicableCategories = input<readonly TemplateCategory[]>();
-  readonly currentValues = input<Partial<Record<TemplateCategory, Record<string, unknown>>>>({});
+  readonly currentValues = input<ConfigValuesSource>({});
 
   // ── Outputs ───────────────────────────────────────────────────────────────
 

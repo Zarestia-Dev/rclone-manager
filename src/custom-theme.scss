@@ -1117,6 +1117,7 @@ button {
     right: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    min-width: 0 !important;
     height: 96vh !important;
     margin: 0 !important;
   }
@@ -1860,6 +1861,11 @@ mat-accordion:not(.dull) {
   &:hover:not(:disabled) {
     background: color-mix(in srgb, var(--window-fg-color) 12%, transparent);
     color: var(--window-fg-color);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--selected-bg-color);
+    color: var(--primary-color);
   }
 
   &:disabled {

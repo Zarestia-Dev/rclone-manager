@@ -30,6 +30,13 @@ pub struct RenameItem {
     pub is_dir: bool,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TransferMode {
+    Copy,
+    Move,
+}
+
 pub async fn mkdir(
     app: AppHandle,
     remote: String,
@@ -188,7 +195,7 @@ pub async fn transfer(
     items: Vec<FsItem>,
     dst_remote: String,
     dst_path: String,
-    mode: String,
+    mode: TransferMode,
     origin: Option<Origin>,
     group: Option<String>,
     parent_job_id: Option<u64>,
@@ -200,7 +207,7 @@ pub async fn transfer(
     };
 
     debug!(
-        "transfer: {} items to {dst_remote}:{dst_path} (mode={mode})",
+        "transfer: {} items to {dst_remote}:{dst_path} (mode={mode:?})",
         items.len()
     );
 
@@ -215,7 +222,7 @@ pub async fn transfer(
         let src_full = build_full_path(&item.remote, &item.path);
         let dst_full = build_full_path(&dst_remote, &dst_file);
 
-        if mode == "copy" {
+        if mode == TransferMode::Copy {
             if item.is_dir {
                 inputs.push(json!({
                     "_path": sync::COPY,
@@ -251,7 +258,7 @@ pub async fn transfer(
         }
     }
 
-    let job_type = if mode == "move" {
+    let job_type = if mode == TransferMode::Move {
         JobType::Move
     } else {
         JobType::Copy
@@ -396,4 +403,24 @@ pub async fn rename(
         Default::default(),
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TransferMode;
+
+    #[test]
+    fn transfer_modes_reject_unknown_values_before_execution() {
+        assert_eq!(
+            serde_json::from_str::<TransferMode>("\"copy\"").unwrap(),
+            TransferMode::Copy
+        );
+        assert_eq!(
+            serde_json::from_str::<TransferMode>("\"move\"").unwrap(),
+            TransferMode::Move
+        );
+        for value in ["\"Copy\"", "\"cut\"", "\"\"", "null", "0"] {
+            assert!(serde_json::from_str::<TransferMode>(value).is_err());
+        }
+    }
 }

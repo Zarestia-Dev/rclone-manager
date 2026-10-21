@@ -95,4 +95,27 @@ describe('FlagConfigService cache scope', () => {
     ).toEqual(['http']);
     expect(sharedServe?.Examples).toBe(beforeServe);
   });
+  it('loads a focused section without fetching unrelated mount or serve metadata', async () => {
+    await Promise.all([service.loadConfigFields(['sync']), service.loadConfigFields(['sync'])]);
+    expect(invoke).toHaveBeenCalledExactlyOnceWith('get_operation_flags', { operation: 'sync' });
+    expect(getMountTypes).not.toHaveBeenCalled();
+    expect(getServeTypes).not.toHaveBeenCalled();
+    await service.loadAllFlagFields();
+    expect(
+      invoke.mock.calls.filter(
+        ([command, args]) => command === 'get_operation_flags' && args.operation === 'sync'
+      )
+    ).toHaveLength(1);
+  });
+  it('retries failed subtype discovery instead of caching an empty successful result', async () => {
+    getMountTypes.mockRejectedValueOnce(new Error('offline'));
+    await expect(service.loadConfigFields(['mount'])).rejects.toThrow('offline');
+    expect(service.mountTypes()).toBeNull();
+    const fields = await service.loadConfigFields(['mount']);
+    expect(
+      fields.mount
+        ?.find(field => field.Name === 'mountType')
+        ?.Examples?.map(example => example.Value)
+    ).toEqual(['cmount']);
+  });
 });

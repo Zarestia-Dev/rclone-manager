@@ -1,12 +1,13 @@
-<form [formGroup]="configGroup()">
+<form
+  [formGroup]="configGroup()"
+  [attr.aria-busy]="isLoading() || isLoadingServeFields()"
+  [inert]="isLoading() || isLoadingServeFields()"
+>
   <!-- Serve fields loading indicator -->
-  @if (isServe() && isLoadingServeFields() && !showJsonMode()) {
-    <div class="loading-container">
-      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
-      <span>{{
-        'wizards.remoteConfig.loadingServeOptions' | translate: { type: serveTypeValue() }
-      }}</span>
-    </div>
+  @if (isServe() && isLoadingServeFields() && !dynamicFlagFields().length) {
+    <app-config-form-skeleton
+      [label]="'wizards.remoteConfig.loadingServeOptions' | translate: { type: serveTypeValue() }"
+    />
   }
 
   <!-- FUSE allow-other warning banner -->
@@ -21,7 +22,7 @@
   }
 
   <!-- Dynamic flag fields -->
-  @if (dynamicFieldBindings().length && !(isServe() && isLoadingServeFields())) {
+  @if (dynamicFieldBindings().length) {
     <div class="dynamic-fields-header">
       <span class="fields-count">
         {{ dynamicFieldBindings().length }}
@@ -30,9 +31,8 @@
       <button
         type="button"
         matIconButton
-        class="json-toggle-btn"
-        [class.active]="showJsonMode()"
-        [disabled]="showJsonMode() && (state?.isActiveStepInvalid() ?? false)"
+        class="action-button"
+        [disabled]="showJsonMode() && isInvalid()"
         (click)="toggleJsonMode()"
         [attr.title]="
           (showJsonMode()

@@ -1,11 +1,6 @@
-import {
-  TemplateCategory,
-  TEMPLATE_CATEGORIES,
-  isTemplateCategory,
-  OPERATION_REGISTRY,
-  FlagType,
-} from '@app/types';
+import { TemplateCategory, isTemplateCategory } from '@app/types';
 import { deepEqual, formatValueDisplay } from 'src/app/shared/utils';
+export { getConfigCategories as getApplicableTemplateCategories } from 'src/app/services/remote/utils/config-metadata.utils';
 
 export type DiffStatus = 'added' | 'modified' | 'unchanged';
 export type ApplyStrategy = 'overwrite' | 'fill-empty';
@@ -34,42 +29,6 @@ export interface TemplateDiffResult {
 
 export function isValueEmpty(val: unknown): boolean {
   return val === undefined || val === null || val === '';
-}
-
-/**
- * Resolves the list of TemplateCategories applicable to a given configuration context
- * (such as 'mount', 'sync', 'vfs', 'filter', 'backend', 'remote', or null for all).
- *
- * Uses OPERATION_REGISTRY as the single source of truth to avoid any code duplication.
- */
-export function getApplicableTemplateCategories(
-  context?: string | null
-): readonly TemplateCategory[] {
-  if (!context) {
-    return TEMPLATE_CATEGORIES;
-  }
-  if (context === 'remote') {
-    return ['remote'];
-  }
-  if (context === 'vfs' || context === 'filter' || context === 'backend') {
-    return [context as TemplateCategory];
-  }
-  if (context === 'runtimeRemote') {
-    return [];
-  }
-
-  const op = OPERATION_REGISTRY.find(o => o.key === context);
-  if (op) {
-    const list: TemplateCategory[] = [context as FlagType];
-    if (op.hasLinkedProfiles) {
-      if (op.supportsVfs) {
-        list.push('vfs');
-      }
-      list.push('filter', 'backend');
-    }
-    return list;
-  }
-  return [context as FlagType];
 }
 
 /**

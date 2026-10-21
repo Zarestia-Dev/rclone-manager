@@ -14,6 +14,26 @@ use crate::utils::types::remotes::helper_config_keys;
 use crate::utils::types::remotes::{OperationType, ProfileConfig};
 use crate::utils::types::state::RcloneState;
 
+/// Credential-related key fragments that are always masked in operation logs.
+const SECRET_LOG_KEY_PARTS: &[&str] = &[
+    "password",
+    "passwd",
+    "pass",
+    "secret",
+    "token",
+    "credential",
+    "auth",
+    "session_id",
+    "2fa",
+    "api_key",
+    "access_key",
+    "accesskey",
+    "private_key",
+    "key_pem",
+    "sas_url",
+    "connection_string",
+];
+
 #[must_use]
 pub fn transport(app: &AppHandle) -> std::sync::Arc<dyn crate::rclone::backend::RcloneTransport> {
     app.state::<RcloneState>().transport.clone()
@@ -24,6 +44,34 @@ pub fn ensure_group(payload: &mut Value, group: &str) {
         obj.entry("_group".to_string())
             .or_insert_with(|| json!(group));
     }
+}
+
+/// Resolve the captured daemon's OS, never the GUI host's OS for a remote backend.
+pub async fn backend_os(app: &AppHandle, backend: &Backend) -> Result<String, String> {
+    if backend.is_local {
+        return Ok(std::env::consts::OS.to_string());
+    }
+    if let Some(os) = app
+        .state::<BackendManager>()
+        .get_runtime_os(&backend.name)
+        .await
+        && !os.is_empty()
+    {
+        return Ok(os);
+    }
+    let transport = crate::rclone::backend::routing_transport::RoutingTransport::for_backend(
+        app.clone(),
+        backend.clone(),
+    );
+    let version = transport
+        .rpc(crate::rclone::endpoints::core::VERSION, None)
+        .await
+        .map_err(
+            |error| crate::localized_error!("backendErrors.request.failed", "error" => error),
+        )?;
+    version.get("os").and_then(Value::as_str).filter(|os| !os.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| crate::localized_error!("backendErrors.request.failed", "error" => "Missing backend OS in core/version response"))
 }
 
 /// A validated operation snapshot and the backend that owns it.
@@ -71,8 +119,11 @@ pub async fn is_directory(
     transport: &dyn RcloneTransport,
     fs_path: &str,
     runtime_remote_options: Option<&HashMap<String, Value>>,
+    windows: bool,
 ) -> Result<bool, String> {
-    let (base, mut remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), String::new()));
+    let (base, mut remote) = split_file_path(fs_path, windows).ok_or_else(
+        || crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => fs_path),
+    )?;
 
     // Normalize remote path: rclone remote paths should not start with a slash.
     if base.ends_with(':') {
@@ -322,8 +373,8 @@ impl RclonePayloadBuilder {
     }
 
     #[must_use]
-    pub fn build(&self) -> Value {
-        Value::Object(self.body.clone())
+    pub fn build(&mut self) -> Value {
+        Value::Object(std::mem::take(&mut self.body))
     }
 
     pub fn as_map_mut(&mut self) -> &mut serde_json::Map<String, Value> {
@@ -346,52 +397,155 @@ impl OperationContext {
     }
 }
 
-/// Parses an rclone fs string into (base, root).
-/// Example: "remote:path" -> ("remote:", "path"), ":<s3:/bucket>" -> (":s3:", "/bucket")
-pub fn parse_fs(fs: &str) -> Option<(String, String)> {
-    if fs.is_empty() {
-        return None;
+/// Return the remote prefix length, or None for a local path, following fspath.Parse.
+fn remote_prefix_len(path: &str, windows: bool) -> Result<Option<usize>, ()> {
+    if path.is_empty() {
+        return Err(());
+    }
+    if !path.contains(':') {
+        return Ok(None);
+    }
+    let offset = usize::from(path.starts_with(':'));
+    let delimiter = offset + path[offset..].find([':', ',', '/', '\\']).ok_or(())?;
+    if matches!(path.as_bytes()[delimiter], b'/' | b'\\') {
+        return if offset == 0 { Ok(None) } else { Err(()) };
+    }
+    let name = &path[offset..delimiter];
+    if name.is_empty()
+        || name.starts_with([' ', '-'])
+        || name.ends_with(' ')
+        || !name
+            .chars()
+            .all(|ch| ch.is_alphanumeric() || "_.+@ -".contains(ch))
+    {
+        return Err(());
+    }
+    if path.as_bytes()[delimiter] == b':' {
+        if windows && offset == 0 && name.len() == 1 && name.as_bytes()[0].is_ascii_alphabetic() {
+            return Ok(None);
+        }
+        return Ok(Some(delimiter + 1));
     }
 
-    // Avoid treating Windows paths (C:\) as remotes
-    let bytes = fs.as_bytes();
-    let is_windows_drive =
-        bytes.len() > 2 && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/');
-
-    if is_windows_drive || fs.starts_with('/') {
-        return Some((fs.to_string(), String::new()));
-    }
-
-    let split_idx = if let Some(stripped) = fs.strip_prefix(':') {
-        stripped.find(':').map(|idx| idx + 1)
-    } else {
-        fs.find(':')
-    };
-
-    match split_idx {
-        Some(split_idx) => {
-            let base = &fs[..=split_idx];
-            let root = &fs[split_idx + 1..];
-
-            if base.starts_with(':') {
-                if base.len() < 2 {
-                    return None;
+    let mut start = delimiter + 1;
+    loop {
+        let end = start + path[start..].find(['=', ',', ':']).ok_or(())?;
+        let key = &path[start..end];
+        if key.is_empty()
+            || !key
+                .bytes()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'.')
+        {
+            return Err(());
+        }
+        let mut end = end;
+        if path.as_bytes()[end] == b'=' {
+            start = end + 1;
+            let first = *path.as_bytes().get(start).ok_or(())?;
+            if first == b'\'' || first == b'"' {
+                end = start + 1;
+                loop {
+                    end += path[end..].find(char::from(first)).ok_or(())?;
+                    end += 1;
+                    if path.as_bytes().get(end) == Some(&first) {
+                        end += 1; // Doubled quotes escape a quote.
+                    } else {
+                        break;
+                    }
                 }
-                let backend_type = base[1..base.len() - 1].split(',').next()?.trim();
-                if backend_type.is_empty() {
-                    return None;
+                if !matches!(path.as_bytes().get(end), Some(b',' | b':')) {
+                    return Err(());
                 }
-            } else if base.len() <= 2 {
-                // Single character before colon (e.g., C: or a:) - treat as local
-                return Some((fs.to_string(), String::new()));
+            } else {
+                end = start + path[start..].find([',', ':']).ok_or(())?;
             }
+        }
+        if path.as_bytes()[end] == b':' {
+            return Ok(Some(end + 1));
+        }
+        start = end + 1;
+    }
+}
 
-            Some((base.to_string(), root.to_string()))
+fn normalize_fs_path(path: &str, windows: bool) -> String {
+    if windows {
+        path.replace('\\', "/")
+    } else {
+        path.to_string()
+    }
+}
+
+/// Split a filesystem root without changing quoted connection options.
+pub fn parse_fs(path: &str, windows: bool) -> Option<(String, String)> {
+    Some(match remote_prefix_len(path, windows).ok()? {
+        Some(end) => (
+            path[..end].to_string(),
+            normalize_fs_path(&path[end..], windows),
+        ),
+        None => (normalize_fs_path(path, windows), String::new()),
+    })
+}
+
+/// Find delimiters outside rclone's quoted option values (doubled quotes escape a quote).
+fn find_unquoted(value: &str, delimiter: char) -> Option<usize> {
+    let mut quote = None;
+    let mut value_start = false;
+    let mut in_value = false;
+    let mut chars = value.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
+        if let Some(q) = quote {
+            if ch == q {
+                if chars.peek().is_some_and(|(_, next)| *next == q) {
+                    chars.next();
+                } else {
+                    quote = None;
+                }
+            }
+        } else if value_start && (ch == '\'' || ch == '"') {
+            quote = Some(ch);
+            value_start = false;
+        } else if ch == delimiter {
+            return Some(index);
+        } else if ch == ',' {
+            value_start = false;
+            in_value = false;
+        } else {
+            value_start = ch == '=' && !in_value;
+            in_value |= ch == '=';
         }
-        None => {
-            // No colon found - treat as local path
-            Some((fs.to_string(), String::new()))
+    }
+    None
+}
+
+/// Resolve a file as its parent filesystem plus its name on the target OS.
+pub fn split_file_path(path: &str, windows: bool) -> Option<(String, String)> {
+    if let Some(end) = remote_prefix_len(path, windows).ok()? {
+        return Some((
+            path[..end].to_string(),
+            normalize_fs_path(&path[end..], windows),
+        ));
+    }
+    let path = normalize_fs_path(path, windows);
+    if path.ends_with('/') {
+        return Some((path, String::new()));
+    }
+    match path.rfind('/') {
+        Some(index) => {
+            let parent_end = if index == 0 || (windows && index == 2 && path.as_bytes()[1] == b':')
+            {
+                index + 1
+            } else {
+                index
+            };
+            Some((
+                path[..parent_end].to_string(),
+                path[index + 1..].to_string(),
+            ))
         }
+        None if windows && path.len() >= 2 && path.as_bytes()[1] == b':' => {
+            Some((path[..2].to_string(), path[2..].to_string()))
+        }
+        None => Some((".".into(), path)),
     }
 }
 
@@ -579,61 +733,210 @@ fn scoped_runtime_options(
     )]))
 }
 
-/// Recursively redact sensitive values from any JSON Value for logging.
-/// Reads restrict setting from `AppSettingsManager` internally.
-///
-/// NOTE: `--password-command` CLI flags are **always** redacted, regardless of
-/// the `restrict` setting — passwords must never appear in logs.
+/// Redact credentials independently of the optional privacy setting.
 pub fn redact_value(val: &Value, app: &AppHandle) -> Value {
-    let restrict_enabled: bool = app
+    let restrict_enabled = app
         .try_state::<AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
+    redact_log_value(val, restrict_enabled)
+}
 
-    fn redact_recursive(val: &Value, restrict_enabled: bool) -> Value {
-        match val {
-            Value::Object(map) => {
-                let mut redacted_map = serde_json::Map::new();
-                for (k, v) in map {
-                    let new_val =
-                        if restrict_enabled && crate::utils::security::is_sensitive_field(k) {
-                            json!("[RESTRICTED]")
-                        } else {
-                            redact_recursive(v, restrict_enabled)
-                        };
-                    redacted_map.insert(k.clone(), new_val);
-                }
-                Value::Object(redacted_map)
-            }
-            Value::Array(arr) => {
-                let redacted_arr = arr
+fn secret_key(key: &str) -> bool {
+    let key = key.trim_start_matches('-').replace('-', "_").to_lowercase();
+    (key == "key" || key.ends_with("_key"))
+        || SECRET_LOG_KEY_PARTS.iter().any(|part| key.contains(part))
+}
+
+fn redact_log_value(val: &Value, restrict: bool) -> Value {
+    match val {
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(key, value)| {
+                    let value = if secret_key(key)
+                        || (restrict && crate::utils::security::is_sensitive_field(key))
+                    {
+                        json!("[REDACTED]")
+                    } else {
+                        redact_log_value(value, restrict)
+                    };
+                    (key.clone(), value)
+                })
+                .collect(),
+        ),
+        Value::Array(values) => {
+            let mut redact_next = false;
+            Value::Array(
+                values
                     .iter()
-                    .map(|v| redact_recursive(v, restrict_enabled))
-                    .collect();
-                Value::Array(redacted_arr)
-            }
-            // Always redact --password-command=... flags — passwords must never
-            // appear in logs regardless of the `restrict` setting.
-            Value::String(s) if s.starts_with("--password-command") => {
-                if let Some(eq_pos) = s.find('=') {
-                    let flag = &s[..eq_pos];
-                    json!(format!("{flag}=[REDACTED]"))
-                } else {
-                    // Flag without value (next element carries the value) —
-                    // replace the bare flag name so callers know it was present.
-                    json!("--password-command=[REDACTED]")
-                }
-            }
-            _ => val.clone(),
+                    .map(|value| {
+                        let hidden = redact_next;
+                        redact_next = value.as_str().is_some_and(|s| {
+                            s.starts_with('-')
+                                && !s.contains('=')
+                                && (secret_key(s)
+                                    || (restrict && crate::utils::security::is_sensitive_field(s)))
+                        });
+                        if hidden {
+                            json!("[REDACTED]")
+                        } else {
+                            redact_log_value(value, restrict)
+                        }
+                    })
+                    .collect(),
+            )
         }
+        Value::String(value) => {
+            if value.starts_with('-')
+                && let Some((key, _)) = value.split_once('=')
+                && (secret_key(key)
+                    || (restrict && crate::utils::security::is_sensitive_field(key)))
+            {
+                return json!(format!("{key}=[REDACTED]"));
+            }
+            // Runtime provider credentials are embedded in connection strings, not JSON keys.
+            if let Some((base, remote)) = parse_fs(value, false)
+                && base.ends_with(':')
+                && base.contains(',')
+            {
+                let mut rest = &base[..base.len() - 1];
+                let mut parts = Vec::new();
+                loop {
+                    let end = find_unquoted(rest, ',').unwrap_or(rest.len());
+                    let part = &rest[..end];
+                    parts.push(match part.split_once('=') {
+                        Some((key, _))
+                            if secret_key(key)
+                                || (restrict
+                                    && crate::utils::security::is_sensitive_field(key)) =>
+                        {
+                            format!("{key}='[REDACTED]'")
+                        }
+                        _ => part.to_string(),
+                    });
+                    if end == rest.len() {
+                        break;
+                    }
+                    rest = &rest[end + 1..];
+                }
+                return json!(format!("{}:{remote}", parts.join(",")));
+            }
+            val.clone()
+        }
+        _ => val.clone(),
     }
-
-    redact_recursive(val, restrict_enabled)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn provider_credentials_are_always_redacted() {
+        for restrict in [false, true] {
+            for key in [
+                "key_pem",
+                "key",
+                "sas_url",
+                "connection_string",
+                "azureblob-key",
+                "sftp-key-pem",
+            ] {
+                let object = json!({key: "fake-secret"});
+                assert_eq!(redact_log_value(&object, restrict)[key], "[REDACTED]");
+                for value in [
+                    json!([format!("--{key}"), "fake-secret"]),
+                    json!([format!("--{key}=fake-secret")]),
+                    json!(format!(
+                        "remote,{}='fake-secret':path",
+                        key.replace('-', "_")
+                    )),
+                ] {
+                    assert!(
+                        !redact_log_value(&value, restrict)
+                            .to_string()
+                            .contains("fake-secret")
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn redacts_credentials_in_connection_strings_and_cli_arguments() {
+        for restrict in [false, true] {
+            let payload = json!({
+                "fs": "drive,password='PRIVATE_PASS',token='PRIVATE_TOKEN':folder",
+                "srcFs": ":s3,secret_access_key='PRIVATE_KEY',endpoint='https://host':bucket",
+                "password": "PRIVATE_FIELD",
+                "arg": ["--password-command", "echo PRIVATE_COMMAND", "--s3-secret-access-key=PRIVATE_ARG", "--log-level=INFO"]
+            });
+            let result = redact_log_value(&payload, restrict);
+            assert!(!result.to_string().contains("PRIVATE_"), "{result}");
+            assert!(result["fs"].as_str().unwrap().ends_with(":folder"));
+            assert_eq!(result["arg"][3], "--log-level=INFO");
+            assert_eq!(result["arg"][1], "[REDACTED]");
+        }
+        assert_eq!(
+            redact_log_value(&json!({"endpoint": "public-host"}), false)["endpoint"],
+            "public-host"
+        );
+        assert_eq!(
+            redact_log_value(&json!({"endpoint": "private-host"}), true)["endpoint"],
+            "[REDACTED]"
+        );
+    }
+
+    #[test]
+    fn quoted_remote_paths_keep_colons_commas_and_escaped_quotes() {
+        for connection in [
+            "remote,password='a''b:c,d'",
+            ":s3,endpoint=\"https://host\",token='x:y'",
+            "remote,password=abc'def",
+            "remote,password=abc='def",
+        ] {
+            let path = format!("{connection}:folder/ç.txt");
+            assert_eq!(
+                parse_fs(&path, false),
+                Some((format!("{connection}:"), "folder/ç.txt".into()))
+            );
+            assert_eq!(split_file_path(&path, false), parse_fs(&path, false));
+        }
+    }
+
+    #[test]
+    fn file_paths_resolve_to_parent_and_name_on_each_platform() {
+        for (path, parent, name) in [
+            ("/tmp/a:b.txt", "/tmp", "a:b.txt"),
+            ("/file.txt", "/", "file.txt"),
+            ("relative/file.txt", "relative", "file.txt"),
+            ("relative/a:b.txt", "relative", "a:b.txt"),
+            ("./a:b.txt", ".", "a:b.txt"),
+            ("file.txt", ".", "file.txt"),
+            (r"C:\file.txt", "C:/", "file.txt"),
+            (r"C:\folder\file.txt", "C:/folder", "file.txt"),
+            (r"\\server\share\file.txt", "//server/share", "file.txt"),
+            ("/", "/", ""),
+            ("C:foo.txt", "C:", "foo.txt"),
+        ] {
+            assert_eq!(
+                split_file_path(path, path.starts_with("C:") || path.starts_with(r"\\")),
+                Some((parent.into(), name.into())),
+                "{path}"
+            );
+        }
+        assert!(split_file_path("", false).is_none());
+    }
+
+    #[test]
+    fn builder_transfers_ownership_instead_of_cloning_payload() {
+        let mut builder = RclonePayloadBuilder::new();
+        builder.insert("value", "payload".repeat(100));
+        let pointer = builder.get("value").unwrap().as_str().unwrap().as_ptr();
+        let body = builder.build();
+        assert_eq!(pointer, body["value"].as_str().unwrap().as_ptr());
+        assert!(builder.get("value").is_none());
+    }
 
     #[test]
     fn legacy_and_scoped_inline_runtime_options_encode_the_same_payload() {
@@ -657,11 +960,12 @@ mod tests {
             builder
                 .with_runtime_remote_options(common.runtime_remote_options.as_ref())
                 .unwrap();
+            let body = builder.build();
             assert_eq!(
-                builder.build()["srcFs"],
+                body["srcFs"],
                 "drive,env_auth='true',region='a''b,c':photos"
             );
-            assert_eq!(builder.build()["dstFs"], "/backup");
+            assert_eq!(body["dstFs"], "/backup");
         }
     }
 
@@ -728,7 +1032,8 @@ mod tests {
                 is_directory(
                     &StatTransport(Some(json!({"item": {"IsDir": value}}))),
                     "drive:path",
-                    None
+                    None,
+                    false
                 )
                 .await
                 .unwrap(),
@@ -737,7 +1042,7 @@ mod tests {
         }
         for value in [None, Some(json!({"item": null})), Some(json!({}))] {
             assert!(
-                is_directory(&StatTransport(value), "drive:path", None)
+                is_directory(&StatTransport(value), "drive:path", None, false)
                     .await
                     .is_err()
             );
@@ -889,7 +1194,7 @@ mod tests {
                     operation,
                 )),
             }
-            .to_rclone_body()
+            .to_rclone_body(false)
             .unwrap();
             assert_eq!(body["_config"]["DryRun"], true);
             assert_eq!(body["_config"]["Transfers"], 2);
@@ -917,11 +1222,9 @@ mod tests {
             .insert("srcFs", "/local")
             .insert("dstFs", "drive:folder");
         builder.with_runtime_remote_options(after.as_ref()).unwrap();
-        assert_eq!(builder.build()["srcFs"], "/local");
-        assert_eq!(
-            builder.build()["dstFs"],
-            "drive,env_auth='true',region='us':folder"
-        );
+        let body = builder.build();
+        assert_eq!(body["srcFs"], "/local");
+        assert_eq!(body["dstFs"], "drive,env_auth='true',region='us':folder");
         let inline = json!({"remotes":{"drive":{"region":"eu"}}});
         let resolved = resolve_runtime_remote_options(&app, &inline, &migrated, "remotes")
             .unwrap()
@@ -935,40 +1238,65 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_fs_local() {
-        assert_eq!(parse_fs(""), None);
+    fn paths_follow_the_target_os_and_validate_connection_options() {
+        assert!(parse_fs("", false).is_none());
+        for (path, fs, remote, windows) in [
+            ("/var/tmp", "/var/tmp", "", false),
+            (r"C:\Users\admin", "C:/Users/admin", "", true),
+            ("C:/Users/admin", "C:/Users/admin", "", true),
+            ("C:Users/admin", "C:Users/admin", "", true),
+            ("a:", "a:", "", false),
+            ("a:folder/file", "a:", "folder/file", false),
+            ("a:folder/file", "a:folder/file", "", true),
+            (r"a:folder\file", "a:", r"folder\file", false),
+            (r"drive:folder\file", "drive:", "folder/file", true),
+            (
+                r"drive,password='a\b':folder\file",
+                r"drive,password='a\b':",
+                "folder/file",
+                true,
+            ),
+            (r"folder/a\b.txt", "folder/a\\b.txt", "", false),
+            ("my_remote:bucket/path", "my_remote:", "bucket/path", false),
+            (":s3:bucket", ":s3:", "bucket", false),
+            ("remote:", "remote:", "", false),
+            ("remote,password=value", "remote,password=value", "", false),
+            (
+                "remote,env_auth:bucket",
+                "remote,env_auth:",
+                "bucket",
+                false,
+            ),
+        ] {
+            assert_eq!(
+                parse_fs(path, windows),
+                Some((fs.into(), remote.into())),
+                "{path}"
+            );
+        }
+        for path in [
+            ":",
+            "::",
+            ":/file",
+            "bad name :file",
+            "-bad:file",
+            "remote,password='unclosed:file",
+            "remote,password=\"unclosed:file",
+            "remote,password='closed'x:file",
+            "remote,,password=x:file",
+            "remote,bad-key=value:file",
+            "remote,=value:file",
+        ] {
+            assert!(parse_fs(path, false).is_none(), "{path}");
+            assert!(split_file_path(path, false).is_none(), "{path}");
+        }
         assert_eq!(
-            parse_fs("/var/tmp"),
-            Some(("/var/tmp".to_string(), "".to_string()))
+            split_file_path(r"folder/a\b.txt", false),
+            Some(("folder".into(), r"a\b.txt".into()))
         );
         assert_eq!(
-            parse_fs("C:\\Users\\admin"),
-            Some(("C:\\Users\\admin".to_string(), "".to_string()))
-        );
-        assert_eq!(
-            parse_fs("C:/Users/admin"),
-            Some(("C:/Users/admin".to_string(), "".to_string()))
-        );
-        assert_eq!(
-            parse_fs("C:Users/admin"),
-            Some(("C:Users/admin".to_string(), "".to_string()))
-        );
-        assert_eq!(parse_fs("a:"), Some(("a:".to_string(), "".to_string())));
-    }
-
-    #[test]
-    fn test_parse_fs_remote() {
-        assert_eq!(
-            parse_fs("my_remote:bucket/path"),
-            Some(("my_remote:".to_string(), "bucket/path".to_string()))
-        );
-        assert_eq!(
-            parse_fs(":s3:bucket"),
-            Some((":s3:".to_string(), "bucket".to_string()))
-        );
-        assert_eq!(
-            parse_fs("remote:"),
-            Some(("remote:".to_string(), "".to_string()))
+            split_file_path("folder/a:", false),
+            Some(("folder".into(), "a:".into()))
         );
     }
 

@@ -1,0 +1,85 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.command-options-panel,
+.active-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.command-options-panel {
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+.predefined-chips-row,
+.predefined-chips,
+.option-row,
+.option-key-container,
+.option-controls,
+.option-chip-field,
+.option-chip-input,
+.add-custom-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.predefined-chips-row,
+.predefined-chips,
+.option-chip-field {
+  flex-wrap: wrap;
+}
+
+.predefined-label {
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+}
+
+.option-row {
+  padding-block: var(--space-xs);
+}
+
+.option-key-container,
+.option-controls {
+  flex: 1;
+}
+
+.option-key {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.option-value-field,
+.option-chip-field,
+.option-chip-input,
+.custom-key-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-chip-input input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--window-fg-color);
+  font: inherit;
+}
+
+@container (max-width: 35rem) {
+  .option-row,
+  .add-custom-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .option-key-container {
+    justify-content: space-between;
+  }
+}

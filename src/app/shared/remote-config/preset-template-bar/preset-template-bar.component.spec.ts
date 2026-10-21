@@ -214,4 +214,16 @@ describe('PresetTemplateBarComponent', () => {
       })
     );
   });
+  it('reads a lazy form snapshot only when a template action opens', () => {
+    const snapshot = vi.fn().mockReturnValue({ backend: { buffer_size: '64M' } });
+    fixture.componentRef.setInput('currentValues', snapshot);
+    fixture.detectChanges();
+    expect(snapshot).not.toHaveBeenCalled();
+    component.openSaveDialog();
+    expect(snapshot).toHaveBeenCalledOnce();
+    expect(modalServiceMock.openTemplateManager).toHaveBeenCalledWith({
+      mode: 'save',
+      currentValues: { backend: { buffer_size: '64M' } },
+    });
+  });
 });

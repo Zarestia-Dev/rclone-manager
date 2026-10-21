@@ -42,13 +42,11 @@
           [attr.title]="vc.tooltip | translate"
           (click)="onChipClick(vc)"
         >
-          <span class="status-dot">
-            @if (vc.isLoading) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <mat-icon [svgIcon]="vc.icon"></mat-icon>
-            }
-          </span>
+          @if (vc.isLoading) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon [svgIcon]="vc.icon"></mat-icon>
+          }
           <span>{{ vc.label | translate }}</span>
         </button>
       }

@@ -29,40 +29,22 @@
 </header>
 
 <main class="dull">
-  @if (state.isInitializing()) {
-    <div class="init-skeleton" aria-hidden="true">
-      <div class="init-skeleton__sidebar">
-        @for (_ of [1, 2, 3, 4, 5, 6, 7, 8]; track $index) {
-          <div class="init-skeleton__nav-item animate-shimmer"></div>
-        }
-      </div>
-      <div class="init-skeleton__content-container">
-        <div class="init-skeleton__content">
-          <div class="init-skeleton__heading animate-shimmer"></div>
-          <div class="init-skeleton__field animate-shimmer"></div>
-          <div class="init-skeleton__field animate-shimmer init-skeleton__field--short"></div>
-          <div class="init-skeleton__field animate-shimmer"></div>
-          <div class="init-skeleton__block animate-shimmer"></div>
-          <div class="init-skeleton__field animate-shimmer init-skeleton__field--mid"></div>
-        </div>
-      </div>
-    </div>
-  } @else {
-    <mat-sidenav-container class="modal-sidenav-container">
-      @if (!flow.isActive) {
-        <mat-sidenav
-          #sidenav
-          [opened]="isSidebarOpen()"
-          (openedChange)="isSidebarOpen.set($event)"
-          [mode]="sidebarMode()"
-          class="modal-sidebar"
-        >
+  <mat-sidenav-container class="modal-sidenav-container">
+    @if (!flow.isActive) {
+      <mat-sidenav
+        #sidenav
+        [opened]="isSidebarOpen()"
+        (openedChange)="isSidebarOpen.set($event)"
+        [mode]="sidebarMode()"
+        class="modal-sidebar"
+      >
+        @if (!state.isInitializing()) {
           <app-config-modal-sidebar
             [remoteEditCategories]="remoteEditCategories"
             [visibleSections]="visibleSections()"
             [profileIcons]="PROFILE_ICONS"
             [applicableCategories]="applicableCategories()"
-            [currentValues]="currentValues()"
+            [currentValues]="currentValues"
             (stepSelected)="onStepSelected($event)"
             (sectionScrolled)="onSectionScrolled($event)"
             (profileSelected)="onProfileSelected($event)"
@@ -73,210 +55,252 @@
             (obscureToolToggled)="onObscureToolToggled()"
             (templateApplied)="onApplyTemplate($event)"
           />
-        </mat-sidenav>
-      }
-
-      <mat-sidenav-content class="modal-content">
-        <app-search-container
-          [visible]="state.isSearchVisible()"
-          (searchToggle)="toggleSearchVisibility()"
-          [searchText]="state.searchQuery()"
-          (searchTextChange)="onSearchInput($event)"
-          [placeholder]="'shared.search.placeholder'"
-          [ariaLabel]="'shared.search.ariaLabel'"
-        ></app-search-container>
-
-        <app-cli-import
-          [visible]="state.showCliImport()"
-          [remoteType]="state.remoteTypeSignal()"
-          [existingProfiles]="state.profileNamesMap()"
-          [activeStep]="state.activeStepType()"
-          (apply)="state.applyImportResult($event)"
-        ></app-cli-import>
-
-        <app-obscure-tool
-          [visible]="state.showObscureTool()"
-          [sensitiveFields]="state.activeSensitiveFields()"
-          [provider]="state.remoteTypeSignal()"
-          (applyObscured)="state.applyObscuredValue($event.key, $event.value)"
-        ></app-obscure-tool>
-
-        @if (state.oauthHelperUrl(); as oauthUrlValue) {
-          <section class="oauth-helper" aria-live="polite">
-            <div class="oauth-helper-text">
-              <mat-icon svgIcon="globe"></mat-icon>
-              <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
-            </div>
-            <div class="oauth-helper-actions">
-              <a
-                class="oauth-direct-link"
-                [href]="oauthUrlValue"
-                target="_blank"
-                rel="noopener noreferrer"
-                [attr.title]="'modals.oauth.openLink' | translate"
-              >
-                {{ oauthUrlValue }}
-              </a>
-
-              <button
-                matIconButton
-                [appCopyToClipboard]="oauthUrlValue"
-                [attr.aria-label]="'modals.oauth.copyLink' | translate"
-                [attr.title]="'modals.oauth.copyLink' | translate"
-              >
-                <mat-icon svgIcon="copy" class="accent"></mat-icon>
-              </button>
-            </div>
-          </section>
         }
+      </mat-sidenav>
+    }
 
-        @if (flow.isActive && flow.question) {
-          <section class="step-container interactive" aria-live="polite" aria-busy="true">
-            <app-interactive-config-step
-              [question]="flow.question"
-              [canceling]="state.isAuthCancelled()"
-              [processing]="flow.isProcessing"
-              (answerChange)="handleInteractiveAnswerUpdate($event)"
-            />
-          </section>
+    <mat-sidenav-content class="modal-content" [attr.aria-busy]="state.isInitializing()">
+      @if (state.isInitializing()) {
+        <section
+          class="step-container"
+          [inert]="state.isAuthInProgress() || state.isPopulatingForm() || state.loadFailed()"
+        >
+          <app-config-form-skeleton [variant]="state.editTarget() ? 'fields' : 'selection'" />
+        </section>
+      } @else {
+        @if (state.loadFailed()) {
+          <app-alert-banner
+            severity="error"
+            [title]="'modals.remoteConfig.errors.loadFailed' | translate"
+          />
+          <button matButton (click)="retryLoading()">{{ 'common.retry' | translate }}</button>
         }
+        @if (hasInitialized()) {
+          <app-search-container
+            [visible]="state.isSearchVisible()"
+            (searchToggle)="toggleSearchVisibility()"
+            [searchText]="state.searchQuery()"
+            (searchTextChange)="onSearchInput($event)"
+            [placeholder]="'shared.search.placeholder'"
+            [ariaLabel]="'shared.search.ariaLabel'"
+          ></app-search-container>
 
-        @if (!flow.isActive) {
-          @switch (state.currentStep()) {
-            @case (1) {
-              <section class="step-container">
-                <app-remote-config-step
-                  class="step"
-                  [form]="state.remoteForm"
-                  [remoteFields]="state.dynamicRemoteFields()"
-                  [isLoading]="state.isRemoteConfigLoading()"
-                  [existingRemotes]="state.existingRemotes()"
-                  [remoteTypes]="state.remoteTypes()"
-                  [isTypeLocked]="state.isEditingExisting() || !!state.cloneTarget()"
-                  [isNameLocked]="state.isEditingExisting()"
-                  [searchQuery]="state.searchQuery()"
-                  [showAdvancedOptions]="state.showAdvancedOptions()"
-                  [initialCommandOptions]="state.commandOptions()"
-                  (remoteTypeChanged)="state.onRemoteTypeChange()"
-                  (advancedOptionsToggled)="state.showAdvancedOptions.set($event)"
-                  (fieldChanged)="state.onRemoteFieldChanged($event.fieldName, $event.isChanged)"
-                  (commandOptionsChanged)="state.commandOptions.set($event)"
-                />
-              </section>
-            }
+          <app-cli-import
+            [visible]="state.showCliImport()"
+            [remoteType]="state.remoteTypeSignal()"
+            [existingProfiles]="state.profileNamesMap()"
+            [activeStep]="state.activeStepType()"
+            (apply)="state.applyImportResult($event)"
+          ></app-cli-import>
 
-            @default {
-              @if (state.activeFlagType(); as flagType) {
-                <section class="step-container">
-                  <app-profile-switcher [flagType]="flagType" />
+          <app-obscure-tool
+            [visible]="state.showObscureTool()"
+            [sensitiveFields]="state.activeSensitiveFields()"
+            [provider]="state.remoteTypeSignal()"
+            (applyObscured)="state.applyObscuredValue($event.key, $event.value)"
+          ></app-obscure-tool>
 
-                  @if (LINKED_PROFILE_TYPES.has(flagType)) {
-                    <mat-expansion-panel class="linked-profiles-panel">
-                      <mat-expansion-panel-header>
-                        <mat-panel-title>
-                          <mat-icon svgIcon="gear"></mat-icon>
-                          <span>{{
-                            'modals.remoteConfig.advancedProfiles.title' | translate
-                          }}</span>
-                        </mat-panel-title>
-                        <mat-panel-description>
-                          <span class="profile-count">{{
-                            'modals.remoteConfig.advancedProfiles.linked'
-                              | translate: { count: state.linkedProfileSelectFields().length }
-                          }}</span>
-                        </mat-panel-description>
-                      </mat-expansion-panel-header>
+          @if (state.oauthHelperUrl(); as oauthUrlValue) {
+            <section class="oauth-helper" aria-live="polite">
+              <div class="oauth-helper-text">
+                <mat-icon svgIcon="globe"></mat-icon>
+                <span>{{ 'modals.oauth.manualOpenPrompt' | translate }}</span>
+              </div>
+              <div class="oauth-helper-actions">
+                <a
+                  class="oauth-direct-link"
+                  [href]="oauthUrlValue"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.title]="'modals.oauth.openLink' | translate"
+                >
+                  {{ oauthUrlValue }}
+                </a>
 
-                      <div class="linked-profiles-content">
-                        @for (field of state.linkedProfileSelectFields(); track field.type) {
-                          <mat-form-field subscriptSizing="dynamic">
-                            <mat-label>{{ field.labelKey | translate }}</mat-label>
-                            <mat-select
-                              [formControl]="
-                                state.getLinkedProfileControl(flagType, field.profileKey)
-                              "
-                              (selectionChange)="state.selectProfile(field.type, $event.value)"
-                            >
-                              @for (opt of state.profileOptions()[field.type]; track opt) {
-                                <mat-option [value]="opt">{{ opt }}</mat-option>
-                              }
-                            </mat-select>
-                          </mat-form-field>
-                        }
-                      </div>
-                    </mat-expansion-panel>
-                  }
+                <button
+                  matIconButton
+                  [appCopyToClipboard]="oauthUrlValue"
+                  [attr.aria-label]="'modals.oauth.copyLink' | translate"
+                  [attr.title]="'modals.oauth.copyLink' | translate"
+                >
+                  <mat-icon svgIcon="copy" class="accent"></mat-icon>
+                </button>
+              </div>
+            </section>
+          }
 
-                  @if (!['vfs', 'filter', 'backend'].includes(flagType)) {
-                    <app-operation-config
-                      [opFormGroup]="state.getOperationConfigGroup(flagType)"
-                      [operationType]="flagType"
-                      [currentRemoteName]="state.currentRemoteName()"
-                      [existingRemotes]="state.existingRemotes()"
-                      [isNewRemote]="!state.editTarget()"
-                      [searchQuery]="state.searchQuery()"
-                      [description]="
-                        (flagType === 'serve'
-                          ? 'wizards.remoteConfig.serveDescription'
-                          : 'wizards.remoteConfig.operationDescription'
-                        ) | translate
-                      "
-                    />
-                  }
+          @if (flow.isActive && flow.question) {
+            <section class="step-container interactive" aria-live="polite" aria-busy="true">
+              <app-interactive-config-step
+                [question]="flow.question"
+                [canceling]="state.isAuthCancelled()"
+                [processing]="flow.isProcessing"
+                (answerChange)="handleInteractiveAnswerUpdate($event)"
+              />
+            </section>
+          }
 
-                  <app-flag-config-step
-                    class="step"
-                    [flagType]="flagType"
-                    [form]="state.remoteConfigForm"
-                    [existingRemotes]="state.existingRemotes()"
-                    [currentRemoteName]="state.currentRemoteName()"
-                    [searchQuery]="state.searchQuery()"
-                    [dynamicFlagFields]="state.getDynamicFlagFields(flagType)"
-                    [isLoadingServeFields]="state.isLoadingServeFields()"
-                    [highlightedFields]="state.highlightedFieldsForActiveProfiles()"
-                    (serveTypeChange)="state.onServeTypeChange($event)"
-                  />
-                </section>
-              } @else {
-                <!-- Final step: runtime remote configuration -->
-                <section class="step-container">
-                  <app-profile-switcher flagType="runtimeRemote" />
-
-                  <app-alert-banner
-                    severity="info"
-                    [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
-                    [description]="
-                      'wizards.remoteConfig.runtimeRemoteWarning.description' | translate
-                    "
-                  ></app-alert-banner>
-
+          @if (!flow.isActive) {
+            @switch (state.currentStep()) {
+              @case (1) {
+                <section
+                  class="step-container"
+                  [inert]="
+                    state.isAuthInProgress() || state.isPopulatingForm() || state.loadFailed()
+                  "
+                >
                   <app-remote-config-step
                     class="step"
-                    [form]="state.runtimeRemoteConfigGroup"
-                    [remoteFields]="state.dynamicRuntimeRemoteFields()"
-                    [remoteTypes]="state.remoteTypes()"
-                    [isLoading]="state.isLoadingRuntimeRemoteFields()"
+                    [form]="state.remoteForm"
+                    [remoteFields]="state.dynamicRemoteFields()"
+                    [isLoading]="state.isRemoteConfigLoading()"
+                    [disabled]="state.isAuthInProgress()"
                     [existingRemotes]="state.existingRemotes()"
+                    [remoteTypes]="state.remoteTypes()"
+                    [isTypeLocked]="state.isEditingExisting() || !!state.cloneTarget()"
+                    [isNameLocked]="state.isEditingExisting()"
+                    [autoObscure]="!state.isEditingExisting()"
                     [searchQuery]="state.searchQuery()"
-                    [visibility]="{
-                      type: false,
-                      name: false,
-                      advanced: false,
-                      interactive: false,
-                      commands: false,
-                    }"
-                    [showAdvancedOptions]="true"
+                    [showAdvancedOptions]="state.showAdvancedOptions()"
                     [initialCommandOptions]="state.commandOptions()"
+                    (remoteTypeChanged)="state.onRemoteTypeChange()"
+                    (advancedOptionsToggled)="state.showAdvancedOptions.set($event)"
+                    (fieldChanged)="state.onRemoteFieldChanged($event.fieldName, $event.isChanged)"
                     (commandOptionsChanged)="state.commandOptions.set($event)"
                   />
                 </section>
               }
+
+              @default {
+                @if (state.activeFlagType(); as flagType) {
+                  <section
+                    class="step-container"
+                    [attr.aria-busy]="state.isLoadingFlags() || state.isLoadingServeFields()"
+                    [inert]="
+                      state.isAuthInProgress() || state.isPopulatingForm() || state.loadFailed()
+                    "
+                  >
+                    @if (state.isLoadingFlags() && !state.activeFieldsReady()) {
+                      <app-config-form-skeleton />
+                    } @else {
+                      <app-profile-switcher [flagType]="flagType" />
+
+                      @if (LINKED_PROFILE_TYPES.has(flagType)) {
+                        <mat-expansion-panel class="linked-profiles-panel">
+                          <mat-expansion-panel-header>
+                            <mat-panel-title>
+                              <mat-icon svgIcon="gear"></mat-icon>
+                              <span>{{
+                                'modals.remoteConfig.advancedProfiles.title' | translate
+                              }}</span>
+                            </mat-panel-title>
+                            <mat-panel-description>
+                              <span class="app-pill p-primary">{{
+                                'modals.remoteConfig.advancedProfiles.linked'
+                                  | translate: { count: state.linkedProfileSelectFields().length }
+                              }}</span>
+                            </mat-panel-description>
+                          </mat-expansion-panel-header>
+
+                          <div class="linked-profiles-content">
+                            @for (field of state.linkedProfileSelectFields(); track field.type) {
+                              <mat-form-field subscriptSizing="dynamic">
+                                <mat-label>{{ field.labelKey | translate }}</mat-label>
+                                <mat-select
+                                  [formControl]="
+                                    state.getLinkedProfileControl(flagType, field.profileKey)
+                                  "
+                                  (selectionChange)="state.selectProfile(field.type, $event.value)"
+                                >
+                                  @for (opt of state.profileOptions()[field.type]; track opt) {
+                                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                                  }
+                                </mat-select>
+                              </mat-form-field>
+                            }
+                          </div>
+                        </mat-expansion-panel>
+                      }
+
+                      @if (!['vfs', 'filter', 'backend'].includes(flagType)) {
+                        <app-operation-config
+                          [opFormGroup]="state.getOperationConfigGroup(flagType)"
+                          [operationType]="flagType"
+                          [currentRemoteName]="state.currentRemoteName()"
+                          [existingRemotes]="state.existingRemotes()"
+                          [isNewRemote]="!state.editTarget()"
+                          [searchQuery]="state.searchQuery()"
+                          [description]="
+                            (flagType === 'serve'
+                              ? 'wizards.remoteConfig.serveDescription'
+                              : 'wizards.remoteConfig.operationDescription'
+                            ) | translate
+                          "
+                        />
+                      }
+
+                      <app-flag-config-step
+                        class="step"
+                        [flagType]="flagType"
+                        [form]="state.remoteConfigForm"
+                        [existingRemotes]="state.existingRemotes()"
+                        [currentRemoteName]="state.currentRemoteName()"
+                        [searchQuery]="state.searchQuery()"
+                        [dynamicFlagFields]="state.getDynamicFlagFields(flagType)"
+                        [isLoadingServeFields]="state.isLoadingServeFields()"
+                        [isInvalid]="state.isActiveStepInvalid()"
+                        [highlightedFields]="state.highlightedFieldsForActiveProfiles()"
+                        (serveTypeChange)="state.onServeTypeChange($event)"
+                      />
+                    }
+                  </section>
+                } @else {
+                  <!-- Final step: runtime remote configuration -->
+                  <section
+                    class="step-container"
+                    [inert]="
+                      state.isAuthInProgress() || state.isPopulatingForm() || state.loadFailed()
+                    "
+                  >
+                    <app-profile-switcher flagType="runtimeRemote" />
+
+                    <app-alert-banner
+                      severity="info"
+                      [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
+                      [description]="
+                        'wizards.remoteConfig.runtimeRemoteWarning.description' | translate
+                      "
+                    ></app-alert-banner>
+
+                    <app-remote-config-step
+                      class="step"
+                      [form]="state.runtimeRemoteConfigGroup"
+                      [remoteFields]="state.dynamicRuntimeRemoteFields()"
+                      [remoteTypes]="state.remoteTypes()"
+                      [isLoading]="state.isLoadingRuntimeRemoteFields()"
+                      [disabled]="state.isAuthInProgress()"
+                      [existingRemotes]="state.existingRemotes()"
+                      [searchQuery]="state.searchQuery()"
+                      [visibility]="{
+                        type: false,
+                        name: false,
+                        advanced: false,
+                        interactive: false,
+                        commands: false,
+                      }"
+                      [showAdvancedOptions]="true"
+                      [initialCommandOptions]="state.commandOptions()"
+                      (commandOptionsChanged)="state.commandOptions.set($event)"
+                    />
+                  </section>
+                }
+              }
             }
           }
         }
-      </mat-sidenav-content>
-    </mat-sidenav-container>
-  }
+      }
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </main>
 
 <app-config-modal-footer

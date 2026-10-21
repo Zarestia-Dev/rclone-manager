@@ -8,6 +8,7 @@ import {
   input,
   output,
   computed,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -17,6 +18,9 @@ import {
   FormArray,
   FormControl,
   NG_VALUE_ACCESSOR,
+  NG_VALIDATORS,
+  ValidationErrors,
+  Validator,
   ReactiveFormsModule,
   ValidatorFn,
   Validators,
@@ -40,7 +44,6 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
-import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 import {
   isConvertibleType,
   isJsonArrayType,
@@ -48,6 +51,7 @@ import {
   isArrayType,
   isIntType,
   isFloatType,
+  deepEqual,
 } from 'src/app/shared/utils';
 import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
 
@@ -118,16 +122,16 @@ const ENCODING_FLAGS: readonly string[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: SettingControlComponent, multi: true },
+    { provide: NG_VALIDATORS, useExisting: SettingControlComponent, multi: true },
     provideNativeDateAdapter(),
   ],
 })
-export class SettingControlComponent implements ControlValueAccessor {
+export class SettingControlComponent implements ControlValueAccessor, Validator {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteService = inject(RemoteManagementService);
-  private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
   private readonly translate = inject(TranslateService);
   readonly currentLang = this.translate.currentLang;
 
@@ -136,6 +140,8 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
   readonly showFlag = input(true);
+  readonly showObscureButton = input(true);
+  readonly isDisabled = signal(false);
 
   readonly flagNames = computed(() => {
     const opt = this.mergedOption();
@@ -201,24 +207,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
   });
 
-  readonly showObscureButton = computed(() => {
-    if (!this.isPasswordField()) return false;
-    if (this.remoteState) {
-      const activeStep = this.remoteState.activeStepType();
-      if (activeStep === 'runtimeRemote' || this.remoteState.editTarget()) {
-        return true;
-      }
-      const opts = this.remoteState.commandOptions();
-      const obscureOpt = opts.find(o => o.key === 'obscure');
-      const noObscureOpt = opts.find(o => o.key === 'noObscure');
-      const isObscureActive = obscureOpt?.value === true && !(noObscureOpt?.value === true);
-      if (isObscureActive) {
-        return false;
-      }
-    }
-    return true;
-  });
-
   readonly hasObscurableValue = computed(() => {
     const ctrl = this.control();
     this.controlValueVersion(); // track reactive updates
@@ -256,9 +244,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       const caller = this.optionOverrides()[opt.Name] ?? {};
       return { ...opt, ...builtIn, ...caller } as RcConfigOption;
     },
-    {
-      equal: (a, b) => a?.Name === b?.Name && a?.Type === b?.Type && a?.Value === b?.Value,
-    }
+    { equal: deepEqual }
   );
 
   readonly isMultiselectOption = computed(() => {
@@ -398,6 +384,9 @@ export class SettingControlComponent implements ControlValueAccessor {
   private onTouched: () => void = () => {
     /* empty */
   };
+  private onValidatorChange: () => void = () => {
+    /* registered by Angular forms */
+  };
   private controlSubscriptions = new Subscription();
   private pendingWriteValue: unknown = undefined;
   private hasPendingWrite = false;
@@ -412,7 +401,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       .subscribe(val => this.restrictMode.set(val));
 
     effect(() => {
-      if (this.mergedOption()) this.createControl();
+      if (this.mergedOption()) untracked(() => this.createControl());
     });
 
     this.destroyRef.onDestroy(() => {
@@ -626,12 +615,29 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
+  validate(): ValidationErrors | null {
+    return this.control()?.errors ?? null;
+  }
+
+  registerOnValidatorChange(fn: () => void): void {
+    this.onValidatorChange = fn;
+  }
+
+  setDisabledState(disabled: boolean): void {
+    this.isDisabled.set(disabled);
+    for (const control of [this.control(), this.dateControl(), this.timeControl()]) {
+      if (disabled) control?.disable({ emitEvent: false });
+      else control?.enable({ emitEvent: false });
+    }
+  }
+
   // Control creation
 
   private createControl(): void {
     this.controlSubscriptions.unsubscribe();
     this.controlSubscriptions = new Subscription();
 
+    const previous = this.control()?.value;
     const opt = this.mergedOption();
     if (!opt) return;
 
@@ -658,7 +664,11 @@ export class SettingControlComponent implements ControlValueAccessor {
       this.writeValue(this.pendingWriteValue);
       this.hasPendingWrite = false;
       this.pendingWriteValue = undefined;
+    } else if (previous !== undefined) {
+      this.writeValue(previous);
     }
+    this.setDisabledState(this.isDisabled());
+    this.onValidatorChange();
 
     // Bump version so isValueChanged computed re-evaluates for the new control.
     this.controlValueVersion.update(v => v + 1);
@@ -742,7 +752,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
         this.controlValueVersion.update(v => v + 1);
-        if (this.remoteState?.isPopulatingForm()) return;
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
@@ -750,6 +759,8 @@ export class SettingControlComponent implements ControlValueAccessor {
         if (this.mergedOption()?.Type === 'Time') this.updateSplitFromControl(value);
       })
     );
+
+    this.controlSubscriptions.add(ctrl.statusChanges.subscribe(() => this.onValidatorChange()));
 
     if (this.mergedOption()?.Type === 'Time') {
       this.updateSplitFromControl(ctrl.value);
@@ -883,6 +894,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   async obscureFieldValue(event: MouseEvent): Promise<void> {
+    if (this.isDisabled()) return;
     event.stopPropagation();
     event.preventDefault();
     const ctrl = this.control();

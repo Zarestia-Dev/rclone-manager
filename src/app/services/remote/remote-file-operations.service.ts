@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { generatePrefixedId } from 'src/app/shared/utils';
@@ -14,9 +14,36 @@ import {
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
+export interface PendingWebUpload {
+  group: string;
+  remote: string;
+  path: string;
+  origin?: Origin;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
+  private readonly _pendingWebUploads = signal<PendingWebUpload[]>([]);
+  readonly pendingWebUploads = this._pendingWebUploads.asReadonly();
+
+  private async sendWebUpload(
+    body: FormData,
+    upload: PendingWebUpload
+  ): Promise<{ success: boolean; data: string; error?: string }> {
+    this._pendingWebUploads.update(uploads => [...uploads, upload]);
+    try {
+      return await firstValueFrom(
+        this.http.post<{ success: boolean; data: string; error?: string }>(
+          `${this.apiClient.getApiBase()}/upload`,
+          body,
+          { withCredentials: true }
+        )
+      );
+    } finally {
+      this._pendingWebUploads.update(uploads => uploads.filter(item => item !== upload));
+    }
+  }
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
@@ -242,6 +269,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     relativePath = file.name,
     group?: string
   ): Promise<string> {
+    group ||= generatePrefixedId('upload');
     const body = new FormData();
     body.append('remote', remote);
     body.append('path', path);
@@ -250,13 +278,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     body.append('mtime', file.lastModified.toString());
     body.append('file', file, relativePath || file.name);
 
-    const response = await firstValueFrom(
-      this.http.post<{ success: boolean; data: string; error?: string }>(
-        `${this.apiClient.getApiBase()}/upload`,
-        body,
-        { withCredentials: true }
-      )
-    );
+    const response = await this.sendWebUpload(body, { group, remote, path, origin: source });
     if (!response.success) throw new Error(response.error || 'Upload failed');
     return response.data;
   }
@@ -277,7 +299,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     body.append('remote', remote);
     body.append('path', path);
     if (source) body.append('origin', JSON.stringify(source));
-    body.append('group', generatePrefixedId('upload'));
+    const group = generatePrefixedId('upload');
+    body.append('group', group);
 
     for (const dir of uniqueDirs) {
       body.append('emptyDirs', dir);
@@ -289,13 +312,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     }
 
     try {
-      const response = await firstValueFrom(
-        this.http.post<{ success: boolean; data: string; error?: string }>(
-          `${this.apiClient.getApiBase()}/upload`,
-          body,
-          { withCredentials: true }
-        )
-      );
+      const response = await this.sendWebUpload(body, { group, remote, path, origin: source });
       if (!response.success) {
         return {
           successCount: 0,

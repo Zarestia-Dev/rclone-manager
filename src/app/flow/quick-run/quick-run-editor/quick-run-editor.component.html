@@ -23,6 +23,7 @@
     matIconButton
     type="button"
     (click)="close()"
+    [disabled]="isSaving()"
     [attr.title]="'common.close' | translate"
     [attr.aria-label]="'common.close' | translate"
   >
@@ -30,7 +31,7 @@
   </button>
 </header>
 
-<main class="dull" [formGroup]="form">
+<main class="dull" [formGroup]="form" [inert]="isSaving()">
   <mat-sidenav-container class="editor-sidenav-container">
     <mat-sidenav
       #sidenav
@@ -91,7 +92,7 @@
           <app-preset-template-bar
             [remoteType]="selectedRemoteType()"
             [applicableCategories]="applicableCategories()"
-            [currentValues]="currentValues()"
+            [currentValues]="currentValues"
             (applyTemplate)="onApplyTemplate($event)"
           />
         </mat-nav-list>
@@ -113,7 +114,6 @@
         [remoteType]="selectedRemoteType()"
         [activeStep]="activeTab()"
         [isQuickRun]="true"
-        [existingProfiles]="existingProfiles()"
         (apply)="onCliImportApply($event)"
       />
 
@@ -124,6 +124,15 @@
         (applyObscured)="applyObscuredValue($event.key, $event.value)"
       />
 
+      @if (flagLoadFailed() || runtimeLoadFailed()) {
+        <app-alert-banner
+          severity="error"
+          [title]="'modals.remoteConfig.errors.loadFailed' | translate"
+        />
+        <button matButton type="button" (click)="retryLoading()">
+          {{ 'common.retry' | translate }}
+        </button>
+      }
       <!-- 1. Top Configuration Section -->
       <section class="top-config-section">
         <div class="identity-remote-row">
@@ -131,7 +140,7 @@
           <mat-form-field class="name-field">
             <mat-label>{{ 'flow.quickRun.editor.name' | translate }}</mat-label>
             <input matInput formControlName="name" />
-            @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+            @if (form.get('name')?.invalid && form.get('name')?.touched) {
               <mat-error>{{ 'flow.quickRun.editor.nameRequired' | translate }}</mat-error>
             }
           </mat-form-field>
@@ -175,6 +184,7 @@
                   class="app-pill interactive"
                   [class.is-selected]="currentOpType() === op.key"
                   (click)="selectOperation(op.key)"
+                  [disabled]="isSaving()"
                   [attr.title]="getOperationLabel(op.key) | translate"
                 >
                   <mat-icon [svgIcon]="op.icon"></mat-icon>
@@ -189,8 +199,9 @@
       <!-- 2. Active Tab Content Section -->
       @if (form.get('remoteName')?.value) {
         <section class="config-tabs-section">
-          <div class="tab-content">
-            @if (activeTab() === 'runtimeRemote') {
+          <div class="tab-content" [attr.aria-busy]="isLoadingFlags()">
+            @let tab = activeTab();
+            @if (tab === 'runtimeRemote') {
               <app-alert-banner
                 severity="info"
                 [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
@@ -227,17 +238,23 @@
               }
 
               <!-- Flag settings step (operation, vfs, filter, backend) -->
-              <app-flag-config-step
-                [form]="form"
-                [flagType]="$any(activeTab())"
-                [dynamicFlagFields]="getFlagFields(activeTab())"
-                [currentRemoteName]="currentRemoteName()"
-                [existingRemotes]="existingRemoteNames()"
-                [searchQuery]="searchQuery()"
-                [highlightedFields]="highlightedFields()"
-                [isLoadingServeFields]="isLoadingServeFields()"
-                (serveTypeChange)="onServeTypeChange($event)"
-              />
+              @if (isLoadingFlags() && !getFlagFields(tab).length) {
+                <app-config-form-skeleton />
+              } @else if (getFlagFields(tab).length) {
+                <app-flag-config-step
+                  [form]="form"
+                  [flagType]="tab"
+                  [dynamicFlagFields]="getFlagFields(activeTab())"
+                  [currentRemoteName]="currentRemoteName()"
+                  [existingRemotes]="existingRemoteNames()"
+                  [searchQuery]="searchQuery()"
+                  [highlightedFields]="highlightedFields()"
+                  [isLoadingServeFields]="isLoadingServeFields()"
+                  [isLoading]="isLoadingFlags()"
+                  [isInvalid]="isActiveTabInvalid()"
+                  (serveTypeChange)="onServeTypeChange($event)"
+                />
+              }
             }
           </div>
         </section>
@@ -255,12 +272,7 @@
   <button matButton type="button" (click)="close()" [disabled]="isSaving()">
     {{ 'common.cancel' | translate }}
   </button>
-  <button
-    matButton="filled"
-    type="button"
-    (click)="submit()"
-    [disabled]="isSaving() || form.invalid"
-  >
+  <button matButton="filled" type="button" (click)="submit()" [disabled]="isSubmitDisabled()">
     @if (isSaving()) {
       <mat-icon svgIcon="spinner"></mat-icon>
     }

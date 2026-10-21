@@ -1,5 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { ComponentRef } from '@angular/core';
+import { Component, ComponentRef } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { By } from '@angular/platform-browser';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { of } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -7,6 +9,21 @@ import { SettingControlComponent } from './setting-control.component';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RcConfigOption } from '@app/types';
+
+@Component({
+  imports: [ReactiveFormsModule, SettingControlComponent],
+  template: '<app-setting-control [option]="option" [formControl]="value" />',
+})
+class SettingControlHost {
+  readonly option: RcConfigOption = {
+    Name: 'timeout',
+    FieldName: 'timeout',
+    Help: '',
+    Type: 'Duration',
+    DefaultStr: '0s',
+  };
+  readonly value = new FormControl('10m');
+}
 
 describe('SettingControlComponent', () => {
   let fixture: ComponentFixture<SettingControlComponent>;
@@ -28,7 +45,7 @@ describe('SettingControlComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [SettingControlComponent],
+      imports: [SettingControlComponent, SettingControlHost],
       providers: [
         provideTranslateService(),
         { provide: AppSettingsService, useValue: appSettingsServiceMock },
@@ -111,6 +128,53 @@ describe('SettingControlComponent', () => {
     expect(ctrl?.hasError('duration')).toBe(true);
   });
 
+  it('retains the field control when new metadata is structurally unchanged', () => {
+    const option: RcConfigOption = {
+      Name: 'region',
+      FieldName: 'region',
+      Help: '',
+      Type: 'string',
+      DefaultStr: '',
+      Examples: [{ Value: 'eu', Help: '' }],
+    };
+    componentRef.setInput('option', option);
+    fixture.detectChanges();
+    const control = component.control();
+    componentRef.setInput('option', { ...option, Examples: [{ Value: 'eu', Help: '' }] });
+    fixture.detectChanges();
+    expect(component.control()).toBe(control);
+  });
+
+  it('updates choices, defaults and validation when only metadata changes', () => {
+    const option: RcConfigOption = {
+      Name: 'region',
+      FieldName: 'region',
+      Help: '',
+      Type: 'string',
+      DefaultStr: '',
+      Exclusive: true,
+      Examples: [{ Value: 'old', Help: '' }],
+    };
+    componentRef.setInput('option', option);
+    fixture.detectChanges();
+    component.control()?.setValue('old');
+    componentRef.setInput('option', {
+      ...option,
+      Required: true,
+      DefaultStr: 'new',
+      Examples: [{ Value: 'new', Help: '' }],
+    });
+    fixture.detectChanges();
+    expect(component.controlOptionsList()).toEqual([{ Value: 'new', Help: '' }]);
+    expect(component.uiDefaultValue()).toBe('new');
+    expect(component.control()?.value).toBe('old');
+    component.control()?.setValue('');
+    expect(component.control()?.hasError('required')).toBe(true);
+    componentRef.setInput('option', { ...option, Required: false });
+    fixture.detectChanges();
+    expect(component.control()?.hasError('required')).toBe(false);
+  });
+
   it('should enforce required validator only when option.Required is true', () => {
     const opt: RcConfigOption = {
       Name: 'bucket',
@@ -160,5 +224,41 @@ describe('SettingControlComponent', () => {
     fixture.detectChanges();
     expect(component.controlType()).toBe('autocomplete');
     expect(component.controlOptionsList().length).toBeGreaterThan(0);
+  });
+  it('reports typed format errors through the parent form control', () => {
+    const host = TestBed.createComponent(SettingControlHost);
+    host.detectChanges();
+    host.componentInstance.value.setValue('not-a-duration');
+    host.detectChanges();
+    expect(host.componentInstance.value.hasError('duration')).toBe(true);
+    host.componentInstance.value.setValue('30s');
+    host.detectChanges();
+    expect(host.componentInstance.value.valid).toBe(true);
+  });
+
+  it('propagates disabled state from the parent and restores editable controls', () => {
+    const host = TestBed.createComponent(SettingControlHost);
+    host.detectChanges();
+    const setting = host.debugElement.query(By.directive(SettingControlComponent))
+      .componentInstance as SettingControlComponent;
+    host.componentInstance.value.disable();
+    host.detectChanges();
+    expect(setting.control()?.disabled).toBe(true);
+    expect(setting.dateControl().disabled).toBe(true);
+    host.componentInstance.value.enable();
+    host.detectChanges();
+    expect(setting.control()?.enabled).toBe(true);
+  });
+
+  it('retains a disabled state received before internal controls are created', () => {
+    component.setDisabledState(true);
+    componentRef.setInput('option', {
+      Name: 'token',
+      FieldName: 'token',
+      Help: '',
+      Type: 'string',
+    });
+    fixture.detectChanges();
+    expect(component.control()?.disabled).toBe(true);
   });
 });

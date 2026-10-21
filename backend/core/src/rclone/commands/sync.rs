@@ -4,13 +4,13 @@ use crate::context::AppHandle;
 use futures::future::join_all;
 use serde_json::{Map, Value, json};
 
-use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
+use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::operations;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::OperationType;
 use crate::utils::types::remotes::ProfileParams;
 
-use super::common::{ResolvedProfile, is_directory, parse_fs};
+use super::common::{ResolvedProfile, backend_os, is_directory, parse_fs, split_file_path};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
 /// Helper to extract dry_run boolean from configs across case variants (dryRun, dry_run, DryRun).
@@ -75,7 +75,7 @@ impl GenericTransferParams {
         )
     }
 
-    pub fn to_rclone_body(&self) -> Result<Value, String> {
+    pub fn to_rclone_body(&self, windows: bool) -> Result<Value, String> {
         let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
             &self.rclone_config,
         );
@@ -100,13 +100,14 @@ impl GenericTransferParams {
             map.insert("DryRun".to_string(), json!(is_dry_run));
         }
 
-        if self.transfer_type == OperationType::Delete {
-            let endpoint = if self.is_dir {
-                operations::PURGE
-            } else {
-                operations::DELETEFILE
-            };
-            let parsed = parse_fs(&self.source);
+        if self.transfer_type == OperationType::Delete && self.is_dir {
+            // Delete takes the complete filesystem root, not a separate remote path.
+            // Unlike purge it obeys filters and leaves directories in place.
+            builder.insert("fs", self.source.clone());
+            builder.insert("_path", operations::DELETE);
+        } else if self.transfer_type == OperationType::Delete {
+            let endpoint = operations::DELETEFILE;
+            let parsed = split_file_path(&self.source, windows);
             if let Some((fs, mut remote)) = parsed {
                 if fs.ends_with(':') {
                     remote = remote.trim_start_matches('/').to_string();
@@ -118,17 +119,21 @@ impl GenericTransferParams {
                 return Err(format!("Could not parse source path: {}", self.source));
             }
         } else if self.transfer_type == OperationType::Copyurl {
-            let parsed = parse_fs(&self.dest);
+            let auto_filename = self
+                .rclone_config
+                .get("autoFilename")
+                .or_else(|| self.rclone_config.get("auto_filename"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
+            let parsed = if auto_filename {
+                parse_fs(&self.dest, windows)
+            } else {
+                split_file_path(&self.dest, windows)
+            };
             if let Some((fs, mut remote)) = parsed {
                 if fs.ends_with(':') {
                     remote = remote.trim_start_matches('/').to_string();
                 }
-                let auto_filename = self
-                    .rclone_config
-                    .get("autoFilename")
-                    .or_else(|| self.rclone_config.get("auto_filename"))
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(true);
 
                 builder.insert("url", self.source.clone());
                 builder.insert("fs", fs);
@@ -157,7 +162,7 @@ impl GenericTransferParams {
                 OperationType::Copy | OperationType::Move
             )
         {
-            self.build_file_transfer_body(builder.as_map_mut())?;
+            self.build_file_transfer_body(builder.as_map_mut(), windows)?;
         } else {
             self.build_directory_transfer_body(builder.as_map_mut());
         }
@@ -169,14 +174,18 @@ impl GenericTransferParams {
         Ok(builder.build())
     }
 
-    fn build_file_transfer_body(&self, body: &mut Map<String, Value>) -> Result<(), String> {
+    fn build_file_transfer_body(
+        &self,
+        body: &mut Map<String, Value>,
+        windows: bool,
+    ) -> Result<(), String> {
         let endpoint = if self.transfer_type == OperationType::Copy {
             operations::COPYFILE
         } else {
             operations::MOVEFILE
         };
-        let src_parsed = parse_fs(&self.source);
-        let dst_parsed = parse_fs(&self.dest);
+        let src_parsed = split_file_path(&self.source, windows);
+        let dst_parsed = parse_fs(&self.dest, windows);
 
         if let (Some((src_fs, mut src_remote)), Some((dst_fs, mut dst_root))) =
             (src_parsed, dst_parsed)
@@ -187,14 +196,11 @@ impl GenericTransferParams {
             if dst_fs.ends_with(':') {
                 dst_root = dst_root.trim_start_matches('/').to_string();
             }
-            let filename = src_remote
-                .split(['/', '\\'])
-                .next_back()
-                .unwrap_or(&src_remote);
+            let filename = src_remote.split('/').next_back().unwrap_or(&src_remote);
             let dst_remote = if dst_root.is_empty() {
                 filename.to_string()
             } else {
-                format!("{}/{}", dst_root.trim_end_matches(['/', '\\']), filename)
+                format!("{}/{}", dst_root.trim_end_matches('/'), filename)
             };
 
             body.insert("srcFs".to_string(), Value::String(src_fs));
@@ -355,7 +361,8 @@ pub(crate) async fn build_special_transfer_payload(
         OperationType::Cryptcheck => (operations::CRYPTCHECK, "cryptcheck"),
         _ => return Err(invalid_option("operation")),
     };
-    let mut body = params.to_rclone_body()?;
+    let os = backend_os(app, backend).await?;
+    let mut body = params.to_rclone_body(os == "windows")?;
     if backend.is_librclone_local() {
         body.as_object_mut().unwrap().remove("_path");
         body.as_object_mut().unwrap().remove("dryRun");
@@ -371,13 +378,9 @@ pub(crate) async fn build_special_transfer_payload(
     args.push(body["src"].as_str().unwrap().to_string());
     args.push(body["dst"].as_str().unwrap().to_string());
     args.extend(command_flags(&body, &schema)?);
-    let os = app
-        .state::<BackendManager>()
-        .get_runtime_os(&backend.name)
-        .await;
     Ok((
         crate::rclone::endpoints::core::COMMAND,
-        backend.build_core_command_payload(command, args, true, os),
+        backend.build_core_command_payload(command, args, true, Some(os)),
     ))
 }
 
@@ -413,6 +416,7 @@ pub async fn submit_transfer_batch(
     }
 
     let transport = RoutingTransport::for_backend(app.clone(), backend.clone());
+    let windows = backend_os(&app, &backend).await? == "windows";
     let mut tasks = Vec::with_capacity(target_pairs.len());
     for (source, _) in &target_pairs {
         let transport = transport.clone();
@@ -422,7 +426,13 @@ pub async fn submit_transfer_batch(
             let is_dir = if transfer_type == OperationType::Copyurl {
                 false
             } else {
-                is_directory(transport.as_ref(), &source, runtime_remote_options.as_ref()).await?
+                is_directory(
+                    transport.as_ref(),
+                    &source,
+                    runtime_remote_options.as_ref(),
+                    windows,
+                )
+                .await?
             };
             Ok::<_, String>((source, is_dir))
         });
@@ -475,7 +485,11 @@ pub async fn submit_transfer_batch(
             && let Some(filename) = filenames.as_ref().and_then(|names| names.get(i))
         {
             if !filename.is_empty() {
-                dest = format!("{}/{}", dest.trim_end_matches(['/', '\\']), filename);
+                dest = format!(
+                    "{}/{}",
+                    dest.trim_end_matches(|ch| ch == '/' || (windows && ch == '\\')),
+                    filename
+                );
             }
             if let Some(map) = config.as_object_mut() {
                 map.insert("autoFilename".to_string(), json!(filename.is_empty()));
@@ -504,7 +518,7 @@ pub async fn submit_transfer_batch(
             job_metadata.destination = dest;
             special_jobs.push((endpoint, payload, job_metadata));
         } else {
-            inputs.push(params.to_rclone_body()?);
+            inputs.push(params.to_rclone_body(windows)?);
         }
     }
 
@@ -689,7 +703,7 @@ mod tests {
                 if operation == OperationType::Cryptcheck {
                     params.rclone_config = json!({"one_way": true});
                 }
-                let body = params.to_rclone_body().unwrap();
+                let body = params.to_rclone_body(false).unwrap();
                 assert_eq!(body["_config"]["DryRun"], dry_run);
                 assert_eq!(body["_config"]["Transfers"], 2);
                 assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg", "a,b.png"]));
@@ -760,7 +774,7 @@ mod tests {
             let mut params = special_params(OperationType::Archivecreate, dry_run);
             params.rclone_config =
                 json!({"_config": {"dry_run": !dry_run, "dryRun": !dry_run, "DryRun": !dry_run}});
-            let body = params.to_rclone_body().unwrap();
+            let body = params.to_rclone_body(false).unwrap();
             assert_eq!(body["_config"]["DryRun"], dry_run);
             assert!(body["_config"].get("dry_run").is_none());
             assert!(body["_config"].get("dryRun").is_none());
@@ -824,7 +838,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -853,7 +867,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("path1").unwrap(), "path1");
@@ -878,7 +892,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(
@@ -903,7 +917,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -927,7 +941,7 @@ mod tests {
             dry_run: None,
         };
 
-        let result = params.to_rclone_body();
+        let result = params.to_rclone_body(false);
         assert!(result.is_err());
         assert!(
             result.unwrap_err().contains(
@@ -950,7 +964,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -987,7 +1001,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         // Flat lowercase keys placed directly at root level
@@ -1018,12 +1032,227 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
-        assert_eq!(obj.get("fs").unwrap(), "src:");
-        assert_eq!(obj.get("remote").unwrap(), "folder/to/delete");
-        assert_eq!(obj.get("_path").unwrap(), operations::PURGE);
+        assert_eq!(obj.get("fs").unwrap(), "src:/folder/to/delete");
+        assert!(obj.get("remote").is_none());
+        assert_eq!(obj.get("_path").unwrap(), operations::DELETE);
+    }
+
+    #[test]
+    fn delete_preserves_paths_filters_and_dry_run() {
+        assert_eq!(OperationType::Delete.endpoint(), Some(operations::DELETE));
+        for source in ["crypt:", "crypt:folder with spaces/ç", "/tmp/local folder"] {
+            for is_dir in [true, false] {
+                let mut params = special_params(OperationType::Delete, true);
+                params.source = source.into();
+                params.is_dir = is_dir;
+                params.rclone_config = json!({});
+                params.runtime_remote_options = None;
+                let body = params.to_rclone_body(false).unwrap();
+                assert_eq!(body["_config"]["DryRun"], true);
+                assert_eq!(body["_filter"]["IncludeRule"], json!(["*.jpg", "a,b.png"]));
+                if is_dir {
+                    assert_eq!(body["_path"], operations::DELETE);
+                    assert_eq!(body["fs"], source);
+                    assert!(body.get("remote").is_none());
+                } else {
+                    assert_eq!(body["_path"], operations::DELETEFILE);
+                    assert!(body.get("remote").is_some());
+                }
+            }
+        }
+        let mut params = special_params(OperationType::Delete, false);
+        let body = params.to_rclone_body(false).unwrap();
+        assert_eq!(
+            body["fs"],
+            "source,env_auth='true',region='a''b,c:d':photos"
+        );
+        params.is_dir = false;
+        params.source = "::invalid".into();
+        assert!(params.to_rclone_body(false).is_err());
+    }
+
+    #[test]
+    #[ignore = "requires the rclone executable with RC support"]
+    fn filtered_delete_keeps_nonmatching_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let config = directory.path().join("rclone.conf");
+        std::fs::write(&config, b"").unwrap();
+        let selected = directory.path().join("selected folder ç");
+        std::fs::create_dir_all(selected.join("nested")).unwrap();
+        for name in [
+            "keep.txt",
+            ".DS_Store",
+            "._keep.txt",
+            "nested/keep.txt",
+            "nested/.DS_Store",
+        ] {
+            std::fs::write(selected.join(name), b"test").unwrap();
+        }
+        let outside = directory.path().join(".DS_Store");
+        std::fs::write(&outside, b"outside selection").unwrap();
+        for (dry_run, filter_key) in [(true, "IncludeRule"), (true, "include"), (false, "include")]
+        {
+            let mut params = special_params(OperationType::Delete, dry_run);
+            params.source = selected.to_str().unwrap().into();
+            params.rclone_config = json!({});
+            params.backend_options = None;
+            params.runtime_remote_options = None;
+            params.filter_options = Some(HashMap::from([(
+                filter_key.into(),
+                json!([".DS_Store", "._*"]),
+            )]));
+            let mut body = params.to_rclone_body(false).unwrap();
+            let endpoint = body.as_object_mut().unwrap().remove("_path").unwrap();
+            // These compatibility aliases are redundant with _config.DryRun.
+            body.as_object_mut().unwrap().remove("dryRun");
+            body.as_object_mut().unwrap().remove("dry_run");
+            let output = std::process::Command::new("rclone")
+                .arg("--config")
+                .arg(&config)
+                .args([
+                    "rc",
+                    "--loopback",
+                    endpoint.as_str().unwrap(),
+                    "--json",
+                    &body.to_string(),
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            for name in [".DS_Store", "._keep.txt", "nested/.DS_Store"] {
+                assert_eq!(selected.join(name).exists(), dry_run, "{name}");
+            }
+            assert!(selected.join("keep.txt").exists());
+            assert!(selected.join("nested/keep.txt").exists());
+            assert!(outside.exists());
+        }
+    }
+
+    #[test]
+    #[ignore = "requires the rclone executable with RC support"]
+    fn cryptcheck_command_respects_task_excludes() {
+        let directory = tempfile::tempdir().unwrap();
+        let source = directory.path().join("source with spaces ç");
+        let encrypted = directory.path().join("encrypted");
+        std::fs::create_dir_all(source.join("nested")).unwrap();
+        std::fs::create_dir_all(&encrypted).unwrap();
+        for name in ["keep.txt", ".DS_Store", "._keep.txt", "nested/.DS_Store"] {
+            std::fs::write(source.join(name), b"cryptcheck regression").unwrap();
+        }
+        let password = std::process::Command::new("rclone")
+            .args(["obscure", "test-password"])
+            .output()
+            .unwrap();
+        assert!(password.status.success());
+        let config = directory.path().join("rclone.conf");
+        std::fs::write(
+            &config,
+            format!(
+                "[encrypted]\ntype = crypt\nremote = {}\npassword = {}\n",
+                encrypted.display(),
+                String::from_utf8(password.stdout).unwrap().trim()
+            ),
+        )
+        .unwrap();
+        let copy = std::process::Command::new("rclone")
+            .arg("--config")
+            .arg(&config)
+            .arg("copyto")
+            .arg(source.join("keep.txt"))
+            .arg("encrypted:keep.txt")
+            .output()
+            .unwrap();
+        assert!(
+            copy.status.success(),
+            "{}",
+            String::from_utf8_lossy(&copy.stderr)
+        );
+        struct Daemon(std::process::Child);
+        impl Drop for Daemon {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        drop(listener);
+        let mut daemon = Daemon(
+            std::process::Command::new("rclone")
+                .arg("--config")
+                .arg(&config)
+                .args(["rcd", "--rc-no-auth", "--rc-addr", &address])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        let mut ready = false;
+        for _ in 0..100 {
+            assert!(
+                daemon.0.try_wait().unwrap().is_none(),
+                "rclone daemon exited"
+            );
+            if std::net::TcpStream::connect(&address).is_ok() {
+                ready = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        assert!(ready, "rclone daemon did not start");
+        let rpc = |endpoint: &str, payload: &Value| -> Value {
+            let output = std::process::Command::new("rclone")
+                .arg("--config")
+                .arg(&config)
+                .args([
+                    "rc",
+                    "--url",
+                    &address,
+                    endpoint,
+                    "--json",
+                    &payload.to_string(),
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            serde_json::from_slice(&output.stdout).unwrap()
+        };
+        let schema = rpc("options/info", &json!({"blocks": "main,filter"}));
+        let mut backend = Backend::new_remote("test", "127.0.0.1", 5572);
+        backend.config_path = Some(config.clone());
+        for (filtered, filter_key) in [(false, "exclude"), (true, "exclude"), (true, "ExcludeRule")]
+        {
+            let params = GenericTransferParams {
+                source: source.to_str().unwrap().into(),
+                dest: "encrypted:".into(),
+                rclone_config: json!({}),
+                filter_options: filtered
+                    .then(|| HashMap::from([(filter_key.into(), json!([".DS_Store", "._*"]))])),
+                backend_options: Some(HashMap::from([("retries".into(), json!(1))])),
+                runtime_remote_options: None,
+                transfer_type: OperationType::Cryptcheck,
+                is_dir: true,
+                dry_run: None,
+            };
+            let body = params.to_rclone_body(false).unwrap();
+            let mut args = vec![params.source.clone(), params.dest.clone()];
+            args.extend(command_flags(&body, &schema).unwrap());
+            assert!(args.contains(&"--retries=1".into()));
+            let payload = backend.build_core_command_payload("cryptcheck", args, false, None);
+            let result = rpc(crate::rclone::endpoints::core::COMMAND, &payload);
+            assert_eq!(result["error"], !filtered, "{result}");
+        }
     }
 
     #[test]
@@ -1042,7 +1271,7 @@ mod tests {
             dry_run: None,
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("url").unwrap(), "https://example.com/file.zip");
@@ -1125,7 +1354,7 @@ mod tests {
             dry_run: Some(true),
         };
 
-        let body = params.to_rclone_body().unwrap();
+        let body = params.to_rclone_body(false).unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("path1").unwrap(), "remote:p1");

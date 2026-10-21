@@ -53,7 +53,7 @@
               @if (cronExpression()) {
                 <div class="schedule-summary">
                   <span class="human-cron">{{ cronHumanDescription() }}</span>
-                  <code class="cron-tag">{{ cronExpression() }}</code>
+                  <code class="app-pill p-primary">{{ cronExpression() }}</code>
                   <button
                     class="action-button"
                     (click)="clearSchedule(); $event.stopPropagation()"
@@ -223,7 +223,12 @@
           }}
         </span>
         @if (canAddSource()) {
-          <button matButton="text" class="add-path-btn" (click)="addPath('source')" type="button">
+          <button
+            matButton="text"
+            class="app-pill interactive p-primary"
+            (click)="addPath('source')"
+            type="button"
+          >
             <mat-icon svgIcon="plus"></mat-icon>
             {{ 'wizards.appOperation.addSource' | translate }}
           </button>
@@ -236,7 +241,7 @@
             <div class="path-row-wrapper copyurl-path-wrapper">
               <div class="path-item-row copyurl-row" [formGroup]="item.control">
                 <div class="path-type-selector">
-                  <div class="static-pill copyurl-source">
+                  <div class="app-pill p-primary">
                     <mat-icon svgIcon="link" class="primary"></mat-icon>
                     <span class="truncate">{{ 'wizards.appOperation.urlLabel' | translate }}</span>
                   </div>
@@ -308,7 +313,7 @@
     <div class="path-item-row" [formGroup]="item.control">
       <div class="path-type-selector">
         @if ((isDest && isMount()) || (!isDest && (isMount() || isServe()))) {
-          <div class="static-pill" [class.local]="isDest" [class.mount-remote]="!isDest">
+          <div class="app-pill" [class.p-purple]="isDest" [class.p-primary]="!isDest">
             <mat-icon
               [svgIcon]="isDest ? 'folder' : 'hard-drive'"
               [class]="isDest ? 'purple' : 'primary'"
@@ -319,13 +324,13 @@
           </div>
         } @else {
           <button
-            class="type-dropdown-btn"
+            class="app-pill interactive"
             type="button"
             [cdkMenuTriggerFor]="typeMenu"
             [cdkMenuTriggerData]="{ item: item }"
-            [class.local]="item.type === 'local'"
-            [class.remote]="item.type === 'currentRemote'"
-            [class.other]="item.type === 'otherRemote'"
+            [class.p-purple]="item.type === 'local'"
+            [class.p-primary]="item.type === 'currentRemote'"
+            [class.p-accent]="item.type === 'otherRemote'"
           >
             @switch (item.type) {
               @case ('local') {
@@ -382,7 +387,7 @@
         @if (!isDest && canAddSource() && sourceItems().length > 1) {
           <button
             matIconButton
-            class="remove-btn"
+            class="action-button"
             (click)="removePath('source', item.index)"
             type="button"
           >
@@ -393,9 +398,16 @@
     </div>
     @if (item.type === 'local' && item.pathControl.value) {
       @if (item.inspectionStatus(); as status) {
-        <div class="path-status-badge" [class]="status.badgeClass">
-          <mat-icon [svgIcon]="status.icon" class="badge-icon"></mat-icon>
-          <span class="badge-text">{{
+        <div
+          class="app-pill"
+          [class.p-primary]="status.state === 'clean'"
+          [class.p-orange]="status.state === 'nonEmpty' || status.state === 'unavailable'"
+          [class.p-warn]="status.state === 'colliding'"
+          [class.p-accent]="status.state === 'willCreate'"
+          [class.p-dim]="status.state === 'checking'"
+        >
+          <mat-icon [svgIcon]="status.icon"></mat-icon>
+          <span class="truncate">{{
             status.labelKey | translate: { details: status.details || '' }
           }}</span>
         </div>

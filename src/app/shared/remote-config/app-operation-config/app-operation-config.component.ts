@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 
 import { NgTemplateOutlet } from '@angular/common';
+import { merge } from 'rxjs';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 
 import { MatButtonModule } from '@angular/material/button';
@@ -91,6 +92,7 @@ interface PathItem {
     CdkOverlayAutoposDirective,
     UrlPreviewComponent,
   ],
+  providers: [PathSelectionService],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -165,19 +167,20 @@ export class OperationConfigComponent {
   );
 
   private readonly formVersion = signal<number>(0);
+  private readonly pathVersion = signal(0);
 
   readonly isWatchSupported = computed(
     () => this.backendService.isLocalBackend() && this.isOperationInList(WATCH_SUPPORTED_OPS)
   );
 
   readonly sourceItems = computed(() => {
-    this.formVersion();
+    this.pathVersion();
     this.opFormGroup();
     return this.getPathItems('source');
   });
 
   readonly destItem = computed(() => {
-    this.formVersion();
+    this.pathVersion();
     this.opFormGroup();
     return this.getPathItems('dest')[0] ?? null;
   });
@@ -205,6 +208,10 @@ export class OperationConfigComponent {
   private readonly inspectionTokens = new Map<string, number>();
   private readonly lastInspectedPaths = new Map<string, string>();
   private pathResolveToken = 0;
+  private readonly generatedDefaultPaths = new WeakMap<
+    FormControl,
+    { path: string; context: string }
+  >();
   private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
 
   private matchesSearch(keywords: string[]): boolean {
@@ -319,6 +326,15 @@ export class OperationConfigComponent {
       const sub = form.valueChanges.subscribe(() => this.formVersion.update((v: number) => v + 1));
       onCleanup(() => sub.unsubscribe());
     });
+    effect(onCleanup => {
+      const form = this.opFormGroup();
+      const paths = ['source', 'dest'].flatMap(key => {
+        const control = form.get(key);
+        return control ? [control.valueChanges] : [];
+      });
+      const sub = merge(...paths).subscribe(() => this.pathVersion.update(v => v + 1));
+      onCleanup(() => sub.unsubscribe());
+    });
     effect(() => {
       if (this.isMount() && this.isLocalMobileSafMount()) {
         const dest = this.destItem();
@@ -331,10 +347,16 @@ export class OperationConfigComponent {
     effect(() => {
       const type = this.operationType();
       const rName = this.currentRemoteName()?.trim();
-      const isNew = this.isNewRemote();
       const form = this.opFormGroup();
+      const dest = this.destItem();
+      const token = ++this.pathResolveToken;
 
-      if (!isNew || !rName || (type !== 'mount' && type !== 'bisync')) {
+      if (
+        !rName ||
+        form.disabled ||
+        dest?.type !== 'local' ||
+        (type !== 'mount' && type !== 'bisync')
+      ) {
         return;
       }
 
@@ -345,17 +367,30 @@ export class OperationConfigComponent {
 
       const dstCtrl = form.get('dest') as FormGroup | null;
       const pathCtrl = dstCtrl?.get('path') as FormControl | null;
-      if (!dstCtrl || !pathCtrl || !pathCtrl.pristine) {
+      if (
+        !dstCtrl ||
+        !pathCtrl ||
+        !pathCtrl.pristine ||
+        (pathCtrl.value && this.generatedDefaultPaths.get(pathCtrl)?.path !== pathCtrl.value)
+      ) {
         return;
       }
 
-      const token = ++this.pathResolveToken;
+      const context = `${type}:${rName}`;
+      if (pathCtrl.value && this.generatedDefaultPaths.get(pathCtrl)?.context === context) return;
       this.pathInspectionService
         .resolveDefaultPath(rName, type as 'mount' | 'bisync')
         .then(defaultPath => {
           if (token !== this.pathResolveToken) return;
-          if (pathCtrl.pristine && pathCtrl.value !== defaultPath) {
-            dstCtrl.patchValue({ type: 'local', path: defaultPath });
+          if (
+            !this.destroyRef.destroyed &&
+            !form.disabled &&
+            pathCtrl.pristine &&
+            (!pathCtrl.value || this.generatedDefaultPaths.get(pathCtrl)?.path === pathCtrl.value)
+          ) {
+            this.generatedDefaultPaths.set(pathCtrl, { path: defaultPath, context });
+            if (pathCtrl.value !== defaultPath)
+              dstCtrl.patchValue({ type: 'local', path: defaultPath });
           }
         })
         .catch(err => console.warn(`[OperationConfig] resolveDefaultPath(${type}) failed:`, err));
@@ -446,6 +481,13 @@ export class OperationConfigComponent {
       const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
 
       untracked(() => {
+        const activeKeys = new Set(items.map(item => `${item.group}-${item.index}`));
+        for (const [key, status] of this.pathInspectionStatuses) {
+          if (!activeKeys.has(key)) {
+            this.cancelAndClearInspection(key, status);
+            this.pathInspectionStatuses.delete(key);
+          }
+        }
         for (const item of items) {
           const itemKey = `${item.group}-${item.index}`;
           if (needsInspection && item.type === 'local') {
@@ -463,6 +505,8 @@ export class OperationConfigComponent {
     });
 
     this.destroyRef.onDestroy(() => {
+      this.pathResolveToken++;
+      this.inspectionTokens.forEach((token, key) => this.inspectionTokens.set(key, token + 1));
       this.clearAutocomplete();
       this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
       this.inspectionDebounceTimers.clear();
@@ -515,6 +559,7 @@ export class OperationConfigComponent {
       clearTimeout(existingTimer);
       this.inspectionDebounceTimers.delete(itemKey);
     }
+    this.inspectionTokens.set(itemKey, (this.inspectionTokens.get(itemKey) ?? 0) + 1);
     this.lastInspectedPaths.delete(itemKey);
     if (statusSignal() !== null) {
       statusSignal.set(null);
@@ -529,13 +574,7 @@ export class OperationConfigComponent {
   ): void {
     const trimmedPath = path?.trim() || '';
     if (!trimmedPath) {
-      const existingTimer = this.inspectionDebounceTimers.get(itemKey);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-        this.inspectionDebounceTimers.delete(itemKey);
-      }
-      this.lastInspectedPaths.delete(itemKey);
-      statusSignal.set(null);
+      this.cancelAndClearInspection(itemKey, statusSignal);
       return;
     }
 
