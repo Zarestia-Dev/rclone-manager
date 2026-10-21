@@ -34,7 +34,11 @@ import {
   MAX_ZOOM,
 } from '../../constants/workflow.constants';
 import { hasDetailedConfig } from '../../utils/node-style.util';
-import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
+import {
+  isInputFocused,
+  isKeyboardEventInScope,
+  matchesShortcut,
+} from '../../../../shared/utils/keyboard-utils';
 
 export interface RenderedWire {
   edge: WorkflowEdge;
@@ -62,6 +66,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
   readonly engineService = inject(WorkflowEngineService);
   private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly minZoom = MIN_ZOOM;
   readonly maxZoom = MAX_ZOOM;
@@ -384,6 +389,7 @@ export class WorkflowCanvasComponent implements OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
     if (isInputFocused(event)) return;
 
     if (event.key === 'Escape') {

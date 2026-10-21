@@ -1,19 +1,17 @@
 :host {
   display: block;
   container-type: inline-size;
-}
-
-.command-options-panel,
-.active-options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
+  animation: onboardingEntranceIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .command-options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
   padding: var(--space-md);
-  background: var(--bg-elevated);
+  background: var(--view-bg-color);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
 }
 
 .predefined-chips-row,
@@ -30,49 +28,174 @@
   min-width: 0;
 }
 
-.predefined-chips-row,
 .predefined-chips,
 .option-chip-field {
   flex-wrap: wrap;
 }
 
+.predefined-chips-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.predefined-chips {
+  gap: var(--space-xs);
+}
+
 .predefined-label {
   font-size: var(--font-size-xs);
+  font-weight: 600;
   color: var(--dim-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: var(--space-xxs);
+  letter-spacing: 0.06em;
+}
+
+.active-options {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
 }
 
 .option-row {
-  padding-block: var(--space-xs);
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  min-height: calc(var(--space-2xl) + var(--space-xl));
+  background: var(--view-bg-color);
+  border-bottom: thin solid var(--border-color);
+  transition: var(--transition-fast);
+  animation: slideInFromBottomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: min(calc(var(--row-index) * 45ms), 200ms);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
 }
 
-.option-key-container,
+.option-key-container {
+  flex: 0 0 calc(var(--space-2xl) * 9);
+}
+
 .option-controls {
   flex: 1;
+  gap: var(--space-md);
+
+  mat-slide-toggle {
+    margin-right: auto;
+  }
+
+  > .action-button {
+    opacity: 0.55;
+
+    &:hover {
+      opacity: 1;
+      color: var(--warn-color);
+    }
+  }
 }
 
 .option-key {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--window-fg-color);
+  letter-spacing: -0.01em;
 }
 
 .option-value-field,
 .option-chip-field,
-.option-chip-input,
-.custom-key-field {
+.option-chip-input {
   flex: 1;
   min-width: 0;
 }
 
-.option-chip-input input {
-  width: 100%;
+.option-chip-field {
+  gap: var(--space-xs);
+  min-height: calc(var(--space-2xl) + var(--space-xs));
+  padding: var(--space-xs);
+  border-radius: var(--radius-md);
+  background: var(--selected-bg-color);
+}
+
+.option-chip-input {
+  gap: var(--space-xxs);
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--window-fg-color);
+    font: inherit;
+    padding: var(--space-xxs);
+
+    &::placeholder {
+      color: var(--dim-color);
+      opacity: 0.75;
+    }
+  }
+}
+
+.add-custom-row {
+  align-items: flex-end;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-xs);
+  background: var(--bg-elevated);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--radius-sm);
+}
+
+.custom-key-field {
+  flex: 2;
   min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--window-fg-color);
-  font: inherit;
+
+  .field-icon {
+    color: var(--dim-color);
+  }
+}
+
+.custom-type-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-custom-btn {
+  flex-shrink: 0;
+  height: var(--icon-size-xl);
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: var(--transition-fast);
+
+  &:not([disabled]):hover {
+    color: var(--primary-color);
+    background: var(--hover-bg-color);
+  }
 }
 
 @container (max-width: 35rem) {
+  .command-options-panel {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+
+  .predefined-chips-row {
+    flex-direction: column;
+    gap: var(--space-xs);
+
+    .predefined-label {
+      padding-top: 0;
+    }
+  }
+
   .option-row,
   .add-custom-row {
     flex-direction: column;
@@ -80,6 +203,29 @@
   }
 
   .option-key-container {
+    flex: 1 1 auto;
     justify-content: space-between;
+  }
+
+  .option-controls {
+    gap: var(--space-sm);
+  }
+
+  .custom-key-field,
+  .custom-type-field {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .add-custom-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host,
+  .option-row {
+    animation: none;
   }
 }

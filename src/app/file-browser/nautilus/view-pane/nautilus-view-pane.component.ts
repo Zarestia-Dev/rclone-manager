@@ -85,6 +85,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly dragStarted = output<{ event: DragEvent; item: FileBrowserItem }>();
   public readonly dragEnded = output<void>();
   public readonly itemClick = output<{ item: FileBrowserItem; event: Event; index: number }>();
+  public readonly itemKeydown = output<{ item: FileBrowserItem; event: KeyboardEvent }>();
   public readonly navigateTo = output<FileBrowserItem>();
   public readonly toggleStar = output<FileBrowserItem>();
   public readonly toggleSort = output<string>();
@@ -313,13 +314,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
     }
   }
 
-  protected onItemKeydown(event: Event, item: FileBrowserItem, index: number): void {
-    this.itemClick.emit({ item, event, index });
-    if (item.entry.IsDir) {
-      this.navigateTo.emit(item);
-    }
-    event.preventDefault();
-    event.stopPropagation();
+  protected onItemKeydown(event: Event, item: FileBrowserItem): void {
+    if (event.target !== event.currentTarget) return;
+    this.itemKeydown.emit({ item, event: event as KeyboardEvent });
   }
 
   // ---------------------------------------------------------------------------

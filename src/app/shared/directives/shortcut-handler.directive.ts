@@ -13,8 +13,12 @@ import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-sta
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
-import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
-import { MAIN_SHORTCUTS } from '../models/shortcut-definitions';
+import {
+  findKeyboardShortcutTarget,
+  isInputFocused,
+  matchesShortcut,
+} from '../utils/keyboard-utils';
+import { MAIN_SHORTCUTS, getShortcutsForContext } from '../models/shortcut-definitions';
 
 @Directive({
   selector: '[appShortcutHandler]',
@@ -52,6 +56,7 @@ export class ShortcutHandlerDirective {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.isComposing) return;
     // Skip if typing in input fields (except for critical shortcuts)
     if (isInputFocused(event) && !this.isCriticalShortcut(event)) {
       return;
@@ -59,6 +64,14 @@ export class ShortcutHandlerDirective {
 
     // Block shortcuts if any modal is open or onboarding is active
     if (this.shouldBlockShortcuts(event)) {
+      return;
+    }
+
+    // Let the active file browser own its shortcuts, including Ctrl+R.
+    if (
+      getShortcutsForContext('nautilus').some(shortcut => matchesShortcut(shortcut.keys, event)) &&
+      findKeyboardShortcutTarget(event, 'app-nautilus')
+    ) {
       return;
     }
 

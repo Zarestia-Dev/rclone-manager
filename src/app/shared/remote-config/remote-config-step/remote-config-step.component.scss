@@ -1,3 +1,54 @@
+@use "../../../styles/mixins" as *;
+
+@mixin icon-fade-cycle($name) {
+  @keyframes #{$name} {
+    0% {
+      opacity: 0;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(-26deg) scale(0.86)
+        translateY(var(--space-xs));
+    }
+    18%,
+    82% {
+      opacity: 1;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(0deg) scale(1) translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(26deg) scale(1.08)
+        translateY(calc(-1 * var(--space-xs)));
+    }
+  }
+}
+
+@include icon-fade-cycle(iconFadeCycleA);
+@include icon-fade-cycle(iconFadeCycleB);
+
+.anim-field,
+.anim-setting-control {
+  animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-setting-control {
+  display: block;
+  animation-delay: min(calc(var(--field-index) * 35ms), 200ms);
+}
+
+.anim-fade {
+  animation: fadeIn 0.25s ease both;
+}
+
+.anim-panel {
+  animation: onboardingEntranceIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-icon-fade-a {
+  animation: iconFadeCycleA 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.anim-icon-fade-b {
+  animation: iconFadeCycleB 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 form,
 .provider-fields {
   display: flex;
@@ -18,6 +69,7 @@ form,
 
 .field-icon {
   color: var(--dim-color);
+  transition: var(--transition-fast);
 }
 
 .advanced-section {
@@ -25,8 +77,9 @@ form,
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-md);
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
 }
 
 .section-heading {
@@ -35,11 +88,52 @@ form,
   gap: var(--space-sm);
   margin: 0;
   font-size: var(--font-size-md);
-  color: var(--dim-color);
+  font-weight: 600;
+  color: var(--window-fg-color);
+  letter-spacing: -0.01em;
 }
 
-.empty-state-pills,
-.mode-actions {
+.empty-state {
+  position: relative;
+  gap: var(--space-md);
+  padding: calc(var(--space-2xl) + var(--space-xs)) var(--space-lg) var(--space-2xl);
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+  overflow: hidden;
+}
+
+.empty-state-icon-ring {
+  @include remote-icon-ring;
+
+  mat-icon {
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
+    color: var(--primary-color);
+    opacity: 1;
+  }
+}
+
+.empty-state-body {
+  position: relative;
+  z-index: 1;
+
+  h3 {
+    margin: 0 0 var(--space-xs);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    letter-spacing: -0.015em;
+  }
+
+  p {
+    margin: 0;
+    max-width: calc(var(--space-2xl) * 9);
+    line-height: 1.55;
+  }
+}
+
+.empty-state-pills {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -49,6 +143,17 @@ form,
 
 .empty-state-pills .app-pill {
   white-space: normal;
+  animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+
+  @for $i from 1 through 6 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 45ms};
+    }
+  }
+}
+
+.reshuffle-btn:hover mat-icon {
+  animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 .fields-mode-header {
@@ -56,15 +161,58 @@ form,
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  padding: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: color-mix(in srgb, var(--accent-color) 4%, transparent);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--radius-sm);
+}
+
+.fields-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xxs);
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+
+  .count-badge {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    animation: badgeIn var(--transition-cubic) both;
+
+    &.primary {
+      color: var(--primary-color);
+    }
+
+    &.purple {
+      color: var(--purple);
+      animation-delay: 0.04s;
+    }
+  }
+}
+
+.mode-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
 }
 
 .contextual-action-wrapper:not(.visible) {
   display: none;
 }
 
-@container (max-width: 30rem) {
-  .fields-mode-header {
-    flex-wrap: wrap;
+@media (prefers-reduced-motion: reduce) {
+  .anim-field,
+  .anim-setting-control,
+  .anim-fade,
+  .anim-panel,
+  .anim-icon-fade-a,
+  .anim-icon-fade-b,
+  .empty-state-pills .app-pill,
+  .reshuffle-btn:hover mat-icon,
+  .fields-count .count-badge {
+    animation: none;
   }
 }

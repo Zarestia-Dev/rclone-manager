@@ -19,8 +19,6 @@
             (click)="stepSelected.emit(stepNum)"
             [class.completed]="isCompleted"
             [attr.aria-selected]="isCurrent"
-            (keydown.enter)="stepSelected.emit(stepNum)"
-            (keydown.space)="stepSelected.emit(stepNum)"
             [attr.title]="config.label | translate"
           >
             <mat-icon

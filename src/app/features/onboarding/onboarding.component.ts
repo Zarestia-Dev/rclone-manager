@@ -28,6 +28,7 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
+import { isInputFocused, isKeyboardEventInScope } from '../../shared/utils/keyboard-utils';
 import {
   type BinaryStatus,
   type InstallationOptionsData,
@@ -94,6 +95,7 @@ export class OnboardingComponent {
   private readonly backendService = inject(BackendService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly systemHealth = inject(SystemHealthService);
 
   readonly rcloneProgress = this.installationService.rcloneProgress;
@@ -387,11 +389,18 @@ export class OnboardingComponent {
   // ─── Keyboard navigation & Window resize ──────────────────────────────────
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
+    if (event.target instanceof Element && event.target.closest('button, a, [role="button"]')) {
+      return;
+    }
+
     if (event.key === 'Enter') {
+      event.preventDefault();
       const btn = this.primaryButton();
       if (!btn.disabled) btn.action();
       return;
     }
+    if (isInputFocused(event)) return;
     if (event.key === 'ArrowRight' && this.currentAction() === 'next') {
       if (!this.primaryButton().disabled) this.nextCard();
     } else if (event.key === 'ArrowLeft' && this.currentCardIndex() > 0) {

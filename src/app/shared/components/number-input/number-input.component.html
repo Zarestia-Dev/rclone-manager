@@ -1,5 +1,6 @@
 <div class="stepper-container">
   <button
+    type="button"
     matIconButton
     class="stepper-btn"
     [disabled]="
@@ -7,11 +8,13 @@
       (min() !== undefined && innerControl.value !== null && +innerControl.value <= min()!)
     "
     [attr.aria-label]="('shared.settingControl.decrease' | translate) + ' ' + ariaLabel()"
+    (click)="onStepClick($event, 'decrement')"
     (mousedown)="startHold('decrement')"
-    (touchstart.prevent)="startHold('decrement')"
+    (touchstart)="startHold('decrement'); $event.preventDefault()"
     (mouseup)="stopHold()"
     (mouseleave)="stopHold()"
     (touchend)="stopHold()"
+    (touchcancel)="stopHold()"
   >
     <mat-icon svgIcon="remove" />
   </button>
@@ -31,6 +34,7 @@
     />
   </mat-form-field>
   <button
+    type="button"
     matIconButton
     class="stepper-btn"
     [disabled]="
@@ -38,11 +42,13 @@
       (max() !== undefined && innerControl.value !== null && +innerControl.value >= max()!)
     "
     [attr.aria-label]="('shared.settingControl.increase' | translate) + ' ' + ariaLabel()"
+    (click)="onStepClick($event, 'increment')"
     (mousedown)="startHold('increment')"
-    (touchstart.prevent)="startHold('increment')"
+    (touchstart)="startHold('increment'); $event.preventDefault()"
     (mouseup)="stopHold()"
     (mouseleave)="stopHold()"
     (touchend)="stopHold()"
+    (touchcancel)="stopHold()"
   >
     <mat-icon svgIcon="plus" />
   </button>

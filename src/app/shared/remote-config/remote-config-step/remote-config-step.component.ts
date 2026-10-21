@@ -115,6 +115,8 @@ export class RemoteConfigStepComponent {
   readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly showCommandOptions = signal(false);
   readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
+  readonly randomIcon = signal('cloud');
+  readonly animTrigger = signal(0);
   readonly suggestedRemotes = signal<{ label: string; value: string; icon: string }[]>([]);
 
   // ── Computed View Models ──────────────────────────────────────────────────
@@ -288,6 +290,24 @@ export class RemoteConfigStepComponent {
         const next = syncNonInteractiveOption(current, isInteractive);
         if (next !== current) this.commandOptions.set(next);
       });
+    });
+
+    effect(onCleanup => {
+      if (!this.showTypeField() || this.remoteTypeValue() || this.isLoading()) {
+        this.randomIcon.set('cloud');
+        this.animTrigger.set(0);
+        return;
+      }
+      const types = this.remoteTypesWithIcons();
+      if (!types.length) return;
+
+      const timer = setInterval(() => {
+        const alternatives = types.filter(type => type.icon !== this.randomIcon());
+        const candidates = alternatives.length ? alternatives : types;
+        this.randomIcon.set(candidates[Math.floor(Math.random() * candidates.length)].icon);
+        this.animTrigger.update(value => value + 1);
+      }, 3000);
+      onCleanup(() => clearInterval(timer));
     });
   }
 

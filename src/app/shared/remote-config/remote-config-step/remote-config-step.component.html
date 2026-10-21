@@ -2,7 +2,7 @@
   <div class="main-fields-container">
     @let remoteType = remoteTypeValue();
     @if (showTypeField()) {
-      <mat-form-field class="remote-type-field">
+      <mat-form-field class="remote-type-field anim-field">
         <mat-label>{{ 'wizards.remoteConfig.remoteType' | translate }}</mat-label>
         <mat-icon matPrefix [svgIcon]="remoteTypeIcon()" class="field-icon"></mat-icon>
         <input
@@ -49,7 +49,13 @@
 
     @if (showTypeField() && !remoteType && !isLoading()) {
       <div class="empty-state">
-        <mat-icon svgIcon="cloud"></mat-icon>
+        <div class="empty-state-icon-ring">
+          <mat-icon
+            [svgIcon]="randomIcon()"
+            [class.anim-icon-fade-a]="animTrigger() % 2 === 0"
+            [class.anim-icon-fade-b]="animTrigger() % 2 === 1"
+          ></mat-icon>
+        </div>
         <div class="empty-state-body">
           <h3>
             {{ 'wizards.remoteConfig.emptyStateTitle' | translate }}
@@ -68,7 +74,7 @@
             }
             <button
               type="button"
-              class="action-button"
+              class="action-button reshuffle-btn"
               (click)="reshuffleSuggestions()"
               [attr.title]="'wizards.remoteConfig.shuffleSuggestions' | translate"
             >
@@ -81,7 +87,7 @@
 
     @if (showNameField() && !!remoteType) {
       @let nameCtrl = form().get('name');
-      <mat-form-field id="section-general">
+      <mat-form-field id="section-general" class="anim-field">
         <mat-label>{{ 'wizards.remoteConfig.remoteName' | translate }}</mat-label>
         <mat-icon matPrefix svgIcon="cloud" class="field-icon"></mat-icon>
         <input
@@ -111,7 +117,7 @@
 
     @if (providerField(); as pField) {
       @let pCtrl = form().get(pField.Name);
-      <mat-form-field id="section-auth">
+      <mat-form-field id="section-auth" class="anim-field">
         <mat-label>{{
           pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
         }}</mat-label>
@@ -152,11 +158,21 @@
 
       @let showAdv = (showAdvOpts || showJson) && advLen > 0;
 
-      <div class="fields-mode-header">
-        <span class="count-badge"
-          >{{ basicLen + (showAdv ? advLen : 0) }}
-          {{ 'wizards.remoteConfig.fields' | translate }}</span
-        >
+      <div class="fields-mode-header anim-fade">
+        <div class="fields-count">
+          @if (basicLen > 0) {
+            <span class="count-badge primary">{{ basicLen }}</span>
+          }
+          @if (basicLen > 0 && showAdv) {
+            <span>+</span>
+          }
+          @if (showAdv) {
+            <span class="count-badge purple">{{ advLen }}</span>
+          }
+          @if (basicLen > 0 || showAdv) {
+            <span>{{ 'wizards.remoteConfig.fields' | translate }}</span>
+          }
+        </div>
         <div class="mode-actions">
           <div
             class="contextual-action-wrapper"
@@ -169,7 +185,6 @@
               ) | translate;
             <button
               type="button"
-              matIconButton
               class="action-button"
               (click)="toggleAdvancedOptions()"
               [attr.title]="advLabel"
@@ -188,7 +203,6 @@
               ) | translate;
             <button
               type="button"
-              matIconButton
               class="action-button"
               (click)="toggleCommandOptions()"
               [attr.title]="cmdLabel"
@@ -204,7 +218,6 @@
               | translate;
           <button
             type="button"
-            matIconButton
             class="action-button"
             (click)="toggleJsonMode()"
             [attr.title]="jsonLabel"
@@ -232,7 +245,7 @@
       }
 
       @if (showJsonMode()) {
-        <div>
+        <div class="anim-panel">
           <app-json-editor
             [formGroup]="form()"
             [fieldDefs]="remoteFields()"
@@ -242,8 +255,10 @@
           />
         </div>
       } @else {
-        @for (item of basicFields(); track item.Name) {
+        @for (item of basicFields(); track item.Name; let i = $index) {
           <app-setting-control
+            class="anim-setting-control"
+            [style.--field-index]="i"
             [option]="item"
             [showObscureButton]="showObscureButton()"
             [formControlName]="item.Name"
@@ -253,13 +268,15 @@
         }
 
         @if (showAdvancedOptions() && advancedFields().length > 0) {
-          <div class="advanced-section" id="section-advanced">
+          <div class="advanced-section anim-panel" id="section-advanced">
             <h3 class="section-heading">
               {{ 'wizards.remoteConfig.advancedOptions' | translate }}
             </h3>
 
-            @for (item of advancedFields(); track item.Name) {
+            @for (item of advancedFields(); track item.Name; let i = $index) {
               <app-setting-control
+                class="anim-setting-control"
+                [style.--field-index]="i"
                 [option]="item"
                 [showObscureButton]="showObscureButton()"
                 [formControlName]="item.Name"

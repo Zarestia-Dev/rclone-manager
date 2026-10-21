@@ -49,6 +49,7 @@
 
   <app-search-container
     [visible]="searchVisible()"
+    (searchToggle)="toggleSearch()"
     [searchText]="searchTerm()"
     (searchTextChange)="searchTerm.set($event)"
   ></app-search-container>

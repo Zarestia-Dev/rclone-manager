@@ -22,13 +22,20 @@
 
   @if (commandOptionsView().length > 0) {
     <div class="active-options">
-      @for (opt of commandOptionsView(); track opt.key) {
-        <div class="option-row">
+      @for (opt of commandOptionsView(); track opt.key; let i = $index) {
+        <div class="option-row" [style.--row-index]="i">
           <div class="option-key-container">
             <span class="option-key truncate" [attr.title]="opt.description | translate">{{
               opt.key
             }}</span>
-            <span class="app-pill p-dim">{{ opt.type }}</span>
+            <span
+              class="app-pill"
+              [class.p-primary]="opt.type === 'boolean'"
+              [class.p-accent]="opt.type === 'string'"
+              [class.p-orange]="opt.type === 'number'"
+              [class.p-purple]="opt.type === 'array'"
+              >{{ opt.type }}</span
+            >
           </div>
           <div class="option-controls">
             @switch (opt.type) {

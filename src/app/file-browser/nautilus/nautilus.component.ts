@@ -741,6 +741,11 @@ export class NautilusComponent implements OnInit {
     }
   }
 
+  onItemKeydown(item: FileBrowserItem, event: KeyboardEvent, paneIndex: 0 | 1): void {
+    this.tabSvc.switchPane(paneIndex);
+    this.keyboard.activateItem(event, item);
+  }
+
   setContextItem(item: FileBrowserItem | null, paneIndex?: 0 | 1): void {
     this.contextMenu()?.reset();
     this.actions.contextMenuItem.set(item);

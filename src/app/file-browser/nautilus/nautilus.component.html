@@ -133,6 +133,7 @@
           (dragStarted)="onDragStarted($event.event, $event.item)"
           (dragEnded)="onDragEnded()"
           (itemClick)="onItemClick($event.item, $event.event, $event.index, pane.index)"
+          (itemKeydown)="onItemKeydown($event.item, $event.event, pane.index)"
           (navigateTo)="navigateTo($event)"
           (toggleStar)="nautilusService.toggleItem('starred', $event)"
           (toggleSort)="settings.toggleSort($event)"

@@ -83,7 +83,7 @@ describe('RemoteConfigStepComponent field state', () => {
     expect(fixture.componentInstance.commandOptions()).toEqual([]);
   });
 
-  it('updates decorative suggestions without scheduling a timer', () => {
+  it('populates decorative suggestions from the available remote types', () => {
     const fixture = TestBed.createComponent(RemoteConfigStepComponent);
     fixture.componentRef.setInput('form', new FormGroup({ type: new FormControl('') }));
     fixture.detectChanges();
@@ -93,5 +93,41 @@ describe('RemoteConfigStepComponent field state', () => {
     expect(fixture.componentInstance.suggestedRemotes()).toEqual([
       { value: 'a', label: 'A', icon: 'cloud' },
     ]);
+  });
+
+  it('cycles the empty-state icon and stops on selection and destruction', () => {
+    vi.useFakeTimers();
+    vi.spyOn(TestBed.inject(IconService), 'getIconName').mockImplementation(
+      name => name ?? 'cloud'
+    );
+    const fixture = TestBed.createComponent(RemoteConfigStepComponent);
+    const form = new FormGroup({ type: new FormControl('') });
+    fixture.componentRef.setInput('form', form);
+    fixture.componentRef.setInput('remoteTypes', [
+      { value: 'drive', label: 'Drive' },
+      { value: 's3', label: 'S3' },
+    ]);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    vi.advanceTimersByTime(3000);
+    expect(component.animTrigger()).toBe(1);
+    expect(['drive', 's3']).toContain(component.randomIcon());
+    const previousIcon = component.randomIcon();
+    vi.advanceTimersByTime(3000);
+    expect(component.randomIcon()).not.toBe(previousIcon);
+
+    form.controls.type.setValue('drive');
+    fixture.detectChanges();
+    vi.advanceTimersByTime(3000);
+    expect(component.animTrigger()).toBe(0);
+
+    form.controls.type.setValue('');
+    fixture.detectChanges();
+    vi.advanceTimersByTime(3000);
+    expect(component.animTrigger()).toBe(1);
+    fixture.destroy();
+    vi.advanceTimersByTime(3000);
+    expect(component.animTrigger()).toBe(1);
   });
 });

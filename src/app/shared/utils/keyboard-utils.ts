@@ -21,6 +21,48 @@ export function isInputFocused(event?: Event | null): boolean {
   );
 }
 
+function isKeyboardHostAvailable(event: Event, host: HTMLElement): boolean {
+  return (
+    !event.defaultPrevented &&
+    !(event instanceof KeyboardEvent && event.isComposing) &&
+    !host.closest('[inert], [hidden], [aria-hidden="true"], .slide-overlay-left-leave') &&
+    host.ownerDocument.defaultView?.getComputedStyle(host).visibility !== 'hidden'
+  );
+}
+
+function getTopKeyboardPane(doc: Document): HTMLElement | undefined {
+  return Array.from(doc.querySelectorAll<HTMLElement>('.cdk-overlay-pane'))
+    .reverse()
+    .find(pane => pane.childElementCount > 0 && !pane.querySelector('mat-snack-bar-container'));
+}
+
+/** Whether the host belongs to the active keyboard surface, including stacked CDK overlays. */
+export function isKeyboardEventInScope(event: Event, host: HTMLElement): boolean {
+  if (!isKeyboardHostAvailable(event, host)) return false;
+  const topPane = getTopKeyboardPane(host.ownerDocument);
+  return !topPane || topPane.contains(host);
+}
+
+/** Chooses one shortcut owner nearest to the event target on the active keyboard surface. */
+export function findKeyboardShortcutTarget(
+  event: KeyboardEvent,
+  selector: string,
+  doc: Document = document
+): HTMLElement | undefined {
+  const scope = getTopKeyboardPane(doc) ?? doc;
+  const candidates = Array.from(scope.querySelectorAll<HTMLElement>(selector)).filter(host =>
+    isKeyboardHostAvailable(event, host)
+  );
+  let ancestor = event.target instanceof Element ? event.target : null;
+  while (ancestor) {
+    const container = ancestor;
+    const candidate = candidates.find(host => container.contains(host));
+    if (candidate) return candidate;
+    ancestor = ancestor.parentElement;
+  }
+  return candidates[0];
+}
+
 /**
  * Parses shortcut keys string like 'F5 / Ctrl + R' into normalized combo token arrays:
  * [['F5'], ['Ctrl', 'R']]

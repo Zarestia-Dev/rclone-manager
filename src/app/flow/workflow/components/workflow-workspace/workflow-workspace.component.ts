@@ -8,6 +8,7 @@ import {
   effect,
   DestroyRef,
   afterNextRender,
+  ElementRef,
 } from '@angular/core';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +25,11 @@ import { WorkflowStorageService } from '../../../../services/flow/workflow-stora
 import { WorkflowEventService } from '../../../../services/flow/workflow-event.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { WorkflowTemplate } from '../../types/workflow.types';
-import { isInputFocused, matchesShortcut } from '../../../../shared/utils/keyboard-utils';
+import {
+  isInputFocused,
+  isKeyboardEventInScope,
+  matchesShortcut,
+} from '../../../../shared/utils/keyboard-utils';
 import { syncResponsiveSidebar } from '../../../../shared/utils';
 
 @Component({
@@ -52,6 +57,7 @@ export class WorkflowWorkspaceComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly sidebarMode = signal<MatDrawerMode>('side');
   readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
@@ -184,6 +190,7 @@ export class WorkflowWorkspaceComponent {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
     if (isInputFocused(event)) return;
     if (!this.hasWorkflow()) return;
 

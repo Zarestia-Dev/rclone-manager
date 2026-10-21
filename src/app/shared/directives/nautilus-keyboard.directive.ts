@@ -1,10 +1,9 @@
-import { Directive, HostListener, inject, WritableSignal, Signal } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { Directive, ElementRef, HostListener, inject, WritableSignal, Signal } from '@angular/core';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusTabService } from 'src/app/services/ui/nautilus-tab.service';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { FileBrowserItem } from '@app/types';
-import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
+import { isInputFocused, isKeyboardEventInScope, matchesShortcut } from '../utils/keyboard-utils';
 
 export interface KeyboardCallbacks {
   navigateTo: (item: FileBrowserItem) => void;
@@ -38,7 +37,7 @@ export interface KeyboardCallbacks {
   selector: '[appNautilusKeyboard]',
 })
 export class NautilusKeyboardDirective {
-  private readonly dialog = inject(MatDialog);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly nautilusService: NautilusService = inject(NautilusService);
   private readonly tabSvc: NautilusTabService = inject(NautilusTabService);
   private readonly fileOps: NautilusFileOperationsService = inject(NautilusFileOperationsService);
@@ -50,8 +49,8 @@ export class NautilusKeyboardDirective {
   }
 
   @HostListener('window:keydown', ['$event'])
-  async handleKeyDown(event: KeyboardEvent): Promise<void> {
-    if (this.dialog.openDialogs.length > 0 || !this.callbacks) {
+  handleKeyDown(event: KeyboardEvent): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement) || !this.callbacks) {
       return;
     }
 
@@ -60,15 +59,42 @@ export class NautilusKeyboardDirective {
       return;
     }
 
-    if (await this.handleClipboardShortcuts(event)) return;
+    if (
+      event.key === 'Enter' &&
+      event.target instanceof Element &&
+      event.target.closest('button, a, [role="button"]')
+    ) {
+      return;
+    }
+
+    if (this.handleClipboardShortcuts(event)) return;
     if (this.handleNavigationShortcuts(event)) return;
     if (this.handleSelectionShortcuts(event)) return;
-    if (await this.handleFileOperationsShortcuts(event)) return;
+    if (this.handleFileOperationsShortcuts(event)) return;
+  }
+
+  activateItem(event: KeyboardEvent, item: FileBrowserItem): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement) || !this.callbacks) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.callbacks.setContextItem(item);
+    if (event.altKey) {
+      this.callbacks.openProperties();
+    } else if (event.ctrlKey || event.metaKey) {
+      this.callbacks.openInNewTab();
+    } else if (event.shiftKey) {
+      this.callbacks.openInNewWindow();
+    } else {
+      this.callbacks.navigateTo(item);
+    }
   }
 
   @HostListener('window:paste', ['$event'])
   async handlePasteEvent(event: ClipboardEvent): Promise<void> {
-    if (this.dialog.openDialogs.length > 0 || !this.callbacks) return;
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement) || !this.callbacks) return;
     if (isInputFocused(event)) return;
 
     const files = event.clipboardData?.files;
@@ -94,7 +120,7 @@ export class NautilusKeyboardDirective {
     }
   }
 
-  private async handleClipboardShortcuts(event: KeyboardEvent): Promise<boolean> {
+  private handleClipboardShortcuts(event: KeyboardEvent): boolean {
     if (matchesShortcut('Ctrl + C', event)) {
       event.preventDefault();
       this.fileOps.copyItems(this.callbacks.getSelectedItems());
@@ -107,17 +133,17 @@ export class NautilusKeyboardDirective {
     }
     if (matchesShortcut('Ctrl + V', event)) {
       event.preventDefault();
-      await this.callbacks.pasteItems();
+      void this.callbacks.pasteItems();
       return true;
     }
     if (matchesShortcut('Ctrl + Shift + Z / Ctrl + Y', event)) {
       event.preventDefault();
-      await this.fileOps.redoLastOperation();
+      void this.fileOps.redoLastOperation();
       return true;
     }
     if (matchesShortcut('Ctrl + Z', event)) {
       event.preventDefault();
-      await this.fileOps.undoLastOperation();
+      void this.fileOps.undoLastOperation();
       return true;
     }
     return false;
@@ -150,21 +176,10 @@ export class NautilusKeyboardDirective {
       return true;
     }
 
-    if (event.key === 'Enter' && !event.altKey) {
+    if (event.key === 'Enter') {
       const selected = this.callbacks.getSelectedItems();
       if (selected.length === 1) {
-        event.preventDefault();
-        const item = selected[0];
-
-        if (event.ctrlKey || event.metaKey) {
-          this.callbacks.setContextItem(item);
-          this.callbacks.openInNewTab();
-        } else if (event.shiftKey) {
-          this.callbacks.setContextItem(item);
-          this.callbacks.openInNewWindow();
-        } else {
-          this.callbacks.navigateTo(item);
-        }
+        this.activateItem(event, selected[0]);
         return true;
       }
     }
@@ -238,20 +253,20 @@ export class NautilusKeyboardDirective {
     return false;
   }
 
-  private async handleFileOperationsShortcuts(event: KeyboardEvent): Promise<boolean> {
+  private handleFileOperationsShortcuts(event: KeyboardEvent): boolean {
     if (matchesShortcut('F2', event)) {
       const selected = this.callbacks.getSelectedItems();
       if (selected.length === 1) {
         event.preventDefault();
         this.callbacks.setContextItem(selected[0]);
-        await this.callbacks.openRename();
+        void this.callbacks.openRename();
         return true;
       }
     }
 
     if (matchesShortcut('Delete', event)) {
       event.preventDefault();
-      await this.callbacks.deleteSelected();
+      void this.callbacks.deleteSelected();
       return true;
     }
 
@@ -263,7 +278,7 @@ export class NautilusKeyboardDirective {
 
     if (matchesShortcut('Ctrl + Shift + N', event)) {
       event.preventDefault();
-      await this.callbacks.openNewFolder();
+      void this.callbacks.openNewFolder();
       return true;
     }
 

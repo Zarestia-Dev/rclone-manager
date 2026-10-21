@@ -385,12 +385,7 @@
           ></mat-icon>
         </button>
         @if (!isDest && canAddSource() && sourceItems().length > 1) {
-          <button
-            matIconButton
-            class="action-button"
-            (click)="removePath('source', item.index)"
-            type="button"
-          >
+          <button class="action-button" (click)="removePath('source', item.index)" type="button">
             <mat-icon svgIcon="trash" class="warn"></mat-icon>
           </button>
         }
