@@ -471,7 +471,16 @@ pub async fn delete_remote(
         delete_remote_settings_on_backend(&app, name.clone(), &backend.name).await;
     let settings = app.state::<AppSettingsManager>();
     let presets_result = match delete_quick_runs_for_remote(&settings, &name) {
-        Ok(_) => sync_quick_run_automations(&app).await,
+        Ok(deleted) => {
+            if let Some(runtime) =
+                app.try_state::<crate::services::automation::runtime::RuntimeTasks>()
+            {
+                for id in deleted {
+                    runtime.invalidate_quick_run(&id);
+                }
+            }
+            sync_quick_run_automations(&app).await
+        }
         Err(error) => Err(error),
     };
     app.state::<LogCache>().clear_for_remote(&name).await;

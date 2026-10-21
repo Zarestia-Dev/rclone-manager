@@ -45,6 +45,8 @@ describe('VaultService', () => {
           provide: TranslateService,
           useValue: {
             instant: vi.fn((key: string) => key),
+            getCurrentLang: vi.fn().mockReturnValue('en-US'),
+            use: vi.fn().mockReturnValue(of({})),
           },
         },
         {
@@ -135,6 +137,43 @@ describe('VaultService', () => {
 
     await expect(service.checkVaultStatus()).rejects.toThrow('Backend offline');
     expect(service.isStatusKnown()).toBe(false);
+  });
+
+  it('loads the public language before exposing the locked screen, without reading settings', async () => {
+    const translation = new Subject<Record<string, string>>();
+    const translate = TestBed.inject(TranslateService);
+    vi.mocked(translate.use).mockReturnValue(translation.asObservable());
+    apiClientMock.invoke.mockResolvedValueOnce({
+      enabled: true,
+      isLocked: true,
+      language: 'tr-TR',
+      lockTimeoutSecs: 300,
+    });
+
+    const pending = service.checkVaultStatus();
+    await Promise.resolve();
+    expect(translate.use).toHaveBeenCalledWith('tr-TR');
+    expect(service.isStatusKnown()).toBe(false);
+    translation.next({});
+    await pending;
+    expect(service.isVaultLocked()).toBe(true);
+    expect(apiClientMock.invoke).toHaveBeenCalledExactlyOnceWith('get_vault_info', undefined);
+  });
+
+  it('does not overwrite a newer lock event while the public language loads', async () => {
+    const translation = new Subject<Record<string, string>>();
+    vi.mocked(TestBed.inject(TranslateService).use).mockReturnValue(translation.asObservable());
+    apiClientMock.invoke.mockResolvedValueOnce({
+      enabled: true,
+      isLocked: false,
+      language: 'tr-TR',
+    });
+    const pending = service.checkVaultStatus();
+    await Promise.resolve();
+    vaultStateSubject.next({ event: 'locked', isLocked: true, isEnabled: true, lockTimeout: null });
+    translation.next({});
+    await pending;
+    expect(service.isVaultLocked()).toBe(true);
   });
 
   it('should invoke unlock and lock without optimistically mutating signals', async () => {

@@ -36,30 +36,31 @@ pub fn setup_context(
     let rcman_manager =
         crate::services::settings::manager::create_settings_manager(&app_paths.config_dir)?;
 
-    let app_handle_for_vault = app_handle.clone();
+    let access = Arc::new(services::settings::access::VaultAccess::new(
+        &app_paths.config_dir,
+        &rcman_manager,
+    )?);
+    event_bridge.set_frontend_access(access.clone());
+    app.manage(access.clone());
+    let vault_app = app_handle.clone();
     rcman_manager.events().on_vault_event(move |event| {
-        // The IPC command publishes unlock only after deferred startup succeeds.
-        if matches!(event, rcman::vault::VaultEvent::Unlocked) {
-            return;
-        }
-        let is_locked = matches!(
+        if matches!(
             event,
             rcman::vault::VaultEvent::Locked | rcman::vault::VaultEvent::AutoLocked
-        );
-        let is_enabled = !matches!(event, rcman::vault::VaultEvent::Disabled);
-        let lock_timeout = app_handle_for_vault
-            .try_state::<crate::services::settings::AppSettingsManager>()
-            .and_then(|m| m.vault_lock_timeout())
-            .map(|d| d.as_secs());
-        crate::services::bridge::emit(
-            crate::utils::types::events::VAULT_STATE_CHANGED,
-            crate::utils::types::events::VaultStatePayload {
-                event: event.to_string(),
-                is_locked,
-                is_enabled,
-                lock_timeout,
-            },
-        );
+        ) {
+            access.lock();
+            services::settings::vault::emit_vault_state(&vault_app, &event.to_string());
+            if matches!(event, rcman::vault::VaultEvent::AutoLocked) {
+                let app = vault_app.clone();
+                // The callback can run inside a cache read; avoid re-entering it.
+                crate::utils::spawn_blocking(move || {
+                    if let Some(manager) = app.try_state::<services::settings::AppSettingsManager>()
+                    {
+                        manager.invalidate_cache();
+                    }
+                });
+            }
+        }
     });
 
     use crate::services::security::SafeEnvironmentManager;
@@ -99,6 +100,7 @@ pub fn setup_context(
 
     app.manage(LogCache::new(1000));
     app.manage(AutomationsCache::new());
+    app.manage(services::automation::runtime::RuntimeTasks::default());
     app.manage(AutomationScheduler::new());
     app.manage(crate::services::automation::watcher::WatcherManager::new());
     app.manage(services::alerts::dispatch::DispatchContext::new());

@@ -33,9 +33,12 @@ pub async fn backup_settings(
     let password = password
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty());
-    let includes_external = matches!(&export_type, ExportType::All | ExportType::SpecificRemote)
-        || matches!(&export_type, ExportType::Category(category) if category == "remotes");
-    if (includes_external || include_secrets.unwrap_or(false))
+    // Category exports can contain inline credentials in schema-less JSON
+    // (workflows, quick runs, provider options), even with secret exclusion.
+    let requires_encryption = matches!(&export_type, ExportType::All | ExportType::SpecificRemote)
+        || matches!(&export_type, ExportType::Category(category)
+            if matches!(category.as_str(), "remotes" | "backend" | "workflows" | "quick_runs" | "templates"));
+    if (requires_encryption || include_secrets.unwrap_or(false))
         && !password.as_ref().is_some_and(|value| value.len() >= 4)
     {
         return Err(crate::localized_error!(

@@ -14,13 +14,7 @@ use super::handlers;
 use super::state::WebServerState;
 
 pub fn build_api_router(state: WebServerState) -> Router {
-    Router::new()
-        .route(
-            "/auth/session",
-            post(create_session_handler).delete(delete_session_handler),
-        )
-        .merge(super::commands::generate_bridge_router())
-        .route("/events", get(handlers::sse_handler))
+    let files = Router::new()
         .route(
             "/upload",
             post(handlers::stream_upload_handler).layer(DefaultBodyLimit::disable()),
@@ -28,6 +22,18 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .route("/stream", get(handlers::stream_file_handler))
         .route("/stream/remote", get(handlers::stream_remote_file_handler))
         .route("/stream/audio-cover", get(handlers::audio_cover_handler))
+        .route_layer(from_fn_with_state(
+            state.clone(),
+            super::access::file_access_middleware,
+        ));
+    Router::new()
+        .route(
+            "/auth/session",
+            post(create_session_handler).delete(delete_session_handler),
+        )
+        .merge(super::commands::generate_bridge_router())
+        .route("/events", get(handlers::sse_handler))
+        .merge(files)
         .with_state(state.clone())
         .layer(from_fn_with_state(state, auth_middleware))
 }

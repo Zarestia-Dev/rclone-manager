@@ -6,7 +6,7 @@ use axum_server::tls_rustls::RustlsConfig;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use log::info;
 use rclone_manager_core::context::AppHandle;
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 pub(super) async fn start_web_server(
@@ -40,7 +40,7 @@ pub(super) async fn start_web_server(
         app_handle: app_handle.clone(),
         event_bridge,
         auth_credentials: encoded_auth,
-        sessions: Arc::new(RwLock::new(HashSet::new())),
+        sessions: Arc::new(RwLock::new(HashMap::new())),
     };
 
     let app = build_app(state.clone(), &host, port);

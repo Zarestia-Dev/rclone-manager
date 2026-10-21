@@ -12,14 +12,12 @@ use crate::{
         sync::{lookup_dry_run, submit_transfer_batch},
     },
     services::{
-        bridge,
         flow::quick_run::types::{QuickRun, QuickRunInput},
         settings::AppSettingsManager,
     },
     utils::{
         constants::SUB_QUICK_RUNS,
         types::{
-            events::UPDATE_TRAY_MENU,
             jobs::{JobStatus, JobType},
             origin::Origin,
             remotes::{OperationExecutionResult, OperationType},
@@ -55,7 +53,9 @@ pub async fn create_quick_run(
     };
 
     save_quick_run(&manager, &record)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_quick_run(&record.id);
+    }
     sync_quick_run_automations(&app).await?;
     Ok(record)
 }
@@ -83,7 +83,9 @@ pub async fn update_quick_run(
     existing.config = quick_run.config;
 
     save_quick_run(&manager, &existing)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_quick_run(&existing.id);
+    }
     sync_quick_run_automations(&app).await?;
     Ok(existing)
 }
@@ -93,7 +95,9 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     info!("Deleting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_quick_run_by_id(&manager, &quick_run_id)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_quick_run(&quick_run_id);
+    }
     sync_quick_run_automations(&app).await?;
     Ok(())
 }
@@ -108,10 +112,20 @@ pub async fn sync_quick_run_automations(app: &AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
+    let revision = app
+        .state::<crate::services::automation::runtime::RuntimeTasks>()
+        .revision();
     let quick_runs = get_all_quick_runs_sync(&manager)?;
     cache
         .load_from_quick_runs(&quick_runs, &backend_name)
         .await?;
+    crate::services::automation::runtime::refresh_with_definitions(
+        app,
+        Some(revision),
+        Some(quick_runs),
+        None,
+    )
+    .await?;
     apply_and_sync_automations(app).await
 }
 
@@ -137,12 +151,20 @@ pub(crate) async fn start_quick_run_on_backend(
     node_id: Option<String>,
     execute_id: Option<String>,
 ) -> Result<OperationExecutionResult, String> {
+    let qr = crate::services::automation::runtime::quick_run(&app, &quick_run_id)?;
+    start_quick_run_snapshot(app, backend, qr, workflow_id, node_id, execute_id).await
+}
+
+pub(crate) async fn start_quick_run_snapshot(
+    app: AppHandle,
+    backend: crate::rclone::backend::types::Backend,
+    qr: QuickRun,
+    workflow_id: Option<String>,
+    node_id: Option<String>,
+    execute_id: Option<String>,
+) -> Result<OperationExecutionResult, String> {
+    let quick_run_id = qr.id.clone();
     info!("Starting quick run: {quick_run_id}");
-    let manager = app.state::<AppSettingsManager>();
-
-    let qr = get_quick_run(&manager, &quick_run_id)?
-        .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
-
     let execute_id = execute_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let start_time = chrono::Utc::now();
     let empty_settings = json!({"name": qr.remote_name.trim_end_matches(':')});
@@ -342,11 +364,12 @@ pub fn get_all_quick_runs_sync(manager: &AppSettingsManager) -> Result<Vec<Quick
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;
 
-    let values = sub.get_all_values().unwrap_or_default();
+    let values = sub.get_all_values().map_err(|error| error.to_string())?;
     let mut list: Vec<QuickRun> = values
         .into_values()
-        .filter_map(|v| serde_json::from_value::<QuickRun>(v).ok())
-        .collect();
+        .map(serde_json::from_value::<QuickRun>)
+        .collect::<Result<_, _>>()
+        .map_err(|error| error.to_string())?;
 
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
@@ -366,7 +389,8 @@ pub(crate) fn get_quick_run(
 
     match sub.get::<QuickRun>(id) {
         Ok(qr) => Ok(Some(qr)),
-        Err(_) => Ok(None),
+        Err(rcman::Error::SubSettingsEntryNotFound(_)) => Ok(None),
+        Err(error) => Err(error.to_string()),
     }
 }
 
@@ -401,7 +425,7 @@ pub fn delete_quick_runs_for_remote(
         .sub_settings(SUB_QUICK_RUNS)
         .map_err(|e| e.to_string())?;
 
-    let values = sub.get_all_values().unwrap_or_default();
+    let values = sub.get_all_values().map_err(|error| error.to_string())?;
     let mut deleted_ids = Vec::new();
     let clean_remote_name = remote_name.trim_end_matches(':');
 

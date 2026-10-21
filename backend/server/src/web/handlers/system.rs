@@ -23,12 +23,16 @@ fn encode_frontend_event(event: &BridgeEvent) -> Option<String> {
 pub async fn sse_handler(
     State(state): State<WebServerState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let mut rx = state.event_bridge.subscribe();
+    let mut rx = state.event_bridge.subscribe_frontend();
     let stream = async_stream::stream! {
         loop {
             match rx.recv().await {
                 Ok(event) => {
-                    if let Some(data) = encode_frontend_event(&event) {
+                    if !crate::services::settings::access::can_deliver_event(
+                        &state.app_handle, &event.event.event, &event.event.payload, Some(event.revision)) {
+                        continue;
+                    }
+                    if let Some(data) = encode_frontend_event(&event.event) {
                         yield Ok(Event::default().data(data));
                     }
                 }

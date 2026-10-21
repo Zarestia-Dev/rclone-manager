@@ -40,9 +40,15 @@ pub async fn save_remote_settings(
     }
     let manager = app.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
-    let existing = remotes
-        .get_value(&remote_name)
-        .unwrap_or_else(|_| serde_json::json!({}));
+    let existing = match remotes.get_value(&remote_name) {
+        Ok(value) => value,
+        Err(error) if error.is_not_found() => serde_json::json!({}),
+        Err(error) => {
+            return Err(
+                crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
+            );
+        }
+    };
     let mut settings = merge_settings(&existing, &settings)?;
     settings["name"] = Value::String(remote_name.clone());
     settings = migrate_to_multi_profile(settings);
@@ -84,6 +90,9 @@ pub async fn save_remote_settings(
     remotes.set(&remote_name, &parsed).map_err(
         |error| crate::localized_error!("backendErrors.settings.saveFailed", "error" => error),
     )?;
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_remote(&remote_name);
+    }
     let jobs = backend_manager.job_cache_for(&backend.name);
     if let Ok(previous) =
         serde_json::from_value::<crate::utils::types::remotes::RemoteSettings>(existing)
@@ -108,6 +117,7 @@ pub async fn save_remote_settings(
         .add_or_update_automation_for_remote(&backend.name, &remote_name, &parsed)
         .await?;
     crate::services::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
+    crate::services::automation::runtime::refresh(&app).await?;
     crate::services::automation::engine::apply_and_sync_automations(&app).await
 }
 
@@ -126,13 +136,19 @@ pub(crate) async fn delete_remote_settings_on_backend(
 ) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(|error| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => error))?;
-    if remotes.get_value(&remote_name).is_ok() {
-        remotes.delete(&remote_name).map_err(|error| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error))?;
+    match remotes.get_value(&remote_name) {
+        Ok(_) => remotes.delete(&remote_name).map_err(|error| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error))?,
+        Err(error) if error.is_not_found() => {},
+        Err(error) => return Err(crate::localized_error!("backendErrors.settings.deleteFailed", "error" => error)),
+    }
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_remote(&remote_name);
     }
     app.state::<AutomationsCache>()
         .remove_automations_for_remote(backend, &remote_name)
         .await?;
     crate::services::bridge::emit(REMOTE_SETTINGS_CHANGED, remote_name);
+    crate::services::automation::runtime::refresh(app).await?;
     crate::services::automation::engine::apply_and_sync_automations(app).await
 }
 

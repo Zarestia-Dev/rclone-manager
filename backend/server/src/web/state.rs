@@ -5,12 +5,12 @@ use axum::{
 use log::error;
 use rclone_manager_core::context::AppHandle;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use tokio::sync::RwLock;
 
 use crate::services::bridge::EventBridge;
 
-pub type SessionStore = Arc<RwLock<HashSet<String>>>;
+pub type SessionStore = Arc<RwLock<HashMap<String, Instant>>>;
 
 /// Shared state for web server handlers
 #[derive(Clone)]

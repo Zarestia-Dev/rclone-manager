@@ -383,8 +383,11 @@ mod tests {
             app_handle: app,
             event_bridge: Arc::new(crate::services::bridge::EventBridge::new(8, None)),
             auth_credentials: Some(("user".into(), "unused".into())),
-            sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashSet::from([
-                "media-session".into(),
+            sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::from([
+                (
+                    "media-session".into(),
+                    std::time::Instant::now() + std::time::Duration::from_secs(60),
+                ),
             ]))),
         })
     }

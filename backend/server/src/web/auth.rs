@@ -10,11 +10,25 @@ use axum::{
     response::{IntoResponse, Json},
 };
 
-pub async fn create_session_handler(State(state): State<WebServerState>) -> impl IntoResponse {
-    let token = uuid::Uuid::new_v4().simple().to_string();
-    state.sessions.write().await.insert(token.clone());
+const SESSION_TTL: std::time::Duration = std::time::Duration::from_secs(86400);
 
-    let cookie = format!("session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400");
+pub async fn create_session_handler(
+    State(state): State<WebServerState>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let now = std::time::Instant::now();
+    let mut sessions = state.sessions.write().await;
+    sessions.retain(|_, expires| *expires > now);
+    if let Some(previous) = extract_session_cookie(&headers) {
+        sessions.remove(previous);
+    }
+    let token = uuid::Uuid::new_v4().simple().to_string();
+    sessions.insert(token.clone(), now + SESSION_TTL);
+
+    let cookie = format!(
+        "session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={}",
+        SESSION_TTL.as_secs()
+    );
 
     ([(SET_COOKIE, cookie)], Json(ApiResponse::<()>::success(())))
 }
@@ -49,10 +63,19 @@ pub async fn auth_middleware(
         return Ok(next.run(request).await);
     }
 
-    if let Some(token) = extract_session_cookie(request.headers())
-        && state.sessions.read().await.contains(token)
-    {
-        return Ok(next.run(request).await);
+    if let Some(token) = extract_session_cookie(request.headers()) {
+        let valid = {
+            let now = std::time::Instant::now();
+            state
+                .sessions
+                .read()
+                .await
+                .get(token)
+                .is_some_and(|expires| *expires > now)
+        };
+        if valid {
+            return Ok(next.run(request).await);
+        }
     }
 
     Ok(axum::http::Response::builder()

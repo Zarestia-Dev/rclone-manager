@@ -10,6 +10,7 @@ import {
   viewChild,
   ElementRef,
   ChangeDetectionStrategy,
+  SecurityContext,
 } from '@angular/core';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -471,9 +472,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           async (_, attrs, path) => `<a${attrs} href="${await resolveRelative(path)}"`
         );
 
-        this.renderedMarkdown.set(
-          this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
-        );
+        const html = this.sanitizer.sanitize(SecurityContext.HTML, marked.parse(content) as string);
+        this.renderedMarkdown.set(this.sanitizer.bypassSecurityTrustHtml(html ?? ''));
         this.lastRenderedText = currentText;
       }
     }

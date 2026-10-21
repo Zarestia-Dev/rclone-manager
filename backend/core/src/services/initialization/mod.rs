@@ -18,12 +18,15 @@ use serde_json::json;
 pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(), String> {
     let state = app_handle.state::<RcloneState>();
     let _startup = state.initialization_lock.lock().await;
-    if state.is_shutting_down()
-        || !state
-            .initial_startup
-            .load(std::sync::atomic::Ordering::Acquire)
-    {
+    if state.is_shutting_down() {
         return Ok(());
+    }
+    if !state
+        .initial_startup
+        .load(std::sync::atomic::Ordering::Acquire)
+    {
+        crate::services::automation::runtime::refresh(&app_handle).await?;
+        return crate::services::settings::vault::complete_unlock(&app_handle);
     }
     debug!("Starting async startup tasks");
 
@@ -33,7 +36,11 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
             "Configuration vault is locked. Postponing background initialization until unlocked."
         );
         crate::utils::i18n::init();
-        crate::utils::i18n::set_language(crate::utils::i18n::DEFAULT_LANG);
+        crate::utils::i18n::set_language(
+            &app_handle
+                .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
+                .language(),
+        );
         crate::utils::logging::log::init_logging("info", app_handle.clone())?;
         #[cfg(feature = "updater")]
         crate::services::updates::health::core_ready(&app_handle);
@@ -94,13 +101,13 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
     info!("Phase 6: Running post-initialization tasks");
     handle_startup(app_handle.clone()).await;
 
+    if settings_manager.is_locked() {
+        return Err(crate::services::settings::access::locked_error());
+    }
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
     info!("Initialization complete");
-    if settings_manager.is_vault_enabled() {
-        crate::services::settings::vault::emit_vault_state(settings_manager.inner(), "unlocked");
-    }
-    Ok(())
+    crate::services::settings::vault::complete_unlock(&app_handle)
 }
 
 /// Fully refreshes all system components after settings change or restore.
@@ -109,6 +116,11 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     let manager = app_handle.state::<AppSettingsManager>();
 
+    if let Some(runtime) =
+        app_handle.try_state::<crate::services::automation::runtime::RuntimeTasks>()
+    {
+        runtime.invalidate_all();
+    }
     manager.invalidate_cache();
     let settings = manager.get_all().map_err(|e| e.to_string())?;
 
@@ -124,19 +136,17 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     initialize_caches(&app_handle).await?;
 
-    if let Err(e) =
-        crate::services::automation::commands::reload_automations_from_configs(&app_handle).await
-    {
-        error!("Failed to reload automations: {e}");
-    }
+    crate::services::automation::commands::reload_automations_from_configs(&app_handle).await?;
 
-    crate::services::flow::quick_run::commands::sync_quick_run_automations(&app_handle).await?;
-
+    app_handle
+        .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
+        .set_language(&settings.general.language, manager.is_vault_enabled());
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
-    bridge::emit(crate::utils::types::events::UPDATE_TRAY_MENU, ());
-
-    bridge::emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ());
+    bridge::emit(
+        crate::utils::types::events::REMOTE_SETTINGS_CHANGED,
+        crate::utils::constants::CACHE_UPDATED,
+    );
     bridge::emit(
         SYSTEM_SETTINGS_CHANGED,
         crate::utils::types::events::SettingsChangeEvent {
@@ -247,6 +257,9 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
     }
     crate::utils::i18n::init();
     crate::utils::i18n::set_language(&settings.general.language);
+    app_handle
+        .state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
+        .set_language(&settings.general.language, rcman_manager.is_vault_enabled());
 
     debug!("Initializing logging...");
     crate::utils::logging::log::init_logging(&settings.developer.log_level, app_handle.clone())

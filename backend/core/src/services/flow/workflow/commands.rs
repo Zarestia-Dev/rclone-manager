@@ -10,9 +10,8 @@ use super::dag::validate_workflow as validate_dag;
 use super::types::{
     WorkflowDefinition, WorkflowExecutionResult, WorkflowInput, WorkflowValidationResult,
 };
-use crate::services::{bridge, settings::AppSettingsManager};
+use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::SUB_WORKFLOWS;
-use crate::utils::types::events::UPDATE_TRAY_MENU;
 
 /// Lists all saved workflows from storage.
 pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, String> {
@@ -58,7 +57,9 @@ pub async fn create_workflow(
     };
 
     save_workflow_record(&manager, &record)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(&record.id);
+    }
     sync_workflow_automations(&app).await?;
     Ok(record)
 }
@@ -88,7 +89,9 @@ pub async fn update_workflow(
     existing.updated_at = Some(Utc::now().to_rfc3339());
 
     save_workflow_record(&manager, &existing)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(&existing.id);
+    }
     sync_workflow_automations(&app).await?;
     Ok(existing)
 }
@@ -98,7 +101,9 @@ pub async fn delete_workflow(app: AppHandle, workflow_id: String) -> Result<(), 
     info!("Deleting workflow: {workflow_id}");
     let manager = app.state::<AppSettingsManager>();
     delete_workflow_by_id_sync(&manager, &workflow_id)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(&workflow_id);
+    }
     sync_workflow_automations(&app).await?;
     Ok(())
 }
@@ -135,7 +140,9 @@ pub async fn duplicate_workflow(
     };
 
     save_workflow_record(&manager, &duplicated)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(&duplicated.id);
+    }
     sync_workflow_automations(&app).await?;
     Ok(duplicated)
 }
@@ -200,7 +207,9 @@ pub async fn import_workflow(
     parsed.updated_at = Some(now);
 
     save_workflow_record(&manager, &parsed)?;
-    bridge::emit(UPDATE_TRAY_MENU, ());
+    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
+        runtime.invalidate_workflow(&parsed.id);
+    }
     sync_workflow_automations(&app).await?;
     Ok(parsed)
 }
@@ -247,11 +256,12 @@ pub fn get_all_workflows_sync(
         .sub_settings(SUB_WORKFLOWS)
         .map_err(|e| e.to_string())?;
 
-    let values = sub.get_all_values().unwrap_or_default();
+    let values = sub.get_all_values().map_err(|error| error.to_string())?;
     let mut list: Vec<WorkflowDefinition> = values
         .into_values()
-        .filter_map(|v| serde_json::from_value::<WorkflowDefinition>(v).ok())
-        .collect();
+        .map(serde_json::from_value::<WorkflowDefinition>)
+        .collect::<Result<_, _>>()
+        .map_err(|error| error.to_string())?;
 
     list.sort_by_cached_key(|a| a.name.to_lowercase());
     Ok(list)
@@ -267,7 +277,8 @@ pub fn get_workflow_by_id(
 
     match sub.get::<WorkflowDefinition>(id) {
         Ok(wf) => Ok(Some(wf)),
-        Err(_) => Ok(None),
+        Err(rcman::Error::SubSettingsEntryNotFound(_)) => Ok(None),
+        Err(error) => Err(error.to_string()),
     }
 }
 
@@ -312,8 +323,18 @@ pub async fn sync_workflow_automations(app: &AppHandle) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
+    let revision = app
+        .state::<crate::services::automation::runtime::RuntimeTasks>()
+        .revision();
     let workflows = get_all_workflows_sync(&manager)?;
     cache.load_from_workflows(&workflows, &backend_name).await?;
+    crate::services::automation::runtime::refresh_with_definitions(
+        app,
+        Some(revision),
+        None,
+        Some(workflows),
+    )
+    .await?;
     apply_and_sync_automations(app).await
 }
 

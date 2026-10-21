@@ -1,11 +1,12 @@
 //! IPC boundary for rcman's configuration vault and deferred application startup.
 
+use super::access::{self, VaultAccess};
 use crate::context::AppHandle;
 use crate::services::bridge;
 use crate::services::settings::AppSettingsManager;
 use crate::utils::types::events::{VAULT_STATE_CHANGED, VaultStatePayload};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::sync::Arc;
 
 /// Vault status returned by the initial status query.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -17,21 +18,52 @@ pub struct VaultInfoResponse {
     pub is_locked: bool,
     /// Inactivity limit in seconds; `None` disables automatic locking.
     pub lock_timeout_secs: Option<u64>,
+    /// Public UI preference available before password entry.
+    pub language: String,
 }
 
 /// Publish the current state after application-specific vault operations.
-pub fn emit_vault_state(manager: &AppSettingsManager, event: &str) {
+pub fn emit_vault_state(app: &AppHandle, event: &str) {
+    let manager = app.state::<AppSettingsManager>();
     bridge::emit(
         VAULT_STATE_CHANGED,
         VaultStatePayload {
             event: event.to_string(),
-            is_locked: manager.is_locked(),
+            is_locked: access::is_locked(app),
             is_enabled: manager.is_vault_enabled(),
-            lock_timeout: manager
-                .vault_lock_timeout()
-                .map(|duration| duration.as_secs()),
+            lock_timeout: manager.vault_lock_timeout().map(|d| d.as_secs()),
         },
     );
+}
+
+/// Open frontend access only after startup and task preparation have succeeded.
+pub(crate) fn complete_unlock(app: &AppHandle) -> Result<(), String> {
+    let manager = app.state::<AppSettingsManager>();
+    if manager.is_locked() {
+        return Err(access::locked_error());
+    }
+    let access = app.state::<Arc<VaultAccess>>();
+    if !access.is_locked() {
+        return Ok(());
+    }
+    access.unlock();
+    if !manager.is_vault_enabled() {
+        return Ok(());
+    }
+    emit_vault_state(app, "unlocked");
+    bridge::emit(
+        crate::utils::types::events::SYSTEM_SETTINGS_CHANGED,
+        crate::utils::types::events::SettingsChangeEvent {
+            category: "*".into(),
+            key: "*".into(),
+            value: serde_json::Value::Null,
+        },
+    );
+    bridge::emit(
+        crate::utils::types::events::AUTOMATIONS_CACHE_CHANGED,
+        crate::utils::constants::CACHE_UPDATED,
+    );
+    Ok(())
 }
 
 fn vault_error(error: rcman::Error) -> String {
@@ -54,13 +86,34 @@ fn require_password(password: &str) -> Result<(), String> {
     }
 }
 
-// Argon2 and settings migration perform blocking CPU and filesystem work.
-async fn run_vault_operation(
+// Own the complete transition in a detached task. Cancelling the IPC/HTTP
+// caller must not release serialization while blocking migration is still running.
+async fn run_vault_operation<F, Fut>(
+    app: AppHandle,
+    allow_locked: bool,
+    operation: F,
+) -> Result<(), String>
+where
+    F: FnOnce(AppHandle) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = Result<(), String>> + Send + 'static,
+{
+    crate::utils::spawn(async move {
+        let state = app.state::<crate::utils::types::state::RcloneState>();
+        let _operation = state.vault_operation_lock.try_lock().map_err(|_| {
+            crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Another vault operation is in progress")
+        })?;
+        if !allow_locked && access::is_locked(&app) {
+            return Err(access::locked_error());
+        }
+        operation(app).await
+    }).await.map_err(|error| crate::localized_error!("backendErrors.vault.operationFailed", "error" => error.to_string()))?
+}
+
+// Argon2 and settings migration must not run on async workers.
+async fn update_manager(
     app: &AppHandle,
     operation: impl FnOnce(&AppSettingsManager) -> rcman::Result<()> + Send + 'static,
 ) -> Result<(), String> {
-    let state = app.state::<crate::utils::types::state::RcloneState>();
-    let _operation = state.vault_operation_lock.lock().await;
     let app = app.clone();
     crate::utils::spawn_blocking(move || operation(app.state::<AppSettingsManager>().inner()))
         .await
@@ -70,50 +123,64 @@ async fn run_vault_operation(
 
 pub async fn get_vault_info(app: AppHandle) -> Result<VaultInfoResponse, String> {
     let manager = app.state::<AppSettingsManager>();
+    let access = app.state::<Arc<VaultAccess>>();
     Ok(VaultInfoResponse {
         enabled: manager.is_vault_enabled(),
-        is_locked: manager.is_locked()
-            || (manager.is_vault_enabled()
-                && app
-                    .state::<crate::utils::types::state::RcloneState>()
-                    .initial_startup
-                    .load(std::sync::atomic::Ordering::Acquire)),
+        is_locked: access::is_locked(&app),
         lock_timeout_secs: manager
             .vault_lock_timeout()
             .map(|duration| duration.as_secs()),
+        language: access.language(),
     })
 }
 
 pub async fn unlock_vault(app: AppHandle, password: String) -> Result<(), String> {
     require_password(&password)?;
-    let is_initial_startup = app
-        .state::<crate::utils::types::state::RcloneState>()
-        .initial_startup
-        .load(std::sync::atomic::Ordering::Acquire);
-    run_vault_operation(&app, move |manager| manager.unlock(&password)).await?;
-
-    // This is a no-op after successful startup; normal unlocks do not restart services.
-    if let Err(error) = crate::services::initialization::initialization(app.clone()).await {
-        let manager = app.state::<AppSettingsManager>();
-        if let Err(lock_error) = manager.lock() {
-            log::error!("Failed to re-lock vault after startup failure: {lock_error}");
+    run_vault_operation(app, true, move |app| async move {
+        let access = app.state::<Arc<VaultAccess>>();
+        update_manager(&app, move |manager| {
+            if manager.is_locked() {
+                manager.unlock(&password)
+            } else if manager.verify_vault_password(&password)? {
+                Ok(())
+            } else {
+                Err(rcman::Error::InvalidPassword)
+            }
+        })
+        .await?;
+        let startup = async {
+            crate::services::automation::runtime::flush_completions(&app).await?;
+            crate::services::initialization::initialization(app.clone()).await?;
+            access::require_session(&app, None)
         }
-        return Err(
-            crate::localized_error!("backendErrors.vault.operationFailed", "error" => error),
-        );
-    }
-    let manager = app.state::<AppSettingsManager>();
-    if manager.is_locked() {
-        return Err(vault_error(rcman::Error::ConfigLocked));
-    }
-    if !is_initial_startup {
-        emit_vault_state(manager.inner(), "unlocked");
-    }
-    Ok(())
+        .await;
+        if let Err(error) = startup {
+            access.lock();
+            if let Err(lock_error) = update_manager(&app, AppSettingsManager::lock).await {
+                log::error!("Failed to re-lock vault after startup failure: {lock_error}");
+            }
+            return Err(
+                crate::localized_error!("backendErrors.vault.operationFailed", "error" => error),
+            );
+        }
+        Ok(())
+    })
+    .await
 }
 
 pub async fn lock_vault(app: AppHandle) -> Result<(), String> {
-    run_vault_operation(&app, AppSettingsManager::lock).await
+    run_vault_operation(app, false, |app| async move {
+        if !app.state::<AppSettingsManager>().is_vault_enabled() {
+            return Err(vault_error(rcman::Error::VaultNotEnabled));
+        }
+        app.state::<Arc<VaultAccess>>().lock();
+        if let Err(error) = crate::services::automation::runtime::refresh(&app).await {
+            log::warn!("Locking without replacing prepared task inputs: {error}");
+        }
+        // The rcman lock callback publishes the completed transition.
+        update_manager(&app, AppSettingsManager::lock).await
+    })
+    .await
 }
 
 pub async fn enable_vault(
@@ -122,19 +189,39 @@ pub async fn enable_vault(
     timeout_secs: Option<u64>,
 ) -> Result<(), String> {
     require_password(&password)?;
-    run_vault_operation(&app, move |manager| {
-        manager.enable_vault(&password)?;
-        if let Some(seconds) = timeout_secs {
-            manager.set_vault_lock_timeout((seconds > 0).then(|| Duration::from_secs(seconds)))?;
+    run_vault_operation(app, false, move |app| async move {
+        if crate::services::flow::workflow::engine::has_active_workflows() {
+            return Err(crate::localized_error!("backendErrors.vault.operationFailed", "error" => "Wait for running workflows to finish before enabling the vault"));
         }
+        update_manager(&app, move |manager| {
+            manager.enable_vault(&password)?;
+            if let Some(seconds) = timeout_secs {
+                manager.set_vault_lock_timeout((seconds > 0).then(|| std::time::Duration::from_secs(seconds)))?;
+            }
+            Ok(())
+        }).await?;
+        let manager = app.state::<AppSettingsManager>();
+        let language = manager.get::<String>("general.language").map_err(vault_error)?;
+        let access = app.state::<Arc<VaultAccess>>();
+        access.set_language(&language, true);
+        crate::services::automation::runtime::refresh(&app).await?;
+        if manager.is_locked() { return Err(access::locked_error()); }
+        access.unlock();
+        emit_vault_state(&app, "enabled");
         Ok(())
-    })
-    .await
+    }).await
 }
 
 pub async fn disable_vault(app: AppHandle, password: String) -> Result<(), String> {
     require_password(&password)?;
-    run_vault_operation(&app, move |manager| manager.disable_vault(&password)).await
+    run_vault_operation(app, false, move |app| async move {
+        update_manager(&app, move |manager| manager.disable_vault(&password)).await?;
+        crate::services::automation::runtime::refresh(&app).await?;
+        app.state::<Arc<VaultAccess>>().unlock();
+        emit_vault_state(&app, "disabled");
+        Ok(())
+    })
+    .await
 }
 
 pub async fn change_vault_password(
@@ -144,8 +231,13 @@ pub async fn change_vault_password(
 ) -> Result<(), String> {
     require_password(&old_password)?;
     require_password(&new_password)?;
-    run_vault_operation(&app, move |manager| {
-        manager.change_vault_password(&old_password, &new_password)
+    run_vault_operation(app, false, move |app| async move {
+        update_manager(&app, move |manager| {
+            manager.change_vault_password(&old_password, &new_password)
+        })
+        .await?;
+        emit_vault_state(&app, "password_changed");
+        Ok(())
     })
     .await
 }
@@ -154,12 +246,19 @@ pub async fn set_vault_lock_timeout(
     app: AppHandle,
     timeout_secs: Option<u64>,
 ) -> Result<(), String> {
-    let timeout = timeout_secs
-        .filter(|&seconds| seconds > 0)
-        .map(Duration::from_secs);
-    run_vault_operation(&app, move |manager| manager.set_vault_lock_timeout(timeout)).await?;
-    emit_vault_state(app.state::<AppSettingsManager>().inner(), "timeout_changed");
-    Ok(())
+    run_vault_operation(app, false, move |app| async move {
+        update_manager(&app, move |manager| {
+            manager.set_vault_lock_timeout(
+                timeout_secs
+                    .filter(|seconds| *seconds > 0)
+                    .map(std::time::Duration::from_secs),
+            )
+        })
+        .await?;
+        emit_vault_state(&app, "timeout_changed");
+        Ok(())
+    })
+    .await
 }
 
 pub async fn touch_vault(app: AppHandle) -> Result<(), String> {
@@ -175,11 +274,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn unlock_completion_keeps_access_closed_until_storage_is_unlocked() {
+        let directory = tempfile::tempdir().unwrap();
+        let (app, access) = super::super::access::tests::app(directory.path());
+        access.lock();
+        app.state::<AppSettingsManager>().lock().unwrap();
+        assert!(complete_unlock(&app).is_err());
+        assert!(access.is_locked());
+        app.state::<AppSettingsManager>()
+            .unlock("password")
+            .unwrap();
+        complete_unlock(&app).unwrap();
+        assert!(!access.is_locked());
+        complete_unlock(&app).unwrap();
+        assert!(!access.is_locked());
+    }
+
+    #[test]
     fn disabled_timeout_is_explicit_in_queries_and_events() {
         let info = VaultInfoResponse {
             enabled: true,
             is_locked: false,
             lock_timeout_secs: None,
+            language: "en-US".into(),
         };
         assert_eq!(
             serde_json::to_value(info).unwrap()["lockTimeoutSecs"],

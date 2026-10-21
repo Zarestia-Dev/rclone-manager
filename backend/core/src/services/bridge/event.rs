@@ -17,16 +17,25 @@ pub struct BridgeEvent {
     pub payload: serde_json::Value,
 }
 
+/// Session stamp is internal and never serialized to clients.
+#[derive(Clone)]
+pub struct FrontendEvent {
+    pub event: Arc<BridgeEvent>,
+    pub revision: u64,
+}
+
 static GLOBAL_EVENT_BRIDGE: OnceLock<Arc<EventBridge>> = OnceLock::new();
 
 /// Host adapter for delivering serialized events outside the shared broadcast channel.
 pub trait EventSink: Send + Sync {
-    fn emit(&self, event: &BridgeEvent);
+    fn emit(&self, event: &FrontendEvent);
 }
 
 /// Manages event subscriptions and distribution across desktop IPC and web-server SSE.
 pub struct EventBridge {
     tx: broadcast::Sender<BridgeEvent>,
+    frontend_tx: broadcast::Sender<FrontendEvent>,
+    access: parking_lot::RwLock<Option<Arc<crate::services::settings::access::VaultAccess>>>,
     sink: Option<Arc<dyn EventSink>>,
 }
 
@@ -34,7 +43,21 @@ impl EventBridge {
     /// Creates a new `EventBridge` instance with the specified channel capacity.
     pub fn new(capacity: usize, sink: Option<Arc<dyn EventSink>>) -> Self {
         let (tx, _) = broadcast::channel(capacity);
-        Self { tx, sink }
+        let (frontend_tx, _) = broadcast::channel(capacity);
+        Self {
+            tx,
+            frontend_tx,
+            access: parking_lot::RwLock::new(None),
+            sink,
+        }
+    }
+
+    pub fn set_frontend_access(&self, access: Arc<crate::services::settings::access::VaultAccess>) {
+        *self.access.write() = Some(access);
+    }
+
+    pub fn subscribe_frontend(&self) -> broadcast::Receiver<FrontendEvent> {
+        self.frontend_tx.subscribe()
     }
 
     /// Subscribes to all events emitted through this bridge.
@@ -55,15 +78,30 @@ impl EventBridge {
             }
         };
 
-        let bridge_event = BridgeEvent {
+        let bridge_event = Arc::new(BridgeEvent {
             event: event.to_string(),
             payload: value,
-        };
+        });
 
-        // Both transports observe the same serialized payload.
-        let _ = self.tx.send(bridge_event.clone());
-        if let Some(sink) = &self.sink {
-            sink.emit(&bridge_event);
+        // Backend consumers always receive events, including while the UI is locked.
+        let _ = self.tx.send((*bridge_event).clone());
+        let deliver = |revision| {
+            let frontend = FrontendEvent {
+                event: bridge_event.clone(),
+                revision,
+            };
+            let _ = self.frontend_tx.send(frontend.clone());
+            if let Some(sink) = &self.sink {
+                sink.emit(&frontend);
+            }
+        };
+        if let Some(access) = self.access.read().as_ref() {
+            access.deliver(
+                event == crate::utils::types::events::VAULT_STATE_CHANGED,
+                deliver,
+            );
+        } else {
+            deliver(0);
         }
     }
 }
@@ -98,8 +136,8 @@ mod tests {
     struct RecordingSink(parking_lot::Mutex<Vec<BridgeEvent>>);
 
     impl EventSink for RecordingSink {
-        fn emit(&self, event: &BridgeEvent) {
-            self.0.lock().push(event.clone());
+        fn emit(&self, event: &FrontendEvent) {
+            self.0.lock().push((*event.event).clone());
         }
     }
 

@@ -87,9 +87,57 @@ pub fn error_response(
         .unwrap()
 }
 
+// Keep buffered responses from escaping after the session that requested them ends.
+struct VaultResponder {
+    responder: tauri::UriSchemeResponder,
+    app: rclone_manager_core::context::AppHandle,
+    revision: u64,
+}
+
+impl VaultResponder {
+    fn new(
+        app: &rclone_manager_core::context::AppHandle,
+        responder: tauri::UriSchemeResponder,
+    ) -> Self {
+        let access = app
+            .try_state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
+            .map(|s| s.inner().clone());
+        let revision = access.as_ref().map_or(0, |a| a.revision());
+        Self {
+            responder,
+            app: app.clone(),
+            revision,
+        }
+    }
+
+    fn respond(self, response: Response<Vec<u8>>) {
+        if crate::services::settings::access::is_locked(&self.app)
+            || self
+                .app
+                .try_state::<std::sync::Arc<crate::services::settings::access::VaultAccess>>()
+                .is_some_and(|access| !access.permits(self.revision))
+        {
+            self.responder.respond(error_response(
+                423,
+                crate::services::settings::access::locked_error(),
+            ));
+        } else {
+            self.responder.respond(response);
+        }
+    }
+}
+
 fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
+            if crate::services::settings::access::is_locked(app.app_handle().backend()) {
+                responder.respond(error_response(
+                    423,
+                    crate::services::settings::access::locked_error(),
+                ));
+                return;
+            }
+            let responder = VaultResponder::new(app.app_handle().backend(), responder);
             if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;
@@ -142,6 +190,11 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
 fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
+            if crate::services::settings::access::is_locked(app.app_handle().backend()) {
+                responder.respond(error_response(423, crate::services::settings::access::locked_error()));
+                return;
+            }
+            let responder = VaultResponder::new(app.app_handle().backend(), responder);
             if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;
@@ -306,6 +359,14 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
     builder = builder.register_asynchronous_uri_scheme_protocol(
         "audio-cover",
         |app, request, responder| {
+            if crate::services::settings::access::is_locked(app.app_handle().backend()) {
+                responder.respond(error_response(
+                    423,
+                    crate::services::settings::access::locked_error(),
+                ));
+                return;
+            }
+            let responder = VaultResponder::new(app.app_handle().backend(), responder);
             if request.method() == Method::OPTIONS {
                 responder.respond(cors_preflight_response());
                 return;

@@ -4868,6 +4868,7 @@ dependencies = [
  "mime_guess",
  "percent-encoding",
  "rclone-manager-core",
+ "rcman",
  "rustls",
  "serde",
  "serde_json",

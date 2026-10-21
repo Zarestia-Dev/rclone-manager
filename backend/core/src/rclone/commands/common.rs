@@ -594,7 +594,7 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Result<CommonCon
     parse_profile_config(&profile, settings, name)
 }
 
-fn parse_profile_config(
+pub(crate) fn parse_profile_config(
     profile: &ProfileConfig,
     settings: &Value,
     name: Option<String>,

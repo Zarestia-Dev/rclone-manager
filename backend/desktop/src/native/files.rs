@@ -1,10 +1,22 @@
 use crate::context::BackendContext;
+use crate::services::settings::access;
 use crate::utils::io::file_stream::{file_metadata, file_reader, pin_file_transport};
 use crate::utils::types::events::{FILE_DOWNLOAD_PROGRESS, FileDownloadProgressPayload};
 use log::debug;
-use tauri::{AppHandle, Window};
+use tauri::{AppHandle, Manager, Window};
 use tauri_plugin_dialog::DialogExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+async fn with_file_access<T>(
+    app: &AppHandle,
+    revision: Option<u64>,
+    operation: impl std::future::Future<Output = Result<T, String>>,
+) -> Result<T, String> {
+    access::require_session(app.backend(), revision)?;
+    let result = operation.await;
+    access::require_session(app.backend(), revision)?;
+    result
+}
 
 #[tauri::command]
 #[cfg(desktop)]
@@ -13,15 +25,17 @@ pub async fn get_folder_location(
     require_empty: bool,
     initial_path: Option<String>,
 ) -> Result<Option<String>, String> {
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
     let mut dialog = app.dialog().file();
     if let Some(path) = initial_path {
         dialog = dialog.set_directory(path);
     }
-    let folder = match dialog
-        .set_title("Select Folder")
-        .blocking_pick_folder()
-        .map(|p| p.to_string())
-    {
+    let selected = crate::utils::spawn_blocking(move || dialog
+        .set_title("Select Folder").blocking_pick_folder().map(|path| path.to_string()))
+        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
+    access::require_session(app.backend(), revision)?;
+    let folder = match selected {
         Some(path) if path.is_empty() => {
             debug!("User selected empty path");
             return Ok(None);
@@ -87,6 +101,7 @@ pub async fn get_folder_location(
     }
 
     Ok(Some(folder))
+    }).await
 }
 
 #[tauri::command]
@@ -157,13 +172,15 @@ pub async fn open_file_natively(
     file_name: String,
     is_local: bool,
 ) -> Result<String, String> {
-    use tauri::Manager;
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
 
     let clean_file_name = std::path::Path::new(&file_name)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("document.pdf");
 
+    access::require_session(app.backend(), revision)?;
     if is_local {
         let mut full_path = std::path::PathBuf::from(&remote);
         full_path.push(&path);
@@ -227,6 +244,7 @@ pub async fn open_file_natively(
 
     let mut buffer = vec![0; 65536];
     loop {
+        access::require_session(app.backend(), revision)?;
         let n = reader
             .read(&mut buffer)
             .await
@@ -234,6 +252,7 @@ pub async fn open_file_natively(
         if n == 0 {
             break;
         }
+        access::require_session(app.backend(), revision)?;
         file.write_all(&buffer[..n])
             .await
             .map_err(|e| format!("Error writing temporary file: {e}"))?;
@@ -241,6 +260,7 @@ pub async fn open_file_natively(
     file.flush()
         .await
         .map_err(|e| format!("Error flushing temporary file: {e}"))?;
+    access::require_session(app.backend(), revision)?;
     // The external application may still be reading it after this command returns.
     // Startup/shutdown cleanup owns successful preview directories.
     let _ = temp_directory.keep();
@@ -254,6 +274,7 @@ pub async fn open_file_natively(
     }
 
     Ok(dest_str)
+    }).await
 }
 
 async fn create_preview_directory(
@@ -349,33 +370,37 @@ pub fn cleanup_temp_views(app: &AppHandle) {
 
 #[tauri::command]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
+    let app = window.app_handle().clone();
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
     debug!("Opening file picker dialog...");
 
-    let file_location = window
-        .dialog()
-        .file()
-        .blocking_pick_file()
-        .map(|path| path.to_string());
+    let dialog = window.dialog().file();
+    let file_location = crate::utils::spawn_blocking(move || dialog.blocking_pick_file().map(|path| path.to_string()))
+        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
 
     debug!("File location: {file_location:?}");
 
     Ok(file_location)
+    }).await
 }
 
 #[tauri::command]
 pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
+    let app = window.app_handle().clone();
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
     debug!("Opening multi-file picker dialog...");
 
-    let file_locations = window.dialog().file().blocking_pick_files().map(|paths| {
-        paths
-            .into_iter()
-            .map(|path| path.to_string())
-            .collect::<Vec<_>>()
-    });
+    let dialog = window.dialog().file();
+    let file_locations = crate::utils::spawn_blocking(move || dialog.blocking_pick_files().map(|paths| {
+        paths.into_iter().map(|path| path.to_string()).collect::<Vec<_>>()
+    })).await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
 
     debug!("File locations: {file_locations:?}");
 
     Ok(file_locations)
+    }).await
 }
 
 #[tauri::command]
@@ -383,12 +408,16 @@ pub async fn get_save_file_location(
     app: AppHandle,
     default_name: Option<String>,
 ) -> Result<Option<String>, String> {
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
     let mut dialog = app.dialog().file();
     if let Some(ref name) = default_name {
         dialog = dialog.set_file_name(name);
     }
-    let file_location = dialog.blocking_save_file().map(|path| path.to_string());
+    let file_location = crate::utils::spawn_blocking(move || dialog.blocking_save_file().map(|path| path.to_string()))
+        .await.map_err(|error| rclone_manager_core::localized_error!("backendErrors.file.failedToOpen", "error" => error.to_string()))?;
     Ok(file_location)
+    }).await
 }
 
 // Keep the existing destination intact until the complete source has been verified.
@@ -440,97 +469,102 @@ pub async fn download_file(
     total_size: Option<u64>,
     is_local: bool,
 ) -> Result<(), String> {
-    let transport = crate::rclone::commands::common::transport(app.backend());
+    let revision = access::revision(app.backend());
+    with_file_access(&app, revision, async {
+        let transport = crate::rclone::commands::common::transport(app.backend());
 
-    // Resolve target path and remote for rclone
-    let (remote_arg, path_arg) = if is_local {
-        let mut full_path = std::path::PathBuf::from(remote);
-        full_path.push(path);
-        ("".to_string(), full_path.to_string_lossy().into_owned())
-    } else {
-        (remote, path)
-    };
+        // Resolve target path and remote for rclone
+        let (remote_arg, path_arg) = if is_local {
+            let mut full_path = std::path::PathBuf::from(remote);
+            full_path.push(path);
+            ("".to_string(), full_path.to_string_lossy().into_owned())
+        } else {
+            (remote, path)
+        };
 
-    let transport = pin_file_transport(transport)
-        .await
-        .map_err(download_error)?;
-    let version = file_metadata(transport.as_ref(), &remote_arg, &path_arg)
-        .await
-        .map_err(download_error)?;
-    let size = version.size;
-    let mut reader = file_reader(transport, remote_arg, path_arg, 0, size, Some(version));
-
-    #[cfg(target_os = "android")]
-    let (mut file, temporary) = if destination.starts_with("content://") {
-        // SAF providers do not offer a portable atomic replacement operation.
-        use std::os::fd::FromRawFd;
-        let raw_fd = crate::rclone::backend::saf_bridge::open_content_uri_fd(&destination, "wt")
-            .map_err(download_error)?;
-        let std_file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
-        (tokio::fs::File::from_std(std_file), None)
-    } else {
-        let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
-        (file, Some(temporary))
-    };
-
-    #[cfg(not(target_os = "android"))]
-    let (mut file, temporary) = {
-        let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
-        (file, Some(temporary))
-    };
-
-    let mut buffer = vec![0; 65536]; // 64KB chunk
-    let mut downloaded_bytes: u64 = 0;
-
-    if total_size.is_some_and(|hint| hint != size) {
-        debug!("Download size hint differs from source metadata; using {size} bytes");
-    }
-    let mut last_progress = std::time::Instant::now();
-
-    loop {
-        let n = reader.read(&mut buffer).await.map_err(download_error)?;
-        if n == 0 {
-            break;
-        }
-        file.write_all(&buffer[..n]).await.map_err(download_error)?;
-        downloaded_bytes += n as u64;
-
-        if downloaded_bytes < size
-            && last_progress.elapsed() >= std::time::Duration::from_millis(100)
-        {
-            crate::services::bridge::emit(
-                FILE_DOWNLOAD_PROGRESS,
-                FileDownloadProgressPayload {
-                    destination: destination.clone(),
-                    downloaded: downloaded_bytes,
-                    total: Some(size),
-                    percentage: Some(downloaded_bytes as f64 / size as f64 * 100.0),
-                },
-            );
-            last_progress = std::time::Instant::now();
-        }
-    }
-
-    drop(reader);
-    file.flush().await.map_err(download_error)?;
-
-    if let Some(temporary) = temporary {
-        file.sync_all().await.map_err(download_error)?;
-        drop(file);
-        commit_download(temporary, destination.clone())
+        let transport = pin_file_transport(transport)
             .await
             .map_err(download_error)?;
-    }
+        let version = file_metadata(transport.as_ref(), &remote_arg, &path_arg)
+            .await
+            .map_err(download_error)?;
+        let size = version.size;
+        let mut reader = file_reader(transport, remote_arg, path_arg, 0, size, Some(version));
 
-    crate::services::bridge::emit(
-        FILE_DOWNLOAD_PROGRESS,
-        FileDownloadProgressPayload {
-            destination: destination.clone(),
-            downloaded: downloaded_bytes,
-            total: Some(size),
-            percentage: Some(100.0),
-        },
-    );
+        #[cfg(target_os = "android")]
+        let (mut file, temporary) = if destination.starts_with("content://") {
+            // SAF providers do not offer a portable atomic replacement operation.
+            use std::os::fd::FromRawFd;
+            let raw_fd =
+                crate::rclone::backend::saf_bridge::open_content_uri_fd(&destination, "wt")
+                    .map_err(download_error)?;
+            let std_file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
+            (tokio::fs::File::from_std(std_file), None)
+        } else {
+            let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
+            (file, Some(temporary))
+        };
 
-    Ok(())
+        #[cfg(not(target_os = "android"))]
+        let (mut file, temporary) = {
+            let (file, temporary) = stage_download(&destination).await.map_err(download_error)?;
+            (file, Some(temporary))
+        };
+
+        let mut buffer = vec![0; 65536]; // 64KB chunk
+        let mut downloaded_bytes: u64 = 0;
+
+        if total_size.is_some_and(|hint| hint != size) {
+            debug!("Download size hint differs from source metadata; using {size} bytes");
+        }
+        let mut last_progress = std::time::Instant::now();
+
+        loop {
+            let n = reader.read(&mut buffer).await.map_err(download_error)?;
+            if n == 0 {
+                break;
+            }
+            file.write_all(&buffer[..n]).await.map_err(download_error)?;
+            downloaded_bytes += n as u64;
+
+            if downloaded_bytes < size
+                && last_progress.elapsed() >= std::time::Duration::from_millis(100)
+            {
+                crate::services::bridge::emit(
+                    FILE_DOWNLOAD_PROGRESS,
+                    FileDownloadProgressPayload {
+                        destination: destination.clone(),
+                        downloaded: downloaded_bytes,
+                        total: Some(size),
+                        percentage: Some(downloaded_bytes as f64 / size as f64 * 100.0),
+                    },
+                );
+                last_progress = std::time::Instant::now();
+            }
+        }
+
+        drop(reader);
+        file.flush().await.map_err(download_error)?;
+
+        if let Some(temporary) = temporary {
+            file.sync_all().await.map_err(download_error)?;
+            drop(file);
+            commit_download(temporary, destination.clone())
+                .await
+                .map_err(download_error)?;
+        }
+
+        crate::services::bridge::emit(
+            FILE_DOWNLOAD_PROGRESS,
+            FileDownloadProgressPayload {
+                destination: destination.clone(),
+                downloaded: downloaded_bytes,
+                total: Some(size),
+                percentage: Some(100.0),
+            },
+        );
+
+        Ok(())
+    })
+    .await
 }

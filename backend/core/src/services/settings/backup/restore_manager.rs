@@ -87,7 +87,7 @@ pub async fn restore_settings(
     };
     // Even an error can follow a managed commit or an incomplete rollback.
     let refresh = crate::services::initialization::refresh_system(app.clone()).await;
-    crate::services::settings::vault::emit_vault_state(manager.inner(), "restored");
+    crate::services::settings::vault::emit_vault_state(&app, "restored");
     match (outcome, refresh) {
         (Ok(message), Ok(())) => Ok(message),
         (Err(error), Ok(())) => Err(error),

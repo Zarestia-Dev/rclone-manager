@@ -1,5 +1,6 @@
 import { DestroyRef, inject, Injectable, NgZone, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { VaultInfo, VaultStatePayload } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
@@ -108,6 +109,13 @@ export class VaultService extends TauriBaseService {
     const revision = ++this.stateRevision;
     try {
       const info = await this.invokeCommand<VaultInfo>('get_vault_info');
+      if (
+        revision === this.stateRevision &&
+        info.language &&
+        info.language !== this.translate.getCurrentLang()
+      ) {
+        await firstValueFrom(this.translate.use(info.language));
+      }
       if (revision === this.stateRevision) {
         this.applyVaultState({
           isEnabled: info.enabled,

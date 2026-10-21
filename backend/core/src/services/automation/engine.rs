@@ -281,7 +281,7 @@ impl Default for AutomationScheduler {
     }
 }
 
-/// Unified helper to apply automations cache update result, resync watchers, and update system tray.
+/// Reconcile prepared automations with the scheduler, watchers, and system tray.
 pub async fn apply_and_sync_automations(app: &AppHandle) -> Result<(), String> {
     let scheduler = app.state::<AutomationScheduler>();
     let watcher = app.state::<crate::services::automation::watcher::WatcherManager>();
@@ -487,14 +487,29 @@ pub async fn execute_automation(
                 params.execute_id = Some(execution_id.clone());
 
                 let transfer_type = automation.automation_type;
-                let resolved = crate::rclone::commands::common::resolve_profile_settings(
-                    app_handle,
-                    &params.remote_name,
-                    &params.profile_name,
-                    transfer_type,
-                    params.backend_name.as_deref(),
-                )
-                .await;
+                let mut resolved = if app_handle
+                    .state::<crate::services::settings::AppSettingsManager>()
+                    .is_locked()
+                {
+                    super::runtime::profile(app_handle, automation_id, &backend)
+                } else {
+                    crate::rclone::commands::common::resolve_profile_settings(
+                        app_handle,
+                        &params.remote_name,
+                        &params.profile_name,
+                        transfer_type,
+                        params.backend_name.as_deref(),
+                    )
+                    .await
+                };
+                // Auto-lock may happen during the asynchronous backend lookup.
+                if resolved.is_err()
+                    && app_handle
+                        .state::<crate::services::settings::AppSettingsManager>()
+                        .is_locked()
+                {
+                    resolved = super::runtime::profile(app_handle, automation_id, &backend);
+                }
                 // Execute an immutable profile snapshot without holding the
                 // selection/settings lock through a long remote operation.
                 drop(selection.take());

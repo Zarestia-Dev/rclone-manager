@@ -34,7 +34,13 @@ macro_rules! command_dispatch_gen {
             command: &str,
             payload: serde_json::Value
         ) -> Result<serde_json::Value, serde_json::Value> {
-            match command {
+            use crate::services::settings::access;
+            let public = access::allowed_when_locked(command);
+            let revision = access::revision(app);
+            if !public {
+                access::require_session(app, revision).map_err(command_error)?;
+            }
+            let result = async { match command {
                 $(
                     $(#[$meta])?
                     stringify!($name) => {
@@ -48,7 +54,12 @@ macro_rules! command_dispatch_gen {
                     }
                 )*
                 _ => Err(serde_json::Value::String(format!("Command '{}' not found in bridge", command)))
+            }}.await;
+            // Discard data from commands that outlive their unlocked session.
+            if !public && !(command == "lock_vault" && result.is_ok()) {
+                access::require_session(app, revision).map_err(command_error)?;
             }
+            result
         }
 
         pub fn is_command(command: &str) -> bool {

@@ -61,6 +61,10 @@ pub fn get_active_workflow_ids() -> HashSet<String> {
     ACTIVE_WORKFLOW_EXECUTIONS.read().keys().cloned().collect()
 }
 
+pub fn has_active_workflows() -> bool {
+    !ACTIVE_WORKFLOW_EXECUTIONS.read().is_empty()
+}
+
 /// Halts an actively executing workflow and terminates any underlying Rclone transfer jobs.
 pub async fn stop_workflow(app: &AppHandle, workflow_id: &str) -> Result<(), String> {
     let state_opt = {
@@ -1012,6 +1016,7 @@ async fn execute_single_node(
     mut cancel_rx: tokio::sync::watch::Receiver<bool>,
     active_jobs: &Arc<RwLock<HashSet<u64>>>,
     node_results: &Arc<RwLock<HashMap<String, Value>>>,
+    quick_runs: &HashMap<String, crate::services::flow::quick_run::types::QuickRun>,
     dry_run: bool,
 ) -> Result<NodeExecutionOutput, String> {
     if cancel_flag.load(Ordering::SeqCst) {
@@ -1154,12 +1159,11 @@ async fn execute_single_node(
                     "Missing or empty 'quickRunId' in quick_run node config".to_string()
                 })?;
 
+            let qr =
+                quick_runs.get(qr_id).cloned().map(Ok).unwrap_or_else(|| {
+                    crate::services::automation::runtime::quick_run(app, qr_id)
+                })?;
             if dry_run {
-                let manager = app.state::<AppSettingsManager>();
-                let qr =
-                    crate::services::flow::quick_run::commands::get_quick_run(&manager, qr_id)?
-                        .ok_or_else(|| format!("Quick run '{qr_id}' not found"))?;
-
                 info!(
                     "Workflow dry_run enabled; simulating Quick Run '{}' ({:?})",
                     qr.name, qr.operation_type
@@ -1174,10 +1178,10 @@ async fn execute_single_node(
                 })));
             }
 
-            let res = crate::services::flow::quick_run::commands::start_quick_run_on_backend(
+            let res = crate::services::flow::quick_run::commands::start_quick_run_snapshot(
                 app.clone(),
                 backend.clone(),
-                qr_id.to_string(),
+                qr,
                 Some(workflow.id.clone()),
                 Some(node.id.clone()),
                 None,
@@ -1859,14 +1863,19 @@ pub async fn execute_workflow(
     workflow_id: String,
     dry_run: bool,
 ) -> Result<WorkflowExecutionResult, String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .sub_settings(SUB_WORKFLOWS)
-        .map_err(|e| e.to_string())?;
-
-    let mut workflow: WorkflowDefinition = sub
-        .get(&workflow_id)
-        .map_err(|e| format!("Workflow '{workflow_id}' not found: {e}"))?;
+    // Coordinate starts made before Vault is enabled with its enable transition.
+    // Deferred startup already owns the vault operation lock when enabled.
+    let startup_state = if !app.state::<AppSettingsManager>().is_vault_enabled() {
+        app.try_state::<crate::utils::types::state::RcloneState>()
+    } else {
+        None
+    };
+    let starting = match startup_state.as_ref() {
+        Some(state) => Some(state.vault_operation_lock.lock().await),
+        None => None,
+    };
+    let snapshot = crate::services::automation::runtime::workflow(&app, &workflow_id)?;
+    let mut workflow = snapshot.definition.clone();
 
     info!(
         "Starting execution of workflow: {} ({workflow_id}, dry_run: {dry_run})",
@@ -1902,6 +1911,8 @@ pub async fn execute_workflow(
             },
         );
     }
+
+    drop(starting);
 
     let start_instant = Instant::now();
     let total_nodes = workflow.nodes.len();
@@ -2019,6 +2030,7 @@ pub async fn execute_workflow(
                     let active_jobs_clone = active_job_ids.clone();
                     let results_clone = node_results.clone();
                     let tx_clone = tx.clone();
+                    let snapshot = snapshot.clone();
 
                     crate::utils::spawn(async move {
                         let node_start = Instant::now();
@@ -2031,6 +2043,7 @@ pub async fn execute_workflow(
                             cancel_rx_clone,
                             &active_jobs_clone,
                             &results_clone,
+                            &snapshot.quick_runs,
                             dry_run,
                         )
                         .await;
@@ -2293,7 +2306,21 @@ pub async fn execute_workflow(
     let overall_success = (!is_cancelled || has_graceful_stop) && failed_nodes == 0;
 
     workflow.last_executed_at = Some(Utc::now().to_rfc3339());
-    let _ = sub.set(&workflow.id, &workflow);
+    let manager = app.state::<AppSettingsManager>();
+    if !manager.is_vault_enabled() {
+        if let Ok(sub) = manager.sub_settings(SUB_WORKFLOWS) {
+            let _ = sub.set(&workflow.id, &workflow);
+        }
+    } else if let Some(runtime) =
+        app.try_state::<crate::services::automation::runtime::RuntimeTasks>()
+    {
+        runtime.record_completion(&workflow.id, workflow.last_executed_at.clone().unwrap());
+        if !manager.is_locked()
+            && let Err(error) = crate::services::automation::runtime::flush_completions(&app).await
+        {
+            warn!("Failed to save workflow completion: {error}");
+        }
+    }
 
     let final_state = if is_cancelled && !has_graceful_stop {
         "cancelled"
@@ -2400,7 +2427,7 @@ static TRIGGERED_JOB_FINISH_EVENTS: std::sync::LazyLock<
 pub fn job_event_matches_job(
     node_config: &Value,
     job: &crate::utils::types::jobs::JobInfo,
-    quick_runs: &[crate::services::flow::quick_run::types::QuickRun],
+    quick_run_name: Option<&str>,
 ) -> bool {
     let target = node_config
         .get("targetProfileId")
@@ -2438,13 +2465,7 @@ pub fn job_event_matches_job(
     let qr_id_matches = job.quick_run_id.as_deref().is_some_and(|q| q == target);
 
     // 3. Quick Run name matches target (case-insensitive)
-    let qr_name_matches = if let Some(ref q_id) = job.quick_run_id {
-        quick_runs
-            .iter()
-            .any(|qr| qr.id == *q_id && qr.name.eq_ignore_ascii_case(target))
-    } else {
-        false
-    };
+    let qr_name_matches = quick_run_name.is_some_and(|name| name.eq_ignore_ascii_case(target));
 
     // 4. Remote name matches target (case-insensitive)
     let remote_matches = job.remote_name.eq_ignore_ascii_case(target);
@@ -2461,32 +2482,67 @@ pub async fn trigger_workflows_for_job_finish(
         return;
     }
 
-    // Deduplicate: each finished job ID should only trigger matching workflows once
+    let job_key = (job.backend_name.clone(), job.jobid);
+    if TRIGGERED_JOB_FINISH_EVENTS.read().contains(&job_key) {
+        return;
+    }
+
+    let manager = app.state::<AppSettingsManager>();
+    let live = if manager.is_locked() {
+        None
+    } else {
+        Some((|| -> Result<_, String> {
+            let workflows =
+                crate::services::flow::workflow::commands::get_all_workflows_sync(&manager)?;
+            let name = match job.quick_run_id.as_deref() {
+                Some(id) => {
+                    crate::services::flow::quick_run::commands::get_quick_run(&manager, id)?
+                        .map(|preset| preset.name)
+                }
+                None => None,
+            };
+            Ok((workflows, name))
+        })())
+    };
+    let (snapshots, workflows, quick_run_name) = if live.is_none() || manager.is_locked() {
+        let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>()
+        else {
+            return;
+        };
+        let snapshots = runtime.event_workflows();
+        let name = job.quick_run_id.as_deref().and_then(|id| {
+            snapshots
+                .iter()
+                .find_map(|snapshot| snapshot.quick_run_names.get(id))
+                .cloned()
+        });
+        (snapshots, Vec::new(), name)
+    } else {
+        match live {
+            Some(Ok((workflows, name))) => (Vec::new(), workflows, name),
+            Some(Err(error)) => {
+                warn!("Failed to prepare workflow job event: {error}");
+                return;
+            }
+            None => return,
+        }
+    };
+    // Mark processed only after inputs were obtained, atomically with other listeners.
     {
         let mut set = TRIGGERED_JOB_FINISH_EVENTS.write();
-        if set.contains(&(job.backend_name.clone(), job.jobid)) {
+        if set.contains(&job_key) {
             return;
         }
         if set.len() > 2000 {
             set.clear();
         }
-        set.insert((job.backend_name.clone(), job.jobid));
+        set.insert(job_key);
     }
 
-    let manager = app.state::<AppSettingsManager>();
-    let workflows =
-        match crate::services::flow::workflow::commands::get_all_workflows_sync(&manager) {
-            Ok(w) => w,
-            Err(e) => {
-                log::warn!("Failed to retrieve workflows for job event evaluation: {e}");
-                return;
-            }
-        };
-
-    let quick_runs = crate::services::flow::quick_run::commands::get_all_quick_runs_sync(&manager)
-        .unwrap_or_default();
-
-    for wf in workflows {
+    for wf in workflows
+        .iter()
+        .chain(snapshots.iter().map(|snapshot| &snapshot.definition))
+    {
         // Prevent infinite self-trigger loops: if the finished job was started by this workflow, skip it
         if let Some(ref wf_origin_id) = job.workflow_id
             && *wf_origin_id == wf.id
@@ -2503,7 +2559,8 @@ pub async fn trigger_workflows_for_job_finish(
         }
 
         let is_match = wf.nodes.iter().any(|node| {
-            node.node_type == "job_event" && job_event_matches_job(&node.config, job, &quick_runs)
+            node.node_type == "job_event"
+                && job_event_matches_job(&node.config, job, quick_run_name.as_deref())
         });
 
         if is_match {
@@ -2529,6 +2586,167 @@ pub async fn trigger_workflows_for_job_finish(
 mod tests {
     use super::*;
     use crate::services::flow::workflow::types::*;
+
+    #[tokio::test]
+    async fn a_running_timer_continues_with_its_snapshot_after_the_real_vault_locks() {
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let workflow = WorkflowDefinition {
+            id: "active-timer-vault-test".into(),
+            name: "Timer".into(),
+            nodes: vec![WorkflowNode {
+                id: "wait".into(),
+                node_type: "delay".into(),
+                config: json!({"delaySeconds": 1}),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        app.state::<AppSettingsManager>()
+            .sub_settings(crate::utils::constants::SUB_WORKFLOWS)
+            .unwrap()
+            .set(&workflow.id, &workflow)
+            .unwrap();
+        crate::services::automation::runtime::refresh(&app)
+            .await
+            .unwrap();
+        assert!(
+            app.state::<crate::services::automation::runtime::RuntimeTasks>()
+                .workflow(&workflow.id)
+                .is_none()
+        );
+        let execution_app = app.clone();
+        let id = workflow.id.clone();
+        let execution = crate::utils::spawn(async move {
+            execute_workflow(execution_app, Backend::new_local("Local"), id, false).await
+        });
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while !ACTIVE_WORKFLOW_EXECUTIONS.read().contains_key(&workflow.id) {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        app.state::<AppSettingsManager>().lock().unwrap();
+        let result = execution.await.unwrap().unwrap();
+        assert!(result.success);
+        assert_eq!(result.completed_nodes, 1);
+        assert!(app.state::<AppSettingsManager>().get_all().is_err());
+    }
+
+    #[tokio::test]
+    async fn a_workflow_retains_only_its_quick_run_dependency_for_later_nodes() {
+        use crate::services::{
+            automation::runtime::WorkflowSnapshot, flow::quick_run::types::QuickRun,
+        };
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let qr: QuickRun = serde_json::from_value(json!({"id": "needed", "name": "Needed preset", "operationType": "copy", "remoteName": "drive", "config": {"source": "/src", "dest": "/dst"}})).unwrap();
+        let sub = app
+            .state::<AppSettingsManager>()
+            .sub_settings(crate::utils::constants::SUB_QUICK_RUNS)
+            .unwrap();
+        sub.set(&qr.id, &qr).unwrap();
+        // An unrelated malformed preset must not prevent this execution.
+        sub.set("unrelated", &json!({"invalid": true})).unwrap();
+        let node = WorkflowNode {
+            id: "later-node".into(),
+            node_type: "quick_run".into(),
+            config: json!({"quickRunId": "needed"}),
+            ..Default::default()
+        };
+        let workflow = WorkflowDefinition {
+            id: "active-quick-run-vault-test".into(),
+            nodes: vec![
+                WorkflowNode {
+                    node_type: "job_event".into(),
+                    config: json!({"targetProfileId": "Needed preset"}),
+                    ..Default::default()
+                },
+                node.clone(),
+            ],
+            ..Default::default()
+        };
+        let snapshot =
+            WorkflowSnapshot::capture(app.state::<AppSettingsManager>().inner(), workflow).unwrap();
+        assert_eq!(snapshot.quick_runs.len(), 1);
+        assert!(!snapshot.quick_runs.contains_key("unrelated"));
+        assert!(snapshot.quick_run_names.is_empty());
+        app.state::<AppSettingsManager>().lock().unwrap();
+        let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        let output = execute_single_node(
+            &app,
+            &Backend::new_local("Local"),
+            &node,
+            &snapshot.definition,
+            &AtomicBool::new(false),
+            cancel_rx,
+            &Arc::new(RwLock::new(HashSet::new())),
+            &Arc::new(RwLock::new(HashMap::new())),
+            &snapshot.quick_runs,
+            true,
+        )
+        .await
+        .unwrap();
+        assert_eq!(output.value["name"], "Needed preset");
+        assert!(app.state::<AppSettingsManager>().get_all().is_err());
+    }
+
+    #[tokio::test]
+    async fn dynamic_quick_run_references_work_while_unlocked_without_caching_all_presets() {
+        use crate::services::{
+            automation::runtime::WorkflowSnapshot, flow::quick_run::types::QuickRun,
+        };
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let preset: QuickRun = serde_json::from_value(json!({"id": "dynamic-target", "name": "Dynamic preset", "operationType": "copy", "remoteName": "drive", "config": {}})).unwrap();
+        app.state::<AppSettingsManager>()
+            .sub_settings(crate::utils::constants::SUB_QUICK_RUNS)
+            .unwrap()
+            .set(&preset.id, &preset)
+            .unwrap();
+        let node = WorkflowNode {
+            id: "run".into(),
+            node_type: "quick_run".into(),
+            config: json!({"quickRunId": "{{nodes.source.preset}}"}),
+            ..Default::default()
+        };
+        let workflow = WorkflowDefinition {
+            nodes: vec![node.clone()],
+            ..Default::default()
+        };
+        let snapshot =
+            WorkflowSnapshot::capture(app.state::<AppSettingsManager>().inner(), workflow).unwrap();
+        assert!(snapshot.quick_runs.is_empty());
+        let results = Arc::new(RwLock::new(HashMap::from([(
+            "source".into(),
+            json!({"preset": preset.id}),
+        )])));
+        let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+        for locked in [false, true] {
+            if locked {
+                app.state::<AppSettingsManager>().lock().unwrap();
+            }
+            let result = execute_single_node(
+                &app,
+                &Backend::new_local("Local"),
+                &node,
+                &snapshot.definition,
+                &AtomicBool::new(false),
+                cancel_rx.clone(),
+                &Arc::new(RwLock::new(HashSet::new())),
+                &results,
+                &snapshot.quick_runs,
+                true,
+            )
+            .await;
+            if locked {
+                assert!(result.is_err());
+            } else {
+                assert_eq!(result.unwrap().value["name"], "Dynamic preset");
+            }
+        }
+    }
 
     #[tokio::test]
     async fn workflow_wait_reads_the_owning_backends_job_even_when_another_is_selected() {
@@ -3163,6 +3381,7 @@ mod tests {
             cancel_rx,
             &Arc::new(RwLock::new(HashSet::new())),
             &Arc::new(RwLock::new(HashMap::new())),
+            &HashMap::new(),
             true,
         )
         .await
@@ -3656,7 +3875,6 @@ mod tests {
 
     #[test]
     fn test_job_event_matches_job_cases() {
-        use crate::services::flow::quick_run::types::QuickRun;
         use crate::utils::types::jobs::JobInfo;
 
         let mock_job =
@@ -3683,60 +3901,51 @@ mod tests {
                 node_id: None,
             };
 
-        let quick_runs = vec![QuickRun {
-            id: "qr-1".to_string(),
-            name: "Nightly Sync".to_string(),
-            description: None,
-            operation_type: OperationType::Sync,
-            remote_name: "remote1:".to_string(),
-            config: json!({}),
-        }];
-
         // 1. Matches profile with eventState 'any'
         let job1 = mock_job(JobStatus::Completed, Some("daily-backup"), None, "remote1:");
         let cfg1 = json!({ "targetProfileId": "daily-backup", "eventState": "any" });
-        assert!(job_event_matches_job(&cfg1, &job1, &quick_runs));
+        assert!(job_event_matches_job(&cfg1, &job1, None));
 
         // 2. Case-insensitive profile match
         let cfg1_case = json!({ "targetProfileId": "Daily-Backup", "eventState": "any" });
-        assert!(job_event_matches_job(&cfg1_case, &job1, &quick_runs));
+        assert!(job_event_matches_job(&cfg1_case, &job1, None));
 
         // 3. Status filter: 'success' matches Completed, rejects Failed
         let cfg_success = json!({ "targetProfileId": "daily-backup", "eventState": "success" });
-        assert!(job_event_matches_job(&cfg_success, &job1, &quick_runs));
+        assert!(job_event_matches_job(&cfg_success, &job1, None));
 
         let job_failed = mock_job(JobStatus::Failed, Some("daily-backup"), None, "remote1:");
-        assert!(!job_event_matches_job(
-            &cfg_success,
-            &job_failed,
-            &quick_runs
-        ));
+        assert!(!job_event_matches_job(&cfg_success, &job_failed, None));
 
         // 4. Status filter: 'failed' matches Failed, rejects Completed
         let cfg_failed = json!({ "targetProfileId": "daily-backup", "eventState": "failed" });
-        assert!(job_event_matches_job(&cfg_failed, &job_failed, &quick_runs));
-        assert!(!job_event_matches_job(&cfg_failed, &job1, &quick_runs));
+        assert!(job_event_matches_job(&cfg_failed, &job_failed, None));
+        assert!(!job_event_matches_job(&cfg_failed, &job1, None));
 
         // 5. Matches Quick Run by ID
         let job_qr = mock_job(JobStatus::Completed, None, Some("qr-1"), "remote1:");
         let cfg_qr_id = json!({ "targetProfileId": "qr-1", "eventState": "any" });
-        assert!(job_event_matches_job(&cfg_qr_id, &job_qr, &quick_runs));
+        assert!(job_event_matches_job(&cfg_qr_id, &job_qr, None));
 
         // 6. Matches Quick Run by Name
         let cfg_qr_name = json!({ "targetProfileId": "Nightly Sync", "eventState": "any" });
-        assert!(job_event_matches_job(&cfg_qr_name, &job_qr, &quick_runs));
+        assert!(job_event_matches_job(
+            &cfg_qr_name,
+            &job_qr,
+            Some("Nightly Sync")
+        ));
 
         // 7. Matches Remote name
         let cfg_remote = json!({ "targetProfileId": "remote1:", "eventState": "any" });
-        assert!(job_event_matches_job(&cfg_remote, &job1, &quick_runs));
+        assert!(job_event_matches_job(&cfg_remote, &job1, None));
 
         // 8. Empty targetProfileId should never match
         let cfg_empty = json!({ "targetProfileId": "", "eventState": "any" });
-        assert!(!job_event_matches_job(&cfg_empty, &job1, &quick_runs));
+        assert!(!job_event_matches_job(&cfg_empty, &job1, None));
 
         // 9. Mismatched profile
         let cfg_mismatch = json!({ "targetProfileId": "other-profile", "eventState": "any" });
-        assert!(!job_event_matches_job(&cfg_mismatch, &job1, &quick_runs));
+        assert!(!job_event_matches_job(&cfg_mismatch, &job1, None));
     }
 
     #[test]

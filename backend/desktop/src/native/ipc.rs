@@ -20,6 +20,14 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         }
         return true;
     }
+    if rclone_manager_core::services::settings::access::is_locked(
+        invoke.message.webview_ref().app_handle().backend(),
+    ) {
+        invoke
+            .resolver
+            .reject(rclone_manager_core::services::settings::access::locked_error());
+        return true;
+    }
     let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
         #[cfg(not(feature = "web-server"))]
         crate::native::files::open_in_files,
