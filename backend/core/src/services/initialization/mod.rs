@@ -25,8 +25,7 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         .initial_startup
         .load(std::sync::atomic::Ordering::Acquire)
     {
-        crate::services::automation::runtime::refresh(&app_handle).await?;
-        return crate::services::settings::vault::complete_unlock(&app_handle);
+        return Ok(());
     }
     debug!("Starting async startup tasks");
 
@@ -47,21 +46,27 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
         return Ok(());
     }
 
-    if let Err(e) = async_core_setup(&app_handle).await {
-        error!("Phase 0 Core Setup failed: {e}");
+    let result = initialize_unlocked(app_handle).await;
+    if let Err(error) = &result {
         bridge::emit(
             APP_EVENT,
-            json!({ "status": "startup_failed", "message": e.clone() }),
+            json!({ "status": "startup_failed", "message": error }),
         );
+    }
+    result
+}
+
+async fn initialize_unlocked(app_handle: AppHandle) -> Result<(), String> {
+    let state = app_handle.state::<RcloneState>();
+    let session_revision = crate::services::settings::access::revision(&app_handle);
+
+    if let Err(e) = async_core_setup(&app_handle).await {
+        error!("Phase 0 Core Setup failed: {e}");
         return Err(e);
     }
 
     if let Err(e) = bootstrap::init_all(&app_handle).await {
         error!("Phase 1 Bootstrap failed: {e}");
-        bridge::emit(
-            APP_EVENT,
-            json!({ "status": "startup_failed", "message": e.clone() }),
-        );
         return Err(e);
     }
 
@@ -78,36 +83,53 @@ pub async fn initialization(app_handle: crate::context::AppHandle) -> Result<(),
 
     info!("Phase 4: Starting services...");
 
-    if let Err(e) = automation::initialize_automations(app_handle.clone()).await {
-        error!("Failed to initialize automations: {e}");
-    }
+    let autostarts = automation::initialize_automations(app_handle.clone())
+        .await
+        .inspect_err(|e| {
+            error!("Phase 4 Automation setup failed: {e}");
+        })?;
 
     crate::services::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
     info!("Phase 5: Applying runtime settings");
     let settings_manager = app_handle.state::<AppSettingsManager>();
 
-    if let Ok(settings) = settings_manager.get_all() {
-        apply_settings::apply_core_settings(&app_handle, &settings).await;
+    let settings = settings_manager.get_all().map_err(|e| e.to_string())?;
+    apply_settings::apply_core_settings(&app_handle, &settings).await;
 
-        #[cfg(feature = "tray")]
-        {
-            if let Err(e) = app_handle.host().setup_tray().await {
-                error!("Failed to setup tray: {e}");
-            }
+    #[cfg(feature = "tray")]
+    {
+        if let Err(e) = app_handle.host().setup_tray().await {
+            error!("Failed to setup tray: {e}");
         }
     }
 
-    info!("Phase 6: Running post-initialization tasks");
-    handle_startup(app_handle.clone()).await;
-
-    if settings_manager.is_locked() {
-        return Err(crate::services::settings::access::locked_error());
+    if state.is_shutting_down() {
+        return Ok(());
     }
+    crate::services::settings::access::require_session(&app_handle, session_revision)?;
+    app_handle
+        .state::<crate::services::automation::watcher::WatcherManager>()
+        .sync_watchers(app_handle.clone())
+        .await?;
+    app_handle
+        .state::<crate::services::automation::engine::AutomationScheduler>()
+        .start()
+        .await?;
+    if state.is_shutting_down() {
+        return Ok(());
+    }
+    crate::services::settings::access::require_session(&app_handle, session_revision)?;
+    // Optional remote auto-starts can be slow; monitoring must already be
+    // available while those operations are starting.
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
+    info!("Phase 6: Running post-initialization tasks");
+    autostarts.start(&app_handle);
+    handle_startup(app_handle.clone()).await;
+
     info!("Initialization complete");
-    crate::services::settings::vault::complete_unlock(&app_handle)
+    Ok(())
 }
 
 /// Fully refreshes all system components after settings change or restore.

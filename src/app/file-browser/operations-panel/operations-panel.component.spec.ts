@@ -139,7 +139,7 @@ describe('OperationsPanelComponent', () => {
 
   it('should create the component', () => {
     expect(component).toBeTruthy();
-    expect(jobManagementMock.refreshJobs).toHaveBeenCalled();
+    expect(jobManagementMock.refreshJobs).not.toHaveBeenCalled();
   });
 
   it('should compute activeJobs and hasJobs signals correctly', () => {

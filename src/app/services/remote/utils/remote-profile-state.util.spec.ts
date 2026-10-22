@@ -137,4 +137,25 @@ describe('remote profile state', () => {
     expect(remote.status.sync.jobId).toBe(1);
     expect(remote.status.sync.lastRunProfiles).toEqual({ main: 1 });
   });
+  it('uses timestamps rather than numeric IDs when a newer engine execution has a lower ID', () => {
+    const remote = view({ syncConfigs: { main: {} } }, [
+      {
+        jobid: 500,
+        profile: 'main',
+        job_type: 'sync',
+        status: 'Completed',
+        start_time: '2026-10-01T10:00:00Z',
+      },
+      {
+        jobid: 1,
+        profile: 'main',
+        job_type: 'sync',
+        status: 'Running',
+        start_time: '2026-10-02T10:00:00Z',
+      },
+    ] as JobInfo[]);
+    expect(remote.status.sync.jobId).toBe(1);
+    expect(remote.status.sync.lastRunProfiles).toEqual({ main: 1 });
+    expect(remote.status.sync.activeProfiles).toEqual({ main: 1 });
+  });
 });

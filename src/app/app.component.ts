@@ -71,6 +71,7 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
 })
 export class AppComponent implements OnInit {
   readonly initializing = signal(true);
+  readonly initializationFailed = signal(false);
 
   protected readonly modalService = inject(ModalService);
   protected readonly nautilusService = inject(NautilusService);
@@ -100,6 +101,7 @@ export class AppComponent implements OnInit {
   private readonly dialogs = inject(MatDialog);
   private appInitializing = false;
   private appInitialized = false;
+  private initializationRevision = 0;
 
   constructor() {
     inject(IconService);
@@ -124,6 +126,7 @@ export class AppComponent implements OnInit {
     this.dialogs.afterOpened.pipe(takeUntilDestroyed()).subscribe(ref => {
       if (!this.vaultService.isAccessible()) ref.close();
     });
+    let hadAccess = false;
     effect(() => {
       const accessible = this.vaultService.isAccessible();
       // CDK portals live outside app-root, including menus and closing animations.
@@ -131,13 +134,21 @@ export class AppComponent implements OnInit {
       container.style.display = accessible ? '' : 'none';
       container.inert = !accessible;
       if (!accessible) {
+        if (hadAccess || this.vaultService.isStatusKnown()) {
+          this.initializationRevision++;
+          this.appInitializing = false;
+          this.initializing.set(false);
+        }
+        hadAccess = false;
+        if (this.vaultService.isStatusKnown() && this.vaultService.isVaultLocked()) {
+          this.confirmStartupAfterRender();
+        }
         this.snackBar.dismiss();
         this.dialogs.closeAll();
         return;
       }
-      if (!this.appInitialized) {
-        void this.initializeApp();
-      }
+      hadAccess = true;
+      void this.initializeApp();
     });
   }
 
@@ -155,9 +166,14 @@ export class AppComponent implements OnInit {
   private async initializeApp(): Promise<void> {
     if (this.appInitializing) return;
     this.appInitializing = true;
+    const revision = ++this.initializationRevision;
+    const isCurrent = (): boolean =>
+      revision === this.initializationRevision && this.vaultService.isAccessible();
     try {
       this.initializing.set(true);
+      this.initializationFailed.set(false);
       await this.vaultService.checkVaultStatus();
+      if (revision !== this.initializationRevision) return;
       if (!this.vaultService.isStatusKnown()) {
         return;
       }
@@ -165,10 +181,11 @@ export class AppComponent implements OnInit {
         this.confirmStartupAfterRender();
         return;
       }
-      if (this.appInitialized) return;
-
       await this.appSettingsService.loadSettings();
+      if (!isCurrent()) return;
       await this.appSettingsService.applySavedLanguage();
+      if (!isCurrent()) return;
+      if (this.appInitialized) return;
       void this.appUpdaterService.initialize();
       void this.rcloneUpdateService.initialize();
       this.nautilusService.initializeFromUrl();
@@ -180,14 +197,13 @@ export class AppComponent implements OnInit {
         !this.flowOverlayService.isStandaloneWindow() &&
         !this.mainUiOverlayService.isStandaloneWindow()
       ) {
-        this.backendService.runStartupChecks();
+        void this.backendService.runStartupChecks().catch(error => {
+          console.error('Backend startup checks failed:', error);
+        });
         await this.applyDefaultView();
       }
-      this.appInitialized = true;
-    } catch (error) {
-      console.error('App initialization failed:', error);
-    } finally {
-      if (!this.modalService.isDialogStandalone() && this.appInitialized) {
+      if (!isCurrent()) return;
+      if (!this.modalService.isDialogStandalone()) {
         const standalone = this.nautilusService.isStandaloneWindow()
           ? 'nautilus'
           : this.flowOverlayService.isStandaloneWindow()
@@ -197,9 +213,18 @@ export class AppComponent implements OnInit {
               : null;
         this.navigation.initialize(standalone);
       }
-      if (this.appInitialized) this.confirmStartupAfterRender();
-      this.initializing.set(false);
-      this.appInitializing = false;
+      this.appInitialized = true;
+      this.confirmStartupAfterRender();
+    } catch (error) {
+      if (revision === this.initializationRevision) {
+        this.initializationFailed.set(true);
+        console.error('App initialization failed:', error);
+      }
+    } finally {
+      if (revision === this.initializationRevision) {
+        this.initializing.set(false);
+        this.appInitializing = false;
+      }
     }
   }
 

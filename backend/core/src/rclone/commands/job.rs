@@ -202,22 +202,28 @@ impl JobMetadata {
     }
 
     pub fn group_name(&self) -> String {
-        let remote = self
-            .remote_name
-            .trim_end_matches(':')
-            .trim_end_matches('/')
-            .to_string();
+        if let Some(group) = &self.group {
+            return group.clone();
+        }
+        let remote = self.remote_name.trim_end_matches(':').trim_end_matches('/');
+        match &self.profile {
+            Some(profile) => format!("{}/{}/{}", self.job_type, remote, profile),
+            None => format!("{}/{}", self.job_type, remote),
+        }
+    }
 
-        self.group.clone().unwrap_or_else(|| {
-            let job_type_str = match self.job_type {
-                JobType::CopyUrl => "copyurl".to_string(),
-                _ => self.job_type.to_string(),
-            };
-            match &self.profile {
-                Some(profile) => format!("{}/{}/{}", job_type_str, remote, profile),
-                None => format!("{}/{}", job_type_str, remote),
-            }
-        })
+    /// A stats group belongs to one execution unless the caller explicitly shares it.
+    pub(crate) fn prepare_execution(&mut self) {
+        if self.execute_id.is_none() {
+            self.execute_id = Some(uuid::Uuid::new_v4().to_string());
+        }
+        if self.group.is_none() {
+            self.group = Some(format!(
+                "{}_{}",
+                self.group_name(),
+                uuid::Uuid::new_v4().simple()
+            ));
+        }
     }
 
     fn resolved_origin(&self) -> Origin {
@@ -325,16 +331,7 @@ pub async fn submit_job_with_options(
         Some(backend) => JobContext::for_backend(&app, backend),
         None => JobContext::active(&app).await,
     };
-    if metadata.group.is_none() && metadata.profile.is_none() {
-        metadata.group = Some(format!(
-            "{}_{}",
-            metadata.group_name(),
-            uuid::Uuid::new_v4().simple()
-        ));
-    }
-    if metadata.execute_id.is_none() {
-        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
-    }
+    metadata.prepare_execution();
     let jobid = send_job_request(
         &app,
         context.transport.as_ref(),
@@ -387,19 +384,14 @@ async fn send_job_request(
 ) -> Result<u64, String> {
     let mut payload = payload;
     let group = metadata.group_name();
-    if endpoint == job::BATCH {
-        if let Some(inputs) = payload.get_mut("inputs").and_then(Value::as_array_mut) {
-            for input in inputs {
-                super::common::ensure_group(input, &group);
-            }
+    super::common::ensure_group(&mut payload, &group);
+    if endpoint == job::BATCH
+        && let Some(inputs) = payload.get_mut("inputs").and_then(Value::as_array_mut)
+    {
+        for input in inputs {
+            super::common::ensure_group(input, &group);
         }
-    } else {
-        super::common::ensure_group(&mut payload, &group);
     }
-
-    let _ = transport
-        .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
-        .await;
 
     let response_json = transport
         .rpc(endpoint, Some(&payload))
@@ -510,13 +502,12 @@ async fn monitor_job(
 
     loop {
         if !metadata.no_cache {
-            let should_exit = job_cache
-                .get_job(jobid)
-                .await
-                .is_none_or(|j| j.status == JobStatus::Stopped);
+            let status = job_cache
+                .get_execution_status(jobid, metadata.execute_id.as_deref())
+                .await;
 
-            if should_exit {
-                info!("Monitoring for job {jobid} stopped: job removed or marked Stopped.");
+            if status.is_none_or(|status| status == JobStatus::Stopped) {
+                info!("Monitoring for job {jobid} stopped: execution removed or marked Stopped.");
                 return handle_job_completion(
                     &context,
                     jobid,
@@ -552,12 +543,33 @@ async fn monitor_job(
                         .is_none_or(|code| code < 400)
                 {
                     let mut stats = results[1].clone();
-                    stats["completed"] =
-                        results[2].get("transferred").cloned().unwrap_or(json!([]));
-                    if status["finished"] == true {
-                        last_stats = Some(stats.clone());
+                    if let Some(history) = results[2]
+                        .get("transferred")
+                        .filter(|value| value.is_array())
+                    {
+                        stats["completed"] = history.clone();
                     }
-                    let _ = job_cache.update_job_stats(jobid, stats).await;
+                    if status["finished"] == true {
+                        last_stats = Some(stats);
+                    } else if job_cache
+                        .update_job_stats_for_execution(
+                            jobid,
+                            metadata.execute_id.as_deref(),
+                            stats,
+                        )
+                        .await
+                        .is_err()
+                    {
+                        return handle_job_completion(
+                            &context,
+                            jobid,
+                            &metadata,
+                            json!({"finished": true, "success": false, "stopped": true}),
+                            &app,
+                            None,
+                        )
+                        .await;
+                    }
                 }
                 if status["finished"] == true {
                     return handle_job_completion(
@@ -601,7 +613,7 @@ async fn handle_job_completion(
     let outcome = resolve_job_outcome(&job_status, &metadata.job_type, &metadata.source);
 
     if !metadata.no_cache {
-        persist_final_job_state(
+        if let Err(error) = persist_final_job_state(
             context,
             jobid,
             metadata,
@@ -609,7 +621,10 @@ async fn handle_job_completion(
             last_stats,
             job_status.get("output"),
         )
-        .await;
+        .await
+        {
+            log::debug!("Job {jobid} final state no longer belongs in the cache: {error}");
+        }
     } else {
         crate::rclone::state::job::spawn_stats_cleanup_by_group(
             context.transport.clone(),
@@ -647,31 +662,34 @@ async fn persist_final_job_state(
     outcome: &JobOutcome,
     last_stats: Option<Value>,
     raw_output: Option<&Value>,
-) {
+) -> Result<(), String> {
     let job_cache = &context.cache;
     let mut final_stats =
         collect_final_stats(context.transport.as_ref(), metadata, last_stats).await;
-    if final_stats.is_null() || final_stats == json!({}) {
+    if !final_stats.is_object() {
         final_stats = json!({});
     }
-    if let Some(obj) = final_stats.as_object_mut() {
-        if metadata.job_type == JobType::Check
-            && let Some(output) = raw_output
-        {
-            obj.insert("checkOutput".to_string(), output.clone());
-        } else if metadata.job_type == JobType::CryptCheck
-            && let Some(parsed) = &outcome.cryptcheck_output
-        {
-            obj.insert("checkOutput".to_string(), parsed.clone());
-        }
+    let check_output = match &metadata.job_type {
+        JobType::Check => raw_output,
+        JobType::CryptCheck => outcome.cryptcheck_output.as_ref(),
+        _ => None,
+    };
+    if let (Some(obj), Some(output)) = (final_stats.as_object_mut(), check_output) {
+        obj.insert("checkOutput".to_string(), output.clone());
     }
-    if !final_stats.is_null() && final_stats != json!({}) {
-        let _ = job_cache.update_job_stats(jobid, final_stats).await;
-    }
-
-    let _ = job_cache
-        .complete_job(jobid, outcome.success, outcome.error_msg.clone())
-        .await;
+    job_cache
+        .complete_job_for_execution(
+            jobid,
+            metadata.execute_id.as_deref(),
+            outcome.success,
+            outcome.error_msg.clone(),
+            final_stats
+                .as_object()
+                .is_some_and(|stats| !stats.is_empty())
+                .then_some(final_stats),
+        )
+        .await?;
+    Ok(())
 }
 
 async fn update_associated_automation(
@@ -794,6 +812,10 @@ async fn collect_final_stats(
     metadata: &JobMetadata,
     last_stats: Option<Value>,
 ) -> Value {
+    let last_stats = match last_stats {
+        Some(stats) if stats.get("completed").is_some_and(Value::is_array) => return stats,
+        other => other,
+    };
     let group = metadata.group_name();
 
     let needs_stats_fetch = last_stats
@@ -822,12 +844,10 @@ async fn collect_final_stats(
     };
 
     if let Ok(data) = transferred_result
+        && let Some(history) = data.get("transferred").filter(|value| value.is_array())
         && let Some(obj) = final_stats.as_object_mut()
     {
-        obj.insert(
-            "completed".to_string(),
-            data.get("transferred").cloned().unwrap_or(json!([])),
-        );
+        obj.insert("completed".to_string(), history.clone());
     }
 
     final_stats
@@ -1060,6 +1080,29 @@ mod tests {
     }
 
     #[test]
+    fn automatic_stats_groups_are_isolated_and_explicit_groups_are_preserved() {
+        let copy_url = JobMetadata::new("drive:", JobType::CopyUrl, vec![], "dst:");
+        assert_eq!(copy_url.group_name(), "copyurl/drive");
+        let mut first = JobMetadata::new("drive", JobType::Sync, vec!["src:".into()], "dst:")
+            .with_profile(Some("daily".into()));
+        let mut second = first.clone();
+        first.prepare_execution();
+        second.prepare_execution();
+        assert_ne!(first.group_name(), second.group_name());
+        assert_ne!(first.execute_id, second.execute_id);
+        assert!(first.group_name().starts_with("sync/drive/daily_"));
+        let prepared = first.group_name();
+        first.prepare_execution();
+        assert_eq!(first.group_name(), prepared);
+
+        let mut explicit = second.with_group(Some("shared".into()));
+        let execution = explicit.execute_id.clone();
+        explicit.prepare_execution();
+        assert_eq!(explicit.group_name(), "shared");
+        assert_eq!(explicit.execute_id, execution);
+    }
+
+    #[test]
     fn notifications_preserve_job_identity_and_operation_fields() {
         let metadata = JobMetadata::new(
             "drive",
@@ -1172,7 +1215,7 @@ mod tests {
         let server = crate::utils::spawn(async move {
             let mut groups = Vec::new();
             let mut request_index = 0;
-            while request_index < 4 {
+            while request_index < 2 {
                 let (mut stream, _) = listener.accept().await.unwrap();
                 let mut request = Vec::new();
                 let (header_end, content_length) = loop {
@@ -1213,31 +1256,40 @@ mod tests {
                     json!({"item": {"IsDir": true}})
                 } else {
                     if request_index == 0 {
-                        assert_eq!(path, "/core/stats-delete");
                         // Switch while job submission is in flight, before the job ID exists.
                         let manager = server_app.state::<BackendManager>();
                         let settings = server_app.state::<AppSettingsManager>();
                         manager.switch_to(settings.inner(), "B").await.unwrap();
                     }
-                    groups.push(body.get("group").or_else(|| body.get("_group")).cloned());
+                    let group = body.get("_group").or_else(|| {
+                        body["inputs"]
+                            .as_array()
+                            .and_then(|inputs| inputs.iter().find_map(|input| input.get("group")))
+                    });
+                    groups.push(group.cloned());
                     let response = match request_index {
-                        0 => json!({}),
-                        1 => {
+                        0 => {
                             assert_eq!(path, if batch { "/job/batch" } else { "/sync/sync" });
+                            assert!(
+                                body["_group"]
+                                    .as_str()
+                                    .is_some_and(|group| !group.is_empty())
+                            );
+                            if batch {
+                                for input in body["inputs"].as_array().unwrap() {
+                                    assert_eq!(input["_group"], body["_group"]);
+                                }
+                            }
                             json!({"jobid": 7})
                         }
-                        2 => {
+                        1 => {
                             assert_eq!(path, "/job/batch");
                             json!({"results": [
                             {"finished": true, "success": success, "error": if success { "" } else { "transfer failed" }, "output": {"owner": "A"}},
                                 {"bytes": 123}, {"transferred": []}
                             ]})
                         }
-                        _ => match path {
-                            "/core/stats" => json!({"bytes": 123}),
-                            "/core/transferred" => json!({"transferred": []}),
-                            _ => panic!("unexpected final RPC: {path}"),
-                        },
+                        _ => panic!("unexpected extra RPC: {path}"),
                     };
                     request_index += 1;
                     response
@@ -1295,9 +1347,9 @@ mod tests {
                 }
             }
             let groups = server.await.unwrap();
-            // The same group must be used for starting, polling and final stats.
-            assert_eq!(groups[0], groups[3]);
-            assert_eq!(groups.len(), 4);
+            // Submission and polling must use the same execution group.
+            assert_eq!(groups[0], groups[1]);
+            assert_eq!(groups.len(), 2);
             loop {
                 if a_cache
                     .get_job(7)

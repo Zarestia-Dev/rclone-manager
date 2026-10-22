@@ -60,6 +60,8 @@ describe('AppDetailComponent', () => {
 
   let jobServiceMock: {
     jobs: ReturnType<typeof signal<unknown[]>>;
+    getLatestJobForQuickRun: ReturnType<typeof vi.fn>;
+    getLatestJobForRemote: ReturnType<typeof vi.fn>;
   };
 
   let quickRunServiceMock: {
@@ -107,6 +109,8 @@ describe('AppDetailComponent', () => {
 
     jobServiceMock = {
       jobs: signal([]),
+      getLatestJobForQuickRun: vi.fn().mockReturnValue(null),
+      getLatestJobForRemote: vi.fn().mockReturnValue(null),
     };
 
     quickRunServiceMock = {

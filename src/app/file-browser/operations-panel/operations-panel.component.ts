@@ -12,11 +12,15 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
-import { JobInfo, CompletedTransfer, JOB_ICON_MAP } from '@app/types';
+import {
+  JobInfo,
+  CompletedTransfer,
+  JOB_ICON_MAP,
+  DELETE_OPERATIONS,
+  JOB_STATUS,
+} from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-
-const DELETE_OPERATIONS = new Set(['delete', 'cleanup', 'rmdirs']);
 
 const TRANSFERRED_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   delete: 'fileBrowser.operations.details.deletedFiles',
@@ -93,7 +97,7 @@ export class OperationsPanelComponent {
       .pendingWebUploads()
       .filter(upload => upload.origin === 'filemanager' && !jobGroups.has(upload.group));
   });
-  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
+  activeJobs = computed(() => this.jobs().filter(j => j.status === JOB_STATUS.Running));
   readonly activeCount = computed(() => this.activeJobs().length + this.preparingUploads().length);
   hasJobs = computed(() => this.jobs().length > 0 || this.preparingUploads().length > 0);
 
@@ -115,10 +119,6 @@ export class OperationsPanelComponent {
     const liveJob = this.jobs().find(j => j.jobid === id);
     return liveJob ? this.toJobViewModel(liveJob) : null;
   });
-
-  constructor() {
-    void this.jobManagementService.refreshJobs();
-  }
 
   private toJobViewModel(job: JobInfo): JobViewModel {
     return {

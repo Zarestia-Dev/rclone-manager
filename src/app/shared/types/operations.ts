@@ -229,3 +229,22 @@ export interface RenameItem {
   dstPath: string;
   isDir: boolean;
 }
+
+/** Activity presentation categories; group names remain opaque identifiers. */
+export const CHECK_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  'check',
+  'cryptcheck',
+]);
+export const DELETE_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  'delete',
+  'cleanup',
+  'rmdirs',
+]);
+export const TRANSFER_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  ...CORE_SYNC_OPS,
+  'bisync',
+  'upload',
+  'copyurl',
+  'archivecreate',
+  'archiveextract',
+]);

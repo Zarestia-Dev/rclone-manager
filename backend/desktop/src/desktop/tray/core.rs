@@ -209,19 +209,8 @@ mod tests {
     use tauri::test::mock_builder;
 
     #[tokio::test]
-    async fn test_tray_update_concurrency_safety() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        use rclone_manager_core::context::AppHandle as CoreHandle;
-        let settings_manager =
-            crate::services::settings::manager::create_settings_manager(temp_dir.path()).unwrap();
-        let context = CoreHandle::default();
-        context.manage(crate::rclone::backend::BackendManager::new());
-        context.manage(settings_manager);
-        context.manage(TrayMenuState::default());
-        let app = mock_builder()
-            .manage(context)
-            .build(tauri::generate_context!())
-            .unwrap();
+    async fn concurrent_updates_without_a_tray_need_no_backend_state() {
+        let app = mock_builder().build(tauri::generate_context!()).unwrap();
         let handle = app.handle();
 
         let mut tasks = vec![];

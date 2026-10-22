@@ -869,27 +869,25 @@
       "resetStats": "Reiniciar Estatísticas",
       "tabs": {
         "active": "Ativo ({{count}})",
-        "recent": "Recente ({{count}})",
-        "recentCheck": "Verificado ({{count}})"
+        "recent": "Recente ({{count}})"
       },
       "table": {
         "size": "Tamanho",
-        "transferred": "transferido",
-        "alreadyExisted": "já existia"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Falhou",
         "checked": "Verificado",
         "partial": "Parcial",
         "completed": "Concluído",
-        "transferError": "Erro de transferência",
-        "transferCompleted": "A transferência foi concluída",
         "preparing": "Preparando",
         "finalizing": "Concluindo...",
         "missingDst": "Perdido no Destino",
         "missingSrc": "Faltando na Fonte",
         "differ": "Conteúdo dos arquivos difere",
-        "error": "Erro"
+        "checking": "Verificando",
+        "deleting": "Excluindo",
+        "processing": "Processando"
       },
       "actions": {
         "resolveToDst": "Copiar para Destino",
@@ -912,12 +910,12 @@
         "resolveFailed": "Falha ao resolver o desalinhamento de arquivo: {{error}}"
       },
       "empty": {
-        "noActive": "Nenhuma transferência ativa",
-        "activeHint": "Transferências aparecerão aqui quando uma operação começar",
-        "noRecent": "Nenhuma transferência concluída recentemente",
-        "recentHint": "Transferências concluídas aparecerão aqui quando as tarefas terminarem",
-        "noRecentCheck": "Arquivos verificados não estão disponíveis",
-        "recentHintCheck": "Arquivos verificados aparecerão aqui quando a tarefa completar"
+        "noRecent": "Nenhuma atividade recente de arquivos",
+        "recentHint": "A atividade de arquivos concluída aparece aqui durante as operações.",
+        "noRecentCheck": "Nenhum resultado de comparação para exibir",
+        "recentHintCheck": "Consulte o status da tarefa e os contadores de verificação.",
+        "noActiveActivity": "Nenhuma atividade de arquivo em andamento",
+        "waitingActivity": "Aguardando atividade de arquivos. Algumas operações não informam arquivos individuais."
       },
       "time": {
         "daysAgo": "{{count}} dias atrás",
@@ -930,8 +928,12 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "Menos de um segundo"
         }
-      }
+      },
+      "titleDelete": "Atividade de exclusão",
+      "titleActivity": "Atividade",
+      "loadMore": "Mostrar mais"
     },
+
     "inputModal": {
       "name": "Nome",
       "required": "O(A) {{field}} é necessário(a)",

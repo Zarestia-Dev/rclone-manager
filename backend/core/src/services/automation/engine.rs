@@ -7,38 +7,46 @@ use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify
 use crate::utils::types::automation::{Automation, AutomationStatus};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
-use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
 
-// CRON SCHEDULER
+struct SchedulerRuntime {
+    scheduler: JobScheduler,
+    app: AppHandle,
+    started: bool,
+}
 
 pub struct AutomationScheduler {
-    pub scheduler: Arc<RwLock<Option<JobScheduler>>>,
-    app_handle: Arc<RwLock<Option<AppHandle>>>,
+    scheduler: RwLock<Option<SchedulerRuntime>>,
     installed: tokio::sync::Mutex<std::collections::HashMap<String, (Uuid, String)>>,
 }
 
 impl AutomationScheduler {
     pub fn new() -> Self {
         Self {
-            scheduler: Arc::new(RwLock::new(None)),
-            app_handle: Arc::new(RwLock::new(None)),
+            scheduler: RwLock::new(None),
             installed: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 
-    /// Initialise the scheduler with the app handle (call once at startup).
+    /// Reuse the existing scheduler and its installed jobs on startup retries.
     pub async fn initialize(&self, app_handle: AppHandle) -> Result<(), String> {
+        let mut guard = self.scheduler.write().await;
+        if guard.is_some() {
+            return Ok(());
+        }
         info!("Initializing cron scheduler...");
 
         let scheduler = JobScheduler::new().await.map_err(
             |e| crate::localized_error!("backendErrors.automation.initFailed", "error" => e),
         )?;
 
-        *self.scheduler.write().await = Some(scheduler);
-        *self.app_handle.write().await = Some(app_handle);
+        *guard = Some(SchedulerRuntime {
+            scheduler,
+            app: app_handle,
+            started: false,
+        });
 
         info!("Cron scheduler initialized");
         Ok(())
@@ -46,34 +54,39 @@ impl AutomationScheduler {
 
     pub async fn start(&self) -> Result<(), String> {
         let mut guard = self.scheduler.write().await;
-        let scheduler = guard.as_mut().ok_or_else(|| {
+        let runtime = guard.as_mut().ok_or_else(|| {
             crate::localized_error!(
                 "backendErrors.automation.initFailed",
                 "error" => "Scheduler not initialized"
             )
         })?;
 
-        scheduler.start().await.map_err(
+        if runtime.started {
+            return Ok(());
+        }
+        runtime.scheduler.start().await.map_err(
             |e| crate::localized_error!("backendErrors.automation.startFailed", "error" => e),
         )?;
 
+        runtime.started = true;
         info!("Cron scheduler started");
         Ok(())
     }
 
     pub async fn stop(&self) -> Result<(), String> {
+        // Reconciliation takes these locks in the same order.
+        let mut installed = self.installed.lock().await;
         let mut guard = self.scheduler.write().await;
-        let scheduler = guard.as_mut().ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.automation.initFailed",
-                "error" => "Scheduler not initialized"
-            )
-        })?;
+        let Some(runtime) = guard.as_mut() else {
+            return Ok(());
+        };
 
-        scheduler.shutdown().await.map_err(
+        runtime.scheduler.shutdown().await.map_err(
             |e| crate::localized_error!("backendErrors.automation.stopFailed", "error" => e),
         )?;
 
+        *guard = None;
+        installed.clear();
         info!("Cron scheduler stopped");
         Ok(())
     }
@@ -90,18 +103,14 @@ impl AutomationScheduler {
         }
 
         let scheduler_guard = self.scheduler.read().await;
-        let scheduler = scheduler_guard.as_ref().ok_or_else(|| {
+        let runtime = scheduler_guard.as_ref().ok_or_else(|| {
             crate::localized_error!(
                 "backendErrors.automation.initFailed",
                 "error" => "Scheduler not initialized"
             )
         })?;
 
-        let app_guard = self.app_handle.read().await;
-        let app_handle = app_guard
-            .as_ref()
-            .ok_or("App handle not initialized")?
-            .clone();
+        let app_handle = runtime.app.clone();
 
         let automation_id = automation.id.clone();
         let automation_name = format!(
@@ -146,7 +155,7 @@ impl AutomationScheduler {
                 |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
             )?;
 
-        let job_id = scheduler.add(job).await.map_err(
+        let job_id = runtime.scheduler.add(job).await.map_err(
             |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
         )?;
 
@@ -158,8 +167,8 @@ impl AutomationScheduler {
 
     async fn remove_job(&self, id: Uuid) -> Result<(), String> {
         let guard = self.scheduler.read().await;
-        let scheduler = guard.as_ref().ok_or("Scheduler not initialized")?;
-        scheduler.remove(&id).await.map_err(|error| crate::localized_error!("backendErrors.automation.executionFailed", "error" => error))
+        let runtime = guard.as_ref().ok_or("Scheduler not initialized")?;
+        runtime.scheduler.remove(&id).await.map_err(|error| crate::localized_error!("backendErrors.automation.executionFailed", "error" => error))
     }
 
     pub async fn unschedule_automation(&self, id: Uuid) -> Result<(), String> {
@@ -179,11 +188,13 @@ impl AutomationScheduler {
             return Ok(());
         };
         let app = self
-            .app_handle
+            .scheduler
             .read()
             .await
-            .clone()
-            .ok_or("App handle not initialized")?;
+            .as_ref()
+            .ok_or("Scheduler not initialized")?
+            .app
+            .clone();
         let backend = app
             .state::<crate::rclone::backend::BackendManager>()
             .get_active_name()
@@ -652,6 +663,26 @@ mod tests {
             .unwrap()
             .scheduler_job_id
             .unwrap();
+        // A startup retry must keep the live scheduler that owns this job ID.
+        let (first, second) = tokio::join!(
+            scheduler.initialize(app.clone()),
+            scheduler.initialize(app.clone()),
+        );
+        first.unwrap();
+        second.unwrap();
+        scheduler.start().await.unwrap();
+        scheduler.reload_automations(app.clone()).await.unwrap();
+        assert_eq!(
+            scheduler
+                .installed
+                .lock()
+                .await
+                .get(&local.id)
+                .unwrap()
+                .0
+                .to_string(),
+            local_cron
+        );
         assert!(
             cache
                 .get_automation(&other.id)
@@ -739,6 +770,7 @@ mod tests {
                 .is_none()
         );
         scheduler.stop().await.unwrap();
+        assert!(scheduler.installed.lock().await.is_empty());
     }
 
     // -----------------------------------------------------------------------
@@ -818,15 +850,19 @@ mod tests {
         assert!(validate_cron_expression("0 0 * * 1-5").is_ok());
     }
 
-    // -----------------------------------------------------------------------
-    // AutomationScheduler construction (no async runtime needed)
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn test_cron_scheduler_default() {
+    #[tokio::test]
+    async fn scheduler_can_stop_before_initialization_and_start_again_after_shutdown() {
         let s = AutomationScheduler::default();
-        // These must not panic
-        let _ = Arc::clone(&s.scheduler);
-        let _ = Arc::clone(&s.app_handle);
+        s.stop().await.unwrap();
+        assert!(s.start().await.is_err());
+        s.initialize(AppHandle::default()).await.unwrap();
+        s.start().await.unwrap();
+        s.start().await.unwrap();
+        s.stop().await.unwrap();
+        assert!(s.scheduler.read().await.is_none());
+        assert!(s.installed.lock().await.is_empty());
+        s.initialize(AppHandle::default()).await.unwrap();
+        s.start().await.unwrap();
+        s.stop().await.unwrap();
     }
 }

@@ -80,6 +80,12 @@ fn push_auto_start_tasks(
         };
         let app = app.clone();
         tasks.push(crate::utils::spawn(async move {
+            if app
+                .state::<crate::utils::types::state::RcloneState>()
+                .is_shutting_down()
+            {
+                return;
+            }
             let remote = params.remote_name.clone();
             let profile = params.profile_name.clone();
             let result = match operation {

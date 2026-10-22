@@ -211,15 +211,6 @@ impl WorkflowDefinition {
     }
 
     #[must_use]
-    pub fn app_start_delay_seconds(&self) -> u64 {
-        self.nodes
-            .iter()
-            .find(|n| n.node_type == "app_start")
-            .map(|n| parse_delay_seconds(&n.config))
-            .unwrap_or(0)
-    }
-
-    #[must_use]
     pub fn is_cron_enabled(&self) -> bool {
         self.effective_cron_expression().is_some()
     }
@@ -558,7 +549,6 @@ mod tests {
         };
 
         assert!(wf_with_app_start.is_autostart());
-        assert_eq!(wf_with_app_start.app_start_delay_seconds(), 10);
     }
 
     #[test]

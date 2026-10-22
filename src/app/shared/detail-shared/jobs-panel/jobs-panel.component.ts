@@ -5,12 +5,19 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { timer } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { JobInfo, JobsPanelConfig, JOB_STATUS_BADGE_MAP, JOB_ICON_MAP } from '@app/types';
+import { switchMap, timer } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import {
+  JobInfo,
+  JobsPanelConfig,
+  JOB_STATUS,
+  JOB_STATUS_BADGE_MAP,
+  JOB_ICON_MAP,
+} from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { relativeTimeLabel } from '../../utils/relative-time.util';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -37,19 +44,27 @@ export class JobsPanelComponent {
   private readonly jobService = inject(JobManagementService);
   private readonly translate = inject(TranslateService);
   private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
-  private readonly nowTick = toSignal(timer(0, 1000), { initialValue: 0 });
+  private readonly clockInterval = computed(() =>
+    this.config().jobs.some(job => job.status === JOB_STATUS.Running) ? 1000 : 60000
+  );
+  private readonly nowTick = toSignal(
+    toObservable(this.clockInterval).pipe(switchMap(interval => timer(0, interval))),
+    { initialValue: 0 }
+  );
 
   protected readonly enrichedJobs = computed(() => {
-    this.lang(); // Track locale context changes inside Zoneless Architecture
+    this.lang();
     this.nowTick();
     const now = Date.now();
     return this.config().jobs.map(job => {
       const statusLower = job.status.toLowerCase();
       const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
-      const relativeTime = job.start_time ? this.getRelativeTime(job.start_time, now) : '';
-      const durationSeconds = job.start_time
-        ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
-        : 0;
+      const relative = relativeTimeLabel(job.start_time, now);
+      const relativeTime = relative ? this.translate.instant(relative.key, relative.params) : '';
+      const durationSeconds =
+        job.start_time && (job.status === JOB_STATUS.Running || job.end_time)
+          ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
+          : 0;
       const errorText = job.error || job.stats?.lastError || '';
 
       return {
@@ -58,7 +73,9 @@ export class JobsPanelComponent {
         badgeClass: JOB_STATUS_BADGE_MAP[statusLower] || 'p-accent',
         relativeTime,
         durationSeconds,
-        progress: hasProgress ? Math.round((job.stats.bytes / job.stats.totalBytes) * 100) : 0,
+        progress: hasProgress
+          ? Math.max(0, Math.min(100, Math.round((job.stats.bytes / job.stats.totalBytes) * 100)))
+          : 0,
         icon: JOB_ICON_MAP[job.job_type] || 'jobs',
         iconClass: `job-icon-${job.job_type}`,
         hasProgress,
@@ -76,20 +93,7 @@ export class JobsPanelComponent {
     const start = Date.parse(startTime);
     if (isNaN(start)) return 0;
     const end = endTime ? Date.parse(endTime) : now;
-    return Math.max(0, Math.floor((end - start) / 1000));
-  }
-
-  private getRelativeTime(timestamp: string, now: number = Date.now()): string {
-    const diff = now - Date.parse(timestamp);
-    const minutes = Math.floor(diff / 60000);
-    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
-    const hours = Math.floor(minutes / 60);
-    if (hours <= 0)
-      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
-    const days = Math.floor(hours / 24);
-    if (days <= 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
-    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
+    return Number.isFinite(end) ? Math.max(0, Math.floor((end - start) / 1000)) : 0;
   }
 
   async onStopJob(job: JobInfo): Promise<void> {

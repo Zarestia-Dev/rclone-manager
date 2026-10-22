@@ -1863,8 +1863,28 @@ pub async fn execute_workflow(
     workflow_id: String,
     dry_run: bool,
 ) -> Result<WorkflowExecutionResult, String> {
+    execute_workflow_inner(app, backend, workflow_id, dry_run, None).await
+}
+
+pub(crate) async fn execute_workflow_snapshot(
+    app: AppHandle,
+    backend: Backend,
+    snapshot: Arc<crate::services::automation::runtime::WorkflowSnapshot>,
+    dry_run: bool,
+) -> Result<WorkflowExecutionResult, String> {
+    let id = snapshot.definition.id.clone();
+    execute_workflow_inner(app, backend, id, dry_run, Some(snapshot)).await
+}
+
+async fn execute_workflow_inner(
+    app: AppHandle,
+    backend: Backend,
+    workflow_id: String,
+    dry_run: bool,
+    prepared: Option<Arc<crate::services::automation::runtime::WorkflowSnapshot>>,
+) -> Result<WorkflowExecutionResult, String> {
     // Coordinate starts made before Vault is enabled with its enable transition.
-    // Deferred startup already owns the vault operation lock when enabled.
+    // Vault-enabled runs use task snapshots prepared before autostart.
     let startup_state = if !app.state::<AppSettingsManager>().is_vault_enabled() {
         app.try_state::<crate::utils::types::state::RcloneState>()
     } else {
@@ -1874,7 +1894,10 @@ pub async fn execute_workflow(
         Some(state) => Some(state.vault_operation_lock.lock().await),
         None => None,
     };
-    let snapshot = crate::services::automation::runtime::workflow(&app, &workflow_id)?;
+    let snapshot = match prepared {
+        Some(snapshot) => snapshot,
+        None => crate::services::automation::runtime::workflow(&app, &workflow_id)?,
+    };
     let mut workflow = snapshot.definition.clone();
 
     info!(
@@ -2632,6 +2655,35 @@ mod tests {
         assert!(result.success);
         assert_eq!(result.completed_nodes, 1);
         assert!(app.state::<AppSettingsManager>().get_all().is_err());
+    }
+
+    #[tokio::test]
+    async fn a_prepared_startup_workflow_can_begin_after_the_vault_locks() {
+        use crate::services::automation::runtime::WorkflowSnapshot;
+
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        let workflow = WorkflowDefinition {
+            id: "prepared-startup-vault-test".into(),
+            name: "Prepared startup".into(),
+            nodes: vec![WorkflowNode {
+                id: "start".into(),
+                node_type: "app_start".into(),
+                category: WorkflowNodeCategory::Trigger,
+                config: json!({"delaySeconds": 0}),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let manager = app.state::<AppSettingsManager>();
+        let snapshot = Arc::new(WorkflowSnapshot::capture(manager.inner(), workflow).unwrap());
+        manager.lock().unwrap();
+        let result = execute_workflow_snapshot(app, Backend::new_local("Local"), snapshot, false)
+            .await
+            .unwrap();
+        assert!(result.success);
+        assert_eq!(result.completed_nodes, 1);
+        assert!(manager.is_locked());
     }
 
     #[tokio::test]
@@ -3879,6 +3931,7 @@ mod tests {
 
         let mock_job =
             |status: JobStatus, profile: Option<&str>, qr_id: Option<&str>, remote: &str| JobInfo {
+                stats_revision: 0,
                 jobid: 101,
                 execute_id: None,
                 quick_run_id: qr_id.map(String::from),
@@ -4029,6 +4082,7 @@ mod tests {
     #[test]
     fn test_build_job_execution_output_normalization() {
         let job = crate::utils::types::jobs::JobInfo {
+            stats_revision: 0,
             jobid: 99,
             job_type: JobType::Check,
             remote_name: "drive:".to_string(),

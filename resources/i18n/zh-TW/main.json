@@ -869,27 +869,25 @@
       "resetStats": "重設統計",
       "tabs": {
         "active": "進行中（{{count}}）",
-        "recent": "最近完成（{{count}}）",
-        "recentCheck": "已校驗（{{count}}）"
+        "recent": "最近完成（{{count}}）"
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸",
-        "alreadyExisted": "已存在"
+        "transferred": "已傳輸"
       },
       "status": {
         "failed": "失敗",
         "checked": "已檢查",
         "partial": "部分完成",
         "completed": "已完成",
-        "transferError": "傳輸錯誤",
-        "transferCompleted": "傳輸完成",
         "preparing": "正在準備",
         "finalizing": "正在完成...",
         "missingDst": "目的地缺失",
         "missingSrc": "源中缺失",
         "differ": "檔案內容存在差異",
-        "error": "錯誤"
+        "checking": "正在檢查",
+        "deleting": "正在刪除",
+        "processing": "正在處理"
       },
       "actions": {
         "resolveToDst": "複製到目的地",
@@ -912,12 +910,12 @@
         "resolveFailed": "解決檔案不匹配失敗：{{error}}"
       },
       "empty": {
-        "noActive": "無正在進行的傳輸",
-        "activeHint": "操作開始後，傳輸項將顯示在此處",
-        "noRecent": "無最近完成的傳輸",
-        "recentHint": "任務完成後，已完成的傳輸將顯示在此處",
-        "noRecentCheck": "無被檢查的檔案",
-        "recentHintCheck": "任務完成後，被檢查的檔案將顯示在這裡"
+        "noRecent": "沒有最近的檔案活動",
+        "recentHint": "操作過程中已完成的檔案活動會顯示在此處。",
+        "noRecentCheck": "沒有可顯示的比較結果",
+        "recentHintCheck": "請查看工作狀態和檢查計數以瞭解結果。",
+        "noActiveActivity": "目前沒有檔案活動",
+        "waitingActivity": "正在等待檔案活動。某些操作不會回報個別檔案的資訊。"
       },
       "time": {
         "daysAgo": "{{count}} 天前",
@@ -930,8 +928,12 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "<1秒"
         }
-      }
+      },
+      "titleDelete": "刪除活動",
+      "titleActivity": "活動",
+      "loadMore": "顯示更多"
     },
+
     "inputModal": {
       "name": "名稱",
       "required": "{{field}} 為必填項",

@@ -176,6 +176,24 @@ describe('VaultService', () => {
     expect(service.isVaultLocked()).toBe(true);
   });
 
+  it('hides an open UI as soon as a locked query returns, before translations finish', async () => {
+    vaultStateSubject.next({ event: 'unlocked', isLocked: false, isEnabled: true });
+    const translation = new Subject<Record<string, string>>();
+    vi.mocked(TestBed.inject(TranslateService).use).mockReturnValue(translation.asObservable());
+    apiClientMock.invoke.mockResolvedValueOnce({
+      enabled: true,
+      isLocked: true,
+      language: 'tr-TR',
+    });
+
+    const pending = service.checkVaultStatus();
+    await Promise.resolve();
+    expect(service.isAccessible()).toBe(false);
+    expect(service.isVaultLocked()).toBe(true);
+    translation.next({});
+    await pending;
+  });
+
   it('should invoke unlock and lock without optimistically mutating signals', async () => {
     apiClientMock.invoke.mockResolvedValue(undefined);
 

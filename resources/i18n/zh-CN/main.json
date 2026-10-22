@@ -869,27 +869,25 @@
       "resetStats": "重置统计",
       "tabs": {
         "active": "进行中（{{count}}）",
-        "recent": "最近完成（{{count}}）",
-        "recentCheck": "已校验（{{count}}）"
+        "recent": "最近完成（{{count}}）"
       },
       "table": {
         "size": "大小",
-        "transferred": "已传输",
-        "alreadyExisted": "已存在"
+        "transferred": "已传输"
       },
       "status": {
         "failed": "失败",
         "checked": "已检查",
         "partial": "部分完成",
         "completed": "已完成",
-        "transferError": "传输错误",
-        "transferCompleted": "传输完成",
         "preparing": "正在准备",
         "finalizing": "正在完成...",
         "missingDst": "目的地缺失",
         "missingSrc": "源中缺失",
         "differ": "文件内容存在差异",
-        "error": "错误"
+        "checking": "正在检查",
+        "deleting": "正在删除",
+        "processing": "正在处理"
       },
       "actions": {
         "resolveToDst": "复制到目的地",
@@ -908,12 +906,12 @@
         "failDownload": "下载文件失败"
       },
       "empty": {
-        "noActive": "无正在进行的传输",
-        "activeHint": "操作开始后，传输项将显示在此处",
-        "noRecent": "无最近完成的传输",
-        "recentHint": "任务完成后，已完成的传输将显示在此处",
-        "noRecentCheck": "无被检查的文件",
-        "recentHintCheck": "任务完成后，被检查的文件将显示在这里"
+        "noRecent": "没有最近的文件活动",
+        "recentHint": "操作过程中已完成的文件活动显示在此处。",
+        "noRecentCheck": "没有可显示的比较结果",
+        "recentHintCheck": "请查看任务状态和检查计数以了解结果。",
+        "noActiveActivity": "当前没有文件活动",
+        "waitingActivity": "正在等待文件活动。某些操作不会报告单个文件的信息。"
       },
       "time": {
         "daysAgo": "{{count}} 天前",
@@ -930,8 +928,12 @@
       "messages": {
         "resolveFailed": "解决文件不匹配失败：{{error}}",
         "resolveStarted": "文件不匹配处理已开始"
-      }
+      },
+      "titleDelete": "删除活动",
+      "titleActivity": "活动",
+      "loadMore": "显示更多"
     },
+
     "inputModal": {
       "name": "名称",
       "required": "{{field}} 为必填项",

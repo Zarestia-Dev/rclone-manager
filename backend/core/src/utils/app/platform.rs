@@ -177,6 +177,7 @@ mod exit_tests {
             .job_cache()
             .await
             .add_job(JobInfo {
+                stats_revision: 0,
                 jobid: 1,
                 job_type: JobType::Copy,
                 remote_name: "remote".into(),

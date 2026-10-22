@@ -300,7 +300,7 @@
                   >
                     <mat-icon
                       [svgIcon]="
-                        appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'circle-up'
+                        appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'download'
                       "
                     ></mat-icon>
                     @if (appUpdateInProgress() || appDownloadInProgress()) {
@@ -580,7 +580,7 @@
                     [disabled]="rcloneUpdateInProgress()"
                   >
                     <mat-icon
-                      [svgIcon]="rcloneUpdateInProgress() ? 'spinner' : 'rclone'"
+                      [svgIcon]="rcloneUpdateInProgress() ? 'spinner' : 'download'"
                     ></mat-icon>
                     @if (rcloneUpdateInProgress()) {
                       {{ 'modals.about.downloading' | translate }}
@@ -964,9 +964,7 @@
     </div>
     <div class="update-buttons">
       <button matButton="filled" class="accent" (click)="action()" [disabled]="restarting">
-        @if (restarting) {
-          <mat-icon svgIcon="spinner"></mat-icon>
-        }
+        <mat-icon [svgIcon]="restarting ? 'spinner' : 'reset-wrench'"></mat-icon>
         <span>{{ 'modals.about.restartNow' | translate }}</span>
       </button>
       @if (discard) {

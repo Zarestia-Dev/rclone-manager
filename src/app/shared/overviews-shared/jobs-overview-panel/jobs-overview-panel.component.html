@@ -102,7 +102,7 @@
           </div>
 
           <div class="running-jobs-list">
-            @for (vm of runningJobViewModels(); track vm.job.jobid) {
+            @for (vm of runningJobViewModels(); track vm.job.execute_id || vm.job.jobid) {
               <div
                 class="running-job-card"
                 (click)="onJobRowClick(vm.job)"

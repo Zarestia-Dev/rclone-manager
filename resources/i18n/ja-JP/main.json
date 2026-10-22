@@ -869,27 +869,25 @@
       "resetStats": "統計をリセット",
       "tabs": {
         "active": "実行中 ({{count}})",
-        "recent": "履歴 ({{count}})",
-        "recentCheck": "チェック済み ({{count}})"
+        "recent": "履歴 ({{count}})"
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み",
-        "alreadyExisted": "スキップ済み (同名ファイルが存在)"
+        "transferred": "転送済み"
       },
       "status": {
         "failed": "失敗",
         "checked": "チェック完了",
         "partial": "一部完了",
         "completed": "完了",
-        "transferError": "転送エラー",
-        "transferCompleted": "転送完了",
         "preparing": "準備中",
         "finalizing": "最終処理中...",
         "missingDst": "転送先に存在しません",
         "missingSrc": "転送元に存在しません",
         "differ": "ファイル内容が異なります",
-        "error": "エラー"
+        "checking": "確認中",
+        "deleting": "削除中",
+        "processing": "処理中"
       },
       "actions": {
         "resolveToDst": "転送先へコピー",
@@ -912,12 +910,12 @@
         "resolveFailed": "不一致の解決に失敗しました: {{error}}"
       },
       "empty": {
-        "noActive": "実行中の転送はありません",
-        "activeHint": "操作が開始されるとここに表示されます",
-        "noRecent": "最近完了した転送はありません",
-        "recentHint": "ジョブが終了するとここに完了した転送が表示されます",
-        "noRecentCheck": "チェックされたファイルはありません",
-        "recentHintCheck": "ジョブが終了するとここにチェックされたファイルが表示されます"
+        "noRecent": "最近のファイルアクティビティはありません",
+        "recentHint": "操作中に完了したファイルアクティビティがここに表示されます。",
+        "noRecentCheck": "表示する比較結果はありません",
+        "recentHintCheck": "結果はジョブの状態と確認数を参照してください。",
+        "noActiveActivity": "処理中のファイルはありません",
+        "waitingActivity": "ファイルのアクティビティを待機しています。一部の操作では個別のファイル情報が報告されません。"
       },
       "time": {
         "daysAgo": "{{count}} 日前",
@@ -930,8 +928,12 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "1秒未満"
         }
-      }
+      },
+      "titleDelete": "削除のアクティビティ",
+      "titleActivity": "アクティビティ",
+      "loadMore": "さらに表示"
     },
+
     "inputModal": {
       "name": "名前",
       "required": "{{field}} は必須です",

@@ -4,16 +4,17 @@ import { Observable, Subject } from 'rxjs';
 import { JobManagementService, areJobGroupsEqual } from './job-management.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { DEFAULT_JOB_STATS, JobInfo, JobStatsUpdatedEvent } from '@app/types';
+import { DEFAULT_JOB_STATS, JobInfo, JobChangeEvent, JobStatsUpdatedEvent } from '@app/types';
 
 import { provideTranslateService } from '@ngx-translate/core';
 
 describe('JobManagementService', () => {
   let service: JobManagementService;
   let mockApiClient: { invoke: ReturnType<typeof vi.fn> };
-  let jobCacheChanged$: Subject<JobInfo[]>;
+  let jobCacheChanged$: Subject<JobChangeEvent>;
   let jobStatsUpdated$: Subject<JobStatsUpdatedEvent>;
   let rcloneReady$: Subject<void>;
+  let backendSwitched$: Subject<string>;
 
   const createMockJob = (overrides: Partial<JobInfo>): JobInfo => ({
     jobid: 1,
@@ -31,9 +32,10 @@ describe('JobManagementService', () => {
   });
 
   beforeEach(() => {
-    jobCacheChanged$ = new Subject<JobInfo[]>();
+    jobCacheChanged$ = new Subject<JobChangeEvent>();
     jobStatsUpdated$ = new Subject<JobStatsUpdatedEvent>();
     rcloneReady$ = new Subject<void>();
+    backendSwitched$ = new Subject<string>();
     mockApiClient = {
       invoke: vi.fn().mockResolvedValue([]),
     };
@@ -49,8 +51,9 @@ describe('JobManagementService', () => {
         {
           provide: EventListenersService,
           useValue: {
-            listenToJobCacheChanged: (): Observable<JobInfo[]> => jobCacheChanged$,
+            listenToJobCacheChanged: (): Observable<JobChangeEvent> => jobCacheChanged$,
             listenToJobStatsUpdated: (): Observable<JobStatsUpdatedEvent> => jobStatsUpdated$,
+            listenToBackendSwitched: (): Observable<string> => backendSwitched$,
             listenToRcloneEngineReady: (): Observable<void> => rcloneReady$,
           },
         },
@@ -186,10 +189,15 @@ describe('JobManagementService', () => {
       expect(job?.execute_id).toBe('exec-unique');
     });
 
-    it('falls back to jobid when execute_id is not found', () => {
-      const job = service.getJob('non-existent-exec-id', 2);
+    it('uses the numeric ID only when no execution identity was supplied', () => {
+      const job = service.getJob('', 2);
       expect(job).toBeDefined();
       expect(job?.jobid).toBe(2);
+    });
+
+    it('does not retarget another execution when the requested identity disappeared', () => {
+      expect(service.getJob('removed-execution', 2)).toBeUndefined();
+      expect(service.getJob('', 2, 'Other')).toBeUndefined();
     });
 
     it('returns undefined when neither matches', () => {
@@ -199,6 +207,27 @@ describe('JobManagementService', () => {
   });
 
   describe('Job Stats Updates', () => {
+    it('ignores reused job IDs and out-of-order events within an execution', async () => {
+      mockApiClient.invoke.mockResolvedValue([
+        createMockJob({ jobid: 42, status: 'Running', stats_revision: 3 }),
+      ]);
+      await service.refreshJobs();
+      const emit = (executeId: string, statsRevision: number, bytes: number): void =>
+        jobStatsUpdated$.next({
+          backendName: 'Local',
+          jobId: 42,
+          executeId,
+          statsRevision,
+          stats: { ...DEFAULT_JOB_STATS, bytes },
+        });
+      emit('previous-session', 100, 1000);
+      expect(service.jobs()[0].stats.bytes).toBe(0);
+      emit('exec-1', 5, 500);
+      emit('exec-1', 4, 400);
+      expect(service.jobs()[0].stats.bytes).toBe(500);
+      expect(service.jobs()[0].stats_revision).toBe(5);
+    });
+
     it('ignores stats from another backend with the same job ID', async () => {
       const initialJob = createMockJob({ jobid: 42, stats: { ...DEFAULT_JOB_STATS, bytes: 100 } });
       mockApiClient.invoke.mockResolvedValueOnce([initialJob]);
@@ -288,6 +317,7 @@ describe('JobManagementService', () => {
       { origin: 'quickrun' },
       { quick_run_id: 'qr' },
       { workflow_id: 'workflow' },
+      { node_id: 'node' },
       { execute_id: 'replacement' },
       { backend_name: 'Other' },
       { start_time: '2026-10-17T00:00:00Z' },
@@ -328,6 +358,169 @@ describe('JobManagementService', () => {
       const updatedGroupRef = service.jobsByRemote();
       // Reference should be preserved to stop downstream remote-card re-evaluation
       expect(updatedGroupRef).toBe(initialGroupRef);
+    });
+  });
+
+  describe('snapshot refreshes', () => {
+    it.each([
+      { executeId: 'exec-1', eventRevision: 5, snapshotRevision: 6, expectedBytes: 100 },
+      { executeId: 'exec-1', eventRevision: 7, snapshotRevision: 6, expectedBytes: 900 },
+      { executeId: 'old-execution', eventRevision: 100, snapshotRevision: 6, expectedBytes: 100 },
+    ])('merges in-flight telemetry by execution and revision: %j', async scenario => {
+      await service.refreshJobs();
+      let finish!: (jobs: JobInfo[]) => void;
+      mockApiClient.invoke.mockReturnValueOnce(
+        new Promise<JobInfo[]>(resolve => {
+          finish = resolve;
+        })
+      );
+      const refresh = service.refreshJobs();
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 42,
+        executeId: scenario.executeId,
+        statsRevision: scenario.eventRevision,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 900 },
+      });
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 42,
+        executeId: scenario.executeId,
+        statsRevision: scenario.eventRevision - 1,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 800 },
+      });
+      finish([
+        createMockJob({
+          jobid: 42,
+          status: 'Running',
+          stats_revision: scenario.snapshotRevision,
+          stats: { ...DEFAULT_JOB_STATS, bytes: 100 },
+        }),
+      ]);
+      await refresh;
+      expect(service.jobs()[0].stats.bytes).toBe(scenario.expectedBytes);
+    });
+
+    it('serializes overlapping requests into one trailing refresh', async () => {
+      await service.refreshJobs();
+      mockApiClient.invoke.mockClear();
+      let finish!: (jobs: JobInfo[]) => void;
+      mockApiClient.invoke
+        .mockReturnValueOnce(
+          new Promise<JobInfo[]>(resolve => {
+            finish = resolve;
+          })
+        )
+        .mockResolvedValueOnce([createMockJob({ jobid: 2 })]);
+      const first = service.refreshJobs();
+      const second = service.refreshJobs();
+      const third = service.refreshJobs();
+      expect(mockApiClient.invoke).toHaveBeenCalledTimes(1);
+      finish([createMockJob({ jobid: 1 })]);
+      await Promise.all([first, second, third]);
+      expect(mockApiClient.invoke).toHaveBeenCalledTimes(2);
+      expect(service.jobs()[0].jobid).toBe(2);
+    });
+
+    it('preserves running telemetry received while a snapshot is loading', async () => {
+      await service.refreshJobs();
+      let finish!: (jobs: JobInfo[]) => void;
+      mockApiClient.invoke.mockReturnValueOnce(
+        new Promise<JobInfo[]>(resolve => {
+          finish = resolve;
+        })
+      );
+      const refresh = service.refreshJobs();
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 42,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 900 },
+      });
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 42,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 950 },
+      });
+      finish([
+        createMockJob({
+          jobid: 42,
+          status: 'Running',
+          stats: { ...DEFAULT_JOB_STATS, bytes: 100 },
+        }),
+      ]);
+      await refresh;
+      expect(service.jobs()[0].stats.bytes).toBe(950);
+    });
+
+    it('discards the previous backend snapshot and refreshes the new selection', async () => {
+      await service.refreshJobs();
+      let finish!: (jobs: JobInfo[]) => void;
+      mockApiClient.invoke
+        .mockReturnValueOnce(
+          new Promise<JobInfo[]>(resolve => {
+            finish = resolve;
+          })
+        )
+        .mockResolvedValueOnce([createMockJob({ backend_name: 'Other' })]);
+      const refresh = service.refreshJobs();
+      backendSwitched$.next('Other');
+      expect(service.jobs()).toEqual([]);
+      finish([createMockJob({ backend_name: 'Local' })]);
+      await refresh;
+      expect(service.jobs()[0].backend_name).toBe('Other');
+      jobStatsUpdated$.next({
+        backendName: 'Local',
+        jobId: 1,
+        stats: { ...DEFAULT_JOB_STATS, bytes: 999 },
+      });
+      expect(service.jobs()[0].stats.bytes).toBe(0);
+    });
+
+    it('sorts snapshots once and isolates dashboard profiles from workflow and quick-run jobs', async () => {
+      await service.refreshJobs();
+      mockApiClient.invoke.mockResolvedValueOnce([
+        createMockJob({ jobid: 50, profile: 'daily', start_time: '2026-10-01T10:00:00Z' }),
+        createMockJob({
+          jobid: 1,
+          profile: 'daily',
+          status: 'Running',
+          start_time: '2026-10-02T10:00:00Z',
+        }),
+        createMockJob({
+          jobid: 60,
+          profile: 'daily',
+          quick_run_id: 'qr',
+          start_time: '2026-10-03T10:00:00Z',
+        }),
+        createMockJob({
+          jobid: 61,
+          profile: 'daily',
+          workflow_id: 'flow',
+          start_time: '2026-10-04T10:00:00Z',
+        }),
+        createMockJob({
+          jobid: 62,
+          profile: 'daily',
+          quick_run_id: 'qr',
+          parent_job_id: 60,
+          start_time: '2026-10-05T10:00:00Z',
+        }),
+      ]);
+      await service.refreshJobs();
+      expect(service.jobs().map(job => job.jobid)).toEqual([62, 61, 60, 1, 50]);
+      expect(service.getLatestJobForRemote('remote', 'daily', 'sync')?.jobid).toBe(1);
+      expect(service.getLatestJobForQuickRun('qr')?.jobid).toBe(60);
+    });
+
+    it('prefers the selected workflow node over an unrelated execution of the same quick run', async () => {
+      await service.refreshJobs();
+      mockApiClient.invoke.mockResolvedValueOnce([
+        createMockJob({ jobid: 1, workflow_id: 'selected', node_id: 'node', quick_run_id: 'qr' }),
+        createMockJob({ jobid: 2, workflow_id: 'other', node_id: 'node', quick_run_id: 'qr' }),
+      ]);
+      await service.refreshJobs();
+      expect(service.getLatestJobForWorkflowNode('selected', 'node', 'qr')?.jobid).toBe(1);
+      expect(service.getLatestJobForWorkflowNode('missing', 'node', 'qr')).toBeNull();
     });
   });
 });

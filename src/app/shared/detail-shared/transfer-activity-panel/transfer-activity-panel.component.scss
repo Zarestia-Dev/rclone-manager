@@ -6,8 +6,16 @@
     padding: 0;
     overflow: hidden;
   }
+
   .search-open {
-    background: rgba(var(--accent-color-rgb), 0.1) !important;
-    color: var(--accent-color) !important;
+    background: var(--selected-bg-color) !important;
+    color: var(--mat-sys-primary) !important;
   }
+}
+
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
 }

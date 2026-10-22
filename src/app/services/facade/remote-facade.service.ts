@@ -13,7 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
 import { VaultService } from '../security/vault.service';
-import { JobManagementService } from '../operations/job-management.service';
+import { areJobListsEqual, JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { RemoteDiskUsageService } from '../remote/remote-disk-usage.service';
@@ -608,9 +608,14 @@ export class RemoteFacadeService {
       return;
     }
 
-    const remote = remoteName.replace(/:$/, '');
-    const groupName = profileName ? `${type}/${remote}/${profileName}` : `${type}/${remote}`;
-    await this.jobService.stopJobsByGroup(groupName);
+    const groups = new Set(
+      this.jobService
+        .getActiveJobsForRemote(remoteName, profileName)
+        .filter(job => job.job_type === type && isProfileScoped(job))
+        .map(job => job.group)
+        .filter((group): group is string => !!group)
+    );
+    await Promise.all([...groups].map(group => this.jobService.stopJobsByGroup(group)));
   }
 
   async deleteRemote(remoteName: string): Promise<void> {
@@ -710,7 +715,9 @@ export class RemoteFacadeService {
     settingsState: Signal<RemoteSettings>
   ): Signal<Remote> {
     // Group stores emit for all remotes. Preserve unchanged per-remote inputs across polls.
-    const jobs = computed(() => this.jobService.jobsByRemote()[name] ?? [], { equal: deepEqual });
+    const jobs = computed(() => this.jobService.jobsByRemote()[name] ?? [], {
+      equal: areJobListsEqual,
+    });
     const mounts = computed(() => this.mountService.mountsByRemote()[name] ?? [], {
       equal: deepEqual,
     });

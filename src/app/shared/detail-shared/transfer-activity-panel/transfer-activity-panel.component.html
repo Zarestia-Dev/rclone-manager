@@ -1,22 +1,10 @@
 <mat-card class="detail-panel">
   <mat-card-header class="panel-header">
     <mat-card-title>
-      <mat-icon
-        style="color: var(--mat-sys-primary)"
-        [svgIcon]="
-          config().jobType === 'check' || config().jobType === 'cryptcheck'
-            ? 'check-circle'
-            : 'download'
-        "
-      ></mat-icon>
-      <span>{{
-        (config().jobType === 'check' || config().jobType === 'cryptcheck'
-          ? 'shared.transferActivity.titleCheck'
-          : 'shared.transferActivity.title'
-        ) | translate
-      }}</span>
+      <mat-icon [svgIcon]="activityIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
+      <span>{{ titleKey() | translate }}</span>
 
-      @if (config().completedTransfers.length > 0 || config().activeTransfers.length > 0) {
+      @if (config().completedTransfers.length > 0 || activeCount() > 0) {
         <button
           matIconButton
           [class.search-open]="searchVisible()"
@@ -40,7 +28,7 @@
         >
           <mat-icon
             [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
-            [class]="isJobRunning() ? 'primary' : 'warn'"
+            [class.warn]="!isJobRunning()"
           ></mat-icon>
         </button>
       }
@@ -54,66 +42,89 @@
     (searchTextChange)="searchTerm.set($event)"
   ></app-search-container>
 
-  <mat-card-content class="panel-content">
-    @if (config().jobType === 'check' || config().jobType === 'cryptcheck') {
+  <ng-template #active>
+    <app-active-transfers-table
+      [transfers]="config().activeTransfers"
+      [checks]="config().activeChecks || []"
+      [jobType]="config().jobType || 'sync'"
+      [remoteName]="config().remoteName"
+      [searchTerm]="searchTerm()"
+      [isJobRunning]="isJobRunning()"
+    ></app-active-transfers-table>
+  </ng-template>
+
+  <ng-template #history>
+    @if (statusOptions().length > 1) {
+      <div class="activity-filters" role="group" [attr.aria-label]="'common.status' | translate">
+        <button
+          type="button"
+          class="app-pill interactive p-dim"
+          [class.is-selected]="statusFilter() === null"
+          [attr.aria-pressed]="statusFilter() === null"
+          (click)="statusFilter.set(null)"
+        >
+          {{ 'common.all' | translate }}
+          <span class="count-badge">{{ config().completedTransfers.length }}</span>
+        </button>
+        @for (option of statusOptions(); track option.status) {
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class]="option.badge.cssClass"
+            [class.is-selected]="statusFilter() === option.status"
+            [attr.aria-pressed]="statusFilter() === option.status"
+            (click)="statusFilter.set(option.status)"
+          >
+            {{ option.badge.text | translate }}
+            <span class="count-badge">{{ option.count }}</span>
+          </button>
+        }
+      </div>
+    }
+    @if (isCheck()) {
       <app-check-results-table
         [transfers]="config().completedTransfers"
-        [config]="config()"
+        [jobType]="config().jobType || 'check'"
+        [remoteName]="config().remoteName"
         [searchTerm]="searchTerm()"
+        [statusFilter]="statusFilter()"
       ></app-check-results-table>
-    } @else if (
-      config().showHistory &&
-      config().activeTransfers.length > 0 &&
-      config().completedTransfers.length > 0
-    ) {
-      <mat-tab-group>
-        <mat-tab
-          [label]="
-            'shared.transferActivity.tabs.active'
-              | translate: { count: config().activeTransfers.length }
-          "
-        >
-          <ng-template matTabContent>
-            <app-active-transfers-table
-              [transfers]="config().activeTransfers"
-              [jobType]="config().jobType || 'sync'"
-              [remoteName]="config().remoteName"
-              [searchTerm]="searchTerm()"
-            ></app-active-transfers-table>
-          </ng-template>
-        </mat-tab>
-        <mat-tab
-          [label]="
-            (config().jobType === 'check' || config().jobType === 'cryptcheck'
-              ? 'shared.transferActivity.tabs.recentCheck'
-              : 'shared.transferActivity.tabs.recent'
-            ) | translate: { count: config().completedTransfers.length }
-          "
-        >
-          <ng-template matTabContent>
-            <app-completed-transfers-table
-              [transfers]="config().completedTransfers"
-              [jobType]="config().jobType || 'sync'"
-              [remoteName]="config().remoteName"
-              [searchTerm]="searchTerm()"
-            ></app-completed-transfers-table>
-          </ng-template>
-        </mat-tab>
-      </mat-tab-group>
-    } @else if (config().showHistory && config().completedTransfers.length > 0) {
+    } @else {
       <app-completed-transfers-table
         [transfers]="config().completedTransfers"
         [jobType]="config().jobType || 'sync'"
         [remoteName]="config().remoteName"
         [searchTerm]="searchTerm()"
+        [statusFilter]="statusFilter()"
       ></app-completed-transfers-table>
+    }
+  </ng-template>
+
+  <mat-card-content class="panel-content">
+    @if (config().showHistory && activeCount() > 0 && config().completedTransfers.length > 0) {
+      <mat-tab-group>
+        <mat-tab
+          [label]="'shared.transferActivity.tabs.active' | translate: { count: activeCount() }"
+        >
+          <ng-template matTabContent
+            ><ng-container [ngTemplateOutlet]="active"></ng-container
+          ></ng-template>
+        </mat-tab>
+        <mat-tab
+          [label]="
+            'shared.transferActivity.tabs.recent'
+              | translate: { count: config().completedTransfers.length }
+          "
+        >
+          <ng-template matTabContent
+            ><ng-container [ngTemplateOutlet]="history"></ng-container
+          ></ng-template>
+        </mat-tab>
+      </mat-tab-group>
+    } @else if (activeCount() > 0 || !config().showHistory || isJobRunning()) {
+      <ng-container [ngTemplateOutlet]="active"></ng-container>
     } @else {
-      <app-active-transfers-table
-        [transfers]="config().activeTransfers"
-        [jobType]="config().jobType || 'sync'"
-        [remoteName]="config().remoteName"
-        [searchTerm]="searchTerm()"
-      ></app-active-transfers-table>
+      <ng-container [ngTemplateOutlet]="history"></ng-container>
     }
   </mat-card-content>
 </mat-card>

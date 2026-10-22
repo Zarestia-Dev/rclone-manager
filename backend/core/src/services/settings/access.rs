@@ -45,7 +45,7 @@ impl VaultAccess {
         };
         let access = Self {
             session: Mutex::new(Session {
-                locked: manager.is_vault_enabled(),
+                locked: manager.is_locked(),
                 revision: 0,
             }),
             preferences: Mutex::new(preferences),
@@ -520,6 +520,20 @@ pub(crate) mod tests {
             &serde_json::json!({"isLocked": true, "isEnabled": false}),
             None
         ));
+    }
+
+    #[test]
+    fn startup_access_respects_a_password_provided_before_ui_initialization() {
+        let directory = tempfile::tempdir().unwrap();
+        let manager = manager(directory.path());
+        manager.enable_vault("password").unwrap();
+        manager.lock().unwrap();
+        let locked = VaultAccess::new(directory.path(), &manager).unwrap();
+        assert!(locked.is_locked());
+
+        manager.unlock("password").unwrap();
+        let unlocked = VaultAccess::new(directory.path(), &manager).unwrap();
+        assert!(!unlocked.is_locked());
     }
 
     #[test]

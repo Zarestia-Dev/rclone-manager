@@ -115,10 +115,39 @@ impl JobStatus {
     }
 }
 
+/// Stable wire values shared with the activity panel.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferStatus {
+    Completed,
+    Checked,
+    Failed,
+    Partial,
+    MissingDst,
+    MissingSrc,
+}
+
+/// Rclone may add activities; keep unknown values intact for older clients.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum RcloneActivity {
+    Transferring,
+    Checking,
+    Deleting,
+    Moving,
+    Renaming,
+    Hashing,
+    Listing,
+    Importing,
+    Merging,
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResolveState {
-    pub status: String,
+    pub status: JobStatus,
     pub percentage: u8,
     pub is_preparing: bool,
     pub bytes: i64,
@@ -136,6 +165,8 @@ pub struct CompletedTransfer {
     pub size: i64,
     pub bytes: i64,
     pub checked: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub what: Option<RcloneActivity>,
     pub error: String,
     pub jobid: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -148,7 +179,7 @@ pub struct CompletedTransfer {
     pub dst_fs: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
-    pub status: String,
+    pub status: TransferStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolve_job_id: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -158,6 +189,9 @@ pub struct CompletedTransfer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
     pub jobid: u64,
+    /// Orders telemetry and snapshot updates within this execution.
+    #[serde(default)]
+    pub stats_revision: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -226,55 +260,60 @@ pub fn compute_completed_transfers(
 ) -> Option<Vec<CompletedTransfer>> {
     let stats = stats.as_ref()?;
 
-    if *job_type == JobType::Check || *job_type == JobType::CryptCheck {
-        let check_output = stats.get("checkOutput")?;
-        let results_array =
-            if let Some(arr) = check_output.get("results").and_then(|v| v.as_array()) {
-                arr.clone()
-            } else if check_output.is_array() {
-                check_output.as_array()?.clone()
-            } else {
-                vec![check_output.clone()]
-            };
-
-        let completed_at = end_time.unwrap_or_else(Utc::now);
-        let src_fs = source.first().cloned().unwrap_or_default();
-        let dst_fs = destination.to_string();
-
-        let status_map = vec![
-            ("missingOnDst", "missing_dst", "Missing on Destination"),
-            ("missingOnSrc", "missing_src", "Missing on Source remote"),
-            (
-                "differ",
-                "partial",
-                "File contents differ (Mismatched hash/size)",
-            ),
+    if matches!(job_type, JobType::Check | JobType::CryptCheck)
+        && let Some(check_output) = stats
+            .get("checkOutput")
+            .filter(|output| output.is_object() || output.is_array())
+    {
+        let results = check_output.get("results").unwrap_or(check_output);
+        let reports = results
+            .as_array()
+            .map_or_else(|| std::slice::from_ref(results), Vec::as_slice);
+        const REPORT_STATUSES: &[(&str, TransferStatus)] = &[
+            ("missingOnDst", TransferStatus::MissingDst),
+            ("missingOnSrc", TransferStatus::MissingSrc),
+            ("differ", TransferStatus::Partial),
+            ("error", TransferStatus::Failed),
+            ("match", TransferStatus::Checked),
         ];
-
         let mut items = Vec::new();
-        for check_results in results_array {
-            for (key, status, error_msg) in &status_map {
-                if let Some(arr) = check_results.get(*key).and_then(|v| v.as_array()) {
-                    for val in arr {
-                        if let Some(name) = val.as_str() {
-                            items.push(CompletedTransfer {
-                                name: name.to_string(),
-                                size: 0,
-                                bytes: 0,
-                                checked: false,
-                                error: error_msg.to_string(),
-                                jobid,
-                                started_at: None,
-                                completed_at: Some(completed_at),
-                                src_fs: Some(src_fs.clone()),
-                                dst_fs: Some(dst_fs.clone()),
-                                group: Some(group.to_string()),
-                                status: status.to_string(),
-                                resolve_job_id: None,
-                                resolve_state: None,
-                            });
-                        }
-                    }
+        for (report_index, report) in reports.iter().enumerate() {
+            // Batch reports follow source order. Never assign every result to the first root.
+            let source_root = source.get(report_index).filter(|root| !root.is_empty());
+            for &(key, status) in REPORT_STATUSES {
+                let Some(names) = report.get(key).and_then(Value::as_array) else {
+                    continue;
+                };
+                for name in names
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .filter(|name| !name.is_empty())
+                {
+                    // Cryptcheck error entries may contain a diagnostic, rather than a file path.
+                    let actionable = status != TransferStatus::Failed;
+                    items.push(CompletedTransfer {
+                        name: name.to_string(),
+                        size: -1,
+                        bytes: 0,
+                        checked: status == TransferStatus::Checked,
+                        what: Some(RcloneActivity::Checking),
+                        error: if status == TransferStatus::Failed {
+                            name.to_string()
+                        } else {
+                            String::new()
+                        },
+                        jobid,
+                        started_at: None,
+                        completed_at: end_time,
+                        src_fs: source_root.filter(|_| actionable).cloned(),
+                        // A single destination string cannot describe several distinct batch roots.
+                        dst_fs: (actionable && source.len() == 1 && !destination.is_empty())
+                            .then(|| destination.to_string()),
+                        group: Some(group.to_string()),
+                        status,
+                        resolve_job_id: None,
+                        resolve_state: None,
+                    });
                 }
             }
         }
@@ -288,12 +327,15 @@ pub fn compute_completed_transfers(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let size = val.get("size").and_then(|v| v.as_i64()).unwrap_or(0);
+            let size = val.get("size").and_then(|v| v.as_i64()).unwrap_or(-1);
             let bytes = val.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
             let checked = val
                 .get("checked")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
+            let what = val
+                .get("what")
+                .and_then(|value| serde_json::from_value::<RcloneActivity>(value.clone()).ok());
             let error = val
                 .get("error")
                 .and_then(|v| v.as_str())
@@ -327,13 +369,26 @@ pub fn compute_completed_transfers(
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            let mut status = "completed".to_string();
+            let mut status = TransferStatus::Completed;
             if !error.is_empty() {
-                status = "failed".to_string();
-            } else if checked {
-                status = "checked".to_string();
-            } else if bytes > 0 && bytes < size {
-                status = "partial".to_string();
+                status = TransferStatus::Failed;
+            } else if checked
+                && what
+                    .as_ref()
+                    .is_none_or(|what| *what == RcloneActivity::Checking)
+                && !matches!(
+                    job_type,
+                    JobType::Delete | JobType::Cleanup | JobType::Rmdirs
+                )
+            {
+                status = TransferStatus::Checked;
+            } else if bytes > 0
+                && bytes < size
+                && what
+                    .as_ref()
+                    .is_none_or(|what| *what == RcloneActivity::Transferring)
+            {
+                status = TransferStatus::Partial;
             }
 
             items.push(CompletedTransfer {
@@ -341,6 +396,7 @@ pub fn compute_completed_transfers(
                 size,
                 bytes,
                 checked,
+                what,
                 error,
                 jobid,
                 started_at,
@@ -349,119 +405,17 @@ pub fn compute_completed_transfers(
                 dst_fs,
                 group: group_val,
                 status,
-                resolve_job_id: None,
-                resolve_state: None,
+                resolve_job_id: val.get("resolveJobId").and_then(Value::as_u64),
+                resolve_state: val
+                    .get("resolveState")
+                    .and_then(|state| serde_json::from_value(state.clone()).ok()),
             });
         }
 
-        items.sort_by(|a, b| {
-            let time_a = a.completed_at.map(|t| t.timestamp_millis()).unwrap_or(0);
-            let time_b = b.completed_at.map(|t| t.timestamp_millis()).unwrap_or(0);
-            time_b.cmp(&time_a)
-        });
+        items.sort_by_key(|item| std::cmp::Reverse(item.completed_at));
 
         Some(items)
     }
-}
-
-// Rclone RC Response Types
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Stats {
-    pub bytes: u64,
-    pub total_bytes: u64,
-    pub speed: f64,
-    pub eta: Option<u64>,
-    #[serde(rename = "elapsedTime")]
-    pub elapsed_time: f64,
-    pub errors: u64,
-    #[serde(rename = "fatalError")]
-    pub fatal_error: bool,
-    #[serde(rename = "retryError")]
-    pub retry_error: bool,
-    pub checks: u64,
-    #[serde(rename = "totalChecks")]
-    pub total_checks: u64,
-    pub transfers: u64,
-    #[serde(rename = "totalTransfers")]
-    pub total_transfers: u64,
-    pub listed: u64,
-    pub renames: u64,
-    pub deletes: u64,
-    #[serde(rename = "deletedDirs")]
-    pub deleted_dirs: u64,
-    #[serde(default)]
-    pub transferring: Vec<ActiveTransfer>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActiveTransfer {
-    pub name: String,
-    pub size: u64,
-    pub bytes: u64,
-    pub percentage: u8,
-    pub speed: f64,
-    #[serde(rename = "speedAvg")]
-    pub speed_avg: f64,
-    pub eta: Option<u64>,
-    pub group: String,
-    #[serde(rename = "srcFs")]
-    pub src_fs: Option<String>,
-    #[serde(rename = "dstFs")]
-    pub dst_fs: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TransferredResponse {
-    pub transferred: Vec<TransferredItem>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub struct TransferredItem {
-    pub name: String,
-    pub size: i64,
-    pub bytes: i64,
-    pub error: String,
-    pub checked: bool,
-    pub what: String,
-    #[serde(rename = "started_at")]
-    pub started_at: Option<DateTime<Utc>>,
-    #[serde(rename = "completed_at")]
-    pub completed_at: Option<DateTime<Utc>>,
-    pub group: String,
-    #[serde(rename = "srcFs")]
-    pub src_fs: Option<String>,
-    #[serde(rename = "dstFs")]
-    pub dst_fs: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobStatusResponse {
-    pub id: u64,
-    #[serde(rename = "executeId")]
-    pub execute_id: Option<String>,
-    pub group: String,
-    pub finished: bool,
-    pub success: bool,
-    pub error: String,
-    pub duration: f64,
-    #[serde(rename = "startTime")]
-    pub start_time: DateTime<Utc>,
-    #[serde(rename = "endTime")]
-    pub end_time: DateTime<Utc>,
-    pub output: Option<Value>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobListResponse {
-    pub jobids: Vec<u64>,
-    #[serde(rename = "executeId")]
-    pub execute_id: Option<String>,
 }
 
 // State Management
@@ -476,4 +430,172 @@ pub struct JobCache {
 pub(crate) struct UploadCancellation {
     pub token: tokio_util::sync::CancellationToken,
     pub result: tokio::sync::watch::Receiver<Option<Result<(), String>>>,
+}
+
+#[cfg(test)]
+mod activity_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn history(job_type: JobType, rows: Value) -> Vec<CompletedTransfer> {
+        compute_completed_transfers(
+            7,
+            &job_type,
+            "sync/7",
+            &[],
+            "",
+            None,
+            &Some(json!({"completed": rows})),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn preserves_activity_and_distinguishes_checks_from_other_work() {
+        let items = history(
+            JobType::Sync,
+            json!([
+                {"name": "deleted: ü.txt", "checked": true, "what": "deleting", "size": 100},
+                {"name": "same.txt", "checked": true, "what": "checking"},
+                {"name": "moved.txt", "checked": true, "what": "moving"},
+                {"name": "hashed.txt", "checked": true, "what": "hashing"},
+                {"name": "failed.txt", "checked": true, "what": "deleting", "error": "denied"},
+                {"name": "partial.txt", "bytes": 5, "size": 10, "what": "transferring"}
+            ]),
+        );
+        let statuses: Vec<TransferStatus> = items.iter().map(|item| item.status).collect();
+        assert_eq!(
+            statuses,
+            [
+                TransferStatus::Completed,
+                TransferStatus::Checked,
+                TransferStatus::Completed,
+                TransferStatus::Completed,
+                TransferStatus::Failed,
+                TransferStatus::Partial
+            ]
+        );
+        assert_eq!(items[0].what, Some(RcloneActivity::Deleting));
+        assert_eq!(items[0].name, "deleted: ü.txt");
+        assert_eq!(items[4].error, "denied");
+    }
+
+    #[test]
+    fn supports_legacy_snapshots_and_repeated_normalization() {
+        assert_eq!(
+            history(JobType::Sync, json!([{"checked": true}]))[0].status,
+            TransferStatus::Checked
+        );
+        assert_eq!(
+            history(JobType::Delete, json!([{"checked": true}]))[0].status,
+            TransferStatus::Completed
+        );
+        let first = history(
+            JobType::Sync,
+            json!([{"name": "gone.txt", "checked": true, "what": "deleting"}]),
+        );
+        let second = history(JobType::Sync, serde_json::to_value(&first).unwrap());
+        assert_eq!(second[0].what, first[0].what);
+        assert_eq!(second[0].status, TransferStatus::Completed);
+        assert!(history(JobType::Sync, json!([])).is_empty());
+        assert!(compute_completed_transfers(7, &JobType::Sync, "", &[], "", None, &None).is_none());
+    }
+    #[test]
+    fn live_check_history_is_normalized_before_a_final_report_exists() {
+        for operation in [JobType::Check, JobType::CryptCheck] {
+            let items = history(
+                operation,
+                json!([{
+                    "name": "a.txt", "checked": true, "what": "checking",
+                    "completed_at": "2026-10-22T10:00:00Z"
+                }]),
+            );
+            assert_eq!(items[0].jobid, 7);
+            assert_eq!(items[0].status, TransferStatus::Checked);
+            assert!(items[0].completed_at.is_some());
+        }
+    }
+
+    #[test]
+    fn repeated_normalization_preserves_retry_state_and_unknown_sizes() {
+        let first = history(
+            JobType::Copy,
+            json!([{
+                "name": "a.txt", "error": "denied", "what": "transferring",
+                "resolveJobId": 8,
+                "resolveState": {
+                    "status": "Running", "percentage": 25, "isPreparing": false,
+                    "bytes": 25, "size": 100, "speed": 10.0, "eta": 7
+                }
+            }]),
+        );
+        let second = history(JobType::Copy, serde_json::to_value(&first).unwrap());
+        assert_eq!(second[0].size, -1);
+        assert_eq!(second[0].status, TransferStatus::Failed);
+        assert_eq!(second[0].error, "denied");
+        assert_eq!(second[0].resolve_job_id, Some(8));
+        let progress = second[0].resolve_state.as_ref().unwrap();
+        assert_eq!(progress.status, JobStatus::Running);
+        assert_eq!(progress.percentage, 25);
+    }
+
+    #[test]
+    fn history_order_preserves_timestamp_precision() {
+        let items = history(
+            JobType::Copy,
+            json!([
+                {"name": "older", "completed_at": "2026-10-22T10:00:00.000001Z"},
+                {"name": "newer", "completed_at": "2026-10-22T10:00:00.000002Z"}
+            ]),
+        );
+        assert_eq!(items[0].name, "newer");
+        assert_eq!(items[1].name, "older");
+    }
+
+    #[test]
+    fn check_reports_keep_errors_matches_and_source_order() {
+        let output = Some(json!({"checkOutput": {"results": [
+            {"missingOnDst": ["same.txt"], "error": ["unreadable.txt"], "match": ["good.txt"]},
+            {"differ": ["same.txt", "", null]}
+        ]}}));
+        let items = compute_completed_transfers(
+            7,
+            &JobType::Check,
+            "check/7",
+            &["first:root".into(), "second:root".into()],
+            "backup:root",
+            None,
+            &output,
+        )
+        .unwrap();
+        assert_eq!(items.len(), 4);
+        assert_eq!(items[0].src_fs.as_deref(), Some("first:root"));
+        assert_eq!(items[1].status, TransferStatus::Failed);
+        assert_eq!(items[1].error, "unreadable.txt");
+        assert!(items[1].src_fs.is_none());
+        assert!(items[1].dst_fs.is_none());
+        assert_eq!(items[2].status, TransferStatus::Checked);
+        assert_eq!(items[3].src_fs.as_deref(), Some("second:root"));
+        assert!(
+            items
+                .iter()
+                .all(|item| item.completed_at.is_none() && item.dst_fs.is_none())
+        );
+        assert_eq!(items[0].size, -1);
+    }
+
+    #[test]
+    fn future_activity_values_round_trip_without_breaking_history() {
+        let activity: RcloneActivity = serde_json::from_value(json!("future activity")).unwrap();
+        assert_eq!(activity, RcloneActivity::Unknown("future activity".into()));
+        assert_eq!(
+            serde_json::to_value(activity).unwrap(),
+            json!("future activity")
+        );
+        let items = history(
+            JobType::Sync,
+            json!([{"name": "a", "what": "future activity", "checked": true}]),
+        );
+        assert_eq!(items[0].status, TransferStatus::Completed);
+    }
 }

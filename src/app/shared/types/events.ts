@@ -105,6 +105,8 @@ export interface JobChangeEvent {
 export interface JobStatsUpdatedEvent {
   jobId: number;
   backendName: string;
+  executeId?: string | null;
+  statsRevision?: number;
   stats: GlobalStats;
 }
 

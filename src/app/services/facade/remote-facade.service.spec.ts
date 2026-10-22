@@ -109,6 +109,8 @@ describe('RemoteFacadeService', () => {
             jobs: signal([]),
             jobsByRemote: signal({}),
             refreshJobs: vi.fn().mockResolvedValue([]),
+            getActiveJobsForRemote: vi.fn().mockReturnValue([]),
+            stopJobsByGroup: vi.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -620,6 +622,22 @@ describe('RemoteFacadeService', () => {
     finishNew();
     await current;
     expect(service.actionInProgress()).toEqual({});
+  });
+
+  it('stops the actual execution groups for a profile without touching quick runs', async () => {
+    const jobs = TestBed.inject(JobManagementService);
+    vi.mocked(jobs.getActiveJobsForRemote).mockReturnValue([
+      { job_type: 'sync', group: 'sync/drive/daily_first' },
+      { job_type: 'sync', group: 'sync/drive/daily_second' },
+      { job_type: 'sync', group: 'sync/drive/daily_second' },
+      { job_type: 'sync', group: 'quick-run', origin: 'quickrun' },
+      { job_type: 'copy', group: 'other-operation' },
+    ] as JobInfo[]);
+    await service.stopJob('drive', 'sync', undefined, 'daily');
+    expect(jobs.getActiveJobsForRemote).toHaveBeenCalledWith('drive', 'daily');
+    expect(jobs.stopJobsByGroup).toHaveBeenCalledTimes(2);
+    expect(jobs.stopJobsByGroup).toHaveBeenCalledWith('sync/drive/daily_first');
+    expect(jobs.stopJobsByGroup).toHaveBeenCalledWith('sync/drive/daily_second');
   });
 
   it('does not unmount another profile when the requested profile is missing', async () => {

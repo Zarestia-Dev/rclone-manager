@@ -869,27 +869,25 @@
       "resetStats": "Etkinlikleri Sıfırla",
       "tabs": {
         "active": "Aktif ({{count}})",
-        "recent": "Son ({{count}})",
-        "recentCheck": "Denetlenen ({{count}})"
+        "recent": "Son ({{count}})"
       },
       "table": {
         "size": "Boyut",
-        "transferred": "aktarıldı",
-        "alreadyExisted": "zaten mevcuttu"
+        "transferred": "aktarıldı"
       },
       "status": {
         "failed": "Başarısız",
         "checked": "Kontrol Edildi",
         "partial": "Kısmi",
         "completed": "Tamamlandı",
-        "transferError": "Transfer hatası",
-        "transferCompleted": "Transfer tamamlandı",
         "preparing": "Hazırlanıyor",
         "finalizing": "Tamamlanıyor...",
         "missingDst": "Hedefte Eksik",
         "missingSrc": "Kaynakta Eksik",
         "differ": "Dosya içerikleri farklı",
-        "error": "Hata"
+        "checking": "Kontrol ediliyor",
+        "deleting": "Siliniyor",
+        "processing": "İşleniyor"
       },
       "actions": {
         "resolveToDst": "Hedefe Kopyala",
@@ -908,12 +906,12 @@
         "failDownload": "Dosya indirilemedi"
       },
       "empty": {
-        "noActive": "Aktif transfer yok",
-        "activeHint": "Transferler bir işlem başladığında burada görünecektir",
-        "noRecent": "Son tamamlanan transfer yok",
-        "recentHint": "Tamamlanan transferler işlemler bittiğinde burada görünecektir",
-        "noRecentCheck": "Denetlenen dosya yok",
-        "recentHintCheck": "Denetlenen dosyalar iş tamamlandığında burada görünecektir"
+        "noRecent": "Yakın zamanda dosya etkinliği yok",
+        "recentHint": "Tamamlanan dosya etkinlikleri işlemler yürütülürken burada görünür.",
+        "noRecentCheck": "Gösterilecek karşılaştırma sonucu yok",
+        "recentHintCheck": "Sonuç için iş durumuna ve kontrol sayaçlarına bakın.",
+        "noActiveActivity": "Etkin dosya işlemi yok",
+        "waitingActivity": "Dosya etkinliği bekleniyor. Bazı işlemler tek tek dosya bilgisi bildirmez."
       },
       "time": {
         "daysAgo": "{{count}} gün önce",
@@ -930,8 +928,12 @@
       "messages": {
         "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}",
         "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı"
-      }
+      },
+      "titleDelete": "Silme Etkinliği",
+      "titleActivity": "Etkinlik",
+      "loadMore": "Daha fazla göster"
     },
+
     "inputModal": {
       "name": "Ad",
       "required": "{{field}} gereklidir",

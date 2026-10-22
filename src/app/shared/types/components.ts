@@ -1,5 +1,5 @@
 import type { JobInfo, TransferFile, CompletedTransfer } from './jobs';
-import type { PrimaryActionType, RemoteAction } from './operations';
+import type { JobActionType, PrimaryActionType, RemoteAction } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 
 // ── Shared color tokens used across operation UI ───────────────────────────
@@ -106,10 +106,11 @@ export interface OperationControlConfig {
 // ── Transfer Activity Panel ─────────────────────────────────────────────────
 export interface TransferActivityPanelConfig {
   activeTransfers: TransferFile[];
+  activeChecks?: string[];
   completedTransfers: CompletedTransfer[];
   remoteName: string;
   showHistory: boolean;
-  jobType?: string;
+  jobType?: JobActionType;
 }
 
 // ── Installation wizard ─────────────────────────────────────────────────────

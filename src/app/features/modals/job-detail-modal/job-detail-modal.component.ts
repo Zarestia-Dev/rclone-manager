@@ -54,7 +54,11 @@ export class JobDetailModalComponent {
 
   readonly jobData = computed<JobInfo>(() => {
     return (
-      this.jobService.getJob(this.initialData.execute_id ?? '', this.initialData.jobid) ??
+      this.jobService.getJob(
+        this.initialData.execute_id ?? '',
+        this.initialData.jobid,
+        this.initialData.backend_name
+      ) ??
       ({
         jobid: this.initialData.jobid,
         execute_id: this.initialData.execute_id ?? '',
@@ -118,11 +122,10 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const combined = stats?.completed ?? [];
-
     return {
       activeTransfers: stats?.transferring ?? [],
-      completedTransfers: combined,
+      activeChecks: stats?.checking ?? [],
+      completedTransfers: stats?.completed ?? [],
       remoteName: this.pathService.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
       jobType: job.job_type,
@@ -201,6 +204,16 @@ export class JobDetailModalComponent {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  async onResetStats(): Promise<void> {
+    const group = this.jobData().group;
+    if (!group) return;
+    try {
+      await this.jobService.resetGroupStats(group);
+    } catch (error) {
+      console.error('Failed to reset job stats:', error);
+    }
   }
 
   async onDeleteJob(): Promise<void> {

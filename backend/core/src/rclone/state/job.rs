@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use super::job_resolver::{link_resolving_jobs, sanitize_finished_stats};
 use crate::utils::types::{
-    events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobStatsUpdatedEvent},
+    events::{JOB_CACHE_CHANGED, JOB_STATS_UPDATED, JobChangeEvent, JobStatsUpdatedEvent},
     jobs::{JobCache, JobInfo, JobStatus, JobType},
 };
 
@@ -28,6 +28,17 @@ pub fn spawn_stats_cleanup_by_group(
             )
             .await;
     });
+}
+
+fn preserve_completed_history(stats: &mut Value, previous: Option<&Value>) {
+    if let Some(stats) = stats.as_object_mut()
+        && !stats.contains_key("completed")
+        && let Some(history) = previous
+            .and_then(|previous| previous.get("completed"))
+            .filter(|history| history.is_array())
+    {
+        stats.insert("completed".into(), history.clone());
+    }
 }
 
 impl JobCache {
@@ -70,6 +81,7 @@ impl JobCache {
             .clone()
             .or_else(|| Some(uuid::Uuid::new_v4().to_string()));
         let job = JobInfo {
+            stats_revision: 0,
             jobid,
             job_type: metadata.job_type,
             remote_name: metadata.remote_name,
@@ -99,44 +111,52 @@ impl JobCache {
     pub async fn add_job(&self, job: JobInfo) {
         let jobid = job.jobid;
         let parent_id = job.parent_job_id;
+        let event = JobChangeEvent::from(&job);
         {
             let mut jobs = self.jobs.write().await;
-            jobs.insert(jobid, job.clone());
+            jobs.insert(jobid, job);
             if let Some(p_id) = parent_id {
                 link_resolving_jobs(&mut jobs, p_id);
             }
         }
-        self.notify_change(Some(&job));
+        crate::services::bridge::emit(JOB_CACHE_CHANGED, event);
     }
 
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
         let mut ids_to_delete = vec![jobid];
+        let mut seen = HashSet::from([jobid]);
         let mut index = 0;
 
         let mut jobs = self.jobs.write().await;
+        let mut children_by_parent: HashMap<u64, Vec<u64>> = HashMap::new();
+        for job in jobs.values() {
+            if let Some(parent_id) = job.parent_job_id {
+                children_by_parent
+                    .entry(parent_id)
+                    .or_default()
+                    .push(job.jobid);
+            }
+        }
 
         while index < ids_to_delete.len() {
             let current_id = ids_to_delete[index];
             index += 1;
 
-            let children: Vec<u64> = jobs
-                .values()
-                .filter(|j| j.parent_job_id == Some(current_id))
-                .map(|j| j.jobid)
-                .collect();
-
-            for child_id in children {
-                if !ids_to_delete.contains(&child_id) {
-                    ids_to_delete.push(child_id);
+            if let Some(children) = children_by_parent.remove(&current_id) {
+                for child_id in children {
+                    if seen.insert(child_id) {
+                        ids_to_delete.push(child_id);
+                    }
                 }
             }
         }
 
+        drop(children_by_parent);
         let mut removed_jobs = Vec::with_capacity(ids_to_delete.len());
         for id in &ids_to_delete {
             if let Some(job) = jobs.remove(id) {
                 if let Some(parent_id) = job.parent_job_id
-                    && !ids_to_delete.contains(&parent_id)
+                    && !seen.contains(&parent_id)
                 {
                     link_resolving_jobs(&mut jobs, parent_id);
                 }
@@ -162,7 +182,7 @@ impl JobCache {
         }
 
         for job in removed_jobs {
-            self.notify_change(Some(&job));
+            self.notify_change(&job);
         }
 
         Ok(())
@@ -173,95 +193,86 @@ impl JobCache {
         jobid: u64,
         update_fn: impl FnOnce(&mut JobInfo),
     ) -> Result<JobInfo, String> {
+        self.update_job_for_execution(jobid, None, update_fn).await
+    }
+
+    async fn update_job_for_execution(
+        &self,
+        jobid: u64,
+        execute_id: Option<&str>,
+        update_fn: impl FnOnce(&mut JobInfo),
+    ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
         let job = jobs
             .get_mut(&jobid)
+            .filter(|job| execute_id.is_none_or(|id| job.execute_id.as_deref() == Some(id)))
             .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
 
         update_fn(job);
+        job.stats_revision += 1;
 
         let parent_id = job.parent_job_id;
-        let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
-
-        let mut result = job.clone();
-        let mut parent_job_to_notify: Option<JobInfo> = None;
-
-        if let Some(p_id) = parent_id {
+        let parent_change = if let Some(p_id) = parent_id {
             link_resolving_jobs(&mut jobs, p_id);
-            if let Some(p_job) = jobs.get(&p_id) {
-                parent_job_to_notify = Some(p_job.clone());
-            }
-        }
-        if is_check {
-            link_resolving_jobs(&mut jobs, jobid);
-            if let Some(updated_job) = jobs.get(&jobid) {
-                result = updated_job.clone();
-            }
-        }
+            jobs.get(&p_id).map(JobChangeEvent::from)
+        } else {
+            None
+        };
+        link_resolving_jobs(&mut jobs, jobid);
+        let result = jobs[&jobid].clone();
 
         drop(jobs);
 
-        if let Some(ref p_job) = parent_job_to_notify {
-            self.notify_change(Some(p_job));
+        if let Some(event) = parent_change {
+            crate::services::bridge::emit(JOB_CACHE_CHANGED, event);
         }
-        self.notify_change(Some(&result));
+        self.notify_change(&result);
 
         Ok(result)
     }
 
-    pub async fn update_job_stats(&self, jobid: u64, mut stats: Value) -> Result<(), String> {
+    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+        self.update_job_stats_for_execution(jobid, None, stats)
+            .await
+    }
+
+    pub(crate) async fn update_job_stats_for_execution(
+        &self,
+        jobid: u64,
+        execute_id: Option<&str>,
+        mut stats: Value,
+    ) -> Result<(), String> {
         let mut jobs = self.jobs.write().await;
         let job = jobs
             .get_mut(&jobid)
+            .filter(|job| execute_id.is_none_or(|id| job.execute_id.as_deref() == Some(id)))
             .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
 
         if job.status.is_finished() {
             sanitize_finished_stats(&mut stats);
         }
+        preserve_completed_history(&mut stats, job.stats.as_ref());
         job.stats = Some(stats);
         job.normalize_job_stats();
-        let backend_name = job.backend_name.clone();
+        job.stats_revision += 1;
 
         let parent_id = job.parent_job_id;
-        let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
-        let mut job_stats = job.stats.clone().unwrap_or(Value::Null);
-
-        let mut parent_stats: Option<(u64, Value)> = None;
-
-        if let Some(p_id) = parent_id {
-            link_resolving_jobs(&mut jobs, p_id);
-            if let Some(p_stats) = jobs.get(&p_id).and_then(|p| p.stats.clone()) {
-                parent_stats = Some((p_id, p_stats));
-            }
-        }
-        if is_check {
-            link_resolving_jobs(&mut jobs, jobid);
-            if let Some(updated_stats) = jobs.get(&jobid).and_then(|j| j.stats.clone()) {
-                job_stats = updated_stats;
-            }
-        }
+        let parent_update = if let Some(p_id) = parent_id
+            && link_resolving_jobs(&mut jobs, p_id)
+        {
+            jobs.get(&p_id).map(JobStatsUpdatedEvent::from)
+        } else {
+            None
+        };
+        link_resolving_jobs(&mut jobs, jobid);
+        let update = JobStatsUpdatedEvent::from(&jobs[&jobid]);
 
         drop(jobs);
 
-        if let Some((p_id, p_stats)) = parent_stats {
-            crate::services::bridge::emit(
-                JOB_STATS_UPDATED,
-                JobStatsUpdatedEvent {
-                    job_id: p_id,
-                    backend_name: backend_name.clone(),
-                    stats: p_stats,
-                },
-            );
+        if let Some(parent_update) = parent_update {
+            crate::services::bridge::emit(JOB_STATS_UPDATED, parent_update);
         }
-
-        crate::services::bridge::emit(
-            JOB_STATS_UPDATED,
-            JobStatsUpdatedEvent {
-                job_id: jobid,
-                backend_name,
-                stats: job_stats,
-            },
-        );
+        crate::services::bridge::emit(JOB_STATS_UPDATED, update);
 
         Ok(())
     }
@@ -272,7 +283,22 @@ impl JobCache {
         success: bool,
         error: Option<String>,
     ) -> Result<JobInfo, String> {
-        self.update_job(jobid, |j| {
+        self.complete_job_for_execution(jobid, None, success, error, None)
+            .await
+    }
+
+    pub(crate) async fn complete_job_for_execution(
+        &self,
+        jobid: u64,
+        execute_id: Option<&str>,
+        success: bool,
+        error: Option<String>,
+        final_stats: Option<Value>,
+    ) -> Result<JobInfo, String> {
+        self.update_job_for_execution(jobid, execute_id, |j| {
+            if j.status.is_finished() && final_stats.is_none() {
+                return;
+            }
             if !j.status.is_finished() {
                 j.status = if success {
                     JobStatus::Completed
@@ -281,11 +307,15 @@ impl JobCache {
                 };
                 j.error = error;
                 j.end_time = Some(chrono::Utc::now());
-                if let Some(stats) = j.stats.as_mut() {
-                    sanitize_finished_stats(stats);
-                }
-                j.normalize_job_stats();
             }
+            if let Some(mut stats) = final_stats {
+                preserve_completed_history(&mut stats, j.stats.as_ref());
+                j.stats = Some(stats);
+            }
+            if let Some(stats) = j.stats.as_mut() {
+                sanitize_finished_stats(stats);
+            }
+            j.normalize_job_stats();
         })
         .await
     }
@@ -303,6 +333,19 @@ impl JobCache {
         })
         .await
         .map(|_| ())
+    }
+
+    pub(crate) async fn get_execution_status(
+        &self,
+        jobid: u64,
+        execute_id: Option<&str>,
+    ) -> Option<JobStatus> {
+        self.jobs
+            .read()
+            .await
+            .get(&jobid)
+            .filter(|job| execute_id.is_none_or(|id| job.execute_id.as_deref() == Some(id)))
+            .map(|job| job.status.clone())
     }
 
     pub async fn get_job(&self, jobid: u64) -> Option<JobInfo> {
@@ -425,17 +468,12 @@ impl JobCache {
         }
 
         for job in removed_jobs {
-            self.notify_change(Some(&job));
+            self.notify_change(&job);
         }
     }
 
-    fn notify_change(&self, job: Option<&JobInfo>) {
-        if let Some(job) = job {
-            crate::services::bridge::emit(
-                JOB_CACHE_CHANGED,
-                crate::utils::types::events::JobChangeEvent::from(job),
-            );
-        }
+    fn notify_change(&self, job: &JobInfo) {
+        crate::services::bridge::emit(JOB_CACHE_CHANGED, JobChangeEvent::from(job));
     }
 }
 
@@ -489,6 +527,7 @@ mod tests {
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
         JobInfo {
+            stats_revision: 0,
             jobid,
             remote_name: remote.to_string(),
             job_type,
@@ -510,6 +549,196 @@ mod tests {
             workflow_id: None,
             node_id: None,
         }
+    }
+
+    #[tokio::test]
+    async fn an_old_monitor_cannot_modify_a_reused_job_id() {
+        let cache = JobCache::new();
+        let mut job = mock_job(1, "drive:", JobType::Copy, None);
+        job.execute_id = Some("new-execution".into());
+        cache.add_job(job).await;
+        assert!(
+            cache
+                .get_execution_status(1, Some("old-execution"))
+                .await
+                .is_none()
+        );
+        assert!(
+            cache
+                .update_job_stats_for_execution(
+                    1,
+                    Some("old-execution"),
+                    serde_json::json!({"bytes": 900})
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            cache
+                .complete_job_for_execution(1, Some("old-execution"), true, None, None)
+                .await
+                .is_err()
+        );
+        let unchanged = cache.get_job(1).await.unwrap();
+        assert_eq!(unchanged.status, JobStatus::Running);
+        assert_eq!(unchanged.stats_revision, 0);
+        assert!(unchanged.stats.is_none());
+        assert_eq!(
+            cache.get_execution_status(1, Some("new-execution")).await,
+            Some(JobStatus::Running)
+        );
+    }
+
+    #[tokio::test]
+    async fn telemetry_revision_advances_and_events_keep_execution_identity() {
+        let cache = JobCache::new();
+        let mut job = mock_job(1, "drive:", JobType::Copy, None);
+        job.execute_id = Some("execution-1".into());
+        cache.add_job(job).await;
+        cache
+            .update_job_stats(1, serde_json::json!({"bytes": 10}))
+            .await
+            .unwrap();
+        let first = cache.get_job(1).await.unwrap();
+        let event = JobStatsUpdatedEvent::from(&first);
+        assert_eq!(event.execute_id.as_deref(), Some("execution-1"));
+        assert_eq!(event.stats_revision, first.stats_revision);
+        assert_eq!(event.stats["bytes"], 10);
+
+        cache.complete_job(1, true, None).await.unwrap();
+        let finished = cache.get_job(1).await.unwrap();
+        assert!(finished.stats_revision > first.stats_revision);
+        cache
+            .update_job_stats(1, serde_json::json!({"speed": 500}))
+            .await
+            .unwrap();
+        let last = cache.get_job(1).await.unwrap();
+        assert!(last.stats_revision > finished.stats_revision);
+        assert_eq!(last.stats.unwrap()["speed"], 0.0);
+    }
+
+    #[tokio::test]
+    async fn final_stats_are_normalized_after_the_completion_time_is_set() {
+        let cache = JobCache::new();
+        let mut job = mock_job(1, "drive:", JobType::Check, None);
+        job.execute_id = Some("execution".into());
+        cache.add_job(job).await;
+        let finished = cache
+            .complete_job_for_execution(
+                1,
+                Some("execution"),
+                true,
+                None,
+                Some(serde_json::json!({
+                    "bytes": 42, "speed": 99, "eta": 10, "checking": ["a.txt"],
+                    "transferring": [{"name": "a.txt"}],
+                    "checkOutput": {"missingOnDst": ["a.txt"]}
+                })),
+            )
+            .await
+            .unwrap();
+        assert_eq!(finished.status, JobStatus::Completed);
+        assert_eq!(finished.stats_revision, 1);
+        let stats = finished.stats.unwrap();
+        assert_eq!(stats["bytes"], 42);
+        assert_eq!(stats["speed"], 0.0);
+        assert_eq!(stats["checking"], serde_json::json!([]));
+        assert_eq!(stats["transferring"], serde_json::json!([]));
+        assert!(stats["eta"].is_null());
+        assert_eq!(
+            stats["completed"][0]["completedAt"],
+            serde_json::to_value(finished.end_time.unwrap()).unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn retry_links_survive_parent_refreshes_and_only_changed_progress_updates_the_parent() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "drive:", JobType::Copy, None))
+            .await;
+        let snapshot = serde_json::json!({"completed": [{
+            "name": "file.txt", "srcFs": "drive:root", "dstFs": "backup:root",
+            "what": "transferring", "error": "denied"
+        }]});
+        cache.update_job_stats(1, snapshot.clone()).await.unwrap();
+        let mut child = mock_job(2, "drive:", JobType::Copy, None);
+        child.parent_job_id = Some(1);
+        child.source = vec!["drive:root/file.txt".into()];
+        child.destination = "backup:root".into();
+        cache.add_job(child).await;
+        cache.update_job_stats(1, snapshot).await.unwrap();
+        let parent = cache.get_job(1).await.unwrap();
+        assert_eq!(parent.stats.unwrap()["completed"][0]["resolveJobId"], 2);
+
+        let progress = serde_json::json!({"bytes": 1, "totalBytes": 10});
+        cache.update_job_stats(2, progress.clone()).await.unwrap();
+        let first = cache.get_job(1).await.unwrap();
+        cache.update_job_stats(2, progress).await.unwrap();
+        let second = cache.get_job(1).await.unwrap();
+        assert_eq!(first.stats_revision, second.stats_revision);
+        assert_eq!(
+            second.stats.unwrap()["completed"][0]["resolveState"]["percentage"],
+            10
+        );
+
+        cache.delete_job(2, None).await.unwrap();
+        let cleared = cache.get_job(1).await.unwrap();
+        assert!(cleared.stats_revision > second.stats_revision);
+        let row = &cleared.stats.as_ref().unwrap()["completed"][0];
+        assert!(row.get("resolveJobId").is_none());
+        assert!(row.get("resolveState").is_none());
+    }
+
+    #[tokio::test]
+    async fn missing_history_preserves_the_last_snapshot_but_an_empty_history_clears_it() {
+        let cache = JobCache::new();
+        cache
+            .add_job(mock_job(1, "drive:", JobType::Copy, None))
+            .await;
+        cache
+            .update_job_stats(1, serde_json::json!({"completed": [{"name": "a.txt"}]}))
+            .await
+            .unwrap();
+        cache
+            .update_job_stats(1, serde_json::json!({"bytes": 10}))
+            .await
+            .unwrap();
+        assert_eq!(
+            cache.get_job(1).await.unwrap().stats.unwrap()["completed"][0]["name"],
+            "a.txt"
+        );
+        let finished = cache
+            .complete_job_for_execution(1, None, true, None, Some(serde_json::json!({"bytes": 11})))
+            .await
+            .unwrap();
+        assert_eq!(finished.stats.unwrap()["completed"][0]["name"], "a.txt");
+        cache
+            .update_job_stats(1, serde_json::json!({"completed": []}))
+            .await
+            .unwrap();
+        assert_eq!(
+            cache.get_job(1).await.unwrap().stats.unwrap()["completed"],
+            serde_json::json!([])
+        );
+    }
+
+    #[tokio::test]
+    async fn deleting_a_cyclic_subtree_terminates_and_preserves_unrelated_jobs() {
+        let cache = JobCache::new();
+        let mut first = mock_job(1, "drive:", JobType::Copy, None);
+        first.parent_job_id = Some(2);
+        let mut second = mock_job(2, "drive:", JobType::Copy, None);
+        second.parent_job_id = Some(1);
+        cache.add_job(first).await;
+        cache.add_job(second).await;
+        cache
+            .add_job(mock_job(3, "other:", JobType::Copy, None))
+            .await;
+        cache.delete_job(1, None).await.unwrap();
+        let remaining = cache.get_jobs().await;
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].jobid, 3);
     }
 
     #[tokio::test]

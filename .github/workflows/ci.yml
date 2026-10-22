@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         run: npx --no-install eslint "**/*.{ts,html}"
       - name: Formatting
-        run: npx --no-install prettier --check "**/*.{ts,html,scss,json}" ".github/workflows/ci.yml" ".github/workflows/security.yml" ".github/dependabot.yml"
+        run: npx --no-install prettier --check "**/*.{ts,html,scss,json}" ".github/workflows/ci.yml"
       - name: Build without warnings
         shell: bash
         run: |

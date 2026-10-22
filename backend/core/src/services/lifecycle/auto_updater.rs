@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use crate::context::AppHandle;
-use log::{info, warn};
+use log::{debug, info, warn};
 use tokio::time::sleep;
 
 use crate::services::settings::AppSettingsManager;
@@ -52,10 +52,13 @@ pub fn stop_auto_updater(app: &AppHandle) {
 async fn run_update_checks(app: &AppHandle) {
     info!("Running scheduled update checks...");
 
-    let config = app
-        .state::<AppSettingsManager>()
-        .get_all()
-        .unwrap_or_default();
+    let config = match app.state::<AppSettingsManager>().get_all() {
+        Ok(config) => config,
+        Err(error) => {
+            debug!("Skipping update checks while settings are unavailable: {error}");
+            return;
+        }
+    };
 
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
@@ -82,4 +85,16 @@ async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> 
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn locked_settings_do_not_trigger_update_requests_with_default_preferences() {
+        let directory = tempfile::tempdir().unwrap();
+        let (app, _) = crate::services::settings::access::tests::app(directory.path());
+        app.state::<super::AppSettingsManager>().lock().unwrap();
+        // No updater state or remote transport is needed while settings are locked.
+        super::run_update_checks(&app).await;
+    }
 }

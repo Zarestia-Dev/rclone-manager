@@ -1,10 +1,24 @@
 import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
-import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { BatchApiLabel, JobInfo, Origin } from '@app/types';
+import {
+  BatchApiLabel,
+  JobInfo,
+  JobActionType,
+  JobStatsUpdatedEvent,
+  JOB_STATUS,
+  Origin,
+  isProfileScoped,
+} from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
+import { CoalescedTask } from 'src/app/shared/utils/coalesced-task.util';
+import {
+  compareJobsNewestFirst,
+  findLatestJob,
+  isNewerJobStats,
+  normalizeJobStats,
+} from 'src/app/shared/utils/job-query.util';
 
 @Injectable({
   providedIn: 'root',
@@ -13,18 +27,26 @@ export class JobManagementService extends TauriBaseService {
   private readonly _jobs = signal<JobInfo[]>([]);
   public readonly jobs = this._jobs.asReadonly();
 
-  public readonly activeJobs = computed(() => this._jobs().filter(job => job.status === 'Running'));
+  public readonly activeJobs = computed(() =>
+    this._jobs().filter(job => job.status === JOB_STATUS.Running)
+  );
 
   public readonly nautilusJobs = computed(() =>
     this._jobs().filter(job => job.origin === 'filemanager')
   );
 
+  /** Metadata-only groups for remote status. Live telemetry is exposed by jobs. */
   public readonly jobsByRemote = computed(() => groupBy(this._jobs(), j => j.remote_name), {
     equal: areJobGroupsEqual,
   });
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly eventListeners = inject(EventListenersService);
+
+  private selectedBackend?: string;
+  private backendEpoch = 0;
+  private statsDuringRefresh?: Map<string, JobStatsUpdatedEvent>;
+  private readonly refreshTask = new CoalescedTask(() => this.loadJobs());
 
   constructor() {
     super();
@@ -35,38 +57,70 @@ export class JobManagementService extends TauriBaseService {
   }
 
   private initializeEventListeners(): void {
-    merge(
-      this.eventListeners.listenToJobCacheChanged(),
-      this.eventListeners.listenToRcloneEngineReady()
-    )
+    const refresh = (): void => {
+      this.refreshJobs().catch(err =>
+        console.error('[JobManagementService] Failed to refresh jobs:', err)
+      );
+    };
+    this.eventListeners
+      .listenToJobCacheChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => refresh());
+    this.eventListeners
+      .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        this.refreshJobs().catch(err =>
-          console.error('[JobManagementService] Failed to refresh jobs:', err)
-        );
+        this.backendEpoch++;
+        refresh();
+      });
+    this.eventListeners
+      .listenToBackendSwitched()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(name => {
+        this.selectedBackend = name;
+        this.backendEpoch++;
+        this._jobs.set([]);
+        refresh();
       });
 
     this.eventListeners
       .listenToJobStatsUpdated()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(event => {
-        this.updateJobStats(event.backendName, event.jobId, event.stats);
+        this.updateJobStats(event);
       });
   }
 
-  private updateJobStats(backendName: string, jobId: number, stats: JobInfo['stats']): void {
+  private updateJobStats(event: JobStatsUpdatedEvent): void {
+    const { backendName, jobId } = event;
+    if (this.selectedBackend && backendName !== this.selectedBackend) return;
+    if (this.statsDuringRefresh) {
+      const key = statsKey(backendName, jobId, event.executeId);
+      const pending = this.statsDuringRefresh.get(key);
+      if (
+        !pending ||
+        event.statsRevision === undefined ||
+        event.statsRevision > (pending.statsRevision ?? -1)
+      ) {
+        this.statsDuringRefresh.set(key, event);
+      }
+    }
     this._jobs.update(jobs => {
       const idx = jobs.findIndex(j => j.backend_name === backendName && j.jobid === jobId);
-      if (idx === -1) return jobs;
+      if (idx === -1 || !isNewerJobStats(jobs[idx], event)) return jobs;
       const updated = [...jobs];
-      updated[idx] = { ...updated[idx], stats };
+      updated[idx] = {
+        ...updated[idx],
+        stats: normalizeJobStats(event.stats),
+        stats_revision: event.statsRevision,
+      };
       return updated;
     });
   }
 
   getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
     return this.activeJobs().filter(job => {
-      if (job.parent_job_id) return false;
+      if (job.parent_job_id != null) return false;
       const matchRemote = job.remote_name === remoteName;
       return profile ? matchRemote && job.profile === profile : matchRemote;
     });
@@ -75,32 +129,35 @@ export class JobManagementService extends TauriBaseService {
   getLatestJobForRemote(
     remoteName: string,
     profile?: string,
-    operationType?: string
+    operationType?: JobActionType
   ): JobInfo | null {
-    let jobs = this._jobs().filter(job => job.remote_name === remoteName && !job.parent_job_id);
-
-    if (operationType) jobs = jobs.filter(j => j.job_type === operationType);
-    if (profile) jobs = jobs.filter(j => j.profile === profile);
-    if (jobs.length === 0) return null;
-
-    return jobs.sort((a, b) => {
-      const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
-      const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
-      return tb !== ta ? tb - ta : b.jobid - a.jobid;
-    })[0];
+    return findLatestJob(
+      this._jobs(),
+      job =>
+        isProfileScoped(job) &&
+        job.remote_name === remoteName &&
+        job.parent_job_id == null &&
+        (!operationType || job.job_type === operationType) &&
+        (!profile || job.profile === profile),
+      true
+    );
   }
 
-  getJob(executeId: string, jobid?: number): JobInfo | undefined {
-    const foundByExec = this._jobs().find(j => j.execute_id === executeId);
-    if (foundByExec) return foundByExec;
-    return jobid !== undefined ? this._jobs().find(j => j.jobid === jobid) : undefined;
+  getJob(executeId: string, jobid?: number, backendName?: string): JobInfo | undefined {
+    const belongsToBackend = (job: JobInfo): boolean =>
+      !backendName || job.backend_name === backendName;
+    // An explicit execution ID must never fall through to another session's numeric ID.
+    if (executeId)
+      return this._jobs().find(job => job.execute_id === executeId && belongsToBackend(job));
+    return jobid === undefined
+      ? undefined
+      : this._jobs().find(job => job.jobid === jobid && belongsToBackend(job));
   }
 
   getActiveJobForWorkflowNode(workflowId: string, nodeId: string): JobInfo | null {
-    return (
-      this.activeJobs().find(
-        job => !job.parent_job_id && job.workflow_id === workflowId && job.node_id === nodeId
-      ) ?? null
+    return findLatestJob(
+      this.activeJobs(),
+      job => job.parent_job_id == null && job.workflow_id === workflowId && job.node_id === nodeId
     );
   }
 
@@ -109,28 +166,63 @@ export class JobManagementService extends TauriBaseService {
     nodeId: string,
     quickRunId?: string
   ): JobInfo | null {
-    const matching = this._jobs().filter(
-      job =>
-        !job.parent_job_id &&
-        ((job.workflow_id === workflowId && job.node_id === nodeId) ||
-          (Boolean(quickRunId) && job.quick_run_id === quickRunId))
+    const direct = findLatestJob(
+      this._jobs(),
+      job => job.parent_job_id == null && job.workflow_id === workflowId && job.node_id === nodeId,
+      true
     );
-    if (matching.length === 0) return null;
+    if (direct || !quickRunId) return direct;
+    return findLatestJob(
+      this._jobs(),
+      job => job.parent_job_id == null && !job.workflow_id && job.quick_run_id === quickRunId,
+      true
+    );
+  }
 
-    const running = matching.find(j => j.status === 'Running');
-    if (running) return running;
-
-    return matching.sort((a, b) => {
-      const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
-      const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
-      return tb !== ta ? tb - ta : b.jobid - a.jobid;
-    })[0];
+  getLatestJobForQuickRun(quickRunId: string): JobInfo | null {
+    return findLatestJob(
+      this._jobs(),
+      job => job.parent_job_id == null && job.quick_run_id === quickRunId,
+      true
+    );
   }
 
   async refreshJobs(): Promise<JobInfo[]> {
-    const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
-    this._jobs.set(jobs);
-    return jobs;
+    await this.refreshTask.run();
+    return this._jobs();
+  }
+
+  private async loadJobs(): Promise<void> {
+    const epoch = this.backendEpoch;
+    const pendingStats = new Map<string, JobStatsUpdatedEvent>();
+    this.statsDuringRefresh = pendingStats;
+    try {
+      const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
+      if (epoch !== this.backendEpoch || this.destroyRef.destroyed) return;
+      // get_jobs is authoritative for the active cache, including after a missed switch event.
+      this.selectedBackend = jobs[0]?.backend_name ?? this.selectedBackend;
+      // Preserve telemetry received while the full snapshot was in flight, including new jobs.
+      this._jobs.set(
+        jobs
+          .map(job => {
+            const update =
+              pendingStats.get(statsKey(job.backend_name, job.jobid, job.execute_id)) ??
+              pendingStats.get(statsKey(job.backend_name, job.jobid));
+            const applyUpdate =
+              update &&
+              isNewerJobStats(job, update) &&
+              (update.statsRevision !== undefined || job.status === JOB_STATUS.Running);
+            return {
+              ...job,
+              stats: normalizeJobStats(applyUpdate ? update.stats : job.stats),
+              stats_revision: applyUpdate ? update.statsRevision : job.stats_revision,
+            };
+          })
+          .sort(compareJobsNewestFirst)
+      );
+    } finally {
+      this.statsDuringRefresh = undefined;
+    }
   }
 
   async startProfileBatch(
@@ -213,36 +305,49 @@ export function areJobGroupsEqual(
   next: Record<string, JobInfo[]>
 ): boolean {
   if (prev === next) return true;
-  if (!prev || !next) return false;
   const prevKeys = Object.keys(prev);
   const nextKeys = Object.keys(next);
   if (prevKeys.length !== nextKeys.length) return false;
 
   for (const key of prevKeys) {
-    const prevList = prev[key];
     const nextList = next[key];
-    if (!nextList || prevList.length !== nextList.length) return false;
+    if (!nextList || !areJobListsEqual(prev[key], nextList)) return false;
+  }
+  return true;
+}
 
-    for (let i = 0; i < prevList.length; i++) {
-      const p = prevList[i];
-      const n = nextList[i];
-      if (
-        p.jobid !== n.jobid ||
-        p.status !== n.status ||
-        p.job_type !== n.job_type ||
-        p.profile !== n.profile ||
-        p.parent_job_id !== n.parent_job_id ||
-        p.origin !== n.origin ||
-        p.quick_run_id !== n.quick_run_id ||
-        p.workflow_id !== n.workflow_id ||
-        p.execute_id !== n.execute_id ||
-        p.backend_name !== n.backend_name ||
-        p.start_time !== n.start_time ||
-        p.error !== n.error
-      ) {
-        return false;
-      }
+/** Equality for job ownership and lifecycle; intentionally excludes telemetry. */
+export function areJobListsEqual(prev: JobInfo[], next: JobInfo[]): boolean {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i++) {
+    const p = prev[i];
+    const n = next[i];
+    if (
+      p.jobid !== n.jobid ||
+      p.status !== n.status ||
+      p.job_type !== n.job_type ||
+      p.profile !== n.profile ||
+      p.parent_job_id !== n.parent_job_id ||
+      p.origin !== n.origin ||
+      p.quick_run_id !== n.quick_run_id ||
+      p.workflow_id !== n.workflow_id ||
+      p.node_id !== n.node_id ||
+      p.execute_id !== n.execute_id ||
+      p.backend_name !== n.backend_name ||
+      p.start_time !== n.start_time ||
+      p.error !== n.error
+    ) {
+      return false;
     }
   }
   return true;
+}
+
+function statsKey(
+  backendName: string | undefined,
+  jobId: number,
+  executeId?: string | null
+): string {
+  return JSON.stringify([backendName, jobId, executeId ?? null]);
 }

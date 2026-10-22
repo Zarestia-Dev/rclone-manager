@@ -428,24 +428,11 @@ export class AppDetailComponent {
     return state.activeProfiles?.[profile] ?? state.lastRunProfiles?.[profile];
   });
 
-  readonly currentGroupName = computed(
-    () => `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile()}`
-  );
-
   readonly activeGroupJob = computed<JobInfo | null>(() => {
     if (this.mode() === 'quickRun') {
       const qr = this.quickRun();
       if (!qr) return null;
-      const jobs = this.jobService.jobs();
-      const matchingJobs = jobs.filter(j => j.quick_run_id === qr.id);
-
-      if (matchingJobs.length === 0) return null;
-
-      return matchingJobs.sort((a, b) => {
-        const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
-        const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
-        return tb !== ta ? tb - ta : b.jobid - a.jobid;
-      })[0];
+      return this.jobService.getLatestJobForQuickRun(qr.id);
     }
     return this.jobService.getLatestJobForRemote(
       this.selectedRemote().name,
@@ -473,14 +460,7 @@ export class AppDetailComponent {
   });
 
   readonly activeTransfers = computed<TransferFile[]>(() => {
-    const transferring = this.jobStats().transferring ?? [];
-
-    return transferring.map(f => ({
-      ...f,
-      percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
-      isError: false,
-      isCompleted: false,
-    }));
+    return this.jobStats().transferring ?? [];
   });
 
   readonly completedTransfers = computed<CompletedTransfer[]>(() => {
@@ -800,8 +780,8 @@ export class AppDetailComponent {
 
   readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => ({
     activeTransfers: this.activeTransfers(),
+    activeChecks: this.jobStats().checking ?? [],
     completedTransfers: this.completedTransfers(),
-    operationColor: this.operationColor(),
     remoteName: this.selectedRemote().name,
     showHistory: this.completedTransfers().length > 0,
     jobType: this.currentOpType(),
@@ -895,7 +875,8 @@ export class AppDetailComponent {
   }
 
   async onResetStats(): Promise<void> {
-    const groupName = this.currentGroupName();
+    const groupName = this.activeGroupJob()?.group;
+    if (!groupName) return;
     try {
       await this.jobService.resetGroupStats(groupName);
     } catch (error) {

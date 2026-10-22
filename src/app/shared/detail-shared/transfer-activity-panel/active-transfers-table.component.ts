@@ -1,34 +1,45 @@
-import {
-  Component,
-  input,
-  inject,
-  ChangeDetectionStrategy,
-  computed,
-  effect,
-  untracked,
-} from '@angular/core';
+import { ActivityPathsComponent } from './activity-paths.component';
+import { Component, input, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
-import { TransferFile } from '@app/types';
+import {
+  CHECK_OPERATIONS,
+  DELETE_OPERATIONS,
+  JOB_ICON_MAP,
+  JobActionType,
+  TransferFile,
+} from '@app/types';
 import { TransferOperationsService } from './transfer-operations.service';
+import { matchesActivitySearch } from './activity.utils';
 
 @Component({
   selector: 'app-active-transfers-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TransferOperationsService],
   imports: [
+    ActivityPathsComponent,
     MatProgressBarModule,
     MatIconModule,
-    MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
   ],
   template: `
     <div class="card-list-container">
+      <!-- Checks are stateless display slots: rclone replaces their names as work advances. -->
+      @for (name of filteredChecks(); track $index) {
+        <div class="card-row-item">
+          <div class="card-header">
+            <div class="card-info-left">
+              <mat-icon class="card-primary-icon" [svgIcon]="activityIcon()"></mat-icon>
+              <span class="card-title-text truncate" [title]="name">{{ name }}</span>
+            </div>
+            <span class="app-pill p-accent">{{ checkLabel() | translate }}</span>
+          </div>
+        </div>
+      }
       @if (enrichedTransfers().length > 0) {
         @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
           <div class="card-row-item">
@@ -39,27 +50,11 @@ import { TransferOperationsService } from './transfer-operations.service';
                   class="card-primary-icon file-icon"
                   [attr.title]="transfer.name"
                 ></mat-icon>
-                <span class="card-title-text file-name" [title]="transfer.name">{{
+                <span class="card-title-text truncate" [title]="transfer.name">{{
                   transfer.name
                 }}</span>
-                @if (transfer.isError) {
-                  <mat-icon
-                    svgIcon="circle-exclamation"
-                    class="error-badge-icon warn"
-                    [attr.title]="
-                      transfer.error || ('shared.transferActivity.status.transferError' | translate)
-                    "
-                  ></mat-icon>
-                }
-                @if (transfer.isCompleted) {
-                  <mat-icon
-                    svgIcon="check-circle"
-                    class="success-badge-icon primary"
-                    [attr.title]="'shared.transferActivity.status.transferCompleted' | translate"
-                  ></mat-icon>
-                }
               </div>
-              <div class="card-info-right progress-badge">
+              <div class="card-info-right">
                 @if (transfer.isPreparing) {
                   <span class="percentage-text preparing">{{
                     'shared.transferActivity.status.preparing' | translate
@@ -74,160 +69,12 @@ import { TransferOperationsService } from './transfer-operations.service';
               </div>
             </div>
 
-            @if (transfer.srcFs || transfer.dstFs) {
-              <div class="card-paths-v2">
-                <div class="path-group src">
-                  <code class="path-pill src" [title]="transfer.srcFs">{{
-                    transfer.srcFs || '?'
-                  }}</code>
-                  @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
-                  @let canDownloadSrc = ops.canDownloadSource(transfer, jobType());
-                  @let hasSrcActions = canCopySrc || canDownloadSrc;
-                  @if (hasSrcActions) {
-                    <div class="path-actions">
-                      @if (canCopySrc) {
-                        @let loading =
-                          ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
-                          ops.isFeaturesLoading(transfer.srcFs);
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.copyUrlSource(transfer, transfer.uniqueId); $event.stopPropagation()
-                          "
-                          [disabled]="loading"
-                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
-                        >
-                          <mat-icon [svgIcon]="loading ? 'spinner' : 'link'"></mat-icon>
-                        </button>
-                      }
-                      @if (canDownloadSrc) {
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.downloadSource(transfer, transfer.uniqueId);
-                            $event.stopPropagation()
-                          "
-                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
-                          [attr.title]="'shared.transferActivity.actions.download' | translate"
-                        >
-                          <mat-icon
-                            [svgIcon]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-src')
-                                ? 'spinner'
-                                : 'download'
-                            "
-                          ></mat-icon>
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
-
-                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-
-                <div class="path-group dst">
-                  <code class="path-pill dst" [title]="transfer.dstFs">{{
-                    transfer.dstFs || '?'
-                  }}</code>
-                  @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
-                  @let canDownloadDst = ops.canDownloadDst(transfer, jobType());
-                  @let hasDstActions = canCopyDst || canDownloadDst;
-                  @if (hasDstActions) {
-                    <div class="path-actions">
-                      @if (canCopyDst) {
-                        @let loading =
-                          ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
-                          ops.isFeaturesLoading(transfer.dstFs);
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
-                          "
-                          [disabled]="loading"
-                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
-                        >
-                          <mat-icon
-                            [svgIcon]="loading ? 'spinner' : 'link'"
-                            class="colorful-spinner"
-                          ></mat-icon>
-                        </button>
-                      }
-                      @if (canDownloadDst) {
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
-                          "
-                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
-                          [attr.title]="'shared.transferActivity.actions.download' | translate"
-                        >
-                          <mat-icon
-                            [svgIcon]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-dst')
-                                ? 'spinner'
-                                : 'download'
-                            "
-                            class="colorful-spinner"
-                          ></mat-icon>
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            } @else if (remoteName()) {
-              <div class="card-paths-v2">
-                <div class="path-group dst">
-                  <code class="path-pill dst" [title]="remoteName()">{{ remoteName() }}</code>
-                  @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
-                  @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
-                  @let hasFbActions = canCopyFb || canDownloadFb;
-                  @if (hasFbActions) {
-                    <div class="path-actions">
-                      @if (canCopyFb) {
-                        @let loading =
-                          ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
-                          ops.isFallbackFeaturesLoading(remoteName());
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.copyUrlFallback(transfer, transfer.uniqueId, remoteName());
-                            $event.stopPropagation()
-                          "
-                          [disabled]="loading"
-                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
-                        >
-                          <mat-icon
-                            [svgIcon]="loading ? 'spinner' : 'link'"
-                            class="colorful-spinner"
-                          ></mat-icon>
-                        </button>
-                      }
-                      @if (canDownloadFb) {
-                        <button
-                          class="small-action-btn"
-                          (click)="
-                            ops.downloadFallback(transfer, transfer.uniqueId, remoteName());
-                            $event.stopPropagation()
-                          "
-                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
-                          [attr.title]="'shared.transferActivity.actions.download' | translate"
-                        >
-                          <mat-icon
-                            [svgIcon]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
-                                ? 'spinner'
-                                : 'download'
-                            "
-                            class="colorful-spinner"
-                          ></mat-icon>
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <app-activity-paths
+              [item]="transfer"
+              [rowId]="transfer.uniqueId"
+              [jobType]="jobType()"
+              [fallbackLabel]="remoteName()"
+            ></app-activity-paths>
 
             <div class="card-progress">
               <mat-progress-bar
@@ -239,35 +86,36 @@ import { TransferOperationsService } from './transfer-operations.service';
             <div class="card-footer">
               <div class="card-footer-left">
                 <span class="size-text"
-                  >{{ transfer.bytes | formatFileSize }} /
-                  {{ transfer.size | formatFileSize }}</span
-                >
+                  >{{ transfer.bytes | formatFileSize }}
+                  @if (transfer.size >= 0) {
+                    / {{ transfer.size | formatFileSize }}
+                  }
+                </span>
               </div>
               <div class="card-footer-right">
                 @if (transfer.speed > 0) {
-                  <span class="speed-text">
-                    <span class="speed-dot" [class]="transfer.speedClass"></span>
-                    {{ transfer.speed | formatFileSize }}/s
-                  </span>
+                  <span class="speed-text"> {{ transfer.speed | formatFileSize }}/s </span>
                 }
-                @if (transfer.eta > 0 && !transfer.isCompleted) {
+                @if (transfer.eta > 0) {
                   <span class="eta-text">{{ transfer.eta | formatTime }}</span>
                 }
               </div>
             </div>
           </div>
         }
-      } @else if (searchTerm()) {
+      } @else if (filteredChecks().length === 0 && searchTerm().trim()) {
         <div class="empty-state">
           <mat-icon svgIcon="search"></mat-icon>
           <span>{{ 'shared.search.title' | translate }}</span>
           <p>{{ 'shared.search.description' | translate }}</p>
         </div>
-      } @else {
+      } @else if (filteredChecks().length === 0) {
         <div class="empty-state">
-          <mat-icon svgIcon="download"></mat-icon>
-          <span>{{ 'shared.transferActivity.empty.noActive' | translate }}</span>
-          <p>{{ 'shared.transferActivity.empty.activeHint' | translate }}</p>
+          <mat-icon [svgIcon]="activityIcon()"></mat-icon>
+          <span>{{ 'shared.transferActivity.empty.noActiveActivity' | translate }}</span>
+          @if (isJobRunning()) {
+            <p>{{ 'shared.transferActivity.empty.waitingActivity' | translate }}</p>
+          }
         </div>
       }
     </div>
@@ -275,50 +123,37 @@ import { TransferOperationsService } from './transfer-operations.service';
 })
 export class ActiveTransfersTableComponent {
   readonly transfers = input.required<TransferFile[]>();
-  readonly jobType = input<string>('sync');
+  readonly jobType = input<JobActionType>('sync');
   readonly remoteName = input<string>('');
   readonly searchTerm = input('');
-
-  protected readonly ops = inject(TransferOperationsService);
-
-  private readonly remotesList = computed(
-    () => {
-      const remotes = new Set<string>();
-      for (const t of this.transfers()) {
-        if (t.srcFs) remotes.add(t.srcFs);
-        if (t.dstFs) remotes.add(t.dstFs);
-      }
-      return Array.from(remotes).sort();
-    },
-    {
-      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
-    }
-  );
-
-  constructor() {
-    effect(() => {
-      const remotes = this.remotesList();
-      if (remotes.length > 0) {
-        untracked(() => this.ops.preloadFeatures(this.transfers()));
-      }
-    });
-  }
+  readonly checks = input<string[]>([]);
+  readonly isJobRunning = input(false);
+  private readonly normalizedSearch = computed(() => this.searchTerm().toLowerCase().trim());
+  protected readonly activityIcon = computed(() => JOB_ICON_MAP[this.jobType()] || 'operations');
+  protected readonly checkLabel = computed(() => {
+    if (DELETE_OPERATIONS.has(this.jobType())) return 'shared.transferActivity.status.deleting';
+    if (CHECK_OPERATIONS.has(this.jobType())) return 'shared.transferActivity.status.checking';
+    return 'shared.transferActivity.status.processing';
+  });
+  protected readonly filteredChecks = computed(() => {
+    const search = this.normalizedSearch();
+    return search
+      ? this.checks().filter(name => name.toLowerCase().includes(search))
+      : this.checks();
+  });
 
   protected readonly enrichedTransfers = computed(() => {
-    const search = this.searchTerm().toLowerCase().trim();
+    const search = this.normalizedSearch();
     const items = this.transfers();
 
-    const filtered = search ? items.filter(t => t.name.toLowerCase().includes(search)) : items;
+    const filtered = search ? items.filter(t => matchesActivitySearch(t, search)) : items;
 
     return filtered.map(transfer => ({
       ...transfer,
-      isPreparing: transfer.percentage == null || isNaN(transfer.percentage),
-      speedClass:
-        transfer.speed > 10485760
-          ? 'speed-fast'
-          : transfer.speed > 1048576
-            ? 'speed-medium'
-            : 'speed-slow',
+      isPreparing:
+        transfer.size < 0 || transfer.percentage == null || !Number.isFinite(transfer.percentage),
+      percentage: Math.max(0, Math.min(100, transfer.percentage || 0)),
+      speed: transfer.speedAvg ?? transfer.speed,
       uniqueId: `${transfer.group || ''}-${transfer.name}`,
     }));
   });

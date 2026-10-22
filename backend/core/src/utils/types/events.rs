@@ -262,7 +262,23 @@ pub enum ProvisionProgressPayload {
 pub struct JobStatsUpdatedEvent {
     pub job_id: u64,
     pub backend_name: String,
+    #[serde(default)]
+    pub execute_id: Option<String>,
+    #[serde(default)]
+    pub stats_revision: u64,
     pub stats: serde_json::Value,
+}
+
+impl From<&super::jobs::JobInfo> for JobStatsUpdatedEvent {
+    fn from(job: &super::jobs::JobInfo) -> Self {
+        Self {
+            job_id: job.jobid,
+            backend_name: job.backend_name.clone(),
+            execute_id: job.execute_id.clone(),
+            stats_revision: job.stats_revision,
+            stats: job.stats.clone().unwrap_or(serde_json::Value::Null),
+        }
+    }
 }
 
 /// Strongly typed payload for settings change events
@@ -400,6 +416,7 @@ mod tests {
         use chrono::Utc;
 
         let mut job = JobInfo {
+            stats_revision: 0,
             jobid: 42,
             execute_id: Some("exec-42".to_string()),
             quick_run_id: Some("qr-99".to_string()),
@@ -461,6 +478,8 @@ mod tests {
         let ev = JobStatsUpdatedEvent {
             job_id: 585,
             backend_name: "Local".to_string(),
+            execute_id: Some("exec-585".to_string()),
+            stats_revision: 7,
             stats: json!({
                 "bytes": 1024,
                 "speed": 128.5,
@@ -470,6 +489,8 @@ mod tests {
 
         let serialized = serde_json::to_string(&ev).unwrap();
         assert!(serialized.contains(r#""jobId":585"#));
+        assert!(serialized.contains(r#""executeId":"exec-585""#));
+        assert!(serialized.contains(r#""statsRevision":7"#));
         assert!(serialized.contains(r#""bytes":1024"#));
 
         let deserialized: JobStatsUpdatedEvent = serde_json::from_str(&serialized).unwrap();

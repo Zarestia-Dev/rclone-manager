@@ -36,8 +36,8 @@ pub fn emit_vault_state(app: &AppHandle, event: &str) {
     );
 }
 
-/// Open frontend access only after startup and task preparation have succeeded.
-pub(crate) fn complete_unlock(app: &AppHandle) -> Result<(), String> {
+/// Open frontend access after password verification and local task preparation.
+fn complete_unlock(app: &AppHandle) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     if manager.is_locked() {
         return Err(access::locked_error());
@@ -148,20 +148,41 @@ pub async fn unlock_vault(app: AppHandle, password: String) -> Result<(), String
             }
         })
         .await?;
-        let startup = async {
+        let initial_startup = app
+            .state::<crate::utils::types::state::RcloneState>()
+            .initial_startup
+            .load(std::sync::atomic::Ordering::Acquire);
+        let unlock = async {
             crate::services::automation::runtime::flush_completions(&app).await?;
-            crate::services::initialization::initialization(app.clone()).await?;
-            access::require_session(&app, None)
+            if let Some(cache) = app.try_state::<crate::services::alerts::cache::AlertRuleCache>() {
+                let cache = cache.inner().clone();
+                update_manager(&app, move |manager| cache.flush_firings(manager)).await?;
+            }
+            if !initial_startup {
+                crate::services::automation::runtime::refresh(&app).await?;
+            }
+            complete_unlock(&app)
         }
         .await;
-        if let Err(error) = startup {
+        if let Err(error) = unlock {
             access.lock();
             if let Err(lock_error) = update_manager(&app, AppSettingsManager::lock).await {
-                log::error!("Failed to re-lock vault after startup failure: {lock_error}");
+                log::error!(
+                    "Failed to re-lock vault after unlock preparation failed: {lock_error}"
+                );
             }
             return Err(
                 crate::localized_error!("backendErrors.vault.operationFailed", "error" => error),
             );
+        }
+        if initial_startup {
+            // Engine startup and remote auto-starts do not determine whether
+            // the password was accepted. Initialization never opens UI access.
+            crate::utils::spawn(async move {
+                if let Err(error) = crate::services::initialization::initialization(app).await {
+                    log::error!("Application initialization after vault unlock failed: {error}");
+                }
+            });
         }
         Ok(())
     })
@@ -174,10 +195,13 @@ pub async fn lock_vault(app: AppHandle) -> Result<(), String> {
             return Err(vault_error(rcman::Error::VaultNotEnabled));
         }
         app.state::<Arc<VaultAccess>>().lock();
+        // Close every UI immediately, even if preparing background task inputs
+        // or dropping the storage key takes longer or fails.
+        emit_vault_state(&app, "locked");
         if let Err(error) = crate::services::automation::runtime::refresh(&app).await {
             log::warn!("Locking without replacing prepared task inputs: {error}");
         }
-        // The rcman lock callback publishes the completed transition.
+        // The rcman callback also covers automatic and non-IPC locks.
         update_manager(&app, AppSettingsManager::lock).await
     })
     .await
@@ -272,6 +296,40 @@ pub async fn touch_vault(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn unlock_returns_while_startup_is_pending_and_startup_cannot_undo_a_relock() {
+        use crate::utils::types::state::RcloneState;
+        use std::sync::atomic::Ordering;
+
+        let directory = tempfile::tempdir().unwrap();
+        let (app, access) = super::super::access::tests::app(directory.path());
+        access.lock();
+        app.state::<AppSettingsManager>().lock().unwrap();
+        let state = app.state::<RcloneState>();
+        state.initial_startup.store(true, Ordering::Release);
+        let startup = state.initialization_lock.lock().await;
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            unlock_vault(app.clone(), "password".into()),
+        )
+        .await
+        .expect("Unlock must not wait for application startup")
+        .unwrap();
+        assert!(!access::is_locked(&app));
+        assert!(state.initial_startup.load(Ordering::Acquire));
+
+        // Vault commands must also remain available during background startup.
+        lock_vault(app.clone()).await.unwrap();
+        assert!(access::is_locked(&app));
+        state.initial_startup.store(false, Ordering::Release);
+        drop(startup);
+        crate::services::initialization::initialization(app.clone())
+            .await
+            .unwrap();
+        assert!(access::is_locked(&app));
+    }
 
     #[test]
     fn unlock_completion_keeps_access_closed_until_storage_is_unlocked() {

@@ -109,6 +109,15 @@ export class VaultService extends TauriBaseService {
     const revision = ++this.stateRevision;
     try {
       const info = await this.invokeCommand<VaultInfo>('get_vault_info');
+      // A locked response must hide an open UI before translation loading,
+      // which may be slow or fail independently of the vault.
+      if (revision === this.stateRevision && info.isLocked && this.isStatusKnown()) {
+        this.applyVaultState({
+          isEnabled: info.enabled,
+          isLocked: true,
+          lockTimeout: info.lockTimeoutSecs,
+        });
+      }
       if (
         revision === this.stateRevision &&
         info.language &&

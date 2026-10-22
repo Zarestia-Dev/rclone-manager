@@ -869,27 +869,25 @@
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
-        "recent": "Reciente ({{count}})",
-        "recentCheck": "Comprobado ({{count}})"
+        "recent": "Reciente ({{count}})"
       },
       "table": {
         "size": "Tamaño",
-        "transferred": "transferido",
-        "alreadyExisted": "ya existía"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Fallido",
         "checked": "Comprobado",
         "partial": "Parcial",
         "completed": "Completado",
-        "transferError": "Error de transferencia",
-        "transferCompleted": "Transferencia completada",
         "preparing": "Preparando",
         "finalizing": "Finalizando...",
         "missingDst": "Faltante en destino",
         "missingSrc": "Faltante en origen",
         "differ": "El contenido de los archivos difiere",
-        "error": "Error"
+        "checking": "Comprobando",
+        "deleting": "Eliminando",
+        "processing": "Procesando"
       },
       "actions": {
         "resolveToDst": "Copiar al destino",
@@ -908,12 +906,12 @@
         "failDownload": "Error al descargar el archivo"
       },
       "empty": {
-        "noActive": "No hay transferencias activas",
-        "activeHint": "Las transferencias aparecerán aquí cuando comience una operación",
-        "noRecent": "No hay transferencias completadas recientemente",
-        "recentHint": "Las transferencias completadas aparecerán aquí cuando finalicen los trabajos",
-        "noRecentCheck": "No hay archivos verificados",
-        "recentHintCheck": "Los archivos verificados aparecerán aquí cuando se complete la tarea"
+        "noRecent": "No hay actividad de archivos reciente",
+        "recentHint": "La actividad de archivos completada aparece aquí durante las operaciones.",
+        "noRecentCheck": "No hay resultados de comparación para mostrar",
+        "recentHintCheck": "Consulta el estado del trabajo y los contadores de comprobación.",
+        "noActiveActivity": "No hay actividad de archivos",
+        "waitingActivity": "Esperando actividad de archivos. Algunas operaciones no informan sobre archivos individuales."
       },
       "time": {
         "daysAgo": "hace {{count}} días",
@@ -930,8 +928,12 @@
       "messages": {
         "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}",
         "resolveStarted": "Se inició la resolución del conflicto de archivos"
-      }
+      },
+      "titleDelete": "Actividad de eliminación",
+      "titleActivity": "Actividad",
+      "loadMore": "Mostrar más"
     },
+
     "inputModal": {
       "name": "Nombre",
       "required": "{{field}} es obligatorio",

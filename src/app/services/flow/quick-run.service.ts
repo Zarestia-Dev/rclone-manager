@@ -15,6 +15,7 @@ import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { ModalService } from '../ui/modal.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
+import { compareJobsRunningFirst } from 'src/app/shared/utils/job-query.util';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 
 /**
@@ -119,16 +120,10 @@ export class QuickRunService extends TauriBaseService {
           // Pre-index latest job per quick_run_id in a single O(J) pass
           const latestJobByQrId = new Map<string, JobInfo>();
           for (const job of jobs ?? []) {
-            if (!job.quick_run_id) continue;
+            if (!job.quick_run_id || job.parent_job_id != null) continue;
             const existing = latestJobByQrId.get(job.quick_run_id);
-            if (!existing) {
+            if (!existing || compareJobsRunningFirst(job, existing) < 0) {
               latestJobByQrId.set(job.quick_run_id, job);
-            } else {
-              const ta = existing.start_time ? new Date(existing.start_time).getTime() : 0;
-              const tb = job.start_time ? new Date(job.start_time).getTime() : 0;
-              if (tb > ta || (tb === ta && job.jobid > existing.jobid)) {
-                latestJobByQrId.set(job.quick_run_id, job);
-              }
             }
           }
 

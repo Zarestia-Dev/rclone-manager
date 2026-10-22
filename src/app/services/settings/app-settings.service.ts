@@ -18,6 +18,8 @@ export class AppSettingsService extends TauriBaseService {
   private eventListeners = inject(EventListenersService);
 
   private readonly _options = signal<Record<string, SettingMetadata> | null>(null);
+  private settingsLoad: Promise<void> | null = null;
+  private settingsRevision = 0;
   public readonly options = this._options.asReadonly();
   public readonly options$ = toObservable(this._options);
 
@@ -37,21 +39,34 @@ export class AppSettingsService extends TauriBaseService {
       });
 
     this.setupLanguageChangeListener();
+    this.eventListeners
+      .listenToVaultState()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        if (payload.isLocked) {
+          this.settingsRevision++;
+          this.settingsLoad = null;
+          this._options.set(null);
+        }
+      });
   }
 
-  async loadSettings(): Promise<void> {
-    if (this._options()) {
-      return;
-    }
-    try {
-      const response = await this.invokeCommand<{ options: Record<string, SettingMetadata> }>(
-        'load_settings'
-      );
-      this._options.set(response.options);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-      this.notificationService.showError(this.translate.instant('settings.loadFailed'));
-    }
+  loadSettings(): Promise<void> {
+    if (this._options()) return Promise.resolve();
+    if (this.settingsLoad) return this.settingsLoad;
+
+    const revision = this.settingsRevision;
+    this.settingsLoad = this.invokeCommand<{ options: Record<string, SettingMetadata> }>(
+      'load_settings'
+    )
+      .then(response => {
+        if (revision !== this.settingsRevision) throw new Error('Settings session ended');
+        this._options.set(response.options);
+      })
+      .finally(() => {
+        if (revision === this.settingsRevision) this.settingsLoad = null;
+      });
+    return this.settingsLoad;
   }
 
   /**
@@ -132,15 +147,18 @@ export class AppSettingsService extends TauriBaseService {
    */
   private updateStateFromEvent(payload: SettingsChangeEvent): void {
     const currentState = this._options();
-    if (!currentState) return;
 
     if (payload.category === '*' && payload.key === '*') {
       // Matches the resetAll settings event payload shape
       this._options.set(null);
-      this.loadSettings();
-      void this.applySavedLanguage();
+      void this.loadSettings()
+        .then(() => this.applySavedLanguage())
+        .catch(error => {
+          console.error('Failed to reload settings:', error);
+        });
       return;
     }
+    if (!currentState) return;
 
     const fullKey = `${payload.category}.${payload.key}`;
     const newValue = payload.value;

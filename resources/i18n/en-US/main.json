@@ -869,27 +869,25 @@
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
-        "recent": "Recent ({{count}})",
-        "recentCheck": "Checked ({{count}})"
+        "recent": "Recent ({{count}})"
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred",
-        "alreadyExisted": "already existed"
+        "transferred": "transferred"
       },
       "status": {
         "failed": "Failed",
         "checked": "Checked",
         "partial": "Partial",
         "completed": "Completed",
-        "transferError": "Transfer error",
-        "transferCompleted": "Transfer completed",
         "preparing": "Preparing",
         "finalizing": "Finalizing...",
         "missingDst": "Missing on Destination",
         "missingSrc": "Missing on Source",
         "differ": "File contents differ",
-        "error": "Error"
+        "checking": "Checking",
+        "deleting": "Deleting",
+        "processing": "Processing"
       },
       "actions": {
         "resolveToDst": "Copy to Destination",
@@ -912,12 +910,12 @@
         "resolveFailed": "Failed to resolve file mismatch: {{error}}"
       },
       "empty": {
-        "noActive": "No active transfers",
-        "activeHint": "Transfers will appear here when an operation starts",
-        "noRecent": "No recently completed transfers",
-        "recentHint": "Completed transfers will appear here when jobs finish",
-        "noRecentCheck": "No checked files",
-        "recentHintCheck": "Checked files will appear here when the job completes"
+        "noRecent": "No recent file activity",
+        "recentHint": "Completed file activity appears here as operations run.",
+        "noRecentCheck": "No comparison results to display",
+        "recentHintCheck": "See the job status and check counters for the outcome.",
+        "noActiveActivity": "No active file activity",
+        "waitingActivity": "Waiting for file activity. Some operations do not report individual files."
       },
       "time": {
         "daysAgo": "{{count}} days ago",
@@ -930,8 +928,12 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      }
+      },
+      "titleDelete": "Delete Activity",
+      "titleActivity": "Activity",
+      "loadMore": "Show more"
     },
+
     "inputModal": {
       "name": "Name",
       "required": "{{field}} is required",

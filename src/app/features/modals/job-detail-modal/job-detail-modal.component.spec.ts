@@ -21,6 +21,7 @@ describe('JobDetailModalComponent', () => {
   let jobManagementSpy: {
     jobs: ReturnType<typeof signal<JobInfo[]>>;
     deleteJob: ReturnType<typeof vi.fn>;
+    resetGroupStats: ReturnType<typeof vi.fn>;
     getJob: ReturnType<typeof vi.fn>;
   };
   let fileSystemSpy: {
@@ -90,6 +91,7 @@ describe('JobDetailModalComponent', () => {
     jobManagementSpy = {
       jobs: signal([mockJob]),
       deleteJob: vi.fn().mockResolvedValue(undefined),
+      resetGroupStats: vi.fn().mockResolvedValue(undefined),
       getJob: vi.fn().mockReturnValue(mockJob),
     };
     fileSystemSpy = {
@@ -156,6 +158,11 @@ describe('JobDetailModalComponent', () => {
     expect(copy).toHaveBeenCalledWith(error);
   });
 
+  it('resets only the displayed job group', async () => {
+    await component.onResetStats();
+    expect(jobManagementSpy.resetGroupStats).toHaveBeenCalledWith(mockJob.group);
+  });
+
   it('should delete job and close dialog on onDeleteJob', async () => {
     await component.onDeleteJob();
     expect(jobManagementSpy.deleteJob).toHaveBeenCalledWith(42);
@@ -173,6 +180,6 @@ describe('JobDetailModalComponent', () => {
   });
 
   it('should query jobService.getJob with execute_id and jobid', () => {
-    expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42);
+    expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42, undefined);
   });
 });

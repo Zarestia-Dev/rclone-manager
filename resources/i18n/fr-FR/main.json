@@ -869,27 +869,25 @@
       "resetStats": "Réinitialiser les Statistiques",
       "tabs": {
         "active": "Actif ({{count}})",
-        "recent": "Récent ({{count}})",
-        "recentCheck": "Vérifié ({{count}})"
+        "recent": "Récent ({{count}})"
       },
       "table": {
         "size": "Taille",
-        "transferred": "transféré",
-        "alreadyExisted": "déjà existant"
+        "transferred": "transféré"
       },
       "status": {
         "failed": "Échec",
         "checked": "Vérifié",
         "partial": "Partiel",
         "completed": "Terminé",
-        "transferError": "Erreur de transfert",
-        "transferCompleted": "Transfert terminé",
         "preparing": "Préparation",
         "finalizing": "Finalisation...",
         "missingDst": "Manquant sur la destination",
         "missingSrc": "Manquant sur la source",
         "differ": "Le contenu des fichiers diffère",
-        "error": "Erreur"
+        "checking": "Vérification",
+        "deleting": "Suppression",
+        "processing": "Traitement"
       },
       "actions": {
         "resolveToDst": "Copier vers la destination",
@@ -908,12 +906,12 @@
         "failDownload": "Échec du téléchargement du fichier"
       },
       "empty": {
-        "noActive": "Aucun transfert actif",
-        "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
-        "noRecent": "Aucun transfert récemment terminé",
-        "recentHint": "Les transferts terminés apparaîtront ici à la fin des jobs",
-        "noRecentCheck": "Aucun fichier vérifié",
-        "recentHintCheck": "Les fichiers vérifiés apparaîtront ici à la fin de la tâche"
+        "noRecent": "Aucune activité de fichier récente",
+        "recentHint": "Les activités de fichiers terminées apparaissent ici pendant les opérations.",
+        "noRecentCheck": "Aucun résultat de comparaison à afficher",
+        "recentHintCheck": "Consultez l’état de la tâche et les compteurs de vérification.",
+        "noActiveActivity": "Aucune activité de fichier en cours",
+        "waitingActivity": "En attente d’activité de fichiers. Certaines opérations ne signalent pas les fichiers individuellement."
       },
       "time": {
         "daysAgo": "Il y a {{count}} jour(s)",
@@ -930,8 +928,12 @@
       "messages": {
         "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}",
         "resolveStarted": "La résolution du conflit de fichiers a commencé"
-      }
+      },
+      "titleDelete": "Activité de suppression",
+      "titleActivity": "Activité",
+      "loadMore": "Afficher plus"
     },
+
     "inputModal": {
       "name": "Nom",
       "required": "{{field}} est obligatoire",

@@ -39,7 +39,7 @@
             ></mat-progress-bar>
           </div>
         }
-        @for (vm of jobViewModels(); track vm.job.jobid) {
+        @for (vm of jobViewModels(); track vm.job.execute_id || vm.job.jobid) {
           <div
             class="job-item"
             [class.completed]="vm.job.status !== 'Running'"
