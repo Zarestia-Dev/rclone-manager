@@ -4,8 +4,6 @@ use std::process::Stdio;
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-#[cfg(not(windows))]
-pub const CREATE_NO_WINDOW: u32 = 0;
 
 /// Process commands with shared output handling and platform-specific flags
 /// (such as `CREATE_NO_WINDOW`).

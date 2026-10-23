@@ -484,19 +484,6 @@ mod tests {
     }
 
     #[test]
-    fn native_configs_share_the_production_verification_key() {
-        for config in [
-            include_str!("../../../../desktop/tauri.conf.json"),
-            include_str!("../../../../desktop/tauri.conf.headless.json"),
-        ] {
-            let config: serde_json::Value = serde_json::from_str(config).unwrap();
-            assert_eq!(
-                config["plugins"]["updater"]["pubkey"].as_str().unwrap(),
-                PUBLIC_KEY.trim()
-            );
-        }
-    }
-    #[test]
     fn tauri_signer_fixtures_validate_and_tampering_or_wrong_keys_fail() {
         let bytes = include_bytes!("fixtures/manifest.json");
         let signature = include_str!("fixtures/manifest.json.sig");

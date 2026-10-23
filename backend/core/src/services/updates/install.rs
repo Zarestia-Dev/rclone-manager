@@ -264,7 +264,7 @@ pub async fn apply_app_update(app: AppHandle) -> Result<()> {
                     }
                     InstallOutcome::Restart => {
                         if let Err(error) =
-                            crate::utils::app::platform::relaunch_app(app.clone()).await
+                            crate::services::lifecycle::exit::relaunch_app(app.clone()).await
                         {
                             log::error!("Failed to restart after application update: {error}");
                             let state = app.state::<AppUpdaterState>();

@@ -3,6 +3,15 @@ use crate::context::AppHandle;
 use rclone_manager_core::context::AppHandle as CoreHandle;
 use std::sync::Arc;
 use tauri::Manager;
+
+#[cfg(any(
+    not(feature = "web-server"),
+    all(target_os = "linux", feature = "tauri-plugin-single-instance")
+))]
+pub(crate) const APP_ID: &str = "io.github.zarestia_dev.rclone-manager";
+#[cfg(all(target_os = "linux", feature = "tauri-plugin-single-instance"))]
+pub(crate) const APP_ID_DEV: &str = "io.github.zarestia_dev.rclone-manager-dev";
+
 pub(crate) fn setup_context(
     app: &AppHandle,
     args: crate::cli::CliArgs,
@@ -15,7 +24,7 @@ pub(crate) fn setup_context(
         mode: "desktop",
         release_prefix: "v",
         integration_key: "RCloneManager",
-        flatpak_id: crate::utils::app::platform::APP_ID,
+        flatpak_id: APP_ID,
     };
     let context = CoreHandle::new(
         Arc::new(crate::native::host::NativeHost(app.clone())),

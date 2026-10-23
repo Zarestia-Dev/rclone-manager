@@ -50,7 +50,7 @@ pub trait Host: Send + Sync {
     fn cleanup(&self) {}
     fn confirm_exit(
         &self,
-        _summary: crate::utils::app::platform::ActiveOperationsSummary,
+        _summary: crate::services::lifecycle::exit::ActiveOperationsSummary,
     ) -> ExitDecision {
         ExitDecision::Proceed
     }

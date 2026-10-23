@@ -1,7 +1,3 @@
-#[cfg(all(
-    feature = "tauri-plugin-autostart",
-    not(all(target_os = "linux", feature = "flatpak"))
-))]
 use crate::context::AppHandle;
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
 use crate::utils::spawn;
@@ -85,7 +81,7 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
 }
 
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
-pub(crate) fn handle_autostart_change(enabled: bool) {
+pub(crate) fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
     spawn(async move {
         if let Err(e) = crate::desktop::autostart::manage_flatpak_background_portal(enabled).await {

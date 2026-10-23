@@ -8,7 +8,7 @@ pub trait BackendContext<R: tauri::Runtime>: tauri::Manager<R> {
     fn backend_state<T: Send + Sync + 'static>(&self) -> State<T> {
         self.backend().state()
     }
-    #[cfg(desktop)]
+    #[cfg(all(desktop, not(feature = "web-server")))]
     fn backend_try_state<T: Send + Sync + 'static>(&self) -> Option<State<T>> {
         self.backend().try_state()
     }

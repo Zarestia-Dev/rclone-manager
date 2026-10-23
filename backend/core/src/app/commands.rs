@@ -21,10 +21,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (confirm_app_update_startup, $crate::services::updates::health::confirm_frontend_ready, [], [infallible]);
             (get_update_policy, $crate::services::updates::policy::get_update_policy, [], [infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
-            (check_pending_app_exit, $crate::utils::app::platform::check_pending_app_exit, [], [sync, no_app, infallible]);
+            (check_pending_app_exit, $crate::services::lifecycle::exit::check_pending_app_exit, [], [sync, infallible]);
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
-            (request_app_exit, $crate::utils::app::platform::request_app_exit, []);
-            (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
+            (request_app_exit, $crate::services::lifecycle::exit::request_app_exit, []);
+            (relaunch_app, $crate::services::lifecycle::exit::relaunch_app, []);
 
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>]);

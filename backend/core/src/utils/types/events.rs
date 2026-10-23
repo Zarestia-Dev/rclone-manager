@@ -147,6 +147,8 @@ pub enum UpdaterStateChanged {
     Rclone,
 }
 
+/// Emitted by the native host; consumed by AppLifecycleService for exit confirmation.
+/// Locked desktop windows receive a native-only notice with operation counts redacted.
 #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
 pub const APP_EXIT_REQUESTED: &str = "app_exit_requested";
 

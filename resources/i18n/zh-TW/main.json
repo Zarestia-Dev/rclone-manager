@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "保存庫已鎖定",
-      "subtitle": "輸入主密碼以解鎖 RClone Manager"
+      "subtitle": "輸入主密碼以解鎖 RClone Manager",
+      "awaitingAuthorization": "等待授權",
+      "authorizing": "正在授權…"
     },
     "errors": {
       "passwordsMismatch": "密碼不相符",

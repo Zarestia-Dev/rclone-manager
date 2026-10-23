@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "ボルトがロックされています",
-      "subtitle": "RClone Manager のロックを解除するにはマスターパスワードを入力してください"
+      "subtitle": "RClone Manager のロックを解除するにはマスターパスワードを入力してください",
+      "awaitingAuthorization": "認証待ち",
+      "authorizing": "認証中…"
     },
     "errors": {
       "passwordsMismatch": "パスワードが一致しません",

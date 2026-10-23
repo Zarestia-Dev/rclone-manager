@@ -57,25 +57,12 @@ pub async fn apply_theme_change(is_dark: bool) {
 /// Detects whether the current OS theme is dark.
 #[must_use]
 pub fn detect_system_dark() -> bool {
-    #[cfg(target_os = "linux")]
-    {
-        detect_linux_theme().unwrap_or(false)
-    }
+    detect_platform_theme().unwrap_or(false)
+}
 
-    #[cfg(windows)]
-    {
-        detect_windows_theme().unwrap_or(false)
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        detect_macos_theme().unwrap_or(false)
-    }
-
-    #[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
-    {
-        is_system_dark()
-    }
+#[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
+fn detect_platform_theme() -> Option<bool> {
+    Some(is_system_dark())
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +70,7 @@ pub fn detect_system_dark() -> bool {
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-pub fn detect_linux_theme() -> Option<bool> {
+fn detect_platform_theme() -> Option<bool> {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP")
         .or_else(|_| std::env::var("DESKTOP_SESSION"))
         .unwrap_or_default()
@@ -363,7 +350,7 @@ pub fn extract_portal_color_scheme(val: &zbus::Variant) -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-pub fn detect_windows_theme() -> Option<bool> {
+fn detect_platform_theme() -> Option<bool> {
     use winreg::RegKey;
     use winreg::enums::HKEY_CURRENT_USER;
 
@@ -387,7 +374,7 @@ pub fn detect_windows_theme() -> Option<bool> {
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-pub fn detect_macos_theme() -> Option<bool> {
+fn detect_platform_theme() -> Option<bool> {
     if let Ok(output) = std::process::Command::new("defaults")
         .args(["read", "-g", "AppleInterfaceStyle"])
         .output()
@@ -408,30 +395,15 @@ pub fn detect_macos_theme() -> Option<bool> {
 
 /// Starts background monitoring for OS theme changes.
 pub fn monitor_theme_changes() {
-    #[cfg(all(feature = "desktop", target_os = "linux"))]
-    {
-        crate::utils::spawn(async move {
-            run_linux_portal_watcher().await;
-        });
-    }
-
-    #[cfg(all(feature = "desktop", windows))]
-    {
-        crate::utils::spawn(async move {
-            run_windows_theme_watcher().await;
-        });
-    }
-
-    #[cfg(all(feature = "desktop", target_os = "macos"))]
-    {
-        crate::utils::spawn(async move {
-            run_macos_theme_watcher().await;
-        });
-    }
+    #[cfg(all(
+        feature = "desktop",
+        any(target_os = "linux", windows, target_os = "macos")
+    ))]
+    crate::utils::spawn(run_theme_watcher());
 }
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
-async fn run_linux_portal_watcher() {
+async fn run_theme_watcher() {
     use futures::StreamExt;
     use zbus::Connection;
 
@@ -486,7 +458,7 @@ async fn run_linux_portal_watcher() {
         {
             if let Some(is_dark) = extract_portal_color_scheme(&value) {
                 apply_theme_change(is_dark).await;
-            } else if let Some(is_dark) = detect_linux_theme() {
+            } else if let Some(is_dark) = detect_platform_theme() {
                 apply_theme_change(is_dark).await;
             }
         }
@@ -494,7 +466,7 @@ async fn run_linux_portal_watcher() {
 }
 
 #[cfg(all(feature = "desktop", windows))]
-async fn run_windows_theme_watcher() {
+async fn run_theme_watcher() {
     use windows_sys::Win32::Foundation::{CloseHandle, FALSE, WAIT_OBJECT_0};
     use windows_sys::Win32::System::Registry::{
         HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET, RegCloseKey,
@@ -543,7 +515,7 @@ async fn run_windows_theme_watcher() {
                 }
 
                 if WaitForSingleObject(event, INFINITE) == WAIT_OBJECT_0 {
-                    let is_dark = detect_windows_theme().unwrap_or(false);
+                    let is_dark = detect_platform_theme().unwrap_or(false);
                     crate::utils::block_on(async move {
                         apply_theme_change(is_dark).await;
                     });
@@ -557,7 +529,7 @@ async fn run_windows_theme_watcher() {
 }
 
 #[cfg(all(feature = "desktop", target_os = "macos"))]
-async fn run_macos_theme_watcher() {
+async fn run_theme_watcher() {
     use std::ffi::c_void;
 
     unsafe extern "C" {
@@ -591,7 +563,7 @@ async fn run_macos_theme_watcher() {
         _object: *const c_void,
         _user_info: *const c_void,
     ) {
-        let is_dark = detect_macos_theme().unwrap_or(false);
+        let is_dark = detect_platform_theme().unwrap_or(false);
         crate::utils::spawn(async move {
             apply_theme_change(is_dark).await;
         });

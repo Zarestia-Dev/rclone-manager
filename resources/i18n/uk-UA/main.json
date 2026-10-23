@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Сховище заблоковано",
-      "subtitle": "Введіть майстер-пароль для розблокування RClone Manager"
+      "subtitle": "Введіть майстер-пароль для розблокування RClone Manager",
+      "awaitingAuthorization": "Очікування авторизації",
+      "authorizing": "Авторизація…"
     },
     "errors": {
       "passwordsMismatch": "Паролі не збігаються",

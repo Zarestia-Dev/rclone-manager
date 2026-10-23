@@ -85,6 +85,15 @@ impl HttpArgs {
         }
         Ok(())
     }
+
+    /// Browser URL for this listener, using loopback for wildcard bind addresses.
+    pub fn web_ui_url(&self, path: &str) -> String {
+        format!(
+            "{}{path}",
+            crate::web::address::browser_origin(&self.host, self.port, self.tls_cert.is_some())
+        )
+    }
+
     pub fn auth_credentials(&self) -> Option<(String, String)> {
         match (&self.user, &self.pass) {
             (Some(u), Some(p)) => Some((u.clone(), p.clone())),
@@ -96,6 +105,22 @@ impl HttpArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn tray_links_use_the_http_configuration_and_preserve_the_route() {
+        let mut args = CliArgs::parse_from(["server", "--host", "::", "--port", "8443"]);
+        let route = "/nautilus/remote%3A";
+        assert_eq!(
+            args.headless.web_ui_url(route),
+            "http://[::1]:8443/nautilus/remote%3A"
+        );
+        args.headless.tls_cert = Some("certificate.pem".into());
+        args.headless.tls_key = Some("key.pem".into());
+        assert_eq!(
+            args.headless.web_ui_url(route),
+            "https://[::1]:8443/nautilus/remote%3A"
+        );
+    }
+
     #[test]
     fn test_headless_full_args() {
         let args = CliArgs::parse_from([

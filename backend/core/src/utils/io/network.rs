@@ -286,24 +286,33 @@ pub async fn monitor_network_changes() {
     }
 }
 
+#[cfg(not(any(
+    windows,
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "android"
+)))]
+#[must_use]
+pub fn is_metered() -> bool {
+    false
+}
+
 pub async fn is_network_metered() -> Result<bool, String> {
-    #[cfg(target_os = "linux")]
-    return Ok(is_metered());
+    Ok(is_metered())
+}
 
-    #[cfg(windows)]
-    return Ok(is_metered());
-
-    #[cfg(target_os = "macos")]
-    return Ok(is_metered());
-
-    #[cfg(target_os = "android")]
-    return Ok(is_metered());
-
-    #[cfg(not(any(
+#[cfg(all(
+    test,
+    not(any(
         windows,
         target_os = "linux",
         target_os = "macos",
         target_os = "android"
-    )))]
-    return Ok(false); // Default for unsupported platforms
+    ))
+))]
+mod tests {
+    #[tokio::test]
+    async fn unsupported_platform_is_not_metered() {
+        assert!(!super::is_network_metered().await.unwrap());
+    }
 }

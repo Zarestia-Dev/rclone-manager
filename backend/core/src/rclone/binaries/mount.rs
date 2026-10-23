@@ -68,7 +68,7 @@ struct MountPluginInfo {
 }
 
 #[cfg(target_os = "windows")]
-async fn get_latest_winfsp_url() -> Result<MountPluginInfo, String> {
+async fn get_latest_mount_plugin() -> Result<MountPluginInfo, String> {
     let release = github_client::get_latest_release("winfsp", "winfsp")
         .await
         .map_err(|e| format!("Failed to fetch WinFsp releases: {e}"))?;
@@ -87,7 +87,7 @@ async fn get_latest_winfsp_url() -> Result<MountPluginInfo, String> {
 }
 
 #[cfg(target_os = "macos")]
-async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
+async fn get_latest_mount_plugin() -> Result<MountPluginInfo, String> {
     let release = github_client::get_latest_release("macos-fuse-t", "fuse-t")
         .await
         .map_err(|e| format!("Failed to fetch FUSE-T releases: {e}"))?;
@@ -181,14 +181,8 @@ async fn run_install(
     Err(err)
 }
 
-#[cfg(target_os = "macos")]
 pub async fn install_mount_plugin(app_handle: crate::context::AppHandle) -> Result<String, String> {
-    run_install(&app_handle, get_latest_fuse_t_url().await?).await
-}
-
-#[cfg(target_os = "windows")]
-pub async fn install_mount_plugin(app_handle: crate::context::AppHandle) -> Result<String, String> {
-    run_install(&app_handle, get_latest_winfsp_url().await?).await
+    run_install(&app_handle, get_latest_mount_plugin().await?).await
 }
 
 pub async fn cancel_mount_plugin_install(

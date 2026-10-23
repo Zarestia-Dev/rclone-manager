@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Cofre Bloqueado",
-      "subtitle": "Digite sua senha mestra para desbloquear o RClone Manager"
+      "subtitle": "Digite sua senha mestra para desbloquear o RClone Manager",
+      "awaitingAuthorization": "Aguardando autorização",
+      "authorizing": "Autorizando…"
     },
     "errors": {
       "passwordsMismatch": "As senhas não coincidem",

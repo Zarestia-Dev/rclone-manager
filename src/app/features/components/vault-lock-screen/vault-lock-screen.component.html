@@ -1,50 +1,172 @@
-<div class="vault-lock-container">
-  <div class="vault-lock-card">
-    <div class="vault-header">
-      <div class="vault-icon-badge">
-        <mat-icon svgIcon="shield"></mat-icon>
-      </div>
-      <h2>{{ 'vault.lockScreen.title' | translate }}</h2>
-      <p class="subtitle">{{ 'vault.lockScreen.subtitle' | translate }}</p>
-    </div>
-
-    <form class="vault-form" [formGroup]="lockForm" (ngSubmit)="submitUnlock($event)">
-      <mat-form-field class="password-field">
-        <mat-label>{{ 'vault.fields.masterPassword' | translate }}</mat-label>
-        <mat-icon matPrefix svgIcon="lock"></mat-icon>
-        <input
-          matInput
-          formControlName="password"
-          [type]="showPassword() ? 'text' : 'password'"
-          autocomplete="current-password"
-        />
-        <button
-          matIconButton
-          matSuffix
-          type="button"
-          (click)="togglePasswordVisibility()"
-          [attr.title]="(showPassword() ? 'common.hide' : 'common.show') | translate"
-          [attr.aria-label]="(showPassword() ? 'common.hide' : 'common.show') | translate"
+<div
+  class="vault-lock-container"
+  [class.denied]="errorMessage()"
+  [class.desktop-window]="isDesktop"
+  [class.busy]="isSubmitting()"
+  [class.effects-paused]="effectsPaused()"
+>
+  @if (isDesktop) {
+    <header class="vault-window-bar" data-tauri-drag-region>
+      <app-window-controls></app-window-controls>
+    </header>
+  }
+  <div class="hud-background" aria-hidden="true">
+    <div class="hex-grid"></div>
+    <div class="hex-wave" [style.--wave-duration]="waveDuration + 'ms'">
+      @for (cell of waveCells(); track cell.id) {
+        <svg
+          class="hex-wave-cell"
+          viewBox="-34 -42 68 84"
+          [attr.width]="waveScale().x * 68"
+          [attr.height]="waveScale().y * 84"
+          [style.left.px]="cell.x"
+          [style.top.px]="cell.y"
+          [style.--wave-delay]="cell.delay + 'ms'"
         >
-          <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
-        </button>
-        @if (passwordControl.hasError('required') && passwordControl.touched) {
-          <mat-error>{{ 'common.required' | translate }}</mat-error>
-        }
-      </mat-form-field>
+          <path
+            class="hex-wave-wall"
+            d="M-25.92 6.97L0 21.93L25.92 6.97V14.97L0 29.93L-25.92 14.97Z"
+          />
+          <g class="hex-wave-top">
+            <path
+              class="hex-wave-face"
+              d="M0-29.93L25.92-14.97V14.97L0 29.93L-25.92 14.97V-14.97Z"
+            />
+            <path
+              class="hex-wave-trace"
+              pathLength="1"
+              d="M0-29.93L25.92-14.97V14.97L0 29.93L-25.92 14.97V-14.97Z"
+            />
+          </g>
+        </svg>
+      }
+    </div>
+  </div>
+  <div class="vignette" aria-hidden="true"></div>
 
-      @if (errorMessage(); as errorMsg) {
-        <app-alert-banner severity="error" [description]="errorMsg"></app-alert-banner>
+  <div class="hud-panel-plane">
+    <div class="vault-lock-card">
+      <span class="corner corner-tl" aria-hidden="true"></span>
+      <span class="corner corner-tr" aria-hidden="true"></span>
+      <span class="corner corner-bl" aria-hidden="true"></span>
+      <span class="corner corner-br" aria-hidden="true"></span>
+
+      <div class="hud-brand" aria-hidden="true">
+        <span class="brand-name">ZARESTIA SYSTEMS</span>
+      </div>
+
+      <div class="vault-header">
+        <div class="vault-icon-badge">
+          <div class="hex-frame" aria-hidden="true"></div>
+          <mat-icon svgIcon="shield"></mat-icon>
+        </div>
+        <h2>{{ 'vault.lockScreen.title' | translate }}</h2>
+        <p class="subtitle">{{ 'vault.lockScreen.subtitle' | translate }}</p>
+      </div>
+
+      <form
+        class="vault-form"
+        [formGroup]="lockForm"
+        [attr.inert]="appLifecycle.lockedExitRequested() || appLifecycle.isQuitting() ? '' : null"
+        (ngSubmit)="submitUnlock($event)"
+      >
+        <mat-form-field class="password-field">
+          <mat-label>{{ 'vault.fields.masterPassword' | translate }}</mat-label>
+          <mat-icon matPrefix svgIcon="lock"></mat-icon>
+          <input
+            matInput
+            formControlName="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            aria-describedby="vault-status"
+          />
+          <button
+            matIconButton
+            matSuffix
+            type="button"
+            (click)="togglePasswordVisibility()"
+            [attr.title]="(showPassword() ? 'common.hide' : 'common.show') | translate"
+            [attr.aria-label]="(showPassword() ? 'common.hide' : 'common.show') | translate"
+          >
+            <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+          </button>
+          @if (passwordControl.hasError('required') && passwordControl.touched) {
+            <mat-error>{{ 'common.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <button matButton="filled" type="submit" class="unlock-button" [disabled]="isSubmitting()">
+          @if (isSubmitting()) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon svgIcon="lock-open"></mat-icon>
+          }
+          <span>{{ 'vault.actions.unlock' | translate }}</span>
+        </button>
+      </form>
+
+      @if (isDesktop && appLifecycle.lockedExitRequested()) {
+        <section
+          class="detail-section vault-exit-confirmation"
+          role="alertdialog"
+          tabindex="-1"
+          aria-modal="true"
+          aria-labelledby="vault-exit-title"
+          aria-describedby="vault-exit-description"
+          cdkTrapFocus
+          [cdkTrapFocusAutoCapture]="true"
+          (keydown.escape)="appLifecycle.cancelLockedExit()"
+        >
+          <h3 id="vault-exit-title" class="section-title">
+            {{ 'app.shutdown.confirmTitle' | translate }}
+          </h3>
+          <p id="vault-exit-description">{{ 'powerMenu.actions.shutdownApp.desc' | translate }}</p>
+          <div class="vault-exit-actions">
+            <button
+              matButton
+              type="button"
+              cdkFocusInitial
+              (click)="appLifecycle.cancelLockedExit()"
+              [disabled]="appLifecycle.isQuitting()"
+            >
+              {{ 'common.cancel' | translate }}
+            </button>
+            <button
+              matButton="filled"
+              type="button"
+              (click)="confirmExit()"
+              [disabled]="appLifecycle.isQuitting()"
+            >
+              {{ 'app.shutdown.stopAndQuit' | translate }}
+            </button>
+          </div>
+        </section>
       }
 
-      <button matButton="filled" type="submit" class="unlock-button" [disabled]="isSubmitting()">
-        @if (isSubmitting()) {
-          <mat-icon svgIcon="spinner"></mat-icon>
-        } @else {
-          <mat-icon svgIcon="lock-open"></mat-icon>
-        }
-        <span>{{ 'vault.actions.unlock' | translate }}</span>
-      </button>
-    </form>
+      <div
+        id="vault-status"
+        class="hud-status"
+        [class.status-error]="errorMessage()"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="status-text">
+          @if (appLifecycle.isQuitting()) {
+            {{ 'app.shutdown.message' | translate }}
+          } @else if (errorMessage(); as error) {
+            {{ error }}
+          } @else {
+            {{
+              (isSubmitting()
+                ? 'vault.lockScreen.authorizing'
+                : 'vault.lockScreen.awaitingAuthorization'
+              ) | translate
+            }}
+          }
+        </span>
+      </div>
+    </div>
   </div>
 </div>

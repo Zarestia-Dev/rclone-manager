@@ -136,16 +136,7 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
                     handle_notifications_change(app, enabled);
                 }
             }
-            #[cfg(all(target_os = "linux", feature = "flatpak"))]
-            ("general", "start_on_startup") => {
-                if let Some(startup) = change.value.as_bool() {
-                    app.host().set_autostart(startup);
-                }
-            }
-            #[cfg(all(
-                feature = "autostart",
-                not(all(target_os = "linux", feature = "flatpak"))
-            ))]
+            #[cfg(any(feature = "autostart", all(target_os = "linux", feature = "flatpak")))]
             ("general", "start_on_startup") => {
                 if let Some(startup) = change.value.as_bool() {
                     app.host().set_autostart(startup);

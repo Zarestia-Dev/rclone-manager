@@ -46,9 +46,9 @@ fn register_single_instance(builder: tauri::Builder<tauri::Wry>) -> tauri::Build
 
     #[cfg(target_os = "linux")]
     let si_builder = si_builder.dbus_id(if cfg!(debug_assertions) {
-        crate::utils::app::platform::APP_ID_DEV
+        crate::app::APP_ID_DEV
     } else {
-        crate::utils::app::platform::APP_ID
+        crate::app::APP_ID
     });
 
     builder.plugin(

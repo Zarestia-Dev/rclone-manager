@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
 import { EventListenersService } from './event-listeners.service';
 import { ApiClientService } from '../platform/api-client.service';
@@ -42,6 +42,37 @@ describe('EventListenersService', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('waits for native exit-listener registration before reporting readiness', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__');
+    let finish!: (eventId: number) => void;
+    const invoke = vi.fn(
+      () =>
+        new Promise<number>(resolve => {
+          finish = resolve;
+        })
+    );
+    try {
+      Object.defineProperty(window, '__TAURI_INTERNALS__', {
+        value: { invoke, transformCallback: vi.fn(() => 1) },
+        configurable: true,
+      });
+      const nativeService = TestBed.runInInjectionContext(() => new EventListenersService());
+      nativeService.listenToAppExitRequested();
+      let ready = false;
+      const registration = firstValueFrom(nativeService.whenAppExitListenerReady()).then(() => {
+        ready = true;
+      });
+      await Promise.resolve();
+      expect(ready).toBe(false);
+      finish(1);
+      await registration;
+      expect(ready).toBe(true);
+    } finally {
+      if (descriptor) Object.defineProperty(window, '__TAURI_INTERNALS__', descriptor);
+      else Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+    }
   });
 
   describe('listenToSettingsCategory', () => {

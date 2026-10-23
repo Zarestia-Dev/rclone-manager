@@ -28,10 +28,7 @@ fn dispatch_tray_action(app: &crate::context::AppHandle, action: TrayAction) {
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
-    if app
-        .backend_state::<crate::services::settings::AppSettingsManager>()
-        .is_locked()
-        && !action.allowed_when_locked()
+    if crate::services::settings::access::is_locked(app.backend()) && !action.allowed_when_locked()
     {
         return;
     }
@@ -145,8 +142,9 @@ fn dispatch_tray_action(app: &crate::context::AppHandle, action: TrayAction) {
         TrayAction::Quit => {
             let app_clone = app.clone();
             crate::utils::spawn(async move {
-                let _ = crate::utils::app::platform::request_app_exit(app_clone.backend().clone())
-                    .await;
+                let _ =
+                    crate::services::lifecycle::exit::request_app_exit(app_clone.backend().clone())
+                        .await;
             });
         }
     }
@@ -156,20 +154,9 @@ fn dispatch_tray_action(app: &crate::context::AppHandle, action: TrayAction) {
 fn web_ui_url(app: &crate::context::AppHandle, path: &str) -> String {
     use tauri::Manager;
     let args = app.state::<crate::cli::CliArgs>();
-    let host = if args.headless.host == "0.0.0.0" {
-        "127.0.0.1"
-    } else {
-        &args.headless.host
-    };
-    let scheme = if args.headless.tls_cert.is_some() {
-        "https"
-    } else {
-        "http"
-    };
-    format!("{scheme}://{host}:{}{path}", args.headless.port)
+    args.headless.web_ui_url(path)
 }
 
-#[cfg(feature = "tray")]
 pub(crate) fn trigger_tray_update(app: AppHandle) {
     spawn(async move {
         if let Err(e) = crate::desktop::tray::core::update_tray_menu(app).await {
@@ -178,15 +165,23 @@ pub(crate) fn trigger_tray_update(app: AppHandle) {
     });
 }
 
-#[cfg(feature = "tray")]
 pub(crate) fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
-    let app_clone = app.clone();
-    spawn(async move {
-        debug!("Tray visibility changed to: {enabled}");
-        if let Some(tray) = app_clone.tray_by_id("main-tray") {
-            let _ = tray.set_visible(enabled);
-        } else if let Err(e) = crate::desktop::tray::setup::setup_tray(app_clone).await {
-            error!("Failed to set up tray: {e}");
+    use std::sync::atomic::Ordering;
+
+    let state = app.backend_state::<crate::desktop::tray::TrayMenuState>();
+    state.requested_visible.store(enabled, Ordering::SeqCst);
+    debug!("Tray visibility changed to: {enabled}");
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        match tray.set_visible(enabled) {
+            Ok(()) => state.visible.store(enabled, Ordering::SeqCst),
+            Err(error) => error!("Failed to change tray visibility: {error}"),
         }
-    });
+    } else if enabled {
+        let app = app.clone();
+        spawn(async move {
+            if let Err(error) = crate::desktop::tray::setup::setup_tray(app).await {
+                error!("Failed to set up tray: {error}");
+            }
+        });
+    }
 }

@@ -44,7 +44,7 @@ pub(super) async fn start_web_server(
     };
 
     let app = build_app(state.clone(), &host, port);
-    let addr: std::net::SocketAddr = format!("{host}:{port}").parse()?;
+    let addr = super::address::listen_address(&host, port)?;
 
     let handle = axum_server::Handle::new();
     let listener = serve(app, addr, tls_cert, tls_key, handle.clone());

@@ -4773,6 +4773,7 @@ dependencies = [
  "notify-rust",
  "rclone-manager-core",
  "rclone-manager-server",
+ "rcman",
  "serde",
  "serde_json",
  "sysinfo",

@@ -27,30 +27,18 @@ pub struct TrayVisualCache {
 }
 
 impl TrayVisualCache {
-    /// Compares incoming visual components against the cached state.
-    /// Updates the cache in-place for any components that changed and returns
-    /// `(plan_changed, tooltip_changed, icon_changed)`.
-    pub fn diff_and_update(
-        &mut self,
+    /// Compare with the last successfully applied native visuals without committing changes.
+    pub fn diff(
+        &self,
         new_plan: &MenuPlan,
         new_tooltip: &str,
         new_icon: TrayIconKind,
     ) -> (bool, bool, bool) {
-        let plan_changed = self.plan.as_ref() != Some(new_plan);
-        let tooltip_changed = self.tooltip.as_deref() != Some(new_tooltip);
-        let icon_changed = self.icon != Some(new_icon);
-
-        if plan_changed {
-            self.plan = Some(new_plan.clone());
-        }
-        if tooltip_changed {
-            self.tooltip = Some(new_tooltip.to_string());
-        }
-        if icon_changed {
-            self.icon = Some(new_icon);
-        }
-
-        (plan_changed, tooltip_changed, icon_changed)
+        (
+            self.plan.as_ref() != Some(new_plan),
+            self.tooltip.as_deref() != Some(new_tooltip),
+            self.icon != Some(new_icon),
+        )
     }
 }
 
@@ -58,6 +46,10 @@ pub struct TrayMenuState {
     pub cache: Mutex<TrayVisualCache>,
     pub update_lock: tokio::sync::Mutex<()>,
     pub has_pending: AtomicBool,
+    /// Native visibility stays available while vault-protected settings are locked.
+    pub visible: AtomicBool,
+    /// Latest visibility request, including while asynchronous setup is pending.
+    pub requested_visible: AtomicBool,
 }
 
 impl Default for TrayMenuState {
@@ -66,6 +58,8 @@ impl Default for TrayMenuState {
             cache: Mutex::new(TrayVisualCache::default()),
             update_lock: tokio::sync::Mutex::new(()),
             has_pending: AtomicBool::new(false),
+            visible: AtomicBool::new(false),
+            requested_visible: AtomicBool::new(false),
         }
     }
 }
@@ -342,76 +336,67 @@ impl TraySnapshot {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_diff_and_update_initial_load() {
-        let mut cache = TrayVisualCache::default();
-        let plan = MenuPlan { items: vec![] };
-        let (plan_changed, tooltip_changed, icon_changed) =
-            cache.diff_and_update(&plan, "Initial tooltip", TrayIconKind::ColorNormal);
-
-        assert!(plan_changed);
-        assert!(tooltip_changed);
-        assert!(icon_changed);
-        assert_eq!(cache.icon, Some(TrayIconKind::ColorNormal));
+    fn cached_visuals() -> TrayVisualCache {
+        TrayVisualCache {
+            plan: Some(MenuPlan { items: vec![] }),
+            tooltip: Some("Tooltip".into()),
+            icon: Some(TrayIconKind::ColorNormal),
+        }
     }
 
     #[test]
-    fn test_diff_and_update_no_changes() {
-        let mut cache = TrayVisualCache::default();
-        let plan = MenuPlan { items: vec![] };
-        cache.diff_and_update(&plan, "Tooltip", TrayIconKind::ColorNormal);
-
-        let (plan_changed, tooltip_changed, icon_changed) =
-            cache.diff_and_update(&plan, "Tooltip", TrayIconKind::ColorNormal);
-
-        assert!(!plan_changed);
-        assert!(!tooltip_changed);
-        assert!(!icon_changed);
+    fn initial_visuals_require_all_native_updates() {
+        let cache = TrayVisualCache::default();
+        assert_eq!(
+            cache.diff(
+                &MenuPlan { items: vec![] },
+                "Tooltip",
+                TrayIconKind::ColorNormal
+            ),
+            (true, true, true)
+        );
+        assert_eq!(cache, TrayVisualCache::default());
     }
 
     #[test]
-    fn test_diff_and_update_plan_change() {
-        let mut cache = TrayVisualCache::default();
-        let plan1 = MenuPlan { items: vec![] };
-        let plan2 = MenuPlan {
+    fn unchanged_visuals_do_not_require_native_updates() {
+        let cache = cached_visuals();
+        assert_eq!(
+            cache.diff(
+                &MenuPlan { items: vec![] },
+                "Tooltip",
+                TrayIconKind::ColorNormal
+            ),
+            (false, false, false)
+        );
+    }
+
+    #[test]
+    fn failed_or_unapplied_plan_changes_remain_pending() {
+        let cache = cached_visuals();
+        let plan = MenuPlan {
             items: vec![menu::MenuItemKind::Separator],
         };
-        cache.diff_and_update(&plan1, "Tooltip", TrayIconKind::ColorNormal);
-
-        let (plan_changed, tooltip_changed, icon_changed) =
-            cache.diff_and_update(&plan2, "Tooltip", TrayIconKind::ColorNormal);
-
-        assert!(plan_changed);
-        assert!(!tooltip_changed);
-        assert!(!icon_changed);
+        for _ in 0..2 {
+            assert_eq!(
+                cache.diff(&plan, "Tooltip", TrayIconKind::ColorNormal),
+                (true, false, false)
+            );
+        }
+        assert_eq!(cache, cached_visuals());
     }
 
     #[test]
-    fn test_diff_and_update_tooltip_change() {
-        let mut cache = TrayVisualCache::default();
+    fn tooltip_and_icon_changes_are_independent() {
+        let cache = cached_visuals();
         let plan = MenuPlan { items: vec![] };
-        cache.diff_and_update(&plan, "Tooltip 1", TrayIconKind::ColorNormal);
-
-        let (plan_changed, tooltip_changed, icon_changed) =
-            cache.diff_and_update(&plan, "Tooltip 2", TrayIconKind::ColorNormal);
-
-        assert!(!plan_changed);
-        assert!(tooltip_changed);
-        assert!(!icon_changed);
-    }
-
-    #[test]
-    fn test_diff_and_update_icon_change() {
-        let mut cache = TrayVisualCache::default();
-        let plan = MenuPlan { items: vec![] };
-        cache.diff_and_update(&plan, "Tooltip", TrayIconKind::ColorNormal);
-
-        let (plan_changed, tooltip_changed, icon_changed) =
-            cache.diff_and_update(&plan, "Tooltip", TrayIconKind::ColorActive);
-
-        assert!(!plan_changed);
-        assert!(!tooltip_changed);
-        assert!(icon_changed);
-        assert_eq!(cache.icon, Some(TrayIconKind::ColorActive));
+        assert_eq!(
+            cache.diff(&plan, "Changed", TrayIconKind::ColorNormal),
+            (false, true, false)
+        );
+        assert_eq!(
+            cache.diff(&plan, "Tooltip", TrayIconKind::ColorActive),
+            (false, false, true)
+        );
     }
 }

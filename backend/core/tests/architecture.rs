@@ -50,6 +50,8 @@ fn core_has_no_transport_or_host_dependencies() {
             "axum::",
             "crate::native::",
             "crate::desktop::",
+            "../desktop/",
+            "../server/",
             "feature = \"web-server\"",
         ],
     );

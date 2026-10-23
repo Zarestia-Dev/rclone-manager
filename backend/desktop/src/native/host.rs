@@ -1,4 +1,8 @@
 use crate::context::AppHandle;
+#[cfg(feature = "portable")]
+use crate::desktop::paths::resolve_paths;
+#[cfg(not(feature = "portable"))]
+use crate::native::paths::resolve_paths;
 use rclone_manager_core::context::{AppHandle as CoreHandle, ExitDecision, Host};
 pub(crate) struct NativeHost(pub AppHandle);
 #[async_trait::async_trait]
@@ -19,14 +23,7 @@ impl Host for NativeHost {
         }
     }
     fn resolve_paths(&self, _app: &CoreHandle) -> Result<crate::services::paths::AppPaths, String> {
-        #[cfg(feature = "portable")]
-        {
-            crate::desktop::paths::resolve_paths(&self.0)
-        }
-        #[cfg(not(feature = "portable"))]
-        {
-            super::paths::resolve_paths(&self.0)
-        }
+        resolve_paths(&self.0)
     }
     fn restart(&self, _app: &CoreHandle) -> Result<(), String> {
         super::lifecycle::restart(&self.0)
@@ -83,19 +80,37 @@ impl Host for NativeHost {
     }
     fn confirm_exit(
         &self,
-        _summary: crate::utils::app::platform::ActiveOperationsSummary,
+        _summary: crate::services::lifecycle::exit::ActiveOperationsSummary,
     ) -> ExitDecision {
         #[cfg(all(desktop, not(feature = "web-server")))]
         {
-            use tauri::Manager;
+            use crate::context::BackendContext;
+            use tauri::{Emitter, Manager};
+            let locked = crate::services::settings::access::is_locked(self.0.backend());
+            // The locked UI only needs to know that confirmation is required, not
+            // private operation counts. This native control event never reaches SSE.
+            let summary = exit_notice_summary(_summary, locked);
             if self.0.get_webview_window("main").is_none() {
-                crate::utils::app::platform::set_pending_app_exit_summary(_summary.clone());
+                crate::services::lifecycle::exit::set_pending_app_exit_summary(
+                    self.0.backend(),
+                    summary.clone(),
+                );
             }
             crate::desktop::window::present_main_window(&self.0);
-            crate::services::bridge::emit(
-                crate::utils::types::events::APP_EXIT_REQUESTED,
-                _summary,
-            );
+            if locked {
+                if let Err(error) = self.0.emit_to(
+                    tauri::EventTarget::webview_window("main"),
+                    crate::utils::types::events::APP_EXIT_REQUESTED,
+                    summary,
+                ) {
+                    log::error!("Failed to request locked-window exit confirmation: {error}");
+                }
+            } else {
+                crate::services::bridge::emit(
+                    crate::utils::types::events::APP_EXIT_REQUESTED,
+                    summary,
+                );
+            }
             ExitDecision::Deferred
         }
         #[cfg(any(mobile, feature = "web-server"))]
@@ -113,6 +128,10 @@ impl Host for NativeHost {
         if !settings.general.tray_enabled && !args.tray {
             return Ok(());
         }
+        self.0
+            .backend_state::<crate::desktop::tray::TrayMenuState>()
+            .requested_visible
+            .store(true, std::sync::atomic::Ordering::SeqCst);
         crate::desktop::tray::setup::setup_tray(self.0.clone())
             .await
             .map_err(|e| e.to_string())
@@ -127,9 +146,6 @@ impl Host for NativeHost {
     }
     #[cfg(any(feature = "tauri-plugin-autostart", feature = "flatpak"))]
     fn set_autostart(&self, enabled: bool) {
-        #[cfg(all(target_os = "linux", feature = "flatpak"))]
-        crate::desktop::autostart::handle_autostart_change(enabled);
-        #[cfg(not(all(target_os = "linux", feature = "flatpak")))]
         crate::desktop::autostart::handle_autostart_change(&self.0, enabled);
     }
     #[cfg(feature = "tauri-plugin-notification")]
@@ -146,5 +162,53 @@ impl Host for NativeHost {
         metadata: &mut crate::utils::types::updater::UpdateMetadata,
     ) -> Result<Option<crate::utils::types::updater::PendingAppUpdate>, String> {
         super::updater::check_native_updater(&self.0, release, metadata).await
+    }
+}
+
+#[cfg(all(desktop, not(feature = "web-server")))]
+pub(super) fn exit_notice_summary(
+    mut summary: crate::services::lifecycle::exit::ActiveOperationsSummary,
+    locked: bool,
+) -> crate::services::lifecycle::exit::ActiveOperationsSummary {
+    if locked {
+        summary.active_jobs_count = 0;
+        summary.active_mounts_count = 0;
+        summary.active_serves_count = 0;
+    }
+    summary
+}
+
+#[cfg(all(test, desktop, not(feature = "web-server")))]
+mod exit_notice_tests {
+    use super::exit_notice_summary;
+    use crate::services::lifecycle::exit::ActiveOperationsSummary;
+
+    #[test]
+    fn locked_exit_notice_hides_counts_but_preserves_the_need_for_confirmation() {
+        let summary = ActiveOperationsSummary {
+            has_active_operations: true,
+            active_jobs_count: 2,
+            active_mounts_count: 3,
+            active_serves_count: 4,
+        };
+        let locked = exit_notice_summary(summary.clone(), true);
+        assert!(locked.has_active_operations);
+        assert_eq!(
+            (
+                locked.active_jobs_count,
+                locked.active_mounts_count,
+                locked.active_serves_count
+            ),
+            (0, 0, 0)
+        );
+        let unlocked = exit_notice_summary(summary, false);
+        assert_eq!(
+            (
+                unlocked.active_jobs_count,
+                unlocked.active_mounts_count,
+                unlocked.active_serves_count
+            ),
+            (2, 3, 4)
+        );
     }
 }

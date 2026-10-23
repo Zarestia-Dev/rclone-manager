@@ -21,7 +21,6 @@ impl LinuxPaths {
 
 fn write_executable(path: &Path, content: &str) -> std::io::Result<()> {
     std::fs::write(path, content)?;
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let mut perms = std::fs::metadata(path)?.permissions();
@@ -49,7 +48,7 @@ fn install_template(
     }
 }
 
-pub fn register(
+pub async fn register(
     remote: &str,
     path_val: &str,
     name: &str,
@@ -127,7 +126,7 @@ pub fn register(
     Ok(())
 }
 
-pub fn unregister(name: &str) -> Result<(), String> {
+pub fn unregister(name: &str, _product: &crate::context::ProductInfo) -> Result<(), String> {
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
 
@@ -139,7 +138,7 @@ pub fn unregister(name: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn is_registered(name: &str) -> Result<bool, String> {
+pub fn is_registered(name: &str, _product: &crate::context::ProductInfo) -> Result<bool, String> {
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
 

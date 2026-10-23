@@ -19,17 +19,37 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     };
 
     let icon_kind = crate::desktop::tray::icon::TrayIconKind::resolve(false, &icon_theme);
-    let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
     let icon = icon_kind.to_image();
 
-    if let Some(state) = app.backend_try_state::<crate::desktop::tray::TrayMenuState>() {
-        let mut cache = state.cache.lock().unwrap();
-        cache.plan = Some(plan.clone());
-        cache.tooltip = Some(rclone_manager_core::t!("tray.tooltipDefault"));
-        cache.icon = Some(icon_kind);
-    }
-
     app.run_on_main_thread(move || {
+        let state = app_clone.backend_state::<crate::desktop::tray::TrayMenuState>();
+        if !state
+            .requested_visible
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return;
+        }
+        if let Some(tray) = app_clone.tray_by_id("main-tray") {
+            match tray.set_visible(true) {
+                Ok(()) => state
+                    .visible
+                    .store(true, std::sync::atomic::Ordering::SeqCst),
+                Err(error) => log::error!("Failed to show existing tray: {error}"),
+            }
+            return;
+        }
+        let plan = if crate::services::settings::access::is_locked(app_clone.backend()) {
+            MenuPlan::locked()
+        } else {
+            plan
+        };
+        let tray_menu = match create_tray_menu_from_plan(&app_clone, &plan) {
+            Ok(menu) => menu,
+            Err(error) => {
+                log::error!("Failed to build tray menu: {error}");
+                return;
+            }
+        };
         let tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
             .icon(icon)
             .tooltip(rclone_manager_core::t!("tray.tooltipDefault"))
@@ -46,8 +66,17 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
             }
         });
 
-        if let Err(e) = tray.build(&app_clone) {
-            log::error!("Failed to build tray icon: {e}");
+        match tray.build(&app_clone) {
+            Ok(_) => {
+                let mut cache = state.cache.lock().unwrap();
+                cache.plan = Some(plan);
+                cache.tooltip = Some(rclone_manager_core::t!("tray.tooltipDefault"));
+                cache.icon = Some(icon_kind);
+                state
+                    .visible
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+            Err(e) => log::error!("Failed to build tray icon: {e}"),
         }
     })?;
 

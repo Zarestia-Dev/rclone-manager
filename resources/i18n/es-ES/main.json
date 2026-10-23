@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Bóveda bloqueada",
-      "subtitle": "Ingrese su contraseña maestra para desbloquear RClone Manager"
+      "subtitle": "Ingrese su contraseña maestra para desbloquear RClone Manager",
+      "awaitingAuthorization": "Esperando autorización",
+      "authorizing": "Autorizando…"
     },
     "errors": {
       "passwordsMismatch": "Las contraseñas no coinciden",

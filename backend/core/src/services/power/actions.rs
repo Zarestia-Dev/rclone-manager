@@ -14,30 +14,16 @@ pub async fn execute_system_power(action: String) -> Result<(), String> {
 pub async fn execute_system_power_internal(action: &str) -> Result<(), String> {
     info!("Executing native system power action: {action}");
 
-    #[cfg(target_os = "linux")]
-    {
-        execute_linux_power(action).await
-    }
+    execute_platform_power(action).await
+}
 
-    #[cfg(target_os = "windows")]
-    {
-        execute_windows_power(action)
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        execute_macos_power(action)
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-    {
-        let _ = action;
-        Err("System power actions are not supported on this platform".to_string())
-    }
+#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+async fn execute_platform_power(_action: &str) -> Result<(), String> {
+    Err("System power actions are not supported on this platform".to_string())
 }
 
 #[cfg(target_os = "linux")]
-async fn execute_linux_power(action: &str) -> Result<(), String> {
+async fn execute_platform_power(action: &str) -> Result<(), String> {
     #[cfg(feature = "desktop")]
     {
         match zbus::Connection::system().await {
@@ -99,7 +85,7 @@ async fn execute_linux_power(action: &str) -> Result<(), String> {
 }
 
 #[cfg(target_os = "windows")]
-fn execute_windows_power(action: &str) -> Result<(), String> {
+async fn execute_platform_power(action: &str) -> Result<(), String> {
     match action {
         "lock" => {
             let ret = unsafe { windows_sys::Win32::System::Shutdown::LockWorkStation() };
@@ -141,7 +127,7 @@ fn execute_windows_power(action: &str) -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-fn execute_macos_power(action: &str) -> Result<(), String> {
+async fn execute_platform_power(action: &str) -> Result<(), String> {
     match action {
         "shutdown" => {
             std::process::Command::new("osascript")
@@ -179,15 +165,33 @@ mod tests {
     }
 
     #[cfg(target_os = "windows")]
-    #[test]
-    fn test_windows_power_unknown_action() {
-        use super::execute_windows_power;
+    #[tokio::test]
+    async fn test_windows_power_unknown_action() {
+        for action in ["invalid_action", "", "shutdown; other-command"] {
+            let error = super::execute_system_power_internal(action)
+                .await
+                .unwrap_err();
+            assert_eq!(error, format!("Unknown Windows power action: {action}"));
+        }
+    }
 
-        let res = execute_windows_power("invalid_action");
-        assert!(res.is_err());
-        assert_eq!(
-            res.unwrap_err(),
-            "Unknown Windows power action: invalid_action"
-        );
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    #[tokio::test]
+    async fn unsupported_platform_rejects_power_actions() {
+        for action in [
+            "sleep",
+            "shutdown",
+            "hibernate",
+            "lock",
+            "",
+            "invalid_action",
+        ] {
+            assert_eq!(
+                super::execute_system_power_internal(action)
+                    .await
+                    .unwrap_err(),
+                "System power actions are not supported on this platform"
+            );
+        }
     }
 }

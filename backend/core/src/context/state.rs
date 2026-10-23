@@ -170,7 +170,7 @@ mod tests {
         let app = AppHandle::default();
         assert_eq!(
             app.host()
-                .confirm_exit(crate::utils::app::platform::ActiveOperationsSummary {
+                .confirm_exit(crate::services::lifecycle::exit::ActiveOperationsSummary {
                     has_active_operations: true,
                     active_jobs_count: 1,
                     active_mounts_count: 1,

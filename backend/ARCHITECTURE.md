@@ -174,5 +174,15 @@ Exit confirmation returns `ExitDecision::Proceed` or `ExitDecision::Deferred`.
 Desktop defers cleanup while its UI waits for confirmation. Hosts without a
 confirmation UI proceed with the shared shutdown sequence.
 
-Workflow internals and multi-context/global-state redesign remain outside this
-host-boundary work.
+Workflow internals and redesign of the global event bridge remain outside these
+host adapters.
+
+Exit and restart orchestration belongs to `core/src/services/lifecycle/exit.rs`.
+Pending exit confirmation is stored in the requesting context, consumed once by
+its command adapter, and never shared with another application context.
+`utils/app/platform.rs` contains build and installation metadata only. Native
+application IDs and tests of Tauri configuration belong to the desktop crate.
+
+HTTP listener and browser-origin formatting belongs to `server/src/web/address.rs`.
+The native tray asks `HttpArgs` for its browser URL so IPv6 brackets, TLS, and
+wildcard-to-loopback conversion follow the same server-owned rules.

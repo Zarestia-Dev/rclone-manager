@@ -9,11 +9,12 @@ fn escape_xml(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
-pub fn register(
+pub async fn register(
     remote: &str,
     path_val: &str,
     name: &str,
     current_exe: &Path,
+    _product: &crate::context::ProductInfo,
 ) -> Result<(), String> {
     let home = get_home_dir()?;
     let workflow_dir = home.join(format!("Library/Services/{name}.workflow"));
@@ -59,7 +60,7 @@ pub fn register(
     Ok(())
 }
 
-pub fn unregister(name: &str) -> Result<(), String> {
+pub fn unregister(name: &str, _product: &crate::context::ProductInfo) -> Result<(), String> {
     let home = get_home_dir()?;
     let workflow_dir = home.join(format!("Library/Services/{name}.workflow"));
     if workflow_dir.exists() {
@@ -69,7 +70,7 @@ pub fn unregister(name: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn is_registered(name: &str) -> Result<bool, String> {
+pub fn is_registered(name: &str, _product: &crate::context::ProductInfo) -> Result<bool, String> {
     let home = get_home_dir()?;
     Ok(home
         .join(format!("Library/Services/{name}.workflow"))

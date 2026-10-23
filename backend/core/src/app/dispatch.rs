@@ -4,6 +4,10 @@ macro_rules! call_internal {
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [infallible]) => {
         $path($app.clone(), $($args.$arg),*).await
     };
+    // Sync + AppHandle + Infallible
+    ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync, infallible]) => {
+        $path($app.clone(), $($args.$arg),*)
+    };
     // Sync + No AppHandle
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync, no_app]) => {
         $path($($args.$arg),*).map_err(command_error)?
@@ -118,6 +122,39 @@ mod tests {
             .unwrap();
         assert_eq!(policy["canInstall"], false);
         assert_eq!(policy["method"], "unavailable");
+    }
+
+    #[tokio::test]
+    async fn pending_exit_dispatch_consumes_only_the_requesting_context() {
+        use crate::services::lifecycle::exit::{
+            ActiveOperationsSummary, set_pending_app_exit_summary,
+        };
+        let app = AppHandle::default();
+        set_pending_app_exit_summary(
+            &app,
+            ActiveOperationsSummary {
+                has_active_operations: true,
+                active_jobs_count: 1,
+                active_mounts_count: 0,
+                active_serves_count: 0,
+            },
+        );
+        assert_eq!(
+            bridge_dispatch(&AppHandle::default(), "check_pending_app_exit", json!({}))
+                .await
+                .unwrap(),
+            json!(null)
+        );
+        let summary = bridge_dispatch(&app, "check_pending_app_exit", json!({}))
+            .await
+            .unwrap();
+        assert_eq!(summary["activeJobsCount"], 1);
+        assert_eq!(
+            bridge_dispatch(&app, "check_pending_app_exit", json!({}))
+                .await
+                .unwrap(),
+            json!(null)
+        );
     }
 
     #[tokio::test]

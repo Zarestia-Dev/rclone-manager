@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Coffre verrouillé",
-      "subtitle": "Entrez votre mot de passe maître pour déverrouiller RClone Manager"
+      "subtitle": "Entrez votre mot de passe maître pour déverrouiller RClone Manager",
+      "awaitingAuthorization": "En attente d’autorisation",
+      "authorizing": "Autorisation en cours…"
     },
     "errors": {
       "passwordsMismatch": "Les mots de passe ne correspondent pas",

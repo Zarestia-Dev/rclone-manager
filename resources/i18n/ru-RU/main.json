@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Хранилище заблокировано",
-      "subtitle": "Введите мастер-пароль для разблокировки RClone Manager"
+      "subtitle": "Введите мастер-пароль для разблокировки RClone Manager",
+      "awaitingAuthorization": "Ожидание авторизации",
+      "authorizing": "Авторизация…"
     },
     "errors": {
       "passwordsMismatch": "Пароли не совпадают",

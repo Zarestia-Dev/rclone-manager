@@ -10,13 +10,22 @@ use windows_sys::Win32::{
     },
 };
 
+// Unix reserves zero and negative PIDs for process groups and broadcast signals.
+#[cfg(unix)]
+fn positive_pid(pid: u32) -> Option<libc::pid_t> {
+    libc::pid_t::try_from(pid).ok().filter(|pid| *pid > 0)
+}
+
 /// Kill a process by PID using platform-specific methods
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     info!("Killing process {pid}");
 
     #[cfg(unix)]
     unsafe {
-        if kill(pid as i32, SIGKILL) == 0 {
+        let native_pid = positive_pid(pid).ok_or_else(|| {
+            crate::localized_error!("backendErrors.request.failed", "error" => format!("Invalid process ID: {pid}"))
+        })?;
+        if kill(native_pid, SIGKILL) == 0 {
             return Ok(());
         }
 
@@ -59,8 +68,11 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
 pub fn is_process_alive(pid: u32) -> bool {
     #[cfg(unix)]
     unsafe {
+        let Some(native_pid) = positive_pid(pid) else {
+            return false;
+        };
         // signal 0 checks existence
-        if kill(pid as i32, 0) == 0 {
+        if kill(native_pid, 0) == 0 {
             return true;
         }
         let errno = std::io::Error::last_os_error().raw_os_error();
@@ -156,4 +168,24 @@ pub fn find_next_available_port(start_port: u16) -> u16 {
         }
     }
     start_port
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn process_ids_cannot_select_groups_or_broadcast_signals() {
+        for pid in [0, i32::MAX as u32 + 1, u32::MAX] {
+            assert_eq!(positive_pid(pid), None);
+            assert!(!is_process_alive(pid));
+        }
+        assert_eq!(positive_pid(1), Some(1));
+        assert_eq!(positive_pid(i32::MAX as u32), Some(i32::MAX));
+    }
+
+    #[test]
+    fn current_process_remains_queryable() {
+        assert!(is_process_alive(std::process::id()));
+    }
 }

@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Vault Locked",
-      "subtitle": "Enter your master password to unlock RClone Manager"
+      "subtitle": "Enter your master password to unlock RClone Manager",
+      "awaitingAuthorization": "Awaiting authorization",
+      "authorizing": "Authorizing…"
     },
     "errors": {
       "passwordsMismatch": "Passwords do not match",

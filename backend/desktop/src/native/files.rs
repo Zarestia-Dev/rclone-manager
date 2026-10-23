@@ -91,17 +91,23 @@ pub async fn get_folder_location(
 
         // On Windows, clean up the empty folder if it exists
         #[cfg(target_os = "windows")]
-        if path.exists() {
-            debug!("Removing existing empty folder on Windows");
-            if let Err(e) = tokio::fs::remove_dir_all(path).await {
-                log::error!("Failed to remove folder: {}", e);
-                return Err(format!("Failed to prepare folder: {}", e));
-            }
+        if let Err(e) = remove_empty_mount_directory(path).await {
+            log::error!("Failed to remove empty mount folder: {e}");
+            return Err(format!("Failed to prepare folder: {e}"));
         }
     }
 
     Ok(Some(folder))
     }).await
+}
+
+// Never recurse: a file may appear after the dialog's emptiness check.
+#[cfg(any(target_os = "windows", test))]
+async fn remove_empty_mount_directory(path: &std::path::Path) -> std::io::Result<()> {
+    match tokio::fs::remove_dir(path).await {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        result => result,
+    }
 }
 
 #[tauri::command]
@@ -293,6 +299,21 @@ async fn create_preview_directory(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn mount_folder_cleanup_preserves_files_added_after_the_empty_check() {
+        let directory = tempfile::tempdir().unwrap();
+        let mount = directory.path().join("mount");
+        tokio::fs::create_dir(&mount).await.unwrap();
+        let file = mount.join("new-file.txt");
+        tokio::fs::write(&file, b"keep").await.unwrap();
+        assert!(remove_empty_mount_directory(&mount).await.is_err());
+        assert_eq!(tokio::fs::read(&file).await.unwrap(), b"keep");
+        tokio::fs::remove_file(file).await.unwrap();
+        remove_empty_mount_directory(&mount).await.unwrap();
+        assert!(!mount.exists());
+        remove_empty_mount_directory(&mount).await.unwrap();
+    }
 
     #[tokio::test]
     async fn unfinished_download_preserves_existing_destination_and_cleans_up() {

@@ -1,4 +1,5 @@
 //! HTTP host. This module never imports native UI or Tauri plugins.
+pub(crate) mod address;
 mod auth;
 mod commands;
 #[cfg(not(debug_assertions))]

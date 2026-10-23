@@ -389,6 +389,9 @@ pub(crate) mod tests {
         assert!(access.is_locked());
         for command in [
             "load_settings",
+            "request_app_exit",
+            "shutdown_app",
+            "check_pending_app_exit",
             "list_workflows",
             "list_quick_runs",
             "get_automations",

@@ -4098,7 +4098,9 @@
     },
     "lockScreen": {
       "title": "Kasa Kilitli",
-      "subtitle": "RClone Manager kilidini açmak için ana parolanızı girin"
+      "subtitle": "RClone Manager kilidini açmak için ana parolanızı girin",
+      "awaitingAuthorization": "Yetkilendirme bekleniyor",
+      "authorizing": "Yetkilendiriliyor…"
     },
     "errors": {
       "passwordsMismatch": "Parolalar eşleşmiyor",

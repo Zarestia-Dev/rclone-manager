@@ -17,17 +17,8 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
                 })
                 .unwrap_or(false);
 
-            #[cfg(feature = "tray")]
-            let tray_enabled = app_handle
-                .backend_try_state::<services::settings::AppSettingsManager>()
-                .and_then(|manager| manager.get_all().ok().map(|s| s.general.tray_enabled))
-                .unwrap_or(false);
-
-            #[cfg(not(feature = "tray"))]
-            let tray_enabled = false;
-
             if _window.label() == "main" {
-                if tray_enabled {
+                if has_visible_tray(app_handle.backend()) {
                     if destroy_on_close {
                         log::debug!("Optimization Enabled: Destroying window to free RAM");
                     } else {
@@ -42,7 +33,7 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
                     api.prevent_close();
                     let app_handle_clone = app_handle.clone();
                     crate::utils::spawn(async move {
-                        let _ = crate::utils::app::platform::request_app_exit(
+                        let _ = crate::services::lifecycle::exit::request_app_exit(
                             app_handle_clone.backend().clone(),
                         )
                         .await;
@@ -62,6 +53,18 @@ pub(super) fn configure(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<t
     })
 }
 
+#[cfg(feature = "tray")]
+fn has_visible_tray(app: &rclone_manager_core::context::AppHandle) -> bool {
+    app.try_state::<crate::desktop::tray::TrayMenuState>()
+        .is_some_and(|state| state.visible.load(std::sync::atomic::Ordering::SeqCst))
+}
+
+// Window close handling also runs in builds without tray support.
+#[cfg(not(feature = "tray"))]
+fn has_visible_tray(_app: &rclone_manager_core::context::AppHandle) -> bool {
+    false
+}
+
 pub(super) fn should_open_main_window(args: &crate::cli::CliArgs) -> bool {
     #[cfg(feature = "tray")]
     if args.tray {
@@ -72,9 +75,34 @@ pub(super) fn should_open_main_window(args: &crate::cli::CliArgs) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::should_open_main_window;
+    use super::{has_visible_tray, should_open_main_window};
     use crate::cli::CliArgs;
     use clap::Parser;
+
+    #[test]
+    fn closing_without_a_tray_cannot_leave_an_unreachable_background_app() {
+        assert!(!has_visible_tray(&Default::default()));
+    }
+
+    #[cfg(feature = "tray")]
+    #[test]
+    fn visible_tray_keeps_the_app_running_when_settings_are_unavailable() {
+        use crate::desktop::tray::TrayMenuState;
+        use std::sync::atomic::Ordering;
+
+        // Vault-protected settings must not be needed for this native decision.
+        let app = rclone_manager_core::context::AppHandle::default();
+        app.manage(TrayMenuState::default());
+        let tray = app.state::<TrayMenuState>();
+        // Failed/absent setup and a hidden tray must not trap a background app.
+        assert!(!has_visible_tray(&app));
+        tray.requested_visible.store(true, Ordering::SeqCst);
+        assert!(!has_visible_tray(&app));
+        tray.visible.store(true, Ordering::SeqCst);
+        assert!(has_visible_tray(&app));
+        tray.visible.store(false, Ordering::SeqCst);
+        assert!(!has_visible_tray(&app));
+    }
 
     #[test]
     fn normal_desktop_startup_opens_its_window() {

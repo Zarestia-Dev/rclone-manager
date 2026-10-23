@@ -78,7 +78,7 @@ fn build_cors_layer(host: &str, port: u16) -> CorsLayer {
     ];
 
     if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost")
-        && let Ok(origin) = format!("http://{host}:{port}").parse()
+        && let Ok(origin) = super::address::browser_origin(host, port, false).parse()
     {
         allowed_origins.push(origin);
     }

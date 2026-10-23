@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Observable, fromEvent, filter, map, Subject, share } from 'rxjs';
+import { Observable, from, fromEvent, filter, map, Subject, share } from 'rxjs';
 import { listen } from '@tauri-apps/api/event';
 import { SseClientService } from '../platform/sse-client.service';
 import {
@@ -54,6 +54,7 @@ import { TauriBaseService } from '../platform/tauri-base.service';
 export class EventListenersService extends TauriBaseService {
   private readonly sseClient = inject(SseClientService);
   private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
+  private appExitListenerReady: Promise<void> = Promise.resolve();
 
   private listenToEvent<T>(eventName: string): Observable<T> {
     let stream = this.tauriEventStreams.get(eventName);
@@ -62,7 +63,10 @@ export class EventListenersService extends TauriBaseService {
         stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
       } else {
         const subject = new Subject<T>();
-        void listen<T>(eventName, event => subject.next(event.payload));
+        const registration = listen<T>(eventName, event => subject.next(event.payload));
+        if (eventName === APP_EXIT_REQUESTED) {
+          this.appExitListenerReady = registration.then(() => undefined);
+        }
         stream = subject.asObservable().pipe(share()) as Observable<unknown>;
       }
       this.tauriEventStreams.set(eventName, stream);
@@ -286,6 +290,10 @@ export class EventListenersService extends TauriBaseService {
 
   listenToAppExitRequested(): Observable<ActiveOperationsSummary> {
     return this.listenToEvent<ActiveOperationsSummary>(APP_EXIT_REQUESTED);
+  }
+
+  whenAppExitListenerReady(): Observable<void> {
+    return from(this.appExitListenerReady);
   }
 
   listenToProvisionProgress(): Observable<ProvisionProgressPayload> {

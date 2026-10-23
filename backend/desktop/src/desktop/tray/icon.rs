@@ -24,6 +24,15 @@ pub enum TrayIconKind {
 
 impl TrayIconKind {
     #[must_use]
+    pub fn inactive(self) -> Self {
+        match self {
+            Self::ColorNormal | Self::ColorActive => Self::ColorNormal,
+            Self::MonoLightNormal | Self::MonoLightActive => Self::MonoLightNormal,
+            Self::MonoDarkNormal | Self::MonoDarkActive => Self::MonoDarkNormal,
+        }
+    }
+
+    #[must_use]
     pub fn resolve(is_active: bool, theme_style: &str) -> Self {
         match theme_style {
             "color" => {
@@ -90,6 +99,18 @@ pub(crate) fn is_system_dark() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn inactive_icons_preserve_the_theme_without_disclosing_activity() {
+        for (active, normal) in [
+            (TrayIconKind::ColorActive, TrayIconKind::ColorNormal),
+            (TrayIconKind::MonoLightActive, TrayIconKind::MonoLightNormal),
+            (TrayIconKind::MonoDarkActive, TrayIconKind::MonoDarkNormal),
+        ] {
+            assert_eq!(active.inactive(), normal);
+            assert_eq!(normal.inactive(), normal);
+        }
+    }
 
     #[test]
     fn test_tray_icon_kind_resolve_fixed_themes() {
