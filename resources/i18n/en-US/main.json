@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Skip Mount Plugin Check",
+        "description": "Skip checking and prompting for mount plugin installation on startup and onboarding"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Flatpak Warning Shown"
       },
+      "mount_warn": {
+        "label": "Mount Driver Warning Shown",
+        "description": "Show warning banner on mount view when mount driver checks are disabled"
+      },
       "dashboard_layout": {
         "label": "Dashboard Layout",
         "description": "Custom layout configuration for the dashboard."
@@ -621,6 +629,12 @@
       "title": "Flatpak Note",
       "subtitle": "Some features may require manual permission adjustments.",
       "learnMore": "Learn more",
+      "dismissTooltip": "Don't show again"
+    },
+    "mountPlugin": {
+      "title": "Mount Driver Check Disabled",
+      "description": "Mount driver check was skipped. Mounting remotes requires a compatible mount driver installed on your system.",
+      "install": "Install Driver",
       "dismissTooltip": "Don't show again"
     },
     "metered": {
@@ -686,7 +700,9 @@
       "import": "Import",
       "export": "Export",
       "preferences": "Preferences",
+      "advanced": "Advanced Settings",
       "flags": "Rclone Flags",
+      "vault": "Vault",
       "fileBrowser": "File Browser",
       "flowWorkspace": "Flow Workspace",
       "shortcuts": "Keyboard Shortcuts",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Initializing RClone Manager",
-    "loadingMessage": "Checking system configuration...",
     "cards": {
       "welcome": {
         "title": "Welcome to RClone Manager",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Install Mount Plugin",
-        "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your Rclone experience."
+        "content": "The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your Rclone experience.",
+        "skipMountTitle": "I won't use mount",
+        "skipMountDesc": "Skip installing mount drivers if you do not plan to mount drives."
       },
       "selectConfig": {
         "title": "Select Rclone Config",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Classic Dashboard",
-        "badge": "Default",
         "description": "Tabbed overview featuring remote connections, active transfers, quick actions, and system status."
       },
       "nautilus": {
         "title": "File Browser (Nautilus)",
-        "badge": "File Manager",
         "description": "Dedicated dual-pane file management interface designed for navigating and transferring remote files."
       },
       "flow": {
         "title": "Flow Workspace",
-        "badge": "Workflows",
         "description": "Interactive visual hub for orchestrating automated jobs, remote quick runs, and pipeline execution."
       }
     },
@@ -856,27 +869,25 @@
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
-        "recent": "Recent ({{count}})",
-        "recentCheck": "Checked ({{count}})"
+        "recent": "Recent ({{count}})"
       },
       "table": {
         "size": "Size",
-        "transferred": "transferred",
-        "alreadyExisted": "already existed"
+        "transferred": "transferred"
       },
       "status": {
         "failed": "Failed",
         "checked": "Checked",
         "partial": "Partial",
         "completed": "Completed",
-        "transferError": "Transfer error",
-        "transferCompleted": "Transfer completed",
         "preparing": "Preparing",
         "finalizing": "Finalizing...",
         "missingDst": "Missing on Destination",
         "missingSrc": "Missing on Source",
         "differ": "File contents differ",
-        "error": "Error"
+        "checking": "Checking",
+        "deleting": "Deleting",
+        "processing": "Processing"
       },
       "actions": {
         "resolveToDst": "Copy to Destination",
@@ -899,12 +910,12 @@
         "resolveFailed": "Failed to resolve file mismatch: {{error}}"
       },
       "empty": {
-        "noActive": "No active transfers",
-        "activeHint": "Transfers will appear here when an operation starts",
-        "noRecent": "No recently completed transfers",
-        "recentHint": "Completed transfers will appear here when jobs finish",
-        "noRecentCheck": "No checked files",
-        "recentHintCheck": "Checked files will appear here when the job completes"
+        "noRecent": "No recent file activity",
+        "recentHint": "Completed file activity appears here as operations run.",
+        "noRecentCheck": "No comparison results to display",
+        "recentHintCheck": "See the job status and check counters for the outcome.",
+        "noActiveActivity": "No active file activity",
+        "waitingActivity": "Waiting for file activity. Some operations do not report individual files."
       },
       "time": {
         "daysAgo": "{{count}} days ago",
@@ -917,7 +928,10 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      }
+      },
+      "titleDelete": "Delete Activity",
+      "titleActivity": "Activity",
+      "loadMore": "Show more"
     },
     "inputModal": {
       "name": "Name",
@@ -1074,6 +1088,35 @@
       },
       "pollIntervalPlaceholder": "Enter poll interval (seconds)"
     },
+    "codeEditor": {
+      "tools": "Editor tools",
+      "find": "Find",
+      "goToLine": "Go to line",
+      "go": "Go",
+      "content": "Code editor",
+      "wrap": "Wrap lines",
+      "lineNumbers": "Line numbers",
+      "readOnly": "Read only",
+      "editing": "Editing",
+      "undo": "Undo",
+      "redo": "Redo",
+      "view": "View",
+      "fontSize": "Font size",
+      "smallerFont": "Decrease font size",
+      "largerFont": "Increase font size",
+      "position": "Line {{line}}, column {{column}}",
+      "previous": "Previous match",
+      "next": "Next match",
+      "caseSensitive": "Match case",
+      "wholeWord": "Whole word",
+      "regexp": "Regular expression",
+      "replace": "Replace",
+      "replaceAll": "Replace all",
+      "invalidRegexp": "Invalid regular expression",
+      "noResults": "No results",
+      "matches": "{{total}} matches",
+      "matchPosition": "{{current}} / {{total}}"
+    },
     "jsonEditor": {
       "noFields": "No fields to display in JSON mode",
       "parseError": "Invalid JSON syntax. Please check your formatting.",
@@ -1145,7 +1188,6 @@
       "apply": "Apply to Field"
     },
     "presets": {
-      "applied": "Default presets applied successfully",
       "noRemoteSelected": "Please select a remote first"
     },
     "remoteConfig": {
@@ -1245,6 +1287,25 @@
           "label": "No Output",
           "description": "Suppress any stdout output from the RC config call"
         }
+      },
+      "providerOverview": {
+        "title": "Provider features",
+        "supportTier": "Rclone support tier (not your storage plan)",
+        "hashes": "Checksums",
+        "noHashes": "No checksum algorithms reported",
+        "features": "Reported capabilities",
+        "noFeatures": "No capabilities reported for this summary",
+        "generalNote": "General provider information from rclone. Actual support may vary with your configuration.",
+        "virtualNote": "Capabilities depend on the underlying remote and configuration.",
+        "documentation": "View rclone feature overview",
+        "copy": "Server-side copy",
+        "move": "Server-side move",
+        "publicLink": "Link sharing",
+        "emptyDirectories": "Empty directories",
+        "caseInsensitive": "Case insensitive names",
+        "duplicateFiles": "Duplicate file names",
+        "readMetadata": "Read metadata",
+        "writeMetadata": "Write metadata"
       }
     },
     "appOperation": {
@@ -1474,6 +1535,7 @@
     "restoreFailed": "Failed to restore backup: {{error}}"
   },
   "updates": {
+    "discardDownload": "Discard download",
     "cancelFailed": "Failed to cancel the update download.",
     "installSuccess": "Update installed. Please restart the app.",
     "checkFailed": "Failed to check for updates: {{error}}",
@@ -1484,7 +1546,7 @@
     "skipVersion": "Update {{version}} will be skipped",
     "confirmApply": {
       "title": "Apply Update",
-      "message": "Do you want to apply the update? The application will restart to apply the changes.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Apply",
       "cancel": "Cancel"
     },
@@ -1520,6 +1582,28 @@
       "metadata": {
         "system": "System Metadata",
         "standard": "Standard Metadata"
+      },
+      "supportInfo": "Rclone's support tier reflects the provider's maintenance and stability.",
+      "providerDocumentation": "Provider documentation",
+      "liveFeatures": "Feature support for this configured remote.",
+      "featureLabels": {
+        "about": "Storage usage",
+        "bucketBased": "Bucket-based storage",
+        "bucketRoot": "Access from storage root",
+        "purge": "Delete directory trees",
+        "dirMove": "Server-side folder move",
+        "cleanUp": "Storage cleanup",
+        "listR": "Recursive listing",
+        "listP": "Paged listing",
+        "putStream": "Streaming upload",
+        "openChunkWriter": "Multipart upload",
+        "openWriterAt": "Random-access upload",
+        "readMimeType": "Read content types",
+        "writeMimeType": "Write content types",
+        "changeNotify": "Change notifications",
+        "setTier": "Change storage tier",
+        "getTier": "Read storage tier",
+        "overlay": "Wraps other remotes"
       }
     },
     "properties": {
@@ -1773,6 +1857,7 @@
       "showShortcuts": "Show Keyboard Shortcuts",
       "openPreferences": "Open Preferences",
       "openFlags": "Open Rclone Flags",
+      "openVault": "Open Vault",
       "forceCheck": "Force Check Mounts",
       "forceCheckServes": "Force Check Served Remotes",
       "newRemoteDetailed": "Create New Remote (Detailed)",
@@ -2009,7 +2094,8 @@
       "entries": "Active Entries",
       "clear": "Clear",
       "cacheCleared": "Cache cleared successfully",
-      "cacheClearFailed": "Failed to clear cache"
+      "cacheClearFailed": "Failed to clear cache",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Failed to fetch application logs.",
@@ -2057,7 +2143,8 @@
       "tabs": {
         "general": "General",
         "core": "Core",
-        "developer": "Developer"
+        "developer": "Developer",
+        "vault": "Vault"
       },
       "aria": {
         "resetAll": "Reset all settings to default values",
@@ -2090,6 +2177,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
+      "vaultWarningTitle": "Configuration Vault is Open",
+      "vaultWarningDesc": "Exported backups do not inherit vault encryption. Use the encryption option below to protect sensitive credentials and configurations with a password.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -2469,7 +2558,9 @@
       "internalStorage": "Internal Storage"
     },
     "bookmarks": {
-      "emptyHint": "No bookmarks"
+      "emptyHint": "No bookmarks",
+      "add": "Add to Bookmarks",
+      "dropHint": "Drop folders here to add bookmarks"
     },
     "sort": {
       "az": "A-Z",
@@ -2575,6 +2666,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Could not open a new window. Your current view has been kept open.",
       "connectionFailed": "Connection Failed",
       "bookmarkRemoteNotFound": "Remote '{{remote}}' for bookmark not found",
       "loadFailed": "Failed to load directory",
@@ -2650,8 +2742,6 @@
       "increaseIconSize": "Increase icon size"
     },
     "notifications": {
-      "mkdirFailed": "Failed to create directory: {{path}}",
-      "uploadStarted": "Starting upload of {{count}} files...",
       "uploadSuccess": "Successfully uploaded {{count}} files.",
       "uploadFailed": "Failed to upload {{count}} files.",
       "trashEmptied": "Cleanup operation completed",
@@ -2721,9 +2811,6 @@
     "resetRemote": {
       "title": "Reset Remote Settings",
       "message": "Are you sure you want to reset ALL settings for {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "Settings for {{name}} have been reset."
     },
     "errors": {
       "generic": "An unexpected error occurred. Please check the logs for more details.",
@@ -2872,10 +2959,10 @@
       "failedToOpen": "Failed to open file manager: {{error}}",
       "diskFull": "Target disk or drive is full. Not enough free disk space available.",
       "fileLocked": "The file is currently locked or in use by another process.",
-      "readOnly": "The target file system is read-only or write-protected."
+      "readOnly": "The target file system is read-only or write-protected.",
+      "ioError": "IO error: {{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "Unsupported platform",
       "downloadCancelled": "Download cancelled by user",
       "mountPluginInstallFailed": "Failed to install mount plugin: {{error}}",
       "mountPluginVerificationFailed": "Installation succeeded but verification failed. Restart may be required.",
@@ -2915,7 +3002,10 @@
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "invalidArchive": "Invalid backup archive format",
       "restoreFailed": "Backup restore failed: {{error}}",
-      "secretRequirePassword": "This backup is protected by a secret and requires a password"
+      "secretRequirePassword": "This backup is protected by a secret and requires a password",
+      "exportFailed": "Backup export failed: {{error}}",
+      "refreshFailed": "Failed to refresh system after backup restore: {{error}}",
+      "restoreIncomplete": "Backup restore was incomplete: {{error}}"
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
@@ -2932,7 +3022,6 @@
       "corruptedTransfer": "File corrupted during transfer or checksum verification failed."
     },
     "cache": {
-      "fetchRemotesFailed": "Failed to fetch remotes",
       "fetchConfigFailed": "Failed to fetch remotes config",
       "refreshMountsFailed": "Failed to refresh mounted remotes",
       "refreshServesFailed": "Failed to refresh serves"
@@ -2967,16 +3056,27 @@
       "relaunchFailed": "Relaunch failed: {{error}}",
       "restartFailed": "Restart failed: {{error}}",
       "notWritable": "Update path is not writable",
-      "ioError": "IO error: {{error}}"
+      "ioError": "IO error: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Failed to load settings: {{error}}",
       "saveFailed": "Failed to save setting: {{error}}",
       "resetFailed": "Failed to reset setting: {{error}}",
       "resetAllFailed": "Failed to reset all settings: {{error}}",
-      "eventEmitFailed": "Failed to emit settings event: {{error}}",
       "subSettingsFailed": "Failed to get sub-settings: {{error}}",
       "deleteFailed": "Failed to delete remote settings: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "Vault password cannot be empty",
+      "notEnabled": "Vault is not enabled",
+      "invalidPassword": "Incorrect vault master password",
+      "operationFailed": "Vault operation failed: {{error}}"
     }
   },
   "backendSuccess": {
@@ -3010,6 +3110,14 @@
       "unencrypted": "Configuration unencrypted successfully",
       "encrypted": "Configuration encrypted successfully",
       "passwordChanged": "Config password changed successfully"
+    },
+    "vault": {
+      "unlocked": "Vault unlocked successfully",
+      "locked": "Vault locked successfully",
+      "enabled": "Vault encryption enabled successfully",
+      "disabled": "Vault encryption disabled successfully",
+      "passwordChanged": "Vault master password changed successfully",
+      "timeoutUpdated": "Auto-lock timeout updated successfully"
     }
   },
   "overviews": {
@@ -3229,7 +3337,6 @@
       "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
       "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
-      "mountPluginStatusError": "Failed to check status",
       "authRequired": "The backend rejected the connection due to an authentication failure.",
       "remoteAuthRequired": "The remote backend rejected the connection due to an authentication failure. Please check your credentials.",
       "portInUse": "Port {{port}} is already occupied by another application or connection. Choose a different port to continue."
@@ -3243,6 +3350,10 @@
       "repairing": "Repairing...",
       "configuring": "Configuring..."
     },
+    "mountPreference": {
+      "title": "I won't use mount",
+      "desc": "Disable mount driver checks if you do not plan to mount drives."
+    },
     "actions": {
       "installRclone": "Install Rclone",
       "installPlugin": "Install Plugin",
@@ -3251,7 +3362,8 @@
       "submitPassword": "Unlock",
       "changePort": "Apply Port & Restart",
       "configureBackend": "Configure Backend",
-      "repair": "Repair"
+      "repair": "Repair",
+      "saveAndClose": "Save & Close"
     },
     "portConfig": {
       "portLabel": "Local Port",
@@ -3435,8 +3547,7 @@
         "delete": "Delete Node",
         "inspectJob": "Inspect Job",
         "duplicateWorkflow": "Duplicate Workflow",
-        "deleteWorkflow": "Delete Workflow",
-        "exportWorkflow": "Export JSON"
+        "deleteWorkflow": "Delete Workflow"
       },
       "canvas": {
         "navigation": "Canvas Navigation",
@@ -3841,6 +3952,8 @@
     "title": "Templates",
     "presetTitle": "Presets & Templates",
     "applyPresets": "Apply Default Presets",
+    "defaultPresets": "Default Presets",
+    "defaultPresetsDesc": "Baseline configuration optimized for this remote type and system.",
     "userTemplates": "Saved User Templates",
     "saveAsTemplate": "Save Current Settings as Template...",
     "manageTemplates": "Manage Templates...",
@@ -3855,6 +3968,7 @@
     "addKey": "Add Key",
     "removeKey": "Remove Key",
     "deleteTemplate": "Delete Template",
+    "deleteConfirm": "Are you sure you want to delete template \"{{name}}\"?",
     "noCatKeys": "No settings in {{category}} configured yet.",
     "visualView": "Visual Inspector",
     "jsonView": "JSON Editor",
@@ -3870,7 +3984,21 @@
     "zeroKeys": "0 keys",
     "applySuccess": "Template \"{{name}}\" applied successfully.",
     "savedSuccess": "Template \"{{name}}\" saved successfully.",
-    "deletedSuccess": "Template deleted successfully."
+    "deletedSuccess": "Template deleted successfully.",
+    "applyModalTitle": "Apply Template",
+    "applyStrategy": "Application Strategy",
+    "strategyOverwrite": "Overwrite all values",
+    "strategyOverwriteDesc": "Template settings replace existing values in the form",
+    "strategyFillEmpty": "Only fill empty fields",
+    "strategyFillEmptyDesc": "Preserves existing values and only applies missing ones",
+    "addedCount": "{{count}} to add",
+    "modifiedCount": "{{count}} to change",
+    "unchangedCount": "{{count}} unchanged",
+    "diffCurrent": "Current",
+    "diffNew": "New",
+    "apply": "Apply Template",
+    "noChangesDetected": "All settings in this template already match your current values.",
+    "selectCategoriesToApply": "Categories & Settings"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -3951,6 +4079,60 @@
         "false": "Disabled (false)",
         "unset": "Unset"
       }
+    }
+  },
+  "vault": {
+    "title": "Configuration Vault",
+    "description": "Protect your configurations, credentials, and sub-settings at rest using AES-256-GCM encryption.",
+    "status": {
+      "protected": "Protected",
+      "unprotected": "Unprotected"
+    },
+    "actions": {
+      "lockNow": "Lock Vault",
+      "unlock": "Unlock Vault",
+      "enable": "Enable Vault",
+      "disable": "Disable Vault",
+      "updatePassword": "Change Password"
+    },
+    "enable": {
+      "title": "Enable Vault Protection",
+      "description": "Enter a master password to encrypt your application settings and sub-settings. You will need this password to unlock the application."
+    },
+    "changePassword": {
+      "title": "Change Master Password"
+    },
+    "disable": {
+      "title": "Disable Vault Protection",
+      "warning": "Disabling the vault will store settings and configurations in unencrypted plain text on disk."
+    },
+    "settings": {
+      "autoLockTitle": "Auto-Lock Timeout",
+      "autoLockDesc": "Automatically lock the vault after a period of inactivity."
+    },
+    "fields": {
+      "masterPassword": "Master Password",
+      "confirmPassword": "Confirm Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "autoLockTimeout": "Auto-lock after"
+    },
+    "timeout": {
+      "never": "Never",
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 hour"
+    },
+    "lockScreen": {
+      "title": "Vault Locked",
+      "subtitle": "Enter your master password to unlock RClone Manager",
+      "awaitingAuthorization": "Awaiting authorization",
+      "authorizing": "Authorizing…"
+    },
+    "errors": {
+      "passwordsMismatch": "Passwords do not match",
+      "unlockFailed": "Failed to unlock vault"
     }
   }
 }
