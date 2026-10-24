@@ -3,18 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
 import { InputModalComponent, InputModalData } from './input-modal.component';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 
 describe('InputModalComponent', () => {
   let fixture: ComponentFixture<InputModalComponent>;
   let component: InputModalComponent;
   let dialogRefSpy: { close: ReturnType<typeof vi.fn> };
-  let pathServiceSpy: { getFilename: ReturnType<typeof vi.fn> };
-  let validatorRegistrySpy: {
-    createUniqueNameValidator: ReturnType<typeof vi.fn>;
-    createForbiddenCharsValidator: ReturnType<typeof vi.fn>;
-  };
 
   const defaultMockData: InputModalData = {
     title: 'Create Folder',
@@ -26,13 +19,6 @@ describe('InputModalComponent', () => {
 
   async function setupTestBed(data: InputModalData = defaultMockData): Promise<void> {
     dialogRefSpy = { close: vi.fn() };
-    pathServiceSpy = {
-      getFilename: vi.fn((p: string) => p.split('/').pop() || ''),
-    };
-    validatorRegistrySpy = {
-      createUniqueNameValidator: vi.fn().mockReturnValue(() => null),
-      createForbiddenCharsValidator: vi.fn().mockReturnValue(() => null),
-    };
 
     await TestBed.configureTestingModule({
       imports: [InputModalComponent],
@@ -40,8 +26,6 @@ describe('InputModalComponent', () => {
         provideTranslateService(),
         { provide: MatDialogRef, useValue: dialogRefSpy },
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: PathService, useValue: pathServiceSpy },
-        { provide: ValidatorRegistryService, useValue: validatorRegistrySpy },
       ],
     }).compileComponents();
 
@@ -82,6 +66,39 @@ describe('InputModalComponent', () => {
       component.onCancel();
       expect(dialogRefSpy.close).toHaveBeenCalledWith(null);
     });
+  });
+
+  it.each(['folder/name', 'remote:name', ''])('rejects invalid folder name %s', async name => {
+    await setupTestBed();
+    component.form.get('single')?.setValue(name);
+    fixture.componentRef.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(component.form.invalid).toBe(true);
+    const submit = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+    expect(submit?.disabled).toBe(true);
+    submit?.click();
+    expect(dialogRefSpy.close).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate names while accepting a unique name with special characters', async () => {
+    await setupTestBed({ ...defaultMockData, existingNames: ['Archive'] });
+    const control = component.form.get('single');
+    control?.setValue(' archive ');
+    expect(control?.hasError('alreadyExists')).toBe(true);
+    fixture.componentRef.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    const submit = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+    expect(submit?.disabled).toBe(true);
+    submit?.click();
+    expect(dialogRefSpy.close).not.toHaveBeenCalled();
+
+    control?.setValue('Arşiv 2026');
+    component.onConfirm();
+    expect(dialogRefSpy.close).toHaveBeenCalledWith('Arşiv 2026');
   });
 
   describe('Initialization with multiple fields (copy URL)', () => {

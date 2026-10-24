@@ -1,3 +1,4 @@
+import { VaultService } from '../../services/security/vault.service';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
@@ -22,36 +23,46 @@ class TestHostComponent {}
 
 describe('ShortcutHandlerDirective', () => {
   let fixture: ComponentFixture<TestHostComponent>;
-  let modalServiceSpy: { openKeyboardShortcuts: ReturnType<typeof vi.fn> };
+  let modalServiceSpy: {
+    openKeyboardShortcuts: ReturnType<typeof vi.fn>;
+    openVault: ReturnType<typeof vi.fn>;
+  };
   let windowServiceSpy: { quitApplication: ReturnType<typeof vi.fn> };
   let nautilusServiceSpy: {
     toggleNautilusOverlay: ReturnType<typeof vi.fn>;
     isBrowserOverlayOpen: ReturnType<typeof vi.fn>;
   };
   let flowOverlayServiceSpy: {
-    isFlowOverlayOpen: ReturnType<typeof vi.fn>;
-    toggleFlowOverlay: ReturnType<typeof vi.fn>;
+    isOpen: ReturnType<typeof vi.fn>;
+    toggleOverlay: ReturnType<typeof vi.fn>;
   };
   let matDialogSpy: { openDialogs: unknown[] };
-  let onboardingStateServiceSpy: { isOnboardingActive: ReturnType<typeof vi.fn> };
+  let onboardingStateServiceSpy: { isCompleted: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    modalServiceSpy = { openKeyboardShortcuts: vi.fn() };
+    modalServiceSpy = {
+      openKeyboardShortcuts: vi.fn(),
+      openVault: vi.fn(),
+    };
     windowServiceSpy = { quitApplication: vi.fn().mockResolvedValue(undefined) };
     nautilusServiceSpy = {
       toggleNautilusOverlay: vi.fn(),
       isBrowserOverlayOpen: vi.fn().mockReturnValue(false),
     };
     flowOverlayServiceSpy = {
-      isFlowOverlayOpen: vi.fn().mockReturnValue(false),
-      toggleFlowOverlay: vi.fn(),
+      isOpen: vi.fn().mockReturnValue(false),
+      toggleOverlay: vi.fn(),
     };
     matDialogSpy = { openDialogs: [] };
-    onboardingStateServiceSpy = { isOnboardingActive: vi.fn().mockReturnValue(false) };
+    onboardingStateServiceSpy = { isCompleted: vi.fn().mockReturnValue(true) };
 
     await TestBed.configureTestingModule({
       imports: [TestHostComponent],
       providers: [
+        {
+          provide: VaultService,
+          useValue: { isAccessible: (): boolean => true },
+        },
         provideTranslateService(),
         { provide: ModalService, useValue: modalServiceSpy },
         { provide: WindowService, useValue: windowServiceSpy },
@@ -108,6 +119,32 @@ describe('ShortcutHandlerDirective', () => {
     expect(nautilusServiceSpy.toggleNautilusOverlay).toHaveBeenCalled();
   });
 
+  it('blocks ordinary shortcuts until onboarding completes while allowing quit', () => {
+    onboardingStateServiceSpy.isCompleted.mockReturnValue(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+    expect(nautilusServiceSpy.toggleNautilusOverlay).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', ctrlKey: true }));
+    expect(windowServiceSpy.quitApplication).toHaveBeenCalledOnce();
+
+    onboardingStateServiceSpy.isCompleted.mockReturnValue(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+    expect(nautilusServiceSpy.toggleNautilusOverlay).toHaveBeenCalledOnce();
+  });
+
+  it('triggers openVault on Ctrl+Alt+V', () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'v',
+      ctrlKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+    expect(modalServiceSpy.openVault).toHaveBeenCalled();
+  });
+
   it('opens main shortcuts modal on Ctrl+? when neither flow nor nautilus is open', () => {
     const event = new KeyboardEvent('keydown', {
       key: '?',
@@ -121,7 +158,7 @@ describe('ShortcutHandlerDirective', () => {
   });
 
   it('opens flow shortcuts modal on Ctrl+? when flow overlay is open', () => {
-    flowOverlayServiceSpy.isFlowOverlayOpen.mockReturnValue(true);
+    flowOverlayServiceSpy.isOpen.mockReturnValue(true);
 
     const event = new KeyboardEvent('keydown', {
       key: '?',

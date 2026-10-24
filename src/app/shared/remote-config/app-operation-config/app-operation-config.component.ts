@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -13,6 +14,7 @@ import {
 } from '@angular/core';
 
 import { NgTemplateOutlet } from '@angular/common';
+import { merge } from 'rxjs';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 
 import { MatButtonModule } from '@angular/material/button';
@@ -35,6 +37,8 @@ import {
   CORE_SYNC_OPS,
   MULTI_SOURCE_OPS,
   FILE_SOURCE_OPS,
+  type PathGroup,
+  type PathInspectionStatus,
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -44,11 +48,7 @@ import {
   PathSelectionService,
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
-import {
-  PathService,
-  PathGroup,
-  PathInspectionStatus,
-} from 'src/app/services/infrastructure/platform/path.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PathInspectionService } from 'src/app/services/infrastructure/platform/path-inspection.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
@@ -56,6 +56,7 @@ import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/ale
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -91,6 +92,7 @@ interface PathItem {
     CdkOverlayAutoposDirective,
     UrlPreviewComponent,
   ],
+  providers: [PathSelectionService],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,6 +116,7 @@ export class OperationConfigComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+  private readonly configSearch = inject(ConfigSearchService);
 
   readonly fullDestPath = computed(() => {
     this.formVersion();
@@ -165,19 +168,20 @@ export class OperationConfigComponent {
   );
 
   private readonly formVersion = signal<number>(0);
+  private readonly pathVersion = signal(0);
 
   readonly isWatchSupported = computed(
     () => this.backendService.isLocalBackend() && this.isOperationInList(WATCH_SUPPORTED_OPS)
   );
 
   readonly sourceItems = computed(() => {
-    this.formVersion();
+    this.pathVersion();
     this.opFormGroup();
     return this.getPathItems('source');
   });
 
   readonly destItem = computed(() => {
-    this.formVersion();
+    this.pathVersion();
     this.opFormGroup();
     return this.getPathItems('dest')[0] ?? null;
   });
@@ -205,33 +209,42 @@ export class OperationConfigComponent {
   private readonly inspectionTokens = new Map<string, number>();
   private readonly lastInspectedPaths = new Map<string, string>();
   private pathResolveToken = 0;
-  private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
-
-  private matchesSearch(keywords: string[]): boolean {
-    const terms = this.searchTerms();
-    return (terms.length === 1 && !terms[0]) || keywords.some(k => terms.some(t => k.includes(t)));
+  private readonly generatedDefaultPaths = new WeakMap<
+    FormControl,
+    { path: string; context: string }
+  >();
+  private matchesSearch(keywords: string[], translationKeys: string[] = []): boolean {
+    return this.configSearch.matchesText(this.searchQuery(), keywords, translationKeys);
   }
 
   readonly showAutoStart = computed(
     () =>
       this.showAutomations() &&
-      !this.isNewRemote() &&
-      this.matchesSearch(['auto', 'start', 'enable'])
+      this.matchesSearch(['auto', 'start', 'enable'], ['wizards.appOperation.enableAutoStart'])
   );
   readonly showCronSection = computed(
     () =>
       this.showAutomations() &&
-      !this.isNewRemote() &&
-      this.matchesSearch([
-        'cron',
-        'schedule',
-        'automation',
-        'watch',
-        'real-time',
-        'realtime',
-        'monitor',
-        'filesystem',
-      ])
+      this.matchesSearch(
+        [
+          'cron',
+          'schedule',
+          'automation',
+          'watch',
+          'real-time',
+          'realtime',
+          'monitor',
+          'filesystem',
+        ],
+        [
+          'wizards.appOperation.enableScheduled',
+          'wizards.appOperation.scheduleSubtitle',
+          'wizards.appOperation.scheduleDescription',
+          'wizards.appOperation.enableWatch',
+          'wizards.appOperation.watchDelay',
+          'wizards.appOperation.watchChangedOnly',
+        ]
+      )
   );
   readonly isMobilePlatform = computed(() => isMobile());
   readonly selectedMountType = computed(() => {
@@ -255,12 +268,20 @@ export class OperationConfigComponent {
       this.selectedMountType() !== 'saf'
   );
   readonly showWatchSection = computed(() => this.isWatchSupported() && this.showCronSection());
-  readonly showSourcePath = computed(() => this.matchesSearch(['source', 'path', 'origin']));
+  readonly showSourcePath = computed(() =>
+    this.matchesSearch(
+      ['source', 'path', 'origin'],
+      ['wizards.appOperation.sourcePaths', 'wizards.appOperation.remotePathServe']
+    )
+  );
   readonly showDestPath = computed(
     () =>
       !['serve', 'delete'].includes(this.operationType() as string) &&
       !(this.isMount() && this.isLocalMobileSafMount()) &&
-      this.matchesSearch(['dest', 'output', 'target'])
+      this.matchesSearch(
+        ['dest', 'destination', 'path', 'output', 'target'],
+        ['wizards.appOperation.destinationPath']
+      )
   );
 
   readonly canAddSource = computed(() => this.isOperationInList(MULTI_SOURCE_OPS));
@@ -323,6 +344,15 @@ export class OperationConfigComponent {
       const sub = form.valueChanges.subscribe(() => this.formVersion.update((v: number) => v + 1));
       onCleanup(() => sub.unsubscribe());
     });
+    effect(onCleanup => {
+      const form = this.opFormGroup();
+      const paths = ['source', 'dest'].flatMap(key => {
+        const control = form.get(key);
+        return control ? [control.valueChanges] : [];
+      });
+      const sub = merge(...paths).subscribe(() => this.pathVersion.update(v => v + 1));
+      onCleanup(() => sub.unsubscribe());
+    });
     effect(() => {
       if (this.isMount() && this.isLocalMobileSafMount()) {
         const dest = this.destItem();
@@ -335,10 +365,16 @@ export class OperationConfigComponent {
     effect(() => {
       const type = this.operationType();
       const rName = this.currentRemoteName()?.trim();
-      const isNew = this.isNewRemote();
       const form = this.opFormGroup();
+      const dest = this.destItem();
+      const token = ++this.pathResolveToken;
 
-      if (!isNew || !rName || (type !== 'mount' && type !== 'bisync')) {
+      if (
+        !rName ||
+        form.disabled ||
+        dest?.type !== 'local' ||
+        (type !== 'mount' && type !== 'bisync')
+      ) {
         return;
       }
 
@@ -349,17 +385,30 @@ export class OperationConfigComponent {
 
       const dstCtrl = form.get('dest') as FormGroup | null;
       const pathCtrl = dstCtrl?.get('path') as FormControl | null;
-      if (!dstCtrl || !pathCtrl || !pathCtrl.pristine) {
+      if (
+        !dstCtrl ||
+        !pathCtrl ||
+        !pathCtrl.pristine ||
+        (pathCtrl.value && this.generatedDefaultPaths.get(pathCtrl)?.path !== pathCtrl.value)
+      ) {
         return;
       }
 
-      const token = ++this.pathResolveToken;
+      const context = `${type}:${rName}`;
+      if (pathCtrl.value && this.generatedDefaultPaths.get(pathCtrl)?.context === context) return;
       this.pathInspectionService
         .resolveDefaultPath(rName, type as 'mount' | 'bisync')
         .then(defaultPath => {
           if (token !== this.pathResolveToken) return;
-          if (pathCtrl.pristine && pathCtrl.value !== defaultPath) {
-            dstCtrl.patchValue({ type: 'local', path: defaultPath });
+          if (
+            !this.destroyRef.destroyed &&
+            !form.disabled &&
+            pathCtrl.pristine &&
+            (!pathCtrl.value || this.generatedDefaultPaths.get(pathCtrl)?.path === pathCtrl.value)
+          ) {
+            this.generatedDefaultPaths.set(pathCtrl, { path: defaultPath, context });
+            if (pathCtrl.value !== defaultPath)
+              dstCtrl.patchValue({ type: 'local', path: defaultPath });
           }
         })
         .catch(err => console.warn(`[OperationConfig] resolveDefaultPath(${type}) failed:`, err));
@@ -450,6 +499,13 @@ export class OperationConfigComponent {
       const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
 
       untracked(() => {
+        const activeKeys = new Set(items.map(item => `${item.group}-${item.index}`));
+        for (const [key, status] of this.pathInspectionStatuses) {
+          if (!activeKeys.has(key)) {
+            this.cancelAndClearInspection(key, status);
+            this.pathInspectionStatuses.delete(key);
+          }
+        }
         for (const item of items) {
           const itemKey = `${item.group}-${item.index}`;
           if (needsInspection && item.type === 'local') {
@@ -467,6 +523,8 @@ export class OperationConfigComponent {
     });
 
     this.destroyRef.onDestroy(() => {
+      this.pathResolveToken++;
+      this.inspectionTokens.forEach((token, key) => this.inspectionTokens.set(key, token + 1));
       this.clearAutocomplete();
       this.inspectionDebounceTimers.forEach(timer => clearTimeout(timer));
       this.inspectionDebounceTimers.clear();
@@ -484,9 +542,9 @@ export class OperationConfigComponent {
     return (controls as FormGroup[]).filter(Boolean).map((control, index) => {
       const typeValue =
         control.get('type')?.value || (group === 'source' ? 'currentRemote' : 'local');
-      const pathType = this.pathService.parsePathType(typeValue);
+      const pathType = pathUtils.parsePathType(typeValue);
       const remoteName =
-        this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
+        pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
       const pathControl = control.get('path') as FormControl;
 
       const itemKey = `${group}-${index}`;
@@ -519,6 +577,7 @@ export class OperationConfigComponent {
       clearTimeout(existingTimer);
       this.inspectionDebounceTimers.delete(itemKey);
     }
+    this.inspectionTokens.set(itemKey, (this.inspectionTokens.get(itemKey) ?? 0) + 1);
     this.lastInspectedPaths.delete(itemKey);
     if (statusSignal() !== null) {
       statusSignal.set(null);
@@ -533,13 +592,7 @@ export class OperationConfigComponent {
   ): void {
     const trimmedPath = path?.trim() || '';
     if (!trimmedPath) {
-      const existingTimer = this.inspectionDebounceTimers.get(itemKey);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-        this.inspectionDebounceTimers.delete(itemKey);
-      }
-      this.lastInspectedPaths.delete(itemKey);
-      statusSignal.set(null);
+      this.cancelAndClearInspection(itemKey, statusSignal);
       return;
     }
 
@@ -579,10 +632,10 @@ export class OperationConfigComponent {
         .catch(() => {
           if (this.inspectionTokens.get(itemKey) === token) {
             statusSignal.set({
-              state: 'willCreate',
-              icon: 'folder-plus',
-              badgeClass: 'will-create',
-              labelKey: 'remoteConfig.pathStatus.willCreate',
+              state: 'unavailable',
+              icon: 'warning',
+              badgeClass: 'non-empty',
+              labelKey: 'common.error',
             });
           }
         });
@@ -593,16 +646,14 @@ export class OperationConfigComponent {
 
   setType(item: PathItem, typeValue: string): void {
     if (item.typeControl.value === typeValue) return;
+    this.opFormGroup().markAsDirty();
 
     item.typeControl.setValue(typeValue);
     item.pathControl.setValue('', { emitEvent: false });
     item.pathControl.updateValueAndValidity();
 
     if (typeValue.startsWith('otherRemote:')) {
-      const remoteName = this.pathService.getRemoteNameFromValue(
-        typeValue,
-        this.currentRemoteName()
-      );
+      const remoteName = pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName());
       item.control.get('remote')?.setValue(remoteName, { emitEvent: false });
     } else {
       item.control.get('remote')?.setValue('', { emitEvent: false });
@@ -630,6 +681,7 @@ export class OperationConfigComponent {
       controls['filename'] = new FormControl(initial?.filename ?? '');
     }
 
+    array.markAsDirty();
     array.push(new FormGroup(controls));
     this.formVersion.update(v => v + 1);
   }
@@ -637,6 +689,7 @@ export class OperationConfigComponent {
   removePath(group: PathDirection, index: number): void {
     const array = this.opFormGroup().get(group) as FormArray;
     if (!array || (group === 'source' && array.length <= 1)) return;
+    this.opFormGroup().markAsDirty();
 
     array.removeAt(index);
     this.pathSelectionService.unregisterField(`${group}-${index}`);
@@ -669,6 +722,7 @@ export class OperationConfigComponent {
           : await this.fileSystemService.selectFolder(requireEmpty, item.pathControl.value);
 
       if (selected) {
+        this.opFormGroup().markAsDirty();
         item.pathControl.setValue(selected);
         item.typeControl.setValue('local');
         item.control.get('remote')?.setValue('');
@@ -691,6 +745,7 @@ export class OperationConfigComponent {
     });
 
     if (!result.cancelled && result.items.length > 0) {
+      this.opFormGroup().markAsDirty();
       result.items.forEach((res, i) => {
         const data = this.getPathData(res, item.group);
         if (!data) return;
@@ -711,7 +766,7 @@ export class OperationConfigComponent {
     const remote = restrict ? this.currentRemoteName() : item.remoteName;
     if (!remote) return undefined;
     return item.pathControl.value
-      ? this.pathService.joinPath(`${remote}:`, item.pathControl.value)
+      ? pathUtils.joinPath(`${remote}:`, item.pathControl.value)
       : `${remote}:`;
   }
 
@@ -764,6 +819,7 @@ export class OperationConfigComponent {
   }
 
   onPathSelected(entryName: string, item: PathItem): void {
+    this.opFormGroup().markAsDirty();
     this.pathSelectionService.selectEntry(
       `${item.group}-${item.index}`,
       entryName,
@@ -772,10 +828,12 @@ export class OperationConfigComponent {
   }
 
   goUp(item: PathItem): void {
+    this.opFormGroup().markAsDirty();
     this.pathSelectionService.navigateUp(`${item.group}-${item.index}`, item.pathControl);
   }
 
   onCronChange(cron: string | null): void {
+    this.opFormGroup().markAsDirty();
     this.opFormGroup().get('cronExpression')?.setValue(cron);
   }
 
@@ -784,6 +842,7 @@ export class OperationConfigComponent {
   }
 
   clearSchedule(): void {
+    this.opFormGroup().markAsDirty();
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
   }

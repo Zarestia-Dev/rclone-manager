@@ -1,3 +1,4 @@
+import { VaultService } from '../../services/security/vault.service';
 import { Directive, HostListener, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
@@ -12,13 +13,18 @@ import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-sta
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
-import { isInputFocused, matchesShortcut } from '../utils/keyboard-utils';
-import { MAIN_SHORTCUTS } from '../models/shortcut-definitions';
+import {
+  findKeyboardShortcutTarget,
+  isInputFocused,
+  matchesShortcut,
+} from '../utils/keyboard-utils';
+import { MAIN_SHORTCUTS, getShortcutsForContext } from '../models/shortcut-definitions';
 
 @Directive({
   selector: '[appShortcutHandler]',
 })
 export class ShortcutHandlerDirective {
+  private readonly vaultService = inject(VaultService);
   private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly modalService = inject(ModalService);
@@ -43,12 +49,14 @@ export class ShortcutHandlerDirective {
     'app.exportConfiguration': () => this.exportConfiguration(),
     'app.openPreferences': () => this.openPreferences(),
     'app.openFlags': () => this.openRcloneFlags(),
+    'app.openVault': () => this.openVault(),
     'app.openAlerts': () => this.openAlerts(),
     'app.toggleFlowOverlay': () => this.toggleFlowOverlay(),
   };
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.isComposing) return;
     // Skip if typing in input fields (except for critical shortcuts)
     if (isInputFocused(event) && !this.isCriticalShortcut(event)) {
       return;
@@ -56,6 +64,14 @@ export class ShortcutHandlerDirective {
 
     // Block shortcuts if any modal is open or onboarding is active
     if (this.shouldBlockShortcuts(event)) {
+      return;
+    }
+
+    // Let the active file browser own its shortcuts, including Ctrl+R.
+    if (
+      getShortcutsForContext('nautilus').some(shortcut => matchesShortcut(shortcut.keys, event)) &&
+      findKeyboardShortcutTarget(event, 'app-nautilus')
+    ) {
       return;
     }
 
@@ -96,7 +112,10 @@ export class ShortcutHandlerDirective {
     }
 
     return (
-      this.isFileViewerOpen() || this.dialog.openDialogs.length > 0 || this.isOnboardingActive()
+      !this.vaultService.isAccessible() ||
+      this.isFileViewerOpen() ||
+      this.dialog.openDialogs.length > 0 ||
+      !this.onboardingStateService.isCompleted()
     );
   }
 
@@ -112,13 +131,6 @@ export class ShortcutHandlerDirective {
    */
   private isFileViewerOpen(): boolean {
     return document.querySelector('app-file-viewer-modal') !== null;
-  }
-
-  /**
-   * Check if onboarding is currently active using centralized service
-   */
-  private isOnboardingActive(): boolean {
-    return this.onboardingStateService.isOnboardingActive();
   }
 
   private async quitApplication(): Promise<void> {
@@ -160,7 +172,7 @@ export class ShortcutHandlerDirective {
   }
 
   private showKeyboardShortcuts(): void {
-    if (this.flowOverlayService.isFlowOverlayOpen()) {
+    if (this.flowOverlayService.isOpen()) {
       this.modalService.openKeyboardShortcuts({ context: 'flow' });
     } else if (this.nautilusService.isBrowserOverlayOpen()) {
       this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
@@ -193,11 +205,15 @@ export class ShortcutHandlerDirective {
     this.modalService.openRcloneFlags();
   }
 
+  private openVault(): void {
+    this.modalService.openVault();
+  }
+
   private openAlerts(): void {
     this.modalService.openAlerts();
   }
 
   private toggleFlowOverlay(): void {
-    this.flowOverlayService.toggleFlowOverlay();
+    this.flowOverlayService.toggleOverlay();
   }
 }

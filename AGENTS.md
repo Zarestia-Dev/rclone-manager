@@ -11,7 +11,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
 `rclone-manager` is a cross-platform GUI and web server application for managing [Rclone](https://rclone.org).
 
 - **Frontend**: Angular (v22+), TypeScript, SCSS, RxJS, Angular Material.
-- **Backend**: Rust, Tauri v2 (`src-tauri`), `librclone` C-FFI / Go integration.
+- **Backend**: Rust, Tauri v2 (`backend/desktop`), `librclone` C-FFI / Go integration.
 
 ---
 
@@ -53,7 +53,7 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
 6. **Internationalization & Backend Error Architecture (CRITICAL)**
    - **Unified Resource Directory**: All translation files reside in `resources/i18n/{lang}/` (`main.json`, `rclone.json`, `rclone-providers.json`). Do not split or duplicate translation files across other directories.
    - **Frontend Static Asset Serving**: Angular loads translations via `MultiFileLoader` from static assets (`assets/i18n/...` mapped in `angular.json`).
-   - **Backend Minimal Memory Footprint**: The Rust backend (`src-tauri/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`, `backendErrors`).
+   - **Backend Minimal Memory Footprint**: The Rust backend (`backend/core/src/utils/i18n.rs`) only reads `main.json` and caches only keys needed for OS integrations (`tray`, `notification`, `powerInhibitor`, `alerts`, `backendErrors`).
    - **Language-Agnostic Backend Errors**: Rust code must **never** pre-translate error messages. Always use `localized_error!("backendErrors.<category>.<key>", ...)` or `localized_success!("backendSuccess.<category>.<key>", ...)`, producing structured `{ key, params }` JSON or raw keys for `BackendTranslationService` on the frontend.
 
 7. **Platform & Tauri Target Abstraction (CRITICAL)**
@@ -77,9 +77,9 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
       - **DO NOT** call `this.listenToEvent(...)` or import `@tauri-apps/api/event` directly in components or domain services. Bypassing `EventListenersService` causes duplicate Tauri IPC listeners and separate SSE pipelines.
       - **ALWAYS** define event name constants and structured payload interfaces in `src/app/shared/types/events.ts` (re-exported from `@app/types`). Every method in `EventListenersService` must return a strongly-typed `Observable<T>`.
     - **Backend Event Emission & Headless SSE Parity (Rust)**:
-      - All event strings **MUST** be declared as constants in `src-tauri/src/utils/types/events.rs` with docstrings identifying emitting sources and consuming listeners.
-      - Any event intended for frontend consumption across desktop and headless modes **MUST** be included in `SSE_FORWARD_EVENTS` in `src-tauri/src/utils/types/events.rs`.
-      - Internal backend listeners for system integration (tray re-render, power inhibition, engine restarts) **MUST** be registered inside `src-tauri/src/core/event_listener.rs`.
+      - All event strings **MUST** be declared as constants in `backend/core/src/utils/types/events.rs` with docstrings identifying emitting sources and consuming listeners.
+      - Any event intended for frontend consumption across desktop and headless modes **MUST** be included in `SSE_FORWARD_EVENTS` in `backend/core/src/utils/types/events.rs`.
+      - Internal backend listeners for system integration (tray re-render, power inhibition, engine restarts) **MUST** be registered inside `backend/core/src/services/event_listener.rs`.
 
 11. **Drag & Drop / HTML5 Drag Prohibition in UI (CRITICAL)**
     - **DO NOT** use the native HTML5 Drag and Drop API (`draggable="true"`, `(dragstart)`, `(dragover)`, `(drop)`, `event.dataTransfer`) for internal UI dragging interactions.
@@ -127,6 +127,16 @@ RClone Manager welcomes AI-assisted contributions, but the expectation is that y
     - **DO NOT** use raw `tokio::spawn` directly in production code: calling `tokio::spawn` outside of Tokio worker threads (e.g. inside `setup` hooks, GUI thread event listeners, or OS callbacks) panics with `"there is no reactor running"`. `crate::utils::spawn` dynamically registers the Tokio runtime context on the calling thread and returns a native `tokio::task::JoinHandle`.
     - **DO NOT** use `tauri::async_runtime::spawn` or `tauri::async_runtime::JoinHandle`.
 
+15. **Zero-Dependency Semantic Version Comparison (Rust)**
+    - **DO NOT** add external crates (such as `semver`) to backend dependencies for version checking and comparisons.
+    - **ALWAYS** use the built-in, lightweight version comparison functions (`is_version_newer`, `clean_app_version`) from `crate::utils::version` (`backend/core/src/utils/version.rs`).
+    - **DO NOT** use raw lexicographical string comparison (`>` or `<`) on version strings, because alphabetical sorting misjudges multi-digit numbers (e.g. `"0.3.10" < "0.3.4"`). The built-in parser compares `major.minor.patch` numbers as integers and correctly respects pre-release tags (`beta.x`).
+
+16. **Default Profile Name (CRITICAL)**
+    - **ALWAYS** use the shared `DEFAULT_PROFILE_NAME` constant from `src/app/shared/types/remote-config.ts` (re-exported from `@app/types`) when creating, selecting, or resolving a default profile in frontend code.
+    - **DO NOT** hardcode `'Default'` or `'default'` as a default profile name, define local aliases, or duplicate the constant. For example, use `cfg?.app?.backendProfile || DEFAULT_PROFILE_NAME`.
+    - Preserve explicitly stored profile names, including legacy lowercase names; use the constant only for the default fallback.
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))
@@ -171,37 +181,38 @@ npm run test:ci
 
 ### 2. Backend (Rust / Tauri)
 
-All Cargo commands are executed from the `src-tauri` directory.
+Rust lives in the `backend` Cargo workspace: `core` (shared), `server` (HTTP), and `desktop` (Tauri/mobile). The following commands run from the repository root.
 
 > **Note on `LIBRCLONE_SKIP_LINK_CHECK`**:
 > When `librclone.a` / Go toolchain is not compiled locally, set `export LIBRCLONE_SKIP_LINK_CHECK=1` so Clippy can type-check Rust without linking errors.
 
 ```bash
 # 1. Clippy check - Desktop target
-cd src-tauri && cargo clippy --features desktop --no-default-features -- -D warnings
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features -- -D warnings
 
 # 2. Clippy check - Web Server target
 mkdir -p dist/rclone-manager/browser
-cd src-tauri && TAURI_CONFIG=$(cat ./tauri.conf.headless.json) cargo clippy --features web-server --no-default-features -- -D warnings
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager-server -- -D warnings
 
 # 3. Clippy check - Mobile target
-cd src-tauri && cargo clippy --features mobile --no-default-features -- -D warnings
+cargo clippy --manifest-path backend/Cargo.toml -p rclone-manager --features mobile --no-default-features -- -D warnings
 
 # 4. Rust formatting check
-cd src-tauri && cargo fmt -- --check
+cargo fmt --manifest-path backend/Cargo.toml --all -- --check
 
 # 5. Run backend unit tests
-cd src-tauri && cargo test --features desktop --no-default-features --lib
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager-core --features desktop --lib
+cargo test --manifest-path backend/Cargo.toml -p rclone-manager --features desktop --no-default-features --lib
 ```
 
 ### 3. Packaging & Linux Metadata Validation
 
-Validate Flatpak AppStream metadata **only if `src-tauri/linux/flatpak.metainfo.xml` was edited and running on Linux** with `appstreamcli` available; otherwise skip.
+Validate Flatpak AppStream metadata **only if `backend/desktop/linux/flatpak.metainfo.xml` was edited and running on Linux** with `appstreamcli` available; otherwise skip.
 
 ```bash
 # Validate Flatpak AppStream metainfo (runs only on Linux when flatpak.metainfo.xml is modified, skips otherwise)
 if [ "$(uname)" = "Linux" ] && command -v appstreamcli &>/dev/null; then
-  git diff --name-only HEAD | grep -q "flatpak.metainfo.xml" && appstreamcli validate src-tauri/linux/flatpak.metainfo.xml || true
+  git diff --name-only HEAD | grep -q "flatpak.metainfo.xml" && appstreamcli validate backend/desktop/linux/flatpak.metainfo.xml || true
 fi
 ```
 
@@ -224,4 +235,4 @@ npm run dev:headless
 - `npm run sync:providers`: Sync rclone provider configurations.
 - `npm run sync:flags`: Sync rclone CLI flag definitions.
 - `npm run audit:i18n`: Verify missing translation keys.
-- `appstreamcli validate src-tauri/linux/flatpak.metainfo.xml`: Validate Flatpak AppStream metadata (Linux only, when metadata is modified).
+- `appstreamcli validate backend/desktop/linux/flatpak.metainfo.xml`: Validate Flatpak AppStream metadata (Linux only, when metadata is modified).

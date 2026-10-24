@@ -199,6 +199,48 @@ mat-toolbar {
 
 // ── Empty hint ─────────────────────────────────────────────────────────────
 
+.bookmark-drop-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition-standard);
+
+  &.expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.bookmark-drop-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bookmark-drop-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-xs);
+  margin-block: var(--space-xxs);
+  border: thin dashed var(--accent-color);
+  border-radius: var(--radius-xs);
+  color: var(--accent-color);
+  font-size: var(--font-size-sm);
+
+  &.drag-over {
+    background: var(--selected-bg-color);
+    border-style: solid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bookmark-drop-reveal {
+    transition: none;
+  }
+}
+
 .empty-hint {
   margin: 0;
   padding: var(--space-xs);

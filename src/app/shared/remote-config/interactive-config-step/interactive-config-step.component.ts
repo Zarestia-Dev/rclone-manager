@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
-import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remote-config.utils';
+import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/interactive-flow.utils';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({

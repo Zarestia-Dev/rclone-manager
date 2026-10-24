@@ -12,7 +12,7 @@
     </div>
     <div class="remote-text-info">
       <h2
-        class="remote-name"
+        class="remote-name truncate"
         [attr.title]="mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name"
       >
         {{ mode() === 'quickRun' ? quickRun()?.name : selectedRemote().name }}
@@ -29,7 +29,7 @@
             "
           >
             <mat-icon [svgIcon]="iconService.getIconName(selectedRemote().type)"></mat-icon>
-            <span>{{ quickRun()?.remoteName }}</span>
+            <span class="truncate">{{ quickRun()?.remoteName }}</span>
           </button>
         } @else {
           {{ selectedRemote().type | titlecase }}
@@ -46,7 +46,7 @@
         'flow.quickRun.missingRemoteDesc' | translate: { remote: quickRun()?.remoteName }
       "
     >
-      <div class="missing-remote-actions">
+      <div class="actions">
         <button
           matButton="filled"
           class="primary"
@@ -72,6 +72,29 @@
     </app-alert-banner>
   }
 
+  @if (showMountPluginWarning()) {
+    <app-alert-banner
+      severity="warning"
+      [title]="'banners.mountPlugin.title' | translate"
+      [description]="'banners.mountPlugin.description' | translate"
+      [dismissable]="true"
+      [dismissTooltip]="'banners.mountPlugin.dismissTooltip' | translate"
+      (dismiss)="dismissMountPluginWarning()"
+    >
+      <div class="actions">
+        <button
+          matButton="filled"
+          class="accent"
+          (click)="onInstallMountPlugin()"
+          [attr.title]="'banners.mountPlugin.install' | translate"
+        >
+          <mat-icon svgIcon="wrench"></mat-icon>
+          <span>{{ 'banners.mountPlugin.install' | translate }}</span>
+        </button>
+      </div>
+    </app-alert-banner>
+  }
+
   @if (mode() === 'remote' && mainOperationType() === 'operations') {
     <div class="toggle-container">
       <div class="operation-toggle-group" role="group">
@@ -83,11 +106,12 @@
               class="operation-toggle"
               [class]="opType"
               [class.is-selected]="selectedSyncOperation() === opType"
+              [attr.aria-pressed]="selectedSyncOperation() === opType"
               [class.is-running]="operation.isActive"
               (click)="onSyncOpSelect(opType)"
               [attr.title]="operation.description | translate"
             >
-              <span>{{ operation.typeLabel | translate }}</span>
+              <span class="truncate">{{ operation.typeLabel | translate }}</span>
             </button>
           }
         }
@@ -101,7 +125,7 @@
           [cdkMenuTriggerFor]="moreMenu"
           [attr.title]="moreButtonTooltip()"
         >
-          <span>{{ moreButtonLabel() }}</span>
+          <span class="truncate">{{ moreButtonLabel() }}</span>
           <mat-icon svgIcon="chevron-down" class="more-chevron"></mat-icon>
         </button>
 
@@ -144,12 +168,12 @@
     <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
         @if (mode() === 'remote' && showProfileSelector()) {
-          <div class="profile-selector-container" [class]="operationColorClass()">
+          <div class="profile-selector-container">
             <div class="profile-selector-header">
               <span class="profile-selector-label">{{
                 'dashboard.appDetail.selectedProfile' | translate
               }}</span>
-              <span class="profile-count">{{
+              <span class="count-badge">{{
                 'dashboard.appDetail.profilesCount'
                   | translate: { count: enrichedProfiles().length }
               }}</span>
@@ -160,6 +184,7 @@
                 <button
                   class="app-pill interactive"
                   [class.is-selected]="selectedProfile() === profile.name"
+                  [attr.aria-pressed]="selectedProfile() === profile.name"
                   [class.p-primary]="profile.status === 'running'"
                   [class.p-orange]="profile.status === 'scheduled'"
                   (click)="onProfileSelect(profile.name)"

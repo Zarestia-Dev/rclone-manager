@@ -246,7 +246,8 @@
 
   .pdf-viewer,
   .markdown-preview,
-  .code-mirror,
+  .html-preview,
+  .text-editor-surface,
   .archive-container {
     width: calc(100% - 90px);
     height: calc(100% - 20px);
@@ -254,9 +255,28 @@
     border-radius: var(--radius-sm);
   }
 
+  .text-editor-surface {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--view-bg-color);
+
+    .code-mirror {
+      flex: 1;
+      min-height: 0;
+    }
+  }
+
   .markdown-preview {
     overflow: auto;
     padding-inline: var(--space-xl);
+    background: var(--view-bg-color);
+  }
+
+  .html-preview {
+    border: none;
     background: var(--view-bg-color);
   }
 
@@ -599,7 +619,8 @@
 
     .pdf-viewer,
     .markdown-preview,
-    .code-mirror,
+    .html-preview,
+    .text-editor-surface,
     .archive-container {
       width: 100%;
       height: 100%;

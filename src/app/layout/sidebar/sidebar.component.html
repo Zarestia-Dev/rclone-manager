@@ -7,6 +7,7 @@
   role="button"
   tabindex="0"
   (keydown.enter)="toggleSearch()"
+  (keydown.space)="$event.preventDefault(); toggleSearch()"
 >
   <h3>
     <mat-icon [svgIcon]="icon()"></mat-icon>
@@ -28,12 +29,12 @@
 <!-- Scrollable Content Area -->
 <div class="content-area">
   @if (isLoading()) {
-    <div class="loading-state">
-      <mat-icon svgIcon="spinner" class="spinner"></mat-icon>
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="primary"></mat-icon>
       <span>{{ loadingText() | translate }}</span>
     </div>
   } @else if (!hasAny()) {
-    <div class="no-remotes">
+    <div class="empty-state">
       <mat-icon [svgIcon]="emptyIcon()"></mat-icon>
       <span>{{ emptyText() | translate }}</span>
     </div>
@@ -55,7 +56,7 @@
           <mat-card-content class="card-content">
             <div class="card-header">
               <div class="name-wrapper">
-                <h4 [attr.title]="remote.name">
+                <h4 class="truncate" [attr.title]="remote.name">
                   {{ remote.name }}
                 </h4>
                 @if (isHidden) {
@@ -112,7 +113,7 @@
               </div>
             </div>
 
-            <div class="card-type">
+            <div class="card-type truncate">
               <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
               {{ remote.type | titlecase }}
             </div>
@@ -120,7 +121,7 @@
         </mat-card>
       }
     } @else {
-      <div class="no-remotes">
+      <div class="empty-state">
         <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm().trim()) {
           {{ 'sidebar.noRemotesFound' | translate: { term: searchTerm() } }}
@@ -134,7 +135,7 @@
       @if (filteredQuickRuns().length > 0) {
         <div class="flow-section-header" [class.active-section]="flowSubMode() === 'quick_run'">
           <mat-icon svgIcon="quick-run" class="section-icon"></mat-icon>
-          <span class="section-title">{{ 'flow.tabs.quickRun' | translate }}</span>
+          <span class="section-title truncate">{{ 'flow.tabs.quickRun' | translate }}</span>
           <span class="count-badge">{{ filteredQuickRuns().length }}</span>
         </div>
         @for (qr of filteredQuickRuns(); track trackByQuickRunId($index, qr)) {
@@ -153,7 +154,7 @@
                     class="item-kind-icon"
                     [attr.title]="'flow.tabs.quickRun' | translate"
                   ></mat-icon>
-                  <h4 [attr.title]="qr.name">{{ qr.name }}</h4>
+                  <h4 class="truncate" [attr.title]="qr.name">{{ qr.name }}</h4>
                 </div>
                 <div class="status-indicators">
                   @if (hasCron(qr)) {
@@ -186,11 +187,11 @@
                 </div>
               </div>
 
-              <div class="card-type">
+              <div class="card-type truncate">
                 <mat-icon [svgIcon]="getQuickRunIcon(qr)"></mat-icon>
                 <span>{{ getQuickRunActionLabel(qr) | translate }}</span>
                 <span class="separator">·</span>
-                <span class="remote-name">{{ qr.remoteName }}</span>
+                <span class="remote-name truncate">{{ qr.remoteName }}</span>
               </div>
             </mat-card-content>
           </mat-card>
@@ -200,7 +201,7 @@
       @if (filteredWorkflows().length > 0) {
         <div class="flow-section-header" [class.active-section]="flowSubMode() === 'builder'">
           <mat-icon svgIcon="workflow" class="section-icon"></mat-icon>
-          <span class="section-title">{{ 'flow.tabs.workflow' | translate }}</span>
+          <span class="section-title truncate">{{ 'flow.tabs.workflow' | translate }}</span>
           <span class="count-badge">{{ filteredWorkflows().length }}</span>
         </div>
         @for (wf of filteredWorkflows(); track trackByWorkflowId($index, wf)) {
@@ -219,7 +220,7 @@
                     class="item-kind-icon"
                     [attr.title]="'flow.tabs.workflow' | translate"
                   ></mat-icon>
-                  <h4 [attr.title]="wf.name">{{ wf.name }}</h4>
+                  <h4 class="truncate" [attr.title]="wf.name">{{ wf.name }}</h4>
                 </div>
                 <div class="status-indicators">
                   @if (getWorkflowCron(wf); as cronExpr) {
@@ -252,7 +253,7 @@
                 </div>
               </div>
 
-              <div class="card-type">
+              <div class="card-type truncate">
                 <mat-icon
                   [svgIcon]="getWorkflowTriggerIcon(wf)"
                   [attr.title]="getWorkflowTriggerTooltip(wf)"
@@ -263,7 +264,7 @@
                 >
                 @if (getWorkflowTriggerSummary(wf); as trigger) {
                   <span class="separator">·</span>
-                  <span class="remote-name" [attr.title]="getWorkflowTriggerTooltip(wf)">{{
+                  <span class="remote-name truncate" [attr.title]="getWorkflowTriggerTooltip(wf)">{{
                     trigger
                   }}</span>
                 }
@@ -273,7 +274,7 @@
         }
       }
     } @else {
-      <div class="no-remotes">
+      <div class="empty-state">
         <mat-icon svgIcon="search"></mat-icon>
         <span>{{ 'flow.noResults' | translate }}</span>
       </div>

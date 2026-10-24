@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   BinaryStatus,
   InstallationOptionsData,
@@ -40,6 +41,7 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSlideToggleModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
     ProvisionProgressComponent,
@@ -58,6 +60,7 @@ export class RepairSheetComponent {
   readonly installationValid = signal(true);
   readonly password = signal('');
   readonly storePassword = signal(true);
+  readonly willNotMount = signal(false);
   readonly isSubmittingPassword = signal(false);
   readonly hasPasswordError = signal(false);
   readonly passwordErrorMessage = signal('');
@@ -190,6 +193,7 @@ export class RepairSheetComponent {
 
   readonly repairButtonIcon = computed(() => {
     if (this.installing() || this.isSubmittingPassword()) return 'spinner';
+    if (this.isMountPluginRepair() && this.willNotMount()) return 'check';
     if (this.showConfigOptions()) return 'file';
     if (this.isRclonePortRepair()) return 'rotate-right';
     if (this.isRemoteAuthRepair()) return 'lock';
@@ -203,6 +207,9 @@ export class RepairSheetComponent {
   });
 
   private readonly repairButtonTextKey = computed(() => {
+    if (this.isMountPluginRepair() && this.willNotMount()) {
+      return 'repairSheet.actions.saveAndClose';
+    }
     if (this.isRclonePortRepair()) return 'repairSheet.actions.changePort';
     if (this.isRemoteAuthRepair()) return 'repairSheet.actions.configureBackend';
     if (this.showConfigOptions()) return this.getConfigModeButtonTextKey();
@@ -308,6 +315,11 @@ export class RepairSheetComponent {
   async repair(): Promise<void> {
     if (!this.canRepair()) return;
 
+    if (this.isMountPluginRepair() && this.willNotMount()) {
+      await this.skipMountPlugin();
+      return;
+    }
+
     if (this.isRclonePortRepair()) {
       await this.executePortRepair();
       return;
@@ -402,6 +414,16 @@ export class RepairSheetComponent {
       this.passwordErrorMessage.set(this.getPasswordErrorMessage(error));
     } finally {
       this.isSubmittingPassword.set(false);
+    }
+  }
+
+  async skipMountPlugin(): Promise<void> {
+    try {
+      await this.appSettingsService.saveSetting('core', 'skip_mount_plugin_check', true);
+    } catch (error) {
+      console.error('Failed to save skip_mount_plugin_check setting:', error);
+    } finally {
+      this.sheetRef.dismiss();
     }
   }
 

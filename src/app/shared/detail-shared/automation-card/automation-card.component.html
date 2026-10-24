@@ -13,7 +13,7 @@
         </div>
         <div class="automation-title-section">
           <div class="automation-title-row">
-            <span class="automation-name">{{ automation().profileName }}</span>
+            <span class="automation-name truncate">{{ automation().profileName }}</span>
             <span
               class="origin-mini-badge"
               [class.quickrun]="isQuickRun()"
@@ -23,7 +23,7 @@
               <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
             </span>
           </div>
-          <span class="automation-subtitle">
+          <span class="automation-subtitle truncate">
             {{ automation().remoteName }} ·
             {{ 'dashboard.appDetail.' + automation().automationType | translate }}
             @if (automation().watchEnabled) {
@@ -45,8 +45,14 @@
       </div>
 
       <div class="automation-header-end">
-        <span class="status-indicator" [ngClass]="'status-' + automation().status">
-          <span class="dot"></span>
+        <span
+          class="app-pill pill-sm"
+          [class.p-primary]="automation().status === 'enabled'"
+          [class.p-accent]="automation().status === 'running'"
+          [class.p-dim]="automation().status === 'disabled'"
+          [class.p-orange]="automation().status === 'stopping'"
+          [class.p-warn]="automation().status === 'failed'"
+        >
           {{ 'automation.status.' + automation().status | translate }}
         </span>
         <button
@@ -100,8 +106,10 @@
         </div>
         <div class="title-text">
           <div class="title-heading-row">
-            <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
-            <span class="app-pill origin-pill {{ originBadgeClass() }}">
+            <h4 class="truncate">
+              {{ automation().profileName }} · {{ automation().backendName }}
+            </h4>
+            <span class="app-pill pill-sm {{ originBadgeClass() }}">
               {{ originLabel() }}
             </span>
           </div>
@@ -110,8 +118,14 @@
             {{ 'dashboard.appDetail.' + automation().automationType | translate }}
           </span>
         </div>
-        <span class="status-indicator" [ngClass]="'status-' + automation().status">
-          <span class="dot"></span>
+        <span
+          class="app-pill pill-sm"
+          [class.p-primary]="automation().status === 'enabled'"
+          [class.p-accent]="automation().status === 'running'"
+          [class.p-dim]="automation().status === 'disabled'"
+          [class.p-orange]="automation().status === 'stopping'"
+          [class.p-warn]="automation().status === 'failed'"
+        >
           {{ 'automation.status.' + automation().status | translate }}
         </span>
       </div>
@@ -251,17 +265,18 @@
         </div>
       </div>
 
-      @if (automation().lastError) {
+      @if (automation().lastError; as error) {
         <section class="detail-section">
           <span class="section-title error">
             <mat-icon svgIcon="circle-exclamation"></mat-icon>
             {{ 'dashboard.generalDetail.lastError' | translate }}
           </span>
-          <pre
-            class="error-entry"
-            [appCopyToClipboard]="automation().lastError"
+          <app-alert-banner
+            severity="error"
+            [description]="error"
+            [appCopyToClipboard]="error"
             [attr.title]="'common.copy' | translate"
-          ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ automation().lastError }}</span></pre>
+          />
         </section>
       }
 

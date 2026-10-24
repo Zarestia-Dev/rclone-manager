@@ -33,6 +33,12 @@ export const MAIN_SHORTCUTS: ShortcutDefinition[] = [
     categoryKey: 'shortcuts.categories.application',
   },
   {
+    actionId: 'app.openVault',
+    keys: 'Ctrl + Alt + V',
+    descriptionKey: 'shortcuts.actions.openVault',
+    categoryKey: 'shortcuts.categories.application',
+  },
+  {
     actionId: 'app.openAlerts',
     keys: 'Ctrl + Alt + A',
     descriptionKey: 'alerts.title',
@@ -94,7 +100,7 @@ export const MAIN_SHORTCUTS: ShortcutDefinition[] = [
   },
 ];
 
-export const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
+const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
   {
     actionId: 'nautilus.copy',
     keys: 'Ctrl + C',
@@ -235,7 +241,7 @@ export const NAUTILUS_SHORTCUTS: ShortcutDefinition[] = [
   },
 ];
 
-export const FLOW_SHORTCUTS: ShortcutDefinition[] = [
+const FLOW_SHORTCUTS: ShortcutDefinition[] = [
   {
     actionId: 'flow.save',
     keys: 'Ctrl + S',

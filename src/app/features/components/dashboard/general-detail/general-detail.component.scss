@@ -1,3 +1,5 @@
+@use "../../../../styles/mixins" as *;
+
 /* --- Main Container --- */
 :host {
   display: flex;
@@ -6,8 +8,7 @@
   margin: 0 auto;
   padding: var(--space-md);
   width: 100%;
-  overflow: auto;
-  height: 100%;
+  min-height: 100%;
   box-sizing: border-box;
 }
 
@@ -20,24 +21,15 @@
 }
 
 .remote-info-section {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-md);
 }
 
 .icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-container-size);
-  height: var(--icon-container-size);
-  border-radius: var(--icon-radius);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--primary-color-rgb), var(--active-opacity)) 0%,
-    rgba(var(--accent-color-rgb), var(--active-opacity)) 100%
-  );
-  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
+  @include remote-icon-ring;
 }
 
 .remote-type-icon {
@@ -47,6 +39,8 @@
 }
 
 .remote-text-info {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -59,10 +53,7 @@
   margin: 0;
   color: var(--window-fg-color);
   letter-spacing: -0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
+  max-width: min(100%, 18.75rem);
 }
 
 .remote-type {
@@ -80,118 +71,6 @@
   justify-content: center;
 }
 
-.status-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: 20px;
-  background: var(--view-bg-color);
-  transition: var(--transition-standard);
-  box-shadow: var(--box-shadow);
-  cursor: pointer;
-  position: relative;
-  isolation: isolate;
-
-  // Numeric selection badge shows ordering of primary actions
-  .selection-badge {
-    position: absolute;
-    top: -6px;
-    right: -4px;
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-    border-radius: 6px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-    color: white;
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-    transform-origin: center;
-    will-change: transform, opacity;
-    animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
-  }
-
-  // Active state (operation is currently running)
-  &.active {
-    .status-dot mat-icon {
-      color: white;
-    }
-
-    &.serve,
-    &.mount,
-    &.check,
-    &.copyurl,
-    &.cryptcheck {
-      background: rgba(var(--accent-color-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--accent-color);
-      }
-      .status-label {
-        color: var(--accent-color);
-      }
-    }
-    &.sync,
-    &.archivecreate {
-      background: rgba(var(--primary-color-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--primary-color);
-      }
-      .status-label {
-        color: var(--primary-color);
-      }
-    }
-    &.copy {
-      background: rgba(var(--yellow-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--yellow);
-      }
-      .status-label {
-        color: var(--yellow);
-      }
-    }
-    &.move {
-      background: rgba(var(--orange-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--orange);
-      }
-      .status-label {
-        color: var(--orange);
-      }
-    }
-    &.bisync {
-      background: rgba(var(--purple-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--purple);
-      }
-      .status-label {
-        color: var(--purple);
-      }
-    }
-    &.delete {
-      background: rgba(var(--warn-color-rgb), var(--active-opacity));
-      .status-dot {
-        background: var(--warn-color);
-      }
-      .status-label {
-        color: var(--warn-color);
-      }
-    }
-  }
-
-  &.disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    box-shadow: none;
-
-    &:hover {
-      transform: none !important;
-    }
-  }
-}
-
 .configure-toggle-btn {
   color: var(--dim-color);
   &:hover {
@@ -202,6 +81,7 @@
 }
 
 .status-dot {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,20 +90,6 @@
   border-radius: 50%;
   background: var(--bg-elevated-2);
   transition: var(--transition-fast);
-
-  mat-icon {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
-    color: var(--dim-color);
-  }
-}
-
-.status-label {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--dim-color);
-  letter-spacing: 0.2px;
 }
 
 /* --- Detail Content Section --- */
@@ -253,14 +119,9 @@
     align-items: center;
   }
 
-  .remote-name {
-    max-width: 250px;
-    font-size: var(--font-size-xl);
-  }
-
   .remote-status-indicators {
     flex-direction: row;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   .detail-content {
@@ -275,7 +136,7 @@
     justify-content: center;
     gap: var(--space-xs);
     padding-bottom: var(--space-xs);
-    cursor: pointer;
+    flex-wrap: wrap;
 
     .indicator {
       width: 8px;
@@ -338,7 +199,7 @@
   mat-card-content {
     .quick-runs-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
       gap: var(--space-md);
       align-items: start;
     }

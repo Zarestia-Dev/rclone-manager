@@ -63,7 +63,7 @@
 - ⚙️ **挂载与服务:** 简便的挂载控制和服务管理（WebDAV、SFTP、HTTP、FTP）。
 - 🔄 **任务监视器:** 实时传输监控和带宽控制。
 - 📱 **Android SAF 与 DocumentsProvider:** 通过存储访问框架 (SAF) 和内置 VFS 挂载桥，无需 Root 或 FUSE 即可在系统文件选择器中原生访问云端远程存储。
-- 🌐 **无头（Headless）模式:** 访问 [RClone Manager Headless](headless/README.md) 在 VPS/NAS 上将其作为 Web 服务器运行！
+- 🌐 **无头（Headless）模式:** 访问 [RClone Manager Headless](backend/server/README.md) 在 VPS/NAS 上将其作为 Web 服务器运行！
 
 ---
 

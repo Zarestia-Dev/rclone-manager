@@ -1,5 +1,5 @@
-<mat-icon style="align-self: baseline" [svgIcon]="resolvedIcon()" />
-<div>
+<mat-icon class="alert-icon" [svgIcon]="resolvedIcon()" />
+<div class="alert-content">
   @if (title()) {
     <strong>{{ title() }}</strong>
   }
@@ -8,9 +8,20 @@
   }
   <ng-content></ng-content>
   @if (linkUrl()) {
-    <a [href]="linkUrl()" target="_blank">
+    <a [href]="linkUrl()" target="_blank" rel="noopener noreferrer">
       {{ linkText() || linkUrl() }}
       <mat-icon svgIcon="open-link" />
     </a>
   }
 </div>
+@if (dismissable()) {
+  <button
+    type="button"
+    class="action-button dismiss-button"
+    [attr.title]="dismissTooltip() || ('common.close' | translate)"
+    (click)="dismiss.emit()"
+    [attr.aria-label]="dismissTooltip() || ('common.close' | translate)"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+}

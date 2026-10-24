@@ -65,11 +65,7 @@
   </div>
 
   <!-- Floating Canvas Navigation Hub (Minimap + Floating Zoom Pill) -->
-  <div
-    class="canvas-navigation-hub"
-    [class.is-focus-mode]="stateService.isMobileFocusMode()"
-    (touchstart)="$event.stopPropagation()"
-  >
+  <div class="canvas-navigation-hub" (touchstart)="$event.stopPropagation()">
     @if (showMinimap()) {
       <div class="minimap-container" (touchstart)="$event.stopPropagation()">
         <app-workflow-minimap

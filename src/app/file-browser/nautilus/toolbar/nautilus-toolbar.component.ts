@@ -11,8 +11,8 @@ import {
   signal,
   afterRenderEffect,
   ChangeDetectionStrategy,
-  HostListener,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -48,6 +48,7 @@ export class NautilusToolbarComponent {
   protected readonly nautilusService = inject(NautilusService);
   protected readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
+  private readonly doc = inject(DOCUMENT);
   protected readonly isMobileOS = isMobileOS;
 
   // --- Inputs ---
@@ -117,22 +118,30 @@ export class NautilusToolbarComponent {
         });
       }
     });
-  }
 
-  @HostListener('document:pointerdown', ['$event'])
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    if (!this.isEditingPath() && !this.isSearchMode()) return;
+    effect(onCleanup => {
+      const active = this.isEditingPath() || this.isSearchMode();
+      if (!active) return;
 
-    const target = event.target as HTMLElement | null;
-    const clickedInside = target?.closest('.path-container');
-    if (!clickedInside) {
-      if (this.isEditingPath()) {
-        this.isEditingPathChange.emit(false);
-      }
-      if (this.isSearchMode() && !this.searchFilter().trim()) {
-        this.isSearchModeChange.emit(false);
-      }
-    }
+      const handler = (event: PointerEvent): void => {
+        const rawTarget = event.target as Node | null;
+        const target = rawTarget instanceof Element ? rawTarget : rawTarget?.parentElement;
+        const clickedInside = target?.closest('.path-container');
+        if (!clickedInside) {
+          if (this.isEditingPath()) {
+            this.isEditingPathChange.emit(false);
+          }
+          if (this.isSearchMode() && !this.searchFilter().trim()) {
+            this.isSearchModeChange.emit(false);
+          }
+        }
+      };
+
+      this.doc.addEventListener('pointerdown', handler, true);
+      onCleanup(() => {
+        this.doc.removeEventListener('pointerdown', handler, true);
+      });
+    });
   }
 
   protected onSearchEscape(inputElement: HTMLInputElement, event: Event): void {

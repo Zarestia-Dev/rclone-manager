@@ -1,3 +1,5 @@
+import * as binaryUtil from 'src/app/shared/utils/binary-signature.util';
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   inject,
@@ -10,6 +12,7 @@ import {
   viewChild,
   ElementRef,
   ChangeDetectionStrategy,
+  SecurityContext,
 } from '@angular/core';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -24,8 +27,10 @@ import { marked } from 'marked';
 // CodeMirror Imports
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, Extension, Compartment } from '@codemirror/state';
-import { keymap } from '@codemirror/view';
 import { StreamLanguage } from '@codemirror/language';
+import { closeSearchPanel, searchPanelOpen } from '@codemirror/search';
+import { CodeEditorToolbarComponent } from 'src/app/shared/components/code-editor-toolbar/code-editor-toolbar.component';
+import { codeEditorExtensions } from 'src/app/shared/components/code-editor-toolbar/code-editor.extensions';
 
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -35,11 +40,6 @@ import { OpenerService } from 'src/app/services/infrastructure/platform/opener.s
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import {
-  BinaryInspectorService,
-  DetectedSignature,
-  HexDumpRow,
-} from 'src/app/services/ui/binary-inspector.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -49,11 +49,19 @@ import {
   isHeadlessMode,
   isMobile,
 } from 'src/app/services/infrastructure/platform/api-client.service';
+import type { DetectedSignature, HexDumpRow } from 'src/app/shared/utils/binary-signature.util';
+import { prepareHtmlPreview } from 'src/app/shared/utils/html-preview.util';
 
 @Component({
   selector: 'app-file-viewer-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, FormatFileSizePipe, TranslatePipe],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    FormatFileSizePipe,
+    TranslatePipe,
+    CodeEditorToolbarComponent,
+  ],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
@@ -80,10 +88,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly binaryInspector = inject(BinaryInspectorService);
+
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   private activeProbeImg: HTMLImageElement | null = null;
   private lastRenderedText: string | null = null;
+  private lastRenderedHtml: string | null = null;
+  private htmlPreviewGeneration = 0;
 
   public currentUrl = signal<string>('');
   public readonly detectedSignature = signal<DetectedSignature | null>(null);
@@ -160,6 +170,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   // Markdown preview
   showMarkdownPreview = signal(false);
   renderedMarkdown = signal<SafeHtml>('');
+  readonly showHtmlPreview = signal(false);
+  readonly renderedHtml = signal<SafeHtml>('');
+  readonly isPreparingPreview = signal(false);
+  readonly isPreviewing = computed(() => this.showMarkdownPreview() || this.showHtmlPreview());
+  readonly isHtmlFile = computed(() => /\.(?:html?|xhtml|xht|shtml)$/i.test(this.fileName()));
+  readonly canPreviewText = computed(() => this.isMarkdownFile() || this.isHtmlFile());
 
   isSaving = signal(false);
 
@@ -170,11 +186,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   readonly editorContainer = viewChild<ElementRef<HTMLDivElement>>('editorContainer');
   private editorView: EditorView | null = null;
+  readonly codeEditor = signal<EditorView | null>(null);
+  readonly codeLanguage = computed(() => this.fileName().split('.').pop()?.toUpperCase() ?? '');
   private readonly readOnlyCompartment = new Compartment();
   private readonly editableCompartment = new Compartment();
 
   // Cancel pending requests when component updates or destroys
   private cancelCurrentRequest$ = new Subject<void>();
+  private loadGeneration = 0;
+  private destroyed = false;
+  private pendingStop: Promise<void> | null = null;
 
   readonly closeViewer = output<void>();
 
@@ -184,6 +205,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.loadGeneration++;
+    this.htmlPreviewGeneration++;
     this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
     this.cancelCurrentRequest$.complete();
@@ -191,6 +215,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
+      this.codeEditor.set(null);
     }
     this.fileViewerService.setActiveFileName(null);
   }
@@ -204,12 +229,17 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async stopReadJobs(): Promise<void> {
-    try {
-      await this.jobManagementService.stopJobsByGroup(this.readJobGroup);
-    } catch (err) {
-      console.debug('Failed to stop file viewer read jobs:', err);
-    }
+  private stopReadJobs(): Promise<void> {
+    this.pendingStop ??= this.jobManagementService
+      .stopJobsByGroup(this.readJobGroup)
+      .then(() => undefined)
+      .catch(err => {
+        console.debug('Failed to stop file viewer read jobs:', err);
+      })
+      .finally(() => {
+        this.pendingStop = null;
+      });
+    return this.pendingStop;
   }
 
   /**
@@ -219,6 +249,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set(this.textContent());
     this.isEditing.set(true);
     this.showMarkdownPreview.set(false);
+    this.showHtmlPreview.set(false);
+    this.htmlPreviewGeneration++;
+    this.isPreparingPreview.set(false);
     this.setEditorReadOnly(false, this.editContent());
   }
 
@@ -228,6 +261,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   cancelEditing(): void {
     this.isEditing.set(false);
     this.editContent.set('');
+    this.showMarkdownPreview.set(false);
+    this.showHtmlPreview.set(false);
+    this.htmlPreviewGeneration++;
+    this.isPreparingPreview.set(false);
     this.setEditorReadOnly(true, this.textContent());
   }
 
@@ -253,13 +290,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   private async initEditor(readOnly = true, content = ''): Promise<void> {
-    if (this.currentFileType() !== 'text' || this.showMarkdownPreview()) {
+    if (this.currentFileType() !== 'text' || this.isPreviewing()) {
       return;
     }
 
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
+      this.codeEditor.set(null);
     }
 
     const editorContainer = this.editorContainer();
@@ -268,8 +306,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     // Detect current theme
     const extensions: Extension[] = [
       basicSetup,
-      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
-      keymap.of([]),
+      codeEditorExtensions(this.translate),
       this.editableCompartment.of(EditorView.editable.of(!readOnly)),
       this.readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
       EditorView.updateListener.of(update => {
@@ -295,6 +332,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       state,
       parent: editorContainer.nativeElement,
     });
+    this.codeEditor.set(this.editorView);
   }
 
   private async loadLanguageExtension(ext: string): Promise<Extension | null> {
@@ -319,6 +357,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
       case 'html':
       case 'htm':
+      case 'xhtml':
+      case 'xht':
+      case 'shtml':
       case 'xml': {
         const { html } = await import('@codemirror/lang-html');
         return html();
@@ -370,8 +411,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     const item = this.currentItem();
 
     try {
-      const dirPath = this.pathService.getDirname(item.Path);
-      const filename = this.pathService.getFilename(item.Path);
+      const dirPath = pathUtils.getDirname(item.Path);
+      const filename = pathUtils.getFilename(item.Path);
 
       const content = new TextEncoder().encode(this.editContent());
       await this.remoteOps.uploadFileSimple(this.fsName, dirPath, filename, content);
@@ -395,15 +436,50 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Toggle markdown preview
-   */
+  async togglePreview(): Promise<void> {
+    if (this.isPreparingPreview()) return;
+    if (!this.isHtmlFile()) return this.toggleMarkdownPreview();
+    if (this.showHtmlPreview()) {
+      this.showHtmlPreview.set(false);
+      this.updatePreviewEditor();
+      return;
+    }
+    const item = this.currentItem();
+    if (!item) return;
+    const content = this.isEditing() ? this.editContent() : this.textContent();
+    const generation = ++this.htmlPreviewGeneration;
+    this.isPreparingPreview.set(true);
+    try {
+      if (this.lastRenderedHtml !== content) {
+        const html = await prepareHtmlPreview(content, path =>
+          this.fileViewerService.resolveRelativePath(
+            item,
+            this.data.remoteName,
+            this.data.isLocal,
+            path
+          )
+        );
+        if (this.destroyed || generation !== this.htmlPreviewGeneration) return;
+        if (content !== (this.isEditing() ? this.editContent() : this.textContent())) return;
+        // This value is used only in the iframe with a static, fully restricted sandbox.
+        this.renderedHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
+        this.lastRenderedHtml = content;
+      }
+      this.showHtmlPreview.set(true);
+      this.updatePreviewEditor();
+    } finally {
+      if (generation === this.htmlPreviewGeneration) this.isPreparingPreview.set(false);
+    }
+  }
+
+  /** Toggle Markdown while retaining an unsaved edit when returning to source. */
   async toggleMarkdownPreview(): Promise<void> {
-    if (!this.showMarkdownPreview() && this.textContent()) {
+    const previewText = this.isEditing() ? this.editContent() : this.textContent();
+    if (!this.showMarkdownPreview() && previewText) {
       const item = this.currentItem();
       if (!item) return;
 
-      const currentText = this.textContent();
+      const currentText = previewText;
       if (this.lastRenderedText !== currentText || !this.renderedMarkdown()) {
         let content = currentText;
         const resolveCache = new Map<string, Promise<string>>();
@@ -464,22 +540,27 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           async (_, attrs, path) => `<a${attrs} href="${await resolveRelative(path)}"`
         );
 
-        this.renderedMarkdown.set(
-          this.sanitizer.bypassSecurityTrustHtml(marked.parse(content) as string)
-        );
+        const html = this.sanitizer.sanitize(SecurityContext.HTML, marked.parse(content) as string);
+        this.renderedMarkdown.set(this.sanitizer.bypassSecurityTrustHtml(html ?? ''));
         this.lastRenderedText = currentText;
       }
     }
 
     this.showMarkdownPreview.update(v => !v);
+    this.updatePreviewEditor();
+  }
 
-    // If switching back to raw view, re-initialize CodeMirror
-    if (!this.showMarkdownPreview()) {
-      this.safeInitEditor(true, this.textContent());
+  private updatePreviewEditor(): void {
+    if (!this.isPreviewing()) {
+      this.safeInitEditor(
+        !this.isEditing(),
+        this.isEditing() ? this.editContent() : this.textContent()
+      );
     } else if (this.editorView) {
       // Destroy editor when showing preview to save resources and avoid state desync
       this.editorView.destroy();
       this.editorView = null;
+      this.codeEditor.set(null);
     }
   }
 
@@ -540,6 +621,20 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape' && this.editorView && searchPanelOpen(this.editorView.state)) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSearchPanel(this.editorView);
+      return;
+    }
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        'input, textarea, select, [contenteditable], .cm-editor, app-code-editor-toolbar, [role="menu"]'
+      )
+    )
+      return;
     if (this.isEditing()) return;
 
     switch (event.key) {
@@ -573,15 +668,26 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   async updateData(): Promise<void> {
-    await this.stopReadJobs();
-
+    const generation = ++this.loadGeneration;
+    const isCurrent = (): boolean => !this.destroyed && generation === this.loadGeneration;
     const item = this.currentItem();
     this.fileViewerService.setActiveFileName(item ? item.Name : null);
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
     this.cancelProbeImg();
     this.cancelCurrentRequest$.next();
+    if (this.editorView) {
+      this.editorView.destroy();
+      this.editorView = null;
+      this.codeEditor.set(null);
+    }
     this.lastRenderedText = null;
+    this.lastRenderedHtml = null;
+    this.htmlPreviewGeneration++;
+    this.isPreparingPreview.set(false);
+    this.showHtmlPreview.set(false);
+    this.showMarkdownPreview.set(false);
+    this.renderedHtml.set('');
     this.detectedSignature.set(null);
     this.hexDumpRows.set([]);
     this.isLoading.set(true);
@@ -598,9 +704,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.resetZoom();
 
     try {
+      await this.stopReadJobs();
+      if (!isCurrent()) return;
+      if (!item) {
+        this.isLoading.set(false);
+        return;
+      }
       const url = this.data.isDirectUrl
         ? this.data.url
         : await this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal);
+      if (!isCurrent()) return;
       const type = this.fileCategory();
 
       this.currentFileType.set(type);
@@ -639,6 +752,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
       await this.updateContent();
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('Failed to update data:', err);
       this.isLoading.set(false);
     }
@@ -646,6 +760,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   async updateContent(): Promise<void> {
     if (this.data.isDirectUrl) return;
+    const generation = this.loadGeneration;
+    const isCurrent = (): boolean => !this.destroyed && generation === this.loadGeneration;
     try {
       if (this.currentFileType() === 'directory') {
         const item = this.currentItem();
@@ -660,14 +776,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             'filemanager',
             this.readJobGroup
           );
-          this.folderSize.set(size);
+          if (isCurrent()) this.folderSize.set(size);
         } catch (err) {
+          if (!isCurrent()) return;
           console.error('Failed to get folder size:', err);
           this.notificationService.showError(
             this.translate.instant('fileBrowser.fileViewer.errorCalculateSize')
           );
         } finally {
-          this.isLoading.set(false);
+          if (isCurrent()) this.isLoading.set(false);
         }
         return;
       }
@@ -698,12 +815,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           .subscribe(res => {
             if (res?.body) {
               const uint8 = new Uint8Array(res.body);
-              const inspection = this.binaryInspector.inspect(uint8, this.fileName());
+              const inspection = binaryUtil.inspectBinary(uint8, this.fileName());
 
               if (inspection.isBinary) {
                 // Special handling for LNK files to show target info even if binary
                 if (inspection.shortcutTargets && inspection.shortcutTargets.length > 0) {
-                  const info = this.binaryInspector.extractLnkSummary(
+                  const info = binaryUtil.extractLnkSummary(
                     uint8,
                     this.translate.instant('fileBrowser.fileViewer.shortcutTargets')
                   );
@@ -717,7 +834,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
                 }
               } else {
                 this.currentFileType.set('text');
-                const text = this.binaryInspector.decodeText(uint8);
+                const text = binaryUtil.decodeText(uint8);
                 this.textContent.set(text);
                 // Initialize CodeMirror in read-only mode
                 this.safeInitEditor(true, text);
@@ -739,13 +856,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
               this.data.remoteName,
               this.data.isLocal
             );
-            if (this.isStillViewing(targetPath)) {
+            if (this.isStillViewing(targetPath, generation)) {
               this.coverImage.set(cover);
             }
           } catch (err) {
             console.warn('Failed to extract audio cover:', err);
           } finally {
-            if (this.isStillViewing(targetPath)) {
+            if (this.isStillViewing(targetPath, generation)) {
               this.isLoadingCover.set(false);
             }
           }
@@ -760,7 +877,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         try {
           const res = await this.remoteOps.archiveList(source, true); // Use long format for more info
-          if (!this.isStillViewing(targetPath)) return;
+          if (!this.isStillViewing(targetPath, generation)) return;
           if (res?.success) {
             this.parsedArchiveItems.set(res.items);
             this.archiveError.set(null);
@@ -769,27 +886,27 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             this.parsedArchiveItems.set([]);
           }
         } catch (err) {
-          if (!this.isStillViewing(targetPath)) return;
+          if (!this.isStillViewing(targetPath, generation)) return;
           console.error('Failed to list archive:', err);
           this.archiveError.set(err instanceof Error ? err.message : String(err));
           this.parsedArchiveItems.set([]);
         } finally {
-          if (this.isStillViewing(targetPath)) {
+          if (this.isStillViewing(targetPath, generation)) {
             this.isLoading.set(false);
           }
         }
         return;
       }
+      if (!isCurrent()) return;
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
       if (mediaTypes.includes(this.currentFileType())) {
         this.currentUrl.set(this.rawUrl());
       }
       if (!['image', 'video', 'audio'].includes(this.currentFileType())) {
         this.isLoading.set(false);
-      } else if (this.currentFileType() === 'video' && this.isMobile()) {
-        this.isLoading.set(false);
       }
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('Error updating content:', error);
       this.notificationService.showError(
         this.translate.instant('fileBrowser.fileViewer.errorUnexpected')
@@ -804,6 +921,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   onLoadError(event?: Event): void {
+    // Ignore events when URL is not set or component is actively resetting/transitioning
+    if (!this.currentUrl() || this.currentFileType() === 'loading') {
+      return;
+    }
+
+    const mediaError = (event?.target as HTMLMediaElement)?.error;
+
+    // MEDIA_ERR_ABORTED (1): Playback was aborted by the user / navigation, not an error
+    if (mediaError?.code === 1) {
+      return;
+    }
+
     this.isLoading.set(false);
     this.currentFileType.set('error');
 
@@ -812,7 +941,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
 
-    const mediaError = (event?.target as HTMLMediaElement)?.error;
     console.error(
       'Failed to load file:',
       this.fileName(),
@@ -971,14 +1099,18 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /** Checks whether the viewer is still showing the file at the given path (stale-navigation guard). */
-  private isStillViewing(targetPath: string): boolean {
-    return this.currentItem()?.Path === targetPath;
+  private isStillViewing(targetPath: string, generation: number): boolean {
+    return (
+      !this.destroyed &&
+      generation === this.loadGeneration &&
+      this.currentItem()?.Path === targetPath
+    );
   }
 
   /** Builds the full rclone source path for archive operations. */
   private getArchiveSource(item: Entry): string {
     return this.data.isLocal
-      ? this.pathService.joinPath(this.data.remoteName, item.Path)
+      ? pathUtils.joinPath(this.data.remoteName, item.Path)
       : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
   }
 

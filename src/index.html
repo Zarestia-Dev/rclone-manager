@@ -21,7 +21,7 @@
     <app-root></app-root>
     <script>
       if ('serviceWorker' in navigator && !window.__TAURI_INTERNALS__) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
       }
     </script>
   </body>

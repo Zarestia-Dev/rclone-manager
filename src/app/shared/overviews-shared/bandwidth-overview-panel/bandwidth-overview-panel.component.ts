@@ -95,9 +95,13 @@ export class BandwidthOverviewPanelComponent {
     });
   }
 
-  isPresetActive(presetValue: string): boolean {
+  readonly activePreset = computed(() => {
     const current = this.savedBandwidthLimit();
-    return presetValue === 'off' ? current === '' || current === 'off' : current === presetValue;
+    return current === '' || current === 'off' ? 'off' : current;
+  });
+
+  isPresetActive(presetValue: string): boolean {
+    return this.activePreset() === presetValue;
   }
 
   getBandwidthErrorMessage(): string {

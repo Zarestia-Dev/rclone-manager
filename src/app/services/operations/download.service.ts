@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { FileViewerService } from '../ui/file-viewer.service';
-import { Entry } from '@app/types';
+import { createMinimalEntry } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class DownloadService extends TauriBaseService {
@@ -27,7 +27,7 @@ export class DownloadService extends TauriBaseService {
       // Headless / Web mode download: trigger direct browser download
       try {
         const rawUrl = await this.fileViewerService.generateUrl(
-          { Path: path, Name: fileName } as unknown as Entry,
+          createMinimalEntry(path, fileName, size ?? 0),
           remote,
           isLocal
         );

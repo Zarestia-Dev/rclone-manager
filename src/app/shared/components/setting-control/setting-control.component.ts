@@ -1,3 +1,4 @@
+import * as validationUtils from 'src/app/shared/validators';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -8,6 +9,7 @@ import {
   input,
   output,
   computed,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -17,6 +19,9 @@ import {
   FormArray,
   FormControl,
   NG_VALUE_ACCESSOR,
+  NG_VALIDATORS,
+  ValidationErrors,
+  Validator,
   ReactiveFormsModule,
   ValidatorFn,
   Validators,
@@ -40,16 +45,18 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
-import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 import {
   isConvertibleType,
   isJsonArrayType,
-  isMultiselectType,
   isArrayType,
   isIntType,
   isFloatType,
+  deepEqual,
 } from 'src/app/shared/utils';
-import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
+import {
+  getConfigOptionFlags,
+  resolveOptionExamples,
+} from 'src/app/services/remote/utils/remote-config.utils';
 
 const DUMP_FLAGS_FALLBACK: readonly string[] = [
   'headers',
@@ -118,16 +125,16 @@ const ENCODING_FLAGS: readonly string[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: SettingControlComponent, multi: true },
+    { provide: NG_VALIDATORS, useExisting: SettingControlComponent, multi: true },
     provideNativeDateAdapter(),
   ],
 })
-export class SettingControlComponent implements ControlValueAccessor {
+export class SettingControlComponent implements ControlValueAccessor, Validator {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteService = inject(RemoteManagementService);
-  private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
   private readonly translate = inject(TranslateService);
   readonly currentLang = this.translate.currentLang;
 
@@ -136,30 +143,12 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
   readonly showFlag = input(true);
+  readonly showObscureButton = input(true);
+  readonly isDisabled = signal(false);
 
   readonly flagNames = computed(() => {
     const opt = this.mergedOption();
-    if (!opt) return [];
-
-    // Exclude internal subcommand selection fields from displaying flags
-    if (opt.Name === 'mountType' || opt.Name === 'type') {
-      return [];
-    }
-
-    const optName = opt.Name.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-      .replace(/_/g, '-')
-      .toLowerCase();
-    const flags: string[] = [];
-
-    const providerVal = this.provider();
-    if (providerVal && !opt.NoPrefix) {
-      const providerLower = providerVal.toLowerCase().trim();
-      flags.push(`--${providerLower}-${optName}`);
-    } else {
-      flags.push(`--${optName}`);
-    }
-
-    return flags;
+    return opt ? getConfigOptionFlags(opt, this.provider()) : [];
   });
 
   readonly valueCommit = output<void>();
@@ -201,24 +190,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
   });
 
-  readonly showObscureButton = computed(() => {
-    if (!this.isPasswordField()) return false;
-    if (this.remoteState) {
-      const activeStep = this.remoteState.activeStepType();
-      if (activeStep === 'runtimeRemote' || this.remoteState.editTarget()) {
-        return true;
-      }
-      const opts = this.remoteState.commandOptions();
-      const obscureOpt = opts.find(o => o.key === 'obscure');
-      const noObscureOpt = opts.find(o => o.key === 'noObscure');
-      const isObscureActive = obscureOpt?.value === true && !(noObscureOpt?.value === true);
-      if (isObscureActive) {
-        return false;
-      }
-    }
-    return true;
-  });
-
   readonly hasObscurableValue = computed(() => {
     const ctrl = this.control();
     this.controlValueVersion(); // track reactive updates
@@ -238,12 +209,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     return Array.isArray(val) ? val.join(', ') || '[]' : String(val);
   });
 
-  // Constants
-  private readonly DEFAULT_OVERRIDES: Record<string, Partial<RcConfigOption>> = {
-    min_age: { DefaultStr: '0s', Default: 0 },
-    max_age: { DefaultStr: '0s', Default: 0 },
-  };
-
   readonly DUMP_FLAGS_FALLBACK = DUMP_FLAGS_FALLBACK;
   readonly encodingFlags = ENCODING_FLAGS;
 
@@ -252,19 +217,16 @@ export class SettingControlComponent implements ControlValueAccessor {
     () => {
       const opt = this.option();
       if (!opt) return null;
-      const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
       const caller = this.optionOverrides()[opt.Name] ?? {};
-      return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+      return { ...opt, ...caller } as RcConfigOption;
     },
-    {
-      equal: (a, b) => a?.Name === b?.Name && a?.Type === b?.Type && a?.Value === b?.Value,
-    }
+    { equal: deepEqual }
   );
 
   readonly isMultiselectOption = computed(() => {
     const opt = this.mergedOption();
     if (!opt) return false;
-    if (isMultiselectType(opt.Type)) return true;
+    if (isArrayType(opt.Type)) return true;
     return (
       (opt.Name === 'scope' || opt.Help?.toLowerCase().includes('comma separated list')) &&
       !!opt.Examples?.length
@@ -398,6 +360,9 @@ export class SettingControlComponent implements ControlValueAccessor {
   private onTouched: () => void = () => {
     /* empty */
   };
+  private onValidatorChange: () => void = () => {
+    /* registered by Angular forms */
+  };
   private controlSubscriptions = new Subscription();
   private pendingWriteValue: unknown = undefined;
   private hasPendingWrite = false;
@@ -412,7 +377,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       .subscribe(val => this.restrictMode.set(val));
 
     effect(() => {
-      if (this.mergedOption()) this.createControl();
+      if (this.mergedOption()) untracked(() => this.createControl());
     });
 
     this.destroyRef.onDestroy(() => {
@@ -424,6 +389,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
     if (this.isMultiselectOption()) {
+      if (isJsonArrayType(option.Type) && Array.isArray(option.Default)) return option.Default;
       const delimiter = option.Type === 'SpaceSepList' ? /\s+/ : ',';
       return this.splitToArray(option.DefaultStr, delimiter);
     }
@@ -436,7 +402,6 @@ export class SettingControlComponent implements ControlValueAccessor {
         return this.valueMapper.parseTristate(option.Default ?? option.DefaultStr);
       case 'Bits':
         if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
-        if (!option.Examples?.length) return option.DefaultStr ?? '';
         return this.splitToArray(option.DefaultStr, ',');
       case 'Encoding':
       case 'CommaSepList':
@@ -510,6 +475,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   resetToDefault(): void {
     const ctrl = this.control();
     if (!ctrl) return;
+    ctrl.markAsDirty();
 
     const defaultValue = this.uiDefaultValue();
 
@@ -582,10 +548,6 @@ export class SettingControlComponent implements ControlValueAccessor {
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
-      if (opt.Type === 'Bits' && !opt.Examples?.length) {
-        if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
-        return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
-      }
       if (typeof value === 'number') {
         const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
         return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', delimiter);
@@ -625,19 +587,34 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
+  validate(): ValidationErrors | null {
+    return this.control()?.errors ?? null;
+  }
+
+  registerOnValidatorChange(fn: () => void): void {
+    this.onValidatorChange = fn;
+  }
+
+  setDisabledState(disabled: boolean): void {
+    this.isDisabled.set(disabled);
+    for (const control of [this.control(), this.dateControl(), this.timeControl()]) {
+      if (disabled) control?.disable({ emitEvent: false });
+      else control?.enable({ emitEvent: false });
+    }
+  }
+
   // Control creation
 
   private createControl(): void {
     this.controlSubscriptions.unsubscribe();
     this.controlSubscriptions = new Subscription();
 
+    const previous = this.control()?.value;
     const opt = this.mergedOption();
     if (!opt) return;
 
     const validators = this.getValidators(opt);
-    const isArray =
-      !opt.Examples?.length &&
-      (isJsonArrayType(opt.Type) || opt.Type === 'CommaSepList' || opt.Type === 'SpaceSepList');
+    const isArray = this.controlType() === 'array';
 
     if (isArray) {
       const initial = this.getInitialArrayValue(opt);
@@ -657,7 +634,11 @@ export class SettingControlComponent implements ControlValueAccessor {
       this.writeValue(this.pendingWriteValue);
       this.hasPendingWrite = false;
       this.pendingWriteValue = undefined;
+    } else if (previous !== undefined) {
+      this.writeValue(previous);
     }
+    this.setDisabledState(this.isDisabled());
+    this.onValidatorChange();
 
     // Bump version so isValueChanged computed re-evaluates for the new control.
     this.controlValueVersion.update(v => v + 1);
@@ -668,14 +649,15 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private getInitialArrayValue(opt: RcConfigOption): string[] {
-    if (opt.Type === 'CommaSepList') return this.splitToArray(opt.ValueStr || opt.DefaultStr, ',');
-    if (opt.Type === 'SpaceSepList')
-      return this.splitToArray(opt.ValueStr || opt.DefaultStr, /\s+/);
-    if (Array.isArray(opt.Value) && opt.Value.length > 0)
-      return opt.Value.filter((v): v is string => !!v);
-    if (Array.isArray(opt.Default) && opt.Default.length > 0)
-      return (opt.Default as unknown[]).filter((v): v is string => !!v);
-    return [];
+    if (isJsonArrayType(opt.Type)) {
+      if (Array.isArray(opt.Value) && opt.Value.length > 0)
+        return opt.Value.filter((v): v is string => !!v);
+      if (Array.isArray(opt.Default) && opt.Default.length > 0)
+        return (opt.Default as unknown[]).filter((v): v is string => !!v);
+      if (opt.Type !== 'CommaSepList' && opt.Type !== 'SpaceSepList') return [];
+    }
+    const initial = this.getInitialValue(opt);
+    return Array.isArray(initial) ? initial.map(String) : [];
   }
 
   private getInitialValue(opt: RcConfigOption): unknown {
@@ -687,11 +669,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return opt.ValueStr || opt.DefaultStr || '';
-      }
-      if (opt.Type === 'Bits' && !opt.Examples?.length) {
-        return typeof opt.Value === 'number'
-          ? opt.ValueStr || opt.DefaultStr || ''
-          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
       }
       const raw =
         typeof opt.Value === 'number'
@@ -741,7 +718,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
         this.controlValueVersion.update(v => v + 1);
-        if (this.remoteState?.isPopulatingForm()) return;
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
@@ -749,6 +725,8 @@ export class SettingControlComponent implements ControlValueAccessor {
         if (this.mergedOption()?.Type === 'Time') this.updateSplitFromControl(value);
       })
     );
+
+    this.controlSubscriptions.add(ctrl.statusChanges.subscribe(() => this.onValidatorChange()));
 
     if (this.mergedOption()?.Type === 'Time') {
       this.updateSplitFromControl(ctrl.value);
@@ -765,6 +743,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     const ctrl = this.control();
     const combined = this.combineDateTime();
     if (ctrl && combined !== null && ctrl.value !== combined) {
+      ctrl.markAsDirty();
       ctrl.setValue(combined);
     }
   }
@@ -825,6 +804,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   addArrayItem(): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
+    ctrl.markAsDirty();
     ctrl.push(new FormControl(''));
     this.syncFormArrayControls(ctrl);
   }
@@ -832,6 +812,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   removeArrayItem(i: number): void {
     const ctrl = this.control();
     if (!(ctrl instanceof FormArray)) return;
+    ctrl.markAsDirty();
     ctrl.removeAt(i);
     this.syncFormArrayControls(ctrl);
     this.commitValue();
@@ -852,7 +833,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       const r = this.validatorRegistry;
       const examples = this.controlOptionsList();
       if (isMultiSelect || isJsonArrayType(opt.Type)) {
-        validators.push(r.arrayValidator());
+        validators.push(validationUtils.arrayValidator());
       } else {
         const vMap: Record<string, () => ValidatorFn> = {
           int: () => r.integerValidator(opt.DefaultStr, examples),
@@ -879,6 +860,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   async obscureFieldValue(event: MouseEvent): Promise<void> {
+    if (this.isDisabled()) return;
     event.stopPropagation();
     event.preventDefault();
     const ctrl = this.control();

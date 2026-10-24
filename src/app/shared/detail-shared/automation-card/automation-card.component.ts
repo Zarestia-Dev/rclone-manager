@@ -1,6 +1,7 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import cronstrue from 'cronstrue';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +10,7 @@ import { Automation } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 
 const AUTOMATION_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
   sync: { icon: 'refresh', colorClass: 'sync-color' },
@@ -32,13 +34,13 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
   selector: 'app-automation-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
     TranslatePipe,
     DatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './automation-card.component.html',
   styleUrl: './automation-card.component.scss',
@@ -141,7 +143,7 @@ export class AutomationCardComponent {
 
     const mapPathToIcon = (path: string): string => {
       const isLocal = this.pathService.isLocalPath(path);
-      const lastSegment = this.pathService.splitSegments(path).pop() ?? '';
+      const lastSegment = pathUtils.splitSegments(path).pop() ?? '';
       const isFile = lastSegment.includes('.') && !path.endsWith('/');
       if (isFile) {
         return 'file-lines';

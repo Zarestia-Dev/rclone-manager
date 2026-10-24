@@ -136,6 +136,13 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
     this.inputBlur.emit();
   }
 
+  onStepClick(event: MouseEvent, action: 'increment' | 'decrement'): void {
+    // Pointer presses already step in startHold; keyboard and assistive clicks have no click count.
+    if (event.detail !== 0) return;
+    this.stepChange(action === 'increment' ? 1 : -1);
+    this.onBlur();
+  }
+
   startHold(action: 'increment' | 'decrement'): void {
     if (this.disabled()) return;
     this.stopHold();

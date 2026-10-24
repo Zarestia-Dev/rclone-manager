@@ -1,0 +1,718 @@
+use std::path::PathBuf;
+
+use crate::context::AppHandle;
+use log::{debug, info, warn};
+
+use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::types::Backend;
+use crate::rclone::backend::types::BackendInfo;
+use crate::rclone::endpoints::config;
+use crate::rclone::endpoints::core;
+use crate::rclone::engine::lifecycle::start_engine_if_not_running;
+use crate::rclone::state::automations::AutomationsCache;
+use crate::services::automation::engine::AutomationScheduler;
+use crate::services::settings::AppSettingsManager;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
+use crate::utils::types::events::BACKEND_SWITCHED;
+use crate::utils::types::state::RcloneState;
+
+pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.list_all().await)
+}
+
+pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
+    let backend_manager = app.state::<BackendManager>();
+    Ok(backend_manager.get_active_name().await)
+}
+
+pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String> {
+    let manager = app.state::<AppSettingsManager>();
+    let remotes = manager
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to access remotes sub-settings: {e}"))?;
+
+    remotes
+        .profiles()
+        .map_err(|_| "Profiles not enabled for remotes".to_string())?
+        .list()
+        .map_err(|e| format!("Failed to list profiles: {e}"))
+}
+
+pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> {
+    info!("Switching to backend: {name}");
+
+    let backend_manager = app.state::<BackendManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
+    let _switch = backend_manager.switch_lock.lock().await;
+
+    let backend = backend_manager
+        .get(&name)
+        .await
+        .ok_or_else(|| format!("Backend '{name}' not found"))?;
+
+    test_remote_connection(&app, &backend, &backend_manager).await?;
+
+    backend_manager
+        .switch_to(settings_manager.inner(), &name)
+        .await?;
+    app.state::<crate::services::automation::watcher::WatcherManager>()
+        .stop_all()
+        .await;
+
+    crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
+    info!("Re-evaluating engine after backend switch to '{name}'");
+    start_engine_if_not_running(&app).await;
+
+    configure_remote_backend(&app, &backend).await;
+
+    let refresh_result =
+        refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await;
+    // Refresh may revert to Local. Reconcile the backend actually selected on
+    // both paths, so old cron jobs and watch sessions cannot remain attached.
+    let automation_result =
+        crate::services::automation::commands::reload_automations_from_configs(&app).await;
+    let active_name = backend_manager.get_active_name().await;
+
+    crate::rclone::backend::manager::save_active_backend_to_settings(
+        settings_manager.inner(),
+        &active_name,
+    );
+    crate::services::bridge::emit(BACKEND_SWITCHED, &active_name);
+
+    refresh_result?;
+    automation_result?;
+
+    info!("Switched to backend: {name}");
+    Ok(())
+}
+
+/// Parameters for adding a new backend connection.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddBackendParams {
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub is_local: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub config_password: Option<String>,
+    pub config_path: Option<PathBuf>,
+    pub copy_backend_from: Option<String>,
+    pub copy_remotes_from: Option<String>,
+}
+
+pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
+    info!(
+        "Adding backend: {} ({}:{})",
+        params.name, params.host, params.port
+    );
+
+    if params.name.is_empty() {
+        return Err(crate::localized_error!("backendErrors.backend.nameEmpty"));
+    }
+    if Backend::is_local_name(&params.name) {
+        return Err(crate::localized_error!(
+            "backendErrors.backend.cannotAddLocal"
+        ));
+    }
+
+    let mut backend = if params.is_local {
+        Backend::new_local(&params.name)
+    } else {
+        Backend::new_remote(&params.name, &params.host, params.port)
+    };
+
+    backend.host = params.host;
+    backend.port = params.port;
+    backend.config_path = params.config_path;
+
+    if let (Some(u), Some(p)) = (&params.username, &params.password)
+        && !u.is_empty()
+        && !p.is_empty()
+    {
+        backend.username = Some(u.clone());
+        backend.password = Some(p.clone());
+    }
+
+    if let Some(cp) = &params.config_password
+        && !cp.is_empty()
+    {
+        backend.config_password = Some(cp.clone());
+    }
+
+    let settings_manager = app.state::<AppSettingsManager>();
+    let backend_manager = app.state::<BackendManager>();
+    backend_manager
+        .add(
+            settings_manager.inner(),
+            backend.clone(),
+            params.copy_backend_from.as_deref(),
+            params.copy_remotes_from.as_deref(),
+        )
+        .await?;
+
+    save_backend_to_settings(settings_manager.inner(), &backend)?;
+
+    info!("Backend '{}' added", params.name);
+    Ok(())
+}
+
+/// Parameters for updating an existing backend connection.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBackendParams {
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub config_password: Option<String>,
+    pub config_path: Option<PathBuf>,
+}
+
+pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Result<(), String> {
+    info!("Updating backend: {}", params.name);
+
+    let backend_manager = app.state::<BackendManager>();
+    let settings_manager = app.state::<AppSettingsManager>();
+
+    let existing = backend_manager
+        .get(&params.name)
+        .await
+        .ok_or_else(|| format!("Backend '{}' not found", params.name))?;
+
+    let mut backend = Backend {
+        name: params.name.clone(),
+        is_local: existing.is_local,
+        is_auth_generated: existing.is_auth_generated,
+        host: params.host,
+        port: params.port,
+        username: None,
+        password: None,
+        config_password: existing.config_password.clone(),
+        config_path: params.config_path,
+    };
+
+    match (params.username.as_deref(), params.password.as_deref()) {
+        (None, None) => {
+            backend.username = existing.username.clone();
+            backend.password = existing.password.clone();
+        }
+        (Some(u), Some(p)) if !u.is_empty() && !p.is_empty() => {
+            backend.username = Some(u.to_string());
+            backend.password = Some(p.to_string());
+            backend.is_auth_generated = false;
+        }
+        _ => {
+            if existing.is_local && existing.is_auth_generated {
+                backend.username = existing.username.clone();
+                backend.password = existing.password.clone();
+                backend.is_auth_generated = true;
+            } else {
+                backend.username = None;
+                backend.password = None;
+                backend.is_auth_generated = false;
+            }
+        }
+    }
+
+    match params.config_password.as_deref() {
+        None => { /* preserve */ }
+        Some(cp) if !cp.is_empty() => {
+            backend.config_password = Some(cp.to_string());
+        }
+        Some(_) => {
+            backend.config_password = None;
+        }
+    }
+
+    let creds_changed =
+        existing.username != backend.username || existing.password != backend.password;
+    let conn_changed = existing.host != backend.host
+        || existing.port != backend.port
+        || existing.config_path != backend.config_path
+        || existing.config_password != backend.config_password;
+
+    backend_manager
+        .update(settings_manager.inner(), &params.name, backend.clone())
+        .await?;
+
+    save_backend_to_settings(settings_manager.inner(), &backend)?;
+
+    if creds_changed || conn_changed {
+        if existing.is_local {
+            info!("Restarting Local engine — connection or credentials changed");
+            crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
+        } else {
+            info!(
+                "Clearing engine errors and re-probing after remote backend credential/connection update"
+            );
+            crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
+            crate::rclone::engine::lifecycle::start_engine_if_not_running(&app).await;
+        }
+    }
+
+    info!("Backend '{}' updated", params.name);
+    Ok(())
+}
+
+pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
+    info!("Removing backend: {name}");
+
+    let scheduler = app.state::<AutomationScheduler>();
+    let automations_cache = app.state::<AutomationsCache>();
+    let settings_manager = app.state::<AppSettingsManager>();
+    let backend_manager = app.state::<BackendManager>();
+
+    backend_manager
+        .remove(settings_manager.inner(), &name)
+        .await?;
+
+    delete_backend_from_settings(settings_manager.inner(), &name)?;
+
+    let automations = automations_cache.get_automations_for_backend(&name).await;
+    if !automations.is_empty() {
+        info!(
+            "Cleaning up {} automations for backend '{name}'",
+            automations.len()
+        );
+        for automation in automations {
+            if let Some(job_id_str) = &automation.scheduler_job_id
+                && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
+            {
+                let _ = scheduler.unschedule_automation(job_id).await;
+            }
+        }
+        automations_cache.clear_backend_automations(&name).await;
+    }
+
+    info!("Backend '{name}' removed");
+    Ok(())
+}
+
+pub async fn test_backend_connection(
+    app: AppHandle,
+    name: String,
+) -> Result<TestConnectionResult, String> {
+    debug!("Testing connection: {name}");
+
+    let backend_manager = app.state::<BackendManager>();
+    let transport = app.state::<RcloneState>().transport.clone();
+    match crate::rclone::backend::connectivity::check_connectivity_with_timeout(
+        &backend_manager,
+        &name,
+        &*transport,
+        std::time::Duration::from_secs(5),
+    )
+    .await
+    {
+        Ok((version, os)) => {
+            if let Some(backend) = backend_manager.get(&name).await {
+                let settings_manager = app.state::<AppSettingsManager>();
+                let _ = save_backend_to_settings(settings_manager.inner(), &backend);
+            }
+
+            let config_path = backend_manager.get_runtime_config_path(&name).await;
+
+            Ok(TestConnectionResult {
+                success: true,
+                message: "Connection successful".to_string(),
+                version: Some(version),
+                os: Some(os),
+                config_path,
+            })
+        }
+        Err(e) => Ok(TestConnectionResult {
+            success: false,
+            message: format!("Connection failed: {e}"),
+            version: None,
+            os: None,
+            config_path: None,
+        }),
+    }
+}
+
+pub async fn test_backend_connection_details(
+    app: AppHandle,
+    host: String,
+    port: u16,
+    username: Option<String>,
+    password: Option<String>,
+) -> Result<TestConnectionResult, String> {
+    debug!("Testing unsaved connection details: {host}:{port}");
+
+    // Instantiate a temporary remote Backend object
+    let mut temp_backend = Backend::new_remote("temp_test_backend", host, port);
+    temp_backend.username = username;
+    temp_backend.password = password;
+
+    let transport = app.state::<RcloneState>().transport.clone();
+    let timeout = std::time::Duration::from_secs(5);
+    let runtime_info = temp_backend.fetch_runtime_info(&*transport, timeout).await;
+
+    if runtime_info.is_connected() {
+        Ok(TestConnectionResult {
+            success: true,
+            message: "Connection successful".to_string(),
+            version: runtime_info.version,
+            os: runtime_info.os,
+            config_path: runtime_info.config_path,
+        })
+    } else {
+        Ok(TestConnectionResult {
+            success: false,
+            message: runtime_info
+                .error_message()
+                .unwrap_or_else(|| "Connection failed".to_string()),
+            version: None,
+            os: None,
+            config_path: None,
+        })
+    }
+}
+
+/// Suggest an available local TCP port starting from `start_port` (or default 51900).
+#[cfg(not(feature = "librclone"))]
+pub fn find_available_port(start_port: Option<u16>) -> Result<u16, String> {
+    let start = start_port.unwrap_or(51900);
+    Ok(crate::utils::process::process_manager::find_next_available_port(start))
+}
+
+/// Check if a specific local TCP port is available.
+#[cfg(not(feature = "librclone"))]
+pub fn check_port_available(port: u16) -> Result<bool, String> {
+    Ok(!crate::utils::process::process_manager::is_port_in_use(
+        port,
+    ))
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TestConnectionResult {
+    pub success: bool,
+    pub message: String,
+    pub version: Option<String>,
+    pub os: Option<String>,
+    pub config_path: Option<PathBuf>,
+}
+
+// Persistence helpers
+
+fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> Result<(), String> {
+    let connections = manager
+        .sub_settings("connections")
+        .map_err(|e| e.to_string())?;
+
+    let mut backend_to_save = backend.clone();
+    if backend_to_save.is_auth_generated {
+        backend_to_save.username = None;
+        backend_to_save.password = None;
+    }
+
+    let mut value = serde_json::to_value(&backend_to_save).map_err(|e| e.to_string())?;
+    // rcman preserves omitted secrets. Write their schema defaults explicitly
+    // when the connection no longer has a password so stored credentials clear.
+    value["password"] = serde_json::json!(backend_to_save.password.as_deref().unwrap_or_default());
+    value["config_password"] = serde_json::json!(
+        backend_to_save
+            .config_password
+            .as_deref()
+            .unwrap_or_default()
+    );
+    connections
+        .set(&backend.name, &value)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+fn delete_backend_from_settings(manager: &AppSettingsManager, name: &str) -> Result<(), String> {
+    let connections = manager
+        .sub_settings("connections")
+        .map_err(|e| e.to_string())?;
+
+    connections.delete(name).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+async fn test_remote_connection(
+    app: &AppHandle,
+    backend: &Backend,
+    backend_manager: &BackendManager,
+) -> Result<(), String> {
+    if backend.is_local {
+        return Ok(());
+    }
+
+    debug!("Testing remote backend connection...");
+    let client = app.state::<RcloneState>().client.clone();
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        backend.post_json(&client, core::VERSION, None),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {
+            info!("Remote backend '{}' is reachable", backend.name);
+            backend_manager
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Connected,
+                )
+                .await;
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
+            backend_manager
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(err_str.clone()),
+                )
+                .await;
+            Err(format!("Cannot connect to '{}': {err_str}", backend.name))
+        }
+        Err(_) => {
+            let err_str = "Connection timed out".to_string();
+            backend_manager
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(err_str.clone()),
+                )
+                .await;
+            Err(format!("Cannot connect to '{}': {err_str}", backend.name))
+        }
+    }
+}
+
+async fn configure_remote_backend(app: &AppHandle, backend: &Backend) {
+    if let Some(config_path) = &backend.config_path {
+        info!(
+            "Setting config path for remote backend '{}' to: {}",
+            backend.name,
+            config_path.display()
+        );
+        let params = serde_json::json!({ "path": config_path });
+        let transport = app.state::<RcloneState>().transport.clone();
+        if let Err(e) = transport.rpc(config::SETPATH, Some(&params)).await {
+            warn!("Failed to set config path: {e}");
+        } else {
+            info!("Config path set successfully");
+        }
+    }
+
+    if backend.config_password.is_some()
+        && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(app).await
+    {
+        warn!("Auto-unlock failed: {e}");
+    }
+}
+
+async fn refresh_and_verify_cache(
+    app: &AppHandle,
+    backend_manager: &BackendManager,
+    settings_manager: &AppSettingsManager,
+    name: &str,
+) -> Result<(), String> {
+    let backend = backend_manager
+        .get(name)
+        .await
+        .ok_or_else(|| crate::localized_error!("backendErrors.backend.notFound", "name" => name))?;
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(15),
+        app.state::<BackendManager>()
+            .remote_cache_for(name)
+            .refresh_all(app.clone(), &backend),
+    )
+    .await
+    {
+        Ok(Ok(())) => {
+            info!("Cache refreshed for backend '{name}'");
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            warn!("Cache refresh failed for backend '{name}': {e}");
+            revert_to_local(backend_manager, settings_manager, name).await;
+            Err(format!(
+                "Backend connected but failed to list items: {e}. Reverted to Local."
+            ))
+        }
+        Err(_) => {
+            warn!("Cache refresh timed out for backend '{name}'");
+            if !Backend::is_local_name(name) {
+                backend_manager
+                    .set_runtime_status(
+                        name,
+                        crate::rclone::backend::runtime::RuntimeStatus::Error(
+                            "Connection too slow".to_string(),
+                        ),
+                    )
+                    .await;
+            }
+            revert_to_local(backend_manager, settings_manager, name).await;
+            Err(
+                "Backend connection accepted but too slow to list items. Reverted to Local."
+                    .to_string(),
+            )
+        }
+    }
+}
+
+async fn revert_to_local(
+    backend_manager: &BackendManager,
+    settings_manager: &AppSettingsManager,
+    current_name: &str,
+) {
+    if !Backend::is_local_name(current_name) {
+        info!("Reverting to previous backend due to failure");
+        if let Err(e) = backend_manager
+            .switch_to(settings_manager, LOCAL_BACKEND_NAME)
+            .await
+        {
+            warn!("Failed to revert to Local backend: {e}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn settings_manager() -> (tempfile::TempDir, AppSettingsManager) {
+        let directory = tempfile::tempdir().unwrap();
+        let manager = rcman::SettingsManager::builder("backend-secrets-test", "1")
+            .with_config_dir(directory.path())
+            .with_schema::<crate::services::settings::schema::AppSettings>()
+            .with_credential_config(rcman::CredentialConfig::Custom(std::sync::Arc::new(
+                rcman::MemoryBackend::new(),
+            )))
+            .with_sub_settings(
+                rcman::SubSettingsConfig::singlefile("connections").with_schema::<Backend>(),
+            )
+            .build()
+            .unwrap();
+        (directory, manager)
+    }
+
+    #[test]
+    fn clearing_connection_passwords_removes_credentials_and_tracking() {
+        let (directory, manager) = settings_manager();
+        let mut backend = Backend::new_remote("Test", "localhost", 51900);
+        backend.password = Some("api-secret".into());
+        backend.config_password = Some("config-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        backend.password = None;
+        backend.config_password = None;
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        let credentials = manager.credentials().unwrap();
+        for field in ["password", "config_password"] {
+            let key = format!("sub.connections.Test.{field}");
+            assert_eq!(credentials.get(&key).unwrap(), None);
+            assert!(
+                !credentials
+                    .get_tracked_secrets(None)
+                    .unwrap()
+                    .contains(&key)
+            );
+        }
+        let saved = std::fs::read_to_string(directory.path().join("connections.json")).unwrap();
+        assert!(!saved.contains("api-secret"));
+        assert!(!saved.contains("config-secret"));
+    }
+
+    #[test]
+    fn generated_auth_clears_saved_api_password_and_preserves_config_password() {
+        let (_directory, manager) = settings_manager();
+        let mut backend = Backend::new_local(LOCAL_BACKEND_NAME);
+        backend.password = Some("old-api-secret".into());
+        backend.config_password = Some("config-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        backend.is_auth_generated = true;
+        backend.password = Some("runtime-only-secret".into());
+        save_backend_to_settings(&manager, &backend).unwrap();
+
+        let credentials = manager.credentials().unwrap();
+        assert_eq!(
+            credentials.get("sub.connections.Local.password").unwrap(),
+            None
+        );
+        assert_eq!(
+            credentials
+                .get("sub.connections.Local.config_password")
+                .unwrap()
+                .as_deref(),
+            Some("config-secret")
+        );
+        let tracked = credentials.get_tracked_secrets(None).unwrap();
+        assert!(!tracked.contains("sub.connections.Local.password"));
+        assert!(tracked.contains("sub.connections.Local.config_password"));
+    }
+
+    #[test]
+    fn test_params_deserialize_camelcase() {
+        let json = r#"{
+            "name": "Local",
+            "host": "0.0.0.0",
+            "port": 51900,
+            "configPassword": "secret",
+            "configPath": "/config/rclone.conf"
+        }"#;
+
+        let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.config_password.as_deref(), Some("secret"));
+        assert_eq!(
+            params.config_path.as_ref(),
+            Some(&PathBuf::from("/config/rclone.conf"))
+        );
+    }
+
+    #[test]
+    fn test_add_params_deserialize_camelcase() {
+        let json = r#"{
+            "name": "MyRemote",
+            "host": "192.168.1.100",
+            "port": 51900,
+            "isLocal": false
+        }"#;
+
+        let params: AddBackendParams = serde_json::from_str(json).unwrap();
+        assert!(!params.is_local);
+    }
+
+    #[test]
+    fn test_missing_optional_fields_use_none() {
+        let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
+        let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.username, None);
+        assert_eq!(params.password, None);
+    }
+
+    #[test]
+    fn test_credential_update_rules() {
+        let json_absent = r#"{"name":"NAS","host":"10.0.0.1","port":51900}"#;
+        let json_cleared =
+            r#"{"name":"NAS","host":"10.0.0.1","port":51900,"username":"","password":""}"#;
+        let json_set = r#"{"name":"NAS","host":"10.0.0.1","port":51900,"username":"admin","password":"secret"}"#;
+
+        let absent: UpdateBackendParams = serde_json::from_str(json_absent).unwrap();
+        let cleared: UpdateBackendParams = serde_json::from_str(json_cleared).unwrap();
+        let set: UpdateBackendParams = serde_json::from_str(json_set).unwrap();
+
+        assert!(matches!(
+            (absent.username.as_deref(), absent.password.as_deref()),
+            (None, None)
+        ));
+        assert!(matches!(
+            (cleared.username.as_deref(), cleared.password.as_deref()),
+            (Some(""), Some(""))
+        ));
+        assert!(matches!(
+            (set.username.as_deref(), set.password.as_deref()),
+            (Some("admin"), Some("secret"))
+        ));
+    }
+}

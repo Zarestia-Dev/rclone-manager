@@ -10,6 +10,8 @@
 <mat-toolbar
   class="slide-banner flatpak-warning-banner"
   [class.visible]="showFlatpakWarning()"
+  [inert]="!showFlatpakWarning()"
+  [attr.aria-hidden]="!showFlatpakWarning()"
   role="status"
 >
   <mat-icon svgIcon="circle-info" class="accent"></mat-icon>

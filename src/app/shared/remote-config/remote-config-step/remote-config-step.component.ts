@@ -15,20 +15,12 @@ import { startWith } from 'rxjs';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
-import {
-  RcConfigOption,
-  RemoteType,
-  RemoteConfigStepVisibility,
-  CommandOption,
-  PREDEFINED_OPTIONS,
-} from '@app/types';
+import { RcConfigOption, RemoteType, RemoteConfigStepVisibility, CommandOption } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
@@ -40,20 +32,36 @@ import { findUniqueName } from 'src/app/services/remote/utils/unique-name.util';
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
+import {
+  isProviderReady,
+  matchesProviderRule,
+  resolveProviderField,
+} from 'src/app/services/remote/utils/config-metadata.utils';
+import { ConfigCommandOptionsComponent } from '../config-command-options/config-command-options.component';
+import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config-form-skeleton/config-form-skeleton.component';
+import { generatePrefixedId } from 'src/app/shared/utils';
+import { MatDivider } from '@angular/material/divider';
+import {
+  getProviderTier,
+  PROVIDER_SUMMARY_FEATURES,
+  REMOTE_FEATURE_LABEL_KEYS,
+} from 'src/app/services/remote/utils/provider-metadata.utils';
+
 @Component({
   selector: 'app-remote-config-step',
   imports: [
+    ConfigFormSkeletonComponent,
+    ConfigCommandOptionsComponent,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSlideToggleModule,
     MatAutocompleteModule,
     MatButtonModule,
-    MatSelectModule,
     SettingControlComponent,
     JsonEditorComponent,
     TranslatePipe,
     MatIcon,
+    MatDivider,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
@@ -63,6 +71,7 @@ export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly iconService = inject(IconService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly configSearch = inject(ConfigSearchService);
 
   // ── Inputs ─────────────────
 
@@ -75,8 +84,10 @@ export class RemoteConfigStepComponent {
   readonly remoteTypes = input<RemoteType[]>([]);
   readonly visibility = input<RemoteConfigStepVisibility>({});
   readonly showAdvancedOptions = input<boolean>(false);
+  readonly autoObscure = input(false);
+  readonly disabled = input(false);
   readonly searchQuery = input<string>('');
-  readonly initialCommandOptions = input<CommandOption[]>([]);
+  readonly initialCommandOptions = input<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
 
   // ── Outputs ───────────────────────────────────────────────────────────────
 
@@ -112,10 +123,11 @@ export class RemoteConfigStepComponent {
   readonly selectedProvider = signal<string | undefined>(undefined);
   readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly showCommandOptions = signal(false);
+  readonly showProviderOverview = signal(false);
+  readonly providerOverviewId = generatePrefixedId('provider-overview');
   readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
-  readonly newOptionKey = signal('');
-  readonly newOptionType = signal<'boolean' | 'string' | 'number' | 'array'>('boolean');
   readonly randomIcon = signal('cloud');
+  readonly animTrigger = signal(0);
   readonly suggestedRemotes = signal<{ label: string; value: string; icon: string }[]>([]);
 
   // ── Computed View Models ──────────────────────────────────────────────────
@@ -138,12 +150,21 @@ export class RemoteConfigStepComponent {
     );
   });
 
-  readonly providerField = computed(() => {
-    const fields = this.remoteFields();
-    const byName = fields.find(f => f.Name === 'provider' && f.Examples?.length);
-    if (byName) return byName;
-    if (!fields.some(f => f.Provider)) return null;
-    return fields.find(f => f.Examples?.length) ?? null;
+  readonly providerField = computed(() => resolveProviderField(this.remoteFields()));
+
+  readonly providerOverview = computed(
+    () => this.remoteTypes().find(type => type.value === this.remoteTypeValue())?.overview
+  );
+
+  readonly providerTier = computed(() => getProviderTier(this.providerOverview()?.Tier));
+
+  readonly providerCapabilities = computed(() => {
+    const overview = this.providerOverview();
+    if (overview?.Virtual) return [];
+    const features = overview?.Features ?? [];
+    return PROVIDER_SUMMARY_FEATURES.filter(feature => features.includes(feature)).map(
+      feature => REMOTE_FEATURE_LABEL_KEYS[feature]
+    );
   });
 
   readonly filteredProvidersView = computed(() => {
@@ -160,36 +181,35 @@ export class RemoteConfigStepComponent {
 
   readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
   readonly advancedFields = computed(() => this.getFieldsByAdvanced(true));
-
-  readonly providerReady = computed(
-    () => !!this.remoteTypeValue() && (!this.providerField() || !!this.selectedProvider())
+  readonly advancedOptionsVisible = computed(
+    () => this.showAdvancedOptions() || !!this.searchQuery().trim()
   );
 
-  readonly jsonExcludeKeys = ['name', 'type'];
+  readonly providerReady = computed(() =>
+    isProviderReady(this.remoteTypeValue(), this.providerField(), this.selectedProvider())
+  );
 
-  readonly availablePredefinedOptions = computed(() => {
-    const active = new Set(this.commandOptions().map(o => o.key));
-    return PREDEFINED_OPTIONS.filter(p => !active.has(p.key));
+  readonly jsonExcludeKeys = computed(() => {
+    const providerName = this.providerField()?.Name;
+    const provider = this.selectedProvider();
+    return [
+      'name',
+      'type',
+      ...this.remoteFields()
+        .filter(
+          field => field.Name === providerName || !matchesProviderRule(field.Provider, provider)
+        )
+        .map(field => field.Name || field.FieldName),
+    ];
   });
 
-  readonly commandOptionsView = computed(() => {
-    return this.commandOptions().map(opt => {
-      const isArray = Array.isArray(opt.value);
-      const typeOfVal = typeof opt.value;
-      const type = isArray
-        ? 'array'
-        : typeOfVal === 'boolean' || typeOfVal === 'number'
-          ? typeOfVal
-          : 'string';
-
-      return {
-        ...opt,
-        type,
-        booleanValue: type === 'boolean' ? (opt.value as boolean) : false,
-        stringValue: type === 'string' || type === 'number' ? String(opt.value) : '',
-        arrayValue: isArray ? (opt.value as string[]) : [],
-      };
-    });
+  readonly showObscureButton = computed(() => {
+    const options = this.commandOptions();
+    return (
+      !this.autoObscure() ||
+      !options.some(option => option.key === 'obscure' && option.value === true) ||
+      options.some(option => option.key === 'noObscure' && option.value === true)
+    );
   });
 
   // ── Effects ───────────────────────────────────────────────────────────────
@@ -201,8 +221,13 @@ export class RemoteConfigStepComponent {
       const typeCtrl = form?.get('type');
       if (!typeCtrl) return;
 
-      this.remoteTypeValue.set((typeCtrl.value as string) || '');
-      const sub = typeCtrl.valueChanges.subscribe(val => this.remoteTypeValue.set(val || ''));
+      const updateType = (value: string): void => {
+        if (untracked(this.remoteTypeValue) !== (value || '')) this.showProviderOverview.set(false);
+        this.remoteTypeValue.set(value || '');
+        this.remoteSearchCtrl.setValue(this.displayRemote(value), { emitEvent: false });
+      };
+      updateType(typeCtrl.value);
+      const sub = typeCtrl.valueChanges.subscribe(updateType);
       onCleanup(() => sub.unsubscribe());
     });
 
@@ -219,27 +244,15 @@ export class RemoteConfigStepComponent {
 
     effect(() => {
       const initial = this.initialCommandOptions();
-      if (initial !== undefined && initial.length > 0) {
-        untracked(() => this.commandOptions.set(initial));
-      }
-    });
-
-    effect(onCleanup => {
-      const typeControl = this.form().get('type');
-      if (!typeControl) return;
-
-      const sub = typeControl.valueChanges
-        .pipe(startWith(typeControl.value))
-        .subscribe(val =>
-          this.remoteSearchCtrl.setValue(this.displayRemote(val), { emitEvent: false })
-        );
-
-      onCleanup(() => sub.unsubscribe());
+      untracked(() => this.commandOptions.set(initial));
     });
 
     effect(onCleanup => {
       const fieldDef = this.providerField();
-      if (!fieldDef) return;
+      if (!fieldDef) {
+        this.selectedProvider.set(undefined);
+        return;
+      }
 
       const control = this.form().get(fieldDef.Name);
       if (!control) return;
@@ -264,7 +277,7 @@ export class RemoteConfigStepComponent {
 
     effect(() => {
       const opts = { emitEvent: false } as const;
-      if (this.isTypeLocked()) {
+      if (this.isTypeLocked() || this.disabled()) {
         this.remoteSearchCtrl.disable(opts);
       } else {
         this.remoteSearchCtrl.enable(opts);
@@ -276,11 +289,29 @@ export class RemoteConfigStepComponent {
       const nameControl = this.form().get('name');
       if (!nameControl) return;
 
-      if (this.isNameLocked()) {
+      if (this.isNameLocked() || this.disabled()) {
         nameControl.disable(opts);
       } else {
         nameControl.enable(opts);
       }
+    });
+
+    effect(() => {
+      const fields = this.remoteFields();
+      const provider = this.selectedProvider();
+      const form = this.form();
+      if (this.disabled() || form.disabled) return;
+      untracked(() => {
+        for (const field of fields) {
+          if (!field.Provider) continue;
+          const control = form.get(field.Name || field.FieldName);
+          if (!control) continue;
+          const visible = matchesProviderRule(field.Provider, provider);
+          if (visible && control.disabled) control.enable({ emitEvent: false });
+          else if (!visible && control.enabled) control.disable({ emitEvent: false });
+        }
+        form.updateValueAndValidity();
+      });
     });
 
     effect(() => {
@@ -291,6 +322,7 @@ export class RemoteConfigStepComponent {
     });
 
     effect(() => {
+      if (!this.showCommandField()) return;
       const isInteractive = this.remoteManagementService.isInteractiveRemote(
         this.remoteTypeValue()
       );
@@ -303,45 +335,31 @@ export class RemoteConfigStepComponent {
     });
 
     effect(onCleanup => {
-      if (this.showTypeField() && !this.remoteTypeValue() && !this.isLoading()) {
-        const types = this.remoteTypesWithIcons();
-        if (types.length === 0) return;
-
-        const pickNextIcon = (): string => {
-          if (types.length === 1) return types[0].icon;
-          const current = this.randomIcon();
-          let nextIcon: string;
-          do {
-            nextIcon = types[Math.floor(Math.random() * types.length)].icon;
-          } while (nextIcon === current);
-          return nextIcon;
-        };
-
-        const id = setInterval(() => {
-          this.randomIcon.set(pickNextIcon());
-        }, 3000);
-        onCleanup(() => clearInterval(id));
-      } else {
+      if (!this.showTypeField() || this.remoteTypeValue() || this.isLoading()) {
         this.randomIcon.set('cloud');
+        this.animTrigger.set(0);
+        return;
       }
+      const types = this.remoteTypesWithIcons();
+      if (!types.length) return;
+
+      const timer = setInterval(() => {
+        const alternatives = types.filter(type => type.icon !== this.randomIcon());
+        const candidates = alternatives.length ? alternatives : types;
+        this.randomIcon.set(candidates[Math.floor(Math.random() * candidates.length)].icon);
+        this.animTrigger.update(value => value + 1);
+      }, 3000);
+      onCleanup(() => clearInterval(timer));
     });
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
-  private matchesProviderRule(rule: string | undefined, provider?: string): boolean {
-    if (!rule) return true;
-    if (!provider) return false;
-    const negated = rule.startsWith('!');
-    const parts = (negated ? rule.slice(1) : rule).split(',').map(p => p.trim());
-    return negated ? !parts.includes(provider) : parts.includes(provider);
-  }
-
   private getFilteredField(field: RcConfigOption, provider?: string): RcConfigOption {
     if (!field.Examples?.length || !provider) return field;
     return {
       ...field,
-      Examples: field.Examples.filter(ex => this.matchesProviderRule(ex.Provider, provider)),
+      Examples: field.Examples.filter(ex => matchesProviderRule(ex.Provider, provider)),
     };
   }
 
@@ -353,9 +371,9 @@ export class RemoteConfigStepComponent {
     return this.remoteFields()
       .filter(f => !!f.Advanced === isAdvanced)
       .filter(f => f.Name !== providerName)
-      .filter(f => this.matchesProviderRule(f.Provider, currentProvider))
+      .filter(f => matchesProviderRule(f.Provider, currentProvider))
       .map(f => this.getFilteredField(f, currentProvider))
-      .filter(f => matchesConfigSearch(f, query));
+      .filter(f => this.configSearch.matches(f, query, this.remoteTypeValue()));
   }
 
   private clearProviderDependentFields(
@@ -367,7 +385,7 @@ export class RemoteConfigStepComponent {
       const control = form.get(field.Name);
       if (!control) continue;
 
-      if (field.Provider && !this.matchesProviderRule(field.Provider, newProvider)) {
+      if (field.Provider && !matchesProviderRule(field.Provider, newProvider)) {
         control.setValue(null);
         continue;
       }
@@ -383,7 +401,7 @@ export class RemoteConfigStepComponent {
 
   private isValueValidForProvider(field: RcConfigOption, value: string, provider: string): boolean {
     const match = field.Examples?.find(ex => ex.Value === value);
-    return !(match && !this.matchesProviderRule(match.Provider, provider));
+    return !(match && !matchesProviderRule(match.Provider, provider));
   }
 
   private shuffleSample<T>(list: T[], count = 5): T[] {
@@ -452,62 +470,6 @@ export class RemoteConfigStepComponent {
 
   onFieldChanged(fieldName: string, isChanged: boolean): void {
     this.fieldChanged.emit({ fieldName, isChanged });
-  }
-
-  // ── Command option mutations ──────────────────────────────────────────────
-
-  addPredefinedOption(predefined: CommandOption): void {
-    this.commandOptions.update(opts => [...opts, { ...predefined }]);
-  }
-
-  addCustomOption(): void {
-    const key = this.newOptionKey().trim();
-    if (!key) return;
-
-    const type = this.newOptionType();
-    const value: CommandOption['value'] =
-      type === 'boolean' ? true : type === 'number' ? 0 : type === 'array' ? [] : '';
-
-    this.commandOptions.update(opts => [...opts, { key, value }]);
-    this.newOptionKey.set('');
-  }
-
-  removeOption(key: string): void {
-    this.commandOptions.update(opts => opts.filter(o => o.key !== key));
-  }
-
-  updateOption(key: string, value: CommandOption['value']): void {
-    this.commandOptions.update(opts => opts.map(o => (o.key === key ? { ...o, value } : o)));
-  }
-
-  updateNumberOption(key: string, rawValue: string): void {
-    const num = parseFloat(rawValue);
-    if (!isNaN(num)) this.updateOption(key, num);
-  }
-
-  addArrayChip(key: string, value: string, input: HTMLInputElement): void {
-    const val = value.trim();
-    if (!val) return;
-    this.commandOptions.update(opts =>
-      opts.map(o => (o.key === key ? { ...o, value: [...(o.value as string[]), val] } : o))
-    );
-    input.value = '';
-  }
-
-  handleArrayChipKeydown(key: string, event: KeyboardEvent | Event, input: HTMLInputElement): void {
-    if (event instanceof KeyboardEvent) {
-      if (event.key !== 'Enter' && event.key !== ',') return;
-      event.preventDefault();
-    }
-    this.addArrayChip(key, input.value, input);
-  }
-
-  removeArrayChip(key: string, index: number): void {
-    this.commandOptions.update(opts =>
-      opts.map(o =>
-        o.key === key ? { ...o, value: (o.value as string[]).filter((_, i) => i !== index) } : o
-      )
-    );
   }
 
   reshuffleSuggestions(): void {

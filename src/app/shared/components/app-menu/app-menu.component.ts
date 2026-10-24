@@ -17,6 +17,7 @@ import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
 import { LongPressDirective } from 'src/app/shared/directives/long-press.directive';
+import { SlideMenuController } from 'src/app/shared/utils';
 import { Theme, MainView } from '@app/types';
 
 @Component({
@@ -32,7 +33,7 @@ import { Theme, MainView } from '@app/types';
     LongPressDirective,
   ],
   templateUrl: './app-menu.component.html',
-  styleUrl: './app-menu.component.scss',
+  styleUrls: ['./app-menu.component.scss', '../../../styles/_slide-menu.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppMenuComponent {
@@ -48,6 +49,8 @@ export class AppMenuComponent {
 
   readonly uiStateService = inject(UiStateService);
   readonly alertService = inject(AlertService);
+
+  readonly menuCtrl = new SlideMenuController<'main' | 'submenu'>('.app-sliding-container');
 
   // Signals for update states
   readonly hasUpdates = this.appUpdaterService.hasUpdates;
@@ -103,51 +106,29 @@ export class AppMenuComponent {
 
   readonly baseWorkspace = this.uiStateService.defaultView;
 
-  readonly activeWorkspace = computed((): MainView => {
-    if (this.nautilusService.isBrowserOverlayOpen()) return 'nautilus';
-    if (this.flowOverlayService.isFlowOverlayOpen()) return 'flow';
-    if (this.mainUiOverlayService.isMainUiOverlayOpen()) return 'main_menu';
-    return this.uiStateService.selectedMainView();
-  });
+  readonly activeWorkspace = this.uiStateService.activeWorkspace;
 
   goBackToBaseWorkspace(): void {
     this.nautilusService.closeBrowserOverlay();
-    this.flowOverlayService.closeFlowOverlay();
-    this.mainUiOverlayService.closeMainUiOverlay();
+    this.flowOverlayService.closeOverlay();
+    this.mainUiOverlayService.closeOverlay();
     this.uiStateService.setMainView(this.baseWorkspace());
   }
 
-  openWorkspace(target: MainView): void {
+  async openWorkspace(target: MainView): Promise<void> {
     if (target === this.baseWorkspace()) {
       this.goBackToBaseWorkspace();
       return;
     }
 
-    if (target === 'nautilus') {
-      this.flowOverlayService.closeFlowOverlay();
-      this.mainUiOverlayService.closeMainUiOverlay();
-      if (this.baseWorkspace() === 'nautilus') {
-        this.uiStateService.setMainView('nautilus');
-      } else {
-        void this.nautilusService.openBrowserOverlay(null, null);
-      }
-    } else if (target === 'flow') {
-      this.nautilusService.closeBrowserOverlay();
-      this.mainUiOverlayService.closeMainUiOverlay();
-      if (this.baseWorkspace() === 'flow') {
-        this.uiStateService.setMainView('flow');
-      } else {
-        void this.flowOverlayService.openFlowOverlay();
-      }
-    } else if (target === 'main_menu') {
-      this.nautilusService.closeBrowserOverlay();
-      this.flowOverlayService.closeFlowOverlay();
-      if (this.baseWorkspace() === 'main_menu') {
-        this.uiStateService.setMainView('main_menu');
-      } else {
-        void this.mainUiOverlayService.openMainUiOverlay();
-      }
-    }
+    // Keep the current workspace visible until the target has finished loading.
+    if (target === 'nautilus') await this.nautilusService.openBrowserOverlay(null, null);
+    else if (target === 'flow') await this.flowOverlayService.openOverlay();
+    else await this.mainUiOverlayService.openOverlay();
+
+    if (target !== 'nautilus') this.nautilusService.closeBrowserOverlay();
+    if (target !== 'flow') this.flowOverlayService.closeOverlay();
+    if (target !== 'main_menu') this.mainUiOverlayService.closeOverlay();
   }
 
   openPreferencesModal(): void {
@@ -156,6 +137,54 @@ export class AppMenuComponent {
 
   openRcloneFlagsModal(): void {
     this.modalService.openRcloneFlags();
+  }
+
+  openVaultModal(): void {
+    this.modalService.openVault();
+  }
+
+  onAdvancedKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.menuCtrl.openSubmenu('submenu');
+      setTimeout(() => {
+        const backBtn = document.querySelector<HTMLButtonElement>(
+          '.app-sliding-container .menu-header button'
+        );
+        backBtn?.focus();
+      }, 50);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const current = event.currentTarget as HTMLElement | null;
+      let next = current?.nextElementSibling as HTMLElement | null;
+      while (next && next.tagName !== 'BUTTON') {
+        next = next.nextElementSibling as HTMLElement | null;
+      }
+      next?.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const current = event.currentTarget as HTMLElement | null;
+      let prev = current?.previousElementSibling as HTMLElement | null;
+      while (prev && prev.tagName !== 'BUTTON') {
+        prev = prev.previousElementSibling as HTMLElement | null;
+      }
+      prev?.focus();
+    }
+  }
+
+  onBackKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.menuCtrl.goBack();
+      setTimeout(() => {
+        const advBtn = document.querySelector<HTMLButtonElement>(
+          '.app-sliding-container .advanced-menu-trigger'
+        );
+        advBtn?.focus();
+      }, 50);
+    }
   }
 
   openKeyboardShortcutsModal(): void {

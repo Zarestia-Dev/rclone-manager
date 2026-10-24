@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   inject,
@@ -240,7 +241,7 @@ export class MultiRenameModalComponent {
         .filter(p => p.isChanged)
         .map(p => {
           const parentDir = this.pathService.getParentPath(p.item.entry.Path);
-          const newPath = this.pathService.joinPath(parentDir, p.newName);
+          const newPath = pathUtils.joinPath(parentDir, p.newName);
           return {
             remote: remoteName,
             srcPath: p.item.entry.Path,

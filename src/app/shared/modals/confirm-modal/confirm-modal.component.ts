@@ -1,9 +1,16 @@
-import { Component, HostListener, inject, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { ConfirmDialogData } from '@app/types';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
+import { isKeyboardEventInScope } from '../../utils/keyboard-utils';
 
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -16,12 +23,15 @@ import { TranslatePipe } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent {
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   public readonly dialogRef = inject(MatDialogRef<ConfirmModalComponent>);
   public readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 
   @HostListener('document:keydown.enter', ['$event'])
   onEnterKey(event: Event): void {
+    if (!isKeyboardEventInScope(event, this.elementRef.nativeElement)) return;
     const keyboardEvent = event as KeyboardEvent;
+    // Enter confirms regardless of focus; prevent the focused button's native click.
     keyboardEvent.preventDefault();
     if (this.data.confirmText) {
       this.onConfirm();

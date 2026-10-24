@@ -1,4 +1,14 @@
 :host {
+  min-width: 0;
+
+  .card-header {
+    flex-wrap: wrap;
+  }
+
+  .card-info {
+    flex-basis: min(100%, 15rem);
+  }
+
   display: block;
   cursor: pointer;
   box-sizing: border-box;
@@ -23,17 +33,12 @@
       cursor: pointer;
       transition: var(--transition-fast);
       min-width: 0;
+      max-width: 100%;
 
       mat-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
         font-size: var(--icon-size-sm);
-      }
-
-      .remote-name-text {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
 
       &:hover {

@@ -20,7 +20,7 @@ describe('DeleteRemoteModalComponent', () => {
   let component: DeleteRemoteModalComponent;
   let dialogRefSpy: { close: ReturnType<typeof vi.fn> };
   let remoteFacadeSpy: {
-    orderedRemotes: ReturnType<typeof signal<Remote[]>>;
+    getRemote: ReturnType<typeof vi.fn>;
     mountedRemotes: ReturnType<typeof signal<MountedRemote[]>>;
     runningServes: ReturnType<typeof signal<ServeListItem[]>>;
     getRemoteSettings: ReturnType<typeof vi.fn>;
@@ -53,10 +53,9 @@ describe('DeleteRemoteModalComponent', () => {
   beforeEach(async () => {
     dialogRefSpy = { close: vi.fn() };
     remoteFacadeSpy = {
-      orderedRemotes: signal<Remote[]>([
-        { name: 'test-remote', type: 'drive' } as unknown as Remote,
-        { name: 'other-remote', type: 's3' } as unknown as Remote,
-      ]),
+      getRemote: vi.fn((name: string) =>
+        name === 'test-remote' ? ({ name, type: 'drive' } as Remote) : undefined
+      ),
       mountedRemotes: signal<MountedRemote[]>([]),
       runningServes: signal<ServeListItem[]>([]),
       getRemoteSettings: vi.fn().mockReturnValue({

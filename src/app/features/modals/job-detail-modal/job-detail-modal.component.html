@@ -60,11 +60,15 @@
       </span>
       <div class="grid-item">
         <span class="label">{{ 'modals.jobDetail.fields.profile' | translate }}</span>
-        <span class="value">{{ identifiers().profile }}</span>
+        <span class="value truncate" [attr.title]="identifiers().profile">{{
+          identifiers().profile
+        }}</span>
       </div>
       <div class="grid-item">
         <span class="label">{{ 'modals.jobDetail.fields.backend' | translate }}</span>
-        <span class="value">{{ identifiers().backend }}</span>
+        <span class="value truncate" [attr.title]="identifiers().backend">{{
+          identifiers().backend
+        }}</span>
       </div>
       @if (identifiers().origin) {
         <div class="grid-item">
@@ -203,6 +207,7 @@
     <app-transfer-activity-panel
       [config]="transferActivityConfig()"
       [isJobRunning]="jobStatus() === 'running'"
+      (resetStats)="onResetStats()"
       (deleteJob)="onDeleteJob()"
     ></app-transfer-activity-panel>
   }
@@ -213,10 +218,12 @@
         <mat-icon svgIcon="circle-exclamation"></mat-icon>
         {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <pre class="error-entry" [appCopyToClipboard]="err" [attr.title]="'common.copy' | translate">
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-        <span>{{ err }}</span>
-      </pre>
+      <app-alert-banner
+        severity="error"
+        [description]="err"
+        [appCopyToClipboard]="err"
+        [attr.title]="'common.copy' | translate"
+      />
     </section>
   }
 </main>

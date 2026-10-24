@@ -64,13 +64,25 @@
   }
 }
 
-.count-badge {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: rgba(var(--primary-color-rgb), 0.1);
-  color: var(--primary-color);
+/* --- Provider Summary --- */
+.provider-summary .card-section-header {
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.provider-description {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+
+  p {
+    margin: 0;
+    color: var(--dim-color);
+    line-height: 1.5;
+  }
 }
 
 /* --- Storage Progress Bar --- */
@@ -197,12 +209,20 @@
 /* --- Features Tab --- */
 .features-header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+
+  p {
+    margin: 0;
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+  }
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-2xl) * 6)), 1fr));
   gap: var(--space-xs);
 }
 
@@ -226,9 +246,7 @@
   .feature-name {
     font-size: var(--font-size-sm);
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
     min-width: 0;
   }
 

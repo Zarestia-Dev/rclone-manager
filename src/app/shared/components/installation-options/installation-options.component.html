@@ -58,7 +58,7 @@
               <mat-icon [svgIcon]="mode() === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
             @if (customPathControl.invalid && customPathControl.touched) {
-              <mat-error>{{ getError(customPathControl) }}</mat-error>
+              <mat-error>{{ 'shared.installationOptions.errors.required' | translate }}</mat-error>
             }
           </mat-form-field>
         </div>
@@ -89,7 +89,7 @@
               <mat-icon svgIcon="file"></mat-icon>
             </button>
             @if (existingBinaryControl.invalid && existingBinaryControl.touched) {
-              <mat-error>{{ getError(existingBinaryControl) }}</mat-error>
+              <mat-error>{{ 'shared.installationOptions.errors.required' | translate }}</mat-error>
             }
           </mat-form-field>
 

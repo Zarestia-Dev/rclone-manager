@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -88,9 +89,7 @@ export class QuickRunCardComponent {
     return !!rName && !this.remoteFacade.isRemoteActive(rName);
   });
 
-  readonly remote = computed(() =>
-    this.remoteFacade.orderedRemotes().find(r => r.name === this.quickRun().remoteName)
-  );
+  readonly remote = computed(() => this.remoteFacade.getRemoteSummary(this.quickRun().remoteName));
 
   readonly remoteIcon = computed(() => {
     const rem = this.remote();
@@ -127,7 +126,7 @@ export class QuickRunCardComponent {
           folders.push({
             type: 'source',
             path: src,
-            shortName: this.pathService.getFilename(src) || src,
+            shortName: pathUtils.getFilename(src) || src,
             isLocal,
             icon: isLocal ? 'folder' : 'folder-open',
             cssClass: opCssClass,
@@ -147,7 +146,7 @@ export class QuickRunCardComponent {
       folders.push({
         type: 'destination',
         path: dst,
-        shortName: this.pathService.getFilename(dst) || dst,
+        shortName: pathUtils.getFilename(dst) || dst,
         isLocal,
         icon: isLocal ? 'folder' : 'folder-open',
         cssClass: opCssClass,

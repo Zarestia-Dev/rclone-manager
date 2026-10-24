@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { PathService } from './path.service';
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { BackendService } from '../system/backend.service';
-import { signal } from '@angular/core';
+import { signal, computed } from '@angular/core';
 
 /**
  * Mock BackendService with a writable `isWindows` signal so each test can
@@ -50,6 +50,47 @@ describe('PathService', () => {
     expect(service).toBeTruthy();
   });
 
+  it('updates path classification reactively without invalidating unchanged name sets', () => {
+    let reads = 0;
+    const local = computed(() => {
+      reads++;
+      return service.isLocalPath('drive:photos');
+    });
+    expect(local()).toBe(true);
+    service.setRemoteNames(['drive', 's3']);
+    expect(local()).toBe(false);
+    const afterChange = reads;
+    service.setRemoteNames(['s3', 'drive']);
+    expect(local()).toBe(false);
+    expect(reads).toBe(afterChange);
+    service.setRemoteNames([]);
+    expect(local()).toBe(true);
+  });
+
+  it('parses paths of the remote being created before it exists in the backend list', () => {
+    for (const path of ['', 'photos', 'folder with spaces/file:1']) {
+      expect(service.parseFsString(`new-drive:${path}`, 'local', 'new-drive')).toEqual({
+        type: 'currentRemote',
+        path,
+        remote: '',
+      });
+    }
+    expect(service.parseFsString('/tmp/new-drive:photos', 'local', 'new-drive')).toEqual({
+      type: 'local',
+      path: '/tmp/new-drive:photos',
+      remote: '',
+    });
+  });
+
+  it('keeps Windows drive paths local when a new remote name matches the drive letter', () => {
+    setEngineOs('windows');
+    expect(service.parseFsString('C:\\files', 'local', 'C')).toEqual({
+      type: 'local',
+      path: 'C:\\files',
+      remote: '',
+    });
+  });
+
   // ── Engine-reported OS → PathStyle derivation ──────────────────────────────
 
   describe('enginePathStyle / pathStyleForRemote', () => {
@@ -80,26 +121,6 @@ describe('PathService', () => {
       setEngineOs('windows');
       expect(service.pathStyleForRemote(null)).toBe('windows');
       expect(service.pathStyleForRemote(undefined)).toBe('windows');
-    });
-  });
-
-  // ── Canonical POSIX normalization ─────────────────────────────────────────
-
-  describe('normalizePath (canonical POSIX form)', () => {
-    it('should resolve . and .. segments', () => {
-      expect(service.normalizePath('/a/b/./c/../d')).toBe('/a/b/d');
-    });
-
-    it('should collapse backslashes to forward slashes (canonical form is always POSIX)', () => {
-      expect(service.normalizePath('a\\b\\c')).toBe('a/b/c');
-    });
-
-    it('should NOT strip leading slash before a drive letter (POSIX has no drive letters)', () => {
-      // Old behavior sniffed drive letters and stripped the leading slash.
-      // Under the engine-driven model, drive-letter handling is the job of
-      // the Windows-native renderer (`normalizeForPlatform(path, 'windows')`),
-      // not the canonical normalizer.
-      expect(service.normalizePath('/C:/Users/hakan')).toBe('/C:/Users/hakan');
     });
   });
 
@@ -330,61 +351,10 @@ describe('PathService', () => {
     });
   });
 
-  // ── Multi-path helpers (unchanged) ────────────────────────────────────────
-
-  describe('multi-path display helpers', () => {
-    it('should detect multi-path values', () => {
-      expect(service.isMultiPath('a')).toBe(false);
-      expect(service.isMultiPath([])).toBe(false);
-      expect(service.isMultiPath(['a'])).toBe(false);
-      expect(service.isMultiPath(['a', 'b'])).toBe(true);
-    });
-
-    it('should normalize path values into arrays', () => {
-      expect(service.asPathArray('a')).toEqual(['a']);
-      expect(service.asPathArray('')).toEqual(['']);
-      expect(service.asPathArray(['a', 'b'])).toEqual(['a', 'b']);
-    });
-
-    it('should return the primary path', () => {
-      expect(service.getPrimaryPath('a')).toBe('a');
-      expect(service.getPrimaryPath([])).toBe('');
-      expect(service.getPrimaryPath(['a', 'b'])).toBe('a');
-    });
-
-    it('should format compact display text', () => {
-      expect(service.formatPathDisplay('a')).toBe('a');
-      expect(service.formatPathDisplay([])).toBe('');
-      expect(service.formatPathDisplay(['a'])).toBe('a');
-      expect(service.formatPathDisplay(['a', 'b', 'c'])).toBe('a, b, c');
-    });
-
-    it('should format tooltip text', () => {
-      expect(service.formatPathTooltip('a')).toBe('a');
-      expect(service.formatPathTooltip(['a', 'b'])).toBe('a\nb');
-    });
-  });
-
-  // ── parsePathType / resolvePathGroup (unchanged) ──────────────────────────
-
-  describe('parsePathType', () => {
-    it('should parse local', () => {
-      expect(service.parsePathType('local')).toBe('local');
-    });
-
-    it('should parse currentRemote', () => {
-      expect(service.parsePathType('currentRemote')).toBe('currentRemote');
-    });
-
-    it('should parse otherRemote', () => {
-      expect(service.parsePathType('otherRemote:myremote')).toBe('otherRemote');
-    });
-  });
-
   describe('resolvePathGroup', () => {
     it('should resolve local items correctly by joining root and path', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Documents/test' } as any,
+        entry: { Path: 'Documents/test' } as unknown as FileBrowserItem['entry'],
         meta: { remote: '/home/hakan', isLocal: true },
       };
       const result = service.resolvePathGroup(item, 'myremote');
@@ -397,7 +367,7 @@ describe('PathService', () => {
 
     it('should resolve current remote items correctly', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Photos/album' } as any,
+        entry: { Path: 'Photos/album' } as unknown as FileBrowserItem['entry'],
         meta: { remote: 'myremote:', isLocal: false },
       };
       const result = service.resolvePathGroup(item, 'myremote');
@@ -410,7 +380,7 @@ describe('PathService', () => {
 
     it('should resolve other remote items correctly', () => {
       const item: FileBrowserItem = {
-        entry: { Path: 'Photos/album' } as any,
+        entry: { Path: 'Photos/album' } as unknown as FileBrowserItem['entry'],
         meta: { remote: 'gdrive:', isLocal: false },
       };
       const result = service.resolvePathGroup(item, 'myremote');

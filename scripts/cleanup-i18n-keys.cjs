@@ -2,48 +2,92 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
 const i18nRoot = path.join(repoRoot, 'resources', 'i18n');
-
-// Read the unused.json to get the list of keys to remove
 const unusedJsonPath = path.join(repoRoot, 'unused.json');
-let fileContent = fs.readFileSync(unusedJsonPath, 'utf-8');
 
-// Skip npm output header (first 2 lines)
-const lines = fileContent.split('\n');
-const jsonStart = lines.findIndex(line => line.trim().startsWith('{'));
-fileContent = lines.slice(jsonStart).join('\n');
+let auditData = null;
 
-const unusedData = JSON.parse(fileContent);
+// 1. Try to read from unused.json if present, or run audit-i18n-keys.cjs --json directly
+if (fs.existsSync(unusedJsonPath)) {
+  try {
+    const raw = fs.readFileSync(unusedJsonPath, 'utf8');
+    const lines = raw.split('\n');
+    const jsonStart = lines.findIndex(line => line.trim().startsWith('{'));
+    if (jsonStart !== -1) {
+      auditData = JSON.parse(lines.slice(jsonStart).join('\n'));
+    }
+  } catch (err) {
+    console.warn(`Could not parse ${unusedJsonPath}: ${err.message}`);
+  }
+}
 
-// Function to remove keys from an object based on a flat key list
+if (!auditData) {
+  const auditScript = path.join(__dirname, 'audit-i18n-keys.cjs');
+  const result = spawnSync('node', [auditScript, '--json'], {
+    encoding: 'utf8',
+    cwd: repoRoot,
+  });
+
+  if (result.status !== 0 && !result.stdout) {
+    console.error(`Failed to run audit script: ${result.stderr}`);
+    process.exit(1);
+  }
+
+  try {
+    const stdout = result.stdout;
+    const jsonStart = stdout.indexOf('{');
+    if (jsonStart !== -1) {
+      auditData = JSON.parse(stdout.slice(jsonStart));
+    }
+  } catch (err) {
+    console.error(`Failed to parse audit JSON output: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+if (!auditData || !auditData.locales) {
+  console.log('No locale data found from audit.');
+  process.exit(0);
+}
+
+// Function to remove keys from an object based on a flat key set
 function removeKeys(obj, keysToRemove) {
-  const keysSet = new Set(keysToRemove);
-  
+  const keysSet = keysToRemove instanceof Set ? keysToRemove : new Set(keysToRemove);
+
   function traverse(current, prefix = '') {
-    const keys = Object.keys(current);
-    
-    for (const key of keys) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) {
+      return;
+    }
+
+    for (const key of Object.keys(current)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
-      
+
       if (keysSet.has(fullKey)) {
         delete current[key];
-      } else if (typeof current[key] === 'object' && current[key] !== null && !Array.isArray(current[key])) {
+      } else if (
+        typeof current[key] === 'object' &&
+        current[key] !== null &&
+        !Array.isArray(current[key])
+      ) {
         traverse(current[key], fullKey);
       }
     }
   }
-  
+
   traverse(obj);
   return obj;
 }
 
-// Function to clean up empty objects after key removal
+// Function to recursively clean up empty objects after key removal
 function cleanupEmptyObjects(obj) {
-  const keys = Object.keys(obj);
-  
-  for (const key of keys) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    return obj;
+  }
+
+  for (const key of Object.keys(obj)) {
     if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
       cleanupEmptyObjects(obj[key]);
       if (Object.keys(obj[key]).length === 0) {
@@ -51,46 +95,47 @@ function cleanupEmptyObjects(obj) {
       }
     }
   }
-  
+
   return obj;
 }
 
-// Process each locale
-const locales = ['zh-CN', 'tr-TR', 'es-ES', 'en-US'];
+// Process all available locales in resources/i18n
+const locales = fs
+  .readdirSync(i18nRoot, { withFileTypes: true })
+  .filter(
+    entry => entry.isDirectory() && fs.existsSync(path.join(i18nRoot, entry.name, 'main.json'))
+  )
+  .map(entry => entry.name)
+  .sort();
+
 let totalRemoved = 0;
 
 for (const locale of locales) {
-  if (!unusedData.locales[locale]) {
-    console.log(`No data for locale: ${locale}`);
+  const localeData = auditData.locales[locale];
+  if (!localeData) {
     continue;
   }
-  
-  const localeData = unusedData.locales[locale];
-  const keysToRemove = [...(localeData.unused || []), ...(localeData.codeUnused || [])];
-  
+
+  const keysToRemove = [
+    ...new Set([...(localeData.unused || []), ...(localeData.codeUnused || [])]),
+  ];
   if (keysToRemove.length === 0) {
-    console.log(`No unused keys for locale: ${locale}`);
     continue;
   }
-  
-  // Process all JSON files in the locale directory
-  const localeDir = path.join(i18nRoot, locale);
-  const jsonFiles = fs.readdirSync(localeDir).filter(f => f.endsWith('.json'));
-  
-  for (const file of jsonFiles) {
-    const filePath = path.join(localeDir, file);
-    let content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    const initialKeys = Object.keys(JSON.stringify(content)).length;
-    
-    content = removeKeys(content, keysToRemove);
-    content = cleanupEmptyObjects(content);
-    
-    fs.writeFileSync(filePath, JSON.stringify(content, null, 2) + '\n', 'utf-8');
-    
-    console.log(`✓ Cleaned ${file} for ${locale}`);
-  }
-  
+
+  const mainFilePath = path.join(i18nRoot, locale, 'main.json');
+  let content = JSON.parse(fs.readFileSync(mainFilePath, 'utf8'));
+
+  content = removeKeys(content, keysToRemove);
+  content = cleanupEmptyObjects(content);
+
+  fs.writeFileSync(mainFilePath, JSON.stringify(content, null, 2) + '\n', 'utf8');
+  console.log(`✓ Cleaned ${keysToRemove.length} unused key(s) from ${locale}/main.json`);
   totalRemoved += keysToRemove.length;
 }
 
-console.log(`\n✨ Total keys removed: ${totalRemoved}`);
+if (totalRemoved === 0) {
+  console.log('✨ All locales are already clean! No unused keys found.');
+} else {
+  console.log(`\n✨ Total keys removed across all locales: ${totalRemoved}`);
+}

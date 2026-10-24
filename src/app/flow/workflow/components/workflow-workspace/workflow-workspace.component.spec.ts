@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WorkflowWorkspaceComponent } from './workflow-workspace.component';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
@@ -7,7 +8,8 @@ import { WorkflowStorageService } from '../../../../services/flow/workflow-stora
 import { RemoteFacadeService } from '../../../../services/facade/remote-facade.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { provideTranslateService } from '@ngx-translate/core';
-import { WorkflowDefinition } from '../../types/workflow.types';
+import { WorkflowDefinition, WorkflowTemplate } from '../../types/workflow.types';
+import { BUILTIN_WORKFLOW_TEMPLATES } from '../../../../services/flow/recipes/workflow-recipes';
 
 describe('WorkflowWorkspaceComponent', () => {
   let fixture: ComponentFixture<WorkflowWorkspaceComponent>;
@@ -15,8 +17,10 @@ describe('WorkflowWorkspaceComponent', () => {
   let stateService: WorkflowStateService;
   let storageService: WorkflowStorageService;
   let notificationService: NotificationService;
+  let presets: ReturnType<typeof signal<WorkflowTemplate[]>>;
 
   beforeEach(async () => {
+    presets = signal<WorkflowTemplate[]>([]);
     await TestBed.configureTestingModule({
       imports: [WorkflowWorkspaceComponent],
       providers: [
@@ -37,7 +41,8 @@ describe('WorkflowWorkspaceComponent', () => {
           provide: WorkflowStorageService,
           useValue: {
             workflows: (): WorkflowDefinition[] => [],
-            getPresetTemplates: (): WorkflowDefinition[] => [],
+            presetTemplates: presets.asReadonly(),
+            loadPresetTemplates: vi.fn().mockResolvedValue([]),
             saveWorkflow: vi.fn().mockResolvedValue({}),
             deleteWorkflow: vi.fn(),
             duplicateWorkflow: vi.fn(),
@@ -75,6 +80,44 @@ describe('WorkflowWorkspaceComponent', () => {
     fixture = TestBed.createComponent(WorkflowWorkspaceComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('loads templates on opening and renders late results without loading on reads', async () => {
+    expect(storageService.loadPresetTemplates).toHaveBeenCalledOnce();
+    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], name: 'Arşiv & 旅行', nameKey: undefined };
+    presets.set([recipe]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const pills = (fixture.nativeElement as HTMLElement).querySelector(
+      '.workflow-empty-state-pill-group'
+    );
+    expect(pills?.textContent).toContain(recipe.name);
+    fixture.detectChanges();
+    expect(storageService.loadPresetTemplates).toHaveBeenCalledOnce();
+  });
+
+  it('keeps manual workflow creation available when template loading fails', async () => {
+    const error = new Error('recipe chunk unavailable');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.mocked(storageService.loadPresetTemplates).mockRejectedValueOnce(error);
+    fixture.destroy();
+    fixture = TestBed.createComponent(WorkflowWorkspaceComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    await vi.waitFor(() =>
+      expect(log).toHaveBeenCalledWith(
+        '[WorkflowWorkspace] Failed to load preset templates:',
+        error
+      )
+    );
+    expect(fixture.nativeElement.querySelector('.workflow-empty-state')).toBeTruthy();
+    component.createNewWorkflow();
+    expect(stateService.currentWorkflow()).not.toBeNull();
+    expect(storageService.saveWorkflow).toHaveBeenCalled();
   });
 
   it('renders empty state when no workflow is loaded', () => {

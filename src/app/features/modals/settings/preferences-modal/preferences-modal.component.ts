@@ -35,6 +35,7 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import {
   SearchResult,
   SettingMetadata,
@@ -102,6 +103,7 @@ export class PreferencesModalComponent {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
+  private readonly configSearch = inject(ConfigSearchService);
 
   settingsForm: FormGroup = this.fb.group({});
 
@@ -136,15 +138,21 @@ export class PreferencesModalComponent {
   readonly searchSuggestions = signal<string[]>([]);
 
   readonly searchResults = computed((): SearchResult[] => {
-    const query = this.searchQuery().toLowerCase();
+    const query = this.searchQuery().trim();
     const options = this.enrichedOptions();
     if (!query) return [];
 
     const results: SearchResult[] = [];
     for (const [fullKey, meta] of Object.entries(options)) {
-      const displayName = meta.metadata?.display_name || meta.metadata?.label || '';
-      const helpText = meta.metadata?.help_text || meta.metadata?.description || '';
-      if (displayName.toLowerCase().includes(query) || helpText.toLowerCase().includes(query)) {
+      const displayName = meta.metadata?.label || meta.metadata?.display_name || '';
+      const helpText = meta.metadata?.description || meta.metadata?.help_text || '';
+      if (
+        this.configSearch.matchesText(
+          query,
+          [fullKey, displayName, helpText],
+          [displayName, helpText].filter(Boolean)
+        )
+      ) {
         const { category, key } = this.splitKey(fullKey);
         if (this.tabs.some(t => t.key === category)) {
           results.push({ category, key });
@@ -181,7 +189,7 @@ export class PreferencesModalComponent {
   });
 
   readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
-  readonly hasSearchResults = computed(() => !!this.searchQuery());
+  readonly hasSearchResults = computed(() => !!this.searchQuery().trim());
   readonly hasPendingRestartChanges = computed(() => this.pendingRestartChanges().size > 0);
   readonly pendingChangesCount = computed(() => this.pendingRestartChanges().size);
 
@@ -639,7 +647,7 @@ export class PreferencesModalComponent {
   // ── Keyboard & Search ─────────────────────────────────────────────────────
 
   onSearchTextChange(searchText: string): void {
-    this.searchQuery.set(searchText.toLowerCase());
+    this.searchQuery.set(searchText);
   }
 
   toggleSearch(): void {

@@ -1,5 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { FlowSubMode } from '@app/types';
 import {
   CanvasViewport,
   WorkflowDefinition,
@@ -26,8 +25,6 @@ import {
   DEFAULT_CANVAS_HEIGHT,
 } from '../../flow/workflow/constants/workflow.constants';
 
-export { GRID_SIZE, MIN_ZOOM, MAX_ZOOM, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT };
-
 /** Cache of computed content hashes keyed by workflow reference to avoid redundant full-tree serializations */
 const contentHashCache = new WeakMap<WorkflowDefinition, string>();
 
@@ -37,7 +34,7 @@ const contentHashCache = new WeakMap<WorkflowDefinition, string>();
  * Excludes transient execution states (e.g. node.state, errorMessage, lastDurationMs)
  * and interactive camera viewport (x, y, zoom).
  */
-export function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
+function getWorkflowContentHash(wf: WorkflowDefinition | null): string {
   if (!wf) return '';
   const cached = contentHashCache.get(wf);
   if (cached !== undefined) return cached;
@@ -82,7 +79,6 @@ export class WorkflowStateService {
   readonly selectedNodeIds = signal<Set<string>>(new Set());
   readonly selectedEdgeIds = signal<Set<string>>(new Set());
   readonly snapToGrid = signal<boolean>(true);
-  readonly requestedSubMode = signal<FlowSubMode | null>(null);
 
   /** Whether a mobile drawer (palette, inspector, or log) is currently open in overlay mode */
   readonly isWorkspaceDrawerOpen = signal<boolean>(false);
@@ -147,15 +143,6 @@ export class WorkflowStateService {
     if (!wf || ids.size !== 1) return null;
     const [firstId] = ids;
     return wf.nodes.find(n => n.id === firstId) ?? null;
-  });
-
-  /** Currently selected single edge (if exactly one is selected) */
-  readonly selectedEdge = computed<WorkflowEdge | null>(() => {
-    const ids = this.selectedEdgeIds();
-    const wf = this.currentWorkflow();
-    if (!wf || ids.size !== 1) return null;
-    const [firstId] = ids;
-    return wf.edges.find(e => e.id === firstId) ?? null;
   });
 
   /**
@@ -535,109 +522,69 @@ export class WorkflowStateService {
 
   addJoinInputPort(nodeId: string): void {
     this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          const currentInputs = n.inputs || [];
-          const nextIndex = currentInputs.length + 1;
-          const newPort: WorkflowPort = {
-            id: `in${nextIndex}`,
-            name: `In ${nextIndex}`,
-            type: 'in',
-            label: `In ${nextIndex}`,
-          };
-          return {
-            ...n,
-            inputs: [...currentInputs, newPort],
-          };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      updateNodePorts(wf, nodeId, node => {
+        const currentInputs = node.inputs || [];
+        const nextIndex = currentInputs.length + 1;
+        const newPort: WorkflowPort = {
+          id: `in${nextIndex}`,
+          name: `In ${nextIndex}`,
+          type: 'in',
+          label: `In ${nextIndex}`,
+        };
+        return { inputs: [...currentInputs, newPort] };
+      })
+    );
   }
 
   removeJoinInputPort(nodeId: string, portId?: string): void {
     this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      const targetNode = wf.nodes.find(n => n.id === nodeId);
-      if (!targetNode || (targetNode.inputs && targetNode.inputs.length <= 2)) {
-        return wf;
-      }
-      const portToRemove = portId || targetNode.inputs[targetNode.inputs.length - 1].id;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          return {
-            ...n,
-            inputs: n.inputs.filter(p => p.id !== portToRemove),
-          };
-        }),
-        edges: wf.edges.filter(
-          e => !(e.targetNodeId === nodeId && e.targetPortId === portToRemove)
-        ),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      updateNodePorts(wf, nodeId, node => {
+        if (!node.inputs || node.inputs.length <= 2) return null;
+        const portToRemove = portId || node.inputs[node.inputs.length - 1].id;
+        return {
+          inputs: node.inputs.filter(p => p.id !== portToRemove),
+          removedPortId: portToRemove,
+          isInput: true,
+        };
+      })
+    );
   }
 
   addForkOutputPort(nodeId: string): void {
     this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          const currentOutputs = n.outputs || [];
-          let nextIndex = currentOutputs.length + 1;
-          while (currentOutputs.some(p => p.id === `branch${nextIndex}`)) {
-            nextIndex++;
-          }
-          const newPort: WorkflowPort = {
-            id: `branch${nextIndex}`,
-            name: `Branch ${nextIndex}`,
-            type: 'out',
-            label: `Branch ${nextIndex}`,
-          };
-          return {
-            ...n,
-            outputs: [...currentOutputs, newPort],
-          };
-        }),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      updateNodePorts(wf, nodeId, node => {
+        const currentOutputs = node.outputs || [];
+        let nextIndex = currentOutputs.length + 1;
+        while (currentOutputs.some(p => p.id === `branch${nextIndex}`)) {
+          nextIndex++;
+        }
+        const newPort: WorkflowPort = {
+          id: `branch${nextIndex}`,
+          name: `Branch ${nextIndex}`,
+          type: 'out',
+          label: `Branch ${nextIndex}`,
+        };
+        return { outputs: [...currentOutputs, newPort] };
+      })
+    );
   }
 
   removeForkOutputPort(nodeId: string, portId?: string): void {
     this.snapshot();
-    this.currentWorkflow.update(wf => {
-      if (!wf) return null;
-      const targetNode = wf.nodes.find(n => n.id === nodeId);
-      if (!targetNode || (targetNode.outputs && targetNode.outputs.length <= 2)) {
-        return wf;
-      }
-      const portToRemove = portId || targetNode.outputs[targetNode.outputs.length - 1].id;
-      return {
-        ...wf,
-        nodes: wf.nodes.map(n => {
-          if (n.id !== nodeId) return n;
-          return {
-            ...n,
-            outputs: n.outputs.filter(p => p.id !== portToRemove),
-          };
-        }),
-        edges: wf.edges.filter(
-          e => !(e.sourceNodeId === nodeId && e.sourcePortId === portToRemove)
-        ),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    this.currentWorkflow.update(wf =>
+      updateNodePorts(wf, nodeId, node => {
+        if (!node.outputs || node.outputs.length <= 2) return null;
+        const portToRemove = portId || node.outputs[node.outputs.length - 1].id;
+        return {
+          outputs: node.outputs.filter(p => p.id !== portToRemove),
+          removedPortId: portToRemove,
+          isInput: false,
+        };
+      })
+    );
   }
 
   // ── Edge / Connection Management ─────────────────────────────────────────
@@ -796,10 +743,6 @@ export class WorkflowStateService {
     this.viewport.update(v => ({ ...v, x, y }));
   }
 
-  panBy(dx: number, dy: number): void {
-    this.viewport.update(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
-  }
-
   setZoom(zoom: number, centerX = 0, centerY = 0): void {
     const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
     this.viewport.update(v => {
@@ -859,4 +802,49 @@ export class WorkflowStateService {
 
     this.viewport.set({ x, y, zoom });
   }
+}
+
+function updateNodePorts(
+  wf: WorkflowDefinition | null,
+  nodeId: string,
+  transform: (node: WorkflowNode) => {
+    inputs?: WorkflowPort[];
+    outputs?: WorkflowPort[];
+    removedPortId?: string;
+    isInput?: boolean;
+  } | null
+): WorkflowDefinition | null {
+  if (!wf) return null;
+  const targetNode = wf.nodes.find(n => n.id === nodeId);
+  if (!targetNode) return wf;
+
+  const result = transform(targetNode);
+  if (!result) return wf;
+
+  const { inputs, outputs, removedPortId, isInput } = result;
+
+  const nodes = wf.nodes.map(n => {
+    if (n.id !== nodeId) return n;
+    return {
+      ...n,
+      ...(inputs !== undefined ? { inputs } : {}),
+      ...(outputs !== undefined ? { outputs } : {}),
+    };
+  });
+
+  let edges = wf.edges;
+  if (removedPortId) {
+    edges = edges.filter(e =>
+      isInput
+        ? !(e.targetNodeId === nodeId && e.targetPortId === removedPortId)
+        : !(e.sourceNodeId === nodeId && e.sourcePortId === removedPortId)
+    );
+  }
+
+  return {
+    ...wf,
+    nodes,
+    edges,
+    updatedAt: new Date().toISOString(),
+  };
 }

@@ -23,9 +23,9 @@ const PROJECT_ROOT = path.dirname(__dirname);
 const DEFAULT_INPUT = path.join(PROJECT_ROOT, 'upload', 'rc.json');
 const DEFAULT_OUTPUT = path.join(
   PROJECT_ROOT,
-  'src-tauri',
+  'backend',
+  'core',
   'src',
-  'utils',
   'rclone',
   'endpoints.rs'
 );
@@ -92,6 +92,18 @@ function getLiveEndpoints(url) {
     });
     if (result.status === 0 && result.stdout) {
       const data = JSON.parse(result.stdout);
+      if (Array.isArray(data.commands)) {
+        return data.commands;
+      }
+    }
+
+    const loopbackResult = spawnSync('rclone', ['rc', '--loopback', 'rc/list'], {
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    if (loopbackResult.status === 0 && loopbackResult.stdout) {
+      const data = JSON.parse(loopbackResult.stdout);
       if (Array.isArray(data.commands)) {
         return data.commands;
       }
@@ -254,19 +266,164 @@ function parseExistingEndpoints(filePath) {
 }
 
 /**
+ * Normalizes code blocks in markdown text so that:
+ * 1. Untagged fenced blocks (```) are tagged with 'json' or 'text'.
+ * 2. 4-space indented blocks (which rustdoc treats as Rust doctests) are converted to
+ *    fenced blocks tagged with 'json' or 'text', and unindented.
+ */
+function normalizeCodeBlocks(text) {
+  if (!text) return '';
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\t/g, '    ');
+  const rawLines = normalized.split('\n');
+  const stripped = rawLines.map(l => l.replace(/\s+$/, ''));
+
+  const out = [];
+  let inFence = false;
+  let inIndented = false;
+  let indentedLines = [];
+  let inList = false;
+
+  function flushIndented() {
+    if (indentedLines.length === 0) return;
+    const nonBlank = indentedLines.filter(l => l.trim().length > 0);
+    const firstTrimmed = nonBlank.length > 0 ? nonBlank[0].trim() : '';
+    const isJson = firstTrimmed.startsWith('{') || firstTrimmed.startsWith('[');
+    const lang = isJson ? 'json' : 'text';
+
+    out.push('```' + lang);
+    for (const line of indentedLines) {
+      if (line.trim().length === 0) {
+        out.push('');
+      } else if (line.startsWith('    ')) {
+        out.push(line.slice(4));
+      } else {
+        out.push(line.trimStart());
+      }
+    }
+    out.push('```');
+    indentedLines = [];
+    inIndented = false;
+  }
+
+  for (let i = 0; i < stripped.length; i++) {
+    const line = stripped[i];
+
+    // Fenced code block handling
+    if (line.trim().startsWith('```')) {
+      if (inIndented) flushIndented();
+      if (!inFence) {
+        inFence = true;
+        const tag = line.trim().slice(3).trim();
+        if (tag.length > 0) {
+          out.push(line.trim());
+        } else {
+          // Look ahead to detect json
+          let detectedLang = 'text';
+          for (let j = i + 1; j < stripped.length; j++) {
+            const next = stripped[j].trim();
+            if (next.startsWith('```')) break;
+            if (next.length > 0) {
+              if (next.startsWith('{') || next.startsWith('[')) {
+                detectedLang = 'json';
+              }
+              break;
+            }
+          }
+          out.push('```' + detectedLang);
+        }
+      } else {
+        inFence = false;
+        out.push('```');
+      }
+      inList = false;
+      continue;
+    }
+
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+
+    // List item check
+    const isListItem = /^\s*[-*]\s+/.test(line);
+    if (isListItem) {
+      if (inIndented) flushIndented();
+      inList = true;
+      out.push(line);
+      continue;
+    }
+
+    // If blank line
+    if (line.trim().length === 0) {
+      if (inIndented) {
+        // Look ahead: does indented block continue?
+        let continues = false;
+        for (let j = i + 1; j < stripped.length; j++) {
+          const next = stripped[j];
+          if (next.trim().length === 0) continue;
+          if (next.startsWith('    ') && !/^\s*[-*]\s+/.test(next)) {
+            continues = true;
+          }
+          break;
+        }
+        if (continues) {
+          indentedLines.push('');
+          continue;
+        } else {
+          flushIndented();
+          out.push('');
+          inList = false;
+          continue;
+        }
+      }
+      inList = false;
+      out.push('');
+      continue;
+    }
+
+    // Indented block check: starts with 4 spaces and not in list item continuation
+    if (line.startsWith('    ') && !inList) {
+      inIndented = true;
+      indentedLines.push(line);
+      continue;
+    }
+
+    // Normal line
+    if (inIndented) flushIndented();
+    out.push(line);
+  }
+
+  if (inIndented) flushIndented();
+  return out.join('\n');
+}
+
+/**
  * Format markdown/help text into rust doc comment lines.
  */
 function docLines(text) {
   if (!text) return [];
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\t/g, '    ');
+  const normalized = normalizeCodeBlocks(text);
   const rawLines = normalized.split('\n');
   const stripped = rawLines.map(l => l.replace(/\s+$/, ''));
   const LIST_RE = /^\s*[-*]\s+/;
   const out = [];
   let inList = false;
+  let inFence = false;
   let listIndent = 0;
 
   for (const line of stripped) {
+    if (line.trim().startsWith('```')) {
+      inFence = !inFence;
+      inList = false;
+      out.push(line);
+      continue;
+    }
+
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+
     if (line.length === 0) {
       inList = false;
       out.push('');

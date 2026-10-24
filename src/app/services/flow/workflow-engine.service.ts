@@ -5,12 +5,11 @@ import {
   WorkflowLogEntry,
   WorkflowLogSeverity,
   WorkflowNode,
-  WorkflowValidationResult,
 } from '../../flow/workflow/types/workflow.types';
 import { generatePrefixedId } from '../../shared/utils';
 import { WorkflowStateService } from './workflow-state.service';
 
-export interface WorkflowExecutionResultDto {
+interface WorkflowExecutionResultDto {
   workflowId: string;
   success: boolean;
   totalNodes: number;
@@ -75,13 +74,6 @@ export class WorkflowEngineService extends TauriBaseService {
 
     this.log(id, 'Workflow execution cancellation requested', 'warn');
     await this.invokeCommand('stop_workflow', { workflowId: id });
-  }
-
-  /**
-   * Validates a workflow definition using the Rust backend DAG validator.
-   */
-  async validateWorkflow(workflow: WorkflowDefinition): Promise<WorkflowValidationResult> {
-    return await this.invokeCommand<WorkflowValidationResult>('validate_workflow', { workflow });
   }
 
   /**

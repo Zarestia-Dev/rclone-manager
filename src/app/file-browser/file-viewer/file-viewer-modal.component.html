@@ -10,24 +10,27 @@
     </div>
   </div>
   <div class="header-actions">
-    @if (!data.isDirectUrl && isMarkdownFile() && currentFileType() === 'text') {
+    @if (!data.isDirectUrl && canPreviewText() && currentFileType() === 'text') {
       <button
         matIconButton
         [attr.title]="
-          (showMarkdownPreview()
+          (isPreviewing()
             ? 'fileBrowser.fileViewer.showRawText'
             : 'fileBrowser.fileViewer.showPreview'
           ) | translate
         "
-        (click)="toggleMarkdownPreview(); $event.stopPropagation()"
+        (click)="togglePreview(); $event.stopPropagation()"
+        [disabled]="isPreparingPreview()"
         [attr.aria-label]="
-          (showMarkdownPreview()
+          (isPreviewing()
             ? 'fileBrowser.fileViewer.showRawText'
             : 'fileBrowser.fileViewer.showPreview'
           ) | translate
         "
       >
-        <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
+        <mat-icon
+          [svgIcon]="isPreparingPreview() ? 'spinner' : isPreviewing() ? 'code' : 'eye'"
+        ></mat-icon>
       </button>
     }
 
@@ -203,37 +206,16 @@
       </div>
     }
     @case ('video') {
-      @if (isMobile() && !data.isDirectUrl) {
-        <div class="unsupported-container mobile-video-card">
-          <mat-icon
-            [svgIcon]="iconService.getIconForFileType('video')"
-            class="media-card-icon"
-            aria-hidden="true"
-          ></mat-icon>
-          <h3 class="media-card-title">{{ fileName() }}</h3>
-          @if (fileSize()) {
-            <p class="unsupported-subtext">{{ fileSize() | formatFileSize }}</p>
-          }
-          <button
-            matButton="filled"
-            class="accent"
-            [disabled]="isOpeningNative()"
-            (click)="openNativeFile()"
-          >
-            @if (isOpeningNative()) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <mat-icon svgIcon="play"></mat-icon>
-            }
-            <span>{{ 'fileBrowser.fileViewer.playVideo' | translate }}</span>
-          </button>
-        </div>
-      } @else {
+      @if (currentUrl()) {
         <video
           [src]="currentUrl()"
           controls
+          playsinline
+          preload="metadata"
           class="preview-content"
           (loadeddata)="onLoadComplete()"
+          (canplay)="onLoadComplete()"
+          (loadedmetadata)="onLoadComplete()"
           (error)="onLoadError($event)"
           [attr.aria-label]="'fileBrowser.fileViewer.videoLabel' | translate: { name: fileName() }"
         ></video>
@@ -245,7 +227,7 @@
           @if (isLoadingCover()) {
             <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           } @else if (coverImage()) {
-            <img [src]="coverImage()" [alt]="fileName()" />
+            <img [src]="coverImage()" [alt]="fileName()" (error)="coverImage.set(null)" />
           } @else {
             <mat-icon
               [svgIcon]="iconService.getIconForFileType('audio')"
@@ -253,13 +235,20 @@
             ></mat-icon>
           }
         </div>
-        <audio
-          [src]="currentUrl()"
-          controls
-          (loadeddata)="onLoadComplete()"
-          (error)="onLoadError($event)"
-          [attr.aria-label]="'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }"
-        ></audio>
+        @if (currentUrl()) {
+          <audio
+            [src]="currentUrl()"
+            controls
+            preload="metadata"
+            (loadeddata)="onLoadComplete()"
+            (canplay)="onLoadComplete()"
+            (loadedmetadata)="onLoadComplete()"
+            (error)="onLoadError($event)"
+            [attr.aria-label]="
+              'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }
+            "
+          ></audio>
+        }
       </div>
     }
     @case ('pdf') {
@@ -289,13 +278,7 @@
           </button>
         </div>
       } @else if (safePdfUrl()) {
-        <object
-          [data]="safePdfUrl()"
-          type="application/pdf"
-          class="pdf-viewer"
-          (load)="onLoadComplete()"
-          (error)="onLoadError()"
-        >
+        <object [data]="safePdfUrl()" type="application/pdf" class="pdf-viewer">
           <div class="unsupported-container">
             <div class="icon-wrapper">
               <mat-icon svgIcon="application-pdf" aria-hidden="true"></mat-icon>
@@ -322,10 +305,21 @@
       }
     }
     @case ('text') {
-      @if (isMarkdownFile() && showMarkdownPreview()) {
+      @if (isHtmlFile() && showHtmlPreview()) {
+        <iframe
+          class="html-preview"
+          sandbox=""
+          referrerpolicy="no-referrer"
+          [title]="fileName()"
+          [srcdoc]="renderedHtml()"
+        ></iframe>
+      } @else if (isMarkdownFile() && showMarkdownPreview()) {
         <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
       } @else {
-        <div #editorContainer class="code-mirror"></div>
+        <div class="text-editor-surface">
+          <app-code-editor-toolbar [editor]="codeEditor()" [language]="codeLanguage()" />
+          <div #editorContainer class="code-mirror"></div>
+        </div>
       }
     }
     @case ('archive') {

@@ -82,6 +82,27 @@
                   }
                 }
                 @case ('installPlugin') {
+                  <div class="form-section">
+                    <div class="mount-toggle-card">
+                      <div class="toggle-icon-wrapper">
+                        <mat-icon svgIcon="hard-drive"></mat-icon>
+                      </div>
+                      <div class="toggle-body">
+                        <h3 class="toggle-title">
+                          {{ 'onboarding.cards.installPlugin.skipMountTitle' | translate }}
+                        </h3>
+                        <p class="toggle-desc">
+                          {{ 'onboarding.cards.installPlugin.skipMountDesc' | translate }}
+                        </p>
+                      </div>
+                      <mat-slide-toggle
+                        [checked]="willNotMount()"
+                        (change)="willNotMount.set($event.checked)"
+                        [disabled]="downloadingPlugin()"
+                      ></mat-slide-toggle>
+                    </div>
+                  </div>
+
                   @if (downloadingPlugin()) {
                     <app-provision-progress
                       [progress]="mountPluginProgress()"

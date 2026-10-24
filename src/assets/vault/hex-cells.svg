@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="96.99" viewBox="0 0 56 96.99">
+  <defs>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="white" stop-opacity=".95" />
+      <stop offset=".5" stop-color="white" stop-opacity=".3" />
+      <stop offset="1" stop-color="white" stop-opacity=".08" />
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="white" stop-opacity=".30" />
+      <stop offset="1" stop-color="white" stop-opacity=".05" />
+    </linearGradient>
+    <pattern id="grain" width="12" height="12" patternUnits="userSpaceOnUse">
+      <circle cx="0.00" cy="0.00" r=".4" fill="white" opacity="0.12" />
+      <circle cx="7.13" cy="3.71" r=".4" fill="white" opacity="0.17" />
+      <circle cx="2.26" cy="2.84" r=".4" fill="white" opacity="0.22" />
+      <circle cx="9.39" cy="9.39" r=".4" fill="white" opacity="0.27" />
+      <circle cx="4.52" cy="11.36" r=".4" fill="white" opacity="0.12" />
+      <circle cx="11.65" cy="8.75" r=".4" fill="white" opacity="0.17" />
+      <circle cx="6.78" cy="1.56" r=".4" fill="white" opacity="0.22" />
+      <circle cx="1.91" cy="1.79" r=".4" fill="white" opacity="0.27" />
+      <circle cx="9.04" cy="9.44" r=".4" fill="white" opacity="0.12" />
+      <circle cx="4.17" cy="0.51" r=".4" fill="white" opacity="0.17" />
+      <circle cx="11.30" cy="11.00" r=".4" fill="white" opacity="0.22" />
+      <circle cx="6.43" cy="4.91" r=".4" fill="white" opacity="0.27" />
+      <circle cx="1.56" cy="6.24" r=".4" fill="white" opacity="0.12" />
+      <circle cx="8.69" cy="2.99" r=".4" fill="white" opacity="0.17" />
+      <circle cx="3.82" cy="7.16" r=".4" fill="white" opacity="0.22" />
+      <circle cx="10.95" cy="6.75" r=".4" fill="white" opacity="0.27" />
+      <circle cx="6.08" cy="1.76" r=".4" fill="white" opacity="0.12" />
+      <circle cx="1.21" cy="4.19" r=".4" fill="white" opacity="0.17" />
+      <circle cx="8.34" cy="2.04" r=".4" fill="white" opacity="0.22" />
+      <circle cx="3.47" cy="7.31" r=".4" fill="white" opacity="0.27" />
+      <circle cx="10.60" cy="8.00" r=".4" fill="white" opacity="0.12" />
+      <circle cx="5.73" cy="4.11" r=".4" fill="white" opacity="0.17" />
+      <circle cx="0.86" cy="7.64" r=".4" fill="white" opacity="0.22" />
+      <circle cx="7.99" cy="6.59" r=".4" fill="white" opacity="0.27" />
+    </pattern>
+  </defs>
+  <polygon points="28.00,-78.43 53.92,-63.46 53.92,-33.53 28.00,-18.57 2.08,-33.53 2.08,-63.46" fill="url(#body)" opacity=".6" />
+  <polygon points="28.00,-78.43 53.92,-63.46 53.92,-33.53 28.00,-18.57 2.08,-33.53 2.08,-63.46" fill="url(#grain)" opacity=".4" />
+  <polygon points="0.00,-29.93 25.92,-14.97 25.92,14.97 0.00,29.93 -25.92,14.97 -25.92,-14.97" fill="url(#body)" opacity=".6" />
+  <polygon points="0.00,-29.93 25.92,-14.97 25.92,14.97 0.00,29.93 -25.92,14.97 -25.92,-14.97" fill="url(#grain)" opacity=".4" />
+  <polygon points="56.00,-29.93 81.92,-14.97 81.92,14.97 56.00,29.93 30.08,14.97 30.08,-14.97" fill="url(#body)" opacity=".6" />
+  <polygon points="56.00,-29.93 81.92,-14.97 81.92,14.97 56.00,29.93 30.08,14.97 30.08,-14.97" fill="url(#grain)" opacity=".4" />
+  <polygon points="28.00,18.57 53.92,33.53 53.92,63.46 28.00,78.43 2.08,63.46 2.08,33.53" fill="url(#body)" opacity=".6" />
+  <polygon points="28.00,18.57 53.92,33.53 53.92,63.46 28.00,78.43 2.08,63.46 2.08,33.53" fill="url(#grain)" opacity=".4" />
+  <polygon points="0.00,67.06 25.92,82.03 25.92,111.96 0.00,126.93 -25.92,111.96 -25.92,82.03" fill="url(#body)" opacity=".6" />
+  <polygon points="0.00,67.06 25.92,82.03 25.92,111.96 0.00,126.93 -25.92,111.96 -25.92,82.03" fill="url(#grain)" opacity=".4" />
+  <polygon points="56.00,67.06 81.92,82.03 81.92,111.96 56.00,126.93 30.08,111.96 30.08,82.03" fill="url(#body)" opacity=".6" />
+  <polygon points="56.00,67.06 81.92,82.03 81.92,111.96 56.00,126.93 30.08,111.96 30.08,82.03" fill="url(#grain)" opacity=".4" />
+  <polygon points="28.00,115.56 53.92,130.53 53.92,160.46 28.00,175.42 2.08,160.46 2.08,130.53" fill="url(#body)" opacity=".6" />
+  <polygon points="28.00,115.56 53.92,130.53 53.92,160.46 28.00,175.42 2.08,160.46 2.08,130.53" fill="url(#grain)" opacity=".4" />
+  <polygon points="28.00,-78.43 53.92,-63.46 53.92,-33.53 28.00,-18.57 2.08,-33.53 2.08,-63.46" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="0.00,-29.93 25.92,-14.97 25.92,14.97 0.00,29.93 -25.92,14.97 -25.92,-14.97" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="56.00,-29.93 81.92,-14.97 81.92,14.97 56.00,29.93 30.08,14.97 30.08,-14.97" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="28.00,18.57 53.92,33.53 53.92,63.46 28.00,78.43 2.08,63.46 2.08,33.53" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="0.00,67.06 25.92,82.03 25.92,111.96 0.00,126.93 -25.92,111.96 -25.92,82.03" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="56.00,67.06 81.92,82.03 81.92,111.96 56.00,126.93 30.08,111.96 30.08,82.03" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+  <polygon points="28.00,115.56 53.92,130.53 53.92,160.46 28.00,175.42 2.08,160.46 2.08,130.53" fill="none" stroke="url(#rim)" stroke-width="1.3" stroke-linejoin="round" />
+</svg>

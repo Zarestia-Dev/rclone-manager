@@ -1,13 +1,17 @@
-import { Injectable } from '@angular/core';
-import { Observable, fromEvent, filter, map } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { Observable, from, fromEvent, filter, map, Subject, share } from 'rxjs';
+import { listen } from '@tauri-apps/api/event';
+import { SseClientService } from '../platform/sse-client.service';
 import {
-  AppEventPayloadType,
+  AppEventPayload,
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_CHANGED,
   JOB_CACHE_CHANGED,
   JOB_STATS_UPDATED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
+  UPDATER_STATE_CHANGED,
+  UpdaterStateChanged,
   APP_EXIT_REQUESTED,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
@@ -17,7 +21,6 @@ import {
   RCLONE_ENGINE_STATUS_CHANGED,
   BACKEND_SWITCHED,
   EngineStatus,
-  RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
   SYSTEM_THEME_CHANGED,
@@ -41,11 +44,35 @@ import {
   WORKFLOW_EXECUTION_STATE_CHANGED,
   WorkflowNodeStatePayload,
   WorkflowExecutionStatePayload,
+  VAULT_STATE_CHANGED,
+  VaultStatePayload,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
 export class EventListenersService extends TauriBaseService {
+  private readonly sseClient = inject(SseClientService);
+  private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
+  private appExitListenerReady: Promise<void> = Promise.resolve();
+
+  private listenToEvent<T>(eventName: string): Observable<T> {
+    let stream = this.tauriEventStreams.get(eventName);
+    if (!stream) {
+      if (!this.isTauri) {
+        stream = this.sseClient.listen<T>(eventName).pipe(share()) as Observable<unknown>;
+      } else {
+        const subject = new Subject<T>();
+        const registration = listen<T>(eventName, event => subject.next(event.payload));
+        if (eventName === APP_EXIT_REQUESTED) {
+          this.appExitListenerReady = registration.then(() => undefined);
+        }
+        stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      }
+      this.tauriEventStreams.set(eventName, stream);
+    }
+    return stream as Observable<T>;
+  }
+
   listenToWindowResize(): Observable<unknown> {
     if (!this.isTauri) {
       return fromEvent(window, 'resize');
@@ -60,13 +87,6 @@ export class EventListenersService extends TauriBaseService {
   listenToRcloneEngineReady(): Observable<void> {
     return this.listenToEngineStatus().pipe(
       filter(event => event.status === 'ready'),
-      map(() => undefined)
-    );
-  }
-
-  listenToRcloneEngineUpdating(): Observable<void> {
-    return this.listenToEngineStatus().pipe(
-      filter(event => event.status === 'updating'),
       map(() => undefined)
     );
   }
@@ -143,6 +163,10 @@ export class EventListenersService extends TauriBaseService {
     );
   }
 
+  listenToUpdaterStateChanged(): Observable<UpdaterStateChanged> {
+    return this.listenToEvent<UpdaterStateChanged>(UPDATER_STATE_CHANGED);
+  }
+
   listenToAppUpdateFound(): Observable<UpdateInfo> {
     return this.listenToAppEvents().pipe(
       filter(event => event.status === 'update_found' && !!event.data),
@@ -202,12 +226,8 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<void>(MOUNT_PLUGIN_INSTALLED);
   }
 
-  listenToRclonePasswordStored(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_PASSWORD_STORED);
-  }
-
-  listenToAppEvents(): Observable<AppEventPayloadType> {
-    return this.listenToEvent<AppEventPayloadType>(APP_EVENT);
+  listenToAppEvents(): Observable<AppEventPayload> {
+    return this.listenToEvent<AppEventPayload>(APP_EVENT);
   }
 
   listenToNetworkStatusChanged(): Observable<{ isMetered: boolean }> {
@@ -260,6 +280,10 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<ActiveOperationsSummary>(APP_EXIT_REQUESTED);
   }
 
+  whenAppExitListenerReady(): Observable<void> {
+    return from(this.appExitListenerReady);
+  }
+
   listenToProvisionProgress(): Observable<ProvisionProgressPayload> {
     return this.listenToEvent<ProvisionProgressPayload>(PROVISION_PROGRESS);
   }
@@ -274,5 +298,13 @@ export class EventListenersService extends TauriBaseService {
 
   listenToWorkflowExecutionStateChanged(): Observable<WorkflowExecutionStatePayload> {
     return this.listenToEvent<WorkflowExecutionStatePayload>(WORKFLOW_EXECUTION_STATE_CHANGED);
+  }
+
+  listenToServerConnection(): Observable<void> {
+    return this.sseClient.connected$;
+  }
+
+  listenToVaultState(): Observable<VaultStatePayload> {
+    return this.listenToEvent<VaultStatePayload>(VAULT_STATE_CHANGED);
   }
 }

@@ -1,3 +1,4 @@
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -43,13 +44,13 @@ import { QuickRunOverviewComponent } from '../quick-run-overview/quick-run-overv
     QuickRunOverviewComponent,
   ],
   templateUrl: './quick-run-workspace.component.html',
-  styleUrl: './quick-run-workspace.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickRunWorkspaceComponent {
   private readonly quickRunService = inject(QuickRunService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly capacity = inject(RemoteDiskUsageService);
   private readonly modalService = inject(ModalService);
   private readonly notificationService = inject(NotificationService);
   private readonly appSettingsService = inject(AppSettingsService);
@@ -96,10 +97,7 @@ export class QuickRunWorkspaceComponent {
   }
 
   openRemoteDetail(remoteName: string): void {
-    const cleanName = remoteName.replace(/:$/, '');
-    const remote = this.remoteFacade
-      .orderedRemotes()
-      .find(r => r.name === remoteName || r.name === cleanName);
+    const remote = this.remoteFacade.getRemote(remoteName);
     if (remote) {
       this.quickRunService.select(null);
       this.uiStateService.setSelectedRemote(remote);
@@ -155,13 +153,7 @@ export class QuickRunWorkspaceComponent {
   onRetryDiskUsage(): void {
     const remote = this.selectedRemote();
     if (remote) {
-      void this.remoteFacade.getCachedOrFetchDiskUsage(
-        remote.name,
-        undefined,
-        'dashboard',
-        undefined,
-        true
-      );
+      void this.capacity.load(remote.name, { force: true });
     }
   }
 
@@ -175,14 +167,11 @@ export class QuickRunWorkspaceComponent {
 
   // ── Remote action helpers ──────────────────────────────────────────────────
   getTargetRemote(remoteName: string): Remote | undefined {
-    const cleanName = remoteName.replace(/:$/, '');
-    return this.remoteFacade
-      .orderedRemotes()
-      .find(r => r.name === remoteName || r.name === cleanName);
+    return this.remoteFacade.getRemote(remoteName);
   }
 
   openRemoteAbout(remote: Remote): void {
-    this.remoteFacade.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   canEmptyTrash(remote: Remote): boolean {
@@ -195,7 +184,7 @@ export class QuickRunWorkspaceComponent {
 
   async cloneRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
-    const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
+    const remote = this.remoteFacade.getRemote(remoteName);
     if (!remote) return;
     this.modalService.openRemoteConfig({
       cloneFrom: remoteName,

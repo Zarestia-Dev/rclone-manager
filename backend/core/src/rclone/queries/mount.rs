@@ -1,0 +1,81 @@
+use crate::context::AppHandle;
+use log::debug;
+
+use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
+use crate::rclone::endpoints::mount;
+use crate::utils::types::remotes::MountedRemote;
+
+pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
+    let backend = app.state::<BackendManager>().get_active().await;
+    get_mounted_remotes_for_backend(app, &backend).await
+}
+
+pub async fn get_mounted_remotes_for_backend(
+    app: AppHandle,
+    backend: &Backend,
+) -> Result<Vec<MountedRemote>, String> {
+    #[cfg(target_os = "android")]
+    if backend.is_local {
+        let backend_manager = app.state::<BackendManager>();
+        let mounts = backend_manager
+            .remote_cache_for(&backend.name)
+            .get_mounted_remotes()
+            .await;
+        debug!("📂 Android SAF Mounted Remotes: {mounts:?}");
+        return Ok(mounts);
+    }
+
+    {
+        let json = RoutingTransport::for_backend(app, backend.clone())
+            .rpc(mount::LISTMOUNTS, None)
+            .await
+            .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;
+
+        let mounts = json["mountPoints"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|mp| {
+                        Some(MountedRemote::new(
+                            mp["Fs"].as_str()?,
+                            mp["MountPoint"].as_str()?,
+                        ))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        debug!("📂 Mounted Remotes: {mounts:?}");
+        Ok(mounts)
+    }
+}
+
+pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(mount::TYPES, None)
+        .await;
+
+    let mount_types: Vec<String> = match json {
+        Ok(res) => res["mountTypes"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|mt| mt.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        Err(_) => vec!["mount".to_string(), "cmount".to_string()],
+    };
+
+    #[cfg(target_os = "android")]
+    let mount_types = {
+        let mut mount_types = mount_types;
+        if !mount_types.contains(&"saf".to_string()) {
+            mount_types.insert(0, "saf".to_string());
+        }
+        mount_types
+    };
+
+    debug!("📂 Mount Types: {mount_types:?}");
+    Ok(mount_types)
+}

@@ -1,0 +1,60 @@
+.profile-info {
+  .profile-name {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  min-width: 0;
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.disk-usage-info {
+  margin: var(--space-md) var(--space-sm) 0 var(--space-sm);
+  background: var(--bg-elevated-1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .usage-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) 0;
+    color: var(--dim-color);
+  }
+
+  .usage-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+  }
+
+  .usage-bar {
+    height: 6px;
+    border-radius: 3px;
+  }
+}
+
+.controls {
+  flex-wrap: wrap;
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+.control {
+  flex: 1;
+  padding: var(--space-sm);
+  background: var(--sidebar-bg-color);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--box-shadow);
+}

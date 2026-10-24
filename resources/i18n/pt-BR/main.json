@@ -217,7 +217,7 @@
     "status": {
       "mounted": "Montado",
       "syncing": "Sincronizando",
-      "bisyncing": "BiSyncing",
+      "bisyncing": "Sincronizando nos dois sentidos",
       "moving": "Movendo",
       "copying": "Cópia",
       "serving": "Servindo"
@@ -310,7 +310,7 @@
     },
     "origins": {
       "title": "Origens",
-      "dashboard": "Dashboard",
+      "dashboard": "Painel",
       "automation": "Automação",
       "filemanager": "Gerenciador de Arquivos",
       "startup": "Inicialização",
@@ -382,7 +382,7 @@
       "os_toast_info": "Nenhuma configuração adicional necessária para Notificações Nativas do Sistema Operacional. Ela usará o sub-sistema de notificação padrão do sistema operacional.",
       "mode": "Modo",
       "provider": "Fornecedor",
-      "telegram_bot": "API de Bot",
+      "telegram_bot": "API do bot",
       "telegram_botless": "Sem bot (CallMeBot)",
       "botToken": "Chave de Bot",
       "chatId": "ID do Chat",
@@ -397,7 +397,7 @@
       "telegram_botless_info": "O modo sem bot usa o CallMeBot (https://api.callmebot.com) para enviar alertas do Telegram diretamente para seu nome de usuário sem criar um token de bot.",
       "whatsapp_callmebot_info": "Envie alertas do WhatsApp através da CallMeBot (https://api.callmebot.com). Entre com seu número de telefone (incluindo código do país) e sua Chave de API da CallMeBot.",
       "whatsapp_gateway_info": "Envia alertas do WhatsApp através de seu ponto final personalizado da API HTTP.",
-      "host": "Host",
+      "host": "Servidor",
       "port": "Porta",
       "useTls": "Usar TLS",
       "topic": "Tema",
@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "Onboarding Concluído",
         "description": "Se o usuário completou o processo de onboarding"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Ignorar verificação do plugin de montagem",
+        "description": "Ignorar a verificação e o aviso de instalação do plugin de montagem na inicialização e na integração"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Aviso do Flatpak Exibido"
       },
+      "mount_warn": {
+        "label": "Aviso de montagem exibido",
+        "description": "Exibir banner de aviso na visualização de montagem quando a verificação do driver estiver desativada"
+      },
       "dashboard_layout": {
         "label": "Layout do Painel de Controle",
         "description": "Configuração de layout personalizada para o painel."
@@ -623,6 +631,12 @@
       "learnMore": "Saiba mais",
       "dismissTooltip": "Não mostre novamente"
     },
+    "mountPlugin": {
+      "title": "Verificação de driver de montagem desativada",
+      "description": "A verificação do driver de montagem foi ignorada. A montagem de remotos requer um driver compatível instalado no seu sistema.",
+      "install": "Instalar driver",
+      "dismissTooltip": "Não mostrar novamente"
+    },
     "metered": {
       "message": "Você está conectado por um plano de dados mediados. Algumas funcionalidades podem usar mais dados."
     },
@@ -661,7 +675,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Adicionar menu remoto",
-    "home": "Home",
+    "home": "Início",
     "internetStatus": "Status da conexão de Internet",
     "appMenu": "Menu de aplicativo",
     "minimize": "Minimizar janela",
@@ -686,7 +700,9 @@
       "import": "Importar",
       "export": "Exportar",
       "preferences": "Preferências",
+      "advanced": "Configurações Avançadas",
       "flags": "Flags do Rclone",
+      "vault": "Cofre",
       "fileBrowser": "Gerenciador de Arquivos",
       "flowWorkspace": "Espaço de trabalho Flow",
       "shortcuts": "Atalhos do teclado",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Iniciando o RClone Manager",
-    "loadingMessage": "Verificando configuração do sistema...",
     "cards": {
       "welcome": {
         "title": "Bem-vindo ao RClone Manager",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Instale o Plugin de Montagem",
-        "content": "O plug-in de montagem permite que você monte armazenamento em nuvem como unidades locais. Este componente opcional melhora sua experiência com Rclone."
+        "content": "O plug-in de montagem permite que você monte armazenamento em nuvem como unidades locais. Este componente opcional melhora sua experiência com Rclone.",
+        "skipMountTitle": "Não usarei a montagem",
+        "skipMountDesc": "Ignore a instalação se não planeja montar unidades."
       },
       "selectConfig": {
         "title": "Selecione a Configuração do Rclone",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Painel Clássico",
-        "badge": "Padrão",
         "description": "Visão geral com conexões remotas, transferências ativas, ações rápidas e status do sistema."
       },
       "nautilus": {
         "title": "Navegador de Arquivos (Nautilus)",
-        "badge": "Gerenciador de Arquivos",
         "description": "Interface dedicada de dois painéis projetada para navegar e transferir arquivos remotos."
       },
       "flow": {
         "title": "Espaço de Trabalho Flow",
-        "badge": "Fluxos de Trabalho",
         "description": "Painel visual interativo para orquestrar tarefas automatizadas e execuções rápidas."
       }
     },
@@ -792,7 +805,7 @@
       "show": "Mostrar busca"
     },
     "urlPreview": {
-      "host": "Host",
+      "host": "Servidor",
       "destination": "Destino",
       "openViewer": "Abrir no visualizador",
       "openViewerTooltip": "Abrir pré-visualização completa de mídia",
@@ -856,27 +869,25 @@
       "resetStats": "Reiniciar Estatísticas",
       "tabs": {
         "active": "Ativo ({{count}})",
-        "recent": "Recente ({{count}})",
-        "recentCheck": "Verificado ({{count}})"
+        "recent": "Recente ({{count}})"
       },
       "table": {
         "size": "Tamanho",
-        "transferred": "transferido",
-        "alreadyExisted": "já existia"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Falhou",
         "checked": "Verificado",
         "partial": "Parcial",
         "completed": "Concluído",
-        "transferError": "Erro de transferência",
-        "transferCompleted": "A transferência foi concluída",
         "preparing": "Preparando",
         "finalizing": "Concluindo...",
         "missingDst": "Perdido no Destino",
         "missingSrc": "Faltando na Fonte",
         "differ": "Conteúdo dos arquivos difere",
-        "error": "Erro"
+        "checking": "Verificando",
+        "deleting": "Excluindo",
+        "processing": "Processando"
       },
       "actions": {
         "resolveToDst": "Copiar para Destino",
@@ -899,12 +910,12 @@
         "resolveFailed": "Falha ao resolver o desalinhamento de arquivo: {{error}}"
       },
       "empty": {
-        "noActive": "Nenhuma transferência ativa",
-        "activeHint": "Transferências aparecerão aqui quando uma operação começar",
-        "noRecent": "Nenhuma transferência concluída recentemente",
-        "recentHint": "Transferências concluídas aparecerão aqui quando as tarefas terminarem",
-        "noRecentCheck": "Arquivos verificados não estão disponíveis",
-        "recentHintCheck": "Arquivos verificados aparecerão aqui quando a tarefa completar"
+        "noRecent": "Nenhuma atividade recente de arquivos",
+        "recentHint": "A atividade de arquivos concluída aparece aqui durante as operações.",
+        "noRecentCheck": "Nenhum resultado de comparação para exibir",
+        "recentHintCheck": "Consulte o status da tarefa e os contadores de verificação.",
+        "noActiveActivity": "Nenhuma atividade de arquivo em andamento",
+        "waitingActivity": "Aguardando atividade de arquivos. Algumas operações não informam arquivos individuais."
       },
       "time": {
         "daysAgo": "{{count}} dias atrás",
@@ -917,8 +928,12 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "Menos de um segundo"
         }
-      }
+      },
+      "titleDelete": "Atividade de exclusão",
+      "titleActivity": "Atividade",
+      "loadMore": "Mostrar mais"
     },
+
     "inputModal": {
       "name": "Nome",
       "required": "O(A) {{field}} é necessário(a)",
@@ -1074,6 +1089,35 @@
       },
       "pollIntervalPlaceholder": "Intervalo de pesquisa (segundos)"
     },
+    "codeEditor": {
+      "tools": "Ferramentas do editor",
+      "find": "Buscar",
+      "goToLine": "Ir para a linha",
+      "go": "Ir",
+      "content": "Editor de código",
+      "wrap": "Quebrar linhas",
+      "lineNumbers": "Números de linha",
+      "readOnly": "Somente leitura",
+      "editing": "Editando",
+      "undo": "Desfazer",
+      "redo": "Refazer",
+      "view": "Visualização",
+      "fontSize": "Tamanho da fonte",
+      "smallerFont": "Diminuir fonte",
+      "largerFont": "Aumentar fonte",
+      "position": "Linha {{line}}, coluna {{column}}",
+      "previous": "Ocorrência anterior",
+      "next": "Próxima ocorrência",
+      "caseSensitive": "Diferenciar maiúsculas",
+      "wholeWord": "Palavra inteira",
+      "regexp": "Expressão regular",
+      "replace": "Substituir",
+      "replaceAll": "Substituir tudo",
+      "invalidRegexp": "Expressão regular inválida",
+      "noResults": "Nenhum resultado",
+      "matches": "{{total}} ocorrências",
+      "matchPosition": "{{current}} / {{total}}"
+    },
     "jsonEditor": {
       "noFields": "Nenhum campo para exibir no modo JSON",
       "parseError": "Sintaxe de JSON inválida. Verifique sua formatação.",
@@ -1226,7 +1270,7 @@
           "description": "Trate senhas como texto plano e obscurifique-as antes de salvar na configuração"
         },
         "noObscure": {
-          "label": "No Obscure",
+          "label": "Não ofuscar",
           "description": "As senhas já estão ocultadas - pule o passo de obscurecimento"
         },
         "nonInteractive": {
@@ -1241,6 +1285,25 @@
           "label": "Sem Saída",
           "description": "Suprima qualquer saída de stdout do chamada para o config do RC"
         }
+      },
+      "providerOverview": {
+        "title": "Recursos do provedor",
+        "supportTier": "Nível de suporte do rclone (não é seu plano de armazenamento)",
+        "hashes": "Somas de verificação",
+        "noHashes": "Nenhum algoritmo de soma de verificação informado",
+        "features": "Recursos informados",
+        "noFeatures": "Nenhum recurso informado para este resumo",
+        "generalNote": "Informações gerais do provedor fornecidas pelo rclone. O suporte real pode variar conforme a configuração.",
+        "virtualNote": "Os recursos dependem do remoto subjacente e da configuração.",
+        "documentation": "Ver visão geral dos recursos do rclone",
+        "copy": "Cópia no servidor",
+        "move": "Movimentação no servidor",
+        "publicLink": "Compartilhamento de links",
+        "emptyDirectories": "Pastas vazias",
+        "caseInsensitive": "Nomes sem distinção entre maiúsculas e minúsculas",
+        "duplicateFiles": "Nomes de arquivo duplicados",
+        "readMetadata": "Leitura de metadados",
+        "writeMetadata": "Gravação de metadados"
       }
     },
     "appOperation": {
@@ -1403,7 +1466,6 @@
       }
     },
     "presets": {
-      "applied": "Predefinições padrão aplicadas com sucesso",
       "noRemoteSelected": "Por favor, selecione um remote primeiro"
     }
   },
@@ -1474,6 +1536,7 @@
     "restoreFailed": "Falha ao restaurar o backup: {{error}}"
   },
   "updates": {
+    "discardDownload": "Descartar download",
     "cancelFailed": "Falha ao cancelar o download da atualização.",
     "installSuccess": "Atualização instalada. Por favor, reinicie o aplicativo.",
     "checkFailed": "Falha ao verificar atualizações: {{error}}",
@@ -1484,7 +1547,7 @@
     "skipVersion": "A atualização {{version}} será ignorada",
     "confirmApply": {
       "title": "Aplicar Atualização",
-      "message": "Você deseja aplicar a atualização? A aplicação será reiniciada para aplicar as alterações.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
@@ -1520,6 +1583,28 @@
       "metadata": {
         "system": "Metadados do Sistema",
         "standard": "Metadados Padrão"
+      },
+      "supportInfo": "O nível de suporte do rclone reflete a manutenção e a estabilidade do provedor.",
+      "providerDocumentation": "Documentação do provedor",
+      "liveFeatures": "Recursos compatíveis com este remoto configurado.",
+      "featureLabels": {
+        "about": "Uso do armazenamento",
+        "bucketBased": "Armazenamento baseado em buckets",
+        "bucketRoot": "Acesso pela raiz do armazenamento",
+        "purge": "Excluir árvores de pastas",
+        "dirMove": "Mover pastas no servidor",
+        "cleanUp": "Limpeza do armazenamento",
+        "listR": "Listagem recursiva",
+        "listP": "Listagem paginada",
+        "putStream": "Envio em fluxo",
+        "openChunkWriter": "Envio em várias partes",
+        "openWriterAt": "Envio com acesso aleatório",
+        "readMimeType": "Ler tipos de conteúdo",
+        "writeMimeType": "Gravar tipos de conteúdo",
+        "changeNotify": "Notificações de alterações",
+        "setTier": "Alterar classe de armazenamento",
+        "getTier": "Ler classe de armazenamento",
+        "overlay": "Encapsula outros remotos"
       }
     },
     "properties": {
@@ -1538,7 +1623,7 @@
       "used": "Usado",
       "free": "Livre",
       "totalCapacity": "Capacidade Total",
-      "checksums": "Checksums",
+      "checksums": "Somas de verificação",
       "loadingHashes": "Carregando tipos de hash...",
       "calculateMore": "Calcule mais:",
       "noHashTypes": "Nenhum tipo de hash suportado para esse servidor remoto",
@@ -1723,7 +1808,7 @@
       "unmount": "Desmontar",
       "progress": "Progresso",
       "speed": "Velocidade",
-      "eta": "ETA",
+      "eta": "Tempo restante",
       "files": "Arquivos",
       "errors": "Erros",
       "duration": "Duração",
@@ -1773,6 +1858,7 @@
       "showShortcuts": "Mostrar atalhos do Teclado",
       "openPreferences": "Abrir Preferências",
       "openFlags": "Abrir Flags do Rclone",
+      "openVault": "Abrir cofre",
       "forceCheck": "Forçar Verificação de Montagens",
       "forceCheckServes": "Força de Verificação de Remotos Servidos",
       "newRemoteDetailed": "Criar Nova Remota Detalhada",
@@ -1842,7 +1928,7 @@
         "finished": "Concluído",
         "duration": "Duração",
         "speed": "Velocidade",
-        "eta": "ETA",
+        "eta": "Tempo restante",
         "files": "Arquivos",
         "checks": "Verificações",
         "deleted": "Excluído(a)",
@@ -1870,7 +1956,7 @@
       "aboutRclone": "Sobre o Rclone",
       "credits": "Créditos",
       "legal": "Legal",
-      "website": "Website",
+      "website": "Site",
       "wiki": "Página do Wiki",
       "reportIssues": "Reportar Problemas",
       "rcloneWebsite": "Website do Rclone",
@@ -1943,22 +2029,22 @@
       "memory": "Memória",
       "viewMemoryStats": "Ver Estatísticas de Memória",
       "memoryStats": "Estatísticas de Memória",
-      "generalMemory": "General Memory",
+      "generalMemory": "Memória geral",
       "memAlloc": "Alocado",
       "memTotalAlloc": "Alocação Total",
       "memSys": "Sistema",
-      "memMallocs": "Mallocs",
+      "memMallocs": "Alocações de memória",
       "memFrees": "Livre",
-      "heapMemory": "Heap Memory",
-      "memHeapAlloc": "Heap Alloc",
-      "memHeapSys": "Heap Sys",
-      "memHeapIdle": "Heap Idle",
-      "memHeapInuse": "Heap In Use",
-      "memHeapReleased": "Heap Released",
-      "memHeapObjects": "Heap Objects",
-      "stackMemory": "Stack Memory",
-      "memStackInuse": "Stack In Use",
-      "memStackSys": "Stack Sys",
+      "heapMemory": "Memória do heap",
+      "memHeapAlloc": "Memória alocada no heap",
+      "memHeapSys": "Memória do sistema para o heap",
+      "memHeapIdle": "Memória ociosa no heap",
+      "memHeapInuse": "Memória em uso no heap",
+      "memHeapReleased": "Memória do heap devolvida ao sistema",
+      "memHeapObjects": "Objetos no heap",
+      "stackMemory": "Memória da pilha",
+      "memStackInuse": "Memória em uso na pilha",
+      "memStackSys": "Memória do sistema para a pilha",
       "gc": "Coletor de Lixo",
       "runningGc": "Executando GC...",
       "runGc": "Executar GC",
@@ -1968,7 +2054,8 @@
       "entries": "Entradas Ativas",
       "clear": "Limpar",
       "cacheCleared": "O cache foi limpo com sucesso",
-      "cacheClearFailed": "Falha ao limpar o cache"
+      "cacheClearFailed": "Falha ao limpar o cache",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Falha ao recuperar os registros da aplicação.",
@@ -2016,7 +2103,8 @@
       "tabs": {
         "general": "Geral",
         "core": "Núcleo",
-        "developer": "Desenvolvedor"
+        "developer": "Desenvolvedor",
+        "vault": "Cofre"
       },
       "aria": {
         "resetAll": "Redefinir todas as configurações para os valores padrão",
@@ -2049,6 +2137,8 @@
       "passwordLabel": "Senha de Criptografia",
       "passwordPlaceholder": "Insira a senha",
       "passwordHint": "Esta senha será necessária para restaurar o backup.",
+      "vaultWarningTitle": "O cofre de configurações está aberto",
+      "vaultWarningDesc": "Os backups exportados não herdam a criptografia do cofre. Use a opção de criptografia abaixo para proteger credenciais e configurações confidenciais com uma senha.",
       "exportNow": "Exportar Agora",
       "exporting": "Exportação...",
       "fullBackup": "Backup Completo",
@@ -2099,7 +2189,7 @@
       "title": "Gestão de Backend",
       "fields": {
         "host": {
-          "label": "Host",
+          "label": "Servidor",
           "placeholder": "127.0.0.1 ou meu-nas.local"
         },
         "port": {
@@ -2428,7 +2518,9 @@
       "internalStorage": "Armazenamento interno"
     },
     "bookmarks": {
-      "emptyHint": "Sem marcas de página"
+      "emptyHint": "Sem marcas de página",
+      "add": "Adicionar aos favoritos",
+      "dropHint": "Solte pastas aqui para adicionar aos favoritos"
     },
     "sort": {
       "az": "A-Z",
@@ -2534,6 +2626,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Não foi possível abrir uma nova janela. A visualização atual foi mantida aberta.",
       "connectionFailed": "Conexão falhou",
       "bookmarkRemoteNotFound": "Bookmark remoto '{{remote}}' não encontrado",
       "loadFailed": "Falha ao carregar diretório",
@@ -2609,8 +2702,6 @@
       "increaseIconSize": "Aumentar tamanho do ícone"
     },
     "notifications": {
-      "mkdirFailed": "Falha ao criar diretório: {{path}}",
-      "uploadStarted": "Iniciando o upload de {{count}} arquivos.",
       "uploadSuccess": "{{count}} arquivos carregados com sucesso.",
       "uploadFailed": "Falha de upload de {{count}} arquivos.",
       "trashEmptied": "Operação de limpeza concluída",
@@ -2681,9 +2772,6 @@
       "title": "Redefinir Configurações do Remoto",
       "message": "Você tem certeza de que deseja redefinir TODOS os parâmetros para {{name}}?"
     },
-    "notifications": {
-      "settingsReset": "As configurações para {{name}} foram redefinidas."
-    },
     "errors": {
       "generic": "Um erro inesperado ocorreu. Por favor, verifique os logs para mais detalhes.",
       "openFailed": "Não foi possível abrir {{name}}"
@@ -2753,7 +2841,7 @@
       },
       "progress": "Progresso:",
       "of": "de",
-      "eta": "ETA:",
+      "eta": "Tempo restante:",
       "speed": "Velocidade de Transferência:",
       "transfers": "Transferências:",
       "checks": "Verificações:",
@@ -2831,10 +2919,10 @@
       "failedToOpen": "Falha ao abrir gerenciador de arquivos: {{error}}",
       "diskFull": "O disco ou unidade de destino está cheio. Espaço em disco insuficiente.",
       "fileLocked": "O arquivo está bloqueado ou em uso por outro processo.",
-      "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação."
+      "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação.",
+      "ioError": "Erro de E/S: {{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "Plataforma não suportada",
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
       "mountPluginVerificationFailed": "A instalação foi bem-sucedida, mas a verificação falhou. Pode ser necessário reiniciar.",
       "configEncrypted": "A configuração está criptografada e não foi fornecido senha",
@@ -2874,7 +2962,10 @@
       "unsupportedArchive": "Tipo de arquivo não suportado. Deve ser um arquivo .rcman",
       "invalidArchive": "Formato de arquivo de backup inválido",
       "restoreFailed": "Falha na restauração do backup: {{error}}",
-      "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha"
+      "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha",
+      "exportFailed": "Falha na exportação do backup: {{error}}",
+      "refreshFailed": "Falha ao atualizar o sistema após a restauração do backup: {{error}}",
+      "restoreIncomplete": "A restauração do backup ficou incompleta: {{error}}"
     },
     "backend": {
       "nameEmpty": "Nome do backend não pode estar vazio",
@@ -2891,7 +2982,6 @@
       "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum."
     },
     "cache": {
-      "fetchRemotesFailed": "Falha ao recuperar repositórios",
       "fetchConfigFailed": "Não foi possível obter a configuração dos remotos",
       "refreshMountsFailed": "Falha ao atualizar os remotos montados",
       "refreshServesFailed": "Falha ao recarregar serviços"
@@ -2926,16 +3016,27 @@
       "relaunchFailed": "Reinício falhou: {{error}}",
       "restartFailed": "Reiniciar falhou: {{error}}",
       "notWritable": "O caminho de atualização não é gravável",
-      "ioError": "Erro de E/S: {{error}}"
+      "ioError": "Erro de E/S: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Falha ao carregar configurações: {{error}}",
       "saveFailed": "Falha ao salvar configuração: {{error}}",
       "resetFailed": "Falha ao reiniciar configuração: {{error}}",
       "resetAllFailed": "Falha ao redefinir todas as configurações: {{error}}",
-      "eventEmitFailed": "Falha ao emiter evento de configuração: {{error}}",
       "subSettingsFailed": "Falha ao obter sub-configurações: {{error}}",
       "deleteFailed": "Falha ao excluir configurações remotas: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "A senha do cofre não pode ficar vazia",
+      "notEnabled": "O cofre não está ativado",
+      "invalidPassword": "Senha mestra do cofre incorreta",
+      "operationFailed": "Falha na operação do cofre: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2969,6 +3070,14 @@
       "unencrypted": "Configuração descriptografada com sucesso",
       "encrypted": "Configuração criptografada com sucesso",
       "passwordChanged": "A senha de configuração foi alterada com sucesso"
+    },
+    "vault": {
+      "unlocked": "Cofre desbloqueado com sucesso",
+      "locked": "Cofre bloqueado com sucesso",
+      "enabled": "Criptografia do cofre ativada com sucesso",
+      "disabled": "Criptografia do cofre desativada com sucesso",
+      "passwordChanged": "Senha mestra do cofre alterada com sucesso",
+      "timeoutUpdated": "Tempo de bloqueio automático atualizado com sucesso"
     }
   },
   "overviews": {
@@ -3188,7 +3297,6 @@
       "passwordRequired": "A configuração de seu Rclone está criptografada. Por favor insira sua senha.",
       "versionTooOld": "Sua versão do rclone é mais antiga que {{required}}. Por favor atualize para continuar.",
       "defaultParams": "Um componente do sistema não está funcionando corretamente.",
-      "mountPluginStatusError": "Falha ao verificar o status",
       "authRequired": "O backend rejeitou a conexão devido a uma falha na autenticação.",
       "remoteAuthRequired": "O backend remoto rejeitou a conexão devido a uma falha de autenticação. Verifique suas credenciais.",
       "portInUse": "A porta {{port}} já está ocupada por outro aplicativo ou conexão. Escolha uma porta diferente para continuar."
@@ -3202,6 +3310,10 @@
       "repairing": "Reparando...",
       "configuring": "Configurando..."
     },
+    "mountPreference": {
+      "title": "Não usarei a montagem",
+      "desc": "Desative as verificações de driver se não planeja montar unidades."
+    },
     "actions": {
       "installRclone": "Instale o Rclone",
       "installPlugin": "Instale o Plugin",
@@ -3210,7 +3322,8 @@
       "submitPassword": "Desbloquear",
       "changePort": "Aplicar Porta & Reiniciar",
       "configureBackend": "Configurar backend",
-      "repair": "Reparar"
+      "repair": "Reparar",
+      "saveAndClose": "Salvar e fechar"
     },
     "portConfig": {
       "portLabel": "Porta Local",
@@ -3394,7 +3507,6 @@
         "delete": "Excluir Nó",
         "duplicateWorkflow": "Duplicar Fluxo",
         "deleteWorkflow": "Excluir Fluxo",
-        "exportWorkflow": "Exportar JSON",
         "inspectJob": "Inspecionar Tarefa"
       },
       "canvas": {
@@ -3800,6 +3912,8 @@
     "title": "Modelos",
     "presetTitle": "Predefinições e Modelos",
     "applyPresets": "Aplicar Predefinições Padrão",
+    "defaultPresets": "Predefinições padrão",
+    "defaultPresetsDesc": "Configuração básica otimizada para este tipo de remoto e sistema.",
     "userTemplates": "Modelos Salvos do Usuário",
     "saveAsTemplate": "Salvar Configurações Atuais como Modelo...",
     "manageTemplates": "Gerenciar Modelos...",
@@ -3814,6 +3928,7 @@
     "addKey": "Adicionar Chave",
     "removeKey": "Remover Chave",
     "deleteTemplate": "Excluir Modelo",
+    "deleteConfirm": "Tem certeza de que deseja excluir o modelo \"{{name}}\"?",
     "noCatKeys": "Nenhuma configuração em {{category}} ainda.",
     "visualView": "Inspetor Visual",
     "jsonView": "Editor JSON",
@@ -3829,7 +3944,21 @@
     "zeroKeys": "0 chaves",
     "applySuccess": "Modelo \"{{name}}\" aplicado com sucesso.",
     "savedSuccess": "Modelo \"{{name}}\" salvo com sucesso.",
-    "deletedSuccess": "Modelo excluído com sucesso."
+    "deletedSuccess": "Modelo excluído com sucesso.",
+    "applyModalTitle": "Aplicar Modelo",
+    "applyStrategy": "Estratégia de Aplicação",
+    "strategyOverwrite": "Substituir todos os valores",
+    "strategyOverwriteDesc": "As configurações do modelo substituem os valores existentes",
+    "strategyFillEmpty": "Preencher apenas campos vazios",
+    "strategyFillEmptyDesc": "Preserva os valores existentes e aplica apenas os ausentes",
+    "addedCount": "{{count}} a adicionar",
+    "modifiedCount": "{{count}} a alterar",
+    "unchangedCount": "{{count}} inalterados",
+    "diffCurrent": "Atual",
+    "diffNew": "Novo",
+    "apply": "Aplicar Modelo",
+    "noChangesDetected": "Todas as configurações deste modelo já correspondem aos valores atuais.",
+    "selectCategoriesToApply": "Categorias e Configurações"
   },
   "navigation": {
     "dashboard": "Painel",
@@ -3896,7 +4025,7 @@
         "5M": "5 MiB/s",
         "10M": "10 MiB/s",
         "50M": "50 MiB/s",
-        "split": "10M upload, 50M download",
+        "split": "10M de envio, 50M de download",
         "schedule": "Horário programado"
       },
       "fileMode": {
@@ -3951,6 +4080,60 @@
       "hostShuttingDown": "O sistema operacional está desligando...",
       "hostSleeping": "Colocando o sistema em suspensão...",
       "hostLocking": "Bloqueando a sessão do usuário..."
+    }
+  },
+  "vault": {
+    "title": "Cofre de Configurações",
+    "description": "Proteja suas configurações, credenciais e subconfigurações em repouso com criptografia AES-256-GCM.",
+    "status": {
+      "protected": "Protegido",
+      "unprotected": "Desprotegido"
+    },
+    "actions": {
+      "lockNow": "Bloquear cofre",
+      "unlock": "Desbloquear cofre",
+      "enable": "Ativar cofre",
+      "disable": "Desativar cofre",
+      "updatePassword": "Alterar senha"
+    },
+    "enable": {
+      "title": "Ativar proteção do cofre",
+      "description": "Digite uma senha mestra para criptografar suas configurações. Você precisará dela para desbloquear o aplicativo."
+    },
+    "changePassword": {
+      "title": "Alterar senha mestra"
+    },
+    "disable": {
+      "title": "Desativar proteção do cofre",
+      "warning": "Desativar o cofre armazenará configurações e credenciais em texto simples no disco."
+    },
+    "settings": {
+      "autoLockTitle": "Tempo de bloqueio automático",
+      "autoLockDesc": "Bloqueia o cofre automaticamente após um período de inatividade."
+    },
+    "fields": {
+      "masterPassword": "Senha mestra",
+      "confirmPassword": "Confirmar senha",
+      "currentPassword": "Senha atual",
+      "newPassword": "Nova senha",
+      "autoLockTimeout": "Bloquear após"
+    },
+    "timeout": {
+      "never": "Nunca",
+      "5m": "5 minutos",
+      "15m": "15 minutos",
+      "30m": "30 minutos",
+      "1h": "1 hora"
+    },
+    "lockScreen": {
+      "title": "Cofre Bloqueado",
+      "subtitle": "Digite sua senha mestra para desbloquear o RClone Manager",
+      "awaitingAuthorization": "Aguardando autorização",
+      "authorizing": "Autorizando…"
+    },
+    "errors": {
+      "passwordsMismatch": "As senhas não coincidem",
+      "unlockFailed": "Falha ao desbloquear o cofre"
     }
   }
 }

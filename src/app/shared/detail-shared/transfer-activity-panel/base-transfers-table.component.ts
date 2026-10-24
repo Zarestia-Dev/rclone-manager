@@ -1,113 +1,72 @@
-import {
-  Directive,
-  inject,
-  input,
-  computed,
-  signal,
-  effect,
-  linkedSignal,
-  untracked,
-  type Signal,
-} from '@angular/core';
+import { Directive, inject, input, computed, signal, linkedSignal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { CompletedTransfer } from '@app/types';
-import { TransferOperationsService } from './transfer-operations.service';
-
-/**
- * Minimal contract shared by every "enriched" transfer shape produced by
- * subclasses. Both {@link EnrichedCompletedTransfer} and
- * {@link EnrichedCheckResult} satisfy this interface.
- */
-export interface BaseEnrichedTransfer extends CompletedTransfer {
-  uniqueId: string;
-}
+import { CompletedTransfer, JOB_STATUS, TransferStatus } from '@app/types';
+import { relativeTimeLabel } from '../../utils/relative-time.util';
+import { ActivityRow, effectiveTransferStatus, matchesActivitySearch } from './activity.utils';
 
 @Directive()
-export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnrichedTransfer> {
+export abstract class BaseTransfersTableComponent {
   readonly transfers = input.required<CompletedTransfer[]>();
   readonly searchTerm = input<string>('');
+  readonly statusFilter = input<TransferStatus | null>(null);
 
   protected readonly translate = inject(TranslateService);
-  protected readonly ops = inject(TransferOperationsService);
 
-  readonly hiddenIds = signal<Set<string>>(new Set());
   readonly resolvingIds = signal<Set<string>>(new Set());
 
-  readonly displayLimit = linkedSignal({
-    source: () => [this.transfers(), this.searchTerm()] as const,
-    computation: () => 50,
+  readonly displayLimit = linkedSignal<
+    { jobId: number | undefined; search: string; status: TransferStatus | null },
+    number
+  >({
+    source: () => ({
+      jobId: this.transfers()[0]?.jobid,
+      search: this.searchTerm().trim().toLowerCase(),
+      status: this.statusFilter(),
+    }),
+    computation: (source, previous) =>
+      previous &&
+      previous.source.jobId === source.jobId &&
+      previous.source.search === source.search &&
+      previous.source.status === source.status
+        ? previous.value
+        : 50,
   });
 
   protected readonly lang = toSignal(this.translate.onLangChange, {
     initialValue: null,
   });
 
-  private readonly remotesList = computed(
-    () => {
-      const remotes = new Set<string>();
-      for (const t of this.transfers()) {
-        if (t.srcFs) remotes.add(t.srcFs);
-        if (t.dstFs) remotes.add(t.dstFs);
-      }
-      return Array.from(remotes).sort();
-    },
-    {
-      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
-    }
+  protected readonly filteredTransfers = computed(() => {
+    const search = this.searchTerm().toLowerCase().trim();
+    const status = this.statusFilter();
+    if (!search && !status) return this.transfers();
+    return this.transfers().filter(
+      item =>
+        (!status || effectiveTransferStatus(item) === status) && matchesActivitySearch(item, search)
+    );
+  });
+
+  /** Enrich only the visible window, rather than every history entry on each poll. */
+  protected readonly visibleTransfers = computed(() =>
+    this.filteredTransfers().slice(0, this.displayLimit())
   );
 
-  constructor() {
-    effect(() => {
-      const remotes = this.remotesList();
-      if (remotes.length > 0) {
-        untracked(() => this.ops.preloadFeatures(this.transfers()));
-      }
-    });
-  }
-
-  /**
-   * Subclass-specific enrichment + filtering pipeline. Must return the full
-   * filtered list (the base class applies the {@link slicedItems} window).
-   */
-  protected abstract readonly processedItems: Signal<TEnriched[]>;
-
-  /** Shared slice for the infinite-scroll viewport. */
-  readonly slicedItems = computed(() => this.processedItems().slice(0, this.displayLimit()));
-
-  /**
-   * Format a completed-at timestamp as a localized relative-time string
-   * (e.g. "just now", "5 minutes ago", "3 hours ago", "2 days ago").
-   */
   protected getRelativeTime(timestamp: string): string {
-    const diff = Date.now() - Date.parse(timestamp);
-    const minutes = Math.floor(diff / 60000);
-    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
-    const hours = Math.floor(minutes / 60);
-    if (hours <= 0)
-      return this.translate.instant('shared.transferActivity.time.minutesAgo', {
-        count: minutes,
-      });
-    const days = Math.floor(hours / 24);
-    if (days <= 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', {
-        count: hours,
-      });
-    return this.translate.instant('shared.transferActivity.time.daysAgo', {
-      count: days,
-    });
-  }
-
-  /** Compute standard transfer speed category class from bytes/second */
-  protected getSpeedClass(speed: number): string {
-    if (speed > 5 * 1024 * 1024) return 'speed-fast';
-    if (speed > 1024 * 1024) return 'speed-medium';
-    return 'speed-slow';
+    const label = relativeTimeLabel(timestamp);
+    return label ? this.translate.instant(label.key, label.params) : '';
   }
 
   /** Whether the given enriched item is currently being resolved. */
-  isResolving(item: TEnriched): boolean {
-    return this.resolvingIds().has(item.uniqueId) || item.resolveState?.status === 'Running';
+  isResolving(item: ActivityRow): boolean {
+    return (
+      this.resolvingIds().has(item.uniqueId) || item.resolveState?.status === JOB_STATUS.Running
+    );
+  }
+
+  loadMore(): void {
+    const total = this.filteredTransfers().length;
+    this.displayLimit.update(limit => (limit < total ? Math.min(limit + 50, total) : limit));
   }
 
   /** Shared infinite-scroll handler bound from each subclass template. */
@@ -116,11 +75,7 @@ export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnriched
     if (!target) return;
 
     if (target.scrollHeight - (target.scrollTop + target.clientHeight) < 150) {
-      const currentLimit = this.displayLimit();
-      const totalCount = this.processedItems().length;
-      if (currentLimit < totalCount) {
-        this.displayLimit.set(Math.min(currentLimit + 50, totalCount));
-      }
+      this.loadMore();
     }
   }
 }

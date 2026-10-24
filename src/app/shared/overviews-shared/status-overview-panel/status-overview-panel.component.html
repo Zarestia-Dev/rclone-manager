@@ -2,9 +2,9 @@
   <div class="panel-title-row">
     <div class="title-left">
       <mat-icon [svgIcon]="summaryIcon" class="mode-icon" aria-hidden="true"></mat-icon>
-      <span class="panel-title">{{ title() | translate }}</span>
+      <span class="panel-title truncate">{{ title() | translate }}</span>
     </div>
-    <span class="total-badge">{{ totalCount() }}</span>
+    <span class="count-badge">{{ totalCount() }}</span>
   </div>
 
   <div class="progress-track" aria-hidden="true">

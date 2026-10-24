@@ -56,11 +56,6 @@ export interface MemoryStats {
   TotalAlloc: number;
 }
 
-export interface SystemStats {
-  memoryUsage: MemoryStats | null;
-  uptime: number;
-}
-
 export type RcloneStatus = 'active' | 'inactive' | 'error';
 
 export const SENSITIVE_KEYS = [
@@ -87,14 +82,31 @@ export interface AppEventPayload {
   data?: unknown; // Replaced any
 }
 
-export type AppEventPayloadType = AppEventPayload;
-
 export enum BackendUpdateStatus {
   Idle = 'idle',
   Checking = 'checking',
   Downloading = 'downloading',
   ReadyToRestart = 'readyToRestart',
   Available = 'available',
+  Installing = 'installing',
+}
+
+export interface UpdatePolicy {
+  installation:
+    | 'native'
+    | 'portable'
+    | 'server'
+    | 'android'
+    | 'appimage'
+    | 'pacman'
+    | 'deb'
+    | 'rpm'
+    | 'flatpak'
+    | 'container'
+    | 'unknown';
+  method: 'unavailable' | 'tauri' | 'binary' | 'android';
+  canInstall: boolean;
+  reason?: string | null;
 }
 
 export interface UpdateInfo {
@@ -102,6 +114,8 @@ export interface UpdateInfo {
   currentVersion: string;
   updateAvailable: boolean;
   status: BackendUpdateStatus;
+  download?: DownloadStatus;
+  installation?: UpdatePolicy;
   releaseTag?: string;
   releaseNotes?: string;
   releaseDate?: string;
@@ -133,26 +147,6 @@ export interface UpdateResult {
   output?: string;
   channel?: string;
   manual?: boolean;
-}
-
-export interface LoadingStates {
-  isValidating: boolean;
-  isEncrypting: boolean;
-  isUnencrypting: boolean;
-  isChangingPassword: boolean;
-  isStoringPassword: boolean;
-  isRemovingPassword: boolean;
-  isSettingEnv: boolean;
-  isClearingEnv: boolean;
-  isResettingLockout: boolean;
-}
-
-export interface PasswordManagerState {
-  hasStoredPassword: boolean;
-  hasEnvPassword: boolean;
-  isConfigEncrypted: boolean;
-  loading: LoadingStates;
-  errors: string[];
 }
 
 export interface SettingTab {

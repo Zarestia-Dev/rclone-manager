@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
+import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OperationConfigComponent } from './app-operation-config.component';
@@ -10,8 +12,9 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { AutomationService } from 'src/app/services/operations/automation.service';
 
-describe('OperationConfigComponent - Default Path Resolution', () => {
+describe('OperationConfigComponent', () => {
   let fixture: ComponentFixture<OperationConfigComponent>;
   let component: OperationConfigComponent;
   let pathInspectionServiceMock: {
@@ -73,12 +76,16 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [OperationConfigComponent],
+      imports: [OperationConfigComponent, MatIconTestingModule],
       providers: [
         provideTranslateService(),
         { provide: PathInspectionService, useValue: pathInspectionServiceMock },
         { provide: BackendService, useValue: backendServiceMock },
         { provide: PathService, useValue: pathServiceMock },
+        {
+          provide: AutomationService,
+          useValue: { validateCron: vi.fn().mockResolvedValue({ isValid: true }) },
+        },
         {
           provide: FileSystemService,
           useValue: { getOperations: vi.fn(), listRemotes: vi.fn() },
@@ -96,11 +103,30 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
           useValue: { showError: vi.fn(), showWarning: vi.fn(), showSuccess: vi.fn() },
         },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(OperationConfigComponent, {
+        set: {
+          providers: [
+            {
+              provide: PathSelectionService,
+              useValue: {
+                resetPath: vi.fn(),
+                unregisterField: vi.fn(),
+                registerField: vi
+                  .fn()
+                  .mockImplementation((id: string, remoteName: string) =>
+                    signal({ id, remoteName, currentPath: '', options: [], isLoading: false })
+                  ),
+              },
+            },
+          ],
+        },
+      })
+      .compileComponents();
   });
 
   const setupComponent = (
-    operationType: 'mount' | 'bisync' | 'sync',
+    operationType: 'mount' | 'serve' | 'bisync' | 'sync',
     currentRemoteName: string,
     isNewRemote = true,
     initialPath = ''
@@ -121,6 +147,165 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
 
     return { form, component, fixture };
   };
+
+  it('marks cron changes and schedule removal dirty for general remote saving', () => {
+    const { form } = setupComponent('sync', 'drive', false);
+    form.markAsPristine();
+    component.onCronChange('0 2 * * *');
+    expect(form.dirty).toBe(true);
+    expect(form.get('cronExpression')?.value).toBe('0 2 * * *');
+    form.markAsPristine();
+    component.clearSchedule();
+    expect(form.dirty).toBe(true);
+    expect(form.get('cronExpression')?.value).toBeNull();
+  });
+
+  it.each(['mount', 'serve', 'sync'] as const)(
+    'removes the empty path container for an unmatched %s search',
+    operationType => {
+      const { form } = setupComponent(operationType, 'drive', false, '/tmp/destination');
+      const original = form.getRawValue();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      fixture.componentRef.setInput('searchQuery', 'rdf');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).toBeNull();
+      fixture.componentRef.setInput('searchQuery', '');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      expect(form.getRawValue()).toEqual(original);
+    }
+  );
+
+  it.each(['source', 'destination'])(
+    'keeps the path container when only the %s section matches',
+    query => {
+      setupComponent('sync', 'drive', false);
+      fixture.componentRef.setInput('searchQuery', query);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      expect(
+        fixture.nativeElement.querySelectorAll('.paths-container .section-header')
+      ).toHaveLength(1);
+    }
+  );
+
+  describe('automation visibility', () => {
+    it.each(['mount', 'serve', 'sync', 'bisync'] as const)(
+      'should show autostart during initial %s setup',
+      operationType => {
+        setupComponent(operationType, 'new-remote');
+
+        expect(fixture.nativeElement.querySelector('[formControlName="autoStart"]')).not.toBeNull();
+      }
+    );
+
+    it.each(['sync', 'bisync'] as const)(
+      'should show scheduling and file watching during initial %s setup',
+      operationType => {
+        setupComponent(operationType, 'new-remote');
+
+        expect(
+          fixture.nativeElement.querySelector('[formControlName="cronEnabled"]')
+        ).not.toBeNull();
+        expect(
+          fixture.nativeElement.querySelector('[formControlName="watchEnabled"]')
+        ).not.toBeNull();
+      }
+    );
+
+    it.each(['mount', 'serve'] as const)(
+      'should keep scheduling and file watching unavailable for %s',
+      operationType => {
+        setupComponent(operationType, 'new-remote');
+
+        expect(fixture.nativeElement.querySelector('[formControlName="cronEnabled"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[formControlName="watchEnabled"]')).toBeNull();
+      }
+    );
+
+    it('should keep automations visible when editing an existing remote', () => {
+      setupComponent('sync', 'existing-remote', false);
+
+      expect(component.showAutoStart()).toBe(true);
+      expect(component.showCronSection()).toBe(true);
+      expect(component.showWatchSection()).toBe(true);
+    });
+
+    it('should respect the explicit automation visibility input during initial setup', () => {
+      setupComponent('sync', 'new-remote');
+      fixture.componentRef.setInput('showAutomations', false);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.automation-accordion')).toBeNull();
+      expect(component.showAutoStart()).toBe(false);
+      expect(component.showCronSection()).toBe(false);
+      expect(component.showWatchSection()).toBe(false);
+    });
+
+    it('should filter automation sections by search during initial setup', () => {
+      setupComponent('sync', 'new-remote');
+      fixture.componentRef.setInput('searchQuery', 'schedule');
+      fixture.detectChanges();
+
+      expect(component.showAutoStart()).toBe(false);
+      expect(component.showCronSection()).toBe(true);
+
+      fixture.componentRef.setInput('searchQuery', 'start');
+      fixture.detectChanges();
+
+      expect(component.showAutoStart()).toBe(true);
+      expect(component.showCronSection()).toBe(false);
+
+      fixture.componentRef.setInput('searchQuery', 'unrelated');
+      fixture.detectChanges();
+
+      expect(component.showAutoStart()).toBe(false);
+      expect(component.showCronSection()).toBe(false);
+    });
+
+    it('ignores extra whitespace and requires all search words to match', () => {
+      setupComponent('sync', 'new-remote');
+      for (const query of ['unrelated  query', 'unrelated ', 'source nonexistent']) {
+        fixture.componentRef.setInput('searchQuery', query);
+        fixture.detectChanges();
+        expect(component.showSourcePath()).toBe(false);
+        expect(component.showDestPath()).toBe(false);
+        expect(component.showAutoStart()).toBe(false);
+        expect(component.showCronSection()).toBe(false);
+      }
+      fixture.componentRef.setInput('searchQuery', ' source \t path ');
+      fixture.detectChanges();
+      expect(component.showSourcePath()).toBe(true);
+      expect(component.showDestPath()).toBe(false);
+      fixture.componentRef.setInput('searchQuery', 'destination path');
+      fixture.detectChanges();
+      expect(component.showDestPath()).toBe(true);
+      fixture.componentRef.setInput('searchQuery', 'auto-start');
+      fixture.detectChanges();
+      expect(component.showAutoStart()).toBe(true);
+    });
+
+    it('should keep file watching disabled without a local source during initial sync setup', () => {
+      const { form } = setupComponent('sync', 'new-remote');
+
+      expect(component.showWatchSection()).toBe(true);
+      expect(form.get('watchEnabled')?.disabled).toBe(true);
+
+      form.get('source.0.type')?.setValue('local');
+      fixture.detectChanges();
+
+      expect(form.get('watchEnabled')?.enabled).toBe(true);
+    });
+
+    it('should hide file watching when using a remote backend during initial setup', () => {
+      backendServiceMock.isLocalBackend.mockReturnValue(false);
+      setupComponent('sync', 'new-remote');
+
+      expect(component.showAutoStart()).toBe(true);
+      expect(component.showCronSection()).toBe(true);
+      expect(fixture.nativeElement.querySelector('[formControlName="watchEnabled"]')).toBeNull();
+    });
+  });
 
   it('should auto-resolve default local path for new mount operation', async () => {
     const { form } = setupComponent('mount', 'my-drive', true);
@@ -145,14 +330,14 @@ describe('OperationConfigComponent - Default Path Resolution', () => {
     expect(form.get('dest.path')?.value).toBe('/home/user/rclone-bisync/backup-drive');
   });
 
-  it('should not auto-resolve path if isNewRemote is false', async () => {
+  it('resolves a missing default for an existing profile through the shared owner', async () => {
     const { form } = setupComponent('mount', 'my-drive', false);
 
     await Promise.resolve();
     fixture.detectChanges();
 
-    expect(pathInspectionServiceMock.resolveDefaultPath).not.toHaveBeenCalled();
-    expect(form.get('dest.path')?.value).toBe('');
+    expect(pathInspectionServiceMock.resolveDefaultPath).toHaveBeenCalledWith('my-drive', 'mount');
+    expect(form.get('dest.path')?.value).toBe('/home/user/rclone-mount/my-drive');
   });
 
   it('should not auto-resolve path for sync operation', async () => {

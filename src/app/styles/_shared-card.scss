@@ -1,3 +1,5 @@
+@use "card-actions";
+
 :host {
   position: relative;
   transition: var(--transition-standard);
@@ -162,32 +164,6 @@
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-
-.quick-actions {
-  display: flex;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
-  justify-content: center;
-  overflow: visible;
-  padding: var(--space-xs) var(--space-md) var(--space-md);
-
-  button[matMiniFab] {
-    transition: var(--transition-fast);
-
-    mat-icon {
-      font-size: var(--icon-size-sm);
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-    }
-
-    &:hover {
-      transform: scale(var(--action-btn-scale-hover));
-    }
-    &:disabled {
-      transform: scale(var(--action-btn-scale-disabled));
-    }
-  }
-}
 
 .folder-badge {
   position: absolute;

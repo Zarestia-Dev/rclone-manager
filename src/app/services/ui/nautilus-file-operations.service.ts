@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -113,7 +114,7 @@ export class NautilusFileOperationsService {
     const text = preparsedText ?? (await this._readSystemClipboardText());
     const paths = this.parseClipboardPaths(text);
     if (paths.length > 0) {
-      return this._handleDesktopUpload(dstRemote, dstPath, paths);
+      return this.uploadLocalPaths(dstRemote, dstPath, paths);
     }
     return false;
   }
@@ -222,7 +223,7 @@ export class NautilusFileOperationsService {
         remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
         path: item.entry.Path,
         dstRemote: normalizedDst,
-        dstFullPath: this.pathService.joinPath(dstPath, item.entry.Name),
+        dstFullPath: pathUtils.joinPath(dstPath, item.entry.Name),
         isDir: !!item.entry.IsDir,
         name: item.entry.Name,
       }));
@@ -267,7 +268,7 @@ export class NautilusFileOperationsService {
     );
 
     const deleteItems = items.map(item => ({
-      remote: this._normalizeRemote(remote),
+      remote: this.pathService.normalizeExplorerRoot(remote),
       path: item.entry.Path,
       isDir: !!item.entry.IsDir,
     }));
@@ -292,7 +293,7 @@ export class NautilusFileOperationsService {
     item: FileBrowserItem,
     existingNames: string[]
   ): Promise<boolean> {
-    const normalizedRemote = this._normalizeRemote(remote);
+    const normalizedRemote = this.pathService.normalizeExplorerRoot(remote);
 
     const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.rename.title'),
@@ -308,10 +309,7 @@ export class NautilusFileOperationsService {
       const newName = await firstValueFrom(ref.afterClosed());
       if (!newName || newName === item.entry.Name) return false;
 
-      const newPath = this.pathService.joinPath(
-        this.pathService.getParentPath(item.entry.Path),
-        newName
-      );
+      const newPath = pathUtils.joinPath(this.pathService.getParentPath(item.entry.Path), newName);
 
       await this.remoteOps.rename(
         normalizedRemote,
@@ -495,7 +493,7 @@ export class NautilusFileOperationsService {
     try {
       const paths = await this.fileSystem.selectFilesForUpload();
       if (paths.length > 0) {
-        return this._handleDesktopUpload(remote, currentPath, paths);
+        return this.uploadLocalPaths(remote, currentPath, paths);
       }
       return false;
     } catch (err) {
@@ -509,7 +507,7 @@ export class NautilusFileOperationsService {
     try {
       const folderPath = await this.fileSystem.selectFolder();
       if (folderPath) {
-        return this._handleDesktopUpload(remote, currentPath, [folderPath]);
+        return this.uploadLocalPaths(remote, currentPath, [folderPath]);
       }
       return false;
     } catch (err) {
@@ -524,38 +522,45 @@ export class NautilusFileOperationsService {
     currentPath: string,
     fileList: FileList
   ): Promise<boolean> {
-    const normalized = this._normalizeRemote(remote);
-    const filesArray = Array.from(fileList).map(file => ({
-      file,
-      relativePath: file.webkitRelativePath || file.name,
-    }));
+    return this.uploadWebEntries(
+      remote,
+      currentPath,
+      Array.from(fileList).map(file => ({
+        file,
+        relativePath: file.webkitRelativePath || file.name,
+      }))
+    );
+  }
+
+  /** Shared upload orchestration for browser file pickers and external drops. */
+  async uploadWebEntries(
+    remote: ExplorerRoot,
+    currentPath: string,
+    files: { file: File; relativePath: string }[],
+    emptyDirectories: string[] = []
+  ): Promise<boolean> {
+    if (!files.length && !emptyDirectories.length) return false;
+    const normalized = this.pathService.normalizeExplorerRoot(remote);
 
     const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
       normalized,
       currentPath,
-      filesArray,
-      'filemanager'
+      files,
+      'filemanager',
+      emptyDirectories
     );
-
-    if (failedPaths.length === 0) {
+    if (failedPaths.length > 0) {
+      const message = this.translate.instant('nautilus.notifications.uploadFailed', {
+        count: failedPaths.length,
+      });
+      if (successCount > 0) this.notifications.showWarning(message);
+      else this.notifications.showError(message);
+    } else if (successCount > 0) {
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.uploadSuccess', { count: successCount })
       );
-    } else if (successCount > 0) {
-      this.notifications.showWarning(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
-    } else {
-      this.notifications.showError(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
     }
-
-    return successCount > 0;
+    return successCount > 0 || (emptyDirectories.length > 0 && failedPaths.length === 0);
   }
 
   async openNewFolderDialog(
@@ -563,7 +568,7 @@ export class NautilusFileOperationsService {
     currentPath: string,
     existingNames: string[]
   ): Promise<boolean> {
-    const normalizedRemote = this._normalizeRemote(remote);
+    const normalizedRemote = this.pathService.normalizeExplorerRoot(remote);
 
     const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
@@ -578,7 +583,7 @@ export class NautilusFileOperationsService {
       folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return false;
 
-      const newPath = this.pathService.joinPath(currentPath, folderName);
+      const newPath = pathUtils.joinPath(currentPath, folderName);
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       return true;
     } catch (err) {
@@ -595,8 +600,8 @@ export class NautilusFileOperationsService {
   }
 
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
-    const normalizedRemote = this._normalizeRemote(remote);
-    const destBasePath = this.pathService.joinPath(normalizedRemote, currentPath);
+    const normalizedRemote = this.pathService.normalizeExplorerRoot(remote);
+    const destBasePath = pathUtils.joinPath(normalizedRemote, currentPath);
 
     const ref = await this.notifications.openInput<{ url?: string; filename?: string }>({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
@@ -631,7 +636,7 @@ export class NautilusFileOperationsService {
       const targetFilename = filename?.trim();
       const targetPath =
         !autoFilename && targetFilename
-          ? this.pathService.joinPath(currentPath, targetFilename)
+          ? pathUtils.joinPath(currentPath, targetFilename)
           : currentPath;
 
       this.notifications.showInfo(this.translate.instant('nautilus.notifications.copyUrlStarted'));
@@ -681,12 +686,12 @@ export class NautilusFileOperationsService {
     try {
       const sourcePath = items.length === 1 ? firstItem.entry.Path : currentPath;
       const source = isLocal
-        ? this.pathService.joinPath(baseName, sourcePath)
+        ? pathUtils.joinPath(baseName, sourcePath)
         : `${this.pathService.normalizeRemoteForRclone(baseName)}${sourcePath}`;
 
-      const destinationPath = this.pathService.joinPath(currentPath, filename);
+      const destinationPath = pathUtils.joinPath(currentPath, filename);
       const destination = isLocal
-        ? this.pathService.joinPath(baseName, destinationPath)
+        ? pathUtils.joinPath(baseName, destinationPath)
         : `${this.pathService.normalizeRemoteForRclone(baseName)}${destinationPath}`;
 
       const include = items.length > 1 ? items.map(i => i.entry.Name) : undefined;
@@ -720,12 +725,13 @@ export class NautilusFileOperationsService {
     this.clipboardMode.set(mode);
   }
 
-  private async _handleDesktopUpload(
+  async uploadLocalPaths(
     remote: ExplorerRoot,
     currentPath: string,
     paths: string[]
   ): Promise<boolean> {
-    const normalized = this._normalizeRemote(remote);
+    if (!paths.length) return false;
+    const normalized = this.pathService.normalizeExplorerRoot(remote);
     try {
       const batchId = await this.remoteOps.uploadLocalDropPaths(
         normalized,
@@ -735,27 +741,9 @@ export class NautilusFileOperationsService {
       );
       return !!batchId;
     } catch (err) {
-      console.error('Desktop upload failed', err);
+      console.error('Local upload failed', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
       return false;
     }
-  }
-
-  /**
-   * Uploads local file paths (shared from another Android app) to the given remote/path.
-   * Called by NautilusComponent after the user navigates to the destination folder
-   * and confirms the Android share-intent upload.
-   */
-  async uploadSharedPaths(
-    remote: ExplorerRoot,
-    currentPath: string,
-    paths: string[]
-  ): Promise<boolean> {
-    if (!paths.length) return false;
-    return this._handleDesktopUpload(remote, currentPath, paths);
-  }
-
-  private _normalizeRemote(remote: ExplorerRoot): string {
-    return this.pathService.normalizeExplorerRoot(remote);
   }
 }

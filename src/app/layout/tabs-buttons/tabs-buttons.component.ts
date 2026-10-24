@@ -1,15 +1,13 @@
 import { Component, ChangeDetectionStrategy, inject, input, output, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import { MatButtonModule } from '@angular/material/button';
 import { AppTab, TabItem } from '@app/types';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-tabs',
-  imports: [MatIconModule, MatButtonModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe],
   templateUrl: './tabs-buttons.component.html',
-  styleUrl: './tabs-buttons.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.mobile-hidden]': 'isMobileHidden()',

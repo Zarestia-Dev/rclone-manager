@@ -7,6 +7,7 @@ import {
   SyncOperationType,
   SYNC_TYPES,
   OPERATION_ICONS,
+  DEFAULT_PROFILE_NAME,
 } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
@@ -62,13 +63,6 @@ export class RemoteStatusService {
     return details.length ? details.join(' • ') : this.translate.instant('operations.available');
   }
 
-  getOperationState(
-    remote: Remote | undefined | null,
-    type: SyncOperationType
-  ): RemoteOperationState | undefined {
-    return remote?.status[type as keyof RemoteStatus] as RemoteOperationState;
-  }
-
   getActiveSyncOperationType(remote: Remote): SyncOperationType | null {
     for (const type of SYNC_TYPES) {
       const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
@@ -92,7 +86,7 @@ export class RemoteStatusService {
     if (serves.length === 0) return this.translate.instant('serve.serving');
     if (serves.length === 1)
       return this.translate.instant('serve.servingWithProfile', {
-        profile: serves[0].profile || 'Default',
+        profile: serves[0].profile || DEFAULT_PROFILE_NAME,
         type: serves[0].params.type.toUpperCase(),
         addr: serves[0].addr,
       });
@@ -101,36 +95,12 @@ export class RemoteStatusService {
       profiles: serves
         .map(s =>
           this.translate.instant('serve.profileInfo', {
-            profile: s.profile || 'Default',
+            profile: s.profile || DEFAULT_PROFILE_NAME,
             type: s.params.type.toUpperCase(),
           })
         )
         .join(', '),
     });
-  }
-
-  getActiveOperationsSummary(remote: Remote): string[] {
-    const summary: string[] = [];
-    if (this.isMounted(remote)) {
-      const mountCount = this.getMountProfileCount(remote);
-      if (mountCount === 1) {
-        const profile = Object.keys(remote.status.mount.activeProfiles || {})[0] ?? 'Default';
-        summary.push(this.translate.instant('mount.mountedWithProfile', { profile }));
-      } else {
-        summary.push(this.translate.instant('mount.mountedMultiple', { count: mountCount }));
-      }
-    }
-    if (this.getActiveSyncOperationType(remote))
-      summary.push(
-        this.translate.instant('operations.syncSummary', {
-          count: this.getSyncProfileCount(remote),
-        })
-      );
-    if (this.isServing(remote))
-      summary.push(
-        this.translate.instant('serve.serveSummary', { count: this.getServeProfileCount(remote) })
-      );
-    return summary;
   }
 
   hasActiveOperations(remote: Remote): boolean {

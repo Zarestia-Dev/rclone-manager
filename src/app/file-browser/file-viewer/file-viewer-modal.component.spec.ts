@@ -17,7 +17,6 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { BinaryInspectorService } from 'src/app/services/ui/binary-inspector.service';
 
 interface ComponentPrivateAccess {
   updateData: () => Promise<void>;
@@ -27,7 +26,10 @@ describe('FileViewerModalComponent', () => {
   let fixture: ComponentFixture<FileViewerModalComponent>;
   let component: FileViewerModalComponent;
 
-  let fileViewerServiceMock: Partial<FileViewerService>;
+  let fileViewerServiceMock: Pick<
+    FileViewerService,
+    'setActiveFileName' | 'generateUrl' | 'resolveRelativePath' | 'getAudioCover'
+  >;
   let downloadServiceMock: Partial<DownloadService>;
   let openerServiceMock: Partial<OpenerService>;
   let backendServiceMock: Partial<BackendService>;
@@ -36,7 +38,7 @@ describe('FileViewerModalComponent', () => {
   let nautilusServiceMock: Partial<NautilusService>;
   let notificationServiceMock: Partial<NotificationService>;
   let pathServiceMock: Partial<PathService>;
-  let jobManagementServiceMock: Partial<JobManagementService>;
+  let jobManagementServiceMock: Pick<JobManagementService, 'stopJobsByGroup'>;
 
   const mockItems: Entry[] = [
     {
@@ -115,7 +117,6 @@ describe('FileViewerModalComponent', () => {
 
     pathServiceMock = {
       normalizeRemoteForRclone: vi.fn().mockImplementation((r: string) => r),
-      joinPath: vi.fn().mockImplementation((...parts: string[]) => parts.join('/')),
     };
 
     jobManagementServiceMock = {
@@ -138,7 +139,6 @@ describe('FileViewerModalComponent', () => {
         { provide: NotificationService, useValue: notificationServiceMock },
         { provide: PathService, useValue: pathServiceMock },
         { provide: JobManagementService, useValue: jobManagementServiceMock },
-        BinaryInspectorService,
       ],
     }).compileComponents();
 
@@ -158,6 +158,48 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Component Initialization & Computed Properties', () => {
+    it('ignores a late URL from the previous file', async () => {
+      component.data.items = [
+        mockItems[1],
+        { ...mockItems[1], Path: 'second.jpg', Name: 'second.jpg' },
+      ];
+      let resolveOld!: (url: string) => void;
+      let started!: () => void;
+      const start = new Promise<void>(resolve => {
+        started = resolve;
+      });
+      vi.mocked(fileViewerServiceMock.generateUrl)
+        .mockImplementationOnce(() => {
+          started();
+          return new Promise(resolve => {
+            resolveOld = resolve;
+          });
+        })
+        .mockResolvedValue('http://localhost/second.jpg');
+      const first = component.updateData();
+      await start;
+      component.currentIndex.set(1);
+      await component.updateData();
+      resolveOld('http://localhost/old.jpg');
+      await first;
+      expect(component.currentUrl()).toBe('http://localhost/second.jpg');
+    });
+
+    it('does not restart media after destruction while job cancellation is pending', async () => {
+      let finishStop!: () => void;
+      vi.mocked(jobManagementServiceMock.stopJobsByGroup).mockReturnValueOnce(
+        new Promise(resolve => {
+          finishStop = (): void => resolve(undefined);
+        })
+      );
+      const pending = component.updateData();
+      component.ngOnDestroy();
+      finishStop();
+      await pending;
+      expect(fileViewerServiceMock.generateUrl).not.toHaveBeenCalled();
+      expect(component.currentUrl()).toBe('');
+    });
+
     it('should create and compute currentItem, fileName, and fileSize', () => {
       expect(component).toBeTruthy();
       expect(component.currentItem()).toEqual(mockItems[0]);
@@ -187,6 +229,23 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Navigation', () => {
+    it('does not navigate files when arrow keys are used in an input', () => {
+      const field = document.createElement('input');
+      const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
+      Object.defineProperty(event, 'target', { value: field });
+      const next = vi.spyOn(component, 'next');
+      component.handleKeyboardEvent(event);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('does not close the viewer for an Escape already handled by the editor', () => {
+      const close = vi.spyOn(component.closeViewer, 'emit');
+      const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+      event.preventDefault();
+      component.handleKeyboardEvent(event);
+      expect(close).not.toHaveBeenCalled();
+    });
+
     it('should navigate forward with next()', async () => {
       expect(component.currentIndex()).toBe(0);
       const priv = component as unknown as ComponentPrivateAccess;
@@ -291,6 +350,68 @@ describe('FileViewerModalComponent', () => {
       component.cancelEditing();
       expect(component.isEditing()).toBe(false);
       expect(component.editContent()).toBe('');
+    });
+  });
+
+  describe('HTML preview', () => {
+    function openHtml(name = 'page.html'): void {
+      component.data.items = [{ ...mockItems[0], Name: name, Path: `docs/${name}` }];
+      component.currentFileType.set('text');
+      component.textContent.set('<h1>Merhaba</h1>');
+    }
+
+    it('offers previews for HTML variants and keeps ordinary text in source mode', () => {
+      const names = ['page.html', 'PAGE.HTM', 'page.xhtml', 'page.xht', 'page.shtml', 'notes.txt'];
+      component.data.items = names.map(name => ({
+        ...mockItems[0],
+        Name: name,
+        Path: `docs/${name}`,
+      }));
+      for (let index = 0; index < names.length - 1; index++) {
+        component.currentIndex.set(index);
+        expect(component.isHtmlFile()).toBe(true);
+        expect(component.canPreviewText()).toBe(true);
+      }
+      component.currentIndex.set(names.length - 1);
+      expect(component.canPreviewText()).toBe(false);
+    });
+
+    it('opens HTML preview and toggles back to source', async () => {
+      openHtml();
+      await component.togglePreview();
+      expect(component.showHtmlPreview()).toBe(true);
+      expect(component.isPreviewing()).toBe(true);
+      expect(component.renderedHtml()).toBeTruthy();
+      await component.togglePreview();
+      expect(component.showHtmlPreview()).toBe(false);
+    });
+
+    it('preserves unsaved content while switching between source and preview', async () => {
+      openHtml();
+      component.startEditing();
+      component.editContent.set('<h1>Draft</h1>');
+      await component.togglePreview();
+      await component.togglePreview();
+      expect(component.isEditing()).toBe(true);
+      expect(component.editContent()).toBe('<h1>Draft</h1>');
+      expect(component.textContent()).toBe('<h1>Merhaba</h1>');
+    });
+
+    it('ignores an HTML preview that finishes after cancellation', async () => {
+      openHtml();
+      component.textContent.set('<img src="slow.png">');
+      let finish!: (url: string) => void;
+      vi.mocked(fileViewerServiceMock.resolveRelativePath).mockReturnValueOnce(
+        new Promise(resolve => {
+          finish = resolve;
+        })
+      );
+      const pending = component.togglePreview();
+      component.cancelEditing();
+      finish('https://example.test/slow.png');
+      await pending;
+      expect(component.showHtmlPreview()).toBe(false);
+      expect(component.isPreparingPreview()).toBe(false);
     });
   });
 
@@ -422,7 +543,7 @@ describe('FileViewerModalComponent', () => {
       );
     });
 
-    it('should set isLoading to false when viewing video on mobile', async () => {
+    it('should keep loading mobile video until the media load completes', async () => {
       vi.spyOn(component, 'isMobile').mockReturnValue(true);
       const videoItem: Entry = {
         ID: 'vid1',
@@ -445,7 +566,74 @@ describe('FileViewerModalComponent', () => {
       await component.updateData();
 
       expect(component.currentFileType()).toBe('video');
+      expect(component.isLoading()).toBe(true);
+
+      component.onLoadComplete();
       expect(component.isLoading()).toBe(false);
+    });
+  });
+
+  describe('onLoadError and Lifecycle Handling', () => {
+    it('should ignore error events if currentUrl is empty', () => {
+      component.currentUrl.set('');
+      component.currentFileType.set('video');
+
+      component.onLoadError();
+
+      expect(component.currentFileType()).toBe('video');
+    });
+
+    it('should ignore error events if currentFileType is loading', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('loading');
+
+      component.onLoadError();
+
+      expect(component.currentFileType()).toBe('loading');
+    });
+
+    it('should ignore error events when media error code is MEDIA_ERR_ABORTED (1)', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('video');
+
+      const abortEvent = {
+        target: {
+          error: { code: 1, message: 'aborted' },
+        },
+      } as unknown as Event;
+
+      component.onLoadError(abortEvent);
+
+      expect(component.currentFileType()).toBe('video');
+    });
+
+    it('should transition to error state when a legitimate media error occurs', () => {
+      component.currentUrl.set('http://localhost/sample.mp4');
+      component.currentFileType.set('video');
+
+      const mediaErrorEvent = {
+        target: {
+          error: { code: 4, message: 'format not supported' },
+        },
+      } as unknown as Event;
+
+      component.onLoadError(mediaErrorEvent);
+
+      expect(component.currentFileType()).toBe('error');
+      expect(component.isLoading()).toBe(false);
+      expect(component.errorMessage()).toBeTruthy();
+    });
+
+    it('should destroy editorView on updateData if one exists', async () => {
+      const mockDestroy = vi.fn();
+      (component as unknown as { editorView: { destroy: () => void } | null }).editorView = {
+        destroy: mockDestroy,
+      };
+
+      await component.updateData();
+
+      expect(mockDestroy).toHaveBeenCalled();
+      expect((component as unknown as { editorView: unknown }).editorView).toBeNull();
     });
   });
 });

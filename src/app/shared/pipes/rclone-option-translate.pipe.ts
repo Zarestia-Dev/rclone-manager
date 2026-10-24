@@ -1,5 +1,6 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
+import { translateRcloneOption } from 'src/app/services/i18n/rclone-option-translation';
 
 @Pipe({
   name: 'rcloneOptionTranslate',
@@ -15,30 +16,12 @@ export class RcloneOptionTranslatePipe implements PipeTransform {
     provider?: string | null,
     _langRefresh?: string | null
   ): string {
-    if (!optionName) return fallback;
-
-    // Normalize option name: convert camelCase & hyphens to snake_case
-    // Rclone flags are often camelCase (createEmptySrcDirs) or kebab-case (allow-other),
-    // but our JSON keys are snake_case (create_empty_src_dirs, allow_other)
-    const normalizedName = optionName
-      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-      .replace(/-/g, '_')
-      .toLowerCase();
-
-    // 1. Try provider-specific translation first if provider is given
-    if (provider) {
-      const providerKey = `providers.${provider}.${normalizedName}.${type}`;
-      const providerTranslation = this.translate.instant(providerKey);
-      if (providerTranslation !== providerKey) {
-        return providerTranslation;
-      }
-    }
-
-    // 2. Fallback to global translation
-    const globalKey = `${normalizedName}.${type}`;
-    const globalTranslation = this.translate.instant(globalKey);
-
-    // If translation returns the key itself, it means no translation was found
-    return globalTranslation === globalKey ? fallback : globalTranslation;
+    return translateRcloneOption(
+      optionName,
+      type,
+      fallback,
+      key => this.translate.instant(key),
+      provider
+    );
   }
 }

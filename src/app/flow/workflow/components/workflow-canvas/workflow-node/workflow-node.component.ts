@@ -92,7 +92,6 @@ export class WorkflowNodeComponent {
   });
   readonly nodePillClass = computed(() => this.styleMeta().pillClass);
   readonly nodeCssClass = computed(() => this.styleMeta().cssClass);
-  readonly categoryPillClass = computed(() => this.nodePillClass());
 
   readonly isLiveMounted = computed(() => {
     const n = this.node();

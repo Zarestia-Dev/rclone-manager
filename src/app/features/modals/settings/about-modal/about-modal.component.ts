@@ -5,6 +5,7 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
+  SecurityContext,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -26,12 +27,14 @@ import { SystemInfoService } from 'src/app/services/infrastructure/system/system
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { DebugService, DebugInfo } from 'src/app/services/infrastructure/system/debug.service';
+import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import {
   isHeadlessMode,
   isMobile,
@@ -60,6 +63,7 @@ renderer.link = ({ href, title, text }): string => {
     FormatFileSizePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -75,6 +79,7 @@ export class AboutModalComponent implements OnInit {
   protected readonly appUpdaterService = inject(AppUpdaterService);
   protected readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly debugService = inject(DebugService);
+  private readonly appLifecycle = inject(AppLifecycleService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translate = inject(TranslateService);
   private readonly backendTranslation = inject(BackendTranslationService);
@@ -107,6 +112,9 @@ export class AboutModalComponent implements OnInit {
   readonly appReadyToRestart = this.appUpdaterService.readyToRestart;
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
   readonly appIsChecking = this.appUpdaterService.isChecking;
+  readonly appIsCancelling = this.appUpdaterService.isCancelling;
+  readonly appInstallationReason = this.appUpdaterService.installationReason;
+  readonly appInstallationFailure = this.appUpdaterService.installationFailure;
 
   readonly appUpdateReleaseChannel = computed(() => {
     const tag = this.appUpdateAvailable()?.releaseTag;
@@ -134,6 +142,7 @@ export class AboutModalComponent implements OnInit {
   readonly rcloneHasUpdates = this.rcloneUpdateService.hasUpdates;
   readonly rcloneUpdateInProgress = this.rcloneUpdateService.downloading;
   readonly rcloneIsChecking = this.rcloneUpdateService.isChecking;
+  readonly rcloneIsCancelling = this.rcloneUpdateService.isCancelling;
   readonly rcloneReadyToRestart = this.rcloneUpdateService.readyToRestart;
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
@@ -172,7 +181,6 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   readonly buildType = this.appUpdaterService.buildType;
-  readonly updaterEnabled = this.appUpdaterService.isUpdaterEnabled;
   readonly rcloneUpdateEnabled = this.rcloneUpdateService.isUpdaterEnabled;
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
@@ -340,7 +348,7 @@ export class AboutModalComponent implements OnInit {
     if (this.restartingApp()) return;
     this.restartingApp.set(true);
     try {
-      await this.debugService.restartApp();
+      await this.appLifecycle.relaunchApp();
     } catch (error) {
       console.error('Failed to restart app:', error);
       const translated = this.backendTranslation.translateBackendMessage(error);
@@ -460,33 +468,57 @@ export class AboutModalComponent implements OnInit {
   readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
     const buildType = this.buildType();
-    if (!buildType) return null;
+    if (this.appUpdaterService.canAutoInstall()) return null;
 
-    switch (buildType) {
-      case 'flatpak':
-        return {
-          command: 'flatpak update io.github.zarestia_dev.rclone-manager',
-          links: [
-            {
-              label: 'modals.about.openFlathub',
-              url: 'https://flathub.org/apps/io.github.zarestia_dev.rclone-manager',
-              primary: true,
-            },
-          ],
-        };
-      case 'portable':
-        return {
-          command: undefined,
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      case 'container':
-        return {
-          command: 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest',
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      default:
-        return null;
+    if (buildType) {
+      switch (buildType) {
+        case 'pacman':
+          return {
+            command: undefined,
+            links: [
+              {
+                label: 'modals.about.openAur',
+                url: 'https://aur.archlinux.org/packages?K=rclone-manager',
+                primary: true,
+              },
+            ],
+          };
+        case 'flatpak':
+          return {
+            command: 'flatpak update io.github.zarestia_dev.rclone-manager',
+            links: [
+              {
+                label: 'modals.about.openFlathub',
+                url: 'https://flathub.org/apps/io.github.zarestia_dev.rclone-manager',
+                primary: true,
+              },
+            ],
+          };
+        case 'portable':
+          return {
+            command: undefined,
+            links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+          };
+        case 'container':
+          return {
+            command: 'docker pull ghcr.io/zarestia-dev/rclone-manager:latest',
+            links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
+          };
+      }
     }
+
+    const update = this.appUpdateAvailable();
+    return {
+      command: undefined,
+      links: [
+        {
+          label: 'modals.about.viewOnGithub',
+          url:
+            update?.releaseUrl || 'https://github.com/Zarestia-Dev/rclone-manager/releases/latest',
+          primary: true,
+        },
+      ],
+    };
   });
 
   async quitRcloneEngine(): Promise<void> {
@@ -601,7 +633,8 @@ export class AboutModalComponent implements OnInit {
         `<p>${this.translate.instant('modals.about.noReleaseNotes')}</p>`
       );
     }
-    const html = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    const rawHtml = marked.parse(markdown, { gfm: true, breaks: true, renderer }) as string;
+    const sanitizedHtml = this.sanitizer.sanitize(SecurityContext.HTML, rawHtml) ?? '';
+    return this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml);
   }
 }

@@ -1,14 +1,4 @@
 mat-expansion-panel {
-  .settings-count {
-    font-size: var(--font-size-xs);
-    color: var(--mat-sys-primary);
-    background: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
-    padding: var(--space-xxs) var(--space-xs);
-    border-radius: var(--radius-xs);
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-
   .no-settings-hint {
     font-size: var(--font-size-xs);
     color: var(--dim-color);
@@ -46,47 +36,29 @@ mat-expansion-panel {
   align-items: flex-start;
 }
 
-.setting-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.settings-flow > .app-pill {
   max-width: 100%;
-  padding: var(--radius-xxs) var(--space-xs);
-  background: var(--sidebar-bg-color);
-  border-radius: var(--radius-xxs);
-  font-size: var(--font-size-sm);
+  min-width: 0;
+  white-space: normal;
 
   &.is-sensitive {
     background: color-mix(in srgb, var(--warn-color) 16%, transparent);
 
-    .chip-key {
+    .setting-key {
       color: var(--warn-color);
     }
 
-    .chip-value {
+    .setting-value {
       color: var(--dim-color);
       font-style: italic;
     }
   }
 
-  .chip-key {
-    display: inline-flex;
-    align-items: center;
-    color: var(--dim-color);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-  }
-
-  .chip-value {
+  .setting-value {
     color: var(--window-fg-color);
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 280px;
+    min-width: 0;
+    max-width: 17.5rem;
   }
 
   .sensitive-indicator {
@@ -97,45 +69,8 @@ mat-expansion-panel {
   }
 }
 
-.no-settings {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-lg);
-  color: var(--dim-color);
-  text-align: center;
-
-  .no-settings-icon {
-    width: var(--icon-size-lg);
-    height: var(--icon-size-lg);
-    opacity: 0.5;
-  }
-}
-
-.quick-action-wrapper {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-width: 40px;
-  opacity: 1;
-  transform: translateX(0);
-
-  &.hidden {
-    max-width: 0;
-    opacity: 0;
-    transform: translateX(20px);
-  }
-}
-
-.full-action-button {
-  margin-top: var(--space-md);
-  width: 100%;
-}
-
 @media (max-width: 480px) {
-  .chip-value {
+  .settings-flow > .app-pill .setting-value {
     max-width: 100%;
     white-space: normal;
     word-break: break-word;

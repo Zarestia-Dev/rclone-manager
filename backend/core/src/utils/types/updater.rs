@@ -1,0 +1,594 @@
+use crate::utils::github_client;
+use parking_lot::Mutex;
+
+#[derive(Debug, thiserror::Error)]
+pub enum UpdaterError {
+    #[error("GitHub API error: {0}")]
+    GitHub(#[from] github_client::Error),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("invalid URL: {0}")]
+    InvalidUrl(#[from] url::ParseError),
+    #[error("no pending update")]
+    NoPendingUpdate,
+    #[error("update artifact is no longer available: {0}")]
+    UpdateUnavailable(String),
+    #[error("binary not found")]
+    BinaryNotFound,
+    #[error("rclone version check failed: {0}")]
+    RcloneVersionCheck(String),
+    #[error("rclone selfupdate failed: {0}")]
+    RcloneSelfUpdate(String),
+    #[error("relaunch error: {0}")]
+    Relaunch(String),
+    #[error("restart error: {0}")]
+    Restart(String),
+    #[error("backend error: {0}")]
+    Backend(String),
+    #[error("update path not writable")]
+    NotWritable,
+    #[error("failed to backup current rclone binary: {0}")]
+    BackupFailed(std::io::Error),
+}
+
+impl serde::Serialize for UpdaterError {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let msg = match self {
+            Self::NoPendingUpdate => {
+                crate::localized_error!("backendErrors.updater.noPending")
+            }
+            Self::InvalidUrl(e) => {
+                crate::localized_error!("backendErrors.updater.invalidUrl", "error" => e)
+            }
+            Self::GitHub(github_client::Error::RateLimitExceeded) => {
+                crate::localized_error!("backendErrors.updater.githubRateLimit")
+            }
+            Self::GitHub(e) => {
+                crate::localized_error!("backendErrors.updater.github", "error" => e)
+            }
+            Self::UpdateUnavailable(e) => {
+                crate::localized_error!("backendErrors.updater.updateUnavailable", "error" => e)
+            }
+            Self::Relaunch(e) => {
+                crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => e)
+            }
+            Self::RcloneVersionCheck(e) => {
+                crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e)
+            }
+            Self::RcloneSelfUpdate(e) => {
+                crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
+            }
+            Self::BinaryNotFound => crate::localized_error!("backendErrors.rclone.binaryNotFound"),
+            Self::Restart(e) => {
+                crate::localized_error!("backendErrors.updater.restartFailed", "error" => e)
+            }
+            Self::NotWritable => crate::localized_error!("backendErrors.updater.notWritable"),
+            Self::Io(e) => {
+                crate::localized_error!("backendErrors.updater.ioError", "error" => e)
+            }
+            Self::BackupFailed(e) => {
+                crate::localized_error!("backendErrors.rclone.backupFailed", "error" => e)
+            }
+            Self::Backend(e) => e.clone(),
+        };
+        serializer.serialize_str(&msg)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, UpdaterError>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateState {
+    #[default]
+    Idle,
+    Checking,
+    Available,
+    Downloading,
+    ReadyToRestart,
+    Installing,
+}
+
+/// Progress callback supplied by the shared updater state machine.
+#[cfg(feature = "updater")]
+pub type DownloadProgress = Box<dyn FnMut(usize, Option<u64>) + Send>;
+
+/// Installation capability supplied by a runtime host, independent of its plugin types.
+#[cfg(feature = "updater")]
+#[async_trait::async_trait]
+pub trait AppUpdate: Send + Sync {
+    fn version(&self) -> &str;
+    fn download_url(&self) -> &url::Url;
+    async fn download(&self, on_progress: DownloadProgress)
+    -> std::result::Result<Vec<u8>, String>;
+    fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String>;
+}
+
+#[cfg(feature = "updater")]
+pub enum InstallOutcome {
+    Restart,
+    #[cfg(unix)]
+    RestartBinary {
+        executable: std::path::PathBuf,
+        previous: std::path::PathBuf,
+        arguments: Vec<std::ffi::OsString>,
+        working_directory: std::path::PathBuf,
+    },
+    Exit,
+    AwaitingUser,
+}
+
+#[cfg(feature = "updater")]
+pub type PendingAppUpdate = std::sync::Arc<dyn AppUpdate>;
+
+/// Tracks the in-flight app self-update download and its staged payload.
+#[derive(Default)]
+pub struct AppUpdaterState {
+    #[cfg(feature = "updater")]
+    pub operation: tokio::sync::Mutex<()>,
+    pub data: Mutex<AppUpdaterData>,
+}
+
+#[derive(Default)]
+pub struct AppUpdaterData {
+    pub state: UpdateState,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub failure_message: Option<String>,
+    pub policy: Option<crate::services::updates::policy::UpdatePolicy>,
+    #[cfg(feature = "updater")]
+    pub pending_action: Option<PendingAppUpdate>,
+    pub downloaded_payload: Option<Vec<u8>>,
+    pub last_metadata: Option<UpdateMetadata>,
+    pub download_handle: Option<tokio::task::JoinHandle<()>>,
+}
+
+/// Static update metadata — used for both App and Rclone updates.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMetadata {
+    pub version: String,
+    pub current_version: String,
+    pub update_available: bool,
+
+    // Optional metadata
+    pub release_tag: Option<String>,
+    pub release_notes: Option<String>,
+    pub release_date: Option<String>,
+    pub release_url: Option<String>,
+    pub channel: Option<String>,
+}
+
+/// Unified update info — combines static metadata with live process state.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    #[serde(flatten)]
+    pub metadata: UpdateMetadata,
+    pub status: UpdateState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download: Option<DownloadStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installation: Option<crate::services::updates::policy::UpdatePolicy>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "status", content = "data")]
+pub enum DownloadState {
+    InProgress,
+    Complete,
+    Failed(String),
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadStatus {
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub percentage: f64,
+    pub state: DownloadState,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateResult {
+    pub success: bool,
+    pub message: Option<String>,
+    pub output: Option<String>,
+    pub channel: Option<String>,
+    pub manual: bool,
+}
+
+/// Holds the rclone update staged for activation at the next engine restart.
+#[derive(Default)]
+pub struct RcloneUpdaterState {
+    /// Serialize checks and downloads without blocking status reads or cancellation.
+    pub operation: tokio::sync::Mutex<()>,
+    pub data: Mutex<RcloneUpdaterData>,
+}
+
+#[derive(Default)]
+pub struct RcloneUpdaterData {
+    pub state: UpdateState,
+    pub pending_update: Option<UpdateMetadata>,
+    pub cancel_token: Option<tokio_util::sync::CancellationToken>,
+}
+
+#[cfg(feature = "updater")]
+impl AppUpdaterState {
+    pub async fn cancel_update(&self) {
+        let _operation = self.operation.lock().await;
+        let handle = {
+            let mut data = self.data.lock();
+            if data.state == UpdateState::ReadyToRestart {
+                data.state = if data.last_metadata.is_some() {
+                    UpdateState::Available
+                } else {
+                    UpdateState::Idle
+                };
+                data.downloaded_payload = None;
+                data.download_handle = None;
+                data.downloaded_bytes = 0;
+                data.total_bytes = 0;
+                data.failure_message = None;
+                return;
+            }
+            if data.state != UpdateState::Downloading {
+                return;
+            }
+            data.download_handle.take()
+        };
+        if let Some(handle) = handle {
+            log::info!("Cancelling app update download");
+            handle.abort();
+            // Aborting is asynchronous; wait before resetting state or allowing a retry.
+            let _ = handle.await;
+        }
+        {
+            let mut data = self.data.lock();
+            // The worker may have completed before the abort took effect.
+            if data.state == UpdateState::Downloading {
+                data.state = if data.last_metadata.is_some() {
+                    UpdateState::Available
+                } else {
+                    UpdateState::Idle
+                };
+                data.downloaded_bytes = 0;
+                data.total_bytes = 0;
+                data.failure_message = None;
+            }
+        }
+    }
+}
+
+impl AppUpdaterData {
+    #[cfg(feature = "updater")]
+    pub fn take_staged_update(&mut self) -> Option<(PendingAppUpdate, Vec<u8>)> {
+        if self.state != UpdateState::ReadyToRestart || self.pending_action.is_none() {
+            return None;
+        }
+        let payload = self.downloaded_payload.take()?;
+        self.pending_action.take().map(|update| (update, payload))
+    }
+
+    pub fn info(&self) -> Option<UpdateInfo> {
+        let metadata = self.last_metadata.clone()?;
+        Some(UpdateInfo {
+            metadata,
+            status: self.state,
+            download: self.download_status(),
+            installation: self.policy.clone(),
+        })
+    }
+
+    pub fn download_status(&self) -> Option<DownloadStatus> {
+        if let Some(error) = &self.failure_message {
+            return Some(DownloadStatus {
+                downloaded_bytes: self.downloaded_bytes,
+                total_bytes: self.total_bytes,
+                percentage: 0.0,
+                state: DownloadState::Failed(error.clone()),
+            });
+        }
+        match self.state {
+            UpdateState::Downloading => Some(DownloadState::InProgress),
+            UpdateState::ReadyToRestart | UpdateState::Installing => Some(DownloadState::Complete),
+            _ => None,
+        }
+        .map(|state| DownloadStatus {
+            downloaded_bytes: self.downloaded_bytes,
+            total_bytes: self.total_bytes,
+            percentage: if state == DownloadState::Complete {
+                100.0
+            } else if self.total_bytes > 0 {
+                (self.downloaded_bytes as f64 / self.total_bytes as f64 * 100.0).min(100.0)
+            } else {
+                0.0
+            },
+            state,
+        })
+    }
+}
+
+impl RcloneUpdaterData {
+    pub fn info(&self) -> Option<UpdateInfo> {
+        self.pending_update.clone().map(|metadata| UpdateInfo {
+            metadata,
+            status: self.state,
+            download: None,
+            installation: None,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "updater")]
+    struct StubUpdate(url::Url);
+
+    #[cfg(feature = "updater")]
+    #[async_trait::async_trait]
+    impl AppUpdate for StubUpdate {
+        fn version(&self) -> &str {
+            "1.2.0"
+        }
+
+        fn download_url(&self) -> &url::Url {
+            &self.0
+        }
+
+        async fn download(
+            &self,
+            mut on_progress: DownloadProgress,
+        ) -> std::result::Result<Vec<u8>, String> {
+            on_progress(3, Some(3));
+            Ok(vec![1, 2, 3])
+        }
+
+        fn install(&self, payload: &[u8]) -> std::result::Result<InstallOutcome, String> {
+            if payload.is_empty() {
+                Err("empty payload".into())
+            } else {
+                Ok(InstallOutcome::Restart)
+            }
+        }
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn staged_update_uses_a_host_capability_without_native_plugin_state() {
+        let update: PendingAppUpdate = std::sync::Arc::new(StubUpdate(
+            "https://example.invalid/update".parse().unwrap(),
+        ));
+        let payload = update
+            .download(Box::new(|bytes, total| {
+                assert_eq!(bytes, 3);
+                assert_eq!(total, Some(3));
+            }))
+            .await
+            .unwrap();
+        let mut data = AppUpdaterData {
+            state: UpdateState::ReadyToRestart,
+            pending_action: Some(update),
+            downloaded_payload: Some(payload),
+            ..Default::default()
+        };
+        let (update, payload) = data.take_staged_update().unwrap();
+        assert_eq!(update.version(), "1.2.0");
+        assert_eq!(update.download_url().host_str(), Some("example.invalid"));
+        assert!(update.install(&[]).is_err());
+        assert!(update.install(&payload).is_ok());
+        assert!(data.take_staged_update().is_none());
+        assert!(data.pending_action.is_none());
+        assert!(data.downloaded_payload.is_none());
+    }
+
+    fn metadata() -> UpdateMetadata {
+        UpdateMetadata {
+            version: "1.2.0".into(),
+            update_available: true,
+            ..Default::default()
+        }
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn cancelling_waits_for_the_worker_to_drop_before_resetting_progress() {
+        let state = AppUpdaterState::default();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel::<()>();
+        let handle = crate::utils::spawn(async move {
+            let _dropped_tx = dropped_tx;
+            started_tx.send(()).unwrap();
+            std::future::pending::<()>().await;
+        });
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::Downloading;
+            data.last_metadata = Some(metadata());
+            data.downloaded_bytes = 42;
+            data.download_handle = Some(handle);
+        }
+        started_rx.await.unwrap();
+        state.cancel_update().await;
+        assert!(dropped_rx.await.is_err());
+        let data = state.data.lock();
+        assert_eq!(data.state, UpdateState::Available);
+        assert_eq!(data.downloaded_bytes, 0);
+        assert!(data.download_handle.is_none());
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn cancelling_discards_a_staged_payload_but_preserves_the_release_for_retry() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::ReadyToRestart;
+            data.downloaded_payload = Some(vec![1, 2, 3]);
+            data.last_metadata = Some(metadata());
+            data.pending_action = Some(std::sync::Arc::new(StubUpdate(
+                "https://example.invalid/update".parse().unwrap(),
+            )));
+            data.failure_message = Some("Permission denied".into());
+            data.downloaded_bytes = 3;
+            data.total_bytes = 3;
+        }
+        state.cancel_update().await;
+        let data = state.data.lock();
+        assert_eq!(data.state, UpdateState::Available);
+        assert!(data.downloaded_payload.is_none());
+        assert!(data.pending_action.is_some());
+        assert_eq!(data.info().unwrap().metadata.version, "1.2.0");
+        assert!(data.download_status().is_none());
+        assert_eq!(data.downloaded_bytes, 0);
+        assert_eq!(data.total_bytes, 0);
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn cancellation_cannot_discard_an_installation_in_progress() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::Installing;
+            data.last_metadata = Some(metadata());
+        }
+        state.cancel_update().await;
+        assert_eq!(state.data.lock().state, UpdateState::Installing);
+    }
+
+    #[cfg(feature = "updater")]
+    #[tokio::test]
+    async fn discarding_an_orphaned_payload_returns_to_idle() {
+        let state = AppUpdaterState::default();
+        {
+            let mut data = state.data.lock();
+            data.state = UpdateState::ReadyToRestart;
+            data.downloaded_payload = Some(vec![1, 2, 3]);
+        }
+        state.cancel_update().await;
+        assert_eq!(state.data.lock().state, UpdateState::Idle);
+        assert!(state.data.lock().downloaded_payload.is_none());
+    }
+
+    #[cfg(feature = "updater")]
+    #[test]
+    fn incomplete_staged_updates_do_not_consume_the_payload() {
+        let mut data = AppUpdaterData {
+            state: UpdateState::ReadyToRestart,
+            downloaded_payload: Some(vec![1, 2, 3]),
+            ..Default::default()
+        };
+        assert!(data.take_staged_update().is_none());
+        assert_eq!(
+            data.downloaded_payload.as_deref(),
+            Some([1, 2, 3].as_slice())
+        );
+    }
+
+    #[test]
+    fn progress_is_clamped_and_does_not_require_release_metadata() {
+        let data = AppUpdaterData {
+            state: UpdateState::Downloading,
+            downloaded_bytes: 150,
+            total_bytes: 100,
+            ..Default::default()
+        };
+        assert!(data.info().is_none());
+        assert_eq!(data.download_status().unwrap().percentage, 100.0);
+        assert!(AppUpdaterData::default().download_status().is_none());
+    }
+
+    #[test]
+    fn app_snapshot_restores_download_progress() {
+        let data = AppUpdaterData {
+            state: UpdateState::Downloading,
+            last_metadata: Some(metadata()),
+            downloaded_bytes: 42,
+            total_bytes: 100,
+            ..Default::default()
+        };
+        let info = data.info().unwrap();
+        assert_eq!(info.status, UpdateState::Downloading);
+        assert_eq!(info.metadata.version, "1.2.0");
+        let progress = info.download.unwrap();
+        assert_eq!(progress.downloaded_bytes, 42);
+        assert_eq!(progress.percentage, 42.0);
+        assert_eq!(progress.state, DownloadState::InProgress);
+    }
+
+    #[test]
+    fn app_snapshot_handles_unknown_size_completion_and_failure() {
+        let mut data = AppUpdaterData {
+            state: UpdateState::Downloading,
+            last_metadata: Some(metadata()),
+            ..Default::default()
+        };
+        assert_eq!(data.info().unwrap().download.unwrap().percentage, 0.0);
+        data.state = UpdateState::ReadyToRestart;
+        let progress = data.info().unwrap().download.unwrap();
+        assert_eq!(progress.percentage, 100.0);
+        assert_eq!(progress.state, DownloadState::Complete);
+        data.state = UpdateState::Available;
+        data.failure_message = Some("failed".into());
+        assert_eq!(
+            data.info().unwrap().download.unwrap().state,
+            DownloadState::Failed("failed".into())
+        );
+        data.failure_message = None;
+        assert!(data.info().unwrap().download.is_none());
+        data.last_metadata = None;
+        assert!(data.info().is_none());
+    }
+
+    #[test]
+    fn rclone_snapshot_preserves_all_worker_states() {
+        let mut data = RcloneUpdaterData {
+            pending_update: Some(metadata()),
+            ..Default::default()
+        };
+        for state in [
+            UpdateState::Available,
+            UpdateState::Downloading,
+            UpdateState::ReadyToRestart,
+            UpdateState::Checking,
+        ] {
+            data.state = state;
+            let info = data.info().unwrap();
+            assert_eq!(info.status, state);
+            assert_eq!(info.metadata.version, "1.2.0");
+            assert!(info.download.is_none());
+        }
+        data.pending_update = None;
+        assert!(data.info().is_none());
+    }
+
+    #[test]
+    fn update_snapshot_serialization_keeps_the_existing_metadata_fields() {
+        let data = AppUpdaterData {
+            state: UpdateState::Downloading,
+            last_metadata: Some(metadata()),
+            downloaded_bytes: 1,
+            total_bytes: 2,
+            ..Default::default()
+        };
+        let json = serde_json::to_value(data.info().unwrap()).unwrap();
+        assert_eq!(json["version"], "1.2.0");
+        assert_eq!(json["status"], "downloading");
+        assert_eq!(json["download"]["downloadedBytes"], 1);
+        assert_eq!(json["download"]["state"]["status"], "inProgress");
+        let old = serde_json::json!({ "version": "1.2.0", "currentVersion": "1.1.0", "updateAvailable": true, "status": "available" });
+        assert!(
+            serde_json::from_value::<UpdateInfo>(old)
+                .unwrap()
+                .download
+                .is_none()
+        );
+    }
+}

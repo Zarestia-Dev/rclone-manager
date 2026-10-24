@@ -1,0 +1,153 @@
+<div class="command-options-panel">
+  @if (availablePredefinedOptions().length > 0) {
+    <div class="predefined-chips-row">
+      <span class="predefined-label">
+        {{ 'wizards.remoteConfig.quickAdd' | translate }}
+      </span>
+      <div class="predefined-chips">
+        @for (p of availablePredefinedOptions(); track p.key) {
+          <button
+            type="button"
+            class="app-pill interactive"
+            (click)="addPredefinedOption(p)"
+            [attr.title]="p.description | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ p.label | translate }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (commandOptionsView().length > 0) {
+    <div class="active-options">
+      @for (opt of commandOptionsView(); track opt.key; let i = $index) {
+        <div class="option-row" [style.--row-index]="i">
+          <div class="option-key-container">
+            <span class="option-key truncate" [attr.title]="opt.description | translate">{{
+              opt.key
+            }}</span>
+            <span
+              class="app-pill"
+              [class.p-primary]="opt.type === 'boolean'"
+              [class.p-accent]="opt.type === 'string'"
+              [class.p-orange]="opt.type === 'number'"
+              [class.p-purple]="opt.type === 'array'"
+              >{{ opt.type }}</span
+            >
+          </div>
+          <div class="option-controls">
+            @switch (opt.type) {
+              @case ('boolean') {
+                <mat-slide-toggle
+                  [checked]="opt.booleanValue"
+                  (change)="updateOption(opt.key, $event.checked)"
+                ></mat-slide-toggle>
+              }
+              @case ('string') {
+                <mat-form-field class="option-value-field no-subscript">
+                  <input
+                    matInput
+                    [value]="opt.stringValue"
+                    (input)="updateOption(opt.key, $any($event.target).value)"
+                    placeholder="value"
+                  />
+                </mat-form-field>
+              }
+              @case ('number') {
+                <mat-form-field class="option-value-field no-subscript">
+                  <input
+                    matInput
+                    type="number"
+                    [value]="opt.stringValue"
+                    (input)="updateNumberOption(opt.key, $any($event.target).value)"
+                    placeholder="0"
+                  />
+                </mat-form-field>
+              }
+              @case ('array') {
+                <div class="option-chip-field no-subscript">
+                  @for (chip of opt.arrayValue; track $index; let ci = $index) {
+                    <div class="app-pill">
+                      <span>{{ chip }}</span>
+                      <button
+                        type="button"
+                        class="action-button"
+                        (click)="removeArrayChip(opt.key, ci)"
+                        [attr.aria-label]="'wizards.remoteConfig.removeOption' | translate"
+                      >
+                        <mat-icon svgIcon="close"></mat-icon>
+                      </button>
+                    </div>
+                  }
+                  <div class="option-chip-input">
+                    <input
+                      #arrayInput
+                      type="text"
+                      [placeholder]="'wizards.remoteConfig.addValue' | translate"
+                      (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
+                    />
+                    <button
+                      type="button"
+                      class="action-button"
+                      matIconButton
+                      [disabled]="!arrayInput.value"
+                      (click)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
+                    >
+                      <mat-icon svgIcon="plus"></mat-icon>
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+            <button
+              matIconButton
+              type="button"
+              class="action-button"
+              (click)="removeOption(opt.key)"
+              [attr.title]="'wizards.remoteConfig.removeOption' | translate"
+            >
+              <mat-icon svgIcon="trash" />
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <div class="add-custom-row">
+    <mat-form-field class="custom-key-field no-subscript">
+      <mat-label>{{ 'wizards.remoteConfig.optionKey' | translate }}</mat-label>
+      <mat-icon matPrefix svgIcon="terminal" class="field-icon" />
+      <input
+        matInput
+        [value]="newOptionKey()"
+        (input)="newOptionKey.set($any($event.target).value)"
+        (keydown.enter)="addCustomOption()"
+        [placeholder]="'wizards.remoteConfig.optionKeyPlaceholder' | translate"
+      />
+    </mat-form-field>
+
+    <mat-form-field class="custom-type-field no-subscript">
+      <mat-label>{{ 'wizards.remoteConfig.optionType' | translate }}</mat-label>
+      <mat-select [value]="newOptionType()" (valueChange)="newOptionType.set($event)">
+        <mat-option value="boolean">boolean</mat-option>
+        <mat-option value="string">string</mat-option>
+        <mat-option value="number">number</mat-option>
+        <mat-option value="array">array</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button
+      type="button"
+      matButton="outlined"
+      class="add-custom-btn"
+      (click)="addCustomOption()"
+      [disabled]="!newOptionKey().trim()"
+    >
+      <mat-icon svgIcon="plus" />
+      {{ 'wizards.remoteConfig.addOption' | translate }}
+    </button>
+  </div>
+</div>

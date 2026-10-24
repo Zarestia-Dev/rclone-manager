@@ -1,151 +1,148 @@
 <div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
-  <div class="overview-header" role="banner">
+  <header class="overview-header">
     <app-overview-header
       [mode]="'general'"
       (openBackendModal)="openBackendModal.emit()"
       (toggleEditLayout)="toggleEditLayout()"
     >
     </app-overview-header>
-  </div>
+  </header>
 
   <div class="overview-content" role="main">
-    <div class="layout-grid">
-      <mat-accordion
-        multi
-        cdkDropList
-        [cdkDropListDisabled]="!isEditingLayout()"
-        [cdkDropListData]="dashboardPanels()"
-        (cdkDropListDropped)="drop($event)"
-      >
-        @for (panel of displayPanels(); track panel.id) {
-          <div
-            cdkDrag
-            [cdkDragData]="panel"
-            [cdkDragDisabled]="!isEditingLayout()"
-            class="draggable-panel-wrapper"
-            [class.editing]="isEditingLayout()"
-          >
-            <div class="custom-placeholder" *cdkDragPlaceholder></div>
+    <mat-accordion
+      multi
+      cdkDropList
+      [cdkDropListDisabled]="!isEditingLayout()"
+      [cdkDropListData]="dashboardPanels()"
+      (cdkDropListDropped)="drop($event)"
+    >
+      @for (panel of displayPanels(); track panel.id) {
+        <div
+          cdkDrag
+          [cdkDragData]="panel"
+          [cdkDragDisabled]="!isEditingLayout()"
+          class="draggable-panel-wrapper"
+          [class.editing]="isEditingLayout()"
+        >
+          <div class="custom-placeholder" *cdkDragPlaceholder></div>
 
-            @if (isEditingLayout()) {
-              <div
-                class="panel-edit-controls"
-                cdkDragHandle
-                animate.enter="expand-height-enter"
-                animate.leave="expand-height-leave"
-              >
-                <mat-icon svgIcon="drag-indicator"></mat-icon>
-                <span class="panel-label">{{ panel.title | translate }}</span>
-
-                @if (panel.id === 'remotes') {
-                  <button
-                    matIconButton
-                    class="card-layout-toggle"
-                    (click)="resetRemoteLayout()"
-                    [attr.title]="'common.reset' | translate"
-                  >
-                    <mat-icon svgIcon="rotate-right"></mat-icon>
-                  </button>
-                }
-                <div class="visibility-toggle">
-                  <span class="toggle-label">{{
-                    panel.visible
-                      ? ('generalOverview.layout.visible' | translate)
-                      : ('generalOverview.layout.hidden' | translate)
-                  }}</span>
-                  <mat-slide-toggle
-                    [checked]="panel.visible"
-                    (change)="togglePanelVisibility(panel.id)"
-                    class="primary"
-                  >
-                  </mat-slide-toggle>
-                </div>
-              </div>
-            }
-
+          @if (isEditingLayout()) {
             <div
-              [class.panel-hidden-visual]="isEditingLayout() && !panel.visible"
-              class="panel-content-wrapper"
+              class="panel-edit-controls"
+              cdkDragHandle
+              animate.enter="expand-height-enter"
+              animate.leave="expand-height-leave"
             >
-              @switch (panel.id) {
-                @case ('remotes') {
-                  <app-remotes-panel
-                    [title]="'generalOverview.panels.remotes' | translate"
-                    [icon]="'cloud'"
-                    [isActive]="true"
-                    [remotes]="remoteFacade.orderedVisibleRemotes()"
-                    [allRemotes]="remoteFacade.allRemotesForEditor()"
-                    [hiddenRemoteNames]="remoteFacade.hiddenRemoteNames()"
-                    [isEditingLayout]="isEditingLayout()"
-                    [mode]="'general'"
-                    [displayMode]="cardDisplayMode()"
-                    [primaryActionLabel]="'actions.mount' | translate"
-                    [activeIcon]="'mount'"
-                    [expanded]="panelOpenStates()['remotes']"
-                    (expandedChange)="setPanelOpenState('remotes', $event)"
-                    (remoteSelected)="selectRemote.emit($event)"
-                    (openInFiles)="browseRemote.emit($event)"
-                    (layoutChanged)="
-                      remoteFacade.saveCurrentLayout(backendService.activeBackend(), $event)
-                    "
-                    (toggleHidden)="
-                      remoteFacade.toggleRemoteVisibility(backendService.activeBackend(), $event)
-                    "
-                    (startJob)="startJob.emit($event)"
-                    (stopJob)="stopJob.emit($event)"
-                    role="region"
-                    [attr.aria-label]="'generalOverview.panels.remotes' | translate"
-                  >
-                  </app-remotes-panel>
-                }
-                @case ('bandwidth') {
-                  <app-bandwidth-overview-panel
-                    [expanded]="panelOpenStates()['bandwidth']"
-                    (expandedChange)="setPanelOpenState('bandwidth', $event)"
-                  ></app-bandwidth-overview-panel>
-                }
-                @case ('system') {
-                  <app-system-overview-panel
-                    [expanded]="panelOpenStates()['system']"
-                    (expandedChange)="setPanelOpenState('system', $event)"
-                    [totalCount]="totalRemotes()"
-                    [activeJobsCount]="activeJobsCount()"
-                  ></app-system-overview-panel>
-                }
-                @case ('jobs') {
-                  <app-jobs-overview-panel
-                    [expanded]="panelOpenStates()['jobs']"
-                    (expandedChange)="setPanelOpenState('jobs', $event)"
-                    [showFilterChips]="true"
-                    (stopJob)="stopJob.emit($event)"
-                  ></app-jobs-overview-panel>
-                }
-                @case ('automations') {
-                  <app-automations-overview-panel
-                    [expanded]="panelOpenStates()['automations']"
-                    (expandedChange)="setPanelOpenState('automations', $event)"
-                    [defaultOriginFilter]="'dashboard'"
-                    [showFilterChips]="true"
-                    (automationClick)="onAutomationClick($event)"
-                    (toggleAutomation)="toggleAutomation($event)"
-                    (openInFiles)="onOpenAutomationInFiles($event)"
-                  ></app-automations-overview-panel>
-                }
-                @case ('serves') {
-                  <app-serves-overview-panel
-                    [expanded]="panelOpenStates()['serves']"
-                    (expandedChange)="setPanelOpenState('serves', $event)"
-                    [defaultOriginFilter]="'dashboard'"
-                    [showFilterChips]="true"
-                    (serveClick)="handleServeCardClick($event)"
-                    (stopServe)="stopServe($event)"
-                  ></app-serves-overview-panel>
-                }
+              <mat-icon svgIcon="drag-indicator"></mat-icon>
+              <span class="panel-label">{{ panel.title | translate }}</span>
+
+              @if (panel.id === 'remotes') {
+                <button
+                  matIconButton
+                  class="card-layout-toggle"
+                  (click)="resetRemoteLayout()"
+                  [attr.title]="'common.reset' | translate"
+                >
+                  <mat-icon svgIcon="rotate-right"></mat-icon>
+                </button>
               }
+              <div class="visibility-toggle">
+                <span class="toggle-label">{{
+                  panel.visible
+                    ? ('generalOverview.layout.visible' | translate)
+                    : ('generalOverview.layout.hidden' | translate)
+                }}</span>
+                <mat-slide-toggle
+                  [checked]="panel.visible"
+                  (change)="togglePanelVisibility(panel.id)"
+                  class="primary"
+                >
+                </mat-slide-toggle>
+              </div>
             </div>
+          }
+
+          <div
+            [class.panel-hidden-visual]="isEditingLayout() && !panel.visible"
+            class="panel-content-wrapper"
+          >
+            @switch (panel.id) {
+              @case ('remotes') {
+                <app-remotes-panel
+                  [title]="'generalOverview.panels.remotes' | translate"
+                  [icon]="'cloud'"
+                  [isActive]="true"
+                  [remotes]="remoteFacade.orderedVisibleRemotes()"
+                  [allRemotes]="remoteFacade.orderedRemotes()"
+                  [hiddenRemoteNames]="remoteFacade.hiddenRemoteNames()"
+                  [isEditingLayout]="isEditingLayout()"
+                  [mode]="'general'"
+                  [displayMode]="cardDisplayMode()"
+                  [primaryActionLabel]="'actions.mount' | translate"
+                  [activeIcon]="'mount'"
+                  [expanded]="panelOpenStates()['remotes']"
+                  (expandedChange)="setPanelOpenState('remotes', $event)"
+                  (remoteSelected)="selectRemote.emit($event)"
+                  (openInFiles)="browseRemote.emit($event)"
+                  (layoutChanged)="
+                    remoteFacade.saveCurrentLayout(backendService.activeBackend(), $event)
+                  "
+                  (toggleHidden)="
+                    remoteFacade.toggleRemoteVisibility(backendService.activeBackend(), $event)
+                  "
+                  (startJob)="startJob.emit($event)"
+                  (stopJob)="stopJob.emit($event)"
+                  role="region"
+                  [attr.aria-label]="'generalOverview.panels.remotes' | translate"
+                >
+                </app-remotes-panel>
+              }
+              @case ('bandwidth') {
+                <app-bandwidth-overview-panel
+                  [expanded]="panelOpenStates()['bandwidth']"
+                  (expandedChange)="setPanelOpenState('bandwidth', $event)"
+                ></app-bandwidth-overview-panel>
+              }
+              @case ('system') {
+                <app-system-overview-panel
+                  [expanded]="panelOpenStates()['system']"
+                  (expandedChange)="setPanelOpenState('system', $event)"
+                  [totalCount]="totalRemotes()"
+                  [activeJobsCount]="activeJobsCount()"
+                ></app-system-overview-panel>
+              }
+              @case ('jobs') {
+                <app-jobs-overview-panel
+                  [expanded]="panelOpenStates()['jobs']"
+                  (expandedChange)="setPanelOpenState('jobs', $event)"
+                  [showFilterChips]="true"
+                ></app-jobs-overview-panel>
+              }
+              @case ('automations') {
+                <app-automations-overview-panel
+                  [expanded]="panelOpenStates()['automations']"
+                  (expandedChange)="setPanelOpenState('automations', $event)"
+                  [defaultOriginFilter]="'dashboard'"
+                  [showFilterChips]="true"
+                  (automationClick)="onAutomationClick($event)"
+                  (toggleAutomation)="toggleAutomation($event)"
+                  (openInFiles)="onOpenAutomationInFiles($event)"
+                ></app-automations-overview-panel>
+              }
+              @case ('serves') {
+                <app-serves-overview-panel
+                  [expanded]="panelOpenStates()['serves']"
+                  (expandedChange)="setPanelOpenState('serves', $event)"
+                  [defaultOriginFilter]="'dashboard'"
+                  [showFilterChips]="true"
+                  (serveClick)="handleServeCardClick($event)"
+                  (stopServe)="stopServe($event)"
+                ></app-serves-overview-panel>
+              }
+            }
           </div>
-        }
-      </mat-accordion>
-    </div>
+        </div>
+      }
+    </mat-accordion>
   </div>
 </div>

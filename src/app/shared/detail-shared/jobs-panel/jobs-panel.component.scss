@@ -33,14 +33,3 @@
   color: var(--dim-color);
   cursor: help;
 }
-
-.profile-name {
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-  background: color-mix(in srgb, var(--window-fg-color) 5%, transparent);
-  padding: 2px 6px;
-  border-radius: var(--radius-xxs);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}

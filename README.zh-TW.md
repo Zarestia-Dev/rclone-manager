@@ -63,7 +63,7 @@
 - ⚙️ **掛載與伺服:** 簡易的掛載控制與伺服協定管理（WebDAV、SFTP、HTTP、FTP）。
 - 🔄 **工作監視器:** 即時傳輸監控與頻寬控制。
 - 📱 **Android SAF 與 DocumentsProvider:** 透過儲存空間存取架構 (SAF) 與內建 VFS 掛載橋，無需 Root 或 FUSE 即可在系統檔案選擇器中原生存取雲端遠端儲存。
-- 🌐 **無周邊（Headless）模式:** 存取 [RClone Manager Headless](headless/README.md) 在 VPS/NAS 上作為 Web 伺服器執行！
+- 🌐 **無周邊（Headless）模式:** 存取 [RClone Manager Headless](backend/server/README.md) 在 VPS/NAS 上作為 Web 伺服器執行！
 
 ---
 

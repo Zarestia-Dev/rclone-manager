@@ -112,6 +112,13 @@
     gap: var(--space-xs);
     pointer-events: none;
 
+    // Keep positioning in this component's scope; the shell supplies the measured clearance.
+    @media (max-width: 599.98px) {
+      bottom: calc(var(--workspace-navigation-clearance) + var(--space-sm));
+      right: var(--space-sm);
+      transition: var(--transition-standard);
+    }
+
     .minimap-container {
       pointer-events: auto;
       border-radius: var(--radius-md);
@@ -153,19 +160,6 @@
 
       .active-btn {
         color: var(--accent-color);
-      }
-    }
-
-    // Mobile View (<600px): strictly mobile layout
-    @media (max-width: 599.98px) {
-      // Default: safely above the floating bottom navigation bar
-      bottom: calc(104px + env(safe-area-inset-bottom, 0px));
-      right: var(--space-sm);
-      transition: bottom var(--transition-standard);
-
-      // In focus mode or when bottom bar is hidden, drop down smoothly
-      &.is-focus-mode {
-        bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
       }
     }
   }

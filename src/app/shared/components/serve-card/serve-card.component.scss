@@ -71,58 +71,11 @@
 }
 
 .serve-remote-name {
+  min-width: 0;
+  max-width: 100%;
   font-size: var(--font-size-base);
   font-weight: 600;
   color: var(--window-fg-color);
-}
-
-.protocol-badge {
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  background: rgba(var(--primary-color-rgb), 0.12);
-  color: var(--primary-color);
-}
-
-.profile-badge {
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  background: rgba(var(--accent-color-rgb), 0.12);
-  color: var(--accent-color);
-}
-
-.origin-mini-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--dim-color);
-  opacity: 0.75;
-  vertical-align: middle;
-  transition: var(--transition-fast);
-
-  &:hover {
-    opacity: 1;
-  }
-
-  &.quickrun {
-    color: var(--primary-color);
-    opacity: 0.9;
-  }
-
-  &.flow {
-    color: var(--accent-color);
-    opacity: 0.9;
-  }
-
-  .origin-mini-icon {
-    font-size: 13px;
-    width: 13px;
-    height: 13px;
-  }
 }
 
 // ── URL / Address ─────────────────────────────────────────────────────────────
@@ -132,9 +85,6 @@
   font-weight: 600;
   color: var(--accent-color);
   font-family: var(--font-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
   transition: opacity 0.15s;
 
@@ -155,17 +105,11 @@
   color: var(--dim-color);
   font-family: var(--font-mono);
   font-style: italic;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .serve-fs {
   font-size: 11px;
   color: var(--dim-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   opacity: 0.8;
 }
 
@@ -210,9 +154,6 @@
 
 .meta-value {
   color: var(--window-fg-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-family: var(--font-mono);
   cursor: pointer;
   min-width: 0;

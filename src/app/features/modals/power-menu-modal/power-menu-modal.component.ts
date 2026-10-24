@@ -12,7 +12,9 @@ import {
 } from '../../../services/infrastructure/platform/api-client.service';
 import { NotificationService } from '../../../services/ui/notification.service';
 import { AppLifecycleService } from '../../../services/infrastructure/system/app-lifecycle.service';
-import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
+import { MountManagementService } from '../../../services/operations/mount-management.service';
+import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { SystemPowerAction } from '@app/types';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
@@ -44,17 +46,19 @@ export class PowerMenuModalComponent {
   private readonly appLifecycle = inject(AppLifecycleService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly jobService = inject(JobManagementService);
+  private readonly mountService = inject(MountManagementService);
+  private readonly serveService = inject(ServeManagementService);
 
   readonly isExecuting = signal(false);
   readonly executingMessageKey = signal<string>('powerMenu.executing');
   readonly selectedAction = signal<PowerActionItem | null>(null);
 
   readonly activeJobsCount = computed(
-    () => this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id).length
+    () => this.jobService.jobs().filter(j => j.status === 'Running' && !j.parent_job_id).length
   );
-  readonly activeMountsCount = computed(() => this.remoteFacade.mountedRemotes().length);
-  readonly activeServesCount = computed(() => this.remoteFacade.runningServes().length);
+  readonly activeMountsCount = computed(() => this.mountService.mountedRemotes().length);
+  readonly activeServesCount = computed(() => this.serveService.runningServes().length);
 
   readonly hasActiveOperations = computed(
     () => this.activeJobsCount() > 0 || this.activeMountsCount() > 0 || this.activeServesCount() > 0
@@ -188,7 +192,11 @@ export class PowerMenuModalComponent {
     this.executingMessageKey.set('powerMenu.status.stoppingOperations');
 
     try {
-      await this.remoteFacade.emergencyStopAll();
+      await Promise.all([
+        this.jobService.stopAllActiveJobs(),
+        this.mountService.unmountAllRemotes('normal'),
+        this.serveService.stopAllServes('normal'),
+      ]);
       this.isExecuting.set(false);
       this.notificationService.showSuccess(
         this.translate.instant('powerMenu.status.emergencyStopSuccess')

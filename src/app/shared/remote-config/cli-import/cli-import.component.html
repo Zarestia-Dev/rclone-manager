@@ -24,10 +24,7 @@
         </mat-form-field>
 
         @if (validationError(); as error) {
-          <div class="validation-error-message">
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
-            <span>{{ error | translate }}</span>
-          </div>
+          <app-alert-banner severity="error" [description]="error | translate" />
         }
 
         <div class="actions">
@@ -127,7 +124,7 @@
                   </div>
                 </div>
                 <div class="flag-list">
-                  @for (item of flags; track item.flag.raw + ':' + $index) {
+                  @for (item of flags; track item.flag.raw) {
                     <div class="flag-row select-row">
                       <mat-checkbox
                         [ngModel]="isFlagSelected(item.flag.key)"

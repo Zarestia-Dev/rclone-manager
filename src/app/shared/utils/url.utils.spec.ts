@@ -1,4 +1,9 @@
-import { parseUrlInfo, extractFilenameFromUrl, buildDestinationPreview } from './url.utils';
+import {
+  encodeUrlPath,
+  parseUrlInfo,
+  extractFilenameFromUrl,
+  buildDestinationPreview,
+} from './url.utils';
 
 describe('url.utils', () => {
   describe('parseUrlInfo', () => {
@@ -115,5 +120,17 @@ describe('url.utils', () => {
       expect(buildDestinationPreview('remote:folder', '', '')).toBe('remote:folder');
       expect(buildDestinationPreview('', '', '')).toBe('');
     });
+  });
+});
+
+describe('encodeUrlPath', () => {
+  it('preserves absolute paths, repeated separators and trailing separators', () => {
+    expect(encodeUrlPath('/home/a//b/')).toBe('/home/a//b/');
+    expect(encodeUrlPath('')).toBe('');
+  });
+
+  it('encodes URL delimiters and literal backslashes inside file names', () => {
+    expect(encodeUrlPath('folder/a\\b #?&%.txt')).toBe('folder/a%5Cb%20%23%3F%26%25.txt');
+    expect(encodeUrlPath('C:/Users/My Documents')).toBe('C%3A/Users/My%20Documents');
   });
 });

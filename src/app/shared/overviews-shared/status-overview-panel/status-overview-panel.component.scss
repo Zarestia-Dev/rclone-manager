@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 :host {
   display: block;
 }
@@ -36,24 +38,6 @@
   font-size: var(--font-size-md);
   font-weight: 600;
   color: var(--window-fg-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.total-badge {
-  flex-shrink: 0;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 var(--space-xs);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--dim-color);
-  background: var(--bg-elevated-2);
 }
 
 .progress-track {
@@ -84,24 +68,9 @@
   }
 }
 
-.legend {
-  display: flex;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
+@include status-chart-legend;
 
 .legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-
   &.active {
     background: var(--mode-primary-color, var(--primary-color));
     box-shadow: 0 0 0 2px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
@@ -110,18 +79,6 @@
   &.inactive {
     background: var(--dim-color);
   }
-}
-
-.legend-label {
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-  font-weight: 500;
-}
-
-.legend-value {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--window-fg-color);
 }
 
 @media (max-width: 480px) {

@@ -1,0 +1,8 @@
+[workspace]
+members = ["core", "server", "desktop"]
+default-members = ["server"]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.4"
+edition = "2024"

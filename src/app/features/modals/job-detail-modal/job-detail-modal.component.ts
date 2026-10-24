@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { DecimalPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -15,6 +16,7 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../../shared/components/alert-banner/alert-banner.component';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
 
 @Component({
@@ -34,6 +36,7 @@ import { EscapeCloseDirective } from '../../../shared/directives/escape-close.di
     TransferActivityPanelComponent,
     PathDisplayComponent,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   hostDirectives: [EscapeCloseDirective],
   templateUrl: './job-detail-modal.component.html',
@@ -52,7 +55,11 @@ export class JobDetailModalComponent {
 
   readonly jobData = computed<JobInfo>(() => {
     return (
-      this.jobService.getJob(this.initialData.execute_id ?? '', this.initialData.jobid) ??
+      this.jobService.getJob(
+        this.initialData.execute_id ?? '',
+        this.initialData.jobid,
+        this.initialData.backend_name
+      ) ??
       ({
         jobid: this.initialData.jobid,
         execute_id: this.initialData.execute_id ?? '',
@@ -116,12 +123,11 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const combined = stats?.completed ?? [];
-
     return {
       activeTransfers: stats?.transferring ?? [],
-      completedTransfers: combined,
-      remoteName: this.pathService.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
+      activeChecks: stats?.checking ?? [],
+      completedTransfers: stats?.completed ?? [],
+      remoteName: pathUtils.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
       jobType: job.job_type,
     };
@@ -199,6 +205,16 @@ export class JobDetailModalComponent {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  async onResetStats(): Promise<void> {
+    const group = this.jobData().group;
+    if (!group) return;
+    try {
+      await this.jobService.resetGroupStats(group);
+    } catch (error) {
+      console.error('Failed to reset job stats:', error);
+    }
   }
 
   async onDeleteJob(): Promise<void> {

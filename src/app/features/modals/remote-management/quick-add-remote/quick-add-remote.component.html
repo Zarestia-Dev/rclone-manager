@@ -14,62 +14,71 @@
   </button>
 </header>
 
-<main class="dull" [formGroup]="quickAddForm" novalidate>
+<main class="dull" [formGroup]="quickAddForm" [attr.aria-busy]="isInitializing()" novalidate>
+  @if (isInitializing()) {
+    <app-config-form-skeleton class="step-body" variant="selection" />
+  }
+  @if (loadFailed()) {
+    <button matButton (click)="initializeComponent()">{{ 'common.retry' | translate }}</button>
+  }
   @let flow = interactiveFlowState();
-  @switch (currentStep()) {
-    @case ('setup') {
-      <app-remote-config-step
-        class="step-body"
-        [form]="setupFormGroup"
-        [remoteTypes]="remoteTypes()"
-        [existingRemotes]="existingRemotes()"
-        [visibility]="{ advanced: false }"
-        [initialCommandOptions]="commandOptions()"
-        (commandOptionsChanged)="commandOptions.set($event)"
-      />
-    }
-
-    @case ('operations') {
-      <div formGroupName="operations">
-        <div class="section-group">
-          <div class="operations-header">
-            <h3 class="operations-title">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
-            <p class="section-description">
-              {{ 'modals.quickAdd.operations.description' | translate }}
-            </p>
-          </div>
-
-          <mat-tab-group>
-            @for (tab of operationTabs; track tab.type) {
-              <mat-tab [label]="tab.label | translate">
-                <div class="step-body">
-                  <app-operation-config
-                    [opFormGroup]="operationFormGroups.get(tab.type)!"
-                    [operationType]="tab.type"
-                    [currentRemoteName]="setupNameValue()"
-                    [existingRemotes]="existingRemotes()"
-                    [description]="tab.description | translate"
-                  ></app-operation-config>
-                </div>
-              </mat-tab>
-            }
-          </mat-tab-group>
-        </div>
-      </div>
-    }
-
-    @case ('interactive') {
-      @if (flow.isActive && flow.question) {
-        <app-interactive-config-step
-          [question]="flow.question"
-          [canceling]="isAuthCancelled()"
-          [processing]="flow.isProcessing"
-          (answerChange)="handleInteractiveAnswerUpdate($event)"
+  @if (!isInitializing() && !loadFailed()) {
+    @switch (currentStep()) {
+      @case ('setup') {
+        <app-remote-config-step
+          class="step-body"
+          [form]="setupFormGroup"
+          [remoteTypes]="remoteTypes()"
+          [existingRemotes]="existingRemotes()"
+          [visibility]="{ advanced: false }"
+          [initialCommandOptions]="commandOptions()"
+          (commandOptionsChanged)="commandOptions.set($event)"
         />
+      }
+
+      @case ('operations') {
+        <div formGroupName="operations" [inert]="isAuthInProgress()">
+          <div class="section-group">
+            <div class="operations-header">
+              <h3 class="operations-title">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
+              <p class="section-description">
+                {{ 'modals.quickAdd.operations.description' | translate }}
+              </p>
+            </div>
+
+            <mat-tab-group>
+              @for (tab of operationTabs; track tab.type) {
+                <mat-tab [label]="tab.label | translate">
+                  <ng-template matTabContent>
+                    <div class="step-body">
+                      <app-operation-config
+                        [opFormGroup]="operationFormGroups.get(tab.type)!"
+                        [operationType]="tab.type"
+                        [currentRemoteName]="setupNameValue()"
+                        [existingRemotes]="existingRemotes()"
+                        [description]="tab.description | translate"
+                      ></app-operation-config>
+                    </div>
+                  </ng-template>
+                </mat-tab>
+              }
+            </mat-tab-group>
+          </div>
+        </div>
+      }
+
+      @case ('interactive') {
+        @if (flow.isActive && flow.question) {
+          <app-interactive-config-step
+            [question]="flow.question"
+            [canceling]="isAuthCancelled()"
+            [processing]="flow.isProcessing"
+            (answerChange)="handleInteractiveAnswerUpdate($event)"
+          />
+        }
       }
     }
   }
-
   <div class="message-area" aria-live="polite">
     @if (oauthHelperUrl(); as oauthUrlValue) {
       <section class="oauth-helper oauth-helper--actions" aria-live="polite">
@@ -169,7 +178,9 @@
         class="primary"
         type="button"
         (click)="onSubmit()"
-        [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
+        [disabled]="
+          isInitializing() || loadFailed() || isAuthInProgress() || quickAddFormStatus() !== 'VALID'
+        "
         [attr.title]="submitButtonText() | translate"
         [attr.aria-label]="submitButtonText() | translate"
       >

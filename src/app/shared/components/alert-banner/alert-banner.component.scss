@@ -4,8 +4,24 @@
   gap: var(--space-sm);
   padding: var(--space-md);
   box-shadow: var(--box-shadow);
-  border-radius: var(--card-border-radius, var(--radius-md));
+  border-radius: var(--card-border-radius);
   animation: fadeInUp var(--transition-cubic) both;
+
+  > div,
+  .alert-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .alert-icon {
+    align-self: baseline;
+  }
+
+  .dismiss-button {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
 
   strong {
     display: block;
@@ -21,7 +37,7 @@
     color: var(--window-fg-color);
     line-height: 1.5;
     white-space: pre-wrap;
-    word-break: break-all;
+    overflow-wrap: anywhere;
     opacity: 0.9;
 
     &:not(:last-child) {
@@ -60,7 +76,7 @@
       color: var(--orange);
     }
     > div a {
-      color: var(--accent-color, var(--primary-color));
+      color: var(--accent-color);
     }
   }
 
@@ -77,26 +93,26 @@
   }
 
   &.error {
-    background: rgba(var(--destructive-color-rgb), 0.1);
+    background: rgba(var(--warn-color-rgb), 0.1);
 
     > mat-icon,
     > div strong {
-      color: var(--destructive-color);
+      color: var(--warn-color);
     }
     > div a {
-      color: var(--accent-color, var(--primary-color));
+      color: var(--accent-color);
     }
   }
 
   &.success {
-    background: rgba(var(--success-color-rgb), 0.1);
+    background: rgba(var(--primary-color-rgb), 0.1);
 
     > mat-icon,
     > div strong {
-      color: var(--success-color);
+      color: var(--primary-color);
     }
     > div a {
-      color: var(--success-color);
+      color: var(--primary-color);
     }
   }
 

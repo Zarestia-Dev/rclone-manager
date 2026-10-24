@@ -1,0 +1,120 @@
+<div class="editor-tools" role="group" [attr.aria-label]="'shared.codeEditor.tools' | translate">
+  <button
+    matButton
+    type="button"
+    (click)="find()"
+    [disabled]="!editor()"
+    [attr.aria-expanded]="searching()"
+    [attr.aria-pressed]="searching()"
+  >
+    <mat-icon svgIcon="search" />
+    {{ 'shared.codeEditor.find' | translate }}
+  </button>
+  <button
+    matButton
+    type="button"
+    (click)="goToLine()"
+    [disabled]="!editor()"
+    [attr.aria-expanded]="goingToLine()"
+    [attr.aria-pressed]="goingToLine()"
+  >
+    {{ 'shared.codeEditor.goToLine' | translate }}
+  </button>
+  <span
+    class="editor-position"
+    [attr.title]="'shared.codeEditor.position' | translate: { line: line(), column: column() }"
+  >
+    {{ language() }} · {{ line() }}:{{ column() }}
+  </span>
+  <span class="app-pill p-dim editor-mode">{{
+    (readOnly() ? 'shared.codeEditor.readOnly' : 'shared.codeEditor.editing') | translate
+  }}</span>
+  @if (!readOnly()) {
+    <button
+      type="button"
+      class="action-button"
+      (click)="history('undo')"
+      [disabled]="!canUndo()"
+      [attr.title]="'shared.codeEditor.undo' | translate"
+      [attr.aria-label]="'shared.codeEditor.undo' | translate"
+    >
+      ↶
+    </button>
+    <button
+      type="button"
+      class="action-button"
+      (click)="history('redo')"
+      [disabled]="!canRedo()"
+      [attr.title]="'shared.codeEditor.redo' | translate"
+      [attr.aria-label]="'shared.codeEditor.redo' | translate"
+    >
+      ↷
+    </button>
+  }
+  <button
+    type="button"
+    matButton
+    [cdkMenuTriggerFor]="viewMenu"
+    [disabled]="!editor()"
+    [attr.title]="'shared.codeEditor.view' | translate"
+  >
+    <mat-icon svgIcon="ellipsis-vertical" />
+    {{ 'shared.codeEditor.view' | translate }}
+  </button>
+</div>
+
+<ng-template #viewMenu>
+  <div class="material-context-menu editor-view-menu" cdkMenu>
+    <div
+      class="menu-item space-between"
+      appPersistentMenuCheckbox
+      [cdkMenuItemChecked]="wrap()"
+      (cdkMenuItemTriggered)="toggleWrap()"
+    >
+      <span>{{ 'shared.codeEditor.wrap' | translate }}</span>
+      <mat-slide-toggle [checked]="wrap()" [tabIndex]="-1" aria-hidden="true" inert />
+    </div>
+    <div
+      class="menu-item space-between"
+      appPersistentMenuCheckbox
+      [cdkMenuItemChecked]="lineNumbers()"
+      (cdkMenuItemTriggered)="toggleLineNumbers()"
+    >
+      <span>{{ 'shared.codeEditor.lineNumbers' | translate }}</span>
+      <mat-slide-toggle [checked]="lineNumbers()" [tabIndex]="-1" aria-hidden="true" inert />
+    </div>
+    <div
+      class="editor-font-size"
+      role="group"
+      [attr.aria-label]="'shared.codeEditor.fontSize' | translate"
+    >
+      <span>{{ 'shared.codeEditor.fontSize' | translate }}</span>
+      <div class="editor-font-actions">
+        <button
+          type="button"
+          class="action-button"
+          appPersistentMenuItem
+          [disabled]="fontSize() === 0"
+          [cdkMenuItemDisabled]="fontSize() === 0"
+          (cdkMenuItemTriggered)="resizeFont(-1)"
+          [attr.title]="'shared.codeEditor.smallerFont' | translate"
+          [attr.aria-label]="'shared.codeEditor.smallerFont' | translate"
+        >
+          <mat-icon svgIcon="remove" />
+        </button>
+        <button
+          type="button"
+          class="action-button"
+          appPersistentMenuItem
+          [disabled]="fontSize() === fontSizes.length - 1"
+          [cdkMenuItemDisabled]="fontSize() === fontSizes.length - 1"
+          (cdkMenuItemTriggered)="resizeFont(1)"
+          [attr.title]="'shared.codeEditor.largerFont' | translate"
+          [attr.aria-label]="'shared.codeEditor.largerFont' | translate"
+        >
+          <mat-icon svgIcon="plus" />
+        </button>
+      </div>
+    </div>
+  </div>
+</ng-template>

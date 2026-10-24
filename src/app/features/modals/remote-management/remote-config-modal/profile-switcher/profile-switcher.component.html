@@ -20,7 +20,7 @@
         @for (profile of pList; track profile.name) {
           <mat-option [value]="profile.name">
             <div class="profile-option-row">
-              <span class="profile-name">{{ profile.name }}</span>
+              <span class="profile-name truncate">{{ profile.name }}</span>
               <button
                 matIconButton
                 type="button"

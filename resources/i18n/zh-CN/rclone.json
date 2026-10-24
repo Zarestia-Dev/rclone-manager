@@ -1119,33 +1119,13 @@
     "title": "删除空源目录",
     "help": "移动操作后删除空的源目录。"
   },
-  "dryRun": {
-    "title": "模拟运行",
-    "help": "执行模拟运行。"
-  },
   "resync": {
     "title": "重新同步",
     "help": "执行重新同步操作。"
   },
-  "checkAccess": {
-    "title": "访问检查",
-    "help": "若未在两端文件系统找到RCLONE_TEST文件则终止操作。"
-  },
-  "checkFilename": {
-    "title": "检查文件名",
-    "help": "--check-access使用的文件名。"
-  },
-  "maxDelete": {
-    "title": "最大删除比例",
-    "help": "若删除文件的比例超过此阈值则终止同步。"
-  },
   "force": {
     "title": "强制执行",
     "help": "绕过--max-delete安全检查并执行同步。"
-  },
-  "checkSync": {
-    "title": "同步校验",
-    "help": "控制最终列表的对比方式。"
   },
   "remove_empty_dirs": {
     "title": "移除空目录",
@@ -1163,10 +1143,6 @@
     "title": "弹性模式",
     "help": "允许后续运行重试某些非严重错误。"
   },
-  "work_dir": {
-    "title": "工作目录",
-    "help": "存放历史文件的服务器目录。"
-  },
   "backup_dir1": {
     "title": "备份目录1",
     "help": "Path1对应的--backup-dir参数。"
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "VFS 句柄缓存",
     "help": "最后一次关闭后，保持文件句柄和下载器活跃的时间"
-  },
-  "mountType": {
-    "title": "挂载类型",
-    "help": "要使用的挂载类型。"
   },
   "type": {
     "title": "服务类型",
@@ -1208,7 +1180,7 @@
     "help": "使用 NFS 协议挂载"
   },
   "mount_type_saf": {
-    "title": "存储访问框架 (SAF)",
+    "title": "存储访问框架（SAF）",
     "help": "Android 原生存储访问框架挂载"
   },
   "serve_type_http": {
@@ -1338,5 +1310,53 @@
   "conflict_suffix": {
     "title": "冲突后缀",
     "help": "重命名冲突落败者时使用的后缀。可以是一个字符串，也可以是用逗号分隔的两个字符串，分别用于 Path1/Path2（默认：'conflict'）"
+  },
+  "allow_idmap": {
+    "title": "允许 ID 映射挂载",
+    "help": "允许使用 ID 映射挂载（Linux 6.12 及以上，仅限 mount2）"
+  },
+  "files_from0": {
+    "title": "NUL 分隔的文件列表",
+    "help": "从文件读取以 NUL 分隔的源文件名列表（使用 - 从标准输入读取）"
+  },
+  "response_header": {
+    "title": "响应头",
+    "help": "为所有响应设置 HTTP 头，覆盖现有值"
+  },
+  "rc_response_header": {
+    "title": "RC 响应头",
+    "help": "为所有响应设置 HTTP 头，覆盖现有值"
+  },
+  "metrics_response_header": {
+    "title": "指标响应头",
+    "help": "为所有响应设置 HTTP 头，覆盖现有值"
+  },
+  "metadata_max_objects": {
+    "title": "元数据缓存对象数上限",
+    "help": "每个用户在内存中保留元数据的对象数量上限，0 表示无限制"
+  },
+  "multipart_expiry": {
+    "title": "分段上传过期时间",
+    "help": "中止空闲时间超过此值的未完成分段上传，0 表示永久保留"
+  },
+  "multipart_max_uploads": {
+    "title": "流式分段上传数量上限",
+    "help": "每个用户可同时进行的流式分段上传数量上限，0 表示无限制"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "流式分段上传缓冲区上限",
+    "help": "每个流式分段上传用于缓冲乱序到达分段的内存上限，0 表示无限制"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "流式分段上传缓冲区总上限",
+    "help": "每个用户的所有流式分段上传用于缓冲乱序到达分段的内存总上限，0 表示无限制"
+  },
+  "disable_multipart_streaming": {
+    "title": "禁用分段上传流式传输",
+    "help": "将分段上传缓存在内存中，而不是流式传输到后端"
+  },
+  "mount_type": {
+    "title": "挂载类型",
+    "help": "要使用的挂载类型。"
   }
 }

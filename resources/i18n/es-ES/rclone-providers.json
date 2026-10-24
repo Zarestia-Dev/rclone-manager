@@ -192,6 +192,14 @@
       "decompress": {
         "title": "Descomprimir",
         "help": "Si se establece, esto descomprimirá los objetos codificados con gzip.\n\nEs posible subir objetos a Azure Blob Storage con \"Content-Encoding: gzip\" establecido. Normalmente rclone descargará estos archivos como objetos comprimidos.\n\nSi esta bandera está establecida, rclone descomprimirá estos archivos con \"Content-Encoding: gzip\" a medida que se reciban. Esto significa que rclone no podrá verificar el tamaño y el hash, pero el contenido del archivo se descomprimirá.\n"
+      },
+      "use_arrow_list": {
+        "title": "Usar listados Apache Arrow",
+        "help": "Usar el formato ListBlobs Apache Arrow en lugar de XML para listar directorios. Las respuestas Arrow son más pequeñas y mucho más baratas de analizar, lo que acelera varias veces los listados de contenedores grandes. Combínelo con list_parallelism para obtener el mayor beneficio.\n\n\"Blob Listing with Apache Arrow\" está en versión preliminar pública de Microsoft y solo admite cuentas con espacio de nombres plano. En cuentas con espacio de nombres jerárquico (ADLS Gen2), o si la función no está disponible, el servidor devuelve XML y el listado vuelve automáticamente al método XML normal, registrándolo a nivel de depuración."
+      },
+      "list_parallelism": {
+        "title": "Paralelismo de listados",
+        "help": "Número de segmentos paralelos para listar un directorio.\n\nSi es mayor que 1, los nombres de blobs de cada directorio se dividen en rangos que se listan simultáneamente con los parámetros Arrow startFrom/endBefore. Puede acelerar mucho los contenedores con millones de objetos, tanto en listados recursivos (ListR) como de un solo directorio. La velocidad sigue aumentando hasta un paralelismo de aproximadamente 30.\n\nRequiere use_arrow_list, ya que solo Arrow admite rangos de nombres en el servidor. Si la cuenta no admite rangos (por ejemplo, por tener espacio de nombres jerárquico), se vuelve al listado secuencial. El valor predeterminado 0, o 1, lista secuencialmente."
       }
     },
     "azurefiles": {
@@ -514,7 +522,7 @@
         "help": "Descripción del remoto."
       },
       "info_age": {
-        "title": "Info Age",
+        "title": "Vigencia de la información",
         "help": "Durante cuánto tiempo se almacena en caché la información de la estructura de archivos (listas de directorios, tamaño de archivo, tiempos, etc.). Si todas las operaciones de escritura se realizan a través de la caché, puede establecer este valor con seguridad en un valor muy alto, ya que el almacenamiento en caché también se actualizará en tiempo real."
       },
       "plex_insecure": {
@@ -546,7 +554,7 @@
         "help": "Remoto a caché.\n\nNormalmente debe contener un ':' y una ruta, p. ej., \"myremote:path/to/dir\",\n\"myremote:bucket\" o quizás \"myremote:\" (no recomendado)."
       },
       "rps": {
-        "title": "Rps",
+        "title": "Solicitudes por segundo",
         "help": "Limita el número de solicitudes por segundo al sistema de archivos de origen (-1 para deshabilitar).\n\nEsta configuración establece un límite estricto en el número de solicitudes por segundo que la caché realizará al proveedor de la nube remoto e intenta respetar ese valor configurando tiempos de espera entre lecturas.\n\nSi observa que se le está baneando o limitando el acceso al proveedor de la nube a través de la caché y sabe que un número menor de solicitudes por segundo le permitirá trabajar con él, puede usar esta configuración.\n\nUn buen equilibrio entre todas las demás configuraciones debería hacer que esta configuración sea inútil, pero se puede configurar para casos más especiales.\n\n**NOTA**: Esto limitará el número de solicitudes durante las transmisiones, pero otras llamadas a la API al proveedor de la nube, como las listas de directorios, seguirán funcionando."
       },
       "tmp_upload_path": {
@@ -558,7 +566,7 @@
         "help": "¿Cuánto tiempo deben almacenarse los archivos en la caché local antes de cargarse?.\n\nEste es el tiempo que un archivo debe esperar en la ubicación temporal\n_cache-tmp-upload-path_ antes de ser seleccionado para la carga.\n\nNote que solo se carga un archivo a la vez \ny que la carga puede tardar más si se crea una cola para ello."
       },
       "workers": {
-        "title": "Workers",
+        "title": "Procesos de trabajo",
         "help": "¿Cuántos trabajadores deben ejecutarse en paralelo para descargar fragmentos?\n\nLos valores más altos implican un mayor procesamiento en paralelo (se necesita una mejor CPU)\ny más solicitudes simultáneas en el proveedor de la nube. Esto afecta a varios aspectos, como los límites de la API del proveedor de la nube y una mayor presión sobre el hardware en el que se ejecuta rclone. Además, significa que las transmisiones serán más fluidas y que los datos estarán disponibles mucho más rápido para los lectores.\n\n**Nota**: Si la integración opcional con Plex está habilitada, esta configuración se adaptará al tipo de lectura realizada y el valor especificado aquí se usará como número máximo de trabajadores a utilizar."
       },
       "writes": {
@@ -652,7 +660,7 @@
         "help": "Descripción del control remoto."
       },
       "upstreams": {
-        "title": "Upstreams",
+        "title": "Remotos de origen",
         "help": "Upstreams para combinar\n\nEstos deben tener el formato\n\n dir=remote:path dir2=remote2:path\n\nDonde antes del = se especifica el directorio raíz y después el remoto que se va a colocar allí.\n\nLos espacios incrustados se pueden agregar mediante comillas\n\n \"dir=remote:path con espacio\" \"dir2=remote2:path con espacio\"\n\n"
       }
     },
@@ -848,7 +856,7 @@
         "help": "Controla si los permisos deben leerse o escribirse en los metadatos.\n\nLeer los metadatos de permisos de los archivos es rápido, pero no siempre es recomendable configurarlos desde los metadatos.\n\nNote que rclone elimina los permisos heredados en Unidades compartidas y los permisos de propietario en Mis unidades, ya que se duplican en los metadatos del propietario.\n"
       },
       "pacer_burst": {
-        "title": "Pacer Burst",
+        "title": "Ráfaga de solicitudes",
         "help": "Número de llamadas a la API que se permiten sin suspensión."
       },
       "pacer_min_sleep": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "URL del token",
         "help": "URL del servidor de tokens.\n\nDeje este campo en blanco para usar los valores predeterminados del proveedor."
+      },
+      "impersonate_admin": {
+        "title": "Actuar como administrador del equipo",
+        "help": "ID de miembro del equipo para realizar acciones como administrador.\n\nEstablece la cabecera Dropbox-API-Select-Admin con el ID indicado (por ejemplo, \"dbmid:...\"). Requiere un ID de miembro, no una dirección de correo.\n\nSi va a usar impersonate_admin, actívelo al ejecutar \"rclone config\" para solicitar el permiso \"team_data.member\", que normalmente no se solicita. Un administrador de Dropbox debe aprobar ese permiso durante el flujo OAuth.\n\nDebe usar su propia aplicación, con client_id y client_secret propios, porque los permisos predeterminados de rclone no incluyen \"team_data.member\"."
+      },
+      "skip_shared_folders": {
+        "title": "Omitir carpetas compartidas",
+        "help": "Omitir todas las carpetas compartidas.\n\nExcluye de los listados cualquier punto de montaje de una carpeta compartida, independientemente de su propietario. Es útil para respaldar las carpetas compartidas por separado con otro remoto configurado con el espacio de nombres de la carpeta compartida."
+      },
+      "skip_unowned_folders": {
+        "title": "Omitir carpetas compartidas de otros propietarios",
+        "help": "Omitir carpetas compartidas que no pertenezcan al usuario actual.\n\nExcluye de los listados los puntos de montaje de carpetas compartidas de otros propietarios. Evita duplicar datos al respaldar varias cuentas de Dropbox que comparten carpetas.\n\nEn Dropbox Business, las carpetas de equipo pertenecen al equipo. Para miembros estándar con acceso de edición o lectura se consideran ajenas y se excluyen. Para respaldarlas, no use esta opción o ejecute con una cuenta de administrador del equipo.\n\nNo tiene efecto si --dropbox-skip-shared-folders está activado. Realiza una llamada API adicional por cada punto de montaje compartido."
       }
     },
     "fichier": {
@@ -1094,7 +1114,7 @@
         "help": "ID de la carpeta raíz.\n\nDejar en blanco normalmente.\n\nRellenar para que rclone comience con el directorio de un ID determinado.\n"
       },
       "token": {
-        "title": "Token",
+        "title": "Token de acceso",
         "help": "Sesión Token.\n\nEste es un token de sesión que rclone almacena en caché en el archivo de configuración.\nSuele tener una validez de 1 hora.\n\nNo configure este valor; rclone lo configurará automáticamente.\n"
       },
       "token_expiry": {
@@ -1208,7 +1228,7 @@
         "help": "Use LIST -a para forzar la lista de archivos y carpetas ocultos. Esto deshabilitará el uso de MLSD."
       },
       "host": {
-        "title": "Host",
+        "title": "Servidor",
         "help": "Host FTP al que conectarse.\n\nEj. \"ftp.example.com\"."
       },
       "http_proxy": {
@@ -1340,7 +1360,7 @@
         "help": "Nodo personalizado para la API de almacenamiento. Déjelo en blanco para usar el valor predeterminado del proveedor.\n\nAl usar un nodo personalizado que incluye una subruta (p. ej., example.org/custom/nodo),\nesta se ignorará durante las operaciones de carga debido a una limitación en la biblioteca cliente de Google API Go subyacente.\nLas operaciones de descarga y listado funcionarán correctamente con la ruta completa del nodo.\nSi necesita compatibilidad con subrutas para las cargas, evite usarlas en la configuración de su \nnodo personalizado."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Autenticación del entorno",
         "help": "Obtener las credenciales de IAM de GCP del entorno de ejecución (variables de entorno o metadatos de instancia si no hay variables de entorno).\n\nSolo se aplica si service_account_file y service_account_credentials están en blanco."
       },
       "location": {
@@ -1464,7 +1484,7 @@
         "help": "Descripción del control remoto."
       },
       "hashes": {
-        "title": "Hashes",
+        "title": "Algoritmos hash",
         "help": "Lista separada por comas de los tipos de suma de comprobación admitidos."
       },
       "max_age": {
@@ -1784,7 +1804,7 @@
         "help": "Elige tu proveedor de almacenamiento."
       },
       "setmtime": {
-        "title": "Setmtime",
+        "title": "Establecer fecha de modificación",
         "help": "¿El backend admite la hora de modificación de la configuración?\n\nConfigúralo como falso si usas un ID de montaje que apunta a un backend de Dropbox o Amazon Drive."
       },
       "user": {
@@ -1798,7 +1818,7 @@
         "help": "Descripción del remoto."
       },
       "token": {
-        "title": "Token",
+        "title": "Token de acceso",
         "help": "Token de https://www.linkbox.to/admin/account"
       },
       "email": {
@@ -1836,7 +1856,7 @@
         "help": "La codificación para el servidor.\n\nVer [sección de codificación en ayuda] para mas informacion."
       },
       "hashes": {
-        "title": "Hashes",
+        "title": "Algoritmos hash",
         "help": "Lista separada por comas de los tipos de suma de comprobación admitidos."
       },
       "links": {
@@ -1864,7 +1884,7 @@
         "help": "Desactivar archivos dispersos para descargas multihilo. En plataformas Windows, rclone creará archivos dispersos al realizar descargas multihilo. Esto evita pausas prolongadas en archivos grandes donde el sistema operativo los pone a cero. Sin embargo, los archivos dispersos pueden ser indeseables, ya que causan fragmentación del disco y pueden ser lentos de usar."
       },
       "nounc": {
-        "title": "Nounc",
+        "title": "Desactivar rutas UNC",
         "help": "Deshabilitar la conversión UNC (nombres de ruta largos) en Windows."
       },
       "one_file_system": {
@@ -1954,7 +1974,7 @@
         "help": "Los archivos mayores al tamaño indicado a continuación siempre se almacenarán en el disco."
       },
       "token": {
-        "title": "Token",
+        "title": "Token de acceso",
         "help": "Token de Acceso OAuth como un blob JSON."
       },
       "token_url": {
@@ -2032,7 +2052,7 @@
         "help": "Descripción del control remoto."
       },
       "host": {
-        "title": "Host",
+        "title": "Servidor",
         "help": "Dominio y ruta del host de NetStorage al que conectarse.\n\nEl formato debe ser `<dominio>/<carpetas internas>`"
       },
       "protocol": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "Límite de subida",
         "help": "Límite para cambiar a subida fragmentada.\n\nLos archivos de mayor tamaño se subirán en fragmentos de tamaño_fragmento.\n\nEsto está deshabilitado de forma predeterminada, ya que subir archivos de una sola parte hace que rclone use el doble de almacenamiento en OneDrive Business que cuando rclone establece la hora de modificación después de la subida. OneDrive crea una nueva versión.\n\nVer: https://github.com/rclone/rclone/issues/1716\n"
+      },
+      "tenant_url": {
+        "title": "URL del inquilino",
+        "help": "URL del inquilino para acceder a OneDrive sin ser administrador.\n\nEstablezca la URL de su inquilino SharePoint para usar la API SharePoint v2.0 en lugar de Microsoft Graph. Permite acceder a OneDrive empresarial sin consentimiento del administrador.\n\nBusque \"driveAccessToken\" en las solicitudes de red de las herramientas de desarrollo del navegador. El campo \".driveUrl\" contiene la URL del inquilino y el ID de unidad.\n\nEjemplo: https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2230,7 +2254,7 @@
         "help": "La codificación para el servidor.\n\nVer la sección de codificación en la descripción general para obtener más información.\n"
       },
       "endpoint": {
-        "title": "Endpoint",
+        "title": "Punto de conexión",
         "help": "Endpoint para la API de almacenamiento de objetos.\n\nDejar en blanco para usar el endpoint predeterminado para la región."
       },
       "leave_parts_on_error": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "Límite de subida",
         "help": "Límite para cambiar a subida fragmentada.\n\nLos archivos de mayor tamaño se subirán en fragmentos de tamaño chunk_size.\nEl mínimo es 0 y el máximo es 5 GiB."
+      },
+      "decompress": {
+        "title": "Descomprimir",
+        "help": "Descomprimir los objetos codificados con gzip.\n\nSe pueden subir objetos con \"Content-Encoding: gzip\". Normalmente rclone los descarga comprimidos.\n\nAl activar esta opción, rclone los descomprime conforme los recibe. En ese caso no puede verificar el tamaño ni el hash, pero el contenido del archivo estará descomprimido."
       }
     },
     "pcloud": {
@@ -2572,11 +2600,11 @@
         "help": "La codificación del servidor.\n\nVer [sección de codificación en ayuda] para mas informacion."
       },
       "endpoint": {
-        "title": "Endpoint",
+        "title": "Punto de conexión",
         "help": "Ingrese la URL de un endpoint para conectarse a la API de QingStor.\n\nDejar en blanco usará el valor predeterminado \"https://qingstor.com:443\"."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Autenticación del entorno",
         "help": "Obtener las credenciales de QingStor desde el entorno de ejecución.\n\nSolo aplica si access_key_id y secret_access_key están en blanco."
       },
       "secret_access_key": {
@@ -2618,7 +2646,7 @@
         "help": "Eliminar archivos permanentemente en lugar de enviarlos a la papelera"
       },
       "host": {
-        "title": "Host",
+        "title": "Servidor",
         "help": "Nombre del host de la cuenta de Quatrix"
       },
       "maximal_summary_chunk_size": {
@@ -3004,7 +3032,7 @@
         "help": "Tamaño del fragmento de carga y descarga.\n\nEsto controla el tamaño máximo de la carga útil en los paquetes del protocolo SFTP.\nEl RFC lo limita a 32768 bytes (32 kB), que es el valor predeterminado. Sin embargo,\nmuchos servidores admiten tamaños mayores, normalmente limitados a un tamaño máximo total de paquete de 256 kB, y configurarlo más alto aumentará drásticamente la velocidad de transferencia en enlaces de alta latencia. Esto incluye OpenSSH y,\npor ejemplo, usar el valor de 255 kB funciona bien, dejando suficiente margen para la sobrecarga sin exceder el tamaño total de paquete de 256 kB.\n\nAsegúrese de realizar pruebas exhaustivas antes de usar un valor superior a 32 kB y úselo solo si siempre se conecta al mismo servidor o después de realizar pruebas suficientemente amplias. Si recibe errores como\n\"Error al enviar la carga útil del paquete: EOF\", muchos \"conexión perdida\".Si se pierde o se daña durante la transferencia, al copiar un archivo grande, intente reducir el valor. El servidor ejecutado por [rclone serve sftp](/commands/rclone_serve_sftp)\n envía paquetes con una carga útil máxima estándar de 32 kB, por lo que no debe configurar un chunk_size diferente al descargar archivos, pero acepta paquetes de hasta 256 kB. Por lo tanto, para las subidas, el chunk_size se puede configurar como en el ejemplo de OpenSSH anterior.\n"
       },
       "ciphers": {
-        "title": "Ciphers",
+        "title": "Algoritmos de cifrado",
         "help": "Lista separada por espacios de los cifrados a usarn para el cifrado de sesión, ordenados por preferencia. Al menos uno debe coincidir con la configuración del servidor. Esto se puede comprobar, por ejemplo, con ssh -Q cipher. No se debe configurar si use_insecure_cipher es verdadero. Ejemplo: aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com\n"
       },
       "concurrency": {
@@ -3040,11 +3068,11 @@
         "help": "Deshabilita la ejecución de comandos SSH para determinar si el hash de archivos remotos está disponible.\n\nDejar en blanco o establecer en falso para habilitar el hash (recomendado), establecer en verdadero para deshabilitarlo."
       },
       "hashes": {
-        "title": "Hashes",
+        "title": "Algoritmos hash",
         "help": "Lista separada por comas de los tipos de suma de comprobación admitidos."
       },
       "host": {
-        "title": "Host",
+        "title": "Servidor",
         "help": "Host SSH al que conectarse.\n\nEj. \"example.com\"."
       },
       "host_key_algorithms": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Comando Xxh3Sum",
         "help": "El comando usado para leer hashes XXH3.\n\nDejar en blanco para la detección automática."
+      },
+      "encoding": {
+        "title": "Codificación",
+        "help": "La codificación para el servidor.\n\nVea la [sección de codificación en la visión general](/overview/#encoding) para más información."
+      },
+      "pin_host_key": {
+        "title": "Fijar clave del servidor",
+        "help": "Fijar la clave del servidor en la primera conexión (confianza en el primer uso, TOFU).\n\nPensado para usar una sola vez como --sftp-pin-host-key. Rclone guarda la clave en host_keys. En ejecuciones posteriores sin la opción, consulta host_keys y rechaza cualquier discrepancia.\n\nNo se recomienda activar esta opción permanentemente en la configuración: mientras esté activa también se aceptarán nuevos algoritmos de clave que presente el servidor, ampliando la confianza más allá de la clave inicial. Tras un cambio legítimo de clave, vuelva a ejecutar con la opción para fijar la nueva.\n\nLa primera conexión no está autenticada. Use preferiblemente una red de confianza o compare la huella registrada por rclone con una obtenida por un canal independiente.\n\nSi known_hosts_file está configurado, tiene prioridad y esta opción se ignora."
+      },
+      "host_keys": {
+        "title": "Claves del servidor fijadas",
+        "help": "Claves fijadas para verificar el servidor de este remoto.\n\nLista separada por comas de entradas \"algo base64-key\", con el formato de los campos segundo y tercero de una línea known_hosts de OpenSSH. Normalmente se rellena ejecutando una vez con --sftp-pin-host-key, pero también permite introducir una clave pública obtenida por un canal independiente. Cada entrada es la clave pública completa, no su huella SHA256.\n\nSi no está vacía, la clave presentada debe coincidir con una entrada o la conexión se rechazará. Tras un cambio legítimo, borre este valor y reconecte con --sftp-pin-host-key, o edítelo directamente.\n\nSe pueden fijar como máximo 16 claves."
       }
     },
     "sharefile": {
@@ -3266,7 +3306,7 @@
         "help": "Ocultar recursos compartidos especiales (p. ej., print$) a los que los usuarios no deben acceder."
       },
       "host": {
-        "title": "Host",
+        "title": "Servidor",
         "help": "Nombre de host del servidor SMB al que conectarse.\n\nEj. \"example.com\"."
       },
       "idle_timeout": {
@@ -3388,7 +3428,7 @@
         "help": "Secreto de la credencial de la aplicación (OS_APPLICATION_CREDENTIAL_SECRET)"
       },
       "auth": {
-        "title": "Auth",
+        "title": "Autenticación",
         "help": "URL de autenticación del servidor (OS_AUTH_URL)"
       },
       "auth_token": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "URL del token",
         "help": "URL del servidor de tokens.\n\nDeje en blanco para usar los valores predeterminados del proveedor."
+      },
+      "upload_wait": {
+        "title": "Espera tras la carga",
+        "help": "Tiempo de espera tras una carga antes de establecer la fecha de modificación.\n\nYandex Disk finaliza la carga de forma asíncrona en sus servidores. Si se cambia la fecha durante ese proceso, devuelve 500 Internal Server Error.\n\nSi recibe errores 500 al cargar, normalmente basta con 2s, a costa de ralentizar las cargas. El soporte de Yandex recomienda entre 1.5s y 3s."
       }
     },
     "zoho": {
@@ -3714,6 +3758,30 @@
       "upload_cutoff": {
         "title": "Límite de carga",
         "help": "Límite para cambiar a la API de carga de archivos grandes (>= 10 MB)."
+      },
+      "root_folder_id": {
+        "title": "ID de carpeta raíz",
+        "help": "ID de la carpeta raíz.\n\nNormalmente se deja en blanco. Indíquelo para usar una carpeta distinta de la raíz como punto de partida de rclone."
+      },
+      "tpslimit": {
+        "title": "Transacciones API por segundo",
+        "help": "Máximo de transacciones API por segundo.\n\nZoho WorkDrive devuelve HTTP 429 (F7008, \"Request rate limit exceeded\") si recibe llamadas demasiado rápido. Las operaciones de datos (listar, subir, descargar, copiar, mover, eliminar) se regulan a esta tasa.\n\n0 desactiva el límite, como el --tpslimit global. La regulación no puede desactivarse por completo: siempre se aplican la espera progresiva y Retry-After.\n\nEl valor predeterminado 6 es sostenible. Valores mayores pueden provocar largas esperas 429 Retry-After y empeorar el rendimiento; auméntelo solo si su cuenta lo tolera."
+      },
+      "tpslimit_burst": {
+        "title": "Ráfaga de solicitudes API",
+        "help": "Número de llamadas API consecutivas sin pausa para --zoho-tpslimit.\n\nEs la capacidad del depósito de tokens. Manténgala en 1 para Zoho: un valor mayor permite varias llamadas simultáneas tras un periodo inactivo y puede provocar grupos sincronizados de errores 429."
+      },
+      "list_folder_limit": {
+        "title": "Límite de listados por carpeta",
+        "help": "Máximo de listados de la MISMA carpeta por --zoho-list-folder-window.\n\nZoho WorkDrive limita GET files/{id}/files por carpeta, independientemente de --zoho-tpslimit. Repetir listados demasiado rápido causa HTTP 429 (F7008) y un Retry-After de varios minutos, incluso con una tasa global baja. Las mediciones permiten unos 19 listados en una ventana móvil de unos 60s; el 20 falla. Los valores predeterminados, 19 por 60s, reproducen ese límite.\n\nEn cada ventana pasan seguidos los primeros --zoho-list-folder-burst listados; la ráfaga se renueva en cada ventana. Los restantes se espacian --zoho-list-folder-window/(limit - burst), unos 4.6s por defecto. Un registro móvil impone el límite también entre ventanas. 0 desactiva el limitador. Solo se retrasan listados REPETIDOS de una carpeta; otras carpetas, o las listadas menos de --zoho-list-folder-burst veces, no esperan.\n\nUn valor MAYOR permite MÁS listados, no más seguridad: superar 19 provoca F7008. Reducirlo da más margen a costa de menor capacidad de respuesta."
+      },
+      "list_folder_window": {
+        "title": "Ventana de listados por carpeta",
+        "help": "Ventana de tiempo para --zoho-list-folder-limit.\n\nEl valor predeterminado 60s (mostrado como 1m0s) coincide con la ventana móvil real de Zoho: en cualquier intervalo de esta duración se permiten como máximo --zoho-list-folder-limit listados de una carpeta. Un número sin unidad se interpreta como segundos (\"60\" = \"60s\").\n\nAmplíela o reduzca el límite para aumentar el margen. El intervalo sostenido entre listados de la misma carpeta es window/(limit - burst)."
+      },
+      "list_folder_burst": {
+        "title": "Ráfaga de listados por carpeta",
+        "help": "Listados consecutivos de una carpeta antes de que --zoho-list-folder-limit regule el ritmo.\n\nLa ráfaga forma parte del límite: aumentarla no aumenta el total por ventana. Esta cantidad pasa de inmediato y los limit - burst restantes se espacian window/(limit - burst). La ráfaga se RENUEVA en cada ventana, pero el registro móvil sigue imponiendo el límite. Una carpeta listada solo unas pocas veces, como en una sincronización habitual, no espera.\n\nEl valor predeterminado 6 es la mayor ráfaga validada con el límite de 19 por 60s: 4, 5 y 6 funcionaron bien; al exceder el límite, el listado 20 produjo F7008. Manténgalo muy por debajo de unos 15: Zoho también impone un límite instantáneo de unas 15–16 llamadas consecutivas. Use 1 para regular desde el segundo listado. Los valores mayores o iguales al límite se reducen a limit - 1."
       }
     },
     "filen": {
@@ -3830,7 +3898,7 @@
         "help": "Cantidad máxima de partes en una subida multipartes."
       },
       "token": {
-        "title": "Token",
+        "title": "Token de acceso",
         "help": "JWT Token para realizar operaciones de Shade FS. No establezcas este valor - rclone lo establecerá automáticamente"
       },
       "token_expiry": {
@@ -3894,7 +3962,7 @@
         "help": "Secreto de cliente de OAuth.\n\nNormalmente dejar en blanco."
       },
       "token": {
-        "title": "Token",
+        "title": "Token de acceso",
         "help": "Token de acceso OAuth como un blob JSON."
       },
       "auth_url": {

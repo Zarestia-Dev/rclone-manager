@@ -1,5 +1,6 @@
 import {
   Injectable,
+  DestroyRef,
   computed,
   inject,
   signal,
@@ -11,11 +12,12 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
-import { JobManagementService } from '../operations/job-management.service';
+import { VaultService } from '../security/vault.service';
+import { areJobListsEqual, JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
+import { RemoteDiskUsageService } from '../remote/remote-disk-usage.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
-import { FlagConfigService } from '../remote/flag-config.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
@@ -26,54 +28,45 @@ import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
 import { NotificationService } from '../ui/notification.service';
-import { ModalService } from '../ui/modal.service';
-import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
-import { retargetProfilesRemote } from '../remote/utils/remote-config.utils';
+import { retargetProfilesRemote } from '../remote/utils/profile-mapper.utils';
 import {
   Remote,
-  JobInfo,
   JobActionType,
-  MountedRemote,
-  ServeListItem,
   RemoteSettings,
   SyncOperationType,
   ActionState,
   RemoteAction,
-  DiskUsage,
   Origin,
-  RemoteOperationState,
-  RemoteFeatures,
   RemoteConfig,
-  ConfigRecord,
   PrimaryActionType,
+  ProfileConfigMap,
   REMOTE_CONFIG_KEYS,
   BackendsRemotesLayout,
   RemotesLayout,
-  RCLONE_PATH_KEYS,
-  ProfileConfigMap,
   BATCH_OP_LABELS,
   OPERATION_TYPE_KEYS,
-  RemoteStatus,
+  MountPathCollision,
+  isProfileScoped,
 } from '@app/types';
+import {
+  buildRemoteProfileStatus,
+  readRemoteProfiles,
+} from '../remote/utils/remote-profile-state.util';
+import {
+  deepEqual,
+  extractProfileDest,
+  extractProfileSource,
+  getRcloneCfg,
+} from 'src/app/shared/utils';
+import { CoalescedTask } from 'src/app/shared/utils/coalesced-task.util';
+import { abortableRequest, isAbortError } from 'src/app/shared/utils/abortable-request.util';
 
 interface RemoteState {
-  base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
-  disk: WritableSignal<DiskUsage>;
-  enriched: Signal<Remote>;
-}
-
-interface ScopedExecutionItem {
-  origin?: Origin;
-  quick_run_id?: string;
-  workflow_id?: string;
-}
-
-function isProfileScoped(item: ScopedExecutionItem): boolean {
-  return (
-    item.origin !== 'quickrun' && item.origin !== 'flow' && !item.quick_run_id && !item.workflow_id
-  );
+  config: WritableSignal<RemoteConfig>;
+  settings: WritableSignal<RemoteSettings>;
+  remote: Signal<Remote>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -82,6 +75,7 @@ export class RemoteFacadeService {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly remoteService = inject(RemoteManagementService);
+  private readonly diskUsage = inject(RemoteDiskUsageService);
   private readonly remoteOpsService = inject(RemoteFileOperationsService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListeners = inject(EventListenersService);
@@ -91,44 +85,52 @@ export class RemoteFacadeService {
   private readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
   private readonly statusService = inject(RcloneStatusService);
-  private readonly flagConfigService = inject(FlagConfigService);
   private readonly notificationService = inject(NotificationService);
-  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
+
+  private readonly vault = inject(VaultService);
+  private readonly canLoad = this.vault.isAccessible;
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
   readonly runningServes = this.serveService.runningServes;
 
-  private readonly remoteNames = signal<string[]>([]);
-  private readonly remoteSettings = signal<Record<string, RemoteSettings>>({});
+  private readonly remoteNames = signal<string[]>([], { equal: deepEqual });
+  private readonly activeNames = computed(() => new Set(this.remoteNames()));
+  private readonly remoteSettings = computed<Record<string, RemoteSettings>>(() =>
+    Object.fromEntries(
+      this.remoteNames().map(name => [name, this.remoteStates.get(name)?.settings() ?? {}])
+    )
+  );
 
   private readonly isLoading = signal(false);
-  private backgroundLoadGeneration = 0;
+  private scope = new AbortController();
 
   private readonly remoteStates = new Map<string, RemoteState>();
 
   private readonly _actionInProgress = signal<Record<string, ActionState[]>>({});
   readonly actionInProgress = this._actionInProgress.asReadonly();
 
-  readonly loading = this.isLoading.asReadonly();
+  readonly loading = computed(() => !this.vault.isStatusKnown() || this.isLoading());
 
   readonly activeRemotes = computed(() =>
     this.remoteNames()
-      .map(name => this.remoteStates.get(name)?.enriched())
+      .map(name => this.remoteStates.get(name)?.remote())
       .filter((r): r is Remote => !!r)
   );
 
   isRemoteActive(name?: string | null): boolean {
-    if (!name) return false;
-    const clean = name.endsWith(':') ? name.slice(0, -1) : name;
-    return this.remoteNames().includes(clean);
+    return !!this.findRemoteState(name);
+  }
+
+  private findRemoteState(name?: string | null): RemoteState | undefined {
+    const clean = name?.replace(/:$/, '');
+    return clean && this.activeNames().has(clean) ? this.remoteStates.get(clean) : undefined;
   }
 
   readonly selectedRemote = computed(() => {
     const name = this.uiStateService.selectedRemote()?.name;
-    return this.activeRemotes().find(r => r.name === name);
+    return this.getRemote(name);
   });
 
   // --- Layout ---
@@ -148,41 +150,61 @@ export class RemoteFacadeService {
 
   private readonly hiddenSet = computed(() => new Set(this._remoteLayout().hidden));
 
-  readonly orderedRemotes = computed(() => {
-    const { order } = this._remoteLayout();
-    const activeMap = new Map(this.activeRemotes().map(r => [r.name, r]));
-    const seen = new Set<string>();
-    const result: Remote[] = [];
-
-    for (const name of order) {
-      const remote = activeMap.get(name);
-      if (remote) {
-        result.push(remote);
-        seen.add(name);
-      }
-    }
-    for (const remote of this.activeRemotes()) {
-      if (!seen.has(remote.name)) result.push(remote);
-    }
-    return result;
+  private readonly orderedNames = computed(() => {
+    const names = this.remoteNames();
+    const active = this.activeNames();
+    const ordered = [...new Set(this._remoteLayout().order)].filter(name => active.has(name));
+    const seen = new Set(ordered);
+    return [...ordered, ...names.filter(name => !seen.has(name))];
   });
+
+  /** Lightweight catalogue for filters and icons; never reads status, disk or features. */
+  readonly remoteSummaries = computed(() =>
+    this.orderedNames().flatMap(name => {
+      const summary = this.getRemoteSummary(name);
+      return summary ? [summary] : [];
+    })
+  );
+
+  readonly orderedRemotes = computed(() =>
+    this.orderedNames().flatMap(name => {
+      const remote = this.remoteStates.get(name)?.remote();
+      return remote ? [remote] : [];
+    })
+  );
+
+  getRemoteSummary(name?: string | null): Pick<Remote, 'name' | 'type'> | undefined {
+    const config = this.findRemoteState(name)?.config();
+    return config ? { name: config.name, type: config.type } : undefined;
+  }
+
+  getRemote(name?: string | null): Remote | undefined {
+    return this.findRemoteState(name)?.remote();
+  }
 
   readonly orderedVisibleRemotes = computed(() =>
     this.orderedRemotes().filter(r => !this.hiddenSet().has(r.name))
   );
 
-  readonly allRemotesForEditor = this.orderedRemotes;
-
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
-  private refreshInFlight: Promise<void> | null = null;
-  private nextRefreshPromise: Promise<void> | null = null;
-
-  private loadRemotesInFlight: Promise<void> | null = null;
-  private nextLoadRemotesPromise: Promise<void> | null = null;
+  private readonly catalogueRefresh = new CoalescedTask(() => this.fetchRemotes());
+  private readonly fullRefresh = new CoalescedTask(() => this.fetchAll());
 
   constructor() {
-    void this.refreshAll();
+    inject(DestroyRef).onDestroy(() => {
+      this.scope.abort();
+    });
+    if (this.canLoad()) {
+      void this.refreshAll();
+    }
+
+    this.eventListeners
+      .listenToVaultState()
+      .pipe(takeUntilDestroyed())
+      .subscribe(payload => {
+        if (payload.isLocked) this.resetCatalogue();
+      });
 
     // Primary trigger: engine ready event (fires after caches are populated)
     this.eventListeners
@@ -191,11 +213,16 @@ export class RemoteFacadeService {
       .subscribe(() => void this.refreshAll());
 
     // Secondary trigger: status changes (handles reconnection after disconnects)
+    let wasAccessible = this.canLoad();
+    let previousStatus = this.statusService.rcloneStatus();
     effect(() => {
+      const accessible = this.canLoad();
       const status = this.statusService.rcloneStatus();
-      if (status === 'active') {
+      if (accessible && (!wasAccessible || (status === 'active' && previousStatus !== 'active'))) {
         untracked(() => void this.refreshAll());
       }
+      wasAccessible = accessible;
+      previousStatus = status;
     });
 
     // Event-driven reactive store updates:
@@ -204,11 +231,18 @@ export class RemoteFacadeService {
     // BACKEND_SWITCHED (active backend changed).
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
-      this.eventListeners.listenToRemoteSettingsChanged(),
-      this.eventListeners.listenToBackendSwitched()
+      this.eventListeners.listenToRemoteSettingsChanged()
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => void this.loadRemotes());
+
+    this.eventListeners
+      .listenToBackendSwitched()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.resetCatalogue();
+        void this.loadRemotes();
+      });
 
     this.eventListeners
       .listenToSystemSettingsChanged()
@@ -220,83 +254,36 @@ export class RemoteFacadeService {
       });
   }
 
+  private resetCatalogue(): void {
+    this.scope.abort();
+    this.scope = new AbortController();
+    this.remoteNames.set([]);
+    this.remoteStates.clear();
+    this._actionInProgress.set({});
+  }
+
   // --- Settings & Path Collisions ---
 
   getRemoteSettings(remoteName: string): RemoteSettings {
-    return (this.remoteSettings()[remoteName] ?? {}) as RemoteSettings;
+    return this.findRemoteState(remoteName)?.settings() ?? {};
   }
 
   checkMountPathCollision(
     proposedPath: string,
     currentRemoteName: string,
     currentProfileName?: string
-  ): { remoteName: string; profileName: string; opType: string; path: string }[] {
-    if (!proposedPath || !proposedPath.trim()) return [];
-
-    const normTarget = proposedPath
-      .trim()
-      .replace(/[/\\]+$/, '')
-      .toLowerCase();
-    const collisions: { remoteName: string; profileName: string; opType: string; path: string }[] =
-      [];
-    const allSettings = this.remoteSettings();
-    const opKeys = ['mount', 'bisync'] as const;
-
-    for (const [rName, rConfig] of Object.entries(allSettings)) {
-      if (!rConfig) continue;
-
-      for (const opType of opKeys) {
-        const profilesMap = rConfig[opType] as Record<string, Record<string, unknown>> | undefined;
-        if (!profilesMap || typeof profilesMap !== 'object') continue;
-
-        for (const [pName, pConfig] of Object.entries(profilesMap)) {
-          if (!pConfig || typeof pConfig !== 'object') continue;
-          if (rName === currentRemoteName && pName === currentProfileName) continue;
-
-          const pathsToCheck: string[] = [];
-          if (opType === 'mount') {
-            if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
-            const dest = pConfig['dest'] as { path?: string } | undefined;
-            if (dest?.path) pathsToCheck.push(dest.path);
-            const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
-            if (typeof rclone?.['mountPoint'] === 'string') {
-              pathsToCheck.push(rclone['mountPoint']);
-            }
-          } else if (opType === 'bisync') {
-            if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
-            if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
-            const dest = pConfig['dest'] as { path?: string } | undefined;
-            if (dest?.path) pathsToCheck.push(dest.path);
-          }
-
-          for (const rawPath of pathsToCheck) {
-            if (!rawPath || typeof rawPath !== 'string') continue;
-            if (!this.pathService.isLocalPath(rawPath)) continue;
-
-            const normPath = rawPath
-              .trim()
-              .replace(/[/\\]+$/, '')
-              .toLowerCase();
-            if (normPath === normTarget) {
-              collisions.push({
-                remoteName: rName,
-                profileName: pName,
-                opType,
-                path: rawPath,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return collisions;
+  ): MountPathCollision[] {
+    return this.pathService.checkMountPathCollision(
+      proposedPath,
+      currentRemoteName,
+      this.remoteSettings(),
+      currentProfileName
+    );
   }
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
     try {
-      const updated = { ...this.getRemoteSettings(remoteName), ...updates };
-      await this.appSettingsService.saveRemoteSettings(remoteName, updated);
+      await this.appSettingsService.saveRemoteSettings(remoteName, updates);
       this.notificationService.showSuccess(
         this.translate.instant('settings.remoteSaved', { remote: remoteName })
       );
@@ -311,134 +298,61 @@ export class RemoteFacadeService {
     }
   }
 
-  // --- Disk Usage ---
-
-  updateDiskUsage(remoteName: string, usage: Partial<DiskUsage>): void {
-    this.getOrCreateRemoteState(remoteName).disk.update((cur: DiskUsage) => ({ ...cur, ...usage }));
-  }
-
-  async getCachedOrFetchDiskUsage(
-    remoteName: string,
-    normalizedName?: string,
-    source: Origin = 'dashboard',
-    group?: string,
-    forceRefresh = false
-  ): Promise<DiskUsage | null> {
-    const state = this.getOrCreateRemoteState(remoteName);
-
-    const cached = state.disk();
-    if (
-      !forceRefresh &&
-      ((cached.total !== undefined && !cached.loading && !cached.error) || cached.notSupported)
-    ) {
-      return cached;
-    }
-
-    const fsName = normalizedName ?? `${remoteName}:`;
-    state.disk.update((cur: DiskUsage) => ({
-      ...cur,
-      loading: true,
-      error: false,
-      total: undefined,
-    }));
-
-    try {
-      const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source, group);
-      const result: DiskUsage = {
-        ...usage,
-        loading: false,
-        error: false,
-        notSupported: false,
-      };
-      state.disk.set(result);
-      return result;
-    } catch (error) {
-      const errStr = String(error).toLowerCase();
-      const isNotSupported = errStr.includes("doesn't support");
-
-      if (isNotSupported) {
-        const notSuppResult: DiskUsage = {
-          notSupported: true,
-          loading: false,
-          error: false,
-        };
-        state.disk.set(notSuppResult);
-        return notSuppResult;
-      }
-
-      state.disk.update((cur: DiskUsage) => ({
-        ...cur,
-        loading: false,
-        error: true,
-        errorMessage: this.backendTranslation.translateBackendMessage(error),
-      }));
-      return null;
-    }
-  }
-
   // --- Data Loading ---
 
-  async loadRemotes(): Promise<void> {
-    if (this.loadRemotesInFlight) {
-      if (!this.nextLoadRemotesPromise) {
-        this.nextLoadRemotesPromise = this.loadRemotesInFlight
-          .catch(() => undefined)
-          .then(() => {
-            this.nextLoadRemotesPromise = null;
-            return this.loadRemotes();
-          });
-      }
-      return this.nextLoadRemotesPromise;
-    }
+  loadRemotes(): Promise<void> {
+    return this.canLoad() ? this.catalogueRefresh.run() : Promise.resolve();
+  }
 
-    const promise = (async (): Promise<void> => {
-      try {
-        const [configs, settings] = await Promise.all([
+  private async fetchRemotes(): Promise<void> {
+    if (!this.canLoad()) return;
+    const scope = this.scope;
+    this.isLoading.set(true);
+    try {
+      const [configs, settings] = await abortableRequest(scope.signal, () =>
+        Promise.all([
           this.remoteService.getAllRemoteConfigs(),
           this.appSettingsService.getRemoteSettings(),
-        ]);
+        ])
+      );
+      if (!this.canLoad() || scope.signal.aborted) return;
+      const incomingNames = Object.keys(configs);
+      const currentNames = Array.from(this.remoteStates.keys());
+      const incoming = new Set(incomingNames);
 
-        const incomingNames = Object.keys(configs);
-        const currentNames = Array.from(this.remoteStates.keys());
-
-        for (const name of currentNames) {
-          if (!configs[name]) {
-            this.remoteStates.delete(name);
-            this.remoteService.clearCache(name);
-          }
+      for (const name of currentNames) {
+        if (!incoming.has(name)) {
+          this.remoteStates.delete(name);
+          this.remoteService.clearCache(name);
+          this.diskUsage.clear(name);
         }
-
-        let newAdded = false;
-
-        for (const name of incomingNames) {
-          const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
-          const state = this.remoteStates.get(name);
-
-          if (state) {
-            const prevConfig = state.base().config;
-            if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
-              this.remoteService.clearCache(name);
-            }
-            state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
-          } else {
-            newAdded = true;
-            this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
-          }
-        }
-
-        this.remoteSettings.set(settings);
-        this.remoteNames.set(incomingNames);
-        this.pathService.setRemoteNames(incomingNames);
-        if (newAdded) this.loadDiskUsageInBackground();
-      } catch (error) {
-        console.error('[RemoteFacadeService] Error loading remotes:', error);
-      } finally {
-        this.loadRemotesInFlight = null;
       }
-    })();
 
-    this.loadRemotesInFlight = promise;
-    return promise;
+      for (const name of incomingNames) {
+        const config = { ...(configs[name] as Record<string, unknown>), name } as RemoteConfig;
+        const state = this.remoteStates.get(name);
+
+        if (state) {
+          const prevConfig = state.config();
+          if (!deepEqual(prevConfig, config)) {
+            this.remoteService.clearCache(name);
+            this.diskUsage.clear(name);
+            state.config.set(config);
+          }
+          state.settings.set(settings[name] ?? {});
+        } else {
+          this.createRemoteState(config, settings[name] ?? {});
+        }
+      }
+
+      this.remoteNames.set(incomingNames);
+      this.diskUsage.prefetch(incomingNames);
+    } catch (error) {
+      if (!isAbortError(error))
+        console.error('[RemoteFacadeService] Error loading remotes:', error);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   // --- Layout Operations ---
@@ -463,7 +377,7 @@ export class RemoteFacadeService {
 
     const activeNames = new Set(this.remoteNames());
     await this.persistLayout(backendName, {
-      order: this.orderedRemotes().map(r => r.name),
+      order: this.orderedNames(),
       hidden: Array.from(hiddenSet).filter(name => activeNames.has(name)),
     });
   }
@@ -472,87 +386,52 @@ export class RemoteFacadeService {
     const options = this.appSettingsService.options();
     const allLayouts =
       (options?.['runtime.remote_layouts']?.value as unknown as BackendsRemotesLayout) || {};
-    allLayouts[backendName] = layout;
     this._remoteLayout.set(layout);
-    await this.appSettingsService.saveSetting('runtime', 'remote_layouts', allLayouts);
+    await this.appSettingsService.saveSetting('runtime', 'remote_layouts', {
+      ...allLayouts,
+      [backendName]: layout,
+    });
   }
 
-  async refreshAll(): Promise<void> {
-    if (this.refreshInFlight) {
-      if (!this.nextRefreshPromise) {
-        this.nextRefreshPromise = this.refreshInFlight
-          .catch(() => undefined)
-          .then(() => {
-            this.nextRefreshPromise = null;
-            return this.refreshAll();
-          });
-      }
-      return this.nextRefreshPromise;
-    }
+  refreshAll(): Promise<void> {
+    return this.canLoad() ? this.fullRefresh.run() : Promise.resolve();
+  }
 
-    const promise = (async (): Promise<void> => {
-      this.isLoading.set(true);
-      void this.flagConfigService.loadAllFlagFields();
-      void this.remoteService.getRemoteTypes();
-      try {
-        await Promise.all([
-          this.statusService.refreshStatus(),
+  private async fetchAll(): Promise<void> {
+    if (!this.canLoad()) return;
+    const scope = this.scope;
+    try {
+      const results = await abortableRequest(scope.signal, () =>
+        Promise.allSettled([
           this.loadRemotes(),
+          this.statusService.refreshStatus(),
           this.mountService.getMountedRemotes(),
           this.serveService.refreshServes(),
           this.jobService.refreshJobs(),
-        ]);
-        this.loadDiskUsageInBackground();
-      } finally {
-        if (!this.nextRefreshPromise) {
-          this.isLoading.set(false);
+        ])
+      );
+      if (!this.canLoad() || scope.signal.aborted) return;
+      for (const result of results) {
+        if (result.status === 'rejected' && !isAbortError(result.reason)) {
+          console.error('[RemoteFacadeService] Failed to refresh remote data:', result.reason);
         }
-        this.refreshInFlight = null;
       }
-    })();
-
-    this.refreshInFlight = promise;
-    return promise;
+    } catch (error) {
+      if (!isAbortError(error)) throw error;
+    }
   }
 
   // --- Action State ---
 
-  diskUsageSignal(remoteName: string): Signal<DiskUsage> {
-    return this.getOrCreateRemoteState(remoteName).disk;
-  }
-
-  featuresSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
-    return this.remoteService.getFeaturesSignal(remoteName, remoteType);
-  }
-
-  hasFeature(
-    remoteName: string,
-    feature: keyof RemoteFeatures | string,
-    remoteType?: string
-  ): boolean {
-    return this.remoteService.hasFeature(remoteName, feature, remoteType);
-  }
-
   canEmptyTrash(remote: { name: string; type?: string }): boolean {
-    return this.hasFeature(remote.name, 'CleanUp', remote.type);
-  }
-
-  openRemoteAbout(remote: { name: string; type: string; isLocal?: boolean }): void {
-    const isLocal = remote.isLocal ?? false;
-    const normalized = isLocal
-      ? remote.name
-      : this.pathService.normalizeRemoteForRclone(remote.name);
-    this.modalService.openRemoteAbout({
-      displayName: remote.name,
-      normalizedName: normalized,
-      type: remote.type,
-    });
+    return this.remoteService.hasFeature(remote.name, 'CleanUp');
   }
 
   async emptyTrash(
     remote: { name: string; type?: string; isLocal?: boolean },
     origin: Origin = 'dashboard'
   ): Promise<boolean> {
+    const scope = this.scope;
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('nautilus.modals.emptyTrash.title'),
       this.translate.instant('nautilus.modals.emptyTrash.message', { remote: remote.name }),
@@ -560,7 +439,7 @@ export class RemoteFacadeService {
       'common.cancel',
       { icon: 'trash', color: 'warn' }
     );
-    if (!confirmed) return false;
+    if (!confirmed || scope.signal.aborted) return false;
 
     try {
       const isLocal = remote.isLocal ?? false;
@@ -589,11 +468,12 @@ export class RemoteFacadeService {
     profileName?: string,
     operationType?: PrimaryActionType
   ): Promise<T> {
-    this.addAction(remoteName, { type: action, profileName, operationType });
+    const entry = { type: action, profileName, operationType };
+    this.addAction(remoteName, entry);
     try {
       return await operation();
     } finally {
-      this.removeAction(remoteName, action, profileName, operationType);
+      this.removeAction(remoteName, entry);
     }
   }
 
@@ -604,23 +484,16 @@ export class RemoteFacadeService {
     }));
   }
 
-  private removeAction(
-    remoteName: string,
-    action: RemoteAction,
-    profileName?: string,
-    operationType?: PrimaryActionType
-  ): void {
-    this._actionInProgress.update(state => ({
-      ...state,
-      [remoteName]: (state[remoteName] ?? []).filter(
-        a =>
-          !(
-            a.type === action &&
-            a.profileName === profileName &&
-            (operationType === undefined || a.operationType === operationType)
-          )
-      ),
-    }));
+  private removeAction(remoteName: string, entry: ActionState): void {
+    this._actionInProgress.update(state => {
+      const actions = state[remoteName];
+      if (!actions?.includes(entry)) return state;
+      const next = { ...state };
+      const remaining = actions.filter(action => action !== entry);
+      if (remaining.length) next[remoteName] = remaining;
+      else delete next[remoteName];
+      return next;
+    });
   }
 
   // --- Operations ---
@@ -725,41 +598,28 @@ export class RemoteFacadeService {
       const mounts = this.mountedRemotes().filter(
         m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
       );
-      const mountPoint =
-        (profileName
-          ? mounts.find(m => m.profile === profileName)?.mount_point
-          : mounts[0]?.mount_point) ?? mounts[0]?.mount_point;
+      const mountPoint = profileName
+        ? mounts.find(m => m.profile === profileName)?.mount_point
+        : mounts[0]?.mount_point;
       if (!mountPoint) throw new Error(`Active mount not found for ${remoteName}`);
       await this.mountService.unmountRemote(mountPoint, remoteName);
       return;
     }
 
-    const remote = remoteName.replace(/:$/, '');
-    const groupName = profileName ? `${type}/${remote}/${profileName}` : `${type}/${remote}`;
-    await this.jobService.stopJobsByGroup(groupName);
-  }
-
-  async emergencyStopAll(): Promise<void> {
-    await Promise.all([
-      this.jobService.stopAllActiveJobs(),
-      this.mountService.unmountAllRemotes('normal'),
-      this.serveService.stopAllServes('normal'),
-    ]);
-  }
-
-  async unmountRemote(remoteName: string): Promise<void> {
-    await this.executeAction(remoteName, 'unmount', async () => {
-      const mount = this.mountedRemotes().find(
-        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName && isProfileScoped(m)
-      );
-      if (!mount) throw new Error(`No mount point found for ${remoteName}`);
-      await this.mountService.unmountRemote(mount.mount_point, remoteName);
-    });
+    const groups = new Set(
+      this.jobService
+        .getActiveJobsForRemote(remoteName, profileName)
+        .filter(job => job.job_type === type && isProfileScoped(job))
+        .map(job => job.group)
+        .filter((group): group is string => !!group)
+    );
+    await Promise.all([...groups].map(group => this.jobService.stopJobsByGroup(group)));
   }
 
   async deleteRemote(remoteName: string): Promise<void> {
+    const backendName = this.backendService.activeBackend();
     await this.executeAction(remoteName, 'delete', async () => {
-      await this.remoteService.deleteRemote(remoteName);
+      await this.remoteService.deleteRemote(remoteName, backendName);
       await this.refreshAll();
       this.notificationService.showSuccess(
         this.translate.instant('backendSuccess.remote.deleted', { name: remoteName })
@@ -779,7 +639,10 @@ export class RemoteFacadeService {
       const settings = this.getRemoteSettings(remoteName);
       const configKey = REMOTE_CONFIG_KEYS[path as keyof typeof REMOTE_CONFIG_KEYS];
       const profiles = settings[configKey as keyof RemoteSettings] as ProfileConfigMap | undefined;
-      path = ((profiles ? Object.values(profiles)[0]?.['dest'] : undefined) as string) ?? '';
+      const profile = profileName ? profiles?.[profileName] : Object.values(profiles ?? {})[0];
+      const rclone = getRcloneCfg(profile) ?? profile;
+      const destination = extractProfileDest(rclone) ?? extractProfileSource(rclone);
+      path = typeof destination === 'string' ? destination : '';
     }
 
     if (this.pathService.isLocalPath(path) || path.startsWith('saf://')) {
@@ -808,18 +671,13 @@ export class RemoteFacadeService {
     }
   }
 
-  generateUniqueRemoteName(baseName: string): string {
-    return findUniqueName(baseName, Array.from(this.remoteStates.keys()));
-  }
-
-  generateUniqueCloneName(baseName: string): string {
+  private generateUniqueCloneName(baseName: string): string {
     const cleanBase = baseName.replace(/-(?:clone|\d+)+$/, '');
     return findUniqueName(`${cleanBase}-clone`, Array.from(this.remoteStates.keys()));
   }
 
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
-    const base = this.remoteStates.get(remoteName)?.base() as
-      Omit<Remote, 'status' | 'features'> | undefined;
+    const base = this.remoteStates.get(remoteName)?.config();
     if (!base) return null;
 
     const newName = this.generateUniqueCloneName(base.name);
@@ -827,248 +685,60 @@ export class RemoteFacadeService {
     const retargetedSettings = retargetProfilesRemote(settings, remoteName, newName);
 
     return {
-      config: { ...(base.config as ConfigRecord), name: newName },
-      name: newName,
       ...retargetedSettings,
-    } as RemoteSettings;
+      config: { ...base, name: newName },
+      name: newName,
+    };
   }
 
   async deleteJob(jobId: number): Promise<void> {
     await this.jobService.deleteJob(jobId);
   }
 
-  loadDiskUsageInBackground(remotes?: Remote[]): void {
-    const generation = ++this.backgroundLoadGeneration;
-    const targets = remotes ?? this.activeRemotes();
-    if (!targets.length) return;
-
-    void (async (): Promise<void> => {
-      for (const remote of targets) {
-        if (generation !== this.backgroundLoadGeneration) return;
-        try {
-          await this.getCachedOrFetchDiskUsage(remote.name);
-        } catch (e) {
-          console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
-        }
-      }
-    })();
-  }
-
-  // --- Private Signal Accessors ---
-
-  private getOrCreateRemoteState(
-    name: string,
-    config?: RemoteConfig,
-    settings?: RemoteSettings
-  ): RemoteState {
-    const existing = this.remoteStates.get(name);
-    if (existing) {
-      return existing;
-    }
-
-    const baseSig = signal<Omit<Remote, 'status' | 'features'>>({
-      name,
-      type: config?.type ?? '',
-      config: config ?? { name, type: '' },
-      primaryActions: (settings?.['primaryActions'] as PrimaryActionType[]) ?? [],
-      syncActions: (settings?.['syncActions'] as PrimaryActionType[]) ?? [],
-    });
-
+  private createRemoteState(config: RemoteConfig, settings: RemoteSettings): void {
+    const name = config.name;
+    const configState = signal(config);
+    const settingsState = signal(settings ?? {}, { equal: deepEqual });
     const state: RemoteState = {
-      base: baseSig,
-      disk: signal<DiskUsage>({ loading: true, error: false }),
-      enriched: this.createEnrichedSignal(name, baseSig),
+      config: configState,
+      settings: settingsState,
+      remote: this.createRemoteSignal(name, configState, settingsState),
     };
     this.remoteStates.set(name, state);
-    return state;
   }
 
-  // --- Enriched Remote Construction ---
-
-  private createEnrichedSignal(
+  private createRemoteSignal(
     name: string,
-    baseSig: WritableSignal<Omit<Remote, 'status' | 'features'>>
+    configState: Signal<RemoteConfig>,
+    settingsState: Signal<RemoteSettings>
   ): Signal<Remote> {
-    return computed(() => {
-      const state = this.remoteStates.get(name);
-      if (!state) {
-        return {
-          ...baseSig(),
-          status: {} as unknown as RemoteStatus,
-          features: {} as unknown as RemoteFeatures,
-        };
-      }
-
-      const enriched = this.enrichRemote(
-        baseSig(),
-        this.jobService.jobsByRemote()[name] ?? [],
-        this.mountService.mountsByRemote()[name] ?? [],
-        this.serveService.servesByRemote()[name] ?? [],
-        (this.remoteSettings()[name] ?? {}) as RemoteSettings
-      );
-
-      return {
-        ...enriched,
-        status: { ...enriched.status, diskUsage: state.disk() },
-        features: this.remoteService.getFeaturesSignal(name, baseSig().type)(),
-      };
+    // Group stores emit for all remotes. Preserve unchanged per-remote inputs across polls.
+    const jobs = computed(() => this.jobService.jobsByRemote()[name] ?? [], {
+      equal: areJobListsEqual,
     });
+    const mounts = computed(() => this.mountService.mountsByRemote()[name] ?? [], {
+      equal: deepEqual,
+    });
+    const serves = computed(() => this.serveService.servesByRemote()[name] ?? [], {
+      equal: deepEqual,
+    });
+    const profiles = computed(() => readRemoteProfiles(settingsState()));
+    const status = computed(() =>
+      buildRemoteProfileStatus({
+        profiles: profiles(),
+        jobs: jobs(),
+        mounts: mounts(),
+        serves: serves(),
+      })
+    );
+    return computed(() => ({
+      name,
+      type: configState().type,
+      config: configState(),
+      primaryActions: profiles().primaryActions,
+      syncActions: profiles().syncActions,
+      status: { ...status(), diskUsage: this.diskUsage.usage(name)() },
+      features: this.remoteService.getFeaturesSignal(name)(),
+    }));
   }
-
-  private enrichRemote(
-    base: Omit<Remote, 'status' | 'features'>,
-    jobs: JobInfo[],
-    mounts: MountedRemote[],
-    serves: ServeListItem[],
-    settings: RemoteSettings
-  ): Omit<Remote, 'features'> {
-    const getProfiles = (key: keyof typeof REMOTE_CONFIG_KEYS): ProfileConfigMap =>
-      (settings[REMOTE_CONFIG_KEYS[key]] ?? {}) as ProfileConfigMap;
-
-    const mountConfigs = getProfiles('mount');
-    const serveConfigs = getProfiles('serve');
-
-    const profileMounts = mounts.filter(isProfileScoped);
-    const profileServes = serves.filter(isProfileScoped);
-
-    return {
-      ...base,
-      config: (settings['config'] as RemoteConfig) || base.config,
-      primaryActions: (settings['primaryActions'] as PrimaryActionType[]) ?? [],
-      syncActions: (settings['syncActions'] as PrimaryActionType[]) ?? [],
-      status: {
-        diskUsage: { loading: true },
-        sync: this.buildOperationState('sync', jobs, settings),
-        copy: this.buildOperationState('copy', jobs, settings),
-        bisync: this.buildOperationState('bisync', jobs, settings),
-        move: this.buildOperationState('move', jobs, settings),
-        check: this.buildOperationState('check', jobs, settings),
-        delete: this.buildOperationState('delete', jobs, settings),
-        copyurl: this.buildOperationState('copyurl', jobs, settings),
-        archivecreate: this.buildOperationState('archivecreate', jobs, settings),
-        cryptcheck: this.buildOperationState('cryptcheck', jobs, settings),
-        mount: {
-          ...buildStatusEntry(
-            profileMounts,
-            Object.keys(mountConfigs),
-            mountConfigs,
-            m => m.profile ?? undefined,
-            m => m.mount_point
-          ),
-        },
-        serve: {
-          ...buildStatusEntry(
-            profileServes,
-            Object.keys(serveConfigs),
-            serveConfigs,
-            s => s.profile ?? undefined,
-            s => s.id
-          ),
-          count: profileServes.length,
-          serves: profileServes,
-        },
-      },
-    };
-  }
-
-  private buildOperationState(
-    type: SyncOperationType,
-    jobs: JobInfo[],
-    settings: RemoteSettings
-  ): RemoteOperationState {
-    const typeJobs = jobs.filter(j => j.job_type === type && isProfileScoped(j));
-    const running = typeJobs.filter(j => j.status === 'Running');
-    const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
-    const profileNames = Object.keys(profiles);
-
-    const latest = [...typeJobs].sort((a, b) => b.jobid - a.jobid).at(0);
-
-    return {
-      ...buildStatusEntry(
-        running,
-        profileNames,
-        profiles,
-        j => j.profile,
-        j => j.jobid
-      ),
-      jobId: running[0]?.jobid ?? latest?.jobid,
-      lastRunProfiles: buildActiveProfiles(
-        typeJobs,
-        profileNames,
-        j => j.profile,
-        j => j.jobid
-      ),
-    };
-  }
-}
-
-// --- Module-level pure helpers (no `this` dependency) ---
-
-function buildStatusEntry<T, V>(
-  items: T[],
-  profileNames: string[],
-  profiles: ProfileConfigMap,
-  getProfile: (i: T) => string | null | undefined,
-  getValue: (i: T) => V
-): {
-  active: boolean;
-  activeProfiles: Record<string, V>;
-  configuredProfiles: string[];
-  profileBrowsePaths: Record<string, string[]>;
-} {
-  return {
-    active: items.length > 0,
-    activeProfiles: buildActiveProfiles(items, profileNames, getProfile, getValue),
-    configuredProfiles: profileNames,
-    profileBrowsePaths: buildProfileBrowsePaths(profiles),
-  };
-}
-
-function buildProfileBrowsePaths(profileMap: ProfileConfigMap): Record<string, string[]> {
-  const result: Record<string, string[]> = {};
-  for (const [name, profile] of Object.entries(profileMap)) {
-    const rclone = (profile['rclone'] as Record<string, unknown>) || profile;
-    const rawPaths = RCLONE_PATH_KEYS.map(key => rclone[key]);
-
-    const paths = rawPaths
-      .flat()
-      .filter((val): val is string => typeof val === 'string' && val.length > 0);
-
-    if (paths.length > 0) {
-      result[name] = Array.from(new Set(paths));
-    }
-  }
-  return result;
-}
-
-function buildActiveProfiles<T, V>(
-  items: T[],
-  profileNames: string[],
-  getProfile: (i: T) => string | null | undefined,
-  getValue: (i: T) => V
-): Record<string, V> {
-  const result: Record<string, V> = {};
-  for (const item of items) {
-    const profile = getProfile(item)?.trim();
-    if (profile && profileNames.includes(profile)) {
-      if (!(profile in result)) result[profile] = getValue(item);
-    }
-  }
-  return result;
-}
-
-function shallowEqualObjects(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
-  const aKeys = Object.keys(a as object);
-  const bKeys = Object.keys(b as object);
-  if (aKeys.length !== bKeys.length) return false;
-  const bObj = b as Record<string, unknown>;
-  for (const key of aKeys) {
-    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
-    const av = (a as Record<string, unknown>)[key];
-    const bv = bObj[key];
-    if (av !== bv && JSON.stringify(av) !== JSON.stringify(bv)) return false;
-  }
-  return true;
 }

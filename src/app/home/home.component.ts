@@ -1,3 +1,4 @@
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import {
   Component,
   afterNextRender,
@@ -69,6 +70,7 @@ import { syncResponsiveSidebar } from 'src/app/shared/utils';
   styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent {
+  private readonly capacity = inject(RemoteDiskUsageService);
   private readonly modalService = inject(ModalService);
   private readonly uiStateService = inject(UiStateService);
   private readonly notificationService = inject(NotificationService);
@@ -128,10 +130,10 @@ export class HomeComponent {
       view: 'main_menu',
       isOver: this.isSidebarOver,
       isOpen: this.isSidebarOpen,
+      close: () => this.setSidebarOpen(false),
     });
 
     this.destroyRef.onDestroy(() => {
-      this.uiStateService.resetSelectedRemote();
       this.uiStateService.unregisterMobileSidebar('main_menu');
     });
   }
@@ -232,17 +234,11 @@ export class HomeComponent {
   }
 
   async handleRetryDiskUsage(remoteName: string): Promise<void> {
-    await this.remoteFacadeService.getCachedOrFetchDiskUsage(
-      remoteName,
-      undefined,
-      'dashboard',
-      undefined,
-      true
-    );
+    await this.capacity.load(remoteName, { force: true });
   }
 
   openRemoteAbout(remote: Remote): void {
-    this.remoteFacadeService.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   hasCleanUpFeature(remote: Remote): boolean {
@@ -322,7 +318,7 @@ export class HomeComponent {
   }
 
   async cloneRemote(remoteName: string): Promise<void> {
-    const remote = this.remoteFacadeService.activeRemotes().find(r => r.name === remoteName);
+    const remote = this.remoteFacadeService.getRemote(remoteName);
     if (!remote) return;
     // Note: Cloned remote creation emits REMOTE_CACHE_CHANGED which updates RemoteFacadeService.
     this.modalService.openRemoteConfig({

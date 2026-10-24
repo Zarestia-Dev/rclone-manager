@@ -109,7 +109,6 @@ describe('QuickRunService', () => {
     expect(service).toBeTruthy();
     expect(service.quickRuns()).toEqual([]);
     expect(service.selectedId()).toBeNull();
-    expect(service.isCreating()).toBe(false);
   });
 
   it('should refresh quick runs when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
@@ -454,6 +453,35 @@ describe('QuickRunService', () => {
 
       expect(service.runningIds().has('qr-serve-1')).toBe(true);
       expect(service.runningIds().has('qr-serve-2')).toBe(false);
+    });
+
+    it('keeps the latest running master execution independent of child jobs and reused IDs', async () => {
+      invokeSpy.mockResolvedValue([{ ...mockQuickRun, id: 'qr-master', operationType: 'sync' }]);
+      await service.refresh();
+      const jobs = TestBed.inject(JobManagementService).jobs as ReturnType<typeof signal>;
+      jobs.set([
+        {
+          jobid: 500,
+          status: 'Completed',
+          quick_run_id: 'qr-master',
+          start_time: '2026-10-01T00:00:00Z',
+        },
+        {
+          jobid: 1,
+          status: 'Running',
+          quick_run_id: 'qr-master',
+          start_time: '2026-10-02T00:00:00Z',
+        },
+        {
+          jobid: 2,
+          parent_job_id: 1,
+          status: 'Completed',
+          quick_run_id: 'qr-master',
+          start_time: '2026-10-03T00:00:00Z',
+        },
+      ]);
+      TestBed.tick();
+      expect(service.runningIds().has('qr-master')).toBe(true);
     });
 
     it('should isolate sync job status by quick_run_id and ignore remote profile jobs', async () => {

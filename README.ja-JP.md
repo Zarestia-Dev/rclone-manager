@@ -63,7 +63,7 @@
 - ⚙️ **マウント & 公開:** 簡単なマウント操作と公開（WebDAV、SFTP、HTTP、FTP）の管理が行えます。
 - 🔄 **ジョブウォッチャー:** 転送のリアルタイムモニタリングと帯域幅制御が可能です。
 - 📱 **Android SAF & DocumentsProvider:** Storage Access Framework (SAF) とプロセス内 VFS マウントブリッジにより、root 権限や FUSE なしでシステムファイルピッカーからクラウドストレージにネイティブアクセスできます。
-- 🌐 **ヘッドレスモード:** VPS や NAS 上で Web サーバーとして実行したい場合は [RClone Manager Headless](headless/README.md) をご覧ください！
+- 🌐 **ヘッドレスモード:** VPS や NAS 上で Web サーバーとして実行したい場合は [RClone Manager Headless](backend/server/README.md) をご覧ください！
 
 ---
 

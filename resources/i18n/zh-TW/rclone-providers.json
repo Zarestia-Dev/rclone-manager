@@ -192,6 +192,14 @@
       "decompress": {
         "title": "解壓縮",
         "help": "如果設定，將解密/解壓 gzip 編碼的物件。\n\n可以將帶有 \"Content-Encoding: gzip\" 設定的物件上傳到 Azure Blob 儲存。通常 rclone 會將這些檔案下載為壓縮物件。\n\n如果設定了此標誌，rclone 將在接收到這些檔案時使用 \"Content-Encoding: gzip\" 進行解壓。這意味著 rclone 無法檢查大小和雜湊 (Hash)，但檔案內容會被解壓。\n"
+      },
+      "use_arrow_list": {
+        "title": "使用 Apache Arrow 清單",
+        "help": "使用 ListBlobs Apache Arrow 回應格式代替 XML 取得目錄清單。Arrow 回應更小，解析成本也低得多，可將大型容器的列舉速度提高數倍。與 list_parallelism 搭配使用效果最佳。\n\nMicrosoft 的 \"Blob Listing with Apache Arrow\" 處於公開預覽階段，僅支援平面命名空間帳戶。對於階層式命名空間帳戶（ADLS Gen2）或其他不支援此功能的情況，伺服器會回傳 XML，清單操作會自動退回一般 XML 流程，並記錄偵錯層級日誌。"
+      },
+      "list_parallelism": {
+        "title": "清單並行度",
+        "help": "用於列舉目錄的並行分片數。\n\n大於 1 時，將各目錄的 blob 名稱空間劃分為多個範圍，並使用 Arrow 的 startFrom/endBefore 參數並行列舉。對含有數百萬物件的容器，無論遞迴列舉（ListR）或單一目錄列舉，都可顯著加速。並行度增至約 30 前，速度通常仍會提升。\n\n僅 Arrow 支援伺服器端名稱範圍，因此必須同時啟用 use_arrow_list。若帳戶不支援範圍列舉（如使用階層式命名空間），會退回循序列舉。預設值 0 或 1 均表示循序列舉。"
       }
     },
     "azurefiles": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "權杖 (Token)伺服器位址",
         "help": "權杖 (Token)伺服器URL。\n\n留空使用服務商預設值。"
+      },
+      "impersonate_admin": {
+        "title": "以團隊管理員身分操作",
+        "help": "以團隊管理員身分執行操作時使用的團隊成員 ID。\n\n將指定的成員 ID（如 \"dbmid:...\"）寫入 Dropbox-API-Select-Admin 標頭。此處直接使用成員 ID，而非電子郵件地址。\n\n若要使用 impersonate_admin，執行 \"rclone config\" 時也應設定此選項，以要求通常不會要求的 \"team_data.member\" 權限範圍。此權限需要 Dropbox 團隊管理員在 OAuth 流程中核准。\n\nrclone 預設權限不包含 \"team_data.member\"，因此必須使用自己的應用程式，並設定自己的 client_id 與 client_secret。"
+      },
+      "skip_shared_folders": {
+        "title": "略過共用資料夾",
+        "help": "略過所有共用資料夾。\n\n不論擁有者是誰，目錄清單都會排除共用資料夾掛載點。適合使用設定了共用資料夾命名空間的獨立遠端連線，個別備份共用資料夾的情況。"
+      },
+      "skip_unowned_folders": {
+        "title": "略過非本人擁有的共用資料夾",
+        "help": "略過不屬於目前使用者的共用資料夾。\n\n從目錄清單排除這些共用資料夾掛載點。備份共用同一資料夾的多個 Dropbox 帳戶時，可避免重複備份共用資料。\n\n在 Dropbox Business 中，團隊資料夾屬於團隊。一般成員僅有編輯或檢視權限，因此這些資料夾會被視為非本人擁有並排除。若要備份團隊資料夾，請停用此選項或使用團隊管理員帳戶執行。\n\n若已啟用 --dropbox-skip-shared-folders，此選項無效。每個共用資料夾掛載點會額外執行一次 API 呼叫。"
       }
     },
     "fichier": {
@@ -1802,16 +1822,16 @@
         "help": "從 https://www.linkbox.to/admin/account 取得的權杖 (Token)。"
       },
       "email": {
-        "title": "Email",
-        "help": "Email for login"
+        "title": "電子郵件",
+        "help": "用於登入的電子郵件地址"
       },
       "password": {
-        "title": "Password",
-        "help": "Password for login"
+        "title": "密碼",
+        "help": "用於登入的密碼"
       },
       "web_token": {
-        "title": "Web Token",
-        "help": "Web API login token - set automatically."
+        "title": "網頁權杖",
+        "help": "網頁 API 登入權杖，會自動設定。"
       }
     },
     "local": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "上傳分塊閾值",
         "help": "切換到分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n\n預設禁用，因為商業版中單塊上傳後設定修改時間會產生新版本，導致佔用雙倍空間。\n\n見：https://github.com/rclone/rclone/issues/1716"
+      },
+      "tenant_url": {
+        "title": "租用戶 URL",
+        "help": "用於非管理員存取 OneDrive 的租用戶 URL。\n\n設定為 SharePoint 租用戶 URL，即可使用 SharePoint v2.0 API 端點代替標準 Microsoft Graph API，無需管理員同意即可存取商務用 OneDrive。\n\n可在瀏覽器開發人員工具的網路要求中搜尋 \"driveAccessToken\"，尋找包含租用戶 URL 與磁碟機 ID 的 \".driveUrl\" 欄位。\n\n範例：https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "上傳分塊閾值",
         "help": "切換到分塊上傳的閾值。\n\n大於此大小的檔案將按 chunk_size 分塊上傳。\n最小 0，最大 5 GiB。"
+      },
+      "decompress": {
+        "title": "解壓縮",
+        "help": "解壓縮使用 gzip 編碼的物件。\n\n可將設定了 \"Content-Encoding: gzip\" 的物件上傳至物件儲存空間。通常 rclone 會以壓縮形式下載這些檔案。\n\n啟用此選項後，rclone 會在接收時解壓縮檔案。此時無法驗證大小與雜湊值，但檔案內容會被解壓縮。"
       }
     },
     "pcloud": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Xxh3Sum 命令",
         "help": "用於讀取 XXH3 雜湊值 (Hash)的命令。\n\n留空則自動檢測。"
+      },
+      "encoding": {
+        "title": "編碼方式",
+        "help": "後端使用的編碼方式。\n\n詳見概述中的[編碼部分](/overview/#encoding)。"
+      },
+      "pin_host_key": {
+        "title": "固定主機金鑰",
+        "help": "在首次連線時固定伺服器主機金鑰（首次使用時信任，TOFU）。\n\n應作為命令列參數 --sftp-pin-host-key 使用一次。執行後，伺服器主機金鑰會記錄至 host_keys。後續執行時移除此參數，rclone 會檢查 host_keys，金鑰不符時拒絕連線。\n\n不建議在設定檔中永久啟用此選項。啟用期間，伺服器後續提供的新主機金鑰演算法也會被接受，信任範圍會超出最初固定的金鑰。合法更換金鑰後，請再次使用此參數執行以固定新金鑰。\n\n首次連線未經身分驗證，最好在可信任的網路中進行，或將 rclone 日誌中的指紋與透過獨立管道取得的指紋交叉核對。\n\n若同時設定 known_hosts_file，則以它為優先，此選項會被忽略。"
+      },
+      "host_keys": {
+        "title": "已固定的主機金鑰",
+        "help": "用於驗證此遠端伺服器的固定主機金鑰。\n\n以逗號分隔的 \"algo base64-key\" 清單，格式與 OpenSSH known_hosts 行的第二、第三欄位相同。通常透過帶 --sftp-pin-host-key 執行一次自動填入，也可手動填入透過獨立管道取得的伺服器公開金鑰。每項都是完整公開金鑰，而非其 SHA256 指紋。\n\n清單非空時，伺服器提供的金鑰必須與其中一項相符，否則拒絕連線。合法更換金鑰後，可清除此值並使用 --sftp-pin-host-key 重新連線，或直接編輯此值。\n\n最多可固定 16 個金鑰。"
       }
     },
     "sharefile": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "權杖 (Token)地址",
         "help": "權杖 (Token)伺服器位址。\n\n留空使用服務商預設地址。"
+      },
+      "upload_wait": {
+        "title": "上傳後等待時間",
+        "help": "上傳完成後，設定修改時間之前的等待時長。\n\nYandex Disk 會在上傳完成後於伺服器端非同步完成最終處理。在此期間設定修改時間會導致伺服器回傳 500 Internal Server Error。\n\n若上傳時遇到 500 錯誤，設為 2s 通常即可解決，但會降低上傳速度。Yandex 支援建議使用 1.5s - 3s。"
       }
     },
     "zoho": {
@@ -3714,6 +3758,30 @@
       "upload_cutoff": {
         "title": "上傳分塊閾值",
         "help": "切換到大檔案上傳 API 的閾值（≥ 10 MiB）。"
+      },
+      "root_folder_id": {
+        "title": "根資料夾 ID",
+        "help": "根資料夾的 ID。\n\n通常留空。填入後可讓 rclone 從根目錄以外的資料夾開始操作。"
+      },
+      "tpslimit": {
+        "title": "每秒 API 交易數",
+        "help": "每秒 API 交易數上限。\n\nZoho WorkDrive 會在要求過快時回傳 HTTP 429（F7008，\"Request rate limit exceeded\"），因此資料 API 呼叫（列舉、上傳、下載、複製、移動、刪除）會依此速率調節。\n\n設為 0 可如全域 --tpslimit 一樣取消上限，但退避與 Retry-After 始終有效，無法完全關閉節流。\n\n預設值 6 是安全且可持續的速率。更高的值可能觸發長時間的 429 Retry-After 等待，反而降低輸送量；僅在帳戶能承受時提高。"
+      },
+      "tpslimit_burst": {
+        "title": "API 要求突發量",
+        "help": "--zoho-tpslimit 允許無需等待連續執行的 API 呼叫數。\n\n這是權杖桶容量。Zoho 應保持為 1：大於 1 時，閒置後可同時發出多次呼叫，可能觸發成組的 429 錯誤。"
+      },
+      "list_folder_limit": {
+        "title": "資料夾列舉次數上限",
+        "help": "每個 --zoho-list-folder-window 內允許列舉同一資料夾的最大次數。\n\nZoho WorkDrive 對 GET files/{id}/files 依資料夾個別限流，與 --zoho-tpslimit 無關。短時間內反覆列舉，即使整體要求速率較低，也可能收到 HTTP 429（F7008）與長達數分鐘的 Retry-After。實測約 60s 的滑動視窗允許約 19 次，第 20 次失敗。預設每 60s 19 次正是依此設定。\n\n每個視窗先允許連續執行 --zoho-list-folder-burst 次，突發額度每個視窗重設；其餘呼叫間隔為 --zoho-list-folder-window/(limit - burst)，預設約 4.6s。近期呼叫的滑動紀錄會跨視窗邊界繼續執行總量上限。0 表示停用。僅重複列舉同一資料夾時延遲；不同資料夾或列舉次數少於 --zoho-list-folder-burst 的資料夾無需等待。\n\n值越高代表允許的次數越多，並非更安全：超過 19 會觸發 F7008。降低此值可增加餘裕，但會降低列舉回應速度。"
+      },
+      "list_folder_window": {
+        "title": "資料夾列舉時間視窗",
+        "help": "--zoho-list-folder-limit 的時間視窗。\n\n預設 60s（顯示為 1m0s），與 Zoho 的實際滑動視窗一致：任意此長度的時間段內，同一資料夾最多可列舉 --zoho-list-folder-limit 次。無單位數字依秒解析（\"60\" = \"60s\"）。\n\n增大視窗或降低上限可增加安全餘裕。持續列舉同一資料夾時的間隔為 window/(limit - burst)。"
+      },
+      "list_folder_burst": {
+        "title": "資料夾列舉突發量",
+        "help": "--zoho-list-folder-limit 開始節流前，同一資料夾可連續列舉的次數。\n\n突發量包含在總上限內，提高它不會增加每個視窗的總量。此次數的呼叫可立即執行，其餘 limit - burst 次依 window/(limit - burst) 間隔執行。每個視窗邊界都會重設突發額度，但近期呼叫的滑動紀錄仍會確保總量不超限。常見同步中僅列舉幾次的資料夾無需等待。\n\n預設 6 是在每 60s 19 次上限下實測驗證的最大突發量。4、5、6 均正常；超限測試恰在第 20 次列舉觸發 F7008。請保持遠低於約 15，因為 Zoho 另有約 15–16 次連續呼叫的瞬時上限。設為 1 則從第二次列舉開始節流。大於或等於上限的值會被限制為 limit - 1。"
       }
     },
     "filen": {
@@ -3872,16 +3940,16 @@
         "help": "遠端連線的描述"
       },
       "upload_concurrency": {
-        "title": "Upload Concurrency",
-        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+        "title": "上傳並行數",
+        "help": "分段上傳的並行數。\n\n這是同一個檔案同時上傳的區塊數量。\n\n請注意，每個區塊都會在記憶體中緩衝。"
       },
       "upload_cutoff": {
-        "title": "Upload Cutoff",
-        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+        "title": "分段上傳門檻",
+        "help": "切換至分段上傳的大小門檻。\n\n大於此大小的檔案會以 chunk_size 為單位分段上傳。\n最小值為 100 MiB，最大值為 5 GiB。"
       },
       "chunk_size": {
-        "title": "Chunk Size",
-        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+        "title": "區塊大小",
+        "help": "分段上傳的區塊大小。\n\n大於 upload_cutoff 的檔案會以此大小分段上傳。\n\n記憶體用量約為 chunk_size * upload_concurrency。"
       }
     },
     "huaweidrive": {

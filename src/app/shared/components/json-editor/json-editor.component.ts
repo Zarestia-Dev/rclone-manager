@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -30,20 +31,23 @@ import {
   TranslationResult,
   ChipDef,
   LINKED_PROFILE_TYPES,
+  type PathGroup,
 } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import {
-  matchesConfigSearch,
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
-  resolveOptionExamples,
-} from 'src/app/services/remote/utils/remote-config.utils';
+} from 'src/app/services/remote/utils/profile-mapper.utils';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { PathService, PathGroup } from '../../../services/infrastructure/platform/path.service';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
+import { CodeEditorToolbarComponent } from '../code-editor-toolbar/code-editor-toolbar.component';
+import { codeEditorExtensions } from '../code-editor-toolbar/code-editor.extensions';
 import {
   EditorView,
   keymap,
@@ -257,6 +261,7 @@ function buildRcloneCompletionSource(
 @Component({
   selector: 'app-json-editor',
   imports: [
+    CodeEditorToolbarComponent,
     MatIconModule,
     MatDividerModule,
     CdkMenuModule,
@@ -274,6 +279,7 @@ export class JsonEditorComponent {
   readonly fieldDefs = input<RcConfigOption[]>([]);
   readonly provider = input<string | null>(null);
   readonly searchQuery = input('');
+  readonly searchKeywords = input<readonly string[]>([]);
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
   readonly preferFieldName = input(false);
@@ -302,6 +308,7 @@ export class JsonEditorComponent {
   });
 
   private readonly destroyRef = inject(DestroyRef);
+  private readonly configSearch = inject(ConfigSearchService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
@@ -327,6 +334,7 @@ export class JsonEditorComponent {
   readonly menuTrigger = viewChild<CdkMenuTrigger>(CdkMenuTrigger);
 
   private editorView: EditorView | null = null;
+  readonly codeEditor = signal<EditorView | null>(null);
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private isPushingToEditor = false;
   private readonly explicitKeys = signal<ReadonlySet<string>>(new Set());
@@ -434,27 +442,32 @@ export class JsonEditorComponent {
     return excluded;
   });
 
+  private readonly matchingFields = computed(() => {
+    const query = this.searchQuery().trim();
+    const prefix = this.keyPrefix();
+    const excluded = this.excludedSet();
+    return this.fieldDefs().filter(
+      field =>
+        !excluded.has(prefix + this.fieldKey(field)) &&
+        (!query || this.configSearch.matches(field, query, this.provider(), this.searchKeywords()))
+    );
+  });
+
   readonly chips = computed<ChipDef[]>(() => {
+    this.formValue();
     const type = this.flagType();
     const optionsGroup = hasOptionsGroup(type)
       ? (this.formGroup().get('options') as FormGroup)
       : this.formGroup();
     const value = optionsGroup ? (optionsGroup.getRawValue() as Record<string, unknown>) : {};
-    const defs = this.fieldDefs();
-    const query = this.searchQuery().trim().toLowerCase();
+    const defs = this.matchingFields();
     const prefix = this.keyPrefix();
     const explicit = this.explicitKeys();
-    const excluded = this.excludedSet();
 
     const isSafMount =
       type === 'mount' &&
       (value['mountType'] === 'saf' || String(value['mountPoint'] ?? '').startsWith('saf://'));
-    const baseDefs = defs.filter(f => {
-      const key = this.fieldKey(f);
-      if (isSafMount && key === 'mountPoint') return false;
-      return !excluded.has(prefix + key);
-    });
-    const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
+    const filteredDefs = isSafMount ? defs.filter(f => this.fieldKey(f) !== 'mountPoint') : defs;
 
     return filteredDefs.map(field => {
       const controlKey = prefix + this.fieldKey(field);
@@ -665,7 +678,7 @@ export class JsonEditorComponent {
       rcloneLinter,
       exampleWidgetsExtension,
       autocompletion({ override: [completionSource] }),
-      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
+      codeEditorExtensions(this.translateService),
       EditorView.updateListener.of(update => {
         if (update.docChanged && this.activeExampleMenu()) {
           this.closeExampleMenu();
@@ -681,6 +694,7 @@ export class JsonEditorComponent {
       state: EditorState.create({ doc: this.serializeForm(), extensions }),
       parent: container.nativeElement,
     });
+    this.codeEditor.set(this.editorView);
   }
 
   private createExampleWidgetsExtension(): Extension {
@@ -1197,11 +1211,11 @@ export class JsonEditorComponent {
           if (raw['source']) {
             const srcPaths = Array.isArray(raw['source'])
               ? (raw['source'] as unknown[])
-                  .map(s => this.pathService.buildPathString(s as PathGroup, currentRemote))
+                  .map(s => pathUtils.buildPathString(s as PathGroup, currentRemote))
                   .filter(Boolean)
-              : [
-                  this.pathService.buildPathString(raw['source'] as PathGroup, currentRemote),
-                ].filter(Boolean);
+              : [pathUtils.buildPathString(raw['source'] as PathGroup, currentRemote)].filter(
+                  Boolean
+                );
 
             rclone[mapping.sourceKey] = mapping.isSourceArray
               ? srcPaths.length > 1
@@ -1212,10 +1226,7 @@ export class JsonEditorComponent {
 
           // 2. Map destination paths to dstFs / path2 / mountPoint
           if (mapping.destKey && raw['dest']) {
-            const dstPath = this.pathService.buildPathString(
-              raw['dest'] as PathGroup,
-              currentRemote
-            );
+            const dstPath = pathUtils.buildPathString(raw['dest'] as PathGroup, currentRemote);
             rclone[mapping.destKey] = dstPath;
           }
         }

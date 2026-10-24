@@ -1,3 +1,5 @@
+@use "../../../../styles/mixins" as *;
+
 :host {
   display: block;
   height: 100%;
@@ -40,23 +42,7 @@
           font-size: 20px;
         }
 
-        @each $status,
-          $color
-            in (
-              "primary": primary-color,
-              "accent": accent-color,
-              "orange": orange,
-              "yellow": yellow,
-              "purple": purple,
-              "warn": warn-color,
-              "dim": dim-color
-            )
-        {
-          &.color-#{$status} {
-            background: rgba(var(--#{$color}-rgb), 0.15);
-            color: var(--#{$color});
-          }
-        }
+        @include workflow-color-classes;
       }
 
       .header-text {

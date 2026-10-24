@@ -1,0 +1,159 @@
+//! Centralized module for interacting with the GitHub API and raw content.
+//!
+//! Re-uses a single `reqwest::Client` for performance (connection pooling)
+//! and sets a consistent User-Agent header for all requests.
+//!
+//! - API calls use `https://api.github.com`
+//! - Raw content calls use `https://raw.githubusercontent.com`
+
+use reqwest::header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT};
+use serde::Deserialize;
+use std::sync::LazyLock;
+
+pub const OWNER: &str = "Zarestia-Dev";
+pub const REPO: &str = "rclone-manager";
+
+static GITHUB_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    let mut headers = HeaderMap::new();
+
+    // Set a custom User-Agent for organizational identification
+    let user_agent_string = format!("{}/{}/v{}", OWNER, REPO, env!("CARGO_PKG_VERSION"));
+
+    headers.insert(
+        USER_AGENT,
+        HeaderValue::from_str(&user_agent_string)
+            .unwrap_or_else(|_| HeaderValue::from_static("rclone-manager")),
+    );
+
+    headers.insert(
+        ACCEPT,
+        HeaderValue::from_static("application/vnd.github.v3+json"),
+    );
+
+    reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .expect("Failed to build shared reqwest client")
+});
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("HTTP request error: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("GitHub API rate limit exceeded")]
+    RateLimitExceeded,
+    #[error("GitHub API error (Status {status}): {body}")]
+    ApiError {
+        status: reqwest::StatusCode,
+        body: String,
+    },
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Asset {
+    pub name: String,
+    pub browser_download_url: String,
+    #[serde(default, rename = "url")]
+    pub api_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Release {
+    pub tag_name: String,
+    pub prerelease: bool,
+    pub draft: bool,
+    pub assets: Vec<Asset>,
+    pub body: Option<String>,
+    pub published_at: Option<String>,
+    pub html_url: String,
+}
+
+async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response, Error> {
+    if response.status().is_success() {
+        Ok(response)
+    } else {
+        let status = response.status();
+        let is_rate_limit_header = response
+            .headers()
+            .get("x-ratelimit-remaining")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v == "0")
+            .unwrap_or(false);
+
+        let body = response.text().await.unwrap_or_default();
+
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            || (status == reqwest::StatusCode::FORBIDDEN
+                && (is_rate_limit_header
+                    || body.contains("API rate limit exceeded")
+                    || body.contains("rate limit")))
+        {
+            return Err(Error::RateLimitExceeded);
+        }
+
+        Err(Error::ApiError { status, body })
+    }
+}
+
+/// Fetches all releases for a given repository.
+pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error> {
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
+
+    let response = GITHUB_CLIENT.get(&url).send().await?;
+    let releases: Vec<Release> = parse_response(response).await?.json().await?;
+
+    Ok(releases)
+}
+
+/// Fetches the single "latest" release for a repository.
+pub async fn get_latest_release(owner: &str, repo: &str) -> Result<Release, Error> {
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/latest");
+
+    let response = GITHUB_CLIENT.get(&url).send().await?;
+    let release: Release = parse_response(response).await?.json().await?;
+
+    Ok(release)
+}
+
+/// Fetches a specific release by its tag name.
+pub async fn get_release_by_tag(owner: &str, repo: &str, tag: &str) -> Result<Release, Error> {
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}");
+
+    let response = GITHUB_CLIENT.get(&url).send().await?;
+    let release: Release = parse_response(response).await?.json().await?;
+
+    Ok(release)
+}
+
+/// Fetches the raw text content of a file from a repo.
+pub async fn get_raw_file_content(
+    owner: &str,
+    repo: &str,
+    branch_or_tag: &str,
+    path: &str,
+) -> Result<String, Error> {
+    let url = format!("https://raw.githubusercontent.com/{owner}/{repo}/{branch_or_tag}/{path}");
+
+    let response = GITHUB_CLIENT.get(&url).send().await?;
+    let content: String = parse_response(response).await?.text().await?;
+
+    Ok(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Asset;
+
+    #[test]
+    fn assets_retain_api_urls_used_by_tauri_and_accept_legacy_fixtures() {
+        let mut input = serde_json::json!({"name":"app.exe", "browser_download_url":"https://github.com/example/app.exe"});
+        let legacy: Asset = serde_json::from_value(input.clone()).unwrap();
+        assert!(legacy.api_url.is_none());
+        input["url"] = "https://api.github.com/repos/example/app/releases/assets/42".into();
+        let asset: Asset = serde_json::from_value(input).unwrap();
+        assert_eq!(
+            asset.api_url.as_deref(),
+            Some("https://api.github.com/repos/example/app/releases/assets/42")
+        );
+    }
+}

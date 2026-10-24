@@ -7,7 +7,7 @@
 >
   <mat-expansion-panel-header>
     <mat-panel-title>
-      <mat-icon svgIcon="mobiledata-arrows" aria-hidden="true"></mat-icon>
+      <mat-icon class="primary" svgIcon="mobiledata-arrows" aria-hidden="true"></mat-icon>
       <span>{{ 'generalOverview.panels.bandwidth' | translate }}</span>
     </mat-panel-title>
     <mat-panel-description>
@@ -25,7 +25,7 @@
 
   @let bandwidth = bandwidthLimit();
   @if (bandwidth?.loading) {
-    <div class="loading fade-in" aria-live="polite">
+    <div class="loading-container fade-in" aria-live="polite">
       <mat-icon
         svgIcon="spinner"
         [attr.aria-label]="'generalOverview.bandwidth.aria.loading' | translate"
@@ -75,7 +75,7 @@
           <button
             type="button"
             class="app-pill interactive"
-            [class.is-selected]="isPresetActive(preset.value)"
+            [class.is-selected]="activePreset() === preset.value"
             (click)="setBandwidthLimit(preset.value)"
             [attr.title]="preset.labelKey ? (preset.labelKey | translate) : preset.label"
           >

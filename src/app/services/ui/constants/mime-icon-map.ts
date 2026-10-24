@@ -1,7 +1,7 @@
 /**
  * Comprehensive MIME type to Adwaita icon mapping.
  */
-export const MIME_TO_ICON_MAP: Record<string, string> = {
+const MIME_TO_ICON_MAP: Record<string, string> = {
   // --- Archives ---
   'application/zip': 'package-x-generic',
   'application/x-tar': 'package-x-generic',

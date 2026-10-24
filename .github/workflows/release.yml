@@ -1,4 +1,4 @@
-name: "Release All"
+name: 'Release All'
 on:
   workflow_dispatch:
 
@@ -10,28 +10,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest"
-            args: "--target aarch64-apple-darwin"
-            type: "aarch64"
-            assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
-            type: "x86_64"
-            assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "ubuntu-22.04"
-            args: ""
-            assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "ubuntu-22.04-arm"
-            args: ""
-            assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "windows-latest"
-            args: "--target x86_64-pc-windows-msvc"
-            type: "x86_64"
-            assetPattern: "[name]_[ver]_[arch][ext]"
-          - platform: "windows-11-arm"
-            args: "--target aarch64-pc-windows-msvc"
-            type: "aarch64"
-            assetPattern: "[name]_[ver]_[arch][ext]"
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            type: 'aarch64'
+            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            type: 'x86_64'
+            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: 'ubuntu-22.04'
+            args: ''
+            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: 'ubuntu-22.04-arm'
+            args: ''
+            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc'
+            type: 'x86_64'
+            assetPattern: '[name]_[ver]_[arch][ext]'
+          - platform: 'windows-11-arm'
+            args: '--target aarch64-pc-windows-msvc'
+            type: 'aarch64'
+            assetPattern: '[name]_[ver]_[arch][ext]'
 
     runs-on: ${{ matrix.platform }}
 
@@ -42,7 +42,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: "npm"
+          cache: 'npm'
 
       - name: install Rust stable (linux)
         uses: dtolnay/rust-toolchain@stable
@@ -63,7 +63,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: './backend -> target'
           key: ${{ matrix.platform }}
 
       - name: install dependencies (ubuntu-22.04 x86_64)
@@ -114,16 +114,24 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Read release version
+        id: release_version
+        run: node scripts/release-version.cjs backend/desktop/tauri.conf.json
+
+      - uses: tauri-apps/tauri-action@v1
         env:
+          TAURI_FRONTEND_PATH: ${{ github.workspace }}
+          TAURI_APP_PATH: ${{ github.workspace }}/backend/desktop
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: true
         with:
+          projectPath: backend/desktop
+          uploadUpdaterSignatures: false
           tagName: v__VERSION__
-          releaseName: "RClone Manager v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
+          releaseName: 'RClone Manager v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ steps.release_version.outputs.PRERELEASE }}
           args: ${{ matrix.args }}

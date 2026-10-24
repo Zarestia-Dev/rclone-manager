@@ -62,7 +62,10 @@ describe('RepairSheetComponent', () => {
       ]),
       getRepairTitleKey: vi.fn().mockReturnValue('repairSheet.titles.portInUse'),
       getRepairMessageKey: vi.fn().mockReturnValue('repairSheet.messages.portInUse'),
-      getRepairButtonTextKey: vi.fn().mockReturnValue('repairSheet.actions.changePort'),
+      getRepairButtonTextKey: vi.fn().mockImplementation((type: string) => {
+        if (type === 'mount_plugin') return 'repairSheet.actions.installPlugin';
+        return 'repairSheet.actions.changePort';
+      }),
       getRepairProgressTextKey: vi.fn().mockReturnValue('repairSheet.progress.restartingEngine'),
       executeRepair: vi.fn().mockResolvedValue(undefined),
       repairRclonePath: vi.fn().mockResolvedValue('success'),
@@ -345,6 +348,50 @@ describe('RepairSheetComponent', () => {
       expect(sheetRefMock.dismiss).toHaveBeenCalled();
       expect(modalServiceMock.openBackend).toHaveBeenCalled();
       expect(repairServiceMock.executeRepair).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Mount plugin repair logic', () => {
+    beforeEach(async () => {
+      await createComponent({
+        type: 'mount_plugin',
+      });
+    });
+
+    it('should initialize for mount_plugin repair', () => {
+      expect(component.isMountPluginRepair()).toBe(true);
+      expect(component.willNotMount()).toBe(false);
+      expect(component.repairActionTextKey()).toBe('repairSheet.actions.installPlugin');
+    });
+
+    it('should update button icon and label when willNotMount is toggled', () => {
+      component.willNotMount.set(true);
+
+      expect(component.repairButtonIcon()).toBe('check');
+      expect(component.repairActionTextKey()).toBe('repairSheet.actions.saveAndClose');
+    });
+
+    it('should skip mount plugin and dismiss sheet when repair is triggered with willNotMount', async () => {
+      component.willNotMount.set(true);
+      await component.repair();
+
+      expect(appSettingsServiceMock.saveSetting).toHaveBeenCalledWith(
+        'core',
+        'skip_mount_plugin_check',
+        true
+      );
+      expect(sheetRefMock.dismiss).toHaveBeenCalled();
+    });
+
+    it('should skip mount plugin, save setting, and dismiss sheet via skipMountPlugin', async () => {
+      await component.skipMountPlugin();
+
+      expect(appSettingsServiceMock.saveSetting).toHaveBeenCalledWith(
+        'core',
+        'skip_mount_plugin_check',
+        true
+      );
+      expect(sheetRefMock.dismiss).toHaveBeenCalled();
     });
   });
 });

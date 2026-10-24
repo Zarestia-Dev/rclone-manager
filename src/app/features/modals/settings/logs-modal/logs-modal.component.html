@@ -117,7 +117,12 @@
             <span class="level-tag">{{ log.level | uppercase }}</span>
 
             @let translatedMessage = translateLogMessage(log.message);
-            <span class="message" [title]="translatedMessage">{{ translatedMessage }}</span>
+            <span class="message truncate" [title]="translatedMessage">{{
+              translatedMessage
+            }}</span>
+            @if (vm?.output?.failed) {
+              <span class="app-pill p-warn">{{ 'automation.status.failed' | translate }}</span>
+            }
 
             <div class="actions-hover">
               <mat-icon
@@ -141,18 +146,28 @@
               <!-- 1. Command Output (The one with ANSI colors) -->
               @if (vm?.output; as output) {
                 <div class="detail-block">
-                  <div class="block-label">{{ 'modals.logs.terminalOutput' | translate }}</div>
-                  <div class="code-block" [innerHTML]="output | ansiToHtml"></div>
+                  <div class="block-label">
+                    <span>{{ 'modals.logs.terminalOutput' | translate }}</span>
+                    <button
+                      class="action-button"
+                      [appCopyToClipboard]="output.text"
+                      [title]="'common.copy' | translate"
+                      [attr.aria-label]="'common.copy' | translate"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
+                  </div>
+                  <div class="code-block" [innerHTML]="output.text | ansiToHtml"></div>
                 </div>
               }
 
               <!-- 2. Raw JSON Data -->
-              <div class="detail-block">
-                <div class="block-label">{{ 'modals.logs.logContext' | translate }}</div>
+              <details class="detail-block" [open]="!vm?.output">
+                <summary class="block-label">{{ 'modals.logs.logContext' | translate }}</summary>
                 <div class="code-block json-theme">
                   <pre>{{ vm?.contextStr }}</pre>
                 </div>
-              </div>
+              </details>
             </div>
           }
         </div>

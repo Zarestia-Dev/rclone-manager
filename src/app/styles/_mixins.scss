@@ -1,0 +1,482 @@
+// ===== SHARED SCSS MIXINS =====
+
+@mixin scroll-edge-fades($bg-color-var, $right-offset: 0, $z-index: 10) {
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    z-index: $z-index;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, $bg-color-var 0%, transparent 100%);
+  }
+
+  &::after {
+    right: $right-offset;
+    background: linear-gradient(to left, $bg-color-var 0%, transparent 100%);
+  }
+
+  &:has(.show-left-shadow)::before {
+    opacity: 1;
+  }
+
+  &:has(.show-right-shadow)::after {
+    opacity: 1;
+  }
+}
+
+// Collapsible drawer panel used in tools like cli-import and obscure-tool
+@mixin collapsible-drawer-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  padding: 0 var(--space-md);
+  border-bottom: 0 solid var(--border-color);
+  opacity: 0;
+  transition:
+    grid-template-rows var(--transition-cubic),
+    padding var(--transition-cubic),
+    border-bottom-width var(--transition-cubic),
+    opacity var(--transition-cubic);
+
+  &.visible {
+    grid-template-rows: 1fr;
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    opacity: 1;
+  }
+}
+
+@mixin collapsible-drawer-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+@mixin collapsible-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--space-xs);
+
+  h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+
+    mat-icon {
+      color: var(--accent-color);
+    }
+  }
+}
+
+@mixin collapsible-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+// Complete collapsible drawer tool compound mixin
+@mixin collapsible-drawer-tool {
+  @include collapsible-drawer-panel;
+
+  > [class$="-inner"],
+  .drawer-inner {
+    @include collapsible-drawer-inner;
+  }
+
+  header,
+  [class$="-header"],
+  .drawer-header {
+    @include collapsible-drawer-header;
+  }
+
+  [class$="-body"],
+  .drawer-body {
+    @include collapsible-drawer-body;
+  }
+}
+
+@mixin tool-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .description {
+    margin: 0;
+    font-size: var(--font-size-md);
+    color: var(--dim-color);
+    line-height: 1.4;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+  }
+}
+
+@mixin mode-toggle-button {
+  color: var(--dim-color);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+
+  &:hover {
+    color: var(--window-fg-color);
+    background: rgba(var(--primary-color-rgb), 0.08);
+  }
+
+  &.active {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+  }
+}
+
+@mixin workflow-color-classes {
+  @each $status,
+    $color
+      in (
+        "primary": primary-color,
+        "accent": accent-color,
+        "orange": orange,
+        "yellow": yellow,
+        "purple": purple,
+        "warn": warn-color,
+        "dim": dim-color
+      )
+  {
+    &.color-#{$status} {
+      background: rgba(var(--#{$color}-rgb), 0.15);
+      color: var(--#{$color});
+    }
+  }
+}
+
+// Drag & drop overview panel layout editor styles (Dashboard & QuickRun overviews)
+@mixin draggable-panel-layout-editor {
+  .draggable-panel-wrapper {
+    border-radius: var(--card-border-radius);
+    border: 2px dashed transparent;
+    padding: 0;
+    transition:
+      border-color var(--transition-cubic),
+      background-color var(--transition-cubic),
+      padding var(--transition-cubic),
+      margin-bottom var(--transition-cubic);
+
+    &.cdk-drag-dragging {
+      transition: none;
+    }
+
+    &.editing {
+      border-color: rgba(var(--primary-color-rgb), 0.4);
+      background-color: rgba(var(--primary-color-rgb), 0.03);
+      padding: 16px;
+      margin-bottom: 24px;
+
+      &:hover {
+        border-color: var(--primary-color);
+        background-color: rgba(var(--primary-color-rgb), 0.06);
+      }
+    }
+
+    .panel-content-wrapper {
+      transition:
+        opacity var(--transition-cubic),
+        transform var(--transition-cubic);
+
+      &.panel-hidden-visual {
+        opacity: 0.4;
+        transform: scale(0.98);
+      }
+    }
+
+    &.cdk-drag-dragging .panel-content-wrapper {
+      transition: none;
+    }
+  }
+
+  .panel-edit-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: var(--view-bg-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-gnome);
+    overflow: hidden;
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    .panel-label {
+      font-weight: 600;
+      font-size: 14px;
+      flex: 1;
+      color: var(--window-fg-color);
+    }
+
+    .visibility-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+
+      mat-slide-toggle {
+        transform: scale(0.8);
+      }
+    }
+
+    .card-layout-toggle {
+      margin-left: var(--space-2xs);
+    }
+  }
+
+  .custom-placeholder {
+    background: rgba(var(--primary-color-rgb), 0.05);
+    border: 2px dashed var(--primary-color);
+    border-radius: 16px;
+    min-height: 80px;
+    margin-bottom: 16px;
+    transition: transform var(--transition-cubic);
+  }
+
+  .cdk-drag-preview {
+    box-sizing: border-box;
+    border-radius: 16px;
+    box-shadow: var(--shadow-gnome);
+    background-color: var(--window-bg-color);
+    padding: 0;
+
+    .panel-edit-controls {
+      display: flex !important;
+      margin: 0;
+      border: none;
+      box-shadow: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-content-wrapper {
+      display: none;
+    }
+
+    .draggable-panel-wrapper {
+      padding: 0 !important;
+      border: 2px solid var(--primary-color) !important;
+      background: var(--view-bg-color);
+    }
+  }
+
+  .cdk-drag-animating {
+    transition: transform var(--transition-cubic);
+  }
+
+  .cdk-drop-list-dragging .draggable-panel-wrapper:not(.cdk-drag-placeholder) {
+    transition: transform var(--transition-cubic);
+  }
+}
+
+// Remote identity gradient icon ring
+@mixin remote-icon-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-container-size);
+  height: var(--icon-container-size);
+  border-radius: var(--icon-radius);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--primary-color-rgb), var(--active-opacity)) 0%,
+    rgba(var(--accent-color-rgb), var(--active-opacity)) 100%
+  );
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
+}
+
+// Feature/option icon badge (40x40 rounded icon container)
+@mixin feature-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--primary-color-rgb), 0.12);
+  color: var(--primary-color);
+}
+
+// Mount feature toggle card used in onboarding and repair-sheet
+@mixin mount-toggle-card {
+  .toggle-icon-wrapper {
+    @include feature-icon-badge;
+  }
+
+  .toggle-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+
+    .toggle-title {
+      font-size: var(--font-size-base);
+      font-weight: 600;
+      color: var(--window-fg-color);
+      line-height: 1.3;
+      margin: 0;
+    }
+
+    .toggle-desc {
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+      line-height: 1.4;
+      margin: 0;
+    }
+  }
+}
+
+// Wizard modal sidebar container shared between remote-config and quick-run-editor
+@mixin wizard-modal-sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+// Wizard sidebar step indicator shared between remote-config and quick-run-editor
+@mixin wizard-step-indicator {
+  .step-indicator-container {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .step-indicator {
+    padding: var(--space-xs);
+
+    ::ng-deep .mat-mdc-list-item {
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      max-height: 40px;
+      transition: background-color 0.2s ease;
+
+      &.mdc-list-item--activated {
+        background: var(--selected-bg-color);
+      }
+
+      &.mdc-list-item--disabled {
+        opacity: 0.5;
+        background: transparent !important;
+      }
+
+      .mat-mdc-list-item-icon {
+        font-size: var(--icon-size-sm);
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        color: var(--dim-color);
+        transition:
+          color 0.2s ease,
+          opacity 0.2s ease;
+      }
+
+      .mat-mdc-list-item-title {
+        font-size: var(--font-size-md);
+        font-weight: 500;
+        transition:
+          color 0.2s ease,
+          opacity 0.2s ease;
+      }
+    }
+  }
+
+  .sidebar-footer {
+    padding: var(--space-xs);
+    border-top: 1px solid var(--border-color);
+
+    .step-indicator {
+      padding: 0 !important;
+    }
+  }
+}
+
+// Chart/disk progress legend shared between status-overview-panel and disk-usage-panel
+@mixin status-chart-legend {
+  .legend {
+    display: flex;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-label {
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+    font-weight: 500;
+  }
+
+  .legend-value {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--window-fg-color);
+  }
+}
+
+// Overview cards grid shared across overview panels
+@mixin overview-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+  align-items: start;
+  padding: 2px 24px 16px;
+  max-height: 480px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+// Centered text divider with line wings
+@mixin labeled-divider {
+  display: flex;
+  align-items: center;
+  color: var(--dim-color);
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+  }
+
+  span {
+    padding: 0 var(--space-md);
+    font-weight: 500;
+  }
+}

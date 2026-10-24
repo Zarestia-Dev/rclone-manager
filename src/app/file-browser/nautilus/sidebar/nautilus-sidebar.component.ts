@@ -18,16 +18,16 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE } from '@app/types';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { FileBrowserItem, ExplorerRoot, STANDARD_MODAL_SIZE, fileBrowserItemKey } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
-import { SlideMenuController } from '../slide-menu';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import {
   ItemOrderVisibilityModalComponent,
   ItemOrderVisibilityConfigItem,
   ItemOrderVisibilityResult,
 } from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
+import { SlideMenuController } from 'src/app/shared/utils';
 
 interface BookmarkViewModel {
   bm: FileBrowserItem;
@@ -64,7 +64,7 @@ export class NautilusSidebarComponent {
   private readonly elementRef = inject(ElementRef);
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
-  private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly remoteMetadata = inject(RemoteManagementService);
   protected readonly settings = inject(NautilusSettingsService);
   private readonly dialog = inject(MatDialog);
 
@@ -77,6 +77,7 @@ export class NautilusSidebarComponent {
   readonly bookmarks = input.required<FileBrowserItem[]>();
   readonly title = input.required<string>();
   readonly isDragging = input.required<boolean>();
+  readonly canBookmarkDrag = input(false);
 
   readonly currentPath = input('');
   readonly isPickerMode = input(false);
@@ -101,7 +102,6 @@ export class NautilusSidebarComponent {
   readonly requestProperties = output<FileBrowserItem>();
 
   readonly droppedToStarred = output<DragEvent>();
-  readonly droppedToLocal = output<DragEvent>();
   readonly droppedToBookmark = output<{ event: DragEvent; target: FileBrowserItem }>();
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
 
@@ -112,16 +112,16 @@ export class NautilusSidebarComponent {
   );
 
   // Computed
-  private readonly _activeKey = computed<string | null>(() => {
+  readonly activeBookmarkKey = computed<string | null>(() => {
     const remote = this.nautilusRemote();
     if (this.starredMode() || !remote) return null;
     return `${this.pathService.normalizeRemoteName(remote.name)}::${this.currentPath()}`;
   });
 
-  readonly activeBookmarkKey = this._activeKey;
+  protected readonly getItemKey = fileBrowserItemKey;
 
   readonly anyBookmarkSelected = computed(() => {
-    const active = this._activeKey();
+    const active = this.activeBookmarkKey();
     return active !== null && this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
   });
 
@@ -145,13 +145,13 @@ export class NautilusSidebarComponent {
     effect(() => {
       const remotes = this.displayCloudRemotes();
       for (const remote of remotes) {
-        this.remoteFacadeService.featuresSignal(remote.name, remote.type);
+        this.remoteMetadata.getFeaturesSignal(remote.name);
       }
     });
   }
 
   hasFeature(remote: ExplorerRoot, feature: string): boolean {
-    return this.remoteFacadeService.hasFeature(remote.name, feature, remote.type);
+    return this.remoteMetadata.hasFeature(remote.name, feature);
   }
 
   readonly driveTooltips = computed<Map<string, string>>(() => {

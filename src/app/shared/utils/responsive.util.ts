@@ -9,22 +9,32 @@ import { MatDrawerMode } from '@angular/material/sidenav';
  * @param sidebarMode The writable signal controlling the MatDrawerMode.
  * @param isSidebarOpen Optional writable signal controlling the sidebar open state.
  * @param destroyRef Optional DestroyRef (defaults to inject(DestroyRef) if called in an injection context).
+ * @param container When supplied, observes the editor width instead of the viewport.
  */
 export function syncResponsiveSidebar(
   minWidthPx: number,
   sidebarMode: WritableSignal<MatDrawerMode>,
   isSidebarOpen?: WritableSignal<boolean>,
-  destroyRef: DestroyRef = inject(DestroyRef)
+  destroyRef: DestroyRef = inject(DestroyRef),
+  container?: HTMLElement
 ): void {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-
-  const mql = window.matchMedia(`(min-width: ${minWidthPx}px)`);
   const update = (matches: boolean): void => {
     sidebarMode.set(matches ? 'side' : 'over');
     if (!matches && isSidebarOpen) {
       isSidebarOpen.set(false);
     }
   };
+  if (container && typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width) update(width >= minWidthPx);
+    });
+    observer.observe(container);
+    destroyRef.onDestroy(() => observer.disconnect());
+    return;
+  }
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  const mql = window.matchMedia(`(min-width: ${minWidthPx}px)`);
   const handler = (e: MediaQueryListEvent): void => update(e.matches);
 
   update(mql.matches);

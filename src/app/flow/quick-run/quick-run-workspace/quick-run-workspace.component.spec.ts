@@ -1,3 +1,4 @@
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
@@ -34,9 +35,11 @@ describe('QuickRunWorkspaceComponent', () => {
 
   const mockRemoteFacade = {
     selectedRemote: selectedRemoteSignal,
-    orderedRemotes: orderedRemotesSignal,
+    getRemote: (name: string): Remote | undefined =>
+      [...orderedRemotesSignal(), ...activeRemotesSignal()].find(
+        r => r.name === name.replace(/:$/, '')
+      ),
     activeRemotes: activeRemotesSignal,
-    openRemoteAbout: vi.fn(),
     canEmptyTrash: vi.fn(),
     emptyTrash: vi.fn().mockResolvedValue(true),
     cloneRemote: vi.fn().mockResolvedValue(undefined),
@@ -88,6 +91,7 @@ describe('QuickRunWorkspaceComponent', () => {
     await TestBed.configureTestingModule({
       imports: [QuickRunWorkspaceComponent],
       providers: [
+        { provide: RemoteDiskUsageService, useValue: { load: vi.fn() } },
         provideTranslateService(),
         { provide: QuickRunService, useValue: mockQuickRunService },
         { provide: RemoteFacadeService, useValue: mockRemoteFacade },
@@ -122,9 +126,9 @@ describe('QuickRunWorkspaceComponent', () => {
   });
 
   describe('Remote About & Trash Cleanup actions', () => {
-    it('should delegate openRemoteAbout to RemoteFacadeService', () => {
+    it('should delegate openRemoteAbout to ModalService', () => {
       component.openRemoteAbout(mockRemote);
-      expect(mockRemoteFacade.openRemoteAbout).toHaveBeenCalledWith(mockRemote);
+      expect(mockModalService.openRemoteAbout).toHaveBeenCalledWith(mockRemote);
     });
 
     it('should delegate canEmptyTrash to RemoteFacadeService', () => {

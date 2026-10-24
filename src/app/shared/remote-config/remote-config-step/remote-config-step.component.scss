@@ -1,67 +1,36 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// KEYFRAMES
-// ─────────────────────────────────────────────────────────────────────────────
-@keyframes iconFadeCycleA {
-  0% {
-    opacity: 0;
-    transform: perspective(400px) rotateX(-15deg) scale(0.92) translateY(6px);
-  }
-  15% {
-    opacity: 1;
-    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
-  }
-  85% {
-    opacity: 1;
-    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: perspective(400px) rotateX(15deg) scale(1.06) translateY(-6px);
+@use "../../../styles/mixins" as *;
+
+@mixin icon-fade-cycle($name) {
+  @keyframes #{$name} {
+    0% {
+      opacity: 0;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(-26deg) scale(0.86)
+        translateY(var(--space-xs));
+    }
+    18%,
+    82% {
+      opacity: 1;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(0deg) scale(1) translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: perspective(calc(var(--space-2xl) * 12.5)) rotateX(26deg) scale(1.08)
+        translateY(calc(-1 * var(--space-xs)));
+    }
   }
 }
 
-@keyframes iconFadeCycleB {
-  0% {
-    opacity: 0;
-    transform: perspective(400px) rotateX(-15deg) scale(0.92) translateY(6px);
-  }
-  15% {
-    opacity: 1;
-    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
-  }
-  85% {
-    opacity: 1;
-    transform: perspective(400px) rotateX(0deg) scale(1) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: perspective(400px) rotateX(15deg) scale(1.06) translateY(-6px);
-  }
-}
+@include icon-fade-cycle(iconFadeCycleA);
+@include icon-fade-cycle(iconFadeCycleB);
 
-// Base for the three icon-button toggles in the fields-mode-header.
-%mode-toggle-btn {
-  color: var(--dim-color);
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
-
-  &:hover {
-    color: var(--window-fg-color);
-    background: rgba(var(--primary-color-rgb), 0.08);
-  }
-
-  &.active {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.1);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ANIMATION UTILITY CLASSES
-// ─────────────────────────────────────────────────────────────────────────────
-.anim-field {
+.anim-field,
+.anim-setting-control {
   animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-setting-control {
+  display: block;
+  animation-delay: min(calc(var(--field-index) * 35ms), 200ms);
 }
 
 .anim-fade {
@@ -69,13 +38,7 @@
 }
 
 .anim-panel {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.anim-setting-control {
-  display: block;
-  animation: slideInFromBottomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--field-index, 0) * 35ms);
+  animation: onboardingEntranceIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .anim-icon-fade-a {
@@ -86,161 +49,100 @@
   animation: iconFadeCycleB 2.8s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .anim-icon-fade-a,
-  .anim-icon-fade-b {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOGGLE BUTTONS (fields-mode-header actions)
-// ─────────────────────────────────────────────────────────────────────────────
-.json-toggle-btn,
-.cmd-options-btn,
-.advanced-toggle-btn {
-  @extend %mode-toggle-btn;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FORM ROOT
-// ─────────────────────────────────────────────────────────────────────────────
-
-form {
+form,
+.provider-fields {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-
-  .main-fields-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .field-icon {
-    color: var(--dim-color);
-    transition: color 0.15s ease;
-  }
-
-  .advanced-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    background: rgba(var(--accent-color-rgb), 0.05);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-gnome);
-  }
-
-  .section-heading {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--window-fg-color);
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-
-  @media (max-width: 768px) {
-    .advanced-section {
-      padding: var(--space-md);
-      gap: var(--space-sm);
-    }
-
-    .section-heading {
-      font-size: 15px;
-    }
-
-    mat-slide-toggle {
-      margin: var(--space-sm) 0;
-      font-size: 13px;
-    }
-  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EMPTY STATE
-// ─────────────────────────────────────────────────────────────────────────────
+:host {
+  display: block;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.main-fields-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-icon {
+  color: var(--dim-color);
+  transition: var(--transition-fast);
+}
+
+.advanced-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--window-fg-color);
+  letter-spacing: -0.01em;
+}
 
 .empty-state {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: var(--space-md);
-  padding: 40px var(--space-lg) 32px;
+  padding: calc(var(--space-2xl) + var(--space-xs)) var(--space-lg) var(--space-2xl);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-gnome);
   overflow: hidden;
+}
 
-  &-icon-ring {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--icon-container-size);
-    height: var(--icon-container-size);
-    border-radius: var(--icon-radius);
-    background: linear-gradient(
-      135deg,
-      rgba(var(--primary-color-rgb), var(--active-opacity)) 0%,
-      rgba(var(--accent-color-rgb), var(--active-opacity)) 100%
-    );
-    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
-  }
+.empty-state-icon-ring {
+  @include remote-icon-ring;
 
-  &-icon {
+  mat-icon {
     width: var(--icon-size-lg);
     height: var(--icon-size-lg);
     color: var(--primary-color);
-    will-change: transform, opacity;
+    opacity: 1;
   }
+}
 
-  &-body {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-  }
+.empty-state-body {
+  position: relative;
+  z-index: 1;
 
-  &-title {
-    margin: 0 0 6px;
+  h3 {
+    margin: 0 0 var(--space-xs);
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--window-fg-color);
     letter-spacing: -0.015em;
   }
 
-  &-desc {
+  p {
     margin: 0;
-    font-size: var(--font-size-sm);
-    color: var(--dim-color);
-    max-width: 280px;
+    max-width: calc(var(--space-2xl) * 9);
     line-height: 1.55;
-  }
-
-  &-pills {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--space-xs);
   }
 }
 
-.reshuffle-btn {
-  animation: none !important;
-
-  &:hover mat-icon {
-    animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
+.empty-state-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
 }
 
 .empty-state-pills .app-pill {
-  white-space: wrap;
+  white-space: normal;
   animation: slideInFromBottomIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 
   @for $i from 1 through 6 {
@@ -250,382 +152,106 @@ form {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FIELDS MODE HEADER
-// ─────────────────────────────────────────────────────────────────────────────
+.reshuffle-btn:hover mat-icon {
+  animation: spin 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
 
 .fields-mode-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  padding: 6px 10px 6px 12px;
-  background: rgba(var(--accent-color-rgb), 0.04);
+  padding: var(--space-xs) var(--space-sm);
+  background: color-mix(in srgb, var(--accent-color) 4%, transparent);
   box-shadow: var(--box-shadow);
   border-radius: var(--radius-sm);
+}
 
-  .fields-count-badge {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
+.fields-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xxs);
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
 
-    .fields-count-num {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--window-fg-color);
-      letter-spacing: -0.02em;
-      transition: color 0.2s ease;
+  .count-badge {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    animation: badgeIn var(--transition-cubic) both;
 
-      &--basic {
-        color: var(--primary-color);
-        animation: badgeIn var(--transition-cubic) both;
-      }
-
-      &--advanced {
-        color: var(--purple);
-        animation: badgeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.04s both;
-      }
+    &.primary {
+      color: var(--primary-color);
     }
 
-    .fields-count-separator {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--dim-color);
-      opacity: 0.6;
-      margin: 0 1px;
-      animation: badgeIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    &.purple {
+      color: var(--purple);
+      animation-delay: 0.04s;
     }
-
-    .fields-count-label {
-      font-size: var(--font-size-xs);
-      color: var(--dim-color);
-      font-weight: 500;
-    }
-  }
-
-  .mode-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMMAND OPTIONS PANEL
-// ─────────────────────────────────────────────────────────────────────────────
-
-.command-options-panel {
+.mode-actions {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
+  align-items: center;
+  gap: var(--space-xxs);
+}
+
+.provider-overview {
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-gnome);
+  font-size: var(--font-size-md);
 
-  // ── Quick-add predefined flags ─────────────────────────────────────────────
-
-  .predefined-chips-row {
-    display: flex;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-
-    .predefined-label {
-      font-size: var(--font-size-xs);
-      font-weight: 600;
-      color: var(--dim-color);
-      white-space: nowrap;
-      flex-shrink: 0;
-      padding-top: 5px;
-      letter-spacing: 0.06em;
-    }
-
-    .predefined-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-xs);
-    }
+  .section-title,
+  p {
+    margin: 0;
   }
 
-  // ── Active options list ────────────────────────────────────────────────────
-
-  .active-options {
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid rgba(var(--accent-color-rgb), 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  .section-title {
+    color: var(--window-fg-color);
+    font-size: var(--font-size-sm);
   }
 
-  .option-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    padding: 8px var(--space-md);
-    background: var(--view-bg-color);
-    border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.08);
-    min-height: 58px;
-    animation: slideInFromBottomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: calc(var(--row-index, 0) * 45ms);
-    transition: background 0.15s ease;
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    &:hover {
-      background: rgba(var(--primary-color-rgb), 0.025);
-    }
-
-    .option-key-container {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex: 0 0 280px;
-      min-width: 0;
-
-      .option-key {
-        font-size: 12.5px;
-        font-weight: 600;
-        font-family: var(--font-mono);
-        color: var(--window-fg-color);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        letter-spacing: -0.01em;
-      }
-
-      .option-type-badge {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        padding: 2px 6px;
-        border-radius: 99px;
-        white-space: nowrap;
-        background: rgba(var(--accent-color-rgb), 0.1);
-        color: var(--dim-color);
-
-        &[data-type="boolean"] {
-          background: rgba(var(--primary-color-rgb), 0.1);
-          color: var(--primary-color);
-        }
-        &[data-type="string"] {
-          background: rgba(var(--accent-color-rgb), 0.1);
-          color: var(--accent-color);
-        }
-        &[data-type="number"] {
-          background: rgba(var(--orange-rgb), 0.1);
-          color: var(--orange);
-        }
-        &[data-type="array"] {
-          background: rgba(var(--purple-rgb), 0.1);
-          color: var(--purple);
-        }
-      }
-    }
-
-    .option-controls {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      min-width: 0;
-
-      mat-slide-toggle {
-        margin-right: auto;
-      }
-
-      .option-chip-field {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--space-xs);
-        min-height: 40px;
-        padding: 6px 10px;
-        border-radius: var(--radius-md);
-        background: var(--selected-bg-color);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-      }
-
-      .pill-remove-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        opacity: 0.55;
-        transition:
-          opacity 0.15s ease,
-          color 0.15s ease,
-          background 0.15s ease;
-
-        &:hover {
-          opacity: 1;
-          color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), 0.1);
-        }
-      }
-
-      .option-chip-input {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-
-        input {
-          flex: 1;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          color: var(--window-fg-color);
-          font: inherit;
-          padding: 4px 2px;
-
-          &::placeholder {
-            color: var(--dim-color);
-            opacity: 0.75;
-          }
-        }
-      }
-
-      .remove-option-btn {
-        flex-shrink: 0;
-        color: var(--dim-color);
-        opacity: 0.35;
-        transition:
-          opacity 0.15s ease,
-          color 0.15s ease;
-
-        &:hover {
-          opacity: 1;
-          color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), 0.08);
-        }
-      }
-    }
+  > h3.section-title {
+    font-size: var(--font-size-md);
   }
 
-  // ── Add custom option ──────────────────────────────────────────────────────
-
-  .add-custom-row {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--space-md);
-    padding: var(--space-sm) var(--space-md);
-    background: rgba(var(--accent-color-rgb), 0.04);
-    box-shadow: var(--box-shadow);
-    border-radius: var(--radius-sm);
-    margin-top: var(--space-xs);
-
-    .custom-key-field {
-      flex: 2;
-      min-width: 0;
-
-      .field-icon {
-        color: var(--dim-color);
-      }
-    }
-
-    .custom-type-field {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .add-custom-btn {
-      flex-shrink: 0;
-      height: 48px;
-      color: var(--dim-color);
-      font-size: var(--font-size-sm);
-      font-weight: 500;
-      transition:
-        color 0.15s ease,
-        background 0.15s ease;
-
-      &:not([disabled]):hover {
-        color: var(--primary-color);
-        background: rgba(var(--primary-color-rgb), 0.05);
-      }
-
-      &[disabled] {
-        opacity: 0.35;
-      }
-    }
+  p {
+    color: var(--dim-color);
+    line-height: 1.5;
   }
 
-  // ── Mobile ─────────────────────────────────────────────────────────────────
+  > .detail-section {
+    gap: var(--space-xs);
+  }
+}
 
-  @media (max-width: 600px) {
-    padding: var(--space-sm);
-    gap: var(--space-sm);
+.provider-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
 
-    .predefined-chips-row {
-      flex-direction: column;
-      gap: var(--space-xs);
+.contextual-action-wrapper:not(.visible) {
+  display: none;
+}
 
-      .predefined-label {
-        padding-top: 0;
-      }
-    }
-
-    .option-row {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 14px var(--space-md);
-      min-height: unset;
-
-      .option-key-container {
-        flex: 1 1 auto;
-        width: 100%;
-        justify-content: space-between;
-
-        .option-key {
-          flex: 1;
-          min-width: 0;
-        }
-      }
-
-      .option-controls {
-        flex: 1;
-        width: 100%;
-        gap: var(--space-sm);
-
-        mat-slide-toggle {
-          margin-left: 0;
-        }
-
-        .remove-option-btn {
-          opacity: 0.6;
-        }
-      }
-    }
-
-    .add-custom-row {
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-md);
-      padding: var(--space-md);
-
-      .custom-key-field,
-      .custom-type-field {
-        flex: 1 1 auto;
-        width: 100%;
-      }
-
-      .add-custom-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .option-chip-field {
-        min-height: 44px;
-      }
-
-      .option-chip-input {
-        width: 100%;
-        min-width: 0;
-      }
-    }
+@media (prefers-reduced-motion: reduce) {
+  .anim-field,
+  .anim-setting-control,
+  .anim-fade,
+  .anim-panel,
+  .anim-icon-fade-a,
+  .anim-icon-fade-b,
+  .empty-state-pills .app-pill,
+  .reshuffle-btn:hover mat-icon,
+  .fields-count .count-badge {
+    animation: none;
   }
 }

@@ -1,0 +1,415 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+use crate::utils::types::remotes::{OperationType, ProfileParams};
+
+/// Status of an automation
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AutomationStatus {
+    Enabled,
+    Disabled,
+    Running,
+    Failed,
+    Stopping,
+}
+
+/// Arguments for an automation
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AutomationArgs {
+    /// Core parameters for the profile operation
+    #[serde(flatten)]
+    pub params: ProfileParams,
+
+    /// All source paths from the profile (can be 1 or many)
+    pub src_paths: Vec<String>,
+
+    /// All destination paths from the profile (can be 1 or many)
+    pub dst_paths: Vec<String>,
+}
+
+fn default_watch_delay() -> u64 {
+    5
+}
+
+/// Represents an automation with cron configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Automation {
+    /// Unique identifier for the automation
+    pub id: String,
+
+    /// Type of rclone operation
+    pub automation_type: OperationType,
+
+    /// Remote name this automation is associated with
+    pub remote_name: String,
+
+    /// Profile name within the remote
+    pub profile_name: String,
+
+    /// Cron expression (e.g., "0 0 * * *" for daily at midnight)
+    pub cron_expression: Option<String>,
+
+    /// Current status
+    pub status: AutomationStatus,
+
+    /// Automation arguments (source, destination, options, etc.)
+    pub args: AutomationArgs,
+
+    /// Backend this automation belongs to (e.g., "Local", "NAS")
+    /// Automations only execute when their assigned backend is active
+    #[serde(default = "crate::rclone::backend::types::default_backend_name")]
+    pub backend_name: String,
+
+    /// When the automation was created
+    pub created_at: DateTime<Utc>,
+
+    /// Last time the automation ran
+    pub last_run: Option<DateTime<Utc>>,
+
+    /// Next scheduled run time
+    pub next_run: Option<DateTime<Utc>>,
+
+    /// Last error message if automation failed
+    pub last_error: Option<String>,
+
+    /// Current rclone job ID or batch ID if automation is running
+    pub current_job_id: Option<String>,
+
+    /// Identity reserved before any asynchronous work starts.
+    #[serde(skip)]
+    pub execution_id: Option<String>,
+
+    /// Scheduler job UUID (used to unschedule the automation)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduler_job_id: Option<String>,
+
+    /// Total number of times this automation has run
+    pub run_count: u64,
+
+    /// Number of successful runs
+    pub success_count: u64,
+
+    /// Number of failed runs
+    pub failure_count: u64,
+
+    /// Number of stopped runs
+    #[serde(default)]
+    pub stopped_count: u64,
+
+    /// Enable real-time filesystem monitoring
+    #[serde(default)]
+    pub watch_enabled: bool,
+
+    /// Delay in seconds to debounce file changes before running the sync
+    #[serde(default = "default_watch_delay")]
+    pub watch_delay: u64,
+
+    /// Only synchronize directories containing changed files when triggered by file watcher
+    #[serde(default)]
+    pub watch_changed_only: bool,
+}
+
+impl Automation {
+    /// Quick Run and workflow definitions are global; remote profiles are scoped.
+    #[must_use]
+    pub fn is_global(&self) -> bool {
+        matches!(
+            self.args.params.source,
+            Some(
+                crate::utils::types::origin::Origin::QuickRun
+                    | crate::utils::types::origin::Origin::Flow
+            )
+        )
+    }
+
+    #[must_use]
+    pub fn belongs_to_backend(&self, backend_name: &str) -> bool {
+        self.is_global() || self.backend_name == backend_name
+    }
+
+    /// Running jobs retain their next cron. Remote-profile cron jobs are
+    /// suspended outside their backend; global definitions follow selection.
+    #[must_use]
+    pub fn should_schedule(&self, backend_name: &str) -> bool {
+        self.belongs_to_backend(backend_name)
+            && self.cron_expression.is_some()
+            && !matches!(
+                self.status,
+                AutomationStatus::Disabled | AutomationStatus::Stopping
+            )
+    }
+
+    #[must_use]
+    pub fn display_name(&self) -> String {
+        format!("{} ({})", self.profile_name, self.backend_name)
+    }
+
+    #[must_use]
+    pub fn log_name(&self) -> String {
+        format!(
+            "{}: {}-{}.{}",
+            self.backend_name, self.remote_name, self.profile_name, self.id
+        )
+    }
+
+    /// Update the automation after a successful run
+    pub fn mark_success(&mut self) {
+        self.last_run = Some(Utc::now());
+        self.last_error = None;
+        self.current_job_id = None;
+        self.execution_id = None;
+        self.success_count += 1;
+        self.status = if self.status == AutomationStatus::Stopping {
+            AutomationStatus::Disabled
+        } else {
+            AutomationStatus::Enabled
+        };
+    }
+
+    /// Update the automation after a failed run
+    pub fn mark_failure(&mut self, error: String) {
+        self.last_run = Some(Utc::now());
+        self.last_error = Some(error);
+        self.current_job_id = None;
+        self.execution_id = None;
+        self.failure_count += 1;
+        self.status = if self.status == AutomationStatus::Stopping {
+            AutomationStatus::Disabled
+        } else {
+            AutomationStatus::Failed
+        };
+    }
+
+    /// Mark automation as starting execution
+    pub fn mark_starting(&mut self) -> Result<(), String> {
+        if !self.can_run() {
+            return Err(crate::localized_error!(
+                "backendErrors.automation.automationCannotRun",
+                "status" => format!("{:?}", self.status)
+            ));
+        }
+
+        self.status = AutomationStatus::Running;
+        self.execution_id = Some(uuid::Uuid::new_v4().to_string());
+        self.current_job_id = None;
+        self.last_run = Some(Utc::now());
+        self.run_count += 1;
+        Ok(())
+    }
+
+    pub fn mark_stopped(&mut self) {
+        self.last_run = Some(Utc::now());
+        self.current_job_id = None;
+        self.execution_id = None;
+        self.stopped_count += 1;
+        self.status = if self.status == AutomationStatus::Stopping {
+            AutomationStatus::Disabled
+        } else {
+            AutomationStatus::Enabled
+        };
+    }
+
+    /// Check if automation can transition to running
+    #[must_use]
+    pub fn can_run(&self) -> bool {
+        (self.status == AutomationStatus::Enabled || self.status == AutomationStatus::Failed)
+            && self.current_job_id.is_none()
+    }
+}
+
+/// Response for cron validation
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CronValidationResponse {
+    pub is_valid: bool,
+    pub error_message: Option<String>,
+    pub next_run: Option<DateTime<Utc>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::types::jobs::JobType;
+
+    fn create_test_automation() -> Automation {
+        Automation {
+            id: "test-id".to_string(),
+            automation_type: OperationType::Sync,
+            remote_name: "remote".to_string(),
+            profile_name: "profile".to_string(),
+            cron_expression: Some("0 0 * * *".to_string()),
+            status: AutomationStatus::Enabled,
+            args: AutomationArgs {
+                params: ProfileParams {
+                    remote_name: "remote".to_string(),
+                    profile_name: "profile".to_string(),
+                    backend_name: None,
+                    source: None,
+                    no_cache: None,
+                    scoped_targets: None,
+                    execute_id: None,
+                },
+                src_paths: vec![],
+                dst_paths: vec![],
+            },
+            backend_name: "Local".to_string(),
+            created_at: Utc::now(),
+            last_run: None,
+            next_run: None,
+            last_error: None,
+            current_job_id: None,
+            execution_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled: false,
+            watch_delay: 5,
+            watch_changed_only: false,
+        }
+    }
+
+    #[test]
+    fn automation_args_round_trip_empty_and_special_character_paths() {
+        for paths in [
+            Vec::<String>::new(),
+            vec!["drive:Arşiv & 旅行".into(), "/path with spaces".into()],
+        ] {
+            let mut args = create_test_automation().args;
+            args.src_paths = paths.clone();
+            args.dst_paths = vec!["backup:folder/#1".into()];
+            let serialized = serde_json::to_value(&args).unwrap();
+            assert_eq!(serialized["srcPaths"], serde_json::json!(paths));
+            assert_eq!(
+                serialized["dstPaths"],
+                serde_json::json!(["backup:folder/#1"])
+            );
+            assert_eq!(serialized["remoteName"], "remote");
+            let restored: AutomationArgs = serde_json::from_value(serialized).unwrap();
+            assert_eq!(restored, args);
+        }
+    }
+
+    #[test]
+    fn cron_eligibility_depends_on_backend_and_enabled_state() {
+        let mut automation = create_test_automation();
+        for status in [
+            AutomationStatus::Enabled,
+            AutomationStatus::Failed,
+            AutomationStatus::Running,
+        ] {
+            automation.status = status;
+            assert!(automation.should_schedule("Local"));
+            assert!(!automation.should_schedule("Other"));
+        }
+        for status in [AutomationStatus::Disabled, AutomationStatus::Stopping] {
+            automation.status = status;
+            assert!(!automation.should_schedule("Local"));
+        }
+        automation.status = AutomationStatus::Enabled;
+        automation.cron_expression = None;
+        assert!(!automation.should_schedule("Local"));
+    }
+
+    #[test]
+    fn global_definitions_remain_scheduled_when_backend_selection_changes() {
+        let mut automation = create_test_automation();
+        for source in [
+            crate::utils::types::origin::Origin::QuickRun,
+            crate::utils::types::origin::Origin::Flow,
+        ] {
+            automation.args.params.source = Some(source);
+            assert!(automation.belongs_to_backend("Other"));
+            assert!(automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Running;
+            assert!(automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Disabled;
+            assert!(!automation.should_schedule("Other"));
+            automation.status = AutomationStatus::Enabled;
+        }
+    }
+
+    #[test]
+    fn test_automation_type_conversion() {
+        assert_eq!(OperationType::Sync.as_job_type(), Some(JobType::Sync));
+        assert_eq!(OperationType::Copy.as_job_type(), Some(JobType::Copy));
+        assert_eq!(OperationType::Move.as_job_type(), Some(JobType::Move));
+        assert_eq!(OperationType::Bisync.as_job_type(), Some(JobType::Bisync));
+        assert_eq!(OperationType::Check.as_job_type(), Some(JobType::Check));
+        assert_eq!(OperationType::Delete.as_job_type(), Some(JobType::Delete));
+        assert_eq!(OperationType::Copyurl.as_job_type(), Some(JobType::CopyUrl));
+        assert_eq!(
+            OperationType::Archivecreate.as_job_type(),
+            Some(JobType::ArchiveCreate)
+        );
+        assert_eq!(
+            OperationType::Cryptcheck.as_job_type(),
+            Some(JobType::CryptCheck)
+        );
+    }
+
+    #[test]
+    fn test_mark_starting_and_running() {
+        let mut automation = create_test_automation();
+
+        assert!(automation.can_run());
+        assert!(automation.mark_starting().is_ok());
+        assert_eq!(automation.status, AutomationStatus::Running);
+        assert_eq!(automation.run_count, 1);
+        assert!(automation.last_run.is_some());
+
+        automation.current_job_id = Some("12345".to_string());
+        assert_eq!(automation.current_job_id, Some("12345".to_string()));
+        assert!(!automation.can_run());
+    }
+
+    #[test]
+    fn test_mark_success_failure() {
+        let mut automation = create_test_automation();
+
+        // Success path
+        automation.status = AutomationStatus::Running;
+        automation.mark_success();
+        assert_eq!(automation.status, AutomationStatus::Enabled);
+        assert_eq!(automation.success_count, 1);
+        assert!(automation.last_run.is_some());
+
+        // Failure path — task must land on Failed, not Enabled
+        automation.status = AutomationStatus::Running;
+        automation.mark_failure("error".to_string());
+        assert_eq!(automation.status, AutomationStatus::Failed);
+        assert_eq!(automation.failure_count, 1);
+        assert_eq!(automation.last_error, Some("error".to_string()));
+
+        automation.status = AutomationStatus::Enabled;
+    }
+
+    #[test]
+    fn test_mark_stopped() {
+        let mut automation = create_test_automation();
+
+        automation.status = AutomationStatus::Running;
+        automation.current_job_id = Some("123".to_string());
+        automation.mark_stopped();
+
+        assert_eq!(automation.status, AutomationStatus::Enabled);
+        assert_eq!(automation.current_job_id, None);
+        assert_eq!(automation.stopped_count, 1);
+
+        // Test Stopping -> Disabled
+        automation.status = AutomationStatus::Stopping;
+        automation.mark_stopped();
+        assert_eq!(automation.status, AutomationStatus::Disabled);
+        assert_eq!(automation.stopped_count, 2);
+    }
+
+    #[test]
+    fn test_log_name() {
+        let automation = create_test_automation();
+        assert_eq!(automation.log_name(), "Local: remote-profile.test-id");
+    }
+}

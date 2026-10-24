@@ -1,3 +1,5 @@
+@use "../../../styles/card-actions";
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -9,6 +11,8 @@
   margin-bottom: 20px;
 
   .stat-item {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -16,6 +20,7 @@
     gap: 4px;
 
     .label {
+      max-width: 100%;
       font-size: 0.75rem;
       opacity: 0.7;
       text-transform: uppercase;
@@ -23,6 +28,7 @@
     }
 
     .value {
+      max-width: 100%;
       font-size: 1.2rem;
       font-weight: 600;
       color: var(--mat-sys-primary);
@@ -87,7 +93,7 @@
     table {
       width: 100%;
 
-      td.mat-cell {
+      td.mat-mdc-cell {
         padding: 0 8px;
         border-bottom: 1px solid var(--hover-bg-color);
         font-size: 0.85rem;
@@ -101,18 +107,14 @@
       }
 
       .mat-column-size {
-        min-width: 120px;
+        min-width: 7.5rem;
+
+        .app-pill {
+          font-family: var(--font-mono);
+        }
       }
 
-      .size-badge {
-        font-family: var(--font-mono);
-        background: var(--hover-bg-color);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-      }
-
-      td.mat-cell .status-text {
+      td.mat-mdc-cell .status-text {
         font-size: 0.8rem;
       }
 
@@ -187,15 +189,6 @@
 .queue-actions {
   display: flex;
   gap: 4px;
-}
-
-.tries-badge {
-  background: rgba(var(--orange-rgb), 0.1);
-  color: var(--orange);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  margin-left: 8px;
 }
 
 .uploading-icon {
@@ -294,7 +287,7 @@
 
       .config-row {
         display: grid;
-        grid-template-columns: 1fr 1.5fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
         gap: 12px;
         padding: 10px 12px;
         transition: background-color 0.2s;
@@ -340,4 +333,5 @@
 
 mat-card-actions {
   gap: var(--space-xs);
+  flex-wrap: wrap;
 }

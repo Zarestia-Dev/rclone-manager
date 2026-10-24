@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ComponentRef } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -7,9 +7,11 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { JsonEditorComponent } from './json-editor.component';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { RcConfigOption } from '@app/types';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
 describe('JsonEditorComponent', () => {
   let component: JsonEditorComponent;
+  let fixture: ComponentFixture<JsonEditorComponent>;
   let componentRef: ComponentRef<JsonEditorComponent>;
   let formGroup: FormGroup;
   let appSettingsServiceMock: {
@@ -27,14 +29,14 @@ describe('JsonEditorComponent', () => {
         provideTranslateService(),
         { provide: AppSettingsService, useValue: appSettingsServiceMock },
       ],
-    });
+    }).overrideComponent(JsonEditorComponent, { set: { template: '', imports: [] } });
 
     formGroup = new FormGroup({
       vfs_cache_mode: new FormControl('full'),
       min_age: new FormControl('10m'),
     });
 
-    const fixture = TestBed.createComponent(JsonEditorComponent);
+    fixture = TestBed.createComponent(JsonEditorComponent);
     component = fixture.componentInstance;
     componentRef = fixture.componentRef;
     componentRef.setInput('formGroup', formGroup);
@@ -42,6 +44,50 @@ describe('JsonEditorComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('refreshes chip values and defaults without rerunning the search', () => {
+    componentRef.setInput('fieldDefs', [
+      {
+        Name: 'vfs_cache_mode',
+        FieldName: 'CacheMode',
+        Help: '',
+        Type: 'string',
+        Default: 'off',
+        DefaultStr: 'off',
+      },
+    ]);
+    componentRef.setInput('searchQuery', 'cache');
+    const matches = vi.spyOn(TestBed.inject(ConfigSearchService), 'matches');
+    fixture.detectChanges();
+    expect(component.chips()[0]).toMatchObject({ currentValue: 'full', isChanged: true });
+    const calls = matches.mock.calls.length;
+    formGroup.get('vfs_cache_mode')?.setValue('off');
+    expect(component.chips()[0]).toMatchObject({ currentValue: 'off', isChanged: false });
+    expect(matches).toHaveBeenCalledTimes(calls);
+    formGroup.get('vfs_cache_mode')?.setValue('writes');
+    expect(component.chips()[0]).toMatchObject({ displayValue: 'writes', isActive: true });
+    expect(matches).toHaveBeenCalledTimes(calls);
+  });
+
+  it('filters chips by the full provider flag and category context', () => {
+    const field: RcConfigOption = {
+      Name: 'shared_with_me',
+      FieldName: '',
+      Help: 'Shared files',
+      Type: 'bool',
+      DefaultStr: 'false',
+    };
+    componentRef.setInput('formGroup', new FormGroup({ shared_with_me: new FormControl(false) }));
+    componentRef.setInput('fieldDefs', [field]);
+    componentRef.setInput('provider', 'drive');
+    componentRef.setInput('searchQuery', '--drive-shared-with-me');
+    expect(component.chips().map(chip => chip.displayKey)).toEqual(['shared_with_me']);
+    componentRef.setInput('searchQuery', '--s3-shared-with-me');
+    expect(component.chips()).toEqual([]);
+    componentRef.setInput('searchKeywords', ['General']);
+    componentRef.setInput('searchQuery', 'general');
+    expect(component.chips()).toHaveLength(1);
   });
 
   it('should correctly build chips for field definitions', () => {

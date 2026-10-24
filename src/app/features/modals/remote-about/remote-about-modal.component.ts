@@ -17,14 +17,19 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { FsInfo, RemoteAboutData } from '@app/types';
+import { FsInfo, RemoteAboutData, RemoteProvider } from '@app/types';
 import { EscapeCloseDirective } from '../../../shared/directives/escape-close.directive';
+import {
+  getProviderTier,
+  getRemoteFeatureLabelKey,
+} from 'src/app/services/remote/utils/provider-metadata.utils';
 
 export interface MetadataItem {
   Help?: string;
@@ -62,7 +67,8 @@ export class RemoteAboutModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly remoteFacadeService = inject(RemoteFacadeService);
+  private readonly paths = inject(PathService);
+  private readonly capacity = inject(RemoteDiskUsageService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly translate = inject(TranslateService);
   private readonly mapper = inject(RcloneValueMapperService);
@@ -78,13 +84,14 @@ export class RemoteAboutModalComponent implements OnInit {
 
   // Signals
   readonly aboutInfo = signal<FsInfo | null>(null);
+  readonly provider = signal<RemoteProvider | null>(null);
   readonly sizeInfo = signal<{ count: number; bytes: number } | null>(null);
   readonly loadingAbout = signal(true);
   readonly loadingSize = signal(true);
   readonly errorAbout = signal<string | null>(null);
 
   // Facade signals — direct reference, no unnecessary computed wrapper
-  readonly diskUsage = this.remoteFacadeService.diskUsageSignal(this.displayName);
+  readonly diskUsage = this.capacity.usage(this.normalizedName);
 
   readonly usedPercentage = computed(() => {
     const usage = this.diskUsage();
@@ -94,6 +101,20 @@ export class RemoteAboutModalComponent implements OnInit {
 
   // Derived computed signals — strongly typed
   readonly root = computed(() => this.aboutInfo()?.Root || '/');
+
+  readonly providerName = computed(
+    () => this.provider()?.description || this.provider()?.overview?.Name || this.data.remote.type
+  );
+
+  readonly providerTier = computed(() => getProviderTier(this.provider()?.overview?.Tier));
+
+  readonly providerDocumentationUrl = computed(() => {
+    const provider = this.provider();
+    const backend = (provider?.overview?.Backend || provider?.name || '').replace(/\s/g, '');
+    return /^[a-z0-9][a-z0-9-]*$/.test(backend)
+      ? `https://rclone.org/${backend}/`
+      : 'https://rclone.org/overview/';
+  });
 
   readonly precision = computed(() => {
     const ns = this.aboutInfo()?.Precision;
@@ -105,12 +126,16 @@ export class RemoteAboutModalComponent implements OnInit {
     return Array.isArray(h) ? h : [];
   });
 
-  readonly features = computed<{ key: string; value: boolean }[]>(() => {
+  readonly features = computed<{ key: string; value: boolean; labelKey?: string }[]>(() => {
     const features = this.aboutInfo()?.Features;
     if (!features) return [];
     return Object.entries(features)
       .filter(([key]) => key !== 'IsLocal')
-      .map(([key, value]) => ({ key, value: !!value }))
+      .map(([key, value]) => ({
+        key,
+        value: !!value,
+        labelKey: getRemoteFeatureLabelKey(key),
+      }))
       .sort((a, b) => a.key.localeCompare(b.key));
   });
 
@@ -161,7 +186,21 @@ export class RemoteAboutModalComponent implements OnInit {
 
   ngOnInit(): void {
     this.remoteService.clearCache(this.displayName);
+    void this.loadProvider();
     this.loadData();
+  }
+
+  private async loadProvider(): Promise<void> {
+    const type = this.data.remote.type;
+    if (!type) return;
+    try {
+      const providers = await this.remoteService.getRemoteTypes();
+      if (!this.isDestroyed) {
+        this.provider.set(providers.find(provider => provider.name === type) ?? null);
+      }
+    } catch {
+      // Provider metadata is optional; live remote information remains available.
+    }
   }
 
   async loadData(): Promise<void> {
@@ -199,7 +238,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private async loadSizeInBackground(): Promise<void> {
     try {
       const sizeData = await this.remoteOps.getSize(
-        this.normalizedName,
+        this.paths.normalizeRemoteForRclone(this.normalizedName),
         undefined,
         'dashboard',
         this.readJobGroup
@@ -217,13 +256,10 @@ export class RemoteAboutModalComponent implements OnInit {
   }
 
   async fetchDiskUsage(forceRefresh = false): Promise<void> {
-    await this.remoteFacadeService.getCachedOrFetchDiskUsage(
-      this.displayName,
-      this.normalizedName,
-      'dashboard',
-      this.readJobGroup,
-      forceRefresh
-    );
+    await this.capacity.load(this.normalizedName, {
+      group: this.readJobGroup,
+      force: forceRefresh,
+    });
   }
 
   private async stopReadJobs(): Promise<void> {

@@ -63,7 +63,7 @@
 - ⚙️ **Mount & Serve:** Easy mount controls and serve management (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Job Watcher:** Real-time transfer monitoring and bandwidth control.
 - 📱 **Android SAF & DocumentsProvider:** Access cloud remotes natively in system file pickers via Storage Access Framework and in-process VFS mount bridge without root.
-- 🌐 **Headless Mode:** Check out [RClone Manager Headless](headless/README.md) to run as a web server on VPS/NAS!
+- 🌐 **Headless Mode:** Run on a VPS/NAS with [RClone Manager Server](backend/server/README.md). Server documentation and the Linux service template live in `backend/server/`.
 
 ---
 

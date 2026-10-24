@@ -76,7 +76,7 @@ export class ApiClientService {
     try {
       const response = await firstValueFrom(
         this.http.post<{ success: boolean; data: T; error?: string }>(
-          `${this.apiBase}/invoke`,
+          `${this.apiBase}/invoke?command=${encodeURIComponent(command)}`,
           { command, args: args ?? {} },
           { withCredentials: true }
         )

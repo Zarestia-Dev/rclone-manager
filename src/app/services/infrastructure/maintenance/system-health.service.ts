@@ -2,27 +2,31 @@ import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core'
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { EMPTY, firstValueFrom, from, catchError, exhaustMap, filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RepairSheetComponent } from '../../../features/components/repair-sheet/repair-sheet.component';
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
 import { SystemInfoService } from '../system/system-info.service';
 import { InstallationService } from '../../settings/installation.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 import { RclonePasswordService } from '../../security/rclone-password.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { BackendService } from '../system/backend.service';
 
-export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
+interface ActiveRepairSheet {
+  ref: MatBottomSheetRef<unknown>;
+  type: RepairSheetType | RepairData['type'];
+}
 
 @Injectable({ providedIn: 'root' })
 export class SystemHealthService {
   private readonly systemInfoService = inject(SystemInfoService);
   private readonly installationService = inject(InstallationService);
+  private readonly appSettingsService = inject(AppSettingsService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly backendService = inject(BackendService);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
+  private readonly activeSheets = new Set<ActiveRepairSheet>();
   private hasReportedRclonePathError = false;
   private hasReportedRcloneVersionError = false;
   private hasReportedRcloneAuthError = false;
@@ -33,25 +37,16 @@ export class SystemHealthService {
   readonly mountPluginInstalled = signal<boolean | null>(null);
   readonly configEncrypted = signal<boolean | null>(null);
   readonly passwordUnlocked = signal(false);
+  readonly skipMountPluginCheck = signal(false);
 
   readonly isCheckingRclone = signal(false);
   readonly isCheckingMountPlugin = signal(false);
   readonly isCheckingEncryption = signal(false);
 
-  readonly problems = computed<SystemProblem[]>(() => {
-    const list: SystemProblem[] = [];
-    if (this.rcloneInstalled() === false) list.push('rclone-missing');
-    if (this.mountPluginInstalled() === false) list.push('mount-plugin-missing');
-    if (this.configEncrypted() === true && !this.passwordUnlocked()) list.push('password-required');
-    return list;
-  });
-
-  readonly hasProblems = computed(() => this.problems().length > 0);
-
   readonly isInitialized = computed(
     () =>
       this.rcloneInstalled() !== null &&
-      this.mountPluginInstalled() !== null &&
+      (this.skipMountPluginCheck() || this.mountPluginInstalled() !== null) &&
       this.configEncrypted() !== null
   );
 
@@ -65,6 +60,24 @@ export class SystemHealthService {
 
   constructor() {
     this.setupRcloneEngineListeners();
+    this.setupSettingsListener();
+  }
+
+  private setupSettingsListener(): void {
+    this.appSettingsService
+      .selectSetting('core.skip_mount_plugin_check')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(setting => {
+        const skip = setting?.value === true;
+        this.setSkipMountPluginCheck(skip);
+      });
+  }
+
+  setSkipMountPluginCheck(skip: boolean): void {
+    this.skipMountPluginCheck.set(skip);
+    if (skip) {
+      this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+    }
   }
 
   async runAllChecks(): Promise<void> {
@@ -76,9 +89,16 @@ export class SystemHealthService {
   }
 
   async checkMountPluginAndPromptRepair(): Promise<void> {
+    const skip =
+      this.skipMountPluginCheck() ||
+      (await this.appSettingsService.getSettingValue<boolean>('core.skip_mount_plugin_check')) ===
+        true;
+    if (skip) {
+      return;
+    }
     try {
       const ok = await this.checkMountPlugin();
-      if (ok === false) {
+      if (ok === false && !this.skipMountPluginCheck()) {
         await this.showRepairSheet({ type: RepairSheetType.MOUNT_PLUGIN });
         this.setupMountPluginListener();
       }
@@ -103,6 +123,10 @@ export class SystemHealthService {
   }
 
   async checkMountPlugin(): Promise<boolean> {
+    if (this.skipMountPluginCheck()) {
+      this.mountPluginInstalled.set(true);
+      return true;
+    }
     this.isCheckingMountPlugin.set(true);
     try {
       const installed = await this.installationService.isMountPluginInstalled();
@@ -167,38 +191,39 @@ export class SystemHealthService {
     this.passwordUnlocked.set(false);
   }
 
-  showRepairSheet(data: RepairData): void {
+  async showRepairSheet(data: RepairData): Promise<void> {
+    const { RepairSheetComponent } =
+      await import('../../../features/components/repair-sheet/repair-sheet.component');
     const sheetRef = this.bottomSheet.open(RepairSheetComponent, { data, disableClose: true });
-    this.activeSheets.add(sheetRef);
-    sheetRef.afterDismissed().subscribe(() => this.activeSheets.delete(sheetRef));
+    const sheetItem: ActiveRepairSheet = { ref: sheetRef, type: data.type };
+    this.activeSheets.add(sheetItem);
+    sheetRef.afterDismissed().subscribe(() => this.activeSheets.delete(sheetItem));
   }
 
   async openRepairSheetWithResult(data: RepairData): Promise<PasswordPromptResult | null> {
+    const { RepairSheetComponent } =
+      await import('../../../features/components/repair-sheet/repair-sheet.component');
     const sheetRef = this.bottomSheet.open(RepairSheetComponent, { data, disableClose: true });
-    this.activeSheets.add(sheetRef);
+    const sheetItem: ActiveRepairSheet = { ref: sheetRef, type: data.type };
+    this.activeSheets.add(sheetItem);
     try {
       return ((await firstValueFrom(sheetRef.afterDismissed())) as PasswordPromptResult) ?? null;
     } catch (error) {
       console.error('Error in repair sheet:', error);
       return null;
     } finally {
-      this.activeSheets.delete(sheetRef);
+      this.activeSheets.delete(sheetItem);
     }
   }
 
-  hasActiveSheetOfType(type: RepairSheetType): boolean {
-    return [...this.activeSheets].some(
-      s => s.instance instanceof RepairSheetComponent && s.instance.data?.type === type
-    );
+  hasActiveSheetOfType(type: RepairSheetType | RepairData['type']): boolean {
+    return [...this.activeSheets].some(s => s.type === type);
   }
 
-  closeSheetsByType(...types: RepairSheetType[]): void {
-    for (const sheet of this.activeSheets) {
-      if (
-        sheet.instance instanceof RepairSheetComponent &&
-        types.includes(sheet.instance.data?.type as RepairSheetType)
-      ) {
-        sheet.dismiss();
+  closeSheetsByType(...types: (RepairSheetType | RepairData['type'])[]): void {
+    for (const sheet of [...this.activeSheets]) {
+      if (types.includes(sheet.type)) {
+        sheet.ref.dismiss();
       }
     }
   }
@@ -239,30 +264,6 @@ export class SystemHealthService {
       passwordDescription:
         'Your rclone configuration requires a password to access encrypted remotes.',
     });
-  }
-
-  async handleRcloneOAuthEvent(event: object, isOnboardingCompleted: boolean): Promise<void> {
-    if (!('status' in event)) {
-      console.warn('Unknown OAuth event format:', event);
-      return;
-    }
-
-    const { status, message } = event as { status: string; message?: string };
-
-    switch (status) {
-      case 'password_error':
-        if (isOnboardingCompleted) await this.handlePasswordRequired(false);
-        break;
-      case 'spawn_failed':
-      case 'startup_timeout':
-        console.error(`OAuth process error [${status}]:`, message);
-        break;
-      case 'success':
-        console.debug('OAuth process started successfully:', message);
-        break;
-      default:
-        console.debug(`Unhandled OAuth event status: ${status}`);
-    }
   }
 
   private setupMountPluginListener(): void {

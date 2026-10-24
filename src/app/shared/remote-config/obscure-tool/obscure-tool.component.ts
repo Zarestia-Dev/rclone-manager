@@ -9,6 +9,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 
 @Component({
@@ -24,6 +25,7 @@ import { RcloneOptionTranslatePipe } from '@app/pipes';
     TranslatePipe,
     RcloneOptionTranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './obscure-tool.component.html',
   styleUrl: './obscure-tool.component.scss',
