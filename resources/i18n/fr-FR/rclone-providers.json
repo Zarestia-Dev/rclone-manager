@@ -94,7 +94,7 @@
         "help": "Point de terminaison du service.\n\nLaissez vide normalement."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Authentification par l’environnement",
         "help": "Lire les informations d'identification à partir du runtime (variables d'environnement, CLI ou MSI).\n\nVoir la [authentication docs](/azureblob#authentication) pour plus d'informations."
       },
       "key": {
@@ -118,7 +118,7 @@
         "help": "Identifiant de l'objet MSI attribué par l'utilisateur, le cas échéant.\n\nLaisser vide si msi_object_id ou msi_mi_res_id est spécifié."
       },
       "msi_mi_res_id": {
-        "title": "Msi Mi Res Id",
+        "title": "ID de ressource de l’identité managée",
         "help": "ID de ressource Azure du fichier MSI attribué par l'utilisateur, le cas échéant.\n\nLaisser vide si msi_client_id ou msi_object_id est spécifié."
       },
       "msi_object_id": {
@@ -142,7 +142,7 @@
         "help": "Niveau d'accès public d'un conteneur : blob ou conteneur."
       },
       "sas_url": {
-        "title": "Sas Url",
+        "title": "URL SAS",
         "help": "URL SAS pour l'accès au niveau du conteneur uniquement.\n\nLaisser vide si vous utilisez le compte/clé ou l'émulateur."
       },
       "service_principal_file": {
@@ -150,7 +150,7 @@
         "help": "Chemin vers un fichier Json contenant les identifiants d'un compte de service Azure a  un principal de service.\n\nLaisser vide en règle générale. Nécessaire uniquement si vous souhaitez utiliser un principal de service plutôt qu'une connexion interactive.\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Blob Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\nPour plus d'informations, consultez les pages [\"Create an Azure service principal\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli)  et [\"Assign an Azure role for access to blob data\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli).\n\nIl peut être plus pratique d'insérer les informations d'identification directement dans le\nfichier de configuration rclone, sous les clés `client_id`, `tenant` et `client_secret`, plutôt que de définir `service_principal_file`.\n"
       },
       "tenant": {
-        "title": "Tenant",
+        "title": "Locataire",
         "help": "Identifiant du locataire du principal de service, également appelé identifiant de répertoire.\n\nÀ définir si vous utilisez :\n- Principal de service avec secret client\n- Principal de service avec certificat\n- Utilisateur avec nom d'utilisateur et mot de passe\n"
       },
       "upload_concurrency": {
@@ -192,6 +192,14 @@
       "decompress": {
         "title": "Décompresser",
         "help": "Si activée, cette option décompresse les objets encodés en gzip.\n\nIl est possible d'envoyer des objets vers Azure Blob Storage avec\nl'en-tête « Content-Encoding: gzip ». Par défaut, rclone télécharge\nces fichiers en tant qu'objets compressés.\n\nSi cette option est activée, rclone décompressera ces fichiers avec\n« Content-Encoding: gzip » à la réception. Cela signifie que rclone ne peut pas vérifier\nla taille ni le hachage, mais le contenu des fichiers sera décompressé.\n"
+      },
+      "use_arrow_list": {
+        "title": "Utiliser les listes Apache Arrow",
+        "help": "Utiliser le format de réponse ListBlobs Apache Arrow plutôt que XML pour lister les répertoires. Les réponses Arrow sont plus petites et beaucoup moins coûteuses à analyser, accélérant de plusieurs fois les listes des grands conteneurs. Associez cette option à list_parallelism pour un gain maximal.\n\n\"Blob Listing with Apache Arrow\" est en préversion publique chez Microsoft et ne prend en charge que les comptes à espace de noms plat. Pour les comptes à espace de noms hiérarchique (ADLS Gen2), ou si la fonction n’est pas disponible, le serveur renvoie du XML et la liste revient automatiquement au traitement XML normal, avec une trace au niveau débogage."
+      },
+      "list_parallelism": {
+        "title": "Parallélisme des listes",
+        "help": "Nombre de partitions parallèles pour lister un répertoire.\n\nSi supérieur à 1, les noms de blobs de chaque répertoire sont divisés en plages listées simultanément avec les paramètres Arrow startFrom/endBefore. Cela peut fortement accélérer les conteneurs de millions d’objets, en mode récursif (ListR) comme pour un seul répertoire. Le gain continue jusqu’à un parallélisme d’environ 30.\n\nN’a d’effet que si use_arrow_list est activé, car seul Arrow permet les plages de noms côté serveur. Si le compte ne prend pas en charge les plages (par exemple avec un espace de noms hiérarchique), la liste redevient séquentielle. La valeur par défaut 0, ou 1, produit une liste séquentielle."
       }
     },
     "azurefiles": {
@@ -244,7 +252,7 @@
         "help": "Point de terminaison du service.\n\nLaissez vide normalement."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Authentification par l’environnement",
         "help": "Lire les identifiants depuis l'environnement d'exécution (variables d'environnement, CLI ou MSI).\n\nConsultez la [documentation d'authentification](/azurefiles#authentication) pour\nplus d'informations."
       },
       "key": {
@@ -260,7 +268,7 @@
         "help": "Identifiant de l'objet MSI attribué par l'utilisateur, le cas échéant.\n\nLaisser vide si msi_object_id ou msi_mi_res_id est spécifié."
       },
       "msi_mi_res_id": {
-        "title": "Msi Mi Res Id",
+        "title": "ID de ressource de l’identité managée",
         "help": "Identifiant de ressource Azure de l'identité MSI assignée par\nl'utilisateur à utiliser, le cas échéant.\n\nLaisser vide si msi_client_id ou msi_object_id est spécifié."
       },
       "msi_object_id": {
@@ -272,7 +280,7 @@
         "help": "Le mot de passe de l'utilisateur\n\nÀ définir si vous utilisez :\n- Utilisateur avec nom d'utilisateur et mot de passe\n"
       },
       "sas_url": {
-        "title": "Sas Url",
+        "title": "URL SAS",
         "help": "URL SAS.\n\nLaisser vide si vous utilisez un compte/clé ou une chaîne de connexion."
       },
       "service_principal_file": {
@@ -804,7 +812,7 @@
         "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Authentification par l’environnement",
         "help": "Obtenir les identifiants IAM depuis l'environnement d'exécution\n(variables d'env. ou métadonnées d'instance si aucune variable d'env. n'est définie).\n\nS'applique uniquement si service_account_file et service_account_credentials sont vides."
       },
       "export_formats": {
@@ -920,7 +928,7 @@
         "help": "Rendre les erreurs de limite d\"envoi fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 750 Gio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est\natteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n\nConsulte : https://github.com/rclone/rclone/issues/3857\n"
       },
       "team_drive": {
-        "title": "Team Drive",
+        "title": "Drive partagé",
         "help": "Identifiant du Drive partagé (Team Drive)."
       },
       "token": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "URL du jeton",
         "help": "URL du serveur de jetons.\n\nLaisser vide pour utiliser les valeurs par défaut du fournisseur."
+      },
+      "impersonate_admin": {
+        "title": "Agir en tant qu’administrateur d’équipe",
+        "help": "ID du membre d’équipe utilisé pour agir en tant qu’administrateur.\n\nDéfinit l’en-tête Dropbox-API-Select-Admin avec cet ID (par exemple \"dbmid:...\"). Attend un ID de membre, et non une adresse e-mail.\n\nPour utiliser impersonate_admin, définissez cette option lors de \"rclone config\" afin de demander l’autorisation \"team_data.member\", qui n’est normalement pas demandée. Un administrateur Dropbox doit approuver cette autorisation pendant le parcours OAuth.\n\nVous devez utiliser votre propre application, avec vos client_id et client_secret, car les autorisations par défaut de rclone n’incluent pas \"team_data.member\"."
+      },
+      "skip_shared_folders": {
+        "title": "Ignorer les dossiers partagés",
+        "help": "Ignorer tous les dossiers partagés.\n\nExclut des listes tout point de montage d’un dossier partagé, quel qu’en soit le propriétaire. Utile pour sauvegarder ces dossiers séparément avec un autre remote configuré sur l’espace de noms du dossier partagé."
+      },
+      "skip_unowned_folders": {
+        "title": "Ignorer les dossiers partagés d’autres propriétaires",
+        "help": "Ignorer les dossiers partagés n’appartenant pas à l’utilisateur actuel.\n\nExclut des listes leurs points de montage. Cela évite de dupliquer les données lors de la sauvegarde de plusieurs comptes Dropbox partageant les mêmes dossiers.\n\nDans Dropbox Business, les dossiers d’équipe appartiennent à l’équipe. Pour les membres standard avec accès en modification ou lecture, ils sont considérés comme appartenant à autrui et sont exclus. Pour les sauvegarder, désactivez cette option ou utilisez un compte administrateur d’équipe.\n\nSans effet si --dropbox-skip-shared-folders est activé. Effectue un appel API supplémentaire par point de montage partagé."
       }
     },
     "fichier": {
@@ -1784,7 +1804,7 @@
         "help": "Choisissez votre fournisseur de stockage."
       },
       "setmtime": {
-        "title": "Setmtime",
+        "title": "Définir la date de modification",
         "help": "Le backend prend-il en charge la définition de l'heure de modification.\n\nDéfinir à false si vous utilisez un identifiant de montage pointant vers un backend Dropbox ou Amazon Drive."
       },
       "user": {
@@ -1802,7 +1822,7 @@
         "help": "Jeton depuis https://www.linkbox.to/admin/account"
       },
       "email": {
-        "title": "Email",
+        "title": "Adresse e-mail",
         "help": "Email de connexion"
       },
       "password": {
@@ -2146,7 +2166,7 @@
         "help": "Obsolète : utilisez --server-side-across-configs à la place.\n\nAutoriser les opérations côté serveur (par exemple la copie) à fonctionner entre différentes configurations OneDrive.\n\nCela fonctionnera si vous copiez entre deux drives OneDrive Personnel ET que les fichiers à copier sont déjà partagés entre eux. \n\nDe plus, cela devrait également fonctionner pour un utilisateur disposant de permissions d'accès à la fois entre OneDrive Entreprise et SharePoint sous le même locataire, et entre SharePoint et un autre SharePoint sous le même locataire.\nDans les autres cas, rclone reviendra à la copie normale (qui sera légèrement plus lente)."
       },
       "tenant": {
-        "title": "Tenant",
+        "title": "Locataire",
         "help": "ID du tenant du principal de service. Également appelé ID de répertoire.\n\nÀ activer lors de l'utilisation du flux d'identifiants client\n"
       },
       "token": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "Seuil de basculement à l'envoi multipartie",
         "help": "Seuil de basculement à l'envoi par blocs.\nTout fichier plus grand que cette valeur sera envoyé par blocs de la taille chunk_size.\nCette option est désactivée par défaut car l'envoi en partie unique amène rclone à utiliser\ndeux fois plus de stockage sur OneDrive Business, étant donné que OneDrive crée une nouvelle\nversion lorsque rclone définit la date de modification après l'envoi.\nConsulter : https://github.com/rclone/rclone/issues/1716"
+      },
+      "tenant_url": {
+        "title": "URL du locataire",
+        "help": "URL du locataire pour accéder à OneDrive sans être administrateur.\n\nDéfinissez l’URL du locataire SharePoint pour utiliser l’API SharePoint v2.0 au lieu de Microsoft Graph. Cela permet l’accès à OneDrive Entreprise sans consentement administrateur.\n\nDans les outils de développement du navigateur, recherchez \"driveAccessToken\" parmi les requêtes réseau. Le champ \".driveUrl\" contient l’URL du locataire et l’ID du lecteur.\n\nExemple : https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "Seuil de basculement à l'envoi multipartie",
         "help": "Seuil de basculement à l'envoi par blocs.\n\nTout fichier plus grand que cette valeur sera envoyé par blocs de la taille chunk_size.\nLa valeur minimale est 0 et la valeur maximale est 5 Gio."
+      },
+      "decompress": {
+        "title": "Décompresser",
+        "help": "Décompresser les objets encodés en gzip.\n\nIl est possible d’envoyer des objets avec \"Content-Encoding: gzip\". Rclone les télécharge normalement sous forme compressée.\n\nAvec cette option, rclone les décompresse à la réception. La taille et le hachage ne peuvent alors pas être vérifiés, mais le contenu du fichier sera décompressé."
       }
     },
     "pcloud": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Commande Xxh3Sum",
         "help": "La commande utilisée pour lire les hachages XXH3.\n\nLaisser vide pour la détection automatique."
+      },
+      "encoding": {
+        "title": "Encodage",
+        "help": "L'encodage pour le backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
+      },
+      "pin_host_key": {
+        "title": "Épingler la clé d’hôte",
+        "help": "Épingler la clé d’hôte du serveur à la première connexion (confiance à la première utilisation, TOFU).\n\nÀ utiliser une seule fois avec --sftp-pin-host-key. Rclone enregistre la clé dans host_keys. Lors des exécutions suivantes sans cette option, host_keys est consulté et toute différence est refusée.\n\nL’activation permanente dans le fichier de configuration est déconseillée : tant que cette option est active, de nouveaux algorithmes de clé présentés par le serveur sont également acceptés, élargissant la confiance au-delà de la clé initiale. Après un changement légitime de clé, relancez avec cette option pour épingler la nouvelle clé.\n\nLa première connexion n’est pas authentifiée. Utilisez de préférence un réseau de confiance ou comparez l’empreinte journalisée par rclone à celle obtenue par un canal indépendant.\n\nSi known_hosts_file est défini, il est prioritaire et cette option est ignorée."
+      },
+      "host_keys": {
+        "title": "Clés d’hôte épinglées",
+        "help": "Clés épinglées pour vérifier le serveur de ce remote.\n\nListe d’entrées \"algo base64-key\" séparées par des virgules, au format des deuxième et troisième champs d’une ligne known_hosts OpenSSH. Généralement remplie par une exécution avec --sftp-pin-host-key, elle peut aussi contenir une clé publique obtenue par un canal indépendant. Chaque entrée est la clé publique complète, et non son empreinte SHA256.\n\nSi cette liste n’est pas vide, la clé présentée doit correspondre à une entrée, sinon la connexion est refusée. Après un changement légitime, effacez cette valeur et reconnectez-vous avec --sftp-pin-host-key, ou modifiez-la directement.\n\nAu maximum 16 clés peuvent être épinglées."
       }
     },
     "sharefile": {
@@ -3300,12 +3340,12 @@
     },
     "storj": {
       "access_grant": {
-        "title": "Access Grant",
-        "help": "Access grant."
+        "title": "Autorisation d’accès",
+        "help": "Autorisation d’accès."
       },
       "api_key": {
         "title": "Clé API",
-        "help": "API key."
+        "help": "Clé API."
       },
       "description": {
         "title": "Description",
@@ -3420,7 +3460,7 @@
         "help": "Type d'extrémité à choisir dans le catalogue de service (OS_ENDPOINT_TYPE)."
       },
       "env_auth": {
-        "title": "Env Auth",
+        "title": "Authentification par l’environnement",
         "help": "Obtenir des informations d'identification rapides à partir des variables d'environnement sous forme standard d'OpenStack."
       },
       "fetch_until_empty_page": {
@@ -3486,12 +3526,12 @@
     },
     "tardigrade": {
       "access_grant": {
-        "title": "Access Grant",
-        "help": "Access grant."
+        "title": "Autorisation d’accès",
+        "help": "Autorisation d’accès."
       },
       "api_key": {
         "title": "Clé API",
-        "help": "API key."
+        "help": "Clé API."
       },
       "description": {
         "title": "Description",
@@ -3662,7 +3702,7 @@
         "help": "Supprimer les fichiers définitivement plutôt que de les envoyer dans la corbeille."
       },
       "spoof_ua": {
-        "title": "Spoof Ua",
+        "title": "Simuler l’agent utilisateur",
         "help": "Définissez l'agent utilisateur pour qu'il corresponde à une version officielle du client de disque yandex. Cela peut aider à télécharger des performances."
       },
       "token": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "URL du jeton",
         "help": "Url du serveur de jetons.\n\nLaisser vide pour utiliser les valeurs par défaut du fournisseur."
+      },
+      "upload_wait": {
+        "title": "Attente après l’envoi",
+        "help": "Durée d’attente après un envoi avant de définir la date de modification.\n\nYandex Disk finalise l’envoi de façon asynchrone sur ses serveurs. Définir la date pendant cette finalisation provoque une erreur 500 Internal Server Error.\n\nEn cas d’erreurs 500 à l’envoi, 2s suffit généralement, au prix d’un ralentissement. L’assistance Yandex recommande entre 1.5s et 3s."
       }
     },
     "zoho": {
@@ -3714,11 +3758,35 @@
       "upload_cutoff": {
         "title": "Seuil de basculement à l'envoi multipartie",
         "help": "Seuil de basculement à l'envoi multipartie (>= 10 Mio)."
+      },
+      "root_folder_id": {
+        "title": "ID du dossier racine",
+        "help": "ID du dossier racine.\n\nLaissez normalement vide. Renseignez cette valeur pour utiliser un autre dossier que la racine comme point de départ de rclone."
+      },
+      "tpslimit": {
+        "title": "Transactions API par seconde",
+        "help": "Nombre maximal de transactions API par seconde.\n\nZoho WorkDrive renvoie HTTP 429 (F7008, \"Request rate limit exceeded\") si les appels sont trop rapides. Les opérations de données (liste, envoi, téléchargement, copie, déplacement, suppression) sont cadencées à ce rythme.\n\n0 désactive le plafond, comme --tpslimit global. La régulation ne peut pas être entièrement désactivée : le recul progressif et Retry-After s’appliquent toujours.\n\nLa valeur par défaut 6 est durable. Une valeur supérieure peut provoquer de longues attentes 429 Retry-After et dégrader le débit ; ne l’augmentez que si votre compte le permet."
+      },
+      "tpslimit_burst": {
+        "title": "Rafale d’appels API",
+        "help": "Nombre d’appels API consécutifs sans attente pour --zoho-tpslimit.\n\nIl s’agit de la capacité du seau à jetons. Gardez 1 pour Zoho : une valeur supérieure autorise plusieurs appels simultanés après une pause et peut provoquer des groupes synchronisés d’erreurs 429."
+      },
+      "list_folder_limit": {
+        "title": "Limite de listes par dossier",
+        "help": "Nombre maximal de listes du MÊME dossier par --zoho-list-folder-window.\n\nZoho WorkDrive limite GET files/{id}/files par dossier, indépendamment de --zoho-tpslimit. Des listes trop fréquentes provoquent HTTP 429 (F7008) et un Retry-After de plusieurs minutes, même à faible débit global. Les mesures autorisent environ 19 listes dans une fenêtre glissante d’environ 60s ; la 20e échoue. Les valeurs par défaut, 19 par 60s, reproduisent cette limite.\n\nChaque fenêtre autorise d’abord --zoho-list-folder-burst listes consécutives ; la rafale est renouvelée à chaque fenêtre. Les suivantes sont espacées de --zoho-list-folder-window/(limit - burst), soit environ 4.6s par défaut. Un journal glissant impose aussi le plafond entre fenêtres. 0 désactive le limiteur. Seules les listes RÉPÉTÉES d’un dossier sont retardées ; les autres dossiers, ou ceux listés moins de --zoho-list-folder-burst fois, n’attendent pas.\n\nUne valeur PLUS ÉLEVÉE autorise PLUS de listes, pas plus de sécurité : dépasser 19 provoque F7008. Réduisez-la pour augmenter la marge, au prix de la réactivité."
+      },
+      "list_folder_window": {
+        "title": "Fenêtre de listes par dossier",
+        "help": "Fenêtre de temps pour --zoho-list-folder-limit.\n\nLa valeur par défaut 60s (affichée 1m0s) correspond à la fenêtre glissante réelle de Zoho : au plus --zoho-list-folder-limit listes d’un dossier sont autorisées sur tout intervalle de cette durée. Un nombre sans unité est interprété en secondes (\"60\" = \"60s\").\n\nAugmentez la durée ou réduisez la limite pour élargir la marge. L’espacement soutenu entre listes du même dossier est window/(limit - burst)."
+      },
+      "list_folder_burst": {
+        "title": "Rafale de listes par dossier",
+        "help": "Listes consécutives du même dossier avant la régulation par --zoho-list-folder-limit.\n\nLa rafale est prélevée sur la limite : l’augmenter n’augmente jamais le total par fenêtre. Cette quantité passe immédiatement ; les limit - burst restantes sont espacées de window/(limit - burst). La rafale est RENOUVELÉE à chaque fenêtre, mais le journal glissant impose toujours le plafond. Un dossier listé seulement quelques fois, comme lors d’une synchronisation habituelle, n’attend pas.\n\nLa valeur par défaut 6 est la plus grande rafale validée avec 19 listes par 60s : 4, 5 et 6 ont fonctionné ; un dépassement a déclenché F7008 à la 20e liste. Restez bien en dessous d’environ 15 : Zoho impose aussi un plafond instantané d’environ 15–16 appels consécutifs. Utilisez 1 pour réguler dès la deuxième liste. Les valeurs supérieures ou égales à la limite sont ramenées à limit - 1."
       }
     },
     "filen": {
       "email": {
-        "title": "Email",
+        "title": "Adresse e-mail",
         "help": "Email de votre compte Filen"
       },
       "password": {
@@ -3848,7 +3916,7 @@
     },
     "internxt": {
       "email": {
-        "title": "Email",
+        "title": "Adresse e-mail",
         "help": "Email de votre compte Internxt."
       },
       "pass": {
@@ -3856,7 +3924,7 @@
         "help": "Mot de passe."
       },
       "mnemonic": {
-        "title": "Mnemonic",
+        "title": "Phrase mnémonique",
         "help": "Mnémonique (usage interne uniquement)"
       },
       "skip_hash_validation": {
