@@ -371,7 +371,7 @@
       "mqtt": "MQTT",
       "email": "メール",
       "placeholderName": "アクション名を入力",
-      "url": "Webhook URL",
+      "url": "WebhookのURL",
       "method": "HTTP/S メソッド",
       "timeout": "タイムアウト（秒）",
       "bodyTemplate": "ボディテンプレート (JSON)",
@@ -385,9 +385,9 @@
       "os_toast_info": "OS標準通知に特別な設定は不要です。システムの標準通知サブシステムが使用されます。",
       "mode": "モード",
       "provider": "プロバイダー",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "ボットAPI",
       "telegram_botless": "Botレス (CallMeBot)",
-      "botToken": "Bot Token",
+      "botToken": "ボットトークン",
       "chatId": "チャット ID",
       "usernameOrChatId": "ユーザー名 / チャット ID",
       "phone": "電話番号",
@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "オンボーディング完了フラグ",
         "description": "ユーザーがオンボーディングプロセスを完了したかどうか。"
+      },
+      "skip_mount_plugin_check": {
+        "label": "マウントプラグインの確認をスキップ",
+        "description": "起動時および初期設定時にマウントプラグインの確認とインストール要求をスキップします"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Flatpak警告表示済み"
       },
+      "mount_warn": {
+        "label": "マウント警告の表示",
+        "description": "マウントドライバーの確認が無効な場合、マウント画面に警告バナーを表示します"
+      },
       "dashboard_layout": {
         "label": "ダッシュボードレイアウト",
         "description": "ダッシュボードのカスタムレイアウト設定。"
@@ -622,6 +630,12 @@
       "subtitle": "一部の機能で手動の権限調整が必要になる場合があります。",
       "learnMore": "詳細を見る",
       "dismissTooltip": "次回から表示しない"
+    },
+    "mountPlugin": {
+      "title": "マウントドライバーの確認が無効",
+      "description": "マウントドライバーの確認がスキップされました。リモートのマウントには互換性のあるドライバーのインストールが必要です。",
+      "install": "ドライバーをインストール",
+      "dismissTooltip": "今後表示しない"
     },
     "metered": {
       "message": "従量制課金接続を使用中です。一部の機能で追加データが発生する場合があります。"
@@ -686,7 +700,9 @@
       "import": "インポート",
       "export": "エクスポート",
       "preferences": "環境設定",
+      "advanced": "詳細設定",
       "flags": "Rcloneフラグ",
+      "vault": "ボルト",
       "fileBrowser": "ファイルブラウザ",
       "flowWorkspace": "Flow ワークスペース",
       "shortcuts": "キーボードショートカット",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "RClone Manager を初期化中",
-    "loadingMessage": "システム構成を確認中...",
     "cards": {
       "welcome": {
         "title": "RClone Manager へようこそ",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "マウントプラグインのインストール",
-        "content": "マウントプラグインを使用すると、クラウドストレージをローカルドライブとしてマウントできるようになります。このオプションコンポーネントでRcloneの利便性が向上します。"
+        "content": "マウントプラグインを使用すると、クラウドストレージをローカルドライブとしてマウントできるようになります。このオプションコンポーネントでRcloneの利便性が向上します。",
+        "skipMountTitle": "マウントを使用しない",
+        "skipMountDesc": "ドライブをマウントしない場合は、ドライバーのインストールをスキップします。"
       },
       "selectConfig": {
         "title": "Rclone設定ファイルの選択",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "クラシックダッシュボード",
-        "badge": "デフォルト",
         "description": "リモート接続、転送、クイックアクション、システムステータスを一覧表示するタブ付きダッシュボード。"
       },
       "nautilus": {
         "title": "ファイルブラウザ (Nautilus)",
-        "badge": "ファイルマネージャー",
         "description": "リモートファイルの参照および転送に最適化された2ペインのファイル管理UI。"
       },
       "flow": {
         "title": "Flow ワークスペース",
-        "badge": "ワークフロー",
         "description": "自動タスクおよびクイック実行プロファイルを構築・実行するためのビジュアルUI。"
       }
     },
@@ -856,27 +869,25 @@
       "resetStats": "統計をリセット",
       "tabs": {
         "active": "実行中 ({{count}})",
-        "recent": "履歴 ({{count}})",
-        "recentCheck": "チェック済み ({{count}})"
+        "recent": "履歴 ({{count}})"
       },
       "table": {
         "size": "サイズ",
-        "transferred": "転送済み",
-        "alreadyExisted": "スキップ済み (同名ファイルが存在)"
+        "transferred": "転送済み"
       },
       "status": {
         "failed": "失敗",
         "checked": "チェック完了",
         "partial": "一部完了",
         "completed": "完了",
-        "transferError": "転送エラー",
-        "transferCompleted": "転送完了",
         "preparing": "準備中",
         "finalizing": "最終処理中...",
         "missingDst": "転送先に存在しません",
         "missingSrc": "転送元に存在しません",
         "differ": "ファイル内容が異なります",
-        "error": "エラー"
+        "checking": "確認中",
+        "deleting": "削除中",
+        "processing": "処理中"
       },
       "actions": {
         "resolveToDst": "転送先へコピー",
@@ -899,12 +910,12 @@
         "resolveFailed": "不一致の解決に失敗しました: {{error}}"
       },
       "empty": {
-        "noActive": "実行中の転送はありません",
-        "activeHint": "操作が開始されるとここに表示されます",
-        "noRecent": "最近完了した転送はありません",
-        "recentHint": "ジョブが終了するとここに完了した転送が表示されます",
-        "noRecentCheck": "チェックされたファイルはありません",
-        "recentHintCheck": "ジョブが終了するとここにチェックされたファイルが表示されます"
+        "noRecent": "最近のファイルアクティビティはありません",
+        "recentHint": "操作中に完了したファイルアクティビティがここに表示されます。",
+        "noRecentCheck": "表示する比較結果はありません",
+        "recentHintCheck": "結果はジョブの状態と確認数を参照してください。",
+        "noActiveActivity": "処理中のファイルはありません",
+        "waitingActivity": "ファイルのアクティビティを待機しています。一部の操作では個別のファイル情報が報告されません。"
       },
       "time": {
         "daysAgo": "{{count}} 日前",
@@ -917,7 +928,10 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "1秒未満"
         }
-      }
+      },
+      "titleDelete": "削除のアクティビティ",
+      "titleActivity": "アクティビティ",
+      "loadMore": "さらに表示"
     },
     "inputModal": {
       "name": "名前",
@@ -1074,6 +1088,35 @@
       },
       "pollIntervalPlaceholder": "ポーリング間隔を入力（秒）"
     },
+    "codeEditor": {
+      "tools": "エディターのツール",
+      "find": "検索",
+      "goToLine": "行へ移動",
+      "go": "移動",
+      "content": "コードエディター",
+      "wrap": "行を折り返す",
+      "lineNumbers": "行番号",
+      "readOnly": "読み取り専用",
+      "editing": "編集中",
+      "undo": "元に戻す",
+      "redo": "やり直す",
+      "view": "表示",
+      "fontSize": "文字サイズ",
+      "smallerFont": "文字を小さくする",
+      "largerFont": "文字を大きくする",
+      "position": "{{line}} 行、{{column}} 列",
+      "previous": "前の一致",
+      "next": "次の一致",
+      "caseSensitive": "大文字と小文字を区別",
+      "wholeWord": "単語全体",
+      "regexp": "正規表現",
+      "replace": "置換",
+      "replaceAll": "すべて置換",
+      "invalidRegexp": "無効な正規表現",
+      "noResults": "結果なし",
+      "matches": "{{total}} 件の一致",
+      "matchPosition": "{{current}} / {{total}}"
+    },
     "jsonEditor": {
       "noFields": "JSONモードで表示するフィールドはありません",
       "parseError": "無効なJSON構文です。フォーマットを確認してください。",
@@ -1145,7 +1188,6 @@
       "apply": "フィールドに適用"
     },
     "presets": {
-      "applied": "デフォルトプリセットが正常に適用されました",
       "noRemoteSelected": "最初にリモートを選択してください"
     },
     "remoteConfig": {
@@ -1245,6 +1287,25 @@
           "label": "出力なし (No Output)",
           "description": "RC設定呼び出しからの標準出力を抑制します"
         }
+      },
+      "providerOverview": {
+        "title": "プロバイダーの機能",
+        "supportTier": "rcloneのサポートレベル（ストレージプランではありません）",
+        "hashes": "チェックサム",
+        "noHashes": "チェックサムアルゴリズムの情報はありません",
+        "features": "報告された機能",
+        "noFeatures": "この概要に記載された機能はありません",
+        "generalNote": "rcloneが提供するプロバイダーの一般情報です。実際の対応状況は設定によって異なる場合があります。",
+        "virtualNote": "機能は基盤となるリモートと設定に依存します。",
+        "documentation": "rcloneの機能概要を見る",
+        "copy": "サーバー側コピー",
+        "move": "サーバー側移動",
+        "publicLink": "リンク共有",
+        "emptyDirectories": "空のフォルダー",
+        "caseInsensitive": "大文字と小文字を区別しない名前",
+        "duplicateFiles": "同名ファイル",
+        "readMetadata": "メタデータの読み取り",
+        "writeMetadata": "メタデータの書き込み"
       }
     },
     "appOperation": {
@@ -1474,6 +1535,7 @@
     "restoreFailed": "バックアップの復元に失敗しました: {{error}}"
   },
   "updates": {
+    "discardDownload": "ダウンロードを破棄",
     "cancelFailed": "アップデートのダウンロードのキャンセルに失敗しました。",
     "installSuccess": "アップデートがインストールされました。アプリを再起動してください。",
     "checkFailed": "アップデートの確認に失敗しました: {{error}}",
@@ -1484,7 +1546,7 @@
     "skipVersion": "アップデート {{version}} はスキップされます",
     "confirmApply": {
       "title": "アップデートの適用",
-      "message": "アップデートを適用しますか? 変更を適用するためアプリケーションが再起動します。",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "適用",
       "cancel": "キャンセル"
     },
@@ -1520,6 +1582,28 @@
       "metadata": {
         "system": "システムメタデータ",
         "standard": "標準メタデータ"
+      },
+      "supportInfo": "rcloneのサポートレベルは、プロバイダーの保守状況と安定性を表します。",
+      "providerDocumentation": "プロバイダーのドキュメント",
+      "liveFeatures": "この設定済みリモートの機能対応状況です。",
+      "featureLabels": {
+        "about": "ストレージ使用量",
+        "bucketBased": "バケット型ストレージ",
+        "bucketRoot": "ストレージルートからのアクセス",
+        "purge": "フォルダーツリーの削除",
+        "dirMove": "サーバー側のフォルダー移動",
+        "cleanUp": "ストレージのクリーンアップ",
+        "listR": "再帰的な一覧取得",
+        "listP": "ページ単位の一覧取得",
+        "putStream": "ストリーミングアップロード",
+        "openChunkWriter": "マルチパートアップロード",
+        "openWriterAt": "ランダムアクセスアップロード",
+        "readMimeType": "コンテンツタイプの読み取り",
+        "writeMimeType": "コンテンツタイプの書き込み",
+        "changeNotify": "変更通知",
+        "setTier": "ストレージクラスの変更",
+        "getTier": "ストレージクラスの読み取り",
+        "overlay": "他のリモートをラップ"
       }
     },
     "properties": {
@@ -1773,6 +1857,7 @@
       "showShortcuts": "キーボードショートカットを表示",
       "openPreferences": "環境設定を開く",
       "openFlags": "Rcloneフラグを開く",
+      "openVault": "ボルトを開く",
       "forceCheck": "マウントを強制チェック",
       "forceCheckServes": "公開中リモートを強制チェック",
       "newRemoteDetailed": "新規リモート作成 (詳細)",
@@ -2009,7 +2094,8 @@
       "entries": "有効なエントリ数",
       "clear": "消去",
       "cacheCleared": "キャッシュを正常に消去しました",
-      "cacheClearFailed": "キャッシュの消去に失敗しました"
+      "cacheClearFailed": "キャッシュの消去に失敗しました",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "アプリログの取得に失敗しました。",
@@ -2057,7 +2143,8 @@
       "tabs": {
         "general": "一般",
         "core": "コア",
-        "developer": "開発者向け"
+        "developer": "開発者向け",
+        "vault": "ボルト"
       },
       "aria": {
         "resetAll": "全ての設定をデフォルト値にリセット",
@@ -2090,6 +2177,8 @@
       "passwordLabel": "暗号化パスワード",
       "passwordPlaceholder": "パスワードを入力",
       "passwordHint": "バックアップを復元する際にこのパスワードが必要になります。",
+      "vaultWarningTitle": "構成ボルトが開いています",
+      "vaultWarningDesc": "エクスポートされたバックアップはボルトの暗号化を継承しません。機密の認証情報や設定をパスワードで保護するには、以下の暗号化オプションを使用してください。",
       "exportNow": "今すぐエクスポート",
       "exporting": "エクスポート中...",
       "fullBackup": "完全バックアップ",
@@ -2469,7 +2558,9 @@
       "internalStorage": "内部ストレージ"
     },
     "bookmarks": {
-      "emptyHint": "ブックマークはありません"
+      "emptyHint": "ブックマークはありません",
+      "add": "ブックマークに追加",
+      "dropHint": "ここにフォルダーをドロップしてブックマークに追加"
     },
     "sort": {
       "az": "A-Z 昇順",
@@ -2575,6 +2666,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "新しいウィンドウを開けませんでした。現在の画面は開いたままです。",
       "connectionFailed": "接続に失敗しました",
       "bookmarkRemoteNotFound": "ブックマークのリモート 「{{remote}}」 が見つかりません",
       "loadFailed": "ディレクトリの読み込みに失敗しました",
@@ -2650,8 +2742,6 @@
       "increaseIconSize": "アイコンサイズを拡大"
     },
     "notifications": {
-      "mkdirFailed": "ディレクトリの作成に失敗しました: {{path}}",
-      "uploadStarted": "{{count}} 個のファイルのアップロードを開始しています...",
       "uploadSuccess": "{{count}} 個のファイルのアップロードに成功しました。",
       "uploadFailed": "{{count}} 個のファイルのアップロードに失敗しました。",
       "trashEmptied": "クリーンアップ操作が完了しました",
@@ -2721,9 +2811,6 @@
     "resetRemote": {
       "title": "リモート設定のリセット",
       "message": "{{name}} の全ての設定をリセットしてもよろしいですか?"
-    },
-    "notifications": {
-      "settingsReset": "{{name}} の設定がリセットされました。"
     },
     "errors": {
       "generic": "予期しないエラーが発生しました。詳細についてはログを確認してください。",
@@ -2872,10 +2959,10 @@
       "failedToOpen": "ファイルマネージャーを開けませんでした: {{error}}",
       "diskFull": "ターゲットディスクの空き容量が不足しています。",
       "fileLocked": "ファイルがロックされているか、別のプロセスで使用されています。",
-      "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。"
+      "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。",
+      "ioError": "入出力(IO)エラー: {{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "サポートされていないプラットフォームです",
       "downloadCancelled": "ユーザーによってダウンロードがキャンセルされました",
       "mountPluginInstallFailed": "マウントプラグインのインストールに失敗しました: {{error}}",
       "mountPluginVerificationFailed": "インストールは成功しましたが検証に失敗しました。再起動が必要な場合があります。",
@@ -2915,7 +3002,10 @@
       "unsupportedArchive": "サポートされていないファイル形式です。.rcman ファイルである必要があります",
       "invalidArchive": "無効なバックアップファイル形式です",
       "restoreFailed": "バックアップの復元に失敗しました: {{error}}",
-      "secretRequirePassword": "このバックアップはシークレットで保護されているためパスワードが必要です"
+      "secretRequirePassword": "このバックアップはシークレットで保護されているためパスワードが必要です",
+      "exportFailed": "バックアップのエクスポートに失敗しました: {{error}}",
+      "refreshFailed": "バックアップ復元後のシステム更新に失敗しました: {{error}}",
+      "restoreIncomplete": "バックアップの復元が不完全でした: {{error}}"
     },
     "backend": {
       "nameEmpty": "バックエンド名を空欄にすることはできません",
@@ -2932,7 +3022,6 @@
       "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。"
     },
     "cache": {
-      "fetchRemotesFailed": "リモート一覧の取得に失敗しました",
       "fetchConfigFailed": "リモート設定の取得に失敗しました",
       "refreshMountsFailed": "マウント済みリモートの更新に失敗しました",
       "refreshServesFailed": "公開中リモートの更新に失敗しました"
@@ -2967,16 +3056,27 @@
       "relaunchFailed": "再起動に失敗しました: {{error}}",
       "restartFailed": "再起動に失敗しました: {{error}}",
       "notWritable": "アップデート先のパスに書き込み権限がありません",
-      "ioError": "入出力(IO)エラー: {{error}}"
+      "ioError": "入出力(IO)エラー: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "設定の読み込みに失敗しました: {{error}}",
       "saveFailed": "設定の保存に失敗しました: {{error}}",
       "resetFailed": "設定のリセットに失敗しました: {{error}}",
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
-      "eventEmitFailed": "設定イベントの発行に失敗しました: {{error}}",
       "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
       "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "ボルトのパスワードを空にすることはできません",
+      "notEnabled": "ボルトは有効になっていません",
+      "invalidPassword": "ボルトのマスターパスワードが正しくありません",
+      "operationFailed": "ボルトの操作に失敗しました: {{error}}"
     }
   },
   "backendSuccess": {
@@ -3010,6 +3110,14 @@
       "unencrypted": "設定の暗号化を正常に解除しました",
       "encrypted": "設定を正常に暗号化しました",
       "passwordChanged": "設定パスワードを正常に変更しました"
+    },
+    "vault": {
+      "unlocked": "ボルトのロックが解除されました",
+      "locked": "ボルトがロックされました",
+      "enabled": "ボルトの暗号化が有効になりました",
+      "disabled": "ボルトの暗号化が無効になりました",
+      "passwordChanged": "マスターパスワードが正常に変更されました",
+      "timeoutUpdated": "自動ロックのタイムアウトが更新されました"
     }
   },
   "overviews": {
@@ -3229,7 +3337,6 @@
       "passwordRequired": "rclone設定ファイルが暗号化されています。パスワードを入力してください。",
       "versionTooOld": "お使いのrcloneバージョンは {{required}} より古いです。続行するには更新してください。",
       "defaultParams": "システムコンポーネントが正常に機能していません。",
-      "mountPluginStatusError": "ステータスの確認に失敗しました",
       "authRequired": "認証失敗のためバックエンドへの接続が拒否されました。",
       "remoteAuthRequired": "認証エラーのため、リモートバックエンドが接続を拒否しました。認証情報を確認してください。",
       "portInUse": "ポート {{port}} は別のアプリケーションまたは接続によって既に使用されています。続行するには別のポートを選択してください。"
@@ -3243,6 +3350,10 @@
       "repairing": "修復中...",
       "configuring": "設定中..."
     },
+    "mountPreference": {
+      "title": "マウントを使用しない",
+      "desc": "ドライブをマウントしない場合は、マウント確認を無効にします。"
+    },
     "actions": {
       "installRclone": "Rcloneをインストール",
       "installPlugin": "プラグインをインストール",
@@ -3251,7 +3362,8 @@
       "submitPassword": "ロック解除",
       "changePort": "ポートを適用して再起動",
       "configureBackend": "バックエンドを設定",
-      "repair": "修復"
+      "repair": "修復",
+      "saveAndClose": "保存して閉じる"
     },
     "portConfig": {
       "portLabel": "ローカルポート",
@@ -3435,8 +3547,7 @@
         "delete": "ノードを削除",
         "inspectJob": "ジョブを検査",
         "duplicateWorkflow": "ワークフローを複製",
-        "deleteWorkflow": "ワークフローを削除",
-        "exportWorkflow": "JSONをエクスポート"
+        "deleteWorkflow": "ワークフローを削除"
       },
       "canvas": {
         "navigation": "キャンバスナビゲーション",
@@ -3530,11 +3641,11 @@
         "targetServeNode": "対象配信ノード",
         "targetServeNodePlaceholder": "配信ノードを選択",
         "unmountPlaceholder": "/mnt/remote または C:\\Mount",
-        "delayPreset5s": "5s",
-        "delayPreset15s": "15s",
-        "delayPreset30s": "30s",
-        "delayPreset1m": "1m",
-        "delayPreset5m": "5m",
+        "delayPreset5s": "5秒",
+        "delayPreset15s": "15秒",
+        "delayPreset30s": "30秒",
+        "delayPreset1m": "1分",
+        "delayPreset5m": "5分",
         "openDetailed": "詳細設定",
         "openDetailedTooltip": "詳細なパラメーターおよびフラグエディターを開く",
         "activeConfig": "アクティブな設定とフラグ",
@@ -3841,6 +3952,8 @@
     "title": "テンプレート",
     "presetTitle": "プリセットとテンプレート",
     "applyPresets": "デフォルトのプリセットを適用",
+    "defaultPresets": "デフォルトプリセット",
+    "defaultPresetsDesc": "このリモートタイプとシステムに最適化された基本設定。",
     "userTemplates": "保存されたユーザーテンプレート",
     "saveAsTemplate": "現在の設定をテンプレートとして保存...",
     "manageTemplates": "テンプレートの管理...",
@@ -3855,6 +3968,7 @@
     "addKey": "キーを追加",
     "removeKey": "キーを削除",
     "deleteTemplate": "テンプレートを削除",
+    "deleteConfirm": "テンプレート「{{name}}」を削除してもよろしいですか？",
     "noCatKeys": "{{category}} に設定された項目はまだありません。",
     "visualView": "ビジュアルインスペクター",
     "jsonView": "JSONエディター",
@@ -3870,7 +3984,21 @@
     "zeroKeys": "0 個のキー",
     "applySuccess": "テンプレート \"{{name}}\" を正常に適用しました。",
     "savedSuccess": "テンプレート \"{{name}}\" を正常に保存しました。",
-    "deletedSuccess": "テンプレートを正常に削除しました。"
+    "deletedSuccess": "テンプレートを正常に削除しました。",
+    "applyModalTitle": "テンプレートを適用",
+    "applyStrategy": "適用方法",
+    "strategyOverwrite": "すべての値を上書き",
+    "strategyOverwriteDesc": "テンプレートの設定で既存の値を置き換えます",
+    "strategyFillEmpty": "未設定の項目のみ入力",
+    "strategyFillEmptyDesc": "既存の値を保持し、不足している設定のみを適用します",
+    "addedCount": "{{count}} 件追加",
+    "modifiedCount": "{{count}} 件変更",
+    "unchangedCount": "{{count}} 件変更なし",
+    "diffCurrent": "現在",
+    "diffNew": "新規",
+    "apply": "テンプレートを適用",
+    "noChangesDetected": "このテンプレートのすべての設定は既に現在の値と一致しています。",
+    "selectCategoriesToApply": "カテゴリーと設定"
   },
   "navigation": {
     "dashboard": "ダッシュボード",
@@ -3951,6 +4079,60 @@
         "false": "無効 (false)",
         "unset": "未設定"
       }
+    }
+  },
+  "vault": {
+    "title": "構成ボルト",
+    "description": "AES-256-GCM 暗号化を使用して、保存時の構成、認証情報、およびサブ設定を保護します。",
+    "status": {
+      "protected": "保護中",
+      "unprotected": "未保護"
+    },
+    "actions": {
+      "lockNow": "今すぐロック",
+      "unlock": "ボルトのロック解除",
+      "enable": "ボルトを有効化",
+      "disable": "ボルトを無効化",
+      "updatePassword": "パスワード変更"
+    },
+    "enable": {
+      "title": "ボルト保護を有効化",
+      "description": "マスターパスワードを設定して、設定とサブ構成を暗号化します。アプリのロック解除に必要です。"
+    },
+    "changePassword": {
+      "title": "マスターパスワードの変更"
+    },
+    "disable": {
+      "title": "ボルト保護を無効化",
+      "warning": "ボルトを無効にすると、設定と構成はディスク上に暗号化されていない平文で保存されます。"
+    },
+    "settings": {
+      "autoLockTitle": "自動ロックのタイムアウト",
+      "autoLockDesc": "非アクティブな状態が続いた後、自動的にボルトをロックします。"
+    },
+    "fields": {
+      "masterPassword": "マスターパスワード",
+      "confirmPassword": "パスワードの確認",
+      "currentPassword": "現在のパスワード",
+      "newPassword": "新しいパスワード",
+      "autoLockTimeout": "自動ロック時間"
+    },
+    "timeout": {
+      "never": "なし",
+      "5m": "5 分",
+      "15m": "15 分",
+      "30m": "30 分",
+      "1h": "1 時間"
+    },
+    "lockScreen": {
+      "title": "ボルトがロックされています",
+      "subtitle": "RClone Manager のロックを解除するにはマスターパスワードを入力してください",
+      "awaitingAuthorization": "認証待ち",
+      "authorizing": "認証中…"
+    },
+    "errors": {
+      "passwordsMismatch": "パスワードが一致しません",
+      "unlockFailed": "ボルトのロック解除に失敗しました"
     }
   }
 }
