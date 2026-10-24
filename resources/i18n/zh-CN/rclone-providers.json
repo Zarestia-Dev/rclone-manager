@@ -192,6 +192,14 @@
       "decompress": {
         "title": "解压缩",
         "help": "如果设置，将解密/解压 gzip 编码的对象。\n\n可以将带有 \"Content-Encoding: gzip\" 设置的对象上传到 Azure Blob 存储。通常 rclone 会将这些文件下载为压缩对象。\n\n如果设置了此标志，rclone 将在接收到这些文件时使用 \"Content-Encoding: gzip\" 进行解压。这意味着 rclone 无法检查大小和哈希，但文件内容会被解压。\n"
+      },
+      "use_arrow_list": {
+        "title": "使用 Apache Arrow 列表",
+        "help": "使用 ListBlobs Apache Arrow 响应格式代替 XML 获取目录列表。Arrow 响应更小，解析开销也小得多，可将大型容器的列举速度提高数倍。与 list_parallelism 配合使用效果最佳。\n\n微软的 \"Blob Listing with Apache Arrow\" 处于公开预览阶段，仅支持平面命名空间账户。对于分层命名空间账户（ADLS Gen2）或其他不支持此功能的情况，服务器会返回 XML，列表操作会自动回退到普通 XML 流程，并记录调试级别日志。"
+      },
+      "list_parallelism": {
+        "title": "列表并行度",
+        "help": "用于列举目录的并行分片数。\n\n大于 1 时，将各目录的 blob 名称空间划分为多个范围，并使用 Arrow 的 startFrom/endBefore 参数并发列举。对于含有数百万对象的容器，无论递归列举（ListR）还是单目录列举，都可显著提速。并行度增至约 30 前，速度通常仍会提升。\n\n只有 Arrow 支持服务器端名称范围，因此必须同时启用 use_arrow_list。如果账户不支持范围列举（如使用分层命名空间），会回退为顺序列举。默认值 0 或 1 均表示顺序列举。"
       }
     },
     "azurefiles": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "令牌服务器地址",
         "help": "令牌服务器URL。\n\n留空使用服务商默认值。"
+      },
+      "impersonate_admin": {
+        "title": "以团队管理员身份操作",
+        "help": "以团队管理员身份执行操作时使用的团队成员 ID。\n\n将指定的成员 ID（如 \"dbmid:...\"）写入 Dropbox-API-Select-Admin 头。此处直接使用成员 ID，而非电子邮箱。\n\n若要使用 impersonate_admin，运行 \"rclone config\" 时也应设置此选项，以请求通常不会请求的 \"team_data.member\" 权限范围。此权限需要 Dropbox 团队管理员在 OAuth 流程中批准。\n\nrclone 默认权限不包含 \"team_data.member\"，因此必须使用自己的应用，并设置自己的 client_id 和 client_secret。"
+      },
+      "skip_shared_folders": {
+        "title": "跳过共享文件夹",
+        "help": "跳过所有共享文件夹。\n\n无论所有者是谁，目录列表都会排除共享文件夹挂载点。适合使用配置了共享文件夹命名空间的独立远程连接，单独备份共享文件夹的情况。"
+      },
+      "skip_unowned_folders": {
+        "title": "跳过非本人所有的共享文件夹",
+        "help": "跳过不属于当前用户的共享文件夹。\n\n从目录列表中排除这些共享文件夹挂载点。备份共享同一文件夹的多个 Dropbox 账户时，可避免重复备份共享数据。\n\n在 Dropbox Business 中，团队文件夹属于团队。普通成员仅有编辑或查看权限，因此这些文件夹会被视为非本人所有并被排除。要备份团队文件夹，请禁用此选项或使用团队管理员账户运行。\n\n若已启用 --dropbox-skip-shared-folders，此选项无效。每个共享文件夹挂载点会额外执行一次 API 调用。"
       }
     },
     "fichier": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "上传分块阈值",
         "help": "切换到分块上传的阈值。\n\n大于此大小的文件将按 chunk_size 分块上传。\n\n默认禁用，因为商业版中单块上传后设置修改时间会产生新版本，导致占用双倍空间。\n\n见：https://github.com/rclone/rclone/issues/1716"
+      },
+      "tenant_url": {
+        "title": "租户 URL",
+        "help": "用于非管理员访问 OneDrive 的租户 URL。\n\n设置为 SharePoint 租户 URL，即可使用 SharePoint v2.0 API 端点代替标准 Microsoft Graph API，从而无需管理员同意即可访问企业 OneDrive。\n\n可在浏览器开发者工具的网络请求中搜索 \"driveAccessToken\"，查找包含租户 URL 和驱动器 ID 的 \".driveUrl\" 字段。\n\n示例：https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "上传分块阈值",
         "help": "切换到分块上传的阈值。\n\n大于此大小的文件将按 chunk_size 分块上传。\n最小 0，最大 5 GiB。"
+      },
+      "decompress": {
+        "title": "解压缩",
+        "help": "解压使用 gzip 编码的对象。\n\n可以将设置了 \"Content-Encoding: gzip\" 的对象上传到对象存储。通常 rclone 会以压缩形式下载这些文件。\n\n启用此选项后，rclone 会在接收时解压这些文件。此时无法校验大小和哈希，但文件内容会被解压。"
       }
     },
     "pcloud": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Xxh3Sum 命令",
         "help": "用于读取 XXH3 哈希值的命令。\n\n留空则自动检测。"
+      },
+      "encoding": {
+        "title": "编码方式",
+        "help": "后端使用的编码方式。\n\n详见概述中的[编码部分](/overview/#encoding)。"
+      },
+      "pin_host_key": {
+        "title": "固定主机密钥",
+        "help": "在首次连接时固定服务器主机密钥（首次使用时信任，TOFU）。\n\n应作为命令行参数 --sftp-pin-host-key 使用一次。运行后，服务器主机密钥会记录到 host_keys 中。后续运行时移除此参数，rclone 会检查 host_keys，密钥不匹配时拒绝连接。\n\n不建议在配置文件中永久启用此选项。启用期间，服务器后续提供的新主机密钥算法也会被接受，信任范围会超出最初固定的密钥。合法更换密钥后，请再次使用此参数运行以固定新密钥。\n\n首次连接未经身份验证，最好在可信网络中进行，或将 rclone 日志中的指纹与通过独立渠道获得的指纹交叉核对。\n\n如果同时设置了 known_hosts_file，则以它为准，此选项会被忽略。"
+      },
+      "host_keys": {
+        "title": "已固定的主机密钥",
+        "help": "用于验证此远程服务器的固定主机密钥。\n\n以逗号分隔的 \"algo base64-key\" 列表，格式与 OpenSSH known_hosts 行的第二、第三字段相同。通常通过带 --sftp-pin-host-key 运行一次自动填写，也可手动填写通过独立渠道获得的服务器公钥。每项都是完整公钥，而非其 SHA256 指纹。\n\n列表非空时，服务器提供的密钥必须与其中一项匹配，否则拒绝连接。合法更换密钥后，可清除此值并使用 --sftp-pin-host-key 重新连接，或直接编辑此值。\n\n最多可固定 16 个密钥。"
       }
     },
     "sharefile": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "令牌地址",
         "help": "令牌服务器地址。\n\n留空使用服务商默认地址。"
+      },
+      "upload_wait": {
+        "title": "上传后等待时间",
+        "help": "上传完成后，设置修改时间之前的等待时长。\n\nYandex Disk 会在上传完成后在服务器端异步完成最终处理。在此期间设置修改时间会导致服务器返回 500 Internal Server Error。\n\n如上传时遇到 500 错误，设为 2s 通常即可解决，但会降低上传速度。Yandex 支持建议使用 1.5s - 3s。"
       }
     },
     "zoho": {
@@ -3714,6 +3758,30 @@
       "upload_cutoff": {
         "title": "上传分块阈值",
         "help": "切换到大文件上传 API 的阈值（≥ 10 MiB）。"
+      },
+      "root_folder_id": {
+        "title": "根文件夹 ID",
+        "help": "根文件夹的 ID。\n\n通常留空。填写后可让 rclone 从根目录以外的文件夹开始操作。"
+      },
+      "tpslimit": {
+        "title": "每秒 API 事务数",
+        "help": "每秒 API 事务数上限。\n\nZoho WorkDrive 会在请求过快时返回 HTTP 429（F7008，\"Request rate limit exceeded\"），因此数据 API 调用（列举、上传、下载、复制、移动、删除）会按此速率调节。\n\n设为 0 可像全局 --tpslimit 一样取消上限，但退避和 Retry-After 始终有效，无法彻底关闭节流。\n\n默认值 6 是安全且可持续的速率。更高的值可能触发长时间的 429 Retry-After 等待，反而降低吞吐量；仅在账户能承受时提高。"
+      },
+      "tpslimit_burst": {
+        "title": "API 请求突发量",
+        "help": "--zoho-tpslimit 允许无需等待连续执行的 API 调用数。\n\n这是令牌桶容量。Zoho 应保持为 1：大于 1 时，空闲后可同时发出多次调用，可能触发成组的 429 错误。"
+      },
+      "list_folder_limit": {
+        "title": "文件夹列举次数上限",
+        "help": "每个 --zoho-list-folder-window 内允许列举同一文件夹的最大次数。\n\nZoho WorkDrive 对 GET files/{id}/files 按文件夹单独限流，与 --zoho-tpslimit 无关。短时间内反复列举，即使总体请求速率较低，也可能收到 HTTP 429（F7008）和长达数分钟的 Retry-After。实测约 60s 的滑动窗口允许约 19 次，第 20 次失败。默认每 60s 19 次正是按此设置。\n\n每个窗口先允许连续执行 --zoho-list-folder-burst 次，突发额度每个窗口重置；其余调用间隔为 --zoho-list-folder-window/(limit - burst)，默认约 4.6s。近期调用的滑动日志会跨窗口边界继续执行总量上限。0 表示禁用。仅重复列举同一文件夹时延迟；不同文件夹或列举次数少于 --zoho-list-folder-burst 的文件夹无需等待。\n\n值越高代表允许的次数越多，并非更安全：超过 19 会触发 F7008。降低此值可增加余量，但会降低列举响应速度。"
+      },
+      "list_folder_window": {
+        "title": "文件夹列举时间窗口",
+        "help": "--zoho-list-folder-limit 的时间窗口。\n\n默认 60s（显示为 1m0s），与 Zoho 的实际滑动窗口一致：任意此长度的时间段内，同一文件夹最多可列举 --zoho-list-folder-limit 次。无单位数字按秒解析（\"60\" = \"60s\"）。\n\n增大窗口或降低上限可增加安全余量。持续列举同一文件夹时的间隔为 window/(limit - burst)。"
+      },
+      "list_folder_burst": {
+        "title": "文件夹列举突发量",
+        "help": "--zoho-list-folder-limit 开始节流前，同一文件夹可连续列举的次数。\n\n突发量包含在总上限内，提高它不会增加每窗口总量。此次数的调用可立即执行，剩余 limit - burst 次按 window/(limit - burst) 间隔执行。每个窗口边界都会重置突发额度，但近期调用的滑动日志仍会确保总量不超限。常见同步中仅列举几次的文件夹无需等待。\n\n默认 6 是在每 60s 19 次上限下实测验证的最大突发量。4、5、6 均正常；超限测试恰在第 20 次列举触发 F7008。请保持远低于约 15，因为 Zoho 还另有约 15–16 次连续调用的瞬时上限。设为 1 则从第二次列举开始节流。大于或等于上限的值会被限制为 limit - 1。"
       }
     },
     "filen": {
