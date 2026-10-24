@@ -148,12 +148,6 @@ export class InstallationOptionsComponent implements OnInit {
     this.emit();
   }
 
-  getError(control: FormControl): string {
-    if (control.hasError('required'))
-      return this.translate.instant('shared.installationOptions.errors.required');
-    return '';
-  }
-
   private emit(): void {
     const data: InstallationOptionsData = {
       installLocation: this.installLocation(),

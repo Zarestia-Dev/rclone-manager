@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { AppSettingsService } from '../../settings/app-settings.service';
+import { UpdateInfo, BackendUpdateStatus } from '@app/types';
 
 export interface UpdateSettingsConfig {
   namespace: string;
@@ -57,6 +58,20 @@ export class UpdateSettingsManager {
   /** Checks if a specific version has been marked as skipped. */
   isVersionSkipped(version: string): boolean {
     return this._skippedVersions().includes(version);
+  }
+
+  /**
+   * Determines if an update is considered available, respecting skipped versions
+   * and in-progress/ready update statuses.
+   */
+  computeAvailableUpdate(update: UpdateInfo | null): UpdateInfo | null {
+    if (!update) return null;
+    return update.status === BackendUpdateStatus.Downloading ||
+      update.status === BackendUpdateStatus.Installing ||
+      update.status === BackendUpdateStatus.ReadyToRestart ||
+      !this.isVersionSkipped(update.version)
+      ? update
+      : null;
   }
 
   /** Adds a version to the skipped list and persists the change. */

@@ -9,7 +9,9 @@ const args = new Set(process.argv.slice(2));
 const strictMode = args.has('--strict');
 const jsonMode = args.has('--json');
 
-const backendFiles = collectFiles(path.join(repoRoot, 'src-tauri', 'src'), ['.rs']);
+const backendFiles = ['core', 'server', 'desktop'].flatMap(crate =>
+  collectFiles(path.join(repoRoot, 'backend', crate, 'src'), ['.rs'])
+);
 const frontendFiles = collectFiles(path.join(repoRoot, 'src'), ['.ts', '.html']);
 const localeFiles = collectLocaleFiles(i18nRoot);
 
@@ -64,7 +66,7 @@ if (jsonMode) {
   printReport(report);
 }
 
-if (strictMode && (missingCount > 0 || unusedCount > 0)) {
+if (strictMode && (missingCount > 0 || unusedCount > 0 || codeUnusedCount > 0)) {
   process.exitCode = 1;
 }
 
@@ -182,7 +184,7 @@ function collectUsage(files, knownKeys, knownPrefixes) {
   const translatePipeRegex = /['"`]([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)['"`]\s*\|\s*translate/g;
 
   // Dotted string literals in TS files — validated against known keys/prefixes
-  const tsStringLiteralRegex = /(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
+  const tsStringLiteralRegex = /(['"`])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
 
   // Dynamic HTML keys: 'prefix.' + variable + '.suffix' | translate
   // Captures the constant prefix before the + sign
@@ -361,8 +363,8 @@ function extractMatchesNoFilter(content, regex, groupIndex) {
 
 function stripRustComments(content) {
   const withoutComments = content.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  const testBlockIndex = withoutComments.indexOf('#[cfg(test)]');
-  return testBlockIndex >= 0 ? withoutComments.slice(0, testBlockIndex) : withoutComments;
+  const testModuleMatch = withoutComments.match(/#\[cfg\(test\)\]\s*(?:#\[.*\]\s*)*mod\s+\w+/);
+  return testModuleMatch ? withoutComments.slice(0, testModuleMatch.index) : withoutComments;
 }
 
 function diff(left, right) {

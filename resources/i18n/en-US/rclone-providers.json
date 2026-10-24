@@ -192,6 +192,14 @@
       "decompress": {
         "title": "Decompress",
         "help": "If set this will decompress gzip encoded objects.\n\nIt is possible to upload objects to Azure Blob Storage with \"Content-Encoding: gzip\"\nset. Normally rclone will download these files as compressed objects.\n\nIf this flag is set then rclone will decompress these files with\n\"Content-Encoding: gzip\" as they are received. This means that rclone\ncan't check the size and hash but the file contents will be decompressed.\n"
+      },
+      "use_arrow_list": {
+        "title": "Use Apache Arrow Listings",
+        "help": "Use the Apache Arrow listing format.\n\nIf set, directory listings are fetched using the ListBlobs Apache\nArrow response format instead of XML. Arrow responses are smaller and\nmuch cheaper to parse, making listings of large containers several\ntimes faster. Combine with \"list_parallelism\" for the biggest gains.\n\n\"Blob Listing with Apache Arrow\" is in public preview at Microsoft and\nis only supported on flat namespace accounts. On accounts with a\nhierarchical namespace (ADLS Gen2), or where the feature is otherwise\nunavailable, the server returns XML and the listing transparently\nfalls back to the normal XML path (logged at debug level)."
+      },
+      "list_parallelism": {
+        "title": "Listing Parallelism",
+        "help": "Number of parallel shards to list a directory with.\n\nIf set greater than 1, the blob name keyspace of each directory is\nsplit into ranges which are listed concurrently using the Arrow\nstartFrom/endBefore range parameters. This can dramatically speed up\nlisting containers with millions of objects, for both recursive\n(ListR) and single directory listings. Speed keeps improving up to a\nparallelism of around 30.\n\nThis has no effect unless \"use_arrow_list\" is also set, as Arrow is the\nonly listing path that supports server-side name ranges. If the\naccount does not support range listing (e.g. it has a hierarchical\nnamespace) the listing falls back to sequential. The default of 0 (or\n1) lists sequentially."
       }
     },
     "azurefiles": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "Token Url",
         "help": "Token server url.\n\nLeave blank to use the provider defaults."
+      },
+      "impersonate_admin": {
+        "title": "Impersonate Team Administrator",
+        "help": "Team admin ID to use when performing actions as a team administrator.\n\nThis sets the Dropbox-API-Select-Admin header with the given team\nmember ID (for example \"dbmid:...\").\n\nThis takes a team member ID directly rather than an email address.\n\nNote that if you want to use impersonate_admin, you should make sure this\nflag is set when running \"rclone config\" as this will cause rclone to\nrequest the \"team_data.member\" scope which it won't normally.\n\nUsing the \"team_data.member\" scope will require a Dropbox Team Admin\nto approve during the OAuth flow.\n\nYou will have to use your own App (setting your own client_id and\nclient_secret) to use this option as currently rclone's default set of\npermissions doesn't include \"team_data.member\".\n"
+      },
+      "skip_shared_folders": {
+        "title": "Skip Shared Folders",
+        "help": "Instructs rclone to skip all shared folders.\n\nWhen set, any folder that is a shared folder mount point will be\nexcluded from directory listings, regardless of ownership.\nThis is useful if you prefer to back up shared folders separately\nusing a separate remote configured with the shared folder namespace."
+      },
+      "skip_unowned_folders": {
+        "title": "Skip Unowned Shared Folders",
+        "help": "Instructs rclone to skip shared folders not owned by the current user.\n\nWhen set, any folder that is a shared folder mount point and not\nowned by the current user will be excluded from directory listings.\nThis is useful when backing up multiple Dropbox accounts that share\ncommon folders, to avoid duplicating the shared data across accounts.\n\nNote: In Dropbox Business, 'Team Folders' are owned by the Team.\nFor standard team members, these folders evaluate as 'unowned'\n(editor/viewer access) and will be excluded by this flag. To back up\nTeam Folders, do not use this flag or run the backup using a Team Admin\naccount.\n\nIf --dropbox-skip-shared-folders is also enabled, this flag has no effect.\n\nThis makes an extra API call per shared folder mount point."
       }
     },
     "fichier": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "Upload Cutoff",
         "help": "Cutoff for switching to chunked upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\n\nThis is disabled by default as uploading using single part uploads\ncauses rclone to use twice the storage on Onedrive business as when\nrclone sets the modification time after the upload Onedrive creates a\nnew version.\n\nSee: https://github.com/rclone/rclone/issues/1716\n"
+      },
+      "tenant_url": {
+        "title": "Tenant URL",
+        "help": "The tenant URL for non-admin OneDrive access.\n\nSet this to your SharePoint tenant URL to use the SharePoint v2.0 API\nendpoint instead of the standard Microsoft Graph API. This allows\naccessing business OneDrive without admin consent.\n\nThe URL can be found in your browser's developer tools by searching\nfor \"driveAccessToken\" in the network requests. Look for the\n\".driveUrl\" field which contains the tenant URL and drive ID.\n\nExample: https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "Upload Cutoff",
         "help": "Cutoff for switching to chunked upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 0 and the maximum is 5 GiB."
+      },
+      "decompress": {
+        "title": "Decompress",
+        "help": "If set this will decompress gzip encoded objects.\n\nIt is possible to upload objects to object storage with\n\"Content-Encoding: gzip\" set. Normally rclone will download these\nfiles as compressed objects.\n\nIf this flag is set then rclone will decompress these files with\n\"Content-Encoding: gzip\" as they are received. This means that rclone\ncan't check the size and hash but the file contents will be\ndecompressed.\n"
       }
     },
     "pcloud": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Xxh3Sum Command",
         "help": "The command used to read XXH3 hashes.\n\nLeave blank for autodetect."
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "pin_host_key": {
+        "title": "Pin Host Key",
+        "help": "Pin the server host key on first connection (Trust On First Use).\n\nIntended for one-time use as the `--sftp-pin-host-key` command-line\nflag. Run rclone once with the flag and the server's host key will be\nrecorded into the host_keys config option. On subsequent runs (without\nthe flag) host_keys is consulted and any mismatch is refused.\n\nSetting this option persistently in the config file is not\nrecommended. While it is set, rclone will also accept any new\nhost key algorithm the server later presents, which widens the trust\nsurface beyond the initial pin. To pin a new key after a legitimate\nkey change, re-run with the flag.\n\nThe first connection is unauthenticated, so ideally do it over a\ntrusted network or cross-check the fingerprint rclone logs against\none provided out of band.\n\nIf known_hosts_file is also set, that takes precedence and this option\nis ignored."
+      },
+      "host_keys": {
+        "title": "Pinned Host Keys",
+        "help": "Pinned host keys for this remote, used to verify the server.\n\nComma-separated list of \"algo base64-key\" entries (the same format as\nthe second and third fields of an OpenSSH known_hosts line). Usually\npopulated automatically by running once with --sftp-pin-host-key, but\ncan be set by hand to pin a server's public key obtained out of band.\nNote that each entry is the complete public key, not its SHA256\nfingerprint.\n\nWhen non-empty, the offered host key must match one of the entries or\nthe connection is refused. To re-pin after a legitimate key change,\nclear this option and reconnect with --sftp-pin-host-key, or edit the\nvalue directly.\n\nAt most 16 entries may be pinned."
       }
     },
     "sharefile": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "Token Url",
         "help": "Token server url.\n\nLeave blank to use the provider defaults."
+      },
+      "upload_wait": {
+        "title": "Wait After Upload",
+        "help": "Wait this long after an upload before setting the modification time.\n\nYandex Disk finalizes an upload asynchronously on its servers after\nthe upload has completed. If the modification time is set while this\nfinalization is still in progress the server returns 500 Internal\nServer Error errors.\n\nIf you are getting 500 errors on upload then setting this to 2s is\nnormally enough to stop them, at the cost of slowing down uploads.\n\nYandex support recommend a value of 1.5s - 3s."
       }
     },
     "zoho": {
@@ -3714,6 +3758,30 @@
       "upload_cutoff": {
         "title": "Upload Cutoff",
         "help": "Cutoff for switching to large file upload api (>= 10 MiB)."
+      },
+      "root_folder_id": {
+        "title": "Root Folder ID",
+        "help": "ID of the root folder.\n\nLeave blank normally.\n\nFill in to make rclone use a non root folder as its starting point."
+      },
+      "tpslimit": {
+        "title": "API Transactions per Second",
+        "help": "Max number of API transactions per second.\n\nZoho WorkDrive rate limits its API and returns HTTP 429 (error F7008,\n\"Request rate limit exceeded\") when called too quickly, so the data API\ncalls (list, upload, download, copy, move, delete) are paced to this rate.\n\nSet to 0 to disable the cap, matching the global --tpslimit; pacing still\ncan't be turned off entirely because backoff and Retry-After always apply.\n\nThe default of 6 is a safe sustainable rate. Higher values can trigger long\n429 Retry-After stalls that make throughput WORSE, so raise it only if your\naccount tolerates more."
+      },
+      "tpslimit_burst": {
+        "title": "API Request Burst",
+        "help": "Number of API calls to allow back-to-back without sleeping, for --zoho-tpslimit.\n\nThis is the token-bucket capacity. Keep at 1 for Zoho: a burst > 1\nlets several calls fire at once after an idle gap, which can trigger\nsynchronized clusters of 429 errors."
+      },
+      "list_folder_limit": {
+        "title": "Folder Listing Limit",
+        "help": "Max listings of the SAME folder allowed per --zoho-list-folder-window.\n\nZoho WorkDrive rate limits its listing API (GET files/{id}/files) PER\nfolder, independently of --zoho-tpslimit: listing one folder too often in a\nshort time returns HTTP 429 (error F7008) with a multi-minute Retry-After\npenalty, which a tight polling loop can hit even at a low overall rate.\nMeasured live, Zoho allows ~19 listings of one folder in any rolling ~60s\nwindow and the 20th fails, which the defaults (19 per 60s) model exactly.\n\nThis is a true per-window cap for any traffic pattern: each window starts\nwith --zoho-list-folder-burst listings passing back-to-back (the burst\nre-arms at every window boundary) and the rest are spaced\n--zoho-list-folder-window/(limit - burst) apart (the defaults give ~4.6s),\nwhile a sliding log of recent listings enforces the cap across window\nboundaries. 0 disables the limiter. Only REPEATED listings of one folder are\ndelayed; different folders, or a folder listed fewer than\n--zoho-list-folder-burst times, never are.\n\nA HIGHER value means MORE listings per window, not more safety: raising it\nabove 19 trips F7008. Lower it for a wider margin at the cost of listing\nresponsiveness."
+      },
+      "list_folder_window": {
+        "title": "Folder Listing Window",
+        "help": "The window for --zoho-list-folder-limit.\n\nThe default of 60s (shown as 1m0s) matches Zoho's real sliding window: at\nmost --zoho-list-folder-limit listings of one folder are allowed in any\nwindow of this length. A bare number is parsed as seconds (\"60\" = \"60s\").\n\nWiden it (or lower the limit) for a bigger safety margin; the sustained\nspacing between same-folder listings is window/(limit - burst)."
+      },
+      "list_folder_burst": {
+        "title": "Folder Listing Burst",
+        "help": "Same-folder listings allowed back-to-back before --zoho-list-folder-limit paces them.\n\nThe burst is carved out of --zoho-list-folder-limit, so raising it never\nraises the per-window total: this many listings may fire immediately and the\nremaining limit - burst are spaced window/(limit - burst) apart. The burst\nRE-ARMS at every window boundary, so sustained re-listing gets a fresh burst\neach window while a sliding log of recent listings still enforces the\nper-window cap. A folder listed only a handful of times (the common case - a\nsync re-listing one directory a few times then moving on) never waits.\n\nThe default 6 is the largest burst validated live under the default 19-per-60s\ncap (bursts of 4, 5 and 6 all ran clean; an over-cap probe tripped F7008\nexactly at the 20th listing in a window). Keep it well below ~15 - Zoho also\nhas an instantaneous back-to-back cap around 15-16 regardless of the window.\nSet to 1 to pace from the second listing. Values >= the limit are clamped to\nlimit - 1."
       }
     },
     "filen": {

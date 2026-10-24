@@ -145,10 +145,6 @@
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
 
-.footer-spacer {
-  flex: 1;
-}
-
 .action-list.cdk-drop-list-dragging .action-item:not(.cdk-drag-placeholder) {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }

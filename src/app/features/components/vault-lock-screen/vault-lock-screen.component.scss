@@ -1,0 +1,465 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Crysis-style Nanosuit HUD lock screen — tema (light/dark) uyumlu
+//
+// Renkler uygulama temasından gelir:
+//   --primary-color / --accent-color / --warn-color
+//   --window-bg-color / --card-bg-color / --window-fg-color / --dim-color
+// Açık/koyu ayarı `.light` / `.dark` sınıfından okunur (:host-context).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Single hexagonal cells with a bevel and a static grain texture.
+// SVG sadece ALPHA MASKESİ olarak kullanılır → renk CSS'ten gelir.
+// Tile: 56 x 96.99 birim, 0.75x ölçekle 42 x 73 px.
+$hex-cells: url("../../../../assets/vault/hex-cells.svg");
+$hex-cells-size: calc(var(--space-lg) * 2 + var(--space-xxs) / 2)
+  calc(var(--space-2xl) * 2 + var(--space-xs) + var(--space-xxs) / 4);
+
+@mixin hex-mask($image, $size) {
+  mask-image: $image;
+  mask-size: $size;
+  -webkit-mask-image: $image;
+  -webkit-mask-size: $size;
+}
+
+:host {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.vault-window-bar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-xxs);
+  min-height: var(--titlebar-height);
+  padding: var(--space-xxs) var(--space-xs);
+  box-sizing: border-box;
+}
+
+.vault-exit-confirmation {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: var(--space-md);
+
+  p {
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+  }
+}
+
+.vault-exit-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.vault-lock-container {
+  // Açık tema varsayılanları
+  --hex-base-opacity: 0.5;
+
+  perspective: calc(var(--space-2xl) * 40);
+  perspective-origin: 50% 45%;
+  position: relative;
+  display: flex;
+  align-self: flex-start;
+  flex: 0 0 100%;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: var(--space-md);
+
+  &.desktop-window {
+    padding-block: calc(var(--titlebar-height) + var(--space-md));
+  }
+  color: var(--window-fg-color);
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    color-mix(in srgb, var(--primary-color) 9%, var(--window-bg-color)),
+    var(--window-bg-color) 72%
+  );
+
+  &.denied {
+    --primary-color: var(--warn-color);
+    --accent-color: var(--warn-color);
+    --mat-sys-primary: var(--warn-color);
+    --mat-sys-on-primary: var(--destructive-fg-color);
+  }
+
+  &.denied .vault-lock-card {
+    animation: hud-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+}
+
+// Koyu tema ayarları
+:host-context(.dark) .vault-lock-container {
+  --hex-base-opacity: 0.4;
+}
+
+// ── Arka plan katmanları ─────────────────────────────────────────────────────
+
+.hex-grid,
+.hex-wave,
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+// Taban doku: iridescent (accent → accent-2) bevel'li hücreler
+.hex-grid {
+  @include hex-mask($hex-cells, $hex-cells-size);
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  opacity: var(--hex-base-opacity);
+}
+
+.hud-background {
+  position: absolute;
+  inset: calc(var(--space-2xl) * -2);
+  pointer-events: none;
+  transform: translateZ(calc(var(--space-2xl) * -1)) scale(1.12);
+  transition: transform var(--transition-standard);
+}
+
+.hud-panel-plane {
+  position: relative;
+  width: 100%;
+  max-width: calc(var(--space-2xl) * 13);
+}
+
+.hex-wave {
+  color: var(--accent-color);
+
+  // Isolate animated SVG paints to a cell-sized viewport, not the full screen.
+  .hex-wave-cell {
+    position: absolute;
+    contain: strict;
+    transform: translate(-50%, -50%);
+  }
+
+  .hex-wave-top,
+  .hex-wave-face,
+  .hex-wave-trace,
+  .hex-wave-wall {
+    animation-duration: var(--wave-duration);
+    animation-delay: var(--wave-delay);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  .hex-wave-top {
+    animation-name: cell-lift;
+  }
+
+  .hex-wave-face {
+    fill: color-mix(in srgb, currentColor 16%, var(--window-bg-color));
+    opacity: 0;
+    animation-name: cell-face;
+  }
+
+  .hex-wave-trace {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    opacity: 0;
+    animation-name: cell-trace;
+  }
+
+  .hex-wave-wall {
+    fill: color-mix(in srgb, currentColor 35%, var(--window-bg-color));
+    stroke: color-mix(in srgb, currentColor 45%, transparent);
+    stroke-width: 0.6;
+    opacity: 0;
+    animation-name: cell-wall;
+  }
+}
+
+.denied .hex-wave {
+  color: var(--warn-color);
+
+  .hex-wave-face {
+    fill: currentColor;
+  }
+
+  .hex-wave-wall {
+    fill: color-mix(in srgb, currentColor 75%, var(--window-bg-color));
+    stroke: currentColor;
+  }
+}
+
+.vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    color-mix(in srgb, var(--window-bg-color), black 25%) 100%
+  );
+}
+
+// ── Panel ────────────────────────────────────────────────────────────────────
+
+.vault-lock-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: calc(var(--space-2xl) * 13);
+  box-sizing: border-box;
+  padding: var(--space-xl);
+  background: var(--card-bg-color);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--radius-lg);
+}
+
+// ── Başlık / altıgen rozet ───────────────────────────────────────────────────
+
+.vault-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: var(--space-md);
+
+  .vault-icon-badge {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--space-2xl) * 2);
+    height: calc(var(--space-2xl) * 2);
+    margin-bottom: var(--space-md);
+    color: var(--primary-color);
+    border-radius: var(--radius-circle);
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg-color));
+    box-shadow: inset 0 0 0 calc(var(--space-xxs) / 4)
+      color-mix(in srgb, var(--primary-color) 25%, transparent);
+
+    mat-icon {
+      position: relative;
+      width: var(--icon-size-lg);
+      height: var(--icon-size-lg);
+      font-size: var(--icon-size-lg);
+    }
+  }
+
+  h2 {
+    margin: 0 0 var(--space-xs);
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--window-fg-color);
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    color: var(--dim-color);
+  }
+}
+
+// ── Form ─────────────────────────────────────────────────────────────────────
+
+.vault-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  .unlock-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    width: 100%;
+    height: calc(var(--space-2xl) + var(--space-sm));
+    margin-top: var(--space-xs);
+    font-weight: 600;
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+  }
+}
+
+// ── Durum çubuğu ─────────────────────────────────────────────────────────────
+
+.hud-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  width: 100%;
+  margin-top: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--primary-color);
+
+  .status-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+
+  .status-dot {
+    flex-shrink: 0;
+    width: var(--space-xs);
+    height: var(--space-xs);
+    margin-top: var(--space-xxs);
+    background: currentColor;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    animation: blink 1.2s steps(1) infinite;
+  }
+
+  &.status-error {
+    color: var(--warn-color);
+
+    .status-dot {
+      animation: none;
+    }
+  }
+}
+
+.busy .status-dot {
+  animation-duration: 0.3s;
+}
+
+// ── Animasyonlar ─────────────────────────────────────────────────────────────
+
+@keyframes cell-trace {
+  0%,
+  2% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  4% {
+    opacity: 0.85;
+    stroke-dashoffset: 1;
+  }
+  14%,
+  25% {
+    opacity: 0.85;
+    stroke-dashoffset: 0;
+  }
+  36%,
+  100% {
+    opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cell-lift {
+  0%,
+  14%,
+  38%,
+  100% {
+    transform: translateY(0);
+  }
+  20%,
+  27% {
+    transform: translateY(calc(var(--space-xs) * -1));
+  }
+}
+
+@keyframes cell-face {
+  0%,
+  14%,
+  38%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  27% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes cell-wall {
+  0%,
+  16%,
+  36%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  27% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes hud-shake {
+  10%,
+  90% {
+    transform: translateX(calc(var(--space-xxs) / -2));
+  }
+  20%,
+  80% {
+    transform: translateX(var(--space-xxs));
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(calc(var(--space-xxs) * -1.5));
+  }
+  40%,
+  60% {
+    transform: translateX(calc(var(--space-xxs) * 1.5));
+  }
+}
+
+.effects-paused {
+  .hex-wave-top,
+  .hex-wave-face,
+  .hex-wave-trace,
+  .hex-wave-wall,
+  .vault-icon-badge,
+  .vault-lock-card,
+  .status-dot {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-icon-badge,
+  .status-dot,
+  .vault-lock-card {
+    animation: none !important;
+  }
+
+  .hex-wave {
+    display: none;
+  }
+
+  .hud-background,
+  .hud-panel-plane {
+    transform: none !important;
+    transition: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hud-background,
+  .hud-panel-plane {
+    transform: none !important;
+    transition: none;
+  }
+}

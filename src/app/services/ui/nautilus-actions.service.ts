@@ -1,3 +1,5 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -24,6 +26,7 @@ export class NautilusActionsService {
   private readonly notificationService = inject(NotificationService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathSvc = inject(PathService);
+  private readonly remoteMetadata = inject(RemoteManagementService);
   private readonly remoteFacadeSvc = inject(RemoteFacadeService);
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
@@ -32,6 +35,31 @@ export class NautilusActionsService {
   private readonly clipboard = inject(Clipboard);
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
+
+  readonly isCurrentPathBookmarked = computed(() => {
+    const remote = this.tabSvc.activeRemote();
+    return (
+      !!remote && this.nautilusService.isSaved('bookmarks', remote.name, this.tabSvc.activePath())
+    );
+  });
+
+  toggleCurrentPathBookmark(): void {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote || this.tabSvc.activeStarredMode()) return;
+    const path = this.tabSvc.activePath();
+    this.nautilusService.toggleItem('bookmarks', {
+      entry: {
+        ID: '',
+        Name: path ? pathUtils.extractName(path) : remote.label || remote.name,
+        Path: path,
+        IsDir: true,
+        Size: -1,
+        ModTime: '',
+        MimeType: '',
+      },
+      meta: { remote: remote.name, isLocal: remote.isLocal, remoteType: remote.type },
+    });
+  }
 
   private _resolveItemRemoteInfo(itemOverride?: FileBrowserItem | null): {
     item: FileBrowserItem | null;
@@ -92,7 +120,7 @@ export class NautilusActionsService {
     const baseName = this.pathSvc.normalizeRemoteName(
       item?.meta.remote ?? this.tabSvc.activeRemote()?.name ?? ''
     );
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
+    const features = this.remoteMetadata.getFeaturesSignal(baseName)() as RemoteFeatures;
 
     this.modalService.openProperties({
       remoteName,
@@ -109,7 +137,7 @@ export class NautilusActionsService {
   }
 
   openAboutModal(remote: ExplorerRoot): void {
-    this.remoteFacadeSvc.openRemoteAbout(remote);
+    this.modalService.openRemoteAbout(remote);
   }
 
   async confirmAndCleanup(r: ExplorerRoot): Promise<void> {
@@ -125,11 +153,15 @@ export class NautilusActionsService {
     }
 
     const isLocal = item.meta.isLocal;
-    const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
+    // The viewer has one root for its entire playlist. Starred items can span roots.
+    const files = activePaneFiles.filter(
+      f => f.meta.remote === actualRemoteName && f.meta.isLocal === isLocal
+    );
+    const idx = files.findIndex(f => fileBrowserItemKey(f) === fileBrowserItemKey(item));
     if (idx === -1) return;
 
     this.fileViewerSvc.open(
-      activePaneFiles.map(f => f.entry),
+      files.map(f => f.entry),
       idx,
       actualRemoteName,
       isLocal
@@ -138,28 +170,27 @@ export class NautilusActionsService {
 
   async openNewFolder(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const existingNames = this.tabSvc.activeFiles().map(f => f.entry.Name);
-    const created = await this.fileOps.openNewFolderDialog(
-      remote,
-      this.tabSvc.activePath(),
-      existingNames
-    );
-    if (created) this._refresh();
+    const created = await this.fileOps.openNewFolderDialog(remote, path, existingNames);
+    if (created) this._refresh(remote, path);
   }
 
   async openCopyUrlDialog(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
-    const changed = await this.fileOps.openCopyUrlDialog(remote, this.tabSvc.activePath());
-    if (changed) this._refresh();
+    const changed = await this.fileOps.openCopyUrlDialog(remote, path);
+    if (changed) this._refresh(remote, path);
   }
 
   async openRename(): Promise<void> {
     const item = this.contextMenuItem();
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!item || !remote) return;
 
     const existingNames = this.tabSvc
@@ -168,12 +199,12 @@ export class NautilusActionsService {
       .map(f => f.entry.Name);
 
     const changed = await this.fileOps.openRenameDialog(remote, item, existingNames);
-    if (changed) this._refresh();
+    if (changed) this._refresh(remote, path);
   }
 
   getSelectedOrContextItems(): FileBrowserItem[] {
     const selection = this.tabSvc.activeSelection();
-    const selected = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
+    const selected = this.tabSvc.activeFiles().filter(f => selection.has(fileBrowserItemKey(f)));
     if (selected.length > 0) return selected;
     const ctx = this.contextMenuItem();
     return ctx ? [ctx] : [];
@@ -181,6 +212,7 @@ export class NautilusActionsService {
 
   async deleteSelectedItems(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const itemsToDelete = this.getSelectedOrContextItems();
@@ -188,38 +220,38 @@ export class NautilusActionsService {
 
     const refreshNeeded = await this.fileOps.deleteItems(remote, itemsToDelete);
     if (refreshNeeded) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     }
   }
 
   async removeEmptyDirs(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const selection = this.tabSvc.activeSelection();
     const item =
-      this.tabSvc.activeFiles().find(f => selection.has(this._itemKey(f)) && f.entry.IsDir) ??
+      this.tabSvc.activeFiles().find(f => selection.has(fileBrowserItemKey(f)) && f.entry.IsDir) ??
       this.contextMenuItem();
     if (!item) return;
 
     const changed = await this.fileOps.removeEmptyDirs(remote, item);
-    if (changed) this._refresh();
+    if (changed) this._refresh(remote, path);
   }
 
   async openArchiveCreate(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const selectedFiles = this.getSelectedOrContextItems();
     if (selectedFiles.length === 0) return;
 
-    const changed = await this.fileOps.openArchiveCreateDialog(
-      remote,
-      selectedFiles,
-      this.tabSvc.activePath()
-    );
-    if (changed) this._refresh();
+    const changed = await this.fileOps.openArchiveCreateDialog(remote, selectedFiles, path);
+    if (changed) this._refresh(remote, path);
   }
 
   openContextMenuOpenInNewTab(): void {
@@ -245,7 +277,7 @@ export class NautilusActionsService {
   openContextMenuOpenInNewWindow(): void {
     const item = this.contextMenuItem();
     if (!item?.entry.IsDir) return;
-    this.nautilusService.newNautilusWindow(item.meta.remote, item.entry.Path);
+    void this.nautilusService.openStandaloneWindow(item.meta.remote, item.entry.Path);
   }
 
   openBookmarkInNewTab(bookmark: FileBrowserItem): void {
@@ -255,7 +287,7 @@ export class NautilusActionsService {
 
   openBookmarkInNewWindow(bookmark: FileBrowserItem): void {
     const remote = this._resolveBookmarkRemote(bookmark);
-    if (remote) this.nautilusService.newNautilusWindow(remote.name, bookmark.entry.Path);
+    if (remote) void this.nautilusService.openStandaloneWindow(remote.name, bookmark.entry.Path);
   }
 
   readonly supportsPublicLink = computed(() => {
@@ -266,7 +298,7 @@ export class NautilusActionsService {
     const isLocal = item?.meta.isLocal ?? remote?.isLocal ?? true;
     if (isLocal) return false;
     const baseName = this.pathSvc.normalizeRemoteName(activeRemoteName);
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
+    const features = this.remoteMetadata.getFeaturesSignal(baseName)() as RemoteFeatures;
     return !!features?.PublicLink;
   });
 
@@ -302,6 +334,7 @@ export class NautilusActionsService {
 
   async createFolderWithSelectedItems(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
@@ -321,15 +354,16 @@ export class NautilusActionsService {
       folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
 
-      const currentPath = this.tabSvc.activePath();
-      const newPath = this.pathSvc.joinPath(currentPath, folderName);
+      const newPath = pathUtils.joinPath(path, folderName);
       const normalizedRemote = this.pathSvc.normalizeExplorerRoot(remote);
 
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       await this.fileOps.performFileOperations(items, remote, newPath, 'move');
 
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     } catch (err) {
       console.error('Failed to create folder with selected items', err);
       this.notificationService.showError(
@@ -343,6 +377,7 @@ export class NautilusActionsService {
 
   async openMultiRename(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
     if (!remote) return;
 
     const items = this.selectionSvc.getSelectedItemsList(this.tabSvc.activeFiles());
@@ -352,22 +387,15 @@ export class NautilusActionsService {
 
     const changed = await firstValueFrom(ref.afterClosed());
     if (changed) {
-      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
-      this._refresh();
+      if (this.tabSvc.activeRemote()?.name === remote.name && this.tabSvc.activePath() === path) {
+        this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex());
+      }
+      this._refresh(remote, path);
     }
   }
 
-  private _refresh(): void {
-    const remote = this.tabSvc.activeRemote();
-    if (remote) {
-      this.tabSvc.refreshPath(remote.name, this.tabSvc.activePath());
-    } else {
-      this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-    }
-  }
-
-  private _itemKey(item: FileBrowserItem): string {
-    return fileBrowserItemKey(item);
+  private _refresh(remote: ExplorerRoot, path: string): void {
+    this.tabSvc.refreshPath(remote.name, path);
   }
 
   private _resolveBookmarkRemote(bookmark: FileBrowserItem): ExplorerRoot | null {

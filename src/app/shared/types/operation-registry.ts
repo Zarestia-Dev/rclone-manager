@@ -9,12 +9,6 @@ export interface OperationDefinition {
   readonly isPrimary: boolean;
   /** Can it appear in the file browser? */
   readonly isBrowsable: boolean;
-  /** Can it be a RemoteAction dispatched via tray/card? */
-  readonly isRemoteAction: boolean;
-  /** Does it support automation (cron/watch)? */
-  readonly isAutomatable: boolean;
-  /** Does it have its own job type? (some operations share job types) */
-  readonly isJobType: boolean;
   /** Does it have linked profiles (own config section)? */
   readonly hasLinkedProfiles: boolean;
   /** Is it a flag type with dedicated flag definitions? */
@@ -63,9 +57,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: false,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: false,
-    isJobType: false,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'mount',
@@ -91,9 +82,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'refresh',
@@ -119,9 +107,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'copy',
@@ -147,9 +132,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'move',
@@ -175,9 +157,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'right-left',
@@ -203,9 +182,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: false,
     isPrimary: true,
     isBrowsable: false,
-    isRemoteAction: true,
-    isAutomatable: false,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'serve',
@@ -231,9 +207,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: false,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'search',
@@ -259,9 +232,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: false,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'trash',
@@ -287,9 +257,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: false,
-    isRemoteAction: false,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'link',
@@ -315,9 +282,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: false,
-    isRemoteAction: false,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'compress',
@@ -343,9 +307,6 @@ export const OPERATION_REGISTRY = [
     isSyncType: true,
     isPrimary: true,
     isBrowsable: true,
-    isRemoteAction: true,
-    isAutomatable: true,
-    isJobType: true,
     hasLinkedProfiles: true,
     isFlagType: true,
     icon: 'shield',

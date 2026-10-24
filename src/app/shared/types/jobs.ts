@@ -2,10 +2,40 @@ import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
 
-export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
+export const JOB_STATUS = Object.freeze({
+  Running: 'Running',
+  Completed: 'Completed',
+  Failed: 'Failed',
+  Stopped: 'Stopped',
+} as const);
+export type JobStatus = (typeof JOB_STATUS)[keyof typeof JOB_STATUS];
+
+export const TRANSFER_STATUS = Object.freeze({
+  Completed: 'completed',
+  Checked: 'checked',
+  Failed: 'failed',
+  Partial: 'partial',
+  MissingDestination: 'missing_dst',
+  MissingSource: 'missing_src',
+} as const);
+export type TransferStatus = (typeof TRANSFER_STATUS)[keyof typeof TRANSFER_STATUS];
+
+/** Values emitted by rclone's TransferSnapshot.what; unknown future values use the UI fallback. */
+export const RCLONE_ACTIVITY = Object.freeze({
+  Transferring: 'transferring',
+  Checking: 'checking',
+  Deleting: 'deleting',
+  Moving: 'moving',
+  Renaming: 'renaming',
+  Hashing: 'hashing',
+  Listing: 'listing',
+  Importing: 'importing',
+  Merging: 'merging',
+} as const);
+export type RcloneActivity = (typeof RCLONE_ACTIVITY)[keyof typeof RCLONE_ACTIVITY];
 
 export interface ResolveState {
-  status: string;
+  status: JobStatus;
   percentage: number;
   isPreparing: boolean;
   bytes: number;
@@ -20,6 +50,8 @@ export interface CompletedTransfer {
   size: number;
   bytes: number;
   checked: boolean;
+  /** Rclone's per-entry activity (e.g. transferring, checking, deleting, moving). */
+  what?: RcloneActivity;
   error: string;
   jobid: number;
   startedAt?: string;
@@ -27,8 +59,7 @@ export interface CompletedTransfer {
   srcFs?: string;
   dstFs?: string;
   group?: string;
-  status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
-  uniqueId?: string;
+  status: TransferStatus;
   resolveJobId?: number;
   resolveState?: ResolveState;
 }
@@ -44,9 +75,6 @@ export interface TransferFile {
   speed: number;
   speedAvg: number;
   srcFs: string;
-  isError?: boolean;
-  isCompleted?: boolean;
-  error?: string;
 }
 
 export interface GlobalStats {
@@ -71,20 +99,30 @@ export interface GlobalStats {
   totalTransfers: number;
   transferTime: number;
   transferring: TransferFile[];
+  /** Active non-transfer work; rclone exposes names without byte progress. */
+  checking?: string[];
   transfers: number;
   listed: number;
   completed?: CompletedTransfer[];
   startTime?: string;
-  checkOutput?: {
-    differ?: string[];
-    missingOnDst?: string[];
-    missingOnSrc?: string[];
-    error?: string[];
-    status?: string;
-    success?: boolean;
-    hashType?: string;
-  };
+  checkOutput?: CheckOutput;
 }
+
+export interface RcloneCheckResult {
+  match?: string[];
+  combined?: string[];
+  differ?: string[];
+  missingOnDst?: string[];
+  missingOnSrc?: string[];
+  error?: string[];
+  status?: string;
+  success?: boolean;
+  hashType?: string;
+}
+
+/** Standard checks return an object; batch and cryptcheck results may wrap several reports. */
+export type CheckOutput =
+  RcloneCheckResult | RcloneCheckResult[] | { results: RcloneCheckResult[] };
 
 // Frozen to prevent accidental mutation of the default state
 export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
@@ -116,6 +154,8 @@ export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
 
 export interface JobInfo {
   jobid: number;
+  /** Monotonic within execute_id; absent on older servers. */
+  stats_revision?: number;
   execute_id: string;
   job_type: JobActionType;
   source: string | string[];
@@ -138,19 +178,6 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
-}
-
-export interface BatchMasterJob {
-  batch_id: string;
-  job_type: JobActionType;
-  total_jobs: number;
-  completed_jobs: number;
-  failed_jobs: number;
-  start_time: string;
-  end_time?: string;
-  status: JobStatus;
-  origin?: Origin;
-  group?: string;
 }
 
 export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({

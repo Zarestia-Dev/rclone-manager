@@ -36,15 +36,6 @@ describe('WorkflowEngineService', () => {
         if (command === 'stop_workflow') {
           return Promise.resolve();
         }
-        if (command === 'validate_workflow') {
-          const wf = args?.['workflow'] as WorkflowDefinition;
-          const valid = wf.id !== 'wf-cyclic';
-          return Promise.resolve({
-            valid,
-            errors: valid ? [] : ['Cyclic graph'],
-            warnings: [],
-          });
-        }
         if (command === 'update_workflow') {
           return Promise.resolve(args?.['workflow']);
         }
@@ -182,6 +173,10 @@ describe('WorkflowEngineService', () => {
 
     expect(result).toBe(false);
     expect(service.logs().some(l => l.severity === 'error')).toBe(true);
+    expect(service.isExecuting()).toBe(false);
+    expect(service.isDryRun()).toBe(false);
+    expect(service.executionProgress()).toBeNull();
+    expect(service.activeEdgeIds().size).toBe(0);
   });
 
   it('calls backend stop_workflow when stopping', async () => {

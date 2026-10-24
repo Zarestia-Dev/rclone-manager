@@ -52,23 +52,36 @@
       <hr class="sidebar-rule" />
 
       <!-- Bookmarks -->
-      <div
-        class="sidebar-section-header"
-        data-sidebar-bookmarks-header="true"
-        [class.drag-over]="isDragging() && hoveredSidebarItem() === 'bookmarks-header'"
-        (dragover)="$event.preventDefault()"
-        (drop)="droppedToLocal.emit($event)"
-      >
+      <div class="sidebar-section-header">
         {{ 'nautilus.titles.bookmarks' | translate }}
       </div>
 
-      @for (item of bookmarkViewModels(); track item.bm.meta.remote + ':' + item.bm.entry.Path) {
+      <div
+        class="bookmark-drop-reveal"
+        [class.expanded]="canBookmarkDrag() && !isPickerMode()"
+        [attr.aria-hidden]="!canBookmarkDrag() || isPickerMode()"
+      >
+        <div class="bookmark-drop-clip">
+          <div
+            class="bookmark-drop-target"
+            [attr.data-sidebar-bookmarks-header]="
+              canBookmarkDrag() && !isPickerMode() ? 'true' : null
+            "
+            [class.drag-over]="hoveredSidebarItem() === 'bookmarks-header'"
+          >
+            <mat-icon svgIcon="bookmark"></mat-icon>
+            <span>{{ 'nautilus.bookmarks.dropHint' | translate }}</span>
+          </div>
+        </div>
+      </div>
+
+      @for (item of bookmarkViewModels(); track item.key) {
         <button
           class="sidebar-item"
-          [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
+          [attr.data-sidebar-bookmark-key]="getItemKey(item.bm)"
           [class.selected]="item.key === activeBookmarkKey()"
           [class.drag-over]="
-            isDragging() && hoveredSidebarItem() === 'bookmark:' + item.bm.entry.Path
+            isDragging() && hoveredSidebarItem() === 'bookmark:' + getItemKey(item.bm)
           "
           (click)="onOpenBookmark(item.bm)"
           (dragover)="$event.preventDefault()"
@@ -161,7 +174,7 @@
     cdkMenu
     [style.height.px]="menuCtrl.contextMenuHeight()"
   >
-    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'open'">
+    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'submenu'">
       <!-- Main Page -->
       <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
         <button class="menu-item" (click)="starredSelected.emit()">
@@ -190,7 +203,7 @@
     cdkMenu
     [style.height.px]="menuCtrl.contextMenuHeight()"
   >
-    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'open'">
+    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'submenu'">
       <!-- Main Page -->
       <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
         <button
@@ -213,7 +226,7 @@
       </div>
 
       <!-- Open Submenu Page -->
-      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'open'">
+      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'submenu'">
         <button
           class="menu-item centered-item"
           (click)="menuCtrl.goBack(); $event.stopPropagation()"
@@ -243,7 +256,7 @@
     cdkMenu
     [style.height.px]="menuCtrl.contextMenuHeight()"
   >
-    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'open'">
+    <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'submenu'">
       <!-- Main Page -->
       <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
         <button
@@ -268,7 +281,7 @@
       </div>
 
       <!-- Open Submenu Page -->
-      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'open'">
+      <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'submenu'">
         <button
           class="menu-item centered-item"
           (click)="menuCtrl.goBack(); $event.stopPropagation()"

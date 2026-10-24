@@ -6,7 +6,6 @@ import {
   inject,
   DestroyRef,
   afterNextRender,
-  effect,
 } from '@angular/core';
 import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,6 +27,7 @@ import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quic
 import { WorkflowWorkspaceComponent } from './workflow/components/workflow-workspace/workflow-workspace.component';
 import { WorkflowStateService } from '../services/flow/workflow-state.service';
 import { BannerComponent } from '../layout/banners/banner.component';
+import { WorkspaceShellComponent } from '../layout/workspace-shell/workspace-shell.component';
 
 @Component({
   selector: 'app-flow-container',
@@ -43,9 +43,10 @@ import { BannerComponent } from '../layout/banners/banner.component';
     QuickRunWorkspaceComponent,
     WorkflowWorkspaceComponent,
     BannerComponent,
+    WorkspaceShellComponent,
   ],
   templateUrl: './flow-container.component.html',
-  styleUrl: './flow-container.component.scss',
+  host: { class: 'workspace-container' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlowContainerComponent {
@@ -56,16 +57,7 @@ export class FlowContainerComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly modalService = inject(ModalService);
 
-  private getInitialSubMode(): FlowSubMode {
-    const stored = this.localStorage.get<string>('ui.flowActiveSubMode', 'quick_run');
-    return stored === 'builder' ? 'builder' : 'quick_run';
-  }
-
-  /**
-   * Currently-active Flow sub-mode. Initialized from localStorage if available,
-   * falling back to `'quick_run'`.
-   */
-  readonly activeSubMode = signal<FlowSubMode>(this.getInitialSubMode());
+  readonly activeSubMode = this.uiStateService.flowSubMode;
 
   /** Tab definitions for flow container using TabsButtonsComponent. */
   readonly tabs: TabItem<FlowSubMode>[] = [
@@ -107,18 +99,11 @@ export class FlowContainerComponent {
       syncResponsiveSidebar(768, this.sidebarMode, undefined, this.destroyRef);
     });
 
-    effect(() => {
-      const mode = this.workflowState.requestedSubMode();
-      if (mode) {
-        this.setSubMode(mode);
-        this.workflowState.requestedSubMode.set(null);
-      }
-    });
-
     this.uiStateService.registerMobileSidebar({
       view: 'flow',
       isOver: this.isSidebarOver,
       isOpen: this.isSidebarOpen,
+      close: () => this.setSidebarOpen(false),
     });
 
     this.destroyRef.onDestroy(() => {
@@ -144,8 +129,7 @@ export class FlowContainerComponent {
     if (this.activeSubMode() === 'builder' && resolved !== 'builder') {
       this.workflowState.resetMobileUiState();
     }
-    this.activeSubMode.set(resolved);
-    this.localStorage.set('ui.flowActiveSubMode', resolved);
+    this.uiStateService.setFlowSubMode(resolved);
   }
 
   /** Open the remote configuration modal to create a new remote only. */

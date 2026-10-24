@@ -142,7 +142,7 @@
         "help": "Bir kapsayıcının genel erişim seviyesi: blob veya kapsayıcı."
       },
       "sas_url": {
-        "title": "Sas Url",
+        "title": "SAS Adresi",
         "help": "Yalnızca kapsayıcı düzeyinde erişim için SAS URL.\n\nHesap/anahtar veya Öykünücü kullanıyorsanız boş bırakın."
       },
       "service_principal_file": {
@@ -192,6 +192,14 @@
       "decompress": {
         "title": "Sıkıştırmayı Aç",
         "help": "Ayarlanırsa gzip kodlu nesnelerin sıkıştırmasını açar.\n\nAzure Blob Depolama'ya \"Content-Encoding: gzip\" ayarıyla nesne yüklemek mümkündür. Normalde rclone bu dosyaları sıkıştırılmış nesneler olarak indirir.\n\nBu bayrak ayarlanırsa, rclone bu dosyaları alındıklarında \"Content-Encoding: gzip\" ile açar. Bu, rclone'un boyut ve karma (hash) değerini kontrol edemeyeceği ancak dosya içeriğinin sıkıştırmasının açılacağı anlamına gelir.\n"
+      },
+      "use_arrow_list": {
+        "title": "Apache Arrow Listelemesini Kullan",
+        "help": "Dizin listelemelerinde XML yerine ListBlobs Apache Arrow yanıt biçimini kullanır. Arrow yanıtları daha küçüktür ve daha az işlemle ayrıştırılır; büyük kapsayıcıların listelenmesini birkaç kat hızlandırabilir. En iyi sonuç için list_parallelism ile birlikte kullanın.\n\nMicrosoft’un \"Blob Listing with Apache Arrow\" özelliği genel önizlemededir ve yalnızca düz ad alanlı hesaplarda desteklenir. Hiyerarşik ad alanlı hesaplarda (ADLS Gen2) veya özellik kullanılamadığında sunucu XML döndürür; listeleme otomatik olarak normal XML yöntemine döner ve bu durum hata ayıklama düzeyinde günlüğe yazılır."
+      },
+      "list_parallelism": {
+        "title": "Listeleme Paralelliği",
+        "help": "Bir dizini listelemek için kullanılacak paralel bölüm sayısı.\n\n1’den büyükse dizindeki blob adları aralıklara bölünür ve Arrow startFrom/endBefore parametreleriyle eşzamanlı listelenir. Milyonlarca nesne içeren kapsayıcılarda hem özyinelemeli (ListR) hem tek dizin listelemelerini önemli ölçüde hızlandırabilir. Hız, yaklaşık 30 paralel bölüme kadar artmaya devam eder.\n\nSunucu tarafında ad aralıklarını yalnızca Arrow desteklediğinden use_arrow_list de etkin olmalıdır. Hesap aralıkla listelemeyi desteklemiyorsa (ör. hiyerarşik ad alanı) sırayla listelemeye dönülür. Varsayılan 0 veya 1, sırayla listeler."
       }
     },
     "azurefiles": {
@@ -272,7 +280,7 @@
         "help": "Kullanıcının parolası\n\nŞunları kullanıyorsanız bunu ayarlayın:\n- Kullanıcı adı ve parolası olan kullanıcı\n"
       },
       "sas_url": {
-        "title": "Sas Url",
+        "title": "SAS Adresi",
         "help": "SAS URL.\n\nHesap/anahtar veya bağlantı dizesi kullanıyorsanız boş bırakın."
       },
       "service_principal_file": {
@@ -1044,6 +1052,18 @@
       "token_url": {
         "title": "Jeton URL'si",
         "help": "Jeton sunucusu URL'si.\n\nSağlayıcı varsayılanlarını kullanmak için boş bırakın."
+      },
+      "impersonate_admin": {
+        "title": "Takım Yöneticisi Kimliğiyle İşlem Yap",
+        "help": "Takım yöneticisi olarak işlem yaparken kullanılacak takım üyesi kimliği.\n\nDropbox-API-Select-Admin başlığına belirtilen takım üyesi kimliğini (ör. \"dbmid:...\") yazar. E-posta adresi değil, doğrudan üye kimliği gerektirir.\n\nimpersonate_admin kullanacaksanız \"rclone config\" sırasında da bu seçeneği ayarlayın; böylece normalde istenmeyen \"team_data.member\" izni talep edilir. Bu izin OAuth akışı sırasında Dropbox takım yöneticisinin onayını gerektirir.\n\nRclone’un varsayılan izinlerinde \"team_data.member\" bulunmadığından kendi uygulamanızı, client_id ve client_secret değerlerinizi kullanmanız gerekir."
+      },
+      "skip_shared_folders": {
+        "title": "Paylaşılan Klasörleri Atla",
+        "help": "Tüm paylaşılan klasörleri atlar.\n\nSahibi kim olursa olsun, paylaşılan klasör bağlama noktaları dizin listelemelerinden çıkarılır. Paylaşılan klasörleri, paylaşılan klasör ad alanına ayarlanmış ayrı bir uzak bağlantıyla ayrıca yedeklemek istediğinizde kullanışlıdır."
+      },
+      "skip_unowned_folders": {
+        "title": "Sahibi Olunmayan Paylaşımları Atla",
+        "help": "Geçerli kullanıcıya ait olmayan paylaşılan klasörleri atlar.\n\nGeçerli kullanıcının sahip olmadığı paylaşılan klasör bağlama noktalarını dizin listelemelerinden çıkarır. Ortak klasörleri paylaşan birden çok Dropbox hesabını yedeklerken aynı verinin tekrar yedeklenmesini önler.\n\nDropbox Business’ta Takım Klasörleri takıma aittir. Standart üyeler düzenleyici/görüntüleyici erişimine sahip olduğundan bu klasörler onlara ait sayılmaz ve atlanır. Takım Klasörlerini yedeklemek için bu seçeneği kullanmayın veya takım yöneticisi hesabıyla çalıştırın.\n\n--dropbox-skip-shared-folders etkinse bu seçeneğin etkisi yoktur. Her paylaşılan klasör bağlama noktası için ek bir API çağrısı yapar."
       }
     },
     "fichier": {
@@ -2160,6 +2180,10 @@
       "upload_cutoff": {
         "title": "Yükleme Sınırı",
         "help": "Parçalı yüklemeye geçiş için sınır.\n\nBundan büyük tüm dosyalar chunk_size boyutunda parçalar halinde yüklenecektir.\n\nOneDrive İş'te tek parçalı yükleme kullanmak, rclone yüklemeden sonra değiştirilme zamanını ayarladığında OneDrive yeni bir sürüm oluşturduğu için rclone'un iki kat fazla depolama alanı kullanmasına neden olduğundan, bu varsayılan olarak devre dışıdır.\n\nBkz: https://github.com/rclone/rclone/issues/1716\n"
+      },
+      "tenant_url": {
+        "title": "Kiracı Adresi",
+        "help": "Yönetici olmayan kullanıcıların OneDrive erişimi için kiracı adresi.\n\nStandart Microsoft Graph API yerine SharePoint v2.0 API uç noktasını kullanmak için SharePoint kiracı adresini ayarlayın. Bu, yönetici onayı olmadan kurumsal OneDrive’a erişim sağlar.\n\nAdresi tarayıcınızın geliştirici araçlarında ağ istekleri içinde \"driveAccessToken\" arayarak bulabilirsiniz. Kiracı adresini ve sürücü kimliğini içeren \".driveUrl\" alanını arayın.\n\nÖrnek: https://your-tenant.sharepoint.com/_api"
       }
     },
     "opendrive": {
@@ -2288,6 +2312,10 @@
       "upload_cutoff": {
         "title": "Yükleme Sınırı",
         "help": "Parçalı yüklemeye geçiş için sınır.\n\nBundan büyük tüm dosyalar chunk_size boyutunda parçalar halinde yüklenecektir. Minimum 0 ve maksimum 5 GiB'dir."
+      },
+      "decompress": {
+        "title": "Sıkıştırmayı Aç",
+        "help": "Etkinleştirildiğinde gzip ile kodlanmış nesnelerin sıkıştırmasını açar.\n\nNesne depolamaya \"Content-Encoding: gzip\" ile dosya yüklenebilir. Rclone normalde bu dosyaları sıkıştırılmış olarak indirir.\n\nBu seçenek etkinse rclone dosyaları alırken sıkıştırmayı açar. Bu durumda boyut ve sağlama değeri doğrulanamaz, ancak dosya içerikleri açılmış olur."
       }
     },
     "pcloud": {
@@ -3084,7 +3112,7 @@
         "help": "İsteğe bağlı known_hosts dosyası yolu.\n\nSunucu ana makine anahtarı doğrulamasını etkinleştirmek için bu değeri ayarlayın.\n\nBaş taraftaki `~`, `${RCLONE_CONFIG_DIR}` gibi ortam değişkenlerinde olduğu gibi dosya adında genişletilecektir."
       },
       "macs": {
-        "title": "Macs",
+        "title": "İleti Doğrulama Kodları (MAC)",
         "help": "Tercih sırasına göre boşlukla ayrılmış MAC (ileti doğrulama kodu) algoritmaları listesi.\n\nEn az bir tanesi sunucu yapılandırmasıyla eşleşmelidir. Bu, örneğin ssh -Q mac kullanılarak kontrol edilebilir.\n\nÖrnek:\n\n    umac-64-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-256-etm@openssh.com\n"
       },
       "md5sum_command": {
@@ -3170,6 +3198,18 @@
       "xxh3sum_command": {
         "title": "Xxh3Sum Komutu",
         "help": "XXH3 özetlerini okumak için kullanılan komut.\n\nOtomatik tespit için boş bırakın."
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "pin_host_key": {
+        "title": "Sunucu Anahtarını Sabitle",
+        "help": "İlk bağlantıda sunucunun anahtarını sabitler (ilk kullanımda güven, TOFU).\n\nTek seferlik --sftp-pin-host-key komut satırı bayrağı olarak kullanılması amaçlanır. Bir kez çalıştırıldığında sunucu anahtarı host_keys ayarına kaydedilir. Sonraki çalıştırmalarda bayrağı kaldırın; sunulan anahtar host_keys ile uyuşmazsa bağlantı reddedilir.\n\nBu seçeneğin yapılandırma dosyasında kalıcı olarak etkinleştirilmesi önerilmez. Etkin kaldığı sürece sunucunun daha sonra sunduğu yeni anahtar algoritmaları da kabul edilir ve güven kapsamı genişler. Meşru bir anahtar değişikliğinden sonra yeni anahtarı sabitlemek için bayrakla yeniden çalıştırın.\n\nİlk bağlantı doğrulanmaz. Mümkünse güvenilir bir ağ kullanın veya rclone günlüğündeki parmak izini bağımsız bir kanaldan aldığınız parmak iziyle karşılaştırın.\n\nknown_hosts_file ayarlanmışsa önceliklidir ve bu seçenek yok sayılır."
+      },
+      "host_keys": {
+        "title": "Sabitlenmiş Sunucu Anahtarları",
+        "help": "Bu uzak bağlantının sunucusunu doğrulamak için sabitlenmiş anahtarlar.\n\nVirgülle ayrılmış \"algo base64-key\" girdileri kullanılır; biçim OpenSSH known_hosts satırının ikinci ve üçüncü alanlarıyla aynıdır. Genellikle --sftp-pin-host-key ile bir kez çalıştırılarak doldurulur; bağımsız bir kanaldan alınan sunucu açık anahtarı elle de girilebilir. Her girdi SHA256 parmak izi değil, tam açık anahtardır.\n\nBoş değilse sunulan anahtar girdilerden biriyle eşleşmelidir, aksi halde bağlantı reddedilir. Meşru bir anahtar değişikliğinden sonra bu değeri temizleyip --sftp-pin-host-key ile yeniden bağlanın veya doğrudan düzenleyin.\n\nEn fazla 16 anahtar sabitlenebilir."
       }
     },
     "sharefile": {
@@ -3672,6 +3712,10 @@
       "token_url": {
         "title": "Jeton URL'si",
         "help": "Jeton sunucusu URL'si.\n\nSağlayıcı varsayılanlarını kullanmak için boş bırakın."
+      },
+      "upload_wait": {
+        "title": "Yükleme Sonrası Bekleme",
+        "help": "Yükleme sonrasında değiştirilme zamanını ayarlamadan önce beklenecek süre.\n\nYandex Disk, yükleme bittikten sonra sunucuda işlemi eşzamansız olarak tamamlar. Bu işlem sürerken değiştirilme zamanı ayarlanırsa sunucu 500 Internal Server Error hatası döndürür.\n\nYükleme sırasında 500 hatası alıyorsanız 2s genellikle yeterlidir; ancak yüklemeleri yavaşlatır. Yandex desteği 1.5s - 3s aralığını önerir."
       }
     },
     "zoho": {
@@ -3714,6 +3758,30 @@
       "upload_cutoff": {
         "title": "Yükleme Sınırı",
         "help": "Büyük dosya yükleme API'sine geçiş sınırı (>= 10 MiB)."
+      },
+      "root_folder_id": {
+        "title": "Kök Klasör Kimliği",
+        "help": "Kök klasörün kimliği.\n\nNormalde boş bırakın. Rclone’un başlangıç noktası olarak kök dışındaki bir klasörü kullanması için doldurun."
+      },
+      "tpslimit": {
+        "title": "Saniyedeki API İşlemi Sınırı",
+        "help": "Saniyede yapılabilecek azami API işlemi sayısı.\n\nZoho WorkDrive çok hızlı isteklerde HTTP 429 (F7008, \"Request rate limit exceeded\") döndürür. Veri API çağrıları (listeleme, yükleme, indirme, kopyalama, taşıma, silme) bu hıza göre düzenlenir.\n\n0, genel --tpslimit gibi sınırı kaldırır; ancak geri çekilme ve Retry-After her zaman uygulandığından hız düzenleme tamamen kapatılamaz.\n\nVarsayılan 6 güvenli ve sürdürülebilirdir. Daha yüksek değerler uzun 429 Retry-After beklemeleriyle verimi düşürebilir; yalnızca hesabınız kaldırabiliyorsa artırın."
+      },
+      "tpslimit_burst": {
+        "title": "API İsteği Ani Artış Sınırı",
+        "help": "--zoho-tpslimit için beklemeden art arda yapılabilecek API çağrısı sayısı.\n\nBu, jeton kovası kapasitesidir. Zoho için 1’de tutun: 1’den büyük değer, boşta kalma sonrası birden çok çağrının aynı anda yapılmasına izin vererek eşzamanlı 429 hata kümelerine yol açabilir."
+      },
+      "list_folder_limit": {
+        "title": "Klasör Listeleme Sınırı",
+        "help": "--zoho-list-folder-window süresince AYNI klasörün azami listelenme sayısı.\n\nZoho WorkDrive listeleme API’sini (GET files/{id}/files), --zoho-tpslimit değerinden bağımsız olarak klasör başına sınırlar. Bir klasörü kısa sürede çok sık listelemek HTTP 429 (F7008) ve dakikalar süren Retry-After beklemesi doğurur. Sık yoklama, toplam istek hızı düşükken bile bu sınıra ulaşabilir. Ölçümlerde yaklaşık 60 saniyelik kayan pencerede aynı klasörün yaklaşık 19 kez listelenmesine izin verilir; 20. istek başarısızdır. Varsayılan 60 saniyede 19 bunu modeller.\n\nHer pencerede ilk --zoho-list-folder-burst listelemesi art arda geçer; bu hak her pencere başında yenilenir. Kalanlar --zoho-list-folder-window/(limit - burst) aralıklarla yapılır (varsayılan yaklaşık 4.6s). Son isteklerin kayan günlüğü pencere sınırlarında da üst sınırı uygular. 0 sınırlayıcıyı kapatır. Yalnızca aynı klasörün TEKRAR listelenmesi gecikir; farklı klasörler veya --zoho-list-folder-burst sayısından az listelenen klasörler gecikmez.\n\nDaha yüksek değer, pencere başına DAHA ÇOK listeleme demektir; daha güvenli değildir. 19’un üzerine çıkmak F7008’e yol açar. Daha geniş güvenlik payı için düşürün; listeleme tepkisi yavaşlar."
+      },
+      "list_folder_window": {
+        "title": "Klasör Listeleme Zaman Penceresi",
+        "help": "--zoho-list-folder-limit için zaman penceresi.\n\nVarsayılan 60s (1m0s olarak gösterilir), Zoho’nun gerçek kayan penceresine uyar: bu uzunluktaki herhangi bir aralıkta aynı klasör en fazla --zoho-list-folder-limit kez listelenebilir. Birimsiz sayılar saniye olarak yorumlanır (\"60\" = \"60s\").\n\nDaha geniş güvenlik payı için süreyi artırın veya sınırı düşürün. Aynı klasörün sürekli listelemeleri arasındaki süre window/(limit - burst) olur."
+      },
+      "list_folder_burst": {
+        "title": "Klasör Listeleme Ani Artış Sınırı",
+        "help": "--zoho-list-folder-limit hız düzenlemesi başlamadan aynı klasör için art arda yapılabilecek listeleme sayısı.\n\nBu sayı --zoho-list-folder-limit içinden ayrılır; artırılması pencere başına toplamı artırmaz. Bu kadar istek hemen yapılabilir; kalan limit - burst isteği window/(limit - burst) aralıklarla yapılır. Her pencere başında ani istek hakkı YENİLENİR; yakın geçmişin kayan günlüğü yine de pencere başına üst sınırı uygular. Bir klasörün yalnızca birkaç kez listelendiği olağan eşitleme işlemleri beklemez.\n\nVarsayılan 6, 60 saniyede 19 sınırıyla canlı testte doğrulanmış en büyük ani artış değeridir. 4, 5 ve 6 sorunsuz çalışmış; sınırı aşma denemesinde tam 20. istek F7008 vermiştir. Zoho’nun ayrıca pencere dışında yaklaşık 15–16 art arda istek sınırı olduğundan bu değeri yaklaşık 15’in oldukça altında tutun. İkinci istekten itibaren hız düzenlemek için 1 yapın. Sınıra eşit veya büyük değerler limit - 1 olarak sınırlanır."
       }
     },
     "filen": {

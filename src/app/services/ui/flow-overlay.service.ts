@@ -4,8 +4,6 @@ import { BaseSlideOverlayService } from './base-slide-overlay.service';
 
 @Injectable({ providedIn: 'root' })
 export class FlowOverlayService extends BaseSlideOverlayService<FlowContainerComponent> {
-  readonly isFlowOverlayOpen = this.isOpen;
-
   protected async loadComponent(): Promise<Type<FlowContainerComponent>> {
     const { FlowContainerComponent } = await import('src/app/flow/flow-container.component');
     return FlowContainerComponent;
@@ -28,17 +26,5 @@ export class FlowOverlayService extends BaseSlideOverlayService<FlowContainerCom
       (label?.startsWith('flow') ?? false) ||
       hash.startsWith('#/flow')
     );
-  }
-
-  openFlowOverlay(): Promise<void> {
-    return this.openOverlay();
-  }
-
-  closeFlowOverlay(): void {
-    this.closeOverlay();
-  }
-
-  toggleFlowOverlay(): void {
-    this.toggleOverlay();
   }
 }

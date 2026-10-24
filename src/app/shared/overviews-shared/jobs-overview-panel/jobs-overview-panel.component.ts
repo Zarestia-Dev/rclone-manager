@@ -6,7 +6,6 @@ import {
   input,
   linkedSignal,
   model,
-  output,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -15,13 +14,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-import { JobInfo, JobStatItem, Origin, StopJobEvent, JOB_ICON_MAP } from '@app/types';
+import { JobInfo, JobStatItem, Origin, JOB_ICON_MAP, getExecutionOrigin } from '@app/types';
 import { FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
-import { ModalService } from 'src/app/services/ui/modal.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
+import { RcloneStatusService } from '../../../services/infrastructure/maintenance/rclone-status.service';
+import { ModalService } from '../../../services/ui/modal.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
+import { OriginFilterBarComponent } from '../origin-filter-bar/origin-filter-bar.component';
 
 export interface RunningJobViewModel {
   job: JobInfo;
@@ -50,6 +50,7 @@ export interface RunningJobViewModel {
     FormatRateValuePipe,
     CopyToClipboardDirective,
     AlertBannerComponent,
+    OriginFilterBarComponent,
   ],
   templateUrl: './jobs-overview-panel.component.html',
   styleUrls: ['./jobs-overview-panel.component.scss'],
@@ -61,8 +62,6 @@ export class JobsOverviewPanelComponent {
   readonly jobs = input<JobInfo[] | undefined>(undefined);
   readonly defaultOriginFilter = input<Origin | Origin[] | 'all'>('all');
   readonly showFilterChips = input<boolean>(false);
-
-  readonly stopJob = output<StopJobEvent>();
 
   private readonly jobService = inject(JobManagementService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
@@ -84,16 +83,7 @@ export class JobsOverviewPanelComponent {
     const all = this.rawJobs().filter(j => j.status === 'Running' && !j.parent_job_id);
     const filter = this.selectedOriginFilter();
     if (filter === 'all') return all;
-    if (filter === 'flow') {
-      return all.filter(j => j.origin === 'flow');
-    }
-    if (filter === 'quickrun') {
-      return all.filter(j => j.origin === 'quickrun');
-    }
-    if (filter === 'dashboard') {
-      return all.filter(j => j.origin === 'dashboard' || !j.origin);
-    }
-    return all.filter(j => j.origin === filter);
+    return all.filter(j => getExecutionOrigin(j) === filter);
   });
 
   readonly activeJobsCount = computed(() => this.runningJobs().length);
@@ -128,8 +118,8 @@ export class JobsOverviewPanelComponent {
         typeClass: this.getJobTypeClass(job),
         animationClass: this.getJobAnimationClass(job),
         label: this.getJobLabel(job),
-        originLabel: this.getOriginLabel(job.origin),
-        originBadgeClass: this.getOriginBadgeClass(job.origin),
+        originLabel: this.getOriginLabel(getExecutionOrigin(job)),
+        originBadgeClass: this.getOriginBadgeClass(getExecutionOrigin(job)),
         progressPercentage,
       };
     })
@@ -209,12 +199,12 @@ export class JobsOverviewPanelComponent {
     this.modalService.openJobDetail(job);
   }
 
-  onStopJobClick(job: JobInfo, event: MouseEvent): void {
+  async onStopJobClick(job: JobInfo, event: MouseEvent): Promise<void> {
     event.stopPropagation();
-    this.stopJob.emit({
-      type: job.job_type,
-      remoteName: job.remote_name,
-      profileName: job.profile,
-    });
+    try {
+      await this.jobService.stopJob(job.jobid, job.remote_name);
+    } catch (error) {
+      console.error('Failed to stop job:', error);
+    }
   }
 }

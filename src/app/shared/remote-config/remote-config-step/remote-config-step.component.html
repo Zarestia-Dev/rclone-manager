@@ -1,4 +1,4 @@
-<form [formGroup]="form()">
+<form [formGroup]="form()" [attr.aria-busy]="isLoading()">
   <div class="main-fields-container">
     @let remoteType = remoteTypeValue();
     @if (showTypeField()) {
@@ -50,13 +50,17 @@
     @if (showTypeField() && !remoteType && !isLoading()) {
       <div class="empty-state">
         <div class="empty-state-icon-ring">
-          <mat-icon [svgIcon]="randomIcon()" class="empty-state-icon anim-icon-fade"></mat-icon>
+          <mat-icon
+            [svgIcon]="randomIcon()"
+            [class.anim-icon-fade-a]="animTrigger() % 2 === 0"
+            [class.anim-icon-fade-b]="animTrigger() % 2 === 1"
+          ></mat-icon>
         </div>
         <div class="empty-state-body">
-          <h3 class="empty-state-title">
+          <h3>
             {{ 'wizards.remoteConfig.emptyStateTitle' | translate }}
           </h3>
-          <p class="empty-state-desc">
+          <p>
             {{ 'wizards.remoteConfig.emptyStateDesc' | translate }}
           </p>
         </div>
@@ -69,7 +73,8 @@
               </button>
             }
             <button
-              class="app-pill interactive reshuffle-btn"
+              type="button"
+              class="action-button reshuffle-btn"
               (click)="reshuffleSuggestions()"
               [attr.title]="'wizards.remoteConfig.shuffleSuggestions' | translate"
             >
@@ -151,24 +156,46 @@
       @let showAdvOpts = showAdvancedOptions();
       @let showJson = showJsonMode();
 
-      @let showAdv = (showAdvOpts || showJson) && advLen > 0;
+      @let showAdv = (advancedOptionsVisible() || showJson) && advLen > 0;
 
       <div class="fields-mode-header anim-fade">
-        <div class="fields-count-badge">
+        <div class="fields-count">
           @if (basicLen > 0) {
-            <span class="fields-count-num fields-count-num--basic">{{ basicLen }}</span>
+            <span class="count-badge primary">{{ basicLen }}</span>
           }
           @if (basicLen > 0 && showAdv) {
-            <span class="fields-count-separator">+</span>
+            <span>+</span>
           }
           @if (showAdv) {
-            <span class="fields-count-num fields-count-num--advanced">{{ advLen }}</span>
+            <span class="count-badge purple">{{ advLen }}</span>
           }
           @if (basicLen > 0 || showAdv) {
-            <span class="fields-count-label">{{ 'wizards.remoteConfig.fields' | translate }}</span>
+            <span>{{ 'wizards.remoteConfig.fields' | translate }}</span>
           }
         </div>
+        @if (providerTier(); as tier) {
+          <span
+            class="app-pill"
+            [class]="tier.colorClass"
+            [attr.title]="'wizards.remoteConfig.providerOverview.supportTier' | translate"
+            >{{ tier.label }}</span
+          >
+        }
         <div class="mode-actions">
+          @if (providerOverview()) {
+            <button
+              type="button"
+              class="action-button"
+              (click)="showProviderOverview.set(!showProviderOverview())"
+              [attr.title]="'wizards.remoteConfig.providerOverview.title' | translate"
+              [attr.aria-label]="'wizards.remoteConfig.providerOverview.title' | translate"
+              [attr.aria-expanded]="showProviderOverview()"
+              [attr.aria-pressed]="showProviderOverview()"
+              [attr.aria-controls]="showProviderOverview() ? providerOverviewId : null"
+            >
+              <mat-icon svgIcon="info" />
+            </button>
+          }
           <div
             class="contextual-action-wrapper"
             [class.visible]="showAdvancedToggle() && !showJson"
@@ -180,9 +207,7 @@
               ) | translate;
             <button
               type="button"
-              matIconButton
-              class="advanced-toggle-btn"
-              [class.active]="showAdvOpts"
+              class="action-button"
               (click)="toggleAdvancedOptions()"
               [attr.title]="advLabel"
               [attr.aria-label]="advLabel"
@@ -200,9 +225,7 @@
               ) | translate;
             <button
               type="button"
-              matIconButton
-              class="cmd-options-btn"
-              [class.active]="showCmdOpts"
+              class="action-button"
               (click)="toggleCommandOptions()"
               [attr.title]="cmdLabel"
               [attr.aria-label]="cmdLabel"
@@ -217,9 +240,7 @@
               | translate;
           <button
             type="button"
-            matIconButton
-            class="json-toggle-btn"
-            [class.active]="showJson"
+            class="action-button"
             (click)="toggleJsonMode()"
             [attr.title]="jsonLabel"
             [attr.aria-label]="jsonLabel"
@@ -229,201 +250,128 @@
           </button>
         </div>
       </div>
-    }
-  </div>
+      @if (showProviderOverview()) {
+        @if (providerOverview(); as overview) {
+          <section class="provider-overview detail-section anim-panel" [id]="providerOverviewId">
+            <h3 class="section-title">
+              {{ 'wizards.remoteConfig.providerOverview.title' | translate }}
+            </h3>
+            <p>
+              {{
+                (overview.Virtual
+                  ? 'wizards.remoteConfig.providerOverview.virtualNote'
+                  : 'wizards.remoteConfig.providerOverview.generalNote'
+                ) | translate
+              }}
+            </p>
+            <mat-divider></mat-divider>
 
-  @if (isLoading()) {
-    <div class="loading-container">
-      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
-      <span>{{ 'wizards.remoteConfig.loadingOptions' | translate }}</span>
-    </div>
-  }
-
-  @if (providerReady()) {
-    @if (showCommandOptions()) {
-      <div class="command-options-panel anim-panel">
-        @if (availablePredefinedOptions().length > 0) {
-          <div class="predefined-chips-row">
-            <span class="predefined-label">
-              {{ 'wizards.remoteConfig.quickAdd' | translate }}
-            </span>
-            <div class="predefined-chips">
-              @for (p of availablePredefinedOptions(); track p.key) {
-                <button
-                  class="app-pill interactive"
-                  (click)="addPredefinedOption(p)"
-                  [attr.title]="p.description | translate"
-                >
-                  <mat-icon svgIcon="plus"></mat-icon>
-                  <span>{{ p.label | translate }}</span>
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        @if (commandOptionsView().length > 0) {
-          <div class="active-options">
-            @for (opt of commandOptionsView(); track opt.key; let i = $index) {
-              <div class="option-row" [style.--row-index]="i">
-                <div class="option-key-container">
-                  <span class="option-key" [attr.title]="opt.description | translate">{{
-                    opt.key
-                  }}</span>
-                  <span class="option-type-badge" [attr.data-type]="opt.type">{{ opt.type }}</span>
-                </div>
-                <div class="option-controls">
-                  @switch (opt.type) {
-                    @case ('boolean') {
-                      <mat-slide-toggle
-                        [checked]="opt.booleanValue"
-                        (change)="updateOption(opt.key, $event.checked)"
-                      ></mat-slide-toggle>
-                    }
-                    @case ('string') {
-                      <mat-form-field class="option-value-field no-subscript">
-                        <input
-                          matInput
-                          [value]="opt.stringValue"
-                          (input)="updateOption(opt.key, $any($event.target).value)"
-                          placeholder="value"
-                        />
-                      </mat-form-field>
-                    }
-                    @case ('number') {
-                      <mat-form-field class="option-value-field no-subscript">
-                        <input
-                          matInput
-                          type="number"
-                          [value]="opt.stringValue"
-                          (input)="updateNumberOption(opt.key, $any($event.target).value)"
-                          placeholder="0"
-                        />
-                      </mat-form-field>
-                    }
-                    @case ('array') {
-                      <div class="option-chip-field no-subscript">
-                        @for (chip of opt.arrayValue; track chip; let ci = $index) {
-                          <div class="app-pill">
-                            <span>{{ chip }}</span>
-                            <button
-                              class="pill-remove-btn"
-                              (click)="removeArrayChip(opt.key, ci)"
-                              [attr.aria-label]="'remove ' + chip"
-                            >
-                              <mat-icon svgIcon="close"></mat-icon>
-                            </button>
-                          </div>
-                        }
-                        <div class="option-chip-input">
-                          <input
-                            #arrayInput
-                            type="text"
-                            [placeholder]="'wizards.remoteConfig.addValue' | translate"
-                            (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
-                          />
-                          <button
-                            matIconButton
-                            [disabled]="!arrayInput.value"
-                            (click)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
-                          >
-                            <mat-icon svgIcon="plus"></mat-icon>
-                          </button>
-                        </div>
-                      </div>
-                    }
+            @if (!overview.Virtual) {
+              <div class="detail-section">
+                <span class="section-title">{{
+                  'wizards.remoteConfig.providerOverview.hashes' | translate
+                }}</span>
+                <div class="provider-capabilities">
+                  @for (hash of overview.Hashes ?? []; track $index) {
+                    <span class="app-pill pill-sm p-dim">{{ hash }}</span>
+                  } @empty {
+                    <span>{{ 'wizards.remoteConfig.providerOverview.noHashes' | translate }}</span>
                   }
-                  <button
-                    matIconButton
-                    class="remove-option-btn"
-                    (click)="removeOption(opt.key)"
-                    [attr.title]="'wizards.remoteConfig.removeOption' | translate"
-                  >
-                    <mat-icon svgIcon="trash" />
-                  </button>
+                </div>
+              </div>
+              <mat-divider></mat-divider>
+
+              <div class="detail-section">
+                <span class="section-title">{{
+                  'wizards.remoteConfig.providerOverview.features' | translate
+                }}</span>
+                <div class="provider-capabilities">
+                  @for (label of providerCapabilities(); track label) {
+                    <span class="app-pill pill-sm p-dim">{{ label | translate }}</span>
+                  } @empty {
+                    <span>{{
+                      'wizards.remoteConfig.providerOverview.noFeatures' | translate
+                    }}</span>
+                  }
                 </div>
               </div>
             }
-          </div>
+
+            <mat-divider></mat-divider>
+
+            <a href="https://rclone.org/overview/" target="_blank" rel="noopener noreferrer">
+              {{ 'wizards.remoteConfig.providerOverview.documentation' | translate }}
+            </a>
+          </section>
+        }
+      }
+    }
+  </div>
+
+  @if (isLoading() && !remoteFields().length) {
+    <app-config-form-skeleton />
+  }
+
+  @if (providerReady()) {
+    <div class="provider-fields" [inert]="isLoading() || disabled()">
+      @if (showCommandOptions()) {
+        <app-config-command-options
+          [options]="commandOptions()"
+          (optionsChange)="commandOptions.set($event)"
+        />
+      }
+
+      @if (showJsonMode()) {
+        <div class="anim-panel">
+          <app-json-editor
+            [formGroup]="form()"
+            [fieldDefs]="remoteFields()"
+            [provider]="remoteType"
+            [searchQuery]="searchQuery()"
+            [excludeKeys]="jsonExcludeKeys()"
+          />
+        </div>
+      } @else if (
+        searchQuery().trim() && !isLoading() && !basicFields().length && !advancedFields().length
+      ) {
+        <div class="empty-state">
+          <mat-icon svgIcon="search" />
+          <span>{{ 'shared.search.title' | translate }}</span>
+          <p>{{ 'shared.search.description' | translate }}</p>
+        </div>
+      } @else {
+        @for (item of basicFields(); track item.Name; let i = $index) {
+          <app-setting-control
+            class="anim-setting-control"
+            [style.--field-index]="i"
+            [option]="item"
+            [showObscureButton]="showObscureButton()"
+            [formControlName]="item.Name"
+            [provider]="remoteType"
+            (valueChanged)="onFieldChanged(item.Name, $event)"
+          ></app-setting-control>
         }
 
-        <div class="add-custom-row">
-          <mat-form-field class="custom-key-field no-subscript">
-            <mat-label>{{ 'wizards.remoteConfig.optionKey' | translate }}</mat-label>
-            <mat-icon matPrefix svgIcon="terminal" class="field-icon" />
-            <input
-              matInput
-              [value]="newOptionKey()"
-              (input)="newOptionKey.set($any($event.target).value)"
-              (keydown.enter)="addCustomOption()"
-              [placeholder]="'wizards.remoteConfig.optionKeyPlaceholder' | translate"
-            />
-          </mat-form-field>
+        @if (advancedOptionsVisible() && advancedFields().length > 0) {
+          <div class="advanced-section anim-panel" id="section-advanced">
+            <h3 class="section-heading">
+              {{ 'wizards.remoteConfig.advancedOptions' | translate }}
+            </h3>
 
-          <mat-form-field class="custom-type-field no-subscript">
-            <mat-label>{{ 'wizards.remoteConfig.optionType' | translate }}</mat-label>
-            <mat-select [value]="newOptionType()" (valueChange)="newOptionType.set($event)">
-              <mat-option value="boolean">boolean</mat-option>
-              <mat-option value="string">string</mat-option>
-              <mat-option value="number">number</mat-option>
-              <mat-option value="array">array</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <button
-            type="button"
-            matButton="outlined"
-            class="add-custom-btn"
-            (click)="addCustomOption()"
-            [disabled]="!newOptionKey().trim()"
-          >
-            <mat-icon svgIcon="plus" />
-            {{ 'wizards.remoteConfig.addOption' | translate }}
-          </button>
-        </div>
-      </div>
-    }
-
-    @if (showJsonMode()) {
-      <div class="anim-panel">
-        <app-json-editor
-          [formGroup]="form()"
-          [fieldDefs]="remoteFields()"
-          [provider]="remoteType"
-          [searchQuery]="searchQuery()"
-          [excludeKeys]="jsonExcludeKeys"
-        />
-      </div>
-    } @else {
-      @for (item of basicFields(); track item.Name; let i = $index) {
-        <app-setting-control
-          class="anim-setting-control"
-          [style.--field-index]="i"
-          [option]="item"
-          [formControlName]="item.Name"
-          [provider]="remoteType"
-          (valueChanged)="onFieldChanged(item.Name, $event)"
-        ></app-setting-control>
+            @for (item of advancedFields(); track item.Name; let i = $index) {
+              <app-setting-control
+                class="anim-setting-control"
+                [style.--field-index]="i"
+                [option]="item"
+                [showObscureButton]="showObscureButton()"
+                [formControlName]="item.Name"
+                [provider]="remoteType"
+                (valueChanged)="onFieldChanged(item.Name, $event)"
+              ></app-setting-control>
+            }
+          </div>
+        }
       }
-
-      @if (showAdvancedOptions() && advancedFields().length > 0) {
-        <div class="advanced-section anim-panel" id="section-advanced">
-          <h3 class="section-heading">
-            {{ 'wizards.remoteConfig.advancedOptions' | translate }}
-          </h3>
-
-          @for (item of advancedFields(); track item.Name; let i = $index) {
-            <app-setting-control
-              class="anim-setting-control"
-              [style.--field-index]="i"
-              [option]="item"
-              [formControlName]="item.Name"
-              [provider]="remoteType"
-              (valueChanged)="onFieldChanged(item.Name, $event)"
-            ></app-setting-control>
-          }
-        </div>
-      }
-    }
+    </div>
   }
 </form>

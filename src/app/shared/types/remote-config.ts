@@ -1,6 +1,7 @@
 import { OPERATION_REGISTRY } from './operation-registry';
 import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
+import { RemoteProviderOverview } from './remotes';
 
 // Dynamic extraction of FlagTypes based on registry
 export type FlagType =
@@ -23,10 +24,6 @@ export type SharedProfileType = FlagType | 'runtimeRemote';
 export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
   OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
 );
-
-export function isLinkedProfileType(type: string): type is SharedProfileType {
-  return LINKED_PROFILE_TYPES.has(type);
-}
 
 export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
   mount: 'hard-drive',
@@ -126,8 +123,6 @@ export const REMOTE_CONFIG_KEYS = Object.freeze({
   runtimeRemote: 'runtimeRemoteConfigs',
 }) as unknown as Readonly<RemoteConfigKeysRecord>;
 
-export type RemoteConfigKeyType = RemoteConfigKeysRecord[keyof RemoteConfigKeysRecord];
-
 export interface UIOperationMetadata {
   label: string;
   icon: string;
@@ -179,16 +174,10 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
   },
 });
 
-export interface LoadingState {
-  saving: boolean;
-  authDisabled: boolean;
-  cancelled: boolean;
-  [key: string]: boolean | undefined;
-}
-
 export interface RemoteType {
   value: string;
   label: string;
+  overview?: RemoteProviderOverview | null;
 }
 
 export interface RemoteConfigStepVisibility {
@@ -200,8 +189,7 @@ export interface RemoteConfigStepVisibility {
 }
 
 export interface AppConfig {
-  autoStart: boolean;
-  showOnTray?: boolean;
+  autoStart?: boolean;
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;
@@ -212,6 +200,21 @@ export interface AppConfig {
   backendProfile?: string;
   runtimeRemoteProfile?: string;
 }
+
+export const DEFAULT_PROFILE_NAME = 'Default';
+
+export const APP_CONFIG_DEFAULTS: Readonly<Required<AppConfig>> = Object.freeze({
+  autoStart: false,
+  cronEnabled: false,
+  cronExpression: null,
+  watchEnabled: false,
+  watchDelay: 5,
+  watchChangedOnly: false,
+  vfsProfile: DEFAULT_PROFILE_NAME,
+  filterProfile: DEFAULT_PROFILE_NAME,
+  backendProfile: DEFAULT_PROFILE_NAME,
+  runtimeRemoteProfile: DEFAULT_PROFILE_NAME,
+});
 
 export interface ProfileConfig {
   app?: AppConfig;
@@ -451,6 +454,18 @@ export interface Entry {
   Metadata?: Record<string, string>;
 }
 
+export function createMinimalEntry(path: string, name?: string, size = 0): Entry {
+  return {
+    ID: '',
+    IsDir: false,
+    MimeType: '',
+    ModTime: '',
+    Name: name ?? path.split('/').filter(Boolean).pop() ?? path,
+    Path: path,
+    Size: size,
+  };
+}
+
 export interface LocalDrive {
   id: string;
   name: string; // The path used for rclone
@@ -486,14 +501,6 @@ export const RCLONE_PATH_KEYS = [
   'source',
   'path',
 ] as const;
-
-export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
-
-export const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
-
-export function isRclonePathKey(key: string): boolean {
-  return RCLONE_PATH_KEYS_SET.has(key);
-}
 
 export interface JobProfile {
   autoStart?: boolean;

@@ -1,0 +1,21 @@
+// Shared presentation for operation and settings expansion-panel actions.
+.quick-action-wrapper {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition: var(--transition-standard);
+  max-width: var(--titlebar-height);
+  opacity: 1;
+  transform: translateX(0);
+
+  &.hidden {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(var(--space-lg));
+  }
+}
+
+.full-action-button {
+  margin-top: var(--space-md);
+  width: 100%;
+}

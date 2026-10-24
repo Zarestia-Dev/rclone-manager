@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { FormControl } from '@angular/forms';
-import { provideTranslateService } from '@ngx-translate/core';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { FormControl, FormGroup } from '@angular/forms';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
+import { describe, it, expect, beforeEach, vi, assert } from 'vitest';
 import { ValidatorRegistryService } from './validator-registry.service';
 
 describe('ValidatorRegistryService', () => {
@@ -12,6 +12,90 @@ describe('ValidatorRegistryService', () => {
       providers: [provideTranslateService(), ValidatorRegistryService],
     });
     service = TestBed.inject(ValidatorRegistryService);
+  });
+
+  it.each([
+    {
+      name: 'urlList',
+      valid: ['https://example.com/Arşiv?q=1'],
+      invalid: ['invalid-url'],
+      error: 'urlArray',
+      translationKey: 'validators.urlArray',
+    },
+    {
+      name: 'bandwidthFormat',
+      valid: '10M',
+      invalid: 'not-bandwidth',
+      error: 'bandwidth',
+      translationKey: 'validators.bandwidth',
+    },
+  ])('resolves $name with translated errors and optional empty values', testCase => {
+    vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(
+      key => `translated:${key}`
+    );
+    const validator = service.getValidator(testCase.name);
+    assert(validator, `Missing validator: ${testCase.name}`);
+    expect(validator(new FormControl<unknown>(testCase.valid))).toBeNull();
+    for (const empty of [null, undefined, '']) {
+      expect(validator(new FormControl(empty))).toBeNull();
+    }
+    expect(validator(new FormControl<unknown>(testCase.invalid))).toMatchObject({
+      [testCase.error]: { message: `translated:${testCase.translationKey}` },
+    });
+  });
+
+  it('returns no validator for unknown or empty names', () => {
+    expect(service.getValidator('unknown')).toBeNull();
+    expect(service.getValidator('')).toBeNull();
+  });
+
+  it('matches passwords using the supplied field names and current translations', () => {
+    let language = 'en';
+    vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(
+      key => `${language}:${key}`
+    );
+    const validator = service.passwordMatchValidator('secret', 'repeated');
+    const group = new FormGroup({
+      secret: new FormControl('Arşiv & 旅行'),
+      repeated: new FormControl('Arşiv & 旅行'),
+    });
+    expect(validator(group)).toBeNull();
+    group.controls.repeated.setValue('different');
+    expect(validator(group)).toEqual({
+      passwordMismatch: { message: 'en:validators.passwordMismatch' },
+    });
+    language = 'tr';
+    expect(validator(group)).toEqual({
+      passwordMismatch: { message: 'tr:validators.passwordMismatch' },
+    });
+    for (const empty of ['', null]) {
+      group.controls.repeated.setValue(empty);
+      expect(validator(group)).toBeNull();
+    }
+  });
+
+  it('validates remote names with the default pattern and translated duplicate errors', () => {
+    vi.spyOn(TestBed.inject(TranslateService), 'instant').mockImplementation(
+      key => `translated:${key}`
+    );
+    const validator = service.createRemoteNameValidator(['existing']);
+    expect(validator(new FormControl('new-remote'))).toBeNull();
+    expect(validator(new FormControl('existing'))).toEqual({
+      nameTaken: { message: 'translated:validators.remoteName.nameTaken' },
+    });
+    expect(validator(new FormControl('bad:remote'))).toEqual({
+      invalidChars: { message: 'translated:validators.remoteName.invalidChars' },
+    });
+  });
+
+  it('passes custom remote name patterns and preserves optional empty values', () => {
+    const validator = service.createRemoteNameValidator(['旅行'], /^[\p{L}\p{N} _-]+$/u);
+    expect(validator(new FormControl('Arşiv'))).toBeNull();
+    expect(validator(new FormControl('旅行'))?.['nameTaken']).toBeDefined();
+    expect(validator(new FormControl('bad/path'))?.['invalidChars']).toBeDefined();
+    for (const empty of [null, undefined, '']) {
+      expect(validator(new FormControl(empty))).toBeNull();
+    }
   });
 
   describe('durationValidator', () => {

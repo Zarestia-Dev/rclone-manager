@@ -53,7 +53,7 @@ describe('QuickRunCardComponent', () => {
           provide: RemoteFacadeService,
           useValue: {
             actionInProgress: signal({}),
-            orderedRemotes: signal([]),
+            getRemoteSummary: vi.fn(),
             isRemoteActive: isRemoteActiveMock,
           },
         },

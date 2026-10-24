@@ -1,0 +1,9 @@
+{
+  "version": "99.0.0",
+  "kind": "portable",
+  "target": "linux-x86_64",
+  "asset": "portable-linux-x86_64-99.0.0.bin",
+  "size": 506,
+  "sha256": "c3b34cf9bb283a367ebcf3c016a1591dfa22f321f79ef4f8d30340711ed6954b",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbjRnMGQvaHVFMUQ3aDhxdDEvWDBOYm1Pb2dyOGJ6QVdhb1dZQ2JhS2tHTDJ6Unl2cU9JeEtQdnoyRnJQUW1jZzh6elg2TkZyUEhJVmhldHFlcUU5NCtnY1ZBcnZQNEFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyMTU1ODM1CWZpbGU6cG9ydGFibGUtbGludXgteDg2XzY0LTk5LjAuMC5iaW4KYUF4Vm53ZVEvSWhUTzYxMlFMa0VqZWYxVmhVZ05JVC9jcGVQaTErY0pPT2dFZ2xIOFJqUmZrdG5CZlpncExqbFpTcTNJd1A0WHRZVXdSeG5ycGRTQ1E9PQo="
+}

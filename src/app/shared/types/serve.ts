@@ -2,20 +2,7 @@
  * Serve-related types
  */
 
-import { BackendOptions, FilterOptions, ServeOptions, VfsOptions } from './params';
-
-/**
- * Parameters for starting a serve instance
- */
-export interface ServeParams {
-  remoteName: string;
-  fs: string;
-  serveType: string;
-  vfsOptions?: VfsOptions;
-  serveOptions?: ServeOptions;
-  backendOptions?: BackendOptions;
-  filterOptions?: FilterOptions;
-}
+import { ServeOptions, VfsOptions } from './params';
 
 /**
  * Response from starting a serve instance

@@ -13,6 +13,7 @@ import { getCronstrueLocale } from '../../../../../services/i18n/cron-locale.map
 import { WorkflowNode } from '../../../types/workflow.types';
 import { AlertBannerComponent } from '../../../../../shared/components/alert-banner/alert-banner.component';
 import { FileSystemService } from '../../../../../services/operations/file-system.service';
+import { CronSummaryCardComponent } from './cron-summary-card.component';
 
 @Component({
   selector: 'app-trigger-node-form',
@@ -27,6 +28,7 @@ import { FileSystemService } from '../../../../../services/operations/file-syste
     MatOptionModule,
     TranslatePipe,
     AlertBannerComponent,
+    CronSummaryCardComponent,
   ],
   templateUrl: './trigger-node-form.component.html',
   styleUrl: '../workflow-inspector.component.scss',

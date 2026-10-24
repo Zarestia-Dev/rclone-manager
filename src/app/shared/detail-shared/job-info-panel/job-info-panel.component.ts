@@ -10,65 +10,7 @@ import { JobInfoConfig } from '@app/types';
   imports: [DatePipe, TitleCasePipe, MatCardModule, MatIconModule, TranslatePipe],
   styleUrls: ['./job-info-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon svgIcon="info" style="color: var(--mat-sys-primary);"></mat-icon>
-          <span>{{ 'detailShared.jobInfo.title' | translate }}</span>
-          @if (config().dryRun === true) {
-            <span class="app-pill p-accent">{{ 'dashboard.appDetail.dryRun' | translate }}</span>
-          }
-        </mat-card-title>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="job-details-grid">
-          <div class="job-detail-item">
-            <div class="detail-label">{{ 'detailShared.jobInfo.type' | translate }}</div>
-            <div class="detail-value">{{ config().operationType | titlecase }}</div>
-          </div>
-
-          @if (config().jobId) {
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.id' | translate }}</div>
-              <div class="detail-value"># {{ config().jobId }}</div>
-            </div>
-          }
-
-          @if (config().status) {
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.status' | translate }}</div>
-              <div class="detail-value">
-                {{ config().status | titlecase }}
-              </div>
-            </div>
-          }
-
-          @if (config().startTime) {
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.started' | translate }}</div>
-              <div class="detail-value">{{ config().startTime | date: 'medium' }}</div>
-            </div>
-          }
-
-          @if (config().endTime) {
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.finished' | translate }}</div>
-              <div class="detail-value">{{ config().endTime | date: 'medium' }}</div>
-            </div>
-          }
-
-          @if (config().duration) {
-            <div class="job-detail-item">
-              <div class="detail-label">{{ 'detailShared.jobInfo.duration' | translate }}</div>
-              <div class="detail-value">{{ config().duration }}</div>
-            </div>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
-  `,
+  templateUrl: './job-info-panel.component.html',
 })
 export class JobInfoPanelComponent {
   readonly config = input.required<JobInfoConfig>();

@@ -63,7 +63,7 @@ O **RClone Manager** simplifica o gerenciamento e a sincronização de arquivos 
 - ⚙️ **Montar e Servir:** Controles fáceis de montagem e gerenciamento de servidores (WebDAV, SFTP, HTTP, FTP).
 - 🔄 **Monitor de Tarefas:** Monitoramento de transferências em tempo real e controle de largura de banda.
 - 📱 **Android SAF & DocumentsProvider:** Acesse armazenamentos remotos na nuvem nativamente em seletores de arquivos do sistema via Storage Access Framework e ponte de montagem VFS sem root ou FUSE.
-- 🌐 **Modo Headless:** Confira o [RClone Manager Headless](headless/README.md) para executá-lo como um servidor web no seu VPS/NAS!
+- 🌐 **Modo Headless:** Confira o [RClone Manager Headless](backend/server/README.md) para executá-lo como um servidor web no seu VPS/NAS!
 
 ---
 

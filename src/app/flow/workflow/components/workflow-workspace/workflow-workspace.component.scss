@@ -38,16 +38,15 @@
     position: relative;
     overflow: hidden;
 
-    .palette-open-trigger {
+    .palette-open-trigger,
+    .inspector-open-trigger {
       position: absolute;
       top: 14px;
-      left: 14px;
       z-index: 10;
       display: inline-flex;
       align-items: center;
       gap: 6px;
       height: 34px;
-      padding: 0 12px 0 10px;
       background: var(--card-bg-color);
       border-radius: var(--radius-md);
       box-shadow: var(--box-shadow);
@@ -62,24 +61,28 @@
         background: var(--hover-bg-color);
         border-color: var(--accent-color);
 
-        .palette-trigger-arrow {
+        .palette-trigger-arrow,
+        .inspector-trigger-arrow {
           color: var(--accent-color);
         }
       }
 
-      .palette-trigger-icon {
+      .palette-trigger-icon,
+      .inspector-trigger-icon {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
         font-size: var(--icon-size-sm);
         color: var(--accent-color);
       }
 
-      .palette-trigger-label {
+      .palette-trigger-label,
+      .inspector-trigger-label {
         line-height: 1;
         white-space: nowrap;
       }
 
-      .palette-trigger-arrow {
+      .palette-trigger-arrow,
+      .inspector-trigger-arrow {
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
         font-size: var(--icon-size-sm);
@@ -88,54 +91,14 @@
       }
     }
 
+    .palette-open-trigger {
+      left: 14px;
+      padding: 0 12px 0 10px;
+    }
+
     .inspector-open-trigger {
-      position: absolute;
-      top: 14px;
       right: 14px;
-      z-index: 10;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 34px;
       padding: 0 10px 0 12px;
-      background: var(--card-bg-color);
-      border-radius: var(--radius-md);
-      box-shadow: var(--box-shadow);
-      color: var(--window-fg-color);
-      font-size: var(--font-size-sm);
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: var(--transition-fast);
-
-      &:hover {
-        background: var(--hover-bg-color);
-        border-color: var(--accent-color);
-
-        .inspector-trigger-arrow {
-          color: var(--accent-color);
-        }
-      }
-
-      .inspector-trigger-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-        color: var(--accent-color);
-      }
-
-      .inspector-trigger-label {
-        line-height: 1;
-        white-space: nowrap;
-      }
-
-      .inspector-trigger-arrow {
-        width: 14px;
-        height: 14px;
-        font-size: 14px;
-        color: var(--dim-color);
-        transition: var(--transition-fast);
-      }
     }
 
     .canvas-host {

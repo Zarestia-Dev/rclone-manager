@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 /* ==========================================================================
    1. Nav Buttons
    ========================================================================== */
@@ -75,37 +77,8 @@
 
   // Scroll-edge fade overlays — driven by .show-left-shadow / .show-right-shadow
   // on the child scroll view. :has() keeps logic in CSS without wrapper elements.
-  &::before,
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 28px;
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0;
-    transition: opacity 120ms ease;
-  }
-
-  &::before {
-    left: 0;
-    background: linear-gradient(to right, var(--sidebar-bg-color) 0%, transparent 100%);
-  }
-
   // The right fade stops before the options button (≈ 36 px wide).
-  &::after {
-    right: 36px;
-    background: linear-gradient(to left, var(--sidebar-bg-color) 0%, transparent 100%);
-  }
-
-  &:has(.show-left-shadow)::before {
-    opacity: 1;
-  }
-
-  &:has(.show-right-shadow)::after {
-    opacity: 1;
-  }
+  @include scroll-edge-fades(var(--sidebar-bg-color), 36px, 1);
 }
 
 /* ==========================================================================

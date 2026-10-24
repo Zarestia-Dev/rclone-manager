@@ -4,8 +4,6 @@ import { BaseSlideOverlayService } from './base-slide-overlay.service';
 
 @Injectable({ providedIn: 'root' })
 export class MainUiOverlayService extends BaseSlideOverlayService<MainUiContainerComponent> {
-  readonly isMainUiOverlayOpen = this.isOpen;
-
   protected async loadComponent(): Promise<Type<MainUiContainerComponent>> {
     const { MainUiContainerComponent } = await import('src/app/layout/main-ui-container.component');
     return MainUiContainerComponent;
@@ -28,17 +26,5 @@ export class MainUiOverlayService extends BaseSlideOverlayService<MainUiContaine
       (label?.startsWith('main-') ?? false) ||
       hash.startsWith('#/main')
     );
-  }
-
-  openMainUiOverlay(): Promise<void> {
-    return this.openOverlay();
-  }
-
-  closeMainUiOverlay(): void {
-    this.closeOverlay();
-  }
-
-  toggleMainUiOverlay(): void {
-    this.toggleOverlay();
   }
 }

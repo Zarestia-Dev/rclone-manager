@@ -3,18 +3,10 @@
   width: 100%;
 }
 
-.origin-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
 .serves-panel {
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.875rem), 1fr));
     gap: var(--space-sm);
   }
 }

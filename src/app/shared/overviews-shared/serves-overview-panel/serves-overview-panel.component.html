@@ -29,47 +29,7 @@
   </mat-expansion-panel-header>
 
   @if (showFilterChips()) {
-    <div class="origin-filter-row">
-      <button
-        type="button"
-        class="app-pill interactive"
-        [class.is-selected]="selectedOriginFilter() === 'all'"
-        (click)="selectedOriginFilter.set('all')"
-        [attr.title]="'common.all' | translate"
-      >
-        <span>{{ 'common.all' | translate }}</span>
-      </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        [class.is-selected]="selectedOriginFilter() === 'flow'"
-        (click)="selectedOriginFilter.set('flow')"
-        [attr.title]="'flow.title' | translate"
-      >
-        <mat-icon svgIcon="workflow"></mat-icon>
-        <span>{{ 'flow.title' | translate }}</span>
-      </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        [class.is-selected]="selectedOriginFilter() === 'quickrun'"
-        (click)="selectedOriginFilter.set('quickrun')"
-        [attr.title]="'flow.tabs.quickRun' | translate"
-      >
-        <mat-icon svgIcon="quick-run"></mat-icon>
-        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
-      </button>
-      <button
-        type="button"
-        class="app-pill interactive"
-        [class.is-selected]="selectedOriginFilter() === 'dashboard'"
-        (click)="selectedOriginFilter.set('dashboard')"
-        [attr.title]="'navigation.dashboard' | translate"
-      >
-        <mat-icon svgIcon="cloud"></mat-icon>
-        <span>{{ 'navigation.dashboard' | translate }}</span>
-      </button>
-    </div>
+    <app-origin-filter-bar [(selected)]="selectedOriginFilter"></app-origin-filter-bar>
   }
 
   @if (servesList.length === 0) {

@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 :host {
   display: block;
   width: 100%;
@@ -21,14 +23,8 @@
   }
 
   .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-md);
-    align-items: start;
-    padding: 2px 24px 16px;
-    max-height: 480px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    @include overview-cards-grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
   }
 }
 

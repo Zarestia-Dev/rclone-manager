@@ -91,4 +91,30 @@ describe('syncResponsiveSidebar', () => {
     }
     expect(listeners.length).toBe(0);
   });
+  it('uses the modal container width and disconnects its observer on destroy', () => {
+    let resize!: ResizeObserverCallback;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+        observe = observe;
+        disconnect = disconnect;
+      }
+    );
+    const host = document.createElement('div');
+    syncResponsiveSidebar(768, modeSignal, openSignal, mockDestroyRef, host);
+    resize([{ contentRect: { width: 700 } } as ResizeObserverEntry], {} as ResizeObserver);
+    expect(modeSignal()).toBe('over');
+    expect(openSignal()).toBe(false);
+    resize([{ contentRect: { width: 900 } } as ResizeObserverEntry], {} as ResizeObserver);
+    expect(modeSignal()).toBe('side');
+    expect(observe).toHaveBeenCalledWith(host);
+    destroyCallbacks.forEach(callback => callback());
+    expect(disconnect).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
 });

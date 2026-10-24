@@ -7,6 +7,7 @@ import {
   viewChild,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -14,30 +15,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
+import { findKeyboardShortcutTarget, matchesShortcut } from '../../utils/keyboard-utils';
 
 @Component({
   selector: 'app-search-container',
   imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslatePipe],
-  template: `
-    <div class="search-container" [class.visible]="visible()">
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-icon matPrefix svgIcon="search"></mat-icon>
-        <input
-          #searchInput
-          matInput
-          [ngModel]="searchText()"
-          (ngModelChange)="searchTextChange.emit($event)"
-          [ngModelOptions]="{ standalone: true }"
-          [placeholder]="placeholder() | translate"
-          [attr.aria-label]="ariaLabel() | translate"
-        />
-      </mat-form-field>
-    </div>
-  `,
+  templateUrl: './search-container.component.html',
   styleUrls: ['./search-container.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[attr.data-search-shortcut]': 'enableShortcut() ? "" : null',
+  },
 })
 export class SearchContainerComponent {
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   visible = input(false);
   placeholder = input('shared.search.placeholder');
   ariaLabel = input('shared.search.ariaLabel');
@@ -62,8 +53,12 @@ export class SearchContainerComponent {
   handleKeyboardEvent(event: KeyboardEvent): void {
     if (
       this.enableShortcut() &&
-      (event.ctrlKey || event.metaKey) &&
-      event.key.toLowerCase() === 'f'
+      matchesShortcut('Ctrl + F', event) &&
+      findKeyboardShortcutTarget(
+        event,
+        'app-search-container[data-search-shortcut]',
+        this.elementRef.nativeElement.ownerDocument
+      ) === this.elementRef.nativeElement
     ) {
       event.preventDefault();
       this.searchToggle.emit();

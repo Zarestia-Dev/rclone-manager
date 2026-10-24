@@ -21,6 +21,8 @@ export class RcloneValueMapperService {
   }
 
   nanosecondsToDuration(nanoseconds: number, fallback = 'off'): string {
+    // Rclone's DurationOff is MaxInt64, rounded to 2^63 by JSON number parsing.
+    if (nanoseconds === 2 ** 63) return 'off';
     if (nanoseconds === 0) return '0s';
     if (nanoseconds < 0 || nanoseconds >= 9e18) return fallback;
 
@@ -108,17 +110,6 @@ export class RcloneValueMapperService {
     return s === 'true' ? true : s === 'false' ? false : null;
   }
 
-  normalizeOption(opt: RcConfigOption): RcConfigOption {
-    if (opt.Type === 'Tristate') {
-      return {
-        ...opt,
-        Default: this.parseTristate(opt.Default),
-        Value: this.parseTristate(opt.Value),
-      };
-    }
-    return opt;
-  }
-
   private normalizeList(val: unknown, type: string): string {
     const isSpace = type === 'SpaceSepList';
     if (Array.isArray(val))
@@ -191,19 +182,18 @@ export class RcloneValueMapperService {
       case 'DumpFlags':
         return Array.isArray(value) ? value.join(',') : value;
       case 'CommaSepList':
-        if (Array.isArray(value)) return value.join(',');
+        if (Array.isArray(value)) return value;
+        if (value == null) return [];
         return typeof value === 'string'
           ? value
               .split(',')
               .map(v => v.trim())
               .filter(Boolean)
-              .join(',')
           : value;
       case 'SpaceSepList':
-        if (Array.isArray(value)) return value.join(' ');
-        return typeof value === 'string'
-          ? value.trim().split(/\s+/).filter(Boolean).join(' ')
-          : value;
+        if (Array.isArray(value)) return value;
+        if (value == null) return [];
+        return typeof value === 'string' ? value.trim().split(/\s+/).filter(Boolean) : value;
       default:
         return value;
     }

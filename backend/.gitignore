@@ -1,0 +1,5 @@
+# Shared Cargo workspace output
+/target/
+
+# Native libraries built by the core crate
+/core/librclone/

@@ -1,3 +1,4 @@
+import { MAT_DIALOG_DEFAULT_OPTIONS } from '@angular/material/dialog';
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { Location, LocationStrategy, PathLocationStrategy } from '@angular/common';
@@ -7,6 +8,7 @@ import { MultiFileLoader } from './services/i18n/multi-file-loader';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
+    { provide: MAT_DIALOG_DEFAULT_OPTIONS, useValue: { closeOnNavigation: false } },
     provideHttpClient(),
     Location,
     { provide: LocationStrategy, useClass: PathLocationStrategy },

@@ -103,17 +103,3 @@ export interface CronValidationResponse {
   nextRun?: string;
   humanReadable?: string;
 }
-
-/**
- * Statistics for automations
- */
-export interface AutomationStats {
-  totalAutomations: number;
-  enabledAutomations: number;
-  runningAutomations: number;
-  failedAutomations: number;
-  totalRuns: number;
-  successfulRuns: number;
-  failedRuns: number;
-  stoppedRuns: number;
-}

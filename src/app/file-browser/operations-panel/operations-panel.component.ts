@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -8,13 +9,19 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
-import { JobInfo, CompletedTransfer, JOB_ICON_MAP } from '@app/types';
+import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
+import {
+  JobInfo,
+  CompletedTransfer,
+  JOB_ICON_MAP,
+  DELETE_OPERATIONS,
+  JOB_STATUS,
+} from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-
-const DELETE_OPERATIONS = new Set(['delete', 'cleanup', 'rmdirs']);
 
 const TRANSFERRED_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   delete: 'fileBrowser.operations.details.deletedFiles',
@@ -65,13 +72,14 @@ interface JobViewModel {
     FormatRateValuePipe,
     TranslatePipe,
     CopyToClipboardDirective,
+    AlertBannerComponent,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
 })
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly pathService = inject(PathService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly translate = inject(TranslateService);
 
   /** Tracks language changes so all derived labels reactively update on switch. */
@@ -83,8 +91,15 @@ export class OperationsPanelComponent {
   contextMenuJobId = signal<number | null>(null);
 
   // Computed State
-  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
-  hasJobs = computed(() => this.jobs().length > 0);
+  readonly preparingUploads = computed(() => {
+    const jobGroups = new Set(this.jobs().map(job => job.group));
+    return this.remoteOps
+      .pendingWebUploads()
+      .filter(upload => upload.origin === 'filemanager' && !jobGroups.has(upload.group));
+  });
+  activeJobs = computed(() => this.jobs().filter(j => j.status === JOB_STATUS.Running));
+  readonly activeCount = computed(() => this.activeJobs().length + this.preparingUploads().length);
+  hasJobs = computed(() => this.jobs().length > 0 || this.preparingUploads().length > 0);
 
   /** Pre-computed view models for the main job list (one entry per `jobs()` item). */
   readonly jobViewModels = computed<JobViewModel[]>(() => {
@@ -104,10 +119,6 @@ export class OperationsPanelComponent {
     const liveJob = this.jobs().find(j => j.jobid === id);
     return liveJob ? this.toJobViewModel(liveJob) : null;
   });
-
-  constructor() {
-    void this.jobManagementService.refreshJobs();
-  }
 
   private toJobViewModel(job: JobInfo): JobViewModel {
     return {
@@ -167,7 +178,7 @@ export class OperationsPanelComponent {
 
     const resolvedSource = Array.isArray(job.source) ? (job.source[0] ?? '') : job.source || '';
     const path = job.destination || resolvedSource || '';
-    return this.pathService.getFilename(path) || resolvedSource || job.destination || '';
+    return pathUtils.getFilename(path) || resolvedSource || job.destination || '';
   }
 
   getJobTypeIcon(job: JobInfo): string {

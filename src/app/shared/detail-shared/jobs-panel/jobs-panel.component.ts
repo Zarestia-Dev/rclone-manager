@@ -5,17 +5,19 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { timer } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { switchMap, timer } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import {
   JobInfo,
   JobsPanelConfig,
-  StopJobEvent,
+  JOB_STATUS,
   JOB_STATUS_BADGE_MAP,
   JOB_ICON_MAP,
 } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { relativeTimeLabel } from '../../utils/relative-time.util';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -31,153 +33,38 @@ import { ModalService } from 'src/app/services/ui/modal.service';
     TranslatePipe,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
-  template: `
-    @let cfg = config();
-
-    <mat-card class="detail-panel jobs-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title>
-          <mat-icon svgIcon="jobs" style="color: var(--op-color, var(--primary-color));"></mat-icon>
-          <span>{{ 'detailShared.jobs.title' | translate }}</span>
-          <span class="app-pill p-accent">{{ cfg.jobs.length }}</span>
-        </mat-card-title>
-      </mat-card-header>
-
-      <mat-card-content class="card-list-container">
-        @for (job of enrichedJobs(); track job.jobid) {
-          <div
-            class="card-row-item"
-            role="button"
-            tabindex="0"
-            (click)="showJobDetails(job)"
-            (keydown.enter)="showJobDetails(job)"
-            (keydown.space)="$event.preventDefault(); showJobDetails(job)"
-          >
-            <div class="card-header">
-              <div class="card-info-left">
-                <mat-icon
-                  [svgIcon]="job.icon"
-                  class="card-primary-icon job-type-icon"
-                  [class]="job.iconClass"
-                ></mat-icon>
-                <span class="card-title-text job-type-text">
-                  {{ job.job_type | titlecase }}
-                </span>
-                <span
-                  class="job-id-label"
-                  [attr.title]="
-                    job.execute_id
-                      ? ('modals.jobDetail.fields.executeId' | translate) + ': ' + job.execute_id
-                      : ''
-                  "
-                  >#{{ job.jobid }}</span
-                >
-                @if (job.profile) {
-                  <span class="profile-name">{{ job.profile }}</span>
-                }
-              </div>
-
-              <div class="card-info-right">
-                <span
-                  class="app-pill"
-                  [class]="job.badgeClass"
-                  [class.has-error]="job.statusLower === 'failed' && job.errorText"
-                  [attr.title]="job.statusLower === 'failed' && job.errorText ? job.errorText : ''"
-                >
-                  {{ 'detailShared.jobs.status.' + job.statusLower | translate }}
-                </span>
-
-                <button
-                  type="button"
-                  class="action-button"
-                  [attr.title]="
-                    (job.statusLower === 'running'
-                      ? 'detailShared.jobs.actions.stop'
-                      : 'detailShared.jobs.actions.delete'
-                    ) | translate
-                  "
-                  (click)="
-                    job.statusLower === 'running' ? onStopJob(job) : deleteJob.emit(job.jobid);
-                    $event.stopPropagation()
-                  "
-                  matRipple
-                  [matRippleCentered]="true"
-                  [matRippleUnbounded]="false"
-                  tabindex="-1"
-                >
-                  <mat-icon
-                    [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"
-                    [class]="job.statusLower === 'running' ? 'warn' : 'orange'"
-                  ></mat-icon>
-                </button>
-              </div>
-            </div>
-
-            @if (job.hasProgress) {
-              <div class="card-progress">
-                <mat-progress-bar mode="determinate" [value]="job.progress"></mat-progress-bar>
-                <span class="percentage-text">{{ job.progress }}%</span>
-              </div>
-            }
-
-            @if (job.hasFooter) {
-              <div class="card-footer">
-                <div class="card-footer-left">
-                  <span class="size-text">
-                    @if (job.hasProgress) {
-                      {{ job.stats.bytes | formatFileSize }} /
-                      {{ job.stats.totalBytes | formatFileSize }}
-                    }
-                  </span>
-                </div>
-                <div class="card-footer-right">
-                  @if (job.dry_run) {
-                    <span class="app-pill p-accent dry-run-badge">
-                      {{ 'detailShared.jobs.dryRun' | translate }}
-                    </span>
-                  }
-                  @if (job.durationSeconds > 0) {
-                    <span class="duration-text">{{ job.durationSeconds | formatTime }}</span>
-                  }
-                  @if (job.relativeTime) {
-                    <span class="time-text">{{ job.relativeTime }}</span>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        } @empty {
-          <div class="empty-state">
-            <mat-icon svgIcon="jobs"></mat-icon>
-            <span>{{ 'detailShared.jobs.empty' | translate }}</span>
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
-  `,
+  templateUrl: './jobs-panel.component.html',
 })
 export class JobsPanelComponent {
   readonly config = input.required<JobsPanelConfig>();
 
-  readonly stopJob = output<StopJobEvent>();
   readonly deleteJob = output<number>();
 
   private readonly modalService = inject(ModalService);
+  private readonly jobService = inject(JobManagementService);
   private readonly translate = inject(TranslateService);
   private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
-  private readonly nowTick = toSignal(timer(0, 1000), { initialValue: 0 });
+  private readonly clockInterval = computed(() =>
+    this.config().jobs.some(job => job.status === JOB_STATUS.Running) ? 1000 : 60000
+  );
+  private readonly nowTick = toSignal(
+    toObservable(this.clockInterval).pipe(switchMap(interval => timer(0, interval))),
+    { initialValue: 0 }
+  );
 
   protected readonly enrichedJobs = computed(() => {
-    this.lang(); // Track locale context changes inside Zoneless Architecture
+    this.lang();
     this.nowTick();
     const now = Date.now();
     return this.config().jobs.map(job => {
       const statusLower = job.status.toLowerCase();
       const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
-      const relativeTime = job.start_time ? this.getRelativeTime(job.start_time, now) : '';
-      const durationSeconds = job.start_time
-        ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
-        : 0;
+      const relative = relativeTimeLabel(job.start_time, now);
+      const relativeTime = relative ? this.translate.instant(relative.key, relative.params) : '';
+      const durationSeconds =
+        job.start_time && (job.status === JOB_STATUS.Running || job.end_time)
+          ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
+          : 0;
       const errorText = job.error || job.stats?.lastError || '';
 
       return {
@@ -186,7 +73,9 @@ export class JobsPanelComponent {
         badgeClass: JOB_STATUS_BADGE_MAP[statusLower] || 'p-accent',
         relativeTime,
         durationSeconds,
-        progress: hasProgress ? Math.round((job.stats.bytes / job.stats.totalBytes) * 100) : 0,
+        progress: hasProgress
+          ? Math.max(0, Math.min(100, Math.round((job.stats.bytes / job.stats.totalBytes) * 100)))
+          : 0,
         icon: JOB_ICON_MAP[job.job_type] || 'jobs',
         iconClass: `job-icon-${job.job_type}`,
         hasProgress,
@@ -204,28 +93,15 @@ export class JobsPanelComponent {
     const start = Date.parse(startTime);
     if (isNaN(start)) return 0;
     const end = endTime ? Date.parse(endTime) : now;
-    return Math.max(0, Math.floor((end - start) / 1000));
+    return Number.isFinite(end) ? Math.max(0, Math.floor((end - start) / 1000)) : 0;
   }
 
-  private getRelativeTime(timestamp: string, now: number = Date.now()): string {
-    const diff = now - Date.parse(timestamp);
-    const minutes = Math.floor(diff / 60000);
-    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
-    const hours = Math.floor(minutes / 60);
-    if (hours <= 0)
-      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
-    const days = Math.floor(hours / 24);
-    if (days <= 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
-    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
-  }
-
-  onStopJob(job: JobInfo): void {
-    this.stopJob.emit({
-      type: job.job_type,
-      remoteName: job.remote_name,
-      profileName: job.profile,
-    });
+  async onStopJob(job: JobInfo): Promise<void> {
+    try {
+      await this.jobService.stopJob(job.jobid, job.remote_name);
+    } catch (error) {
+      console.error('Failed to stop job:', error);
+    }
   }
 
   showJobDetails(job: JobInfo): void {

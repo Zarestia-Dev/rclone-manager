@@ -1,4 +1,5 @@
 import { computed, signal, Signal } from '@angular/core';
+import { abortableRequest } from 'src/app/shared/utils/abortable-request.util';
 
 export type LoaderStatus = 'idle' | 'loading' | 'resolved' | 'error';
 
@@ -15,17 +16,14 @@ export interface MemoizedLoader<T> {
   load: () => Promise<T>;
   /** Forces a fresh load, ignoring any cached value. */
   refresh: () => Promise<T>;
+  /** Clears the value and rejects pending readers without waiting for the old transport. */
+  invalidate: () => void;
 }
 
 /**
  * Imperative memoized loader with signal-based state.
  *
- * Designed as a lightweight, Promise-friendly alternative to Angular's
- * `resource()` for cases where the loader is parameterless and called
- * imperatively rather than reactively. Exposes a `resource()`-compatible
- * API surface (`status`, `isLoading`, `error`, `value`-as-`signal`) so
- * consumers can be migrated to `resource()` later if reactive params
- * become necessary.
+ * Deduplicates reads until invalidated; stale requests never publish into a new scope.
  */
 export function memoizedLoader<T>(loader: () => Promise<T>): MemoizedLoader<T> {
   const valueSignal = signal<T | null>(null);
@@ -33,21 +31,30 @@ export function memoizedLoader<T>(loader: () => Promise<T>): MemoizedLoader<T> {
   const errorSignal = signal<unknown>(null);
   const isLoading = computed(() => statusSignal() === 'loading');
   let pending: Promise<T> | null = null;
+  let controller: AbortController | null = null;
 
   const run = async (): Promise<T> => {
+    const current = new AbortController();
+    controller = current;
     statusSignal.set('loading');
     try {
-      const result = await loader();
+      const result = await abortableRequest(current.signal, loader);
+      if (controller !== current) throw new DOMException('Request superseded', 'AbortError');
       valueSignal.set(result);
       errorSignal.set(null);
       statusSignal.set('resolved');
       return result;
     } catch (err) {
-      errorSignal.set(err);
-      statusSignal.set('error');
+      if (controller === current) {
+        errorSignal.set(err);
+        statusSignal.set('error');
+      }
       throw err;
     } finally {
-      pending = null;
+      if (controller === current) {
+        pending = null;
+        controller = null;
+      }
     }
   };
 
@@ -64,6 +71,15 @@ export function memoizedLoader<T>(loader: () => Promise<T>): MemoizedLoader<T> {
     return pending;
   };
 
+  const invalidate = (): void => {
+    controller?.abort();
+    controller = null;
+    pending = null;
+    valueSignal.set(null);
+    statusSignal.set('idle');
+    errorSignal.set(null);
+  };
+
   return {
     signal: valueSignal.asReadonly(),
     status: statusSignal.asReadonly(),
@@ -71,5 +87,6 @@ export function memoizedLoader<T>(loader: () => Promise<T>): MemoizedLoader<T> {
     error: errorSignal.asReadonly(),
     load,
     refresh,
+    invalidate,
   };
 }

@@ -1,3 +1,5 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationHistoryService } from './navigation-history.service';
 import { Injectable, inject, Injector, signal, Type } from '@angular/core';
 import {
   MatDialog,
@@ -5,7 +7,7 @@ import {
   MatDialogRef,
   MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
-import { Subject, Observable, from, switchMap } from 'rxjs';
+import { Subject, Observable, from, of, switchMap, take } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
 import {
@@ -18,6 +20,7 @@ import {
   QuickRun,
   QuickRunInput,
   TemplateCategory,
+  UserPresetTemplate,
   PrimaryActionType,
   WorkflowNode,
   FileBrowserItem,
@@ -28,6 +31,7 @@ import {
 import { ShortcutContext } from 'src/app/shared/models/shortcut-definitions';
 import { isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { VaultService } from '../security/vault.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
@@ -59,9 +63,11 @@ export interface PropertiesModalOptions {
 }
 
 export interface RemoteAboutModalOptions {
-  displayName: string;
-  normalizedName: string;
+  displayName?: string;
+  normalizedName?: string;
+  name?: string;
   type: string;
+  isLocal?: boolean;
 }
 
 export interface RestorePreviewOptions {
@@ -69,9 +75,26 @@ export interface RestorePreviewOptions {
   analysis: BackupAnalysis;
 }
 
+export interface TemplateManagerResult {
+  action?: string;
+  template?: UserPresetTemplate;
+}
+
 export interface TemplateManagerModalOptions {
   mode: 'save' | 'manage';
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+}
+
+export interface ApplyTemplateModalOptions {
+  template: UserPresetTemplate;
+  currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+  applicableCategories?: readonly TemplateCategory[];
+}
+
+export interface ApplyTemplateModalResult {
+  applied: boolean;
+  values: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+  strategy: 'overwrite' | 'fill-empty';
 }
 
 export interface QuickRunEditorModalOptions {
@@ -84,7 +107,7 @@ export interface QuickRunEditorModalOptions {
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-interface StandaloneOpts<D = any> {
+interface StandaloneOpts<D = unknown> {
   type: string;
   title: string;
   data?: D | null;
@@ -93,24 +116,24 @@ interface StandaloneOpts<D = any> {
   suffix?: string;
 }
 
-export interface DialogRefLike<R = any> {
+export interface DialogRefLike<R = unknown> {
   afterClosed(): Observable<R | undefined>;
   close?(result?: R): void;
 }
 
-export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
-  constructor(private readonly promise: Promise<MatDialogRef<unknown, R>>) {}
+class AsyncDialogRef<R = unknown> implements DialogRefLike<R> {
+  constructor(private readonly promise: Promise<MatDialogRef<unknown, R> | null>) {}
 
   afterClosed(): Observable<R | undefined> {
-    return from(this.promise).pipe(switchMap(ref => ref.afterClosed()));
+    return from(this.promise).pipe(switchMap(ref => (ref ? ref.afterClosed() : of(undefined))));
   }
 
   close(result?: R): void {
-    this.promise.then(ref => ref.close(result));
+    this.promise.then(ref => ref?.close(result));
   }
 }
 
-class ChildWindowRef<R = any> {
+class ChildWindowRef<R = unknown> {
   constructor(private readonly windowLabel: string) {}
 
   close(result?: R): void {
@@ -122,7 +145,7 @@ class ChildWindowRef<R = any> {
   }
 }
 
-export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
+export class StandaloneWindowRef<R = unknown> implements DialogRefLike<R> {
   private readonly closed$ = new Subject<R | undefined>();
 
   afterClosed(): Observable<R | undefined> {
@@ -137,7 +160,9 @@ export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
 
 @Injectable({ providedIn: 'root' })
 export class ModalService extends TauriBaseService {
+  private readonly vault = inject(VaultService);
   private readonly dialog = inject(MatDialog);
+  private readonly navigationHistory = inject(NavigationHistoryService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
 
@@ -152,25 +177,10 @@ export class ModalService extends TauriBaseService {
 
   constructor() {
     super();
-    if (!isMobile()) return;
-
-    window.addEventListener('popstate', () => {
-      if (this.dialog.openDialogs.length > 0) {
-        const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
-        topmostDialog.close();
-
-        topmostDialog.afterClosed().subscribe(() => {
-          if (this.dialog.openDialogs.length > 0) {
-            window.history.pushState({ modal: true }, '');
-          }
-        });
-      }
-    });
-
-    this.dialog.afterOpened.subscribe(dialogRef => {
-      if (this.dialog.openDialogs.length === 1) {
-        window.history.pushState({ modal: true }, '');
-      }
+    this.dialog.afterOpened.pipe(takeUntilDestroyed()).subscribe(dialogRef => {
+      const release = this.navigationHistory.openLayer(() => dialogRef.close());
+      dialogRef.beforeClosed().pipe(take(1)).subscribe(release);
+      if (!isMobile()) return;
 
       const originalClose = dialogRef.close.bind(dialogRef);
       dialogRef.close = (dialogResult?: unknown): void => {
@@ -193,12 +203,6 @@ export class ModalService extends TauriBaseService {
           originalClose(dialogResult);
         }
       };
-    });
-
-    this.dialog.afterAllClosed.subscribe(() => {
-      if (window.history.state?.modal) {
-        window.history.back();
-      }
     });
   }
 
@@ -230,6 +234,10 @@ export class ModalService extends TauriBaseService {
     'rclone-flags': () =>
       import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
         m => m.RcloneFlagsModalComponent
+      ),
+    vault: () =>
+      import('../../features/modals/settings/vault-modal/vault-modal.component').then(
+        m => m.VaultModalComponent
       ),
     'job-detail': () =>
       import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
@@ -270,6 +278,10 @@ export class ModalService extends TauriBaseService {
     'template-manager': () =>
       import('../../shared/remote-config/template-manager-modal/template-manager-modal.component').then(
         m => m.TemplateManagerModalComponent
+      ),
+    'apply-template': () =>
+      import('../../shared/remote-config/apply-template-modal/apply-template-modal.component').then(
+        m => m.ApplyTemplateModalComponent
       ),
     'delete-remote': () =>
       import('../../features/modals/delete-remote-modal/delete-remote-modal.component').then(
@@ -332,11 +344,12 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  private openModal<TData = any, TResult = any>(
+  private openModal<TData = unknown, TResult = unknown>(
     type: string,
     config: MatDialogConfig<TData>,
     standalone?: Omit<StandaloneOpts<TData>, 'type' | 'data'>
   ): DialogRefLike<TResult> {
+    if (!this.vault.isAccessible()) return new AsyncDialogRef<TResult>(Promise.resolve(null));
     if (standalone && this.standaloneEnabled) {
       return this.spawnStandaloneWindow<TData, TResult>({
         type,
@@ -348,12 +361,12 @@ export class ModalService extends TauriBaseService {
       config.panelClass = 'mobile-sheet-dialog';
     }
     const dialogPromise = this.loaders[type]().then(comp =>
-      this.dialog.open<unknown, TData, TResult>(comp, config)
+      this.vault.isAccessible() ? this.dialog.open<unknown, TData, TResult>(comp, config) : null
     );
     return new AsyncDialogRef<TResult>(dialogPromise);
   }
 
-  private spawnStandaloneWindow<TData = any, TResult = any>(
+  private spawnStandaloneWindow<TData = unknown, TResult = unknown>(
     opts: StandaloneOpts<TData>
   ): StandaloneWindowRef<TResult> {
     const suffix = opts.suffix ? `-${sanitizeLabel(opts.suffix)}` : '';
@@ -367,7 +380,7 @@ export class ModalService extends TauriBaseService {
     return ref;
   }
 
-  private async openWindowAndBind<TResult = any>(
+  private async openWindowAndBind<TResult = unknown>(
     label: string,
     url: string,
     title: string,
@@ -401,7 +414,7 @@ export class ModalService extends TauriBaseService {
     }
   }
 
-  openQuickRunEditor<TResult = any>(
+  openQuickRunEditor<TResult = unknown>(
     optionsOrTarget?: QuickRun | QuickRunEditorModalOptions,
     initialOpType?: PrimaryActionType,
     initialRemoteName?: string
@@ -502,7 +515,9 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {
+  openRemoteConfig<TResult = unknown>(
+    options: RemoteConfigModalOptions = {}
+  ): DialogRefLike<TResult> {
     const data = {
       name: options.remoteName,
       remoteType: options.remoteType,
@@ -527,7 +542,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openLogs<TResult = any>(remoteName: string): DialogRefLike<TResult> {
+  openLogs<TResult = unknown>(remoteName: string): DialogRefLike<TResult> {
     const data = { remoteName };
     return this.openModal(
       'logs',
@@ -541,7 +556,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
+  openExport<TResult = unknown>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
     const data: ExportModalData = {
       remoteName: options.remoteName,
       defaultExportType:
@@ -560,7 +575,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openJobDetail<TResult = any>(job: JobInfo): DialogRefLike<TResult> {
+  openJobDetail<TResult = unknown>(job: JobInfo): DialogRefLike<TResult> {
     const data = { ...job };
     return this.openModal(
       'job-detail',
@@ -574,7 +589,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openRestorePreview<TResult = any>(options: RestorePreviewOptions): DialogRefLike<TResult> {
+  openRestorePreview<TResult = unknown>(options: RestorePreviewOptions): DialogRefLike<TResult> {
     const data = { backupPath: options.backupPath, analysis: options.analysis };
     return this.openModal(
       'restore-preview',
@@ -588,7 +603,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openQuickAddRemote<TResult = any>(): DialogRefLike<TResult> {
+  openQuickAddRemote<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -600,7 +615,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openBackend<TResult = any>(): DialogRefLike<TResult> {
+  openBackend<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'backend',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -612,7 +627,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openPreferences<TResult = any>(): DialogRefLike<TResult> {
+  openPreferences<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'preferences',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -624,7 +639,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openRcloneFlags<TResult = any>(): DialogRefLike<TResult> {
+  openRcloneFlags<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'rclone-flags',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -636,7 +651,19 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openAlerts<TResult = any>(): DialogRefLike<TResult> {
+  openVault<TResult = void>(): DialogRefLike<TResult> {
+    return this.openModal(
+      'vault',
+      { ...STANDARD_MODAL_SIZE, disableClose: true },
+      {
+        title: this.translate.instant('vault.title'),
+        width: 680,
+        height: 600,
+      }
+    );
+  }
+
+  openAlerts<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal(
       'alerts',
       {
@@ -653,7 +680,7 @@ export class ModalService extends TauriBaseService {
     );
   }
 
-  openProperties<TResult = any>(options: PropertiesModalOptions): DialogRefLike<TResult> {
+  openProperties<TResult = unknown>(options: PropertiesModalOptions): DialogRefLike<TResult> {
     return this.openModal('properties', {
       data: {
         remoteName: options.remoteName,
@@ -670,21 +697,26 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openRemoteAbout<TResult = any>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
+  openRemoteAbout<TResult = unknown>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
+    const displayName = options.displayName ?? options.name ?? '';
+    const normalizedName =
+      options.normalizedName ??
+      (options.isLocal ? (options.name ?? '') : (options.name ?? '').replace(/:$/, ''));
+
     return this.openModal('remote-about', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
       data: {
         remote: {
-          displayName: options.displayName,
-          normalizedName: options.normalizedName,
+          displayName,
+          normalizedName,
           type: options.type,
         },
       },
     });
   }
 
-  openKeyboardShortcuts<TResult = any>(data?: {
+  openKeyboardShortcuts<TResult = unknown>(data?: {
     context?: ShortcutContext;
     nautilus?: boolean;
   }): DialogRefLike<TResult> {
@@ -695,16 +727,16 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openAbout<TResult = any>(): DialogRefLike<TResult> {
+  openAbout<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openPowerMenu<TResult = any>(): DialogRefLike<TResult> {
+  openPowerMenu<TResult = unknown>(): DialogRefLike<TResult> {
     return this.openModal('power-menu', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openArchiveCreate<TResult = any>(data: {
-    items: any[];
+  openArchiveCreate<TResult = unknown>(data: {
+    items: unknown[];
     defaultName: string;
   }): DialogRefLike<TResult> {
     return this.openModal('archive-create', {
@@ -715,13 +747,29 @@ export class ModalService extends TauriBaseService {
     });
   }
 
-  openTemplateManager<TResult = any>(options: TemplateManagerModalOptions): DialogRefLike<TResult> {
+  openTemplateManager<TResult = TemplateManagerResult>(
+    options: TemplateManagerModalOptions
+  ): DialogRefLike<TResult> {
     return this.openModal('template-manager', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
       data: {
         mode: options.mode,
         currentValues: options.currentValues,
+      },
+    });
+  }
+
+  openApplyTemplate<TResult = ApplyTemplateModalResult>(
+    options: ApplyTemplateModalOptions
+  ): DialogRefLike<TResult> {
+    return this.openModal('apply-template', {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: {
+        template: options.template,
+        currentValues: options.currentValues,
+        applicableCategories: options.applicableCategories,
       },
     });
   }

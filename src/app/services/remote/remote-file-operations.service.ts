@@ -1,10 +1,10 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { generatePrefixedId } from 'src/app/shared/utils';
 import {
   Entry,
   FsInfo,
-  JobActionType,
   Origin,
   FsTransferItem,
   FsDeleteItem,
@@ -13,9 +13,36 @@ import {
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
+export interface PendingWebUpload {
+  group: string;
+  remote: string;
+  path: string;
+  origin?: Origin;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
+  private readonly _pendingWebUploads = signal<PendingWebUpload[]>([]);
+  readonly pendingWebUploads = this._pendingWebUploads.asReadonly();
+
+  private async sendWebUpload(
+    body: FormData,
+    upload: PendingWebUpload
+  ): Promise<{ success: boolean; data: string; error?: string }> {
+    this._pendingWebUploads.update(uploads => [...uploads, upload]);
+    try {
+      return await firstValueFrom(
+        this.http.post<{ success: boolean; data: string; error?: string }>(
+          `${this.apiClient.getApiBase()}/upload`,
+          body,
+          { withCredentials: true }
+        )
+      );
+    } finally {
+      this._pendingWebUploads.update(uploads => uploads.filter(item => item !== upload));
+    }
+  }
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
@@ -34,13 +61,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
+  /** fs must be an Rclone filesystem (e.g. "drive:") or a local path. */
   async getSize(
-    remote: string,
+    fs: string,
     path?: string,
     source?: Origin,
     group?: string
   ): Promise<{ count: number; bytes: number }> {
-    return this.invokeCommand('get_size', { remote, path, origin: source, group });
+    return this.invokeCommand('get_size', { remote: fs, path, origin: source, group });
   }
 
   async getStat(
@@ -169,9 +197,16 @@ export class RemoteFileOperationsService extends TauriBaseService {
     remote: string,
     path: string,
     source?: Origin,
-    group?: string
+    group?: string,
+    backendName?: string
   ): Promise<void> {
-    return this.invokeCommand<void>('mkdir', { remote, path, origin: source, group });
+    return this.invokeCommand<void>('mkdir', {
+      remote,
+      path,
+      origin: source,
+      group,
+      ...(backendName && { backendName }),
+    });
   }
 
   async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
@@ -218,14 +253,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     name: string,
     content: Uint8Array
   ): Promise<string> {
-    // ⚠️ Performance issue (preserved for wire-format compatibility):
-    // `Array.from(content)` serializes every byte as a JSON number, multiplying
-    // payload size ~5x and amplifying memory pressure on large files.
-    // The proper fix is to switch to a base64-encoded payload + a backend
-    // handler that decodes it — but that requires a coordinated Rust-side
-    // change to `upload_file`. See refactor plan: switch both sides to
-    // base64 in a single PR, or route large uploads through `uploadFileStream`
-    // which already uses multipart FormData via HTTP.
     return this.invokeCommand<string>('upload_file', {
       remote,
       path,
@@ -234,120 +261,49 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  async uploadFileStream(
-    remote: string,
-    path: string,
-    file: File,
-    source?: Origin,
-    overrideName?: string,
-    batchId?: string,
-    fileIndex?: number,
-    totalFiles?: number,
-    jobId?: number
-  ): Promise<string> {
-    const fd = new FormData();
-    fd.append('remote', remote);
-    fd.append('path', path);
-    if (source) fd.append('origin', JSON.stringify(source));
-    if (batchId) fd.append('batchId', batchId);
-    if (jobId !== undefined) fd.append('jobId', jobId.toString());
-    if (fileIndex !== undefined) fd.append('fileIndex', fileIndex.toString());
-    if (totalFiles !== undefined) fd.append('totalFiles', totalFiles.toString());
-    if (file.lastModified) fd.append('mtime', file.lastModified.toString());
-    fd.append('file', file, overrideName || file.name);
-
-    const res = await firstValueFrom(
-      this.http.post<{ success: boolean; data: string; error?: string }>(
-        `${this.apiClient.getApiBase()}/upload`,
-        fd,
-        { withCredentials: true }
-      )
-    );
-    if (res.success) return res.data;
-    throw new Error(res.error || 'Upload failed');
-  }
-
   async uploadWebFilesBatch(
     remote: string,
     path: string,
     files: { file: File; relativePath: string }[],
-    source?: Origin
-  ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const batchId = Date.now().toString(),
-      jobId = Date.now(),
-      totalFiles = files.length,
-      totalBytes = files.reduce((s, f) => s + f.file.size, 0);
-    await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
-
-    let successCount = 0;
-    const failedPaths: string[] = [];
-
-    for (let i = 0; i < totalFiles; i++) {
-      const { file, relativePath } = files[i];
-      try {
-        await this.uploadFileStream(
-          remote,
-          path,
-          file,
-          source,
-          relativePath,
-          batchId,
-          i,
-          totalFiles,
-          jobId
-        );
-        successCount++;
-      } catch (err) {
-        console.error('[RemoteFileOps] Upload stream error:', relativePath, err);
-        failedPaths.push(relativePath);
-      }
-    }
-
-    if (successCount === 0 && totalFiles > 0) {
-      try {
-        await this.apiClient.invoke('delete_job', { jobid: jobId });
-      } catch {
-        /* ignore */
-      }
-    }
-
-    return { successCount, failedPaths };
-  }
-
-  async registerPreparingJob(
-    jobId: number,
-    remote: string,
-    destination: string,
-    totalFiles: number,
-    totalBytes: number,
-    origin?: Origin
-  ): Promise<void> {
-    return this.apiClient.invoke('register_preparing_job', {
-      jobid: jobId,
-      remote,
-      destination,
-      totalFiles,
-      totalBytes,
-      origin,
-    });
-  }
-
-  async updateJobStats(jobId: number, stats: unknown): Promise<void> {
-    return this.apiClient.invoke('update_job_stats', { jobid: jobId, stats });
-  }
-
-  async submitBatchJob(
-    inputs: Record<string, unknown>[],
-    jobType: JobActionType,
     source?: Origin,
-    group?: string
-  ): Promise<string> {
-    return this.invokeCommand<string>('submit_batch_job', {
-      inputs,
-      job_type: jobType,
-      origin: source,
-      group,
-    });
+    emptyDirectories?: string[]
+  ): Promise<{ successCount: number; failedPaths: string[] }> {
+    const uniqueDirs = emptyDirectories?.length ? [...new Set(emptyDirectories)] : [];
+    if (!files.length && !uniqueDirs.length) {
+      return { successCount: 0, failedPaths: [] };
+    }
+
+    const body = new FormData();
+    body.append('remote', remote);
+    body.append('path', path);
+    if (source) body.append('origin', JSON.stringify(source));
+    const group = generatePrefixedId('upload');
+    body.append('group', group);
+
+    for (const dir of uniqueDirs) {
+      body.append('emptyDirs', dir);
+    }
+
+    for (const { file, relativePath } of files) {
+      body.append('mtime', file.lastModified.toString());
+      body.append('file', file, relativePath || file.name);
+    }
+
+    try {
+      const response = await this.sendWebUpload(body, { group, remote, path, origin: source });
+      if (!response.success) {
+        return {
+          successCount: 0,
+          failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
+        };
+      }
+      return { successCount: files.length, failedPaths: [] };
+    } catch {
+      return {
+        successCount: 0,
+        failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
+      };
+    }
   }
 
   async archiveCreate(

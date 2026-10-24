@@ -1,3 +1,4 @@
+import * as cliParser from 'src/app/shared/utils/cli-parser.util';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -122,13 +123,13 @@ export class CliImportComponent {
     const isServe = type === 'serve';
     const items: { source: string; value: string }[] = [];
 
-    if (res.sourcePath && this.mapper.hasMacro(res.sourcePath)) {
+    if (res.sourcePath && cliParser.hasMacro(res.sourcePath)) {
       items.push({
         source: isMount || isServe ? 'wizards.cliImport.remote' : 'wizards.cliImport.source',
         value: res.sourcePath,
       });
     }
-    if (res.destPath && this.mapper.hasMacro(res.destPath)) {
+    if (res.destPath && cliParser.hasMacro(res.destPath)) {
       items.push({
         source: isMount ? 'wizards.cliImport.mountPoint' : 'wizards.cliImport.destination',
         value: res.destPath,

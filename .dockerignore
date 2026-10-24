@@ -66,10 +66,11 @@ pnpm-lock.yaml
 
 # Rust debug builds (we only need release)
 # Rust build artifacts (all of them)
-src-tauri/target/
+backend/target/
+backend/core/librclone/
 
 # Tauri specific
-src-tauri/gen/
+backend/desktop/gen/
 
 # Docker files (don't include in build context)
 Dockerfile

@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  splitGoogleDriveId,
-  splitOneDriveId,
-  getShareInfo,
-  isSharedOrShortcut,
-} from './shared-item.util';
+import { splitGoogleDriveId, splitOneDriveId, getShareInfo } from './shared-item.util';
 import { Entry, FileBrowserItem } from '@app/types';
 
 describe('shared-item.util', () => {
@@ -261,34 +256,6 @@ describe('shared-item.util', () => {
     it('should gracefully handle null or undefined input', () => {
       expect(getShareInfo(null).isShared).toBe(false);
       expect(getShareInfo(undefined).isShared).toBe(false);
-    });
-  });
-
-  describe('isSharedOrShortcut', () => {
-    it('should return true for shared items or shortcuts, false for regular items', () => {
-      expect(
-        isSharedOrShortcut({
-          ID: 'actual\tshortcut',
-          IsDir: true,
-          MimeType: 'inode/directory',
-          ModTime: '',
-          Name: 'SharedFolder',
-          Path: 'SharedFolder',
-          Size: 0,
-        })
-      ).toBe(true);
-
-      expect(
-        isSharedOrShortcut({
-          ID: 'normal-id',
-          IsDir: true,
-          MimeType: 'inode/directory',
-          ModTime: '',
-          Name: 'NormalFolder',
-          Path: 'NormalFolder',
-          Size: 0,
-        })
-      ).toBe(false);
     });
   });
 });

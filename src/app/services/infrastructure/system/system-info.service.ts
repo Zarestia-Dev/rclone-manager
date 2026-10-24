@@ -43,13 +43,6 @@ export class SystemInfoService extends TauriBaseService {
   }
 
   /**
-   * Stop rclone: if `pid` provided, kill that PID; otherwise request graceful quit via RC.
-   */
-  async stopRclone(pid?: number): Promise<void> {
-    return this.invokeCommand('stop_rclone', { pid });
-  }
-
-  /**
    * Get consolidated system status snapshot.
    * Use this for deterministic state hydration before relying on event stream.
    */

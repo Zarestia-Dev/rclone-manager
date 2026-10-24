@@ -38,6 +38,8 @@ describe('OnboardingComponent', () => {
     listenToRemoteCacheUpdated: ReturnType<typeof vi.fn>;
     listenToRemoteSettingsChanged: ReturnType<typeof vi.fn>;
     listenToBackendSwitched: ReturnType<typeof vi.fn>;
+    listenToVaultState: ReturnType<typeof vi.fn>;
+    listenToServerConnection: ReturnType<typeof vi.fn>;
   };
 
   let rclonePasswordServiceMock: {
@@ -63,6 +65,8 @@ describe('OnboardingComponent', () => {
     rcloneInstalled: ReturnType<typeof signal<boolean>>;
     mountPluginInstalled: ReturnType<typeof signal<boolean>>;
     passwordRequired: ReturnType<typeof signal<boolean>>;
+    skipMountPluginCheck: ReturnType<typeof signal<boolean>>;
+    setSkipMountPluginCheck: ReturnType<typeof vi.fn>;
     runAllChecks: ReturnType<typeof vi.fn>;
     markRcloneInstalled: ReturnType<typeof vi.fn>;
     checkMountPlugin: ReturnType<typeof vi.fn>;
@@ -91,6 +95,10 @@ describe('OnboardingComponent', () => {
       listenToRemoteCacheUpdated: vi.fn().mockReturnValue(of(undefined)),
       listenToRemoteSettingsChanged: vi.fn().mockReturnValue(of(undefined)),
       listenToBackendSwitched: vi.fn().mockReturnValue(of(undefined)),
+      listenToVaultState: vi
+        .fn()
+        .mockReturnValue(of({ isLocked: false, isEnabled: false, event: 'unlocked' })),
+      listenToServerConnection: vi.fn().mockReturnValue(of(undefined)),
     };
 
     rclonePasswordServiceMock = {
@@ -111,11 +119,14 @@ describe('OnboardingComponent', () => {
       setDefaultView: vi.fn(),
     };
 
+    const skipSignal = signal(false);
     systemHealthMock = {
       isInitialized: signal(true),
       rcloneInstalled: signal(true),
       mountPluginInstalled: signal(true),
       passwordRequired: signal(false),
+      skipMountPluginCheck: skipSignal,
+      setSkipMountPluginCheck: vi.fn((skip: boolean) => skipSignal.set(skip)),
       runAllChecks: vi.fn().mockResolvedValue(undefined),
       markRcloneInstalled: vi.fn(),
       checkMountPlugin: vi.fn().mockResolvedValue(undefined),
@@ -161,6 +172,61 @@ describe('OnboardingComponent', () => {
     fixture.detectChanges();
     const withMissingRclone = component.cards().map(c => c.key);
     expect(withMissingRclone).toContain('installRclone');
+
+    // When mount plugin is missing and not skipped
+    systemHealthMock.mountPluginInstalled.set(false);
+    systemHealthMock.skipMountPluginCheck.set(false);
+    fixture.detectChanges();
+    expect(component.cards().map(c => c.key)).toContain('installPlugin');
+
+    // When mount plugin check is skipped
+    systemHealthMock.skipMountPluginCheck.set(true);
+    fixture.detectChanges();
+    expect(component.cards().map(c => c.key)).not.toContain('installPlugin');
+  });
+
+  it('updates primaryButton to Next when willNotMount is toggled', () => {
+    systemHealthMock.mountPluginInstalled.set(false);
+    systemHealthMock.skipMountPluginCheck.set(false);
+    // Find installPlugin card index
+    const pluginIndex = component.cards().findIndex(c => c.key === 'installPlugin');
+    component.goToCard(pluginIndex);
+    fixture.detectChanges();
+
+    expect(component.currentAction()).toBe('install-plugin');
+    expect(component.willNotMount()).toBe(false);
+    expect(component.primaryButton().labelKey).toBe('onboarding.actions.installPlugin');
+    expect(component.primaryButton().icon).toBe('download');
+
+    component.willNotMount.set(true);
+    fixture.detectChanges();
+
+    expect(component.primaryButton().labelKey).toBe('common.next');
+    expect(component.primaryButton().icon).toBe('right-arrow');
+  });
+
+  it('skips mount plugin, saves setting, and updates health service', async () => {
+    systemHealthMock.mountPluginInstalled.set(false);
+    systemHealthMock.skipMountPluginCheck.set(false);
+    const pluginIndex = component.cards().findIndex(c => c.key === 'installPlugin');
+    component.goToCard(pluginIndex);
+    fixture.detectChanges();
+
+    expect(component.cards().map(c => c.key)).toContain('installPlugin');
+
+    component.willNotMount.set(true);
+    fixture.detectChanges();
+
+    await component.skipMountPlugin();
+
+    expect(appSettingsServiceMock.saveSetting).toHaveBeenCalledWith(
+      'core',
+      'skip_mount_plugin_check',
+      true
+    );
+    expect(systemHealthMock.setSkipMountPluginCheck).toHaveBeenCalledWith(true);
+    fixture.detectChanges();
+    expect(component.cards().map(c => c.key)).not.toContain('installPlugin');
   });
 
   it('navigates next and previous properly within bounds', () => {

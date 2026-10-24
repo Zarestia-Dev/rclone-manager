@@ -1,9 +1,9 @@
 import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { EditorView } from 'codemirror';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
+import type { EditorView } from 'codemirror';
 
 export interface DebugInfo {
   logsDir: string;
@@ -36,15 +36,12 @@ export class DebugService extends TauriBaseService {
   private readonly clipboard = inject(Clipboard);
 
   private contextMenu: HTMLElement | null = null;
+  private contextMenuRequestId = 0;
 
   constructor() {
     super();
     if (isMobile()) return;
     this.setupContextMenu();
-  }
-
-  restartApp(): Promise<void> {
-    return this.invokeCommand<void>('relaunch_app');
   }
 
   getDebugInfo(): Promise<DebugInfo> {
@@ -74,27 +71,46 @@ export class DebugService extends TauriBaseService {
   }
 
   private setupContextMenu(): void {
-    const onContextMenu = (e: MouseEvent): void => this.handleContextMenu(e);
+    const onContextMenu = (e: MouseEvent): void => {
+      void this.handleContextMenu(e);
+    };
     this.doc.addEventListener('contextmenu', onContextMenu);
+    this.doc.addEventListener('mousedown', this.onGlobalMousedown);
+    this.doc.addEventListener('keydown', this.onGlobalKeydown);
     this.destroyRef.onDestroy(() => {
       this.doc.removeEventListener('contextmenu', onContextMenu);
+      this.doc.removeEventListener('mousedown', this.onGlobalMousedown);
+      this.doc.removeEventListener('keydown', this.onGlobalKeydown);
       this.closeMenu();
     });
   }
 
-  private handleContextMenu(e: MouseEvent): void {
+  private async handleContextMenu(e: MouseEvent): Promise<void> {
     if (e.defaultPrevented) return;
     const target = e.target as HTMLElement | null;
     if (!target) return;
     e.preventDefault();
-    this.createContextMenu(e.clientX, e.clientY, this.buildMenuItems(target));
+
+    this.closeMenu();
+    const id = ++this.contextMenuRequestId;
+    const items = await this.buildMenuItems(target);
+    if (id !== this.contextMenuRequestId) return;
+    this.createContextMenu(e.clientX, e.clientY, items);
   }
 
-  private buildMenuItems(target: HTMLElement): MenuEntry[] {
+  private async buildMenuItems(target: HTMLElement): Promise<MenuEntry[]> {
     const inputEl = target.closest('input, textarea') as
       HTMLInputElement | HTMLTextAreaElement | null;
     const cmEditor = target.closest('.cm-editor') as HTMLElement | null;
-    const cmView = cmEditor ? EditorView.findFromDOM(cmEditor) : null;
+    let cmView: EditorView | null = null;
+    if (cmEditor) {
+      try {
+        const { EditorView } = await import('codemirror');
+        cmView = EditorView.findFromDOM(cmEditor);
+      } catch {
+        cmView = null;
+      }
+    }
     const editableEl =
       !inputEl && !cmView
         ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
@@ -315,7 +331,7 @@ export class DebugService extends TauriBaseService {
 
     this.doc.body.appendChild(this.contextMenu);
     try {
-      (this.contextMenu as any).showPopover();
+      (this.contextMenu as HTMLElement & { showPopover?: () => void }).showPopover?.();
     } catch {
       /* popover not supported, menu visible via fixed positioning */
     }
@@ -324,34 +340,29 @@ export class DebugService extends TauriBaseService {
     const { right, bottom, width, height } = this.contextMenu.getBoundingClientRect();
     if (right > window.innerWidth) this.contextMenu.style.left = `${x - width}px`;
     if (bottom > window.innerHeight) this.contextMenu.style.top = `${y - height}px`;
-
-    // Dynamic active-menu listeners
-    this.doc.addEventListener('mousedown', this.onGlobalMousedown);
-    this.doc.addEventListener('keydown', this.onGlobalKeydown);
   }
 
   private closeMenu(): void {
     if (!this.contextMenu) return;
     try {
-      (this.contextMenu as any).hidePopover();
+      (this.contextMenu as HTMLElement & { hidePopover?: () => void }).hidePopover?.();
     } catch {
       /* ignore */
     }
     this.contextMenu.remove();
     this.contextMenu = null;
-
-    this.doc.removeEventListener('mousedown', this.onGlobalMousedown);
-    this.doc.removeEventListener('keydown', this.onGlobalKeydown);
   }
 
   private readonly onGlobalMousedown = (e: MouseEvent): void => {
-    if (!this.contextMenu?.contains(e.target as Node)) {
+    this.contextMenuRequestId++;
+    if (this.contextMenu && !this.contextMenu.contains(e.target as Node)) {
       this.closeMenu();
     }
   };
 
   private readonly onGlobalKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') {
+      this.contextMenuRequestId++;
       this.closeMenu();
     }
   };

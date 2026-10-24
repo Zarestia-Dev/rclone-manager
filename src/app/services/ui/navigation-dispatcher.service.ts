@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Automation, JobInfo, Remote, ServeListItem, AppTab, QuickRun } from '@app/types';
+import { Automation, Remote, ServeListItem, AppTab, QuickRun } from '@app/types';
 import { UiStateService } from './state/ui-state.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -27,37 +27,12 @@ export class NavigationDispatcherService {
    */
   navigateToWorkflow(workflowId?: string, workflowName?: string): void {
     this.uiStateService.setMainView('flow');
+    this.uiStateService.setFlowSubMode('builder');
     const wf = this.workflowStorage
       .workflows()
       .find(w => (workflowId && w.id === workflowId) || (workflowName && w.name === workflowName));
     if (wf) {
       this.workflowState.loadWorkflow(wf);
-    }
-  }
-
-  /**
-   * Navigate to the appropriate view and tab for a running or completed job.
-   */
-  navigateToJob(job: JobInfo): void {
-    if (job.origin === 'flow') {
-      const wfId = job.workflow_id || job.profile;
-      this.navigateToWorkflow(wfId);
-      return;
-    }
-
-    if (job.origin === 'quickrun') {
-      const qr = this.findQuickRun(job.profile);
-      if (qr) {
-        this.navigateToQuickRun(qr.id);
-      }
-      return;
-    }
-
-    const remoteName = job.remote_name;
-    if (remoteName) {
-      const tab: AppTab =
-        job.job_type === 'mount' ? 'mount' : job.job_type === 'serve' ? 'serve' : 'operations';
-      this.navigateToRemote(remoteName, tab);
     }
   }
 
@@ -105,9 +80,7 @@ export class NavigationDispatcherService {
    */
   navigateToRemote(remoteOrName: Remote | string, tab: AppTab = 'general'): void {
     const remote =
-      typeof remoteOrName === 'string'
-        ? this.remoteFacade.activeRemotes().find(r => r.name === remoteOrName)
-        : remoteOrName;
+      typeof remoteOrName === 'string' ? this.remoteFacade.getRemote(remoteOrName) : remoteOrName;
 
     if (remote) {
       this.uiStateService.setMainView('main_menu');
@@ -121,7 +94,7 @@ export class NavigationDispatcherService {
    */
   navigateToQuickRun(quickRunId: string): void {
     this.uiStateService.setMainView('flow');
-    this.workflowState.requestedSubMode.set('quick_run');
+    this.uiStateService.setFlowSubMode('quick_run');
     this.quickRunService.select(quickRunId);
   }
 

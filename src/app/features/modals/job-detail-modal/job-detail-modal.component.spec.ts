@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { JobDetailModalComponent } from './job-detail-modal.component';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -10,6 +11,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { IconService } from 'src/app/services/ui/icon.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { JobInfo } from '@app/types';
 
 describe('JobDetailModalComponent', () => {
@@ -19,6 +21,7 @@ describe('JobDetailModalComponent', () => {
   let jobManagementSpy: {
     jobs: ReturnType<typeof signal<JobInfo[]>>;
     deleteJob: ReturnType<typeof vi.fn>;
+    resetGroupStats: ReturnType<typeof vi.fn>;
     getJob: ReturnType<typeof vi.fn>;
   };
   let fileSystemSpy: {
@@ -88,6 +91,7 @@ describe('JobDetailModalComponent', () => {
     jobManagementSpy = {
       jobs: signal([mockJob]),
       deleteJob: vi.fn().mockResolvedValue(undefined),
+      resetGroupStats: vi.fn().mockResolvedValue(undefined),
       getJob: vi.fn().mockReturnValue(mockJob),
     };
     fileSystemSpy = {
@@ -133,6 +137,32 @@ describe('JobDetailModalComponent', () => {
     expect(dialogRefSpy.close).toHaveBeenCalled();
   });
 
+  it('preserves multiline error text and copying through the alert banner', () => {
+    expect(fixture.nativeElement.querySelector('app-alert-banner')).toBeNull();
+    const error = 'Permission denied: <remote>\nCannot open /path with spaces/file.txt';
+    jobManagementSpy.getJob.mockReturnValue({ ...mockJob, error });
+    fixture.destroy();
+    fixture = TestBed.createComponent(JobDetailModalComponent);
+    fixture.detectChanges();
+    const banner = fixture.nativeElement.querySelector('app-alert-banner') as HTMLElement;
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.classList.contains('error')).toBe(true);
+    expect(banner.querySelector('p')?.textContent).toBe(error);
+    expect(banner.querySelector('remote')).toBeNull();
+
+    const copy = vi.spyOn(TestBed.inject(Clipboard), 'copy').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(NotificationService), 'showSuccess').mockImplementation(
+      () => undefined
+    );
+    banner.querySelector('p')?.click();
+    expect(copy).toHaveBeenCalledWith(error);
+  });
+
+  it('resets only the displayed job group', async () => {
+    await component.onResetStats();
+    expect(jobManagementSpy.resetGroupStats).toHaveBeenCalledWith(mockJob.group);
+  });
+
   it('should delete job and close dialog on onDeleteJob', async () => {
     await component.onDeleteJob();
     expect(jobManagementSpy.deleteJob).toHaveBeenCalledWith(42);
@@ -150,6 +180,6 @@ describe('JobDetailModalComponent', () => {
   });
 
   it('should query jobService.getJob with execute_id and jobid', () => {
-    expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42);
+    expect(jobManagementSpy.getJob).toHaveBeenCalledWith('', 42, undefined);
   });
 });

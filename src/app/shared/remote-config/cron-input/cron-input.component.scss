@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 .cron-tabs {
   ::ng-deep .mat-mdc-tab-body-wrapper {
     padding: var(--space-md);
@@ -58,24 +60,9 @@
 
 // Divider
 .divider {
-  display: flex;
-  align-items: center;
+  @include labeled-divider;
   margin: var(--space-xl) 0 var(--space-md) 0;
-  color: var(--dim-color);
   font-size: var(--font-size-md);
-
-  &::before,
-  &::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--border-color);
-  }
-
-  span {
-    padding: 0 var(--space-md);
-    font-weight: 500;
-  }
 }
 
 // Custom Builder

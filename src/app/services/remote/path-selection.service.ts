@@ -1,4 +1,5 @@
-import { Injectable, inject, signal, WritableSignal } from '@angular/core';
+import * as pathUtils from 'src/app/shared/utils/path.utils';
+import { Injectable, inject, signal, WritableSignal, DestroyRef } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
@@ -23,6 +24,23 @@ export class PathSelectionService {
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
   private readonly abortControllers = new Map<string, AbortController>();
+  private readonly inputTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly activeLoads = new Map<string, Promise<void>>();
+  private readonly queuedLoads = new Map<string, { remoteName: string; path: string | string[] }>();
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      for (const id of this.pathStates.keys()) this.unregisterField(id);
+    });
+  }
+
+  private cancelLoad(fieldId: string): void {
+    clearTimeout(this.inputTimers.get(fieldId));
+    this.inputTimers.delete(fieldId);
+    this.abortControllers.get(fieldId)?.abort();
+    this.abortControllers.delete(fieldId);
+    this.queuedLoads.delete(fieldId);
+  }
 
   registerField(
     fieldId: string,
@@ -33,7 +51,7 @@ export class PathSelectionService {
     if (existing) return existing;
 
     // FormControl.value can be string[] with multi-path forms — always coerce to string
-    const path = this.pathService.getPrimaryPath(initialPath) ?? '';
+    const path = pathUtils.getPrimaryPath(initialPath) ?? '';
     const stateSignal = signal<PathSelectionState>({
       id: fieldId,
       remoteName,
@@ -47,18 +65,26 @@ export class PathSelectionService {
   }
 
   unregisterField(fieldId: string): void {
-    this.abortControllers.get(fieldId)?.abort();
-    this.abortControllers.delete(fieldId);
+    this.cancelLoad(fieldId);
     this.pathStates.delete(fieldId);
   }
 
   triggerLoad(fieldId: string, remoteName: string, path: string): void {
-    this.fetchEntries(fieldId, remoteName, path);
+    this.cancelLoad(fieldId);
+    void this.fetchEntries(fieldId, remoteName, path);
   }
 
   updateInput(fieldId: string, value: string): void {
     const state = this.pathStates.get(fieldId)?.();
-    if (state) this.fetchEntries(fieldId, state.remoteName, value);
+    this.cancelLoad(fieldId);
+    if (!state) return;
+    this.inputTimers.set(
+      fieldId,
+      setTimeout(() => {
+        this.inputTimers.delete(fieldId);
+        void this.fetchEntries(fieldId, state.remoteName, value);
+      }, 250)
+    );
   }
 
   selectEntry(fieldId: string, entryName: string, formControl?: AbstractControl | null): void {
@@ -68,10 +94,10 @@ export class PathSelectionService {
     const entry = state.options.find(e => e.Name === entryName);
     if (!entry) return;
 
-    const newPath = this.pathService.joinPath(state.currentPath, entryName);
+    const newPath = pathUtils.joinPath(state.currentPath, entryName);
     formControl?.setValue(newPath);
 
-    if (entry.IsDir) this.fetchEntries(fieldId, state.remoteName, newPath);
+    if (entry.IsDir) this.triggerLoad(fieldId, state.remoteName, newPath);
   }
 
   navigateUp(fieldId: string, formControl?: AbstractControl | null): void {
@@ -80,10 +106,11 @@ export class PathSelectionService {
 
     const parentPath = this.pathService.getParentPath(state.currentPath);
     formControl?.setValue(parentPath);
-    this.fetchEntries(fieldId, state.remoteName, parentPath);
+    this.triggerLoad(fieldId, state.remoteName, parentPath);
   }
 
   resetPath(fieldId: string): void {
+    this.cancelLoad(fieldId);
     const stateSignal = this.pathStates.get(fieldId);
     if (stateSignal) {
       stateSignal.update(s => ({
@@ -98,13 +125,38 @@ export class PathSelectionService {
   private async fetchEntries(
     fieldId: string,
     remoteName: string,
+    path: string | string[]
+  ): Promise<void> {
+    // IPC directory listings cannot be cancelled. Keep one transport per field
+    // and replace queued work with the latest input while discarding stale results.
+    if (this.activeLoads.has(fieldId)) {
+      this.queuedLoads.set(fieldId, { remoteName, path });
+      return;
+    }
+    const request = this.loadEntries(fieldId, remoteName, path);
+    this.activeLoads.set(fieldId, request);
+    try {
+      await request;
+    } finally {
+      this.activeLoads.delete(fieldId);
+      const queued = this.queuedLoads.get(fieldId);
+      this.queuedLoads.delete(fieldId);
+      if (queued && this.pathStates.has(fieldId)) {
+        void this.fetchEntries(fieldId, queued.remoteName, queued.path);
+      }
+    }
+  }
+
+  private async loadEntries(
+    fieldId: string,
+    remoteName: string,
     rawPath: string | string[]
   ): Promise<void> {
     const stateSignal = this.pathStates.get(fieldId);
     if (!stateSignal) return;
 
     // FormControl.value can be string[] — coerce to a single string
-    const path = this.pathService.getPrimaryPath(rawPath) ?? '';
+    const path = pathUtils.getPrimaryPath(rawPath) ?? '';
 
     this.abortControllers.get(fieldId)?.abort();
     const controller = new AbortController();

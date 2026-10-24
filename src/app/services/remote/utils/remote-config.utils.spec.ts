@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { expect, it } from 'vitest';
 import { provideTranslateService } from '@ngx-translate/core';
 import { PathService } from '../../infrastructure/platform/path.service';
 import {
@@ -6,10 +7,98 @@ import {
   mapFormToConfigProfile,
   ConfigToFormContext,
   FormToConfigContext,
-  resolveOptionExamples,
-  retargetProfileRemote,
   retargetProfilesRemote,
+} from './profile-mapper.utils';
+import {
+  getConfigOptionFlags,
+  matchesConfigSearch,
+  matchesConfigSearchText,
+  resolveOptionExamples,
 } from './remote-config.utils';
+
+describe('configuration search', () => {
+  const shared = {
+    Name: 'shared_with_me',
+    FieldName: '',
+    Help: 'Only show files that are shared with me in Google Drive.',
+    Type: 'bool',
+    DefaultStr: 'false',
+  };
+
+  it.each([
+    'shared with me',
+    'shared_with_me',
+    'shared-with-me',
+    '--shared-with-me',
+    '--drive-shared-with-me',
+    '  --DRIVE-SHARED-WITH-ME  ',
+    'shared  with\tme',
+    'drive shared me',
+  ])('finds provider options using %s', query => {
+    expect(matchesConfigSearch(shared, query, { provider: 'drive' })).toBe(true);
+  });
+
+  it.each(['--s3-shared-with-me', '--drive-unrelated', '--drive-shared-with-me=true'])(
+    'does not confuse other flags with %s',
+    query => expect(matchesConfigSearch(shared, query, { provider: 'drive' })).toBe(false)
+  );
+
+  it('respects NoPrefix and does not match CLI references in help', () => {
+    const field = { ...shared, NoPrefix: true, Help: 'See --drive-shared-with-me.' };
+    expect(getConfigOptionFlags(field, 'drive')).toEqual(['--shared-with-me']);
+    expect(matchesConfigSearch(field, '--shared-with-me', { provider: 'drive' })).toBe(true);
+    expect(matchesConfigSearch(field, '--drive-shared-with-me', { provider: 'drive' })).toBe(false);
+  });
+
+  it.each([
+    'createEmptySrcDirs',
+    'createemptysrcdirs',
+    'create_empty_src_dirs',
+    '--create-empty-src-dirs',
+    'create empty src dirs',
+  ])('finds camelCase options using %s', query => {
+    expect(matchesConfigSearch({ ...shared, Name: 'createEmptySrcDirs', Help: '' }, query)).toBe(
+      true
+    );
+  });
+
+  it('uses FieldName, help and extra context without requiring adjacent words', () => {
+    expect(matchesConfigSearch(shared, 'general shared', { keywords: ['General'] })).toBe(true);
+    expect(matchesConfigSearch({ ...shared, FieldName: 'SharedWithMe' }, 'sharedwithme')).toBe(
+      true
+    );
+    expect(matchesConfigSearch(shared, 'only files')).toBe(true);
+    expect(matchesConfigSearch(shared, 'shared unrelated')).toBe(false);
+  });
+
+  it('handles empty queries and missing metadata', () => {
+    expect(matchesConfigSearch(shared, '')).toBe(true);
+    expect(matchesConfigSearch(shared, ' \t\n ')).toBe(true);
+    expect(matchesConfigSearch({ ...shared, Name: '', FieldName: '', Help: '' }, 'shared')).toBe(
+      false
+    );
+    expect(matchesConfigSearchText('anything', [null, undefined, ''])).toBe(false);
+    expect(matchesConfigSearchText('', [])).toBe(true);
+  });
+
+  it('requires every nonempty word and preserves special characters', () => {
+    expect(matchesConfigSearchText('unrelated  query', ['source', 'path'])).toBe(false);
+    expect(matchesConfigSearchText(' source \t path ', ['source', 'path'])).toBe(true);
+    expect(matchesConfigSearchText('source unrelated', ['source', 'path'])).toBe(false);
+    expect(matchesConfigSearchText('C++', ['C++ options'])).toBe(true);
+    expect(matchesConfigSearchText('C++', ['C options'])).toBe(false);
+  });
+
+  it('shares exactly the displayed flag spelling and omits internal selectors', () => {
+    expect(getConfigOptionFlags(shared, ' DRIVE ')).toEqual(['--drive-shared-with-me']);
+    expect(getConfigOptionFlags({ ...shared, Name: 'createEmptySrcDirs' })).toEqual([
+      '--create-empty-src-dirs',
+    ]);
+    for (const Name of ['', 'type', 'mountType']) {
+      expect(getConfigOptionFlags({ ...shared, Name }, 'drive')).toEqual([]);
+    }
+  });
+});
 
 describe('remote-config.utils', () => {
   let pathService: PathService;
@@ -29,7 +118,6 @@ describe('remote-config.utils', () => {
     };
     formCtx = {
       remoteName: 'myremote',
-      pathService,
       cleanData: (opts: Record<string, unknown>): Record<string, unknown> => ({ ...opts }),
       dynamicFields: [],
     };
@@ -219,6 +307,80 @@ describe('remote-config.utils', () => {
   });
 
   describe('mapFormToConfigProfile', () => {
+    it('omits application defaults and restores them when reopening a serve profile', () => {
+      const form = mapConfigToFormProfile('serve', { rclone: { fs: 'myremote:' } }, ctx);
+      expect(form).toMatchObject({
+        autoStart: false,
+        cronEnabled: false,
+        watchEnabled: false,
+        watchDelay: 5,
+        watchChangedOnly: false,
+        vfsProfile: 'Default',
+        filterProfile: 'Default',
+        backendProfile: 'Default',
+        runtimeRemoteProfile: 'Default',
+      });
+      const saved = mapFormToConfigProfile('serve', form, formCtx);
+      expect(saved).toEqual({ app: {}, rclone: { fs: 'myremote:' } });
+      expect(mapConfigToFormProfile('serve', saved, ctx)).toEqual(form);
+    });
+
+    it('retains automation overrides, zero delay and named profile links', () => {
+      const app = {
+        autoStart: true,
+        cronEnabled: true,
+        cronExpression: '0 0 * * *',
+        watchEnabled: true,
+        watchDelay: 0,
+        watchChangedOnly: true,
+        vfsProfile: 'Cached',
+        filterProfile: 'Photos',
+        backendProfile: 'Fast',
+        runtimeRemoteProfile: 'Custom',
+      };
+      const form = mapConfigToFormProfile('serve', { app, rclone: { fs: 'myremote:' } }, ctx);
+      expect(mapFormToConfigProfile('serve', form, formCtx)['app']).toEqual(app);
+      expect(
+        mapFormToConfigProfile('serve', { ...form, runtimeRemoteProfile: ' Custom ' }, formCtx)[
+          'app'
+        ]
+      ).toEqual(app);
+    });
+
+    it.each([true, false])('discards legacy profile tray metadata (%s)', showOnTray => {
+      for (const config of [
+        { app: { showOnTray }, rclone: { fs: 'myremote:' } },
+        { showOnTray, fs: 'myremote:' },
+      ]) {
+        const form = mapConfigToFormProfile('serve', config, ctx);
+        expect(form['showOnTray']).toBeUndefined();
+        expect(form['options']).toEqual({ type: 'http' });
+        expect(mapFormToConfigProfile('serve', { ...form, showOnTray }, formCtx)).toEqual({
+          app: {},
+          rclone: { fs: 'myremote:' },
+        });
+      }
+    });
+
+    it('omits missing, null and empty application values without mutating the form', () => {
+      const form = {
+        autoStart: null,
+        watchDelay: undefined,
+        cronExpression: '',
+        vfsProfile: '',
+        runtimeRemoteProfile: ' ',
+      };
+      expect(mapFormToConfigProfile('serve', form, formCtx)['app']).toEqual({});
+      expect(form).toEqual({
+        autoStart: null,
+        watchDelay: undefined,
+        cronExpression: '',
+        vfsProfile: '',
+        runtimeRemoteProfile: ' ',
+      });
+      expect(mapFormToConfigProfile('serve', {}, formCtx)['app']).toEqual({});
+    });
+
     it('should omit mountType when saving standard "mount" type', () => {
       const formValue = {
         autoStart: false,
@@ -275,6 +437,83 @@ describe('remote-config.utils', () => {
       expect(rclone['srcFs']).toEqual(['/home/user/docs', 'cloud:files']);
       expect(rclone['dstFs']).toBe('myremote:backup');
       expect(rclone['delete_excluded']).toBe(true);
+    });
+  });
+
+  describe('shared operation mapping', () => {
+    it('converts legacy paths without leaking them into rclone options', () => {
+      const form = mapConfigToFormProfile(
+        'sync',
+        {
+          autoStart: true,
+          source: ['myremote:photos'],
+          dest: '/backup',
+          transfers: 2,
+        },
+        ctx
+      );
+      expect(form['options']).toEqual({ transfers: 2 });
+      expect(mapFormToConfigProfile('sync', form, formCtx)).toEqual({
+        app: { autoStart: true },
+        rclone: { srcFs: 'myremote:photos', dstFs: '/backup', transfers: 2 },
+      });
+    });
+
+    it('preserves local mount sources instead of converting them into remote paths', () => {
+      const form = mapConfigToFormProfile(
+        'mount',
+        {
+          rclone: { srcFs: '/tmp/photos', mountPoint: '/mnt/photos' },
+        },
+        ctx
+      );
+      expect(form['source']).toEqual({ type: 'local', path: '/tmp/photos', remote: '' });
+      expect(mapFormToConfigProfile('mount', form, formCtx)['rclone']).toEqual({
+        fs: '/tmp/photos',
+        mountPoint: '/mnt/photos',
+      });
+    });
+
+    it('reads legacy operation blocks without mixing shared options into operation flags', () => {
+      const form = mapConfigToFormProfile(
+        'sync',
+        {
+          app: { autoStart: true },
+          rclone: {
+            sync: { srcFs: ['myremote:a', 'otherremote:b'], dstFs: '/tmp', dry_run: true },
+            dry_run: false,
+            vfs: { cache_mode: 'full' },
+            remotes: { myremote: { region: 'eu' } },
+          },
+        },
+        ctx
+      );
+      expect(form['options']).toEqual({ dry_run: false });
+      expect(mapFormToConfigProfile('sync', form, formCtx)['rclone']).toEqual({
+        srcFs: ['myremote:a', 'otherremote:b'],
+        dstFs: '/tmp',
+        dry_run: false,
+      });
+    });
+
+    it('preserves multiple URLs and filenames, including punctuation, through both directions', () => {
+      const original = {
+        srcFs: ["https://example.com/a?x=1&y='two'", 'https://example.com/b'],
+        dstFs: '/tmp/photos',
+        filenames: ["a'b,c.jpg", 'b.jpg'],
+        autoFilename: false,
+      };
+      const form = mapConfigToFormProfile('copyurl', { rclone: original }, ctx);
+      expect(mapFormToConfigProfile('copyurl', form, formCtx)['rclone']).toEqual(original);
+    });
+
+    it('handles an empty source list without manufacturing a source', () => {
+      const form = mapConfigToFormProfile('sync', { rclone: { srcFs: [], dstFs: '/tmp' } }, ctx);
+      expect(form['source']).toEqual([]);
+      expect(mapFormToConfigProfile('sync', form, formCtx)['rclone']).toEqual({
+        srcFs: '',
+        dstFs: '/tmp',
+      });
     });
   });
 
@@ -350,7 +589,14 @@ describe('remote-config.utils', () => {
     });
   });
 
-  describe('retargetProfileRemote & retargetProfilesRemote', () => {
+  describe('retargetProfilesRemote', () => {
+    const retargetProfile = (
+      profile: Record<string, unknown>,
+      oldRemote: string,
+      newRemote: string
+    ): Record<string, unknown> =>
+      retargetProfilesRemote({ syncConfigs: { Default: profile } }, oldRemote, newRemote)
+        .syncConfigs.Default;
     it('should retarget mount profiles with rclone sub-object', () => {
       const profile = {
         app: { autoStart: true },
@@ -360,7 +606,7 @@ describe('remote-config.utils', () => {
         },
       };
 
-      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const result = retargetProfile(profile, 'gdrive', 'gdrive-clone');
 
       expect((result['rclone'] as Record<string, unknown>)['fs']).toBe('gdrive-clone:myfolder');
       expect((result['rclone'] as Record<string, unknown>)['mountPoint']).toBe('/mnt/data');
@@ -375,7 +621,7 @@ describe('remote-config.utils', () => {
         },
       };
 
-      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const result = retargetProfile(profile, 'gdrive', 'gdrive-clone');
       const rclone = result['rclone'] as Record<string, unknown>;
 
       expect(rclone['srcFs']).toEqual(['gdrive-clone:photos', 'otherremote:backup', 'local:/data']);
@@ -390,7 +636,7 @@ describe('remote-config.utils', () => {
         },
       };
 
-      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const result = retargetProfile(profile, 'gdrive', 'gdrive-clone');
       const rclone = result['rclone'] as Record<string, unknown>;
 
       expect(rclone['path1']).toBe('gdrive-clone:folder1');
@@ -402,10 +648,15 @@ describe('remote-config.utils', () => {
         gdrive: { chunk_size: '64M', upload_cutoff: '256M' },
       };
 
-      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const result = retargetProfilesRemote(
+        { runtimeRemoteConfigs: { Default: profile } },
+        'gdrive',
+        'gdrive-clone'
+      ).runtimeRemoteConfigs.Default;
 
-      expect(result['gdrive']).toBeUndefined();
-      expect(result['gdrive-clone']).toEqual({ chunk_size: '64M', upload_cutoff: '256M' });
+      expect(result).toEqual({
+        'gdrive-clone': { chunk_size: '64M', upload_cutoff: '256M' },
+      });
     });
 
     it('should retarget flat path keys', () => {
@@ -413,15 +664,15 @@ describe('remote-config.utils', () => {
         fs: 'gdrive:root',
       };
 
-      const result = retargetProfileRemote(profile, 'gdrive', 'gdrive-clone');
+      const result = retargetProfile(profile, 'gdrive', 'gdrive-clone');
 
       expect(result['fs']).toBe('gdrive-clone:root');
     });
 
     it('should return unmodified profile if oldRemote is not found or matches newRemote', () => {
       const profile = { rclone: { fs: 'other:path' } };
-      expect(retargetProfileRemote(profile, 'gdrive', 'gdrive-clone')).toEqual(profile);
-      expect(retargetProfileRemote(profile, 'gdrive', 'gdrive')).toEqual(profile);
+      expect(retargetProfile(profile, 'gdrive', 'gdrive-clone')).toEqual(profile);
+      expect(retargetProfile(profile, 'gdrive', 'gdrive')).toEqual(profile);
     });
 
     it('should retarget all sections in RemoteSettings via retargetProfilesRemote', () => {
@@ -443,16 +694,47 @@ describe('remote-config.utils', () => {
           },
         } as ProfileSection,
         runtimeRemoteConfigs: {
-          gdrive: { chunk_size: '32M' },
-        } as Record<string, Record<string, unknown>>,
+          gdrive: { gdrive: { chunk_size: '32M' } },
+        },
       };
 
       const result = retargetProfilesRemote(settings, 'gdrive', 'gdrive-clone');
 
       expect(result.mountConfigs['Default']?.rclone?.['fs']).toBe('gdrive-clone:media');
       expect(result.syncConfigs['Backup']?.rclone?.['srcFs']).toEqual(['gdrive-clone:docs']);
-      expect(result.runtimeRemoteConfigs['gdrive']).toBeUndefined();
-      expect(result.runtimeRemoteConfigs['gdrive-clone']).toEqual({ chunk_size: '32M' });
+      expect(result.runtimeRemoteConfigs['gdrive']).toEqual({
+        'gdrive-clone': { chunk_size: '32M' },
+      });
+      expect(Object.keys(result.runtimeRemoteConfigs)).toEqual(['gdrive']);
+    });
+
+    it('preserves profile names and links while retargeting runtime scopes and paths', () => {
+      const settings = {
+        syncConfigs: {
+          app: {
+            app: { runtimeRemoteProfile: 'app' },
+            rclone: {
+              srcFs: ['app:photos', 'other:docs'],
+              dstFs: '/backup',
+              remotes: { app: { region: 'us' }, other: { region: 'eu' } },
+            },
+          },
+        },
+        runtimeRemoteConfigs: { app: { app: { region: 'us' }, other: { region: 'eu' } } },
+      };
+      const original = structuredClone(settings);
+      const cloned = retargetProfilesRemote(settings, 'app', 'new-drive');
+      expect(cloned.syncConfigs.app.app).toEqual({ runtimeRemoteProfile: 'app' });
+      expect(cloned.syncConfigs.app.rclone.srcFs).toEqual(['new-drive:photos', 'other:docs']);
+      expect(cloned.syncConfigs.app.rclone.remotes).toEqual({
+        'new-drive': { region: 'us' },
+        other: { region: 'eu' },
+      });
+      expect(cloned.runtimeRemoteConfigs.app).toEqual({
+        'new-drive': { region: 'us' },
+        other: { region: 'eu' },
+      });
+      expect(settings).toEqual(original);
     });
   });
 });

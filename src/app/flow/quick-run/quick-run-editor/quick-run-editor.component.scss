@@ -1,6 +1,4 @@
-:host {
-  --sidebar-icon-width: 56px;
-}
+@use "../../../styles/mixins" as *;
 
 main {
   flex-direction: column;
@@ -15,62 +13,14 @@ main {
   background: var(--window-bg-color);
 }
 .modal-sidebar {
-  width: var(--sidebar-width);
-  background: var(--sidebar-bg-color);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-
-  .step-indicator-container {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .step-indicator {
-    padding: var(--space-xs);
-
-    ::ng-deep .mat-mdc-list-item {
-      border-radius: var(--radius-sm);
-      margin-bottom: 4px;
-      max-height: 40px;
-      transition: background-color 0.2s ease;
-
-      &.mdc-list-item--activated {
-        background: var(--selected-bg-color);
-      }
-
-      &.mdc-list-item--disabled {
-        opacity: 0.5;
-        background: transparent !important;
-      }
-
-      .mat-mdc-list-item-icon {
-        font-size: var(--icon-size-sm);
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        color: var(--dim-color);
-      }
-
-      .mat-mdc-list-item-title {
-        font-size: var(--font-size-md);
-        font-weight: 500;
-      }
-    }
-  }
-
-  .sidebar-footer {
-    padding: var(--space-xs);
-    border-top: 1px solid var(--border-color);
-
-    .step-indicator {
-      padding: 0 !important;
-    }
-  }
+  @include wizard-modal-sidebar;
+  @include wizard-step-indicator;
 }
 
 .modal-content {
   position: relative;
+  container-type: inline-size;
+  min-width: 0;
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -80,7 +30,7 @@ main {
 
 /* ── Top Configuration Bar ── */
 .top-config-section {
-  background: var(--surface-variant);
+  background: var(--bg-elevated);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -90,7 +40,7 @@ main {
     grid-template-columns: 1fr 1fr 1fr;
     padding: var(--space-sm) var(--space-md) 0;
     gap: var(--space-sm);
-    @media (max-width: 768px) {
+    @container (max-width: 40rem) {
       grid-template-columns: 1fr;
     }
   }
@@ -108,14 +58,6 @@ main {
       padding: var(--space-xxs) var(--space-md);
     }
   }
-}
-
-.op-option-icon {
-  margin-right: var(--space-xs);
-  vertical-align: middle;
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
 }
 
 /* ── Config Tabs Section ── */

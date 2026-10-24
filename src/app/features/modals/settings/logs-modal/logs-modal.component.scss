@@ -106,9 +106,6 @@
 
     .message {
       flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       opacity: 0.9;
     }
 
@@ -146,9 +143,23 @@
       .block-label {
         font-size: var(--font-size-sm);
         text-transform: uppercase;
-        color: var(--gnome-dark-2);
+        color: var(--gnome-light-3);
         font-weight: 600;
         margin-bottom: var(--space-xs);
+      }
+
+      div.block-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        .action-button {
+          color: inherit;
+        }
+      }
+
+      summary.block-label {
+        cursor: pointer;
       }
 
       .code-block {
@@ -160,6 +171,7 @@
         color: var(--gnome-light-3);
         white-space: pre-wrap;
         word-break: break-all;
+        user-select: text;
 
         &.json-theme {
           color: var(--gnome-orange-2);

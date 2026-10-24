@@ -7,7 +7,9 @@ import { signal } from '@angular/core';
 import { PowerMenuModalComponent } from './power-menu-modal.component';
 import { AppLifecycleService } from '../../../services/infrastructure/system/app-lifecycle.service';
 import { NotificationService } from '../../../services/ui/notification.service';
-import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { JobManagementService } from '../../../services/operations/job-management.service';
+import { MountManagementService } from '../../../services/operations/mount-management.service';
+import { ServeManagementService } from '../../../services/operations/serve-management.service';
 import { JobInfo, MountedRemote, ServeListItem } from '@app/types';
 
 describe('PowerMenuModalComponent', () => {
@@ -23,11 +25,17 @@ describe('PowerMenuModalComponent', () => {
     showSuccess: ReturnType<typeof vi.fn>;
     showError: ReturnType<typeof vi.fn>;
   };
-  let remoteFacadeSpy: {
+  let jobServiceSpy: {
     jobs: ReturnType<typeof signal<JobInfo[]>>;
+    stopAllActiveJobs: ReturnType<typeof vi.fn>;
+  };
+  let mountServiceSpy: {
     mountedRemotes: ReturnType<typeof signal<MountedRemote[]>>;
+    unmountAllRemotes: ReturnType<typeof vi.fn>;
+  };
+  let serveServiceSpy: {
     runningServes: ReturnType<typeof signal<ServeListItem[]>>;
-    emergencyStopAll: ReturnType<typeof vi.fn>;
+    stopAllServes: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -41,11 +49,17 @@ describe('PowerMenuModalComponent', () => {
       showSuccess: vi.fn(),
       showError: vi.fn(),
     };
-    remoteFacadeSpy = {
+    jobServiceSpy = {
       jobs: signal<JobInfo[]>([]),
+      stopAllActiveJobs: vi.fn().mockResolvedValue(undefined),
+    };
+    mountServiceSpy = {
       mountedRemotes: signal<MountedRemote[]>([]),
+      unmountAllRemotes: vi.fn().mockResolvedValue(undefined),
+    };
+    serveServiceSpy = {
       runningServes: signal<ServeListItem[]>([]),
-      emergencyStopAll: vi.fn().mockResolvedValue(undefined),
+      stopAllServes: vi.fn().mockResolvedValue(undefined),
     };
 
     await TestBed.configureTestingModule({
@@ -55,7 +69,9 @@ describe('PowerMenuModalComponent', () => {
         { provide: MatDialogRef, useValue: dialogRefSpy },
         { provide: AppLifecycleService, useValue: appLifecycleSpy },
         { provide: NotificationService, useValue: notificationServiceSpy },
-        { provide: RemoteFacadeService, useValue: remoteFacadeSpy },
+        { provide: JobManagementService, useValue: jobServiceSpy },
+        { provide: MountManagementService, useValue: mountServiceSpy },
+        { provide: ServeManagementService, useValue: serveServiceSpy },
       ],
     }).compileComponents();
 
@@ -93,7 +109,7 @@ describe('PowerMenuModalComponent', () => {
   });
 
   it('should compute active operations as true when jobs or mounts exist', () => {
-    remoteFacadeSpy.jobs.set([{ id: 1, status: 'Running' } as unknown as JobInfo]);
+    jobServiceSpy.jobs.set([{ id: 1, status: 'Running' } as unknown as JobInfo]);
     expect(component.hasActiveOperations()).toBe(true);
     expect(component.activeJobsCount()).toBe(1);
   });
@@ -126,7 +142,9 @@ describe('PowerMenuModalComponent', () => {
 
   it('should handle emergency stop', async () => {
     await component.handleEmergencyStop();
-    expect(remoteFacadeSpy.emergencyStopAll).toHaveBeenCalled();
+    expect(jobServiceSpy.stopAllActiveJobs).toHaveBeenCalled();
+    expect(mountServiceSpy.unmountAllRemotes).toHaveBeenCalledWith('normal');
+    expect(serveServiceSpy.stopAllServes).toHaveBeenCalledWith('normal');
     expect(notificationServiceSpy.showSuccess).toHaveBeenCalled();
     expect(dialogRefSpy.close).toHaveBeenCalled();
   });

@@ -8,7 +8,7 @@
       ></mat-icon>
     </div>
     <div class="remote-text-info">
-      <h2 class="remote-name" [attr.title]="remote.name">{{ remote.name }}</h2>
+      <h2 class="remote-name truncate" [attr.title]="remote.name">{{ remote.name }}</h2>
       <span class="remote-type">{{ remote.type | titlecase }}</span>
     </div>
   </div>
@@ -20,30 +20,35 @@
       [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
     >
       @for (vc of viewActionConfigs(); track vc.key) {
-        <div
-          class="status-chip"
-          [class]="vc.key"
-          [class.active]="vc.isActive"
-          [class.disabled]="vc.isLoading || !vc.canInteract"
-          role="button"
-          tabindex="0"
-          aria-pressed="true"
+        <button
+          type="button"
+          class="app-pill interactive"
+          [class.p-primary]="vc.isActive && (vc.key === 'sync' || vc.key === 'archivecreate')"
+          [class.p-accent]="
+            vc.isActive &&
+            (vc.key === 'serve' ||
+              vc.key === 'mount' ||
+              vc.key === 'check' ||
+              vc.key === 'copyurl' ||
+              vc.key === 'cryptcheck')
+          "
+          [class.p-yellow]="vc.isActive && vc.key === 'copy'"
+          [class.p-orange]="vc.isActive && vc.key === 'move'"
+          [class.p-purple]="vc.isActive && vc.key === 'bisync'"
+          [class.p-warn]="vc.isActive && vc.key === 'delete'"
+          [disabled]="vc.isLoading || !vc.canInteract"
+          [attr.aria-pressed]="vc.isActive"
           [attr.aria-label]="vc.ariaLabel"
           [attr.title]="vc.tooltip | translate"
           (click)="onChipClick(vc)"
-          (keydown.enter)="onChipClick(vc)"
-          (keydown.space)="$event.preventDefault(); onChipClick(vc)"
         >
-          <div class="status-dot">
-            @if (vc.isLoading) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <mat-icon [svgIcon]="vc.icon"></mat-icon>
-            }
-          </div>
-          <span class="status-label">{{ vc.label | translate }}</span>
-          <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
-        </div>
+          @if (vc.isLoading) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon [svgIcon]="vc.icon"></mat-icon>
+          }
+          <span>{{ vc.label | translate }}</span>
+        </button>
       }
 
       <button
@@ -71,7 +76,7 @@
           <mat-icon svgIcon="quick-run"></mat-icon>
           <span>{{ 'flow.quickRun.title' | translate }}</span>
           @if (remoteQuickRuns().length > 0) {
-            <span class="app-pill p-primary">{{ remoteQuickRuns().length }}</span>
+            <span class="count-badge">{{ remoteQuickRuns().length }}</span>
           }
         </mat-card-title>
         <button
@@ -130,17 +135,7 @@
     </mat-card>
   }
 
-  <app-jobs-panel
-    [config]="jobsPanelConfig()"
-    (stopJob)="
-      stopJob.emit({
-        type: $event.type,
-        remoteName: $event.remoteName,
-        profileName: $event.profileName,
-      })
-    "
-    (deleteJob)="deleteJob.emit($event)"
-  >
+  <app-jobs-panel [config]="jobsPanelConfig()" (deleteJob)="deleteJob.emit($event)">
   </app-jobs-panel>
 
   @if (hasAutomations()) {
@@ -149,7 +144,7 @@
         <mat-card-title>
           <mat-icon svgIcon="clock"></mat-icon>
           <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
-          <span class="app-pill p-primary"
+          <span class="count-badge"
             >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
           >
         </mat-card-title>
@@ -158,17 +153,21 @@
         @if (remoteAutomations().length > 1) {
           <div class="carousel-indicators">
             @for (automation of remoteAutomations(); track automation.id) {
-              <div
-                class="indicator"
-                [class.active]="$index === currentAutomationCardIndex()"
+              <button
+                type="button"
+                class="action-button"
                 (click)="goToAutomationCard($index)"
                 [attr.title]="automation.profileName"
-                role="button"
-                tabindex="0"
+                [attr.aria-current]="$index === currentAutomationCardIndex() ? 'true' : null"
                 [attr.aria-label]="
                   'dashboard.generalDetail.goToAutomation' | translate: { index: $index + 1 }
                 "
-              ></div>
+              >
+                <span
+                  class="indicator"
+                  [class.active]="$index === currentAutomationCardIndex()"
+                ></span>
+              </button>
             }
           </div>
         }

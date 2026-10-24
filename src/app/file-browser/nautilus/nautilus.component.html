@@ -23,6 +23,7 @@
       [localDrives]="localDrives()"
       [cloudRemotes]="cloudRemotes()"
       [bookmarks]="filteredBookmarks()"
+      [canBookmarkDrag]="dragDrop.canBookmarkDrag()"
       [title]="title()"
       [isPickerMode]="isPickerMode()"
       [isSearchMode]="isSearchMode()"
@@ -37,14 +38,13 @@
       (requestAbout)="actions.openAboutModal($event)"
       (requestCleanup)="actions.confirmAndCleanup($event)"
       (remoteOpenedInNewTab)="tabSvc.createTab($event, '')"
-      (remoteOpenedInNewWindow)="nautilusService.newNautilusWindow($event.name, '')"
+      (remoteOpenedInNewWindow)="nautilusService.openStandaloneWindow($event.name, '')"
       (bookmarkOpenedInNewTab)="actions.openBookmarkInNewTab($event)"
       (bookmarkOpenedInNewWindow)="actions.openBookmarkInNewWindow($event)"
       (requestBookmarkRemoval)="nautilusService.toggleItem('bookmarks', $event)"
       (requestProperties)="actions.openPropertiesDialog('bookmark', $event)"
       (droppedToBookmark)="onDropToBookmark($event.event, $event.target)"
       (droppedToStarred)="onDropToStarred($event)"
-      (droppedToLocal)="onDropToLocal($event)"
       (droppedToRemote)="onDropToRemote($event.event, $event.target)"
     ></app-nautilus-sidebar>
   </mat-sidenav>
@@ -53,8 +53,10 @@
     <app-nautilus-toolbar
       data-tauri-drag-region
       [isMobile]="isMobile()"
-      [canGoBack]="tabSvc.canGoBack()"
-      [canGoForward]="tabSvc.canGoForward()"
+      [canGoBack]="isPrimaryRoutedView() ? navigationHistory.canGoBack() : tabSvc.canGoBack()"
+      [canGoForward]="
+        isPrimaryRoutedView() ? navigationHistory.canGoForward() : tabSvc.canGoForward()
+      "
       [isSearchMode]="isSearchMode()"
       [searchFilter]="searchFilter()"
       [isEditingPath]="isEditingPath()"
@@ -68,7 +70,7 @@
       [pathOptionsMenu]="contextMenu()?.pathOptionsMenuTemplate()"
       [viewMenu]="viewMenu"
       (goBack)="handleGoBack()"
-      (goForward)="tabSvc.goForward()"
+      (goForward)="handleGoForward()"
       (navigateToSegment)="navigateToSegment($event)"
       (updatePath)="updatePath($event)"
       (navigateToPath)="navigateToPath($event)"
@@ -99,9 +101,10 @@
     <div class="nautilus-content" [style.gridTemplateColumns]="tabSvc.splitGridColumns()">
       @for (pane of visiblePanes(); track pane.index) {
         @if (!$first) {
-          <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
+          <div class="split-divider" (pointerdown)="onSplitDividerDrag($event)"></div>
         }
         <app-nautilus-view-pane
+          [directoryKey]="pane.directoryKey"
           [files]="pane.files"
           [selection]="pane.selection"
           [paneIndex]="pane.index"
@@ -121,6 +124,7 @@
           [activePaneIndex]="tabSvc.activePaneIndex()"
           [isItemSelectable]="isItemSelectable"
           [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
+          [isMobile]="isMobile()"
           [fileMenu]="contextMenu()?.fileMenuTemplate()"
           (switchPane)="tabSvc.switchPane($event)"
           (clearSelection)="selectionSvc.clearSelection(pane.index)"
@@ -129,6 +133,7 @@
           (dragStarted)="onDragStarted($event.event, $event.item)"
           (dragEnded)="onDragEnded()"
           (itemClick)="onItemClick($event.item, $event.event, $event.index, pane.index)"
+          (itemKeydown)="onItemKeydown($event.item, $event.event, pane.index)"
           (navigateTo)="navigateTo($event)"
           (toggleStar)="nautilusService.toggleItem('starred', $event)"
           (toggleSort)="settings.toggleSort($event)"

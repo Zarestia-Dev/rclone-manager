@@ -35,10 +35,7 @@
         </mat-form-field>
 
         @if (error(); as err) {
-          <div class="validation-error-message">
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
-            <span>{{ err }}</span>
-          </div>
+          <app-alert-banner severity="error" [description]="err" />
         }
 
         <div class="actions">

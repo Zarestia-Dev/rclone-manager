@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import {
-  WorkflowEventService,
-  WorkflowNodeStatePayload,
-  WorkflowExecutionStatePayload,
-} from './workflow-event.service';
+import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowStateService } from './workflow-state.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { ApiClientService } from '../infrastructure/platform/api-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { provideTranslateService } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
+import type { WorkflowNodeStatePayload, WorkflowExecutionStatePayload } from '@app/types';
 
 describe('WorkflowEventService', () => {
   let service: WorkflowEventService;

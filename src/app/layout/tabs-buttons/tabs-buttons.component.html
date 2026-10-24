@@ -1,15 +1,17 @@
 @if (!isEditingLayout()) {
   @for (tab of tabs(); track tab.id) {
     <button
+      type="button"
       class="tab-btn"
       [class.selected]="currentTab() === tab.id"
+      [attr.aria-pressed]="currentTab() === tab.id"
       [attr.title]="tab.label | translate"
       (click)="setTab(tab.id)"
       data-tauri-drag-region="false"
     >
-      <div class="icon-wrapper">
+      <span class="icon-wrapper">
         <mat-icon [svgIcon]="tab.icon"></mat-icon>
-      </div>
+      </span>
       <span class="tab-label">{{ tab.label | translate }}</span>
     </button>
   }
@@ -17,20 +19,22 @@
   @let ctx = editContext();
   @if (ctx?.onReset) {
     <button
+      type="button"
       class="tab-btn"
       [attr.title]="'generalOverview.layout.reset' | translate"
       (click)="uiStateService.resetLayout()"
       data-tauri-drag-region="false"
     >
-      <div class="icon-wrapper">
+      <span class="icon-wrapper">
         <mat-icon class="warn" svgIcon="rotate-right"></mat-icon>
-      </div>
+      </span>
       <span class="tab-label">{{ 'generalOverview.layout.reset' | translate }}</span>
     </button>
   }
 
   @if (ctx?.hasViewToggle) {
     <button
+      type="button"
       class="tab-btn"
       [attr.title]="
         (uiStateService.cardDisplayMode() === 'compact'
@@ -41,11 +45,11 @@
       (click)="uiStateService.toggleCardDisplayMode()"
       data-tauri-drag-region="false"
     >
-      <div class="icon-wrapper">
+      <span class="icon-wrapper">
         <mat-icon
           [svgIcon]="uiStateService.cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"
         ></mat-icon>
-      </div>
+      </span>
       <span class="tab-label">
         {{
           (uiStateService.cardDisplayMode() === 'compact'
@@ -58,14 +62,15 @@
   }
 
   <button
+    type="button"
     class="tab-btn"
     [attr.title]="'generalOverview.layout.save' | translate"
     (click)="uiStateService.endLayoutEdit()"
     data-tauri-drag-region="false"
   >
-    <div class="icon-wrapper">
+    <span class="icon-wrapper">
       <mat-icon class="primary" svgIcon="check-circle"></mat-icon>
-    </div>
+    </span>
     <span class="tab-label">{{ 'generalOverview.layout.save' | translate }}</span>
   </button>
 }

@@ -16,7 +16,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   QuickRun,
-  StopJobEvent,
   DashboardPanel,
   ALL_QUICK_RUN_PANELS,
   PanelConfig,
@@ -26,7 +25,6 @@ import {
 } from '@app/types';
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
@@ -72,7 +70,6 @@ import { QuickRunCardComponent } from '../quick-run-card/quick-run-card.componen
 })
 export class QuickRunOverviewComponent {
   private readonly quickRunService = inject(QuickRunService);
-  private readonly jobService = inject(JobManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly localStorage = inject(LocalStorageService);
   private readonly snackBar = inject(MatSnackBar);
@@ -102,7 +99,7 @@ export class QuickRunOverviewComponent {
       countMap.set(name, (countMap.get(name) || 0) + 1);
     }
 
-    const allRemotes = this.remoteFacade.orderedRemotes();
+    const allRemotes = this.remoteFacade.remoteSummaries();
     const result: { remoteName: string; count: number; icon: string; isMissing?: boolean }[] = [];
 
     for (const r of allRemotes) {
@@ -245,16 +242,6 @@ export class QuickRunOverviewComponent {
   }
 
   // --- Smart Item Navigation Handlers ---
-  async handleStopJob(event: StopJobEvent): Promise<void> {
-    const activeJobs = this.jobService.activeJobs();
-    const target = activeJobs.find(
-      j => j.remote_name === event.remoteName && j.job_type === event.type
-    );
-    if (target) {
-      await this.jobService.stopJob(target.jobid, event.remoteName);
-    }
-  }
-
   handleServeClick(serve: ServeListItem): void {
     this.navigationDispatcher.navigateToServe(serve);
   }

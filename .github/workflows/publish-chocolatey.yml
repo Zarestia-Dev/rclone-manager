@@ -59,7 +59,7 @@ jobs:
         shell: pwsh
         run: |
           $ver = "${{ steps.version.outputs.VERSION }}"
-          $chocoDir = "packaging/chocolatey"
+          $chocoDir = "backend/desktop/windows/chocolatey"
 
           # Update nuspec version
           $nuspec = Get-Content "$chocoDir/rclone-manager.nuspec" -Raw
@@ -78,6 +78,6 @@ jobs:
         shell: pwsh
         run: |
           $ver = "${{ steps.version.outputs.VERSION }}"
-          cd packaging/chocolatey
+          cd backend/desktop/windows/chocolatey
           choco pack rclone-manager.nuspec
           choco push "rclone-manager.$ver.nupkg" --source https://push.chocolatey.org/ --api-key ${{ secrets.CHOCO_API_KEY }}

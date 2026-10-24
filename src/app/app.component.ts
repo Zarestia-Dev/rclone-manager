@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { AppNavigationService } from './services/ui/app-navigation.service';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  Injector,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -21,6 +31,8 @@ import { isHeadlessMode } from './services/infrastructure/platform/api-client.se
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
 import { AndroidKeepAliveService } from './services/infrastructure/platform/android-keep-alive.service';
+import { VaultService } from './services/security/vault.service';
+import { VaultLockScreenComponent } from './features/components/vault-lock-screen/vault-lock-screen.component';
 import { FlowContainerComponent } from './flow/flow-container.component';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
@@ -31,6 +43,12 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { MainView } from '@app/types';
 
 import { MainUiContainerComponent } from './layout/main-ui-container.component';
+import { OverlayContainer } from '@angular/cdk/overlay';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 
 @Component({
@@ -40,8 +58,12 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
     OnboardingComponent,
     NautilusComponent,
     FlowContainerComponent,
+    VaultLockScreenComponent,
     NgComponentOutlet,
     ShortcutHandlerDirective,
+    MatButtonModule,
+    MatIconModule,
+    TranslatePipe,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -49,6 +71,7 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
 })
 export class AppComponent implements OnInit {
   readonly initializing = signal(true);
+  readonly initializationFailed = signal(false);
 
   protected readonly modalService = inject(ModalService);
   protected readonly nautilusService = inject(NautilusService);
@@ -61,12 +84,24 @@ export class AppComponent implements OnInit {
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly injector = inject(Injector);
+  private startupConfirmationScheduled = false;
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly androidShareService = inject(AndroidShareService);
   private readonly androidKeepAliveService = inject(AndroidKeepAliveService);
+  protected readonly vaultService = inject(VaultService);
+
+  private readonly navigation = inject(AppNavigationService);
 
   readonly selectedMainView = this.uiStateService.selectedMainView;
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
+
+  private readonly overlayContainer = inject(OverlayContainer);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly dialogs = inject(MatDialog);
+  private appInitializing = false;
+  private appInitialized = false;
+  private initializationRevision = 0;
 
   constructor() {
     inject(IconService);
@@ -83,12 +118,38 @@ export class AppComponent implements OnInit {
 
     // Wire overlay signals into UiStateService for mobile-sidebar computation.
     this.uiStateService.setOverlaySignals({
-      mainOverlay: this.mainUiOverlayService.isMainUiOverlayOpen,
-      flowOverlay: this.flowOverlayService.isFlowOverlayOpen,
+      mainOverlay: this.mainUiOverlayService.isOpen,
+      flowOverlay: this.flowOverlayService.isOpen,
       nautilusOverlay: this.nautilusService.isBrowserOverlayOpen,
     });
-
     this.setupDefaultViewListener();
+    this.dialogs.afterOpened.pipe(takeUntilDestroyed()).subscribe(ref => {
+      if (!this.vaultService.isAccessible()) ref.close();
+    });
+    let hadAccess = false;
+    effect(() => {
+      const accessible = this.vaultService.isAccessible();
+      // CDK portals live outside app-root, including menus and closing animations.
+      const container = this.overlayContainer.getContainerElement();
+      container.style.display = accessible ? '' : 'none';
+      container.inert = !accessible;
+      if (!accessible) {
+        if (hadAccess || this.vaultService.isStatusKnown()) {
+          this.initializationRevision++;
+          this.appInitializing = false;
+          this.initializing.set(false);
+        }
+        hadAccess = false;
+        if (this.vaultService.isStatusKnown() && this.vaultService.isVaultLocked()) {
+          this.confirmStartupAfterRender();
+        }
+        this.snackBar.dismiss();
+        this.dialogs.closeAll();
+        return;
+      }
+      hadAccess = true;
+      void this.initializeApp();
+    });
   }
 
   ngOnInit(): void {
@@ -98,11 +159,36 @@ export class AppComponent implements OnInit {
     });
   }
 
+  protected async retryInit(): Promise<void> {
+    await this.initializeApp();
+  }
+
   private async initializeApp(): Promise<void> {
+    if (this.appInitializing) return;
+    this.appInitializing = true;
+    const revision = ++this.initializationRevision;
+    const isCurrent = (): boolean =>
+      revision === this.initializationRevision && this.vaultService.isAccessible();
     try {
+      this.initializing.set(true);
+      this.initializationFailed.set(false);
+      await this.vaultService.checkVaultStatus();
+      if (revision !== this.initializationRevision) return;
+      if (!this.vaultService.isStatusKnown()) {
+        return;
+      }
+      if (this.vaultService.isVaultLocked()) {
+        this.confirmStartupAfterRender();
+        return;
+      }
       await this.appSettingsService.loadSettings();
+      if (!isCurrent()) return;
       await this.appSettingsService.applySavedLanguage();
-      this.nautilusService.openFromBrowseQueryParam();
+      if (!isCurrent()) return;
+      if (this.appInitialized) return;
+      void this.appUpdaterService.initialize();
+      void this.rcloneUpdateService.initialize();
+      this.nautilusService.initializeFromUrl();
 
       if (this.modalService.isDialogStandalone()) {
         await this.modalService.resolveDialogWindow();
@@ -111,16 +197,43 @@ export class AppComponent implements OnInit {
         !this.flowOverlayService.isStandaloneWindow() &&
         !this.mainUiOverlayService.isStandaloneWindow()
       ) {
-        this.backendService.runStartupChecks();
-        void this.appUpdaterService.initialize();
-        void this.rcloneUpdateService.initialize();
+        void this.backendService.runStartupChecks().catch(error => {
+          console.error('Backend startup checks failed:', error);
+        });
         await this.applyDefaultView();
       }
+      if (!isCurrent()) return;
+      if (!this.modalService.isDialogStandalone()) {
+        const standalone = this.nautilusService.isStandaloneWindow()
+          ? 'nautilus'
+          : this.flowOverlayService.isStandaloneWindow()
+            ? 'flow'
+            : this.mainUiOverlayService.isStandaloneWindow()
+              ? 'main_menu'
+              : null;
+        this.navigation.initialize(standalone);
+      }
+      this.appInitialized = true;
+      this.confirmStartupAfterRender();
     } catch (error) {
-      console.error('App initialization failed:', error);
+      if (revision === this.initializationRevision) {
+        this.initializationFailed.set(true);
+        console.error('App initialization failed:', error);
+      }
     } finally {
-      this.initializing.set(false);
+      if (revision === this.initializationRevision) {
+        this.initializing.set(false);
+        this.appInitializing = false;
+      }
     }
+  }
+
+  private confirmStartupAfterRender(): void {
+    if (this.startupConfirmationScheduled) return;
+    this.startupConfirmationScheduled = true;
+    afterNextRender(() => void this.appUpdaterService.confirmStartup(), {
+      injector: this.injector,
+    });
   }
 
   private setupDefaultViewListener(): void {
@@ -149,9 +262,6 @@ export class AppComponent implements OnInit {
         const view = String(setting.value) as MainView;
         if (view !== 'nautilus' && view !== 'flow' && view !== 'main_menu') return;
 
-        this.nautilusService.closeBrowserOverlay();
-        this.flowOverlayService.closeFlowOverlay();
-        this.mainUiOverlayService.closeMainUiOverlay();
         this.uiStateService.setDefaultView(view);
       });
   }

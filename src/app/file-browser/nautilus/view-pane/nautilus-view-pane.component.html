@@ -12,7 +12,7 @@
       #gridContainer
       (mousedown)="onMouseDown($event)"
       (click)="onContainerClick($event)"
-      (keydown.enter)="clearSelection.emit(paneIndex())"
+      (keydown.enter)="switchPane.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -31,7 +31,7 @@
         ></div>
       }
       <div class="grid" [style.gridTemplateColumns]="gridColumns()">
-        @for (item of renderedFiles(); track getItemKey(item)) {
+        @for (item of renderedFiles(); track item.entry.ID || item.entry.Path) {
           @let key = getItemKey(item);
           @let isCut = cutItemPaths().has(key);
           <div
@@ -40,7 +40,7 @@
             (pointerdown)="onItemPointerDown($event, item)"
             (pointerup)="onItemPointerUp($event)"
             (click)="onItemClick($event, item, $index)"
-            (keydown.enter)="onItemKeydown($event, item, $index)"
+            (keydown.enter)="onItemKeydown($event, item)"
             (dblclick)="navigateTo.emit(item)"
             [cdkContextMenuTriggerFor]="fileMenu()"
             [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -49,11 +49,11 @@
             [class.selected]="selection().has(key)"
             [class.unselectable]="!isItemSelectable()(item.entry)"
             [class.cut-item]="isCut"
-            [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+            [attr.data-folder-key]="item.entry.IsDir ? getItemKey(item) : null"
             [class.folder-drag-over]="
               isDragging() &&
               hoveredFolderPaneIndex() === paneIndex() &&
-              hoveredFolder()?.entry?.Path === item.entry.Path &&
+              hoveredFolder() === item &&
               _draggedItemPath() !== item.entry.Path
             "
           >
@@ -100,7 +100,7 @@
       class="nautilus-list-container"
       (mousedown)="onMouseDown($event)"
       (click)="onContainerClick($event)"
-      (keydown.enter)="clearSelection.emit(paneIndex())"
+      (keydown.enter)="switchPane.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -239,7 +239,8 @@
           (pointerdown)="onItemPointerDown($event, item)"
           (pointerup)="onItemPointerUp($event)"
           (click)="onItemClick($event, item, i)"
-          (keydown.enter)="onItemKeydown($event, item, i)"
+          (keydown.enter)="onItemKeydown($event, item)"
+          tabindex="0"
           (dblclick)="navigateTo.emit(item)"
           [cdkContextMenuTriggerFor]="fileMenu()"
           [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -248,11 +249,11 @@
           [class.unselectable]="!isItemSelectable()(item.entry)"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
           [class.cut-item]="cutItemPaths().has(getItemKey(item))"
-          [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
+          [attr.data-folder-key]="item.entry.IsDir ? getItemKey(item) : null"
           [class.folder-drag-over]="
             isDragging() &&
             hoveredFolderPaneIndex() === paneIndex() &&
-            hoveredFolder()?.entry?.Path === item.entry.Path &&
+            hoveredFolder() === item &&
             _draggedItemPath() !== item.entry.Path
           "
         ></tr>

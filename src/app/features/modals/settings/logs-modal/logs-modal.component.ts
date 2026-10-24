@@ -25,6 +25,7 @@ import { AnsiToHtmlPipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
+import { CommandOutput, extractCommandOutput } from './log-output';
 
 @Component({
   selector: 'app-logs-modal',
@@ -97,7 +98,7 @@ export class LogsModalComponent implements OnInit {
       {
         copyText: string;
         contextStr: string | null;
-        output: string | null;
+        output: CommandOutput | null;
         translatedMessage: string;
       }
     >();
@@ -106,7 +107,7 @@ export class LogsModalComponent implements OnInit {
       map.set(id, {
         copyText: this.getFormattedLog(log),
         contextStr: log.context ? this.formatContext(log.context) : null,
-        output: this.getCommandOutput(log),
+        output: extractCommandOutput(log.context),
         translatedMessage: this.translateLogMessage(log.message),
       });
     }
@@ -175,23 +176,8 @@ export class LogsModalComponent implements OnInit {
     });
   }
 
-  /**
-   * Smart extractor for Rclone's nested error outputs.
-   * Handles the specific bisync error structure: status -> output -> output
-   */
   getCommandOutput(log: RemoteLogEntry): string | null {
-    if (!log.context) return null;
-
-    const ctx = log.context as Record<string, unknown>;
-    const status = ctx['status'] as Record<string, unknown> | undefined;
-    const statusOutput = status?.['output'] as Record<string, unknown> | undefined;
-
-    if (typeof statusOutput?.['output'] === 'string') return statusOutput['output'];
-    if (typeof ctx['output'] === 'string') return ctx['output'];
-    if (ctx['output'] && typeof ctx['output'] === 'object')
-      return JSON.stringify(ctx['output'], null, 2);
-
-    return null;
+    return extractCommandOutput(log.context)?.text ?? null;
   }
 
   formatContext(context: LogContext): string {

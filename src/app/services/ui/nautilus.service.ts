@@ -1,3 +1,6 @@
+import { VaultService } from '../security/vault.service';
+import { NavigationHistoryService } from './navigation-history.service';
+import type { Tab } from './nautilus-tab.service';
 import {
   ComponentRef,
   DestroyRef,
@@ -5,6 +8,8 @@ import {
   Injectable,
   signal,
   computed,
+  effect,
+  untracked,
   WritableSignal,
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
@@ -15,10 +20,7 @@ import { take } from 'rxjs/operators';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import {
-  PathNavigationService,
-  NautilusLocation,
-} from 'src/app/services/infrastructure/platform/path-navigation.service';
+import { buildNautilusPath } from 'src/app/shared/utils/nautilus-url.utils';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
 import {
@@ -37,16 +39,34 @@ import { generatePrefixedId } from 'src/app/shared/utils';
   providedIn: 'root',
 })
 export class NautilusService extends TauriBaseService {
+  // Retain the primary workspace when the main view is temporarily unmounted.
+  private workspace: {
+    tabs: Tab[];
+    activeTab: number;
+    activePane: 0 | 1;
+  } | null = null;
+  get primaryWorkspace(): typeof this.workspace {
+    return this.workspace;
+  }
+  set primaryWorkspace(value: typeof this.workspace) {
+    this.workspace = this.vault.isAccessible() ? value : null;
+  }
+  private readonly vault = inject(VaultService);
+
+  private readonly navigationHistory = inject(NavigationHistoryService);
+  private releasePickerHistory?: () => void;
   private readonly overlay = inject(Overlay);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
-  private readonly pathNav = inject(PathNavigationService);
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
 
-  private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
+  private readonly _filePickerState = signal<{
+    isOpen: boolean;
+    options?: FilePickerConfig;
+  }>({
     isOpen: false,
   });
   readonly filePickerState = this._filePickerState.asReadonly();
@@ -89,6 +109,7 @@ export class NautilusService extends TauriBaseService {
   private pickerOverlayRef: OverlayRef | null = null;
   private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
   private isBrowserOpening = false;
+  private browserRequest = 0;
   private isPickerOpening = false;
 
   private browserOverlayRef: OverlayRef | null = null;
@@ -116,9 +137,28 @@ export class NautilusService extends TauriBaseService {
 
   constructor() {
     super();
-    (Object.keys(this.collectionConfig) as CollectionType[]).forEach(type =>
-      this.loadCollection(type)
-    );
+    effect(() => {
+      const accessible = this.vault.isAccessible();
+      untracked(() => {
+        if (accessible) {
+          for (const type of Object.keys(this.collectionConfig) as CollectionType[]) {
+            void this.loadCollection(type);
+          }
+          void this.loadRemoteData();
+        } else {
+          this.closeBrowserOverlay();
+          if (this._filePickerState().isOpen) this.closeFilePicker(null);
+          this.primaryWorkspace = null;
+          this.selectedNautilusRemote.set(null);
+          this.targetPath.set(null);
+          this._starredItems.set([]);
+          this._bookmarks.set([]);
+          this._cloudRemotes.set([]);
+          this._localDrives.set([]);
+          this.setWindowTitle('RClone Manager');
+        }
+      });
+    });
     this.setupBrowseListener();
 
     merge(
@@ -134,6 +174,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   async loadRemoteData(): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     if (this.loadRemoteDataInFlight) {
       if (!this.nextLoadRemoteDataPromise) {
         this.nextLoadRemoteDataPromise = this.loadRemoteDataInFlight
@@ -151,6 +192,7 @@ export class NautilusService extends TauriBaseService {
         const loadCloud = (async (): Promise<void> => {
           try {
             const configsRes = await this.remoteManagement.getAllRemoteConfigs();
+            if (!this.vault.isAccessible()) return;
             const configs = (configsRes ?? {}) as Record<string, { type?: string; Type?: string }>;
             const remoteNames = Object.keys(configs);
 
@@ -173,6 +215,7 @@ export class NautilusService extends TauriBaseService {
         const loadDrives = (async (): Promise<void> => {
           try {
             const drives = await this.remoteManagement.getLocalDrives();
+            if (!this.vault.isAccessible()) return;
             this._localDrives.set(
               drives.map(drive => ({
                 name: drive.name,
@@ -203,35 +246,14 @@ export class NautilusService extends TauriBaseService {
     return promise;
   }
 
-  openFromBrowseQueryParam(): void {
+  initializeFromUrl(): void {
     const urlParams = new URLSearchParams(window.location.search);
-    const pathName = window.location.pathname;
-    const hash = window.location.hash;
-
     const tauriWin = this.getCurrentTauriWindow();
     const isStandalone =
       urlParams.get('standalone') === 'nautilus' ||
-      (tauriWin?.label?.startsWith('nautilus') ?? false) ||
-      pathName.includes('/nautilus') ||
-      hash.startsWith('#/nautilus') ||
-      urlParams.has('browse');
+      (tauriWin?.label?.startsWith('nautilus') ?? false);
 
     this._isStandaloneWindow.set(isStandalone);
-
-    const { remoteName, remotePath } = this.parseNautilusLocation(urlParams, pathName, hash);
-
-    if (remoteName) {
-      const remoteRoot = this.lookupRemote(remoteName);
-      if (remotePath && remoteRoot) {
-        this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, remotePath));
-      } else {
-        this.selectedNautilusRemote.set(remoteName);
-      }
-
-      if (!isStandalone) {
-        void this.newNautilusWindow(remoteName, remotePath);
-      }
-    }
   }
 
   setWindowTitle(title: string): void {
@@ -242,15 +264,10 @@ export class NautilusService extends TauriBaseService {
   }
 
   getNautilusUrl(remote: string | null, path: string | null): string {
-    const remoteRoot = remote ? this.lookupRemote(remote) : null;
+    const remoteRoot = remote ? this.lookupRemoteByName(remote) : null;
     const pathStyle = this.pathService.pathStyleForRemote(remoteRoot);
-    return this.pathNav.buildNautilusUrl(remote, path, pathStyle);
-  }
-
-  private getNautilusLabel(remote: string | null): string {
-    if (!remote) return 'nautilus';
-    const slug = remote.replace(/[^a-zA-Z0-9-]/g, '_');
-    return `nautilus-${slug}`;
+    const canonical = pathStyle === 'windows' ? (path ?? '').replace(/\\/g, '/') : (path ?? '');
+    return new URL(buildNautilusPath(remote, canonical), window.location.origin).href;
   }
 
   private get isStandaloneEnabled(): boolean {
@@ -263,44 +280,53 @@ export class NautilusService extends TauriBaseService {
     path: string | null,
     forceStandalone = false
   ): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     if (!forceStandalone && !this.isStandaloneEnabled) {
       await this.openBrowserOverlay(remote, path);
       return;
     }
 
-    const url = this.getNautilusUrl(remote, path);
-    if (this.isTauri) {
-      if (isMobile()) {
-        await this.openBrowserOverlay(remote, path);
-        return;
-      }
+    if (!(await this.openStandaloneWindow(remote, path)) && !forceStandalone) {
+      await this.openBrowserOverlay(remote, path);
+    }
+  }
 
-      const label = this.getNautilusLabel(remote);
-      try {
-        await this.invokeCommand('new_window', {
-          opts: {
-            label,
-            url,
-            title: 'RClone Nautilus',
-            width: 1024,
-            height: 768,
-          },
-        });
-        this.closeBrowserOverlay();
-      } catch (err) {
-        console.warn(
-          '[NautilusService] new_window command failed/unavailable, falling back to overlay:',
-          err
-        );
-        await this.openBrowserOverlay(remote, path);
-      }
-    } else {
-      window.open(url, '_blank');
+  /** Explicit window actions bypass the preference for opening browser overlays. */
+  async openStandaloneWindow(remote: string | null, path: string | null): Promise<boolean> {
+    if (!this.vault.isAccessible()) return false;
+    if (this.isTauri && isMobile()) {
+      await this.openBrowserOverlay(remote, path);
+      return false;
+    }
+
+    const standaloneUrl = new URL(this.getNautilusUrl(remote, path));
+    standaloneUrl.searchParams.set('standalone', 'nautilus');
+    try {
+      const opened = this.isTauri
+        ? await this.invokeCommand<boolean>('new_window', {
+            opts: {
+              label: generatePrefixedId('nautilus'),
+              url: standaloneUrl.href,
+              title: 'RClone Nautilus',
+              width: 1024,
+              height: 768,
+            },
+          })
+        : !!window.open(standaloneUrl.href, '_blank');
+      if (!opened) throw new Error('Window was not created');
       this.closeBrowserOverlay();
+      return true;
+    } catch (error) {
+      console.error('[NautilusService] Failed to open a new window:', error);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.windowOpenFailed')
+      );
+      return false;
     }
   }
 
   async openBrowserOverlay(remote: string | null, path: string | null): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     if (this.browserOverlayRef) {
       if (remote) {
         const remoteRoot = this.lookupRemoteByName(remote);
@@ -314,6 +340,7 @@ export class NautilusService extends TauriBaseService {
     }
     if (this.isBrowserOpening) return;
     this.isBrowserOpening = true;
+    const request = ++this.browserRequest;
 
     if (remote) {
       const remoteRoot = this.lookupRemoteByName(remote);
@@ -327,6 +354,7 @@ export class NautilusService extends TauriBaseService {
     try {
       const { NautilusComponent } =
         await import('src/app/file-browser/nautilus/nautilus.component');
+      if (!this.vault.isAccessible() || request !== this.browserRequest) return;
       const { overlayRef, componentRef } = this.createNautilusOverlay(NautilusComponent, () =>
         this.closeBrowserOverlay()
       );
@@ -335,13 +363,15 @@ export class NautilusService extends TauriBaseService {
       this._isBrowserOverlayOpen.set(true);
     } catch (err) {
       console.error('[NautilusService] Failed to open browser overlay:', err);
-      this._isBrowserOverlayOpen.set(false);
+      if (request === this.browserRequest) this._isBrowserOverlayOpen.set(false);
     } finally {
-      this.isBrowserOpening = false;
+      if (request === this.browserRequest) this.isBrowserOpening = false;
     }
   }
 
   closeBrowserOverlay(): void {
+    this.browserRequest++;
+    this.isBrowserOpening = false;
     this._isBrowserOverlayOpen.set(false);
     this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
     this.browserComponentRef = null;
@@ -356,16 +386,13 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  openForRemote(remoteName: string): void {
-    void this.newNautilusWindow(remoteName, null);
-  }
-
   openPath(path: string): void {
     const { remote, path: relativePath } = this.pathService.splitFsPath(path);
     void this.newNautilusWindow(remote || null, relativePath || null);
   }
 
   async openFilePicker(options: FilePickerConfig): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     if (this.pickerOverlayRef || this.isPickerOpening) return;
     this.isPickerOpening = true;
     try {
@@ -374,6 +401,10 @@ export class NautilusService extends TauriBaseService {
         options: { ...options, requestId: options.requestId ?? generatePrefixedId('picker') },
       });
       await this.createPickerOverlay();
+      if (!this.pickerOverlayRef) return;
+      this.releasePickerHistory = this.navigationHistory.openLayer(() =>
+        this.closeFilePicker(null)
+      );
     } catch (err) {
       console.error('[NautilusService] Failed to open file picker:', err);
       this._filePickerState.set({ isOpen: false });
@@ -383,6 +414,8 @@ export class NautilusService extends TauriBaseService {
   }
 
   closeFilePicker(result: FileBrowserItem[] | null): void {
+    this.releasePickerHistory?.();
+    this.releasePickerHistory = undefined;
     const requestId = this._filePickerState().options?.requestId;
     const items = result ?? [];
 
@@ -390,7 +423,7 @@ export class NautilusService extends TauriBaseService {
       cancelled: result === null,
       items,
       paths: items.map(i => {
-        const remoteRoot = this.lookupRemote(i.meta.remote);
+        const remoteRoot = this.lookupRemoteByName(i.meta.remote);
         return this.pathService.getFullDisplayPath(
           remoteRoot ?? {
             name: i.meta.remote,
@@ -408,12 +441,6 @@ export class NautilusService extends TauriBaseService {
     this.animateAndDisposeOverlay(this.pickerComponentRef, this.pickerOverlayRef);
     this.pickerComponentRef = null;
     this.pickerOverlayRef = null;
-  }
-
-  closeBrowser(): void {
-    if (this._isStandaloneWindow()) {
-      this.getCurrentTauriWindow()?.close();
-    }
   }
 
   isSaved(type: CollectionType, remote: string, path: string): boolean {
@@ -457,24 +484,6 @@ export class NautilusService extends TauriBaseService {
     this.saveCollection(type, newList);
   }
 
-  private parseNautilusLocation(
-    urlParams: URLSearchParams,
-    pathName: string,
-    hash: string
-  ): { remoteName: string | null; remotePath: string | null } {
-    const firstPass: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash);
-    if (!firstPass.remote) {
-      return { remoteName: null, remotePath: null };
-    }
-    const remoteRoot = this.lookupRemote(firstPass.remote);
-    const pathStyle = this.pathService.pathStyleForRemote(remoteRoot);
-    if (pathStyle === 'posix') {
-      return { remoteName: firstPass.remote, remotePath: firstPass.path };
-    }
-    const loc: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash, pathStyle);
-    return { remoteName: loc.remote, remotePath: loc.path };
-  }
-
   /**
    * Resolve a parsed remote name to its `ExplorerRoot` from the engine-populated
    * registry (local drives + cloud remotes). Returns `null` if the remote is
@@ -488,17 +497,13 @@ export class NautilusService extends TauriBaseService {
     return all.find(r => this.pathService.normalizeRemoteName(r.name) === normalized) ?? null;
   }
 
-  private lookupRemote(remoteName: string): ExplorerRoot | null {
-    return this.lookupRemoteByName(remoteName);
-  }
-
   private setupBrowseListener(): void {
     this.eventListenersService
       .listenToBrowse()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (path: string) => {
-          if (path) {
+          if (path && this.vault.isAccessible()) {
             if (this._isStandaloneWindow()) {
               this.targetPath.set(path);
             } else {
@@ -512,6 +517,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   private async loadCollection(type: CollectionType): Promise<void> {
+    if (!this.vault.isAccessible()) return;
     const config = this.collectionConfig[type];
     try {
       const fullKey = `${config.category}.${config.key}`;
@@ -538,6 +544,7 @@ export class NautilusService extends TauriBaseService {
         }
       }
 
+      if (!this.vault.isAccessible()) return;
       config.signal.set(items.filter(i => i.meta?.remote && i.entry?.Path));
     } catch (e) {
       console.warn(`Failed to load ${type}`, e);
@@ -592,6 +599,7 @@ export class NautilusService extends TauriBaseService {
 
   private async createPickerOverlay(): Promise<void> {
     const { NautilusComponent } = await import('src/app/file-browser/nautilus/nautilus.component');
+    if (!this.vault.isAccessible() || !this._filePickerState().isOpen) return;
     const { overlayRef, componentRef } = this.createNautilusOverlay<FileBrowserItem[] | null>(
       NautilusComponent,
       items => this.closeFilePicker(items ?? null)
@@ -605,31 +613,12 @@ export class NautilusService extends TauriBaseService {
     overlayRef: OverlayRef | null
   ): void {
     if (!overlayRef) return;
-    const element = componentRef?.location?.nativeElement as HTMLElement | undefined;
-    if (element) {
-      element.classList.add('slide-overlay-leave');
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const onEnd = (): void => {
-        if (timer !== null) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        element.removeEventListener('animationend', onEnd);
-        if (overlayRef.hasAttached()) {
-          overlayRef.dispose();
-        }
-      };
-      element.addEventListener('animationend', onEnd);
-      timer = setTimeout(() => {
-        element.removeEventListener('animationend', onEnd);
-        if (overlayRef.hasAttached()) {
-          overlayRef.dispose();
-        }
-      }, 250);
-    } else {
-      if (overlayRef.hasAttached()) {
-        overlayRef.dispose();
-      }
+    if (!this.vault.isAccessible() || !componentRef) {
+      overlayRef.dispose();
+      return;
     }
+    const element = componentRef.location?.nativeElement as HTMLElement | undefined;
+    element?.classList.add('slide-overlay-leave');
+    setTimeout(() => overlayRef.dispose(), 200);
   }
 }

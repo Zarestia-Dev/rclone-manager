@@ -382,7 +382,7 @@
       "os_toast_info": "No se requiere configuración adicional para notificaciones nativas.",
       "mode": "Modo",
       "provider": "Proveedor",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "API del bot",
       "telegram_botless": "Sin Bot (CallMeBot)",
       "botToken": "Token del Bot",
       "chatId": "ID de chat",
@@ -397,7 +397,7 @@
       "telegram_botless_info": "El modo sin bot utiliza CallMeBot (https://api.callmebot.com) para enviar alertas de Telegram a tu usuario sin crear un token de bot.",
       "whatsapp_callmebot_info": "Envía alertas de WhatsApp a través de CallMeBot (https://api.callmebot.com). Introduce tu número de teléfono (con código de país) y tu clave API de CallMeBot.",
       "whatsapp_gateway_info": "Envía alertas de WhatsApp a través de tu gateway HTTP personalizado.",
-      "host": "Host",
+      "host": "Servidor",
       "port": "Puerto",
       "useTls": "Usar TLS",
       "topic": "Tema (Topic)",
@@ -521,6 +521,10 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
+      },
+      "skip_mount_plugin_check": {
+        "label": "Omitir verificación del complemento de montaje",
+        "description": "Omitir la comprobación y solicitud de instalación del complemento de montaje al iniciar y en la configuración inicial"
       }
     },
     "developer": {
@@ -582,6 +586,10 @@
       "flatpak_warn": {
         "label": "Advertencia de Flatpak mostrada"
       },
+      "mount_warn": {
+        "label": "Aviso de montaje mostrado",
+        "description": "Mostrar aviso en la vista de montaje cuando la comprobación del controlador de montaje esté desactivada"
+      },
       "dashboard_layout": {
         "label": "Diseño del panel de control",
         "description": "Configuración de diseño personalizada para el panel de control."
@@ -621,6 +629,12 @@
       "title": "Nota de Flatpak",
       "subtitle": "Algunas funciones pueden requerir ajustes manuales de permisos.",
       "learnMore": "Más información",
+      "dismissTooltip": "No volver a mostrar"
+    },
+    "mountPlugin": {
+      "title": "Comprobación de controlador de montaje desactivada",
+      "description": "Se omitió la comprobación del controlador de montaje. Montar unidades remotas requiere un controlador compatible instalado en el sistema.",
+      "install": "Instalar controlador",
       "dismissTooltip": "No volver a mostrar"
     },
     "metered": {
@@ -686,7 +700,9 @@
       "import": "Importar",
       "export": "Exportar",
       "preferences": "Preferencias",
+      "advanced": "Ajustes avanzados",
       "flags": "Banderas de Rclone",
+      "vault": "Bóveda",
       "fileBrowser": "Explorador de archivos",
       "flowWorkspace": "Espacio de trabajo Flow",
       "shortcuts": "Atajos de teclado",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Inicializando RClone Manager",
-    "loadingMessage": "Comprobando la configuración del sistema...",
     "cards": {
       "welcome": {
         "title": "Bienvenido a RClone Manager",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Instalar el plugin de montaje",
-        "content": "El plugin de montaje le permite montar el almacenamiento en la nube como unidades locales. Este componente opcional mejora su experiencia con Rclone."
+        "content": "El plugin de montaje le permite montar el almacenamiento en la nube como unidades locales. Este componente opcional mejora su experiencia con Rclone.",
+        "skipMountTitle": "No utilizaré el montaje",
+        "skipMountDesc": "Omita la instalación de controladores si no planea montar unidades."
       },
       "selectConfig": {
         "title": "Seleccionar configuración de Rclone",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Panel clásico",
-        "badge": "Predeterminado",
         "description": "Vista general con conexiones remotas, transferencias activas, acciones rápidas y estado del sistema."
       },
       "nautilus": {
         "title": "Navegador de archivos (Nautilus)",
-        "badge": "Gestor de archivos",
         "description": "Interfaz de gestión de archivos de doble panel dedicada para navegar y transferir archivos remotos."
       },
       "flow": {
         "title": "Espacio de trabajo Flow",
-        "badge": "Flujos de trabajo",
         "description": "Panel visual interactivo para orquestar tareas automatizadas, ejecuciones rápidas y pipelines."
       }
     },
@@ -792,7 +805,7 @@
       "show": "Mostrar búsqueda"
     },
     "urlPreview": {
-      "host": "Host",
+      "host": "Servidor",
       "destination": "Destino",
       "openViewer": "Abrir en visor",
       "openViewerTooltip": "Abrir vista previa completa de medios",
@@ -856,27 +869,25 @@
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
-        "recent": "Reciente ({{count}})",
-        "recentCheck": "Comprobado ({{count}})"
+        "recent": "Reciente ({{count}})"
       },
       "table": {
         "size": "Tamaño",
-        "transferred": "transferido",
-        "alreadyExisted": "ya existía"
+        "transferred": "transferido"
       },
       "status": {
         "failed": "Fallido",
         "checked": "Comprobado",
         "partial": "Parcial",
         "completed": "Completado",
-        "transferError": "Error de transferencia",
-        "transferCompleted": "Transferencia completada",
         "preparing": "Preparando",
         "finalizing": "Finalizando...",
         "missingDst": "Faltante en destino",
         "missingSrc": "Faltante en origen",
         "differ": "El contenido de los archivos difiere",
-        "error": "Error"
+        "checking": "Comprobando",
+        "deleting": "Eliminando",
+        "processing": "Procesando"
       },
       "actions": {
         "resolveToDst": "Copiar al destino",
@@ -895,12 +906,12 @@
         "failDownload": "Error al descargar el archivo"
       },
       "empty": {
-        "noActive": "No hay transferencias activas",
-        "activeHint": "Las transferencias aparecerán aquí cuando comience una operación",
-        "noRecent": "No hay transferencias completadas recientemente",
-        "recentHint": "Las transferencias completadas aparecerán aquí cuando finalicen los trabajos",
-        "noRecentCheck": "No hay archivos verificados",
-        "recentHintCheck": "Los archivos verificados aparecerán aquí cuando se complete la tarea"
+        "noRecent": "No hay actividad de archivos reciente",
+        "recentHint": "La actividad de archivos completada aparece aquí durante las operaciones.",
+        "noRecentCheck": "No hay resultados de comparación para mostrar",
+        "recentHintCheck": "Consulta el estado del trabajo y los contadores de comprobación.",
+        "noActiveActivity": "No hay actividad de archivos",
+        "waitingActivity": "Esperando actividad de archivos. Algunas operaciones no informan sobre archivos individuales."
       },
       "time": {
         "daysAgo": "hace {{count}} días",
@@ -917,8 +928,12 @@
       "messages": {
         "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}",
         "resolveStarted": "Se inició la resolución del conflicto de archivos"
-      }
+      },
+      "titleDelete": "Actividad de eliminación",
+      "titleActivity": "Actividad",
+      "loadMore": "Mostrar más"
     },
+
     "inputModal": {
       "name": "Nombre",
       "required": "{{field}} es obligatorio",
@@ -1073,6 +1088,35 @@
         }
       },
       "pollIntervalPlaceholder": "Introduzca el intervalo de sondeo (segundos)"
+    },
+    "codeEditor": {
+      "tools": "Herramientas del editor",
+      "find": "Buscar",
+      "goToLine": "Ir a la línea",
+      "go": "Ir",
+      "content": "Editor de código",
+      "wrap": "Ajustar líneas",
+      "lineNumbers": "Números de línea",
+      "readOnly": "Solo lectura",
+      "editing": "Editando",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "view": "Vista",
+      "fontSize": "Tamaño de letra",
+      "smallerFont": "Reducir tamaño de letra",
+      "largerFont": "Aumentar tamaño de letra",
+      "position": "Línea {{line}}, columna {{column}}",
+      "previous": "Coincidencia anterior",
+      "next": "Siguiente coincidencia",
+      "caseSensitive": "Distinguir mayúsculas",
+      "wholeWord": "Palabra completa",
+      "regexp": "Expresión regular",
+      "replace": "Reemplazar",
+      "replaceAll": "Reemplazar todo",
+      "invalidRegexp": "Expresión regular no válida",
+      "noResults": "Sin resultados",
+      "matches": "{{total}} coincidencias",
+      "matchPosition": "{{current}} / {{total}}"
     },
     "jsonEditor": {
       "noFields": "No hay campos para mostrar en modo JSON",
@@ -1241,6 +1285,25 @@
           "label": "Sin salida",
           "description": "Suprimir cualquier salida estándar de la llamada de configuración de RC"
         }
+      },
+      "providerOverview": {
+        "title": "Funciones del proveedor",
+        "supportTier": "Nivel de soporte de rclone (no es tu plan de almacenamiento)",
+        "hashes": "Sumas de verificación",
+        "noHashes": "No se indican algoritmos de suma de verificación",
+        "features": "Funciones indicadas",
+        "noFeatures": "No se indican funciones para este resumen",
+        "generalNote": "Información general del proveedor proporcionada por rclone. La compatibilidad real puede variar según la configuración.",
+        "virtualNote": "Las funciones dependen del remoto subyacente y de la configuración.",
+        "documentation": "Ver resumen de funciones de rclone",
+        "copy": "Copia en el servidor",
+        "move": "Movimiento en el servidor",
+        "publicLink": "Compartir enlaces",
+        "emptyDirectories": "Carpetas vacías",
+        "caseInsensitive": "Nombres sin distinción de mayúsculas",
+        "duplicateFiles": "Nombres de archivo duplicados",
+        "readMetadata": "Lectura de metadatos",
+        "writeMetadata": "Escritura de metadatos"
       }
     },
     "appOperation": {
@@ -1403,7 +1466,6 @@
       }
     },
     "presets": {
-      "applied": "Ajustes preestablecidos predeterminados aplicados con éxito",
       "noRemoteSelected": "Por favor, seleccione un remoto primero"
     }
   },
@@ -1474,6 +1536,7 @@
     "restoreFailed": "Error al restaurar la copia de seguridad: {{error}}"
   },
   "updates": {
+    "discardDownload": "Descartar descarga",
     "cancelFailed": "Error al cancelar la descarga de actualización.",
     "installSuccess": "Actualización instalada. Reinicia la aplicación.",
     "checkFailed": "Error al buscar actualizaciones: {{error}}",
@@ -1484,7 +1547,7 @@
     "skipVersion": "Se omitirá la actualización {{version}}",
     "confirmApply": {
       "title": "Aplicar actualización",
-      "message": "¿Desea aplicar la actualización? La aplicación se reiniciará para aplicar los cambios.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
@@ -1520,6 +1583,28 @@
       "metadata": {
         "system": "Metadatos del sistema",
         "standard": "Metadatos estándar"
+      },
+      "supportInfo": "El nivel de soporte de rclone refleja el mantenimiento y la estabilidad del proveedor.",
+      "providerDocumentation": "Documentación del proveedor",
+      "liveFeatures": "Funciones compatibles con este remoto configurado.",
+      "featureLabels": {
+        "about": "Uso del almacenamiento",
+        "bucketBased": "Almacenamiento basado en buckets",
+        "bucketRoot": "Acceso desde la raíz del almacenamiento",
+        "purge": "Eliminar árboles de carpetas",
+        "dirMove": "Mover carpetas en el servidor",
+        "cleanUp": "Limpieza del almacenamiento",
+        "listR": "Listado recursivo",
+        "listP": "Listado paginado",
+        "putStream": "Carga en flujo",
+        "openChunkWriter": "Carga multiparte",
+        "openWriterAt": "Carga de acceso aleatorio",
+        "readMimeType": "Leer tipos de contenido",
+        "writeMimeType": "Escribir tipos de contenido",
+        "changeNotify": "Notificaciones de cambios",
+        "setTier": "Cambiar nivel de almacenamiento",
+        "getTier": "Leer nivel de almacenamiento",
+        "overlay": "Envuelve otros remotos"
       }
     },
     "properties": {
@@ -1723,7 +1808,7 @@
       "unmount": "Desmontar",
       "progress": "Progreso",
       "speed": "Velocidad",
-      "eta": "ETA",
+      "eta": "Tiempo restante",
       "files": "Archivos",
       "errors": "Errores",
       "duration": "Duración",
@@ -1773,6 +1858,7 @@
       "showShortcuts": "Mostrar atajos de teclado",
       "openPreferences": "Abrir preferencias",
       "openFlags": "Abrir banderas de Rclone",
+      "openVault": "Abrir bóveda",
       "forceCheck": "Forzar comprobación de montajes",
       "forceCheckServes": "Forzar comprobación de remotos servidos",
       "newRemoteDetailed": "Crear nuevo remoto (detallado)",
@@ -1842,7 +1928,7 @@
         "finished": "Finalizado",
         "duration": "Duración",
         "speed": "Velocidad",
-        "eta": "ETA",
+        "eta": "Tiempo restante",
         "files": "Archivos",
         "checks": "Comprobaciones",
         "deleted": "Eliminados",
@@ -1947,7 +2033,7 @@
       "memAlloc": "Asignado",
       "memTotalAlloc": "Total asignado",
       "memSys": "Sistema",
-      "memMallocs": "Mallocs",
+      "memMallocs": "Asignaciones de memoria",
       "memFrees": "Liberaciones",
       "heapMemory": "Memoria del montón",
       "memHeapAlloc": "Asignación del montón",
@@ -1968,7 +2054,8 @@
       "entries": "Entradas activas",
       "clear": "Borrar",
       "cacheCleared": "Caché borrada correctamente",
-      "cacheClearFailed": "Error al borrar la caché"
+      "cacheClearFailed": "Error al borrar la caché",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Error al obtener los registros de la aplicación.",
@@ -2016,7 +2103,8 @@
       "tabs": {
         "general": "General",
         "core": "Núcleo",
-        "developer": "Desarrollador"
+        "developer": "Desarrollador",
+        "vault": "Bóveda"
       },
       "aria": {
         "resetAll": "Restablecer todos los ajustes a los valores predeterminados",
@@ -2049,6 +2137,8 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
+      "vaultWarningTitle": "La bóveda de configuración está abierta",
+      "vaultWarningDesc": "Las copias de seguridad exportadas no heredan el cifrado de la bóveda. Utilice la opción de cifrado a continuación para proteger las credenciales y configuraciones sensibles con una contraseña.",
       "exportNow": "Exportar ahora",
       "exporting": "Exportando...",
       "fullBackup": "Copia de seguridad completa",
@@ -2099,7 +2189,7 @@
       "title": "Gestión del backend",
       "fields": {
         "host": {
-          "label": "Host",
+          "label": "Servidor",
           "placeholder": "p. ej., 127.0.0.1 o mi-nas.local"
         },
         "port": {
@@ -2428,7 +2518,9 @@
       "internalStorage": "Almacenamiento interno"
     },
     "bookmarks": {
-      "emptyHint": "Sin marcadores"
+      "emptyHint": "Sin marcadores",
+      "add": "Añadir a marcadores",
+      "dropHint": "Suelta carpetas aquí para añadir marcadores"
     },
     "sort": {
       "az": "A-Z",
@@ -2534,6 +2626,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "No se pudo abrir una nueva ventana. La vista actual sigue abierta.",
       "connectionFailed": "Conexión fallida",
       "bookmarkRemoteNotFound": "Remoto '{{remote}}' para marcador no encontrado",
       "loadFailed": "Error al cargar el directorio",
@@ -2609,8 +2702,6 @@
       "increaseIconSize": "Aumentar tamaño de icono"
     },
     "notifications": {
-      "mkdirFailed": "Error al crear el directorio: {{path}}",
-      "uploadStarted": "Iniciando carga de {{count}} archivos...",
       "uploadSuccess": "{{count}} archivos cargados correctamente.",
       "uploadFailed": "Error al cargar {{count}} archivos.",
       "trashEmptied": "Papelera vaciada",
@@ -2681,9 +2772,6 @@
       "title": "Restablecer configuraciones del remoto",
       "message": "¿Está seguro de que desea restablecer TODAS las configuraciones para {{name}}?"
     },
-    "notifications": {
-      "settingsReset": "Configuraciones de {{name}} restablecidas."
-    },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
       "openFailed": "Error al abrir {{name}}"
@@ -2753,7 +2841,7 @@
       },
       "progress": "Progreso:",
       "of": "de",
-      "eta": "ETA:",
+      "eta": "Tiempo restante:",
       "speed": "Velocidad de transferencia:",
       "transfers": "Transferencias:",
       "checks": "Comprobaciones:",
@@ -2831,10 +2919,10 @@
       "failedToOpen": "Error al abrir el administrador de archivos: {{error}}",
       "diskFull": "El disco o unidad de destino está lleno. No hay suficiente espacio libre.",
       "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
-      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura."
+      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura.",
+      "ioError": "Error de E/S: {{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "Plataforma no soportada",
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
@@ -2874,7 +2962,10 @@
       "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman",
       "invalidArchive": "Formato de archivo de copia de seguridad no válido",
       "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
-      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña"
+      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña",
+      "exportFailed": "Fallo en la exportación de la copia de seguridad: {{error}}",
+      "refreshFailed": "Error al actualizar el sistema tras restaurar la copia de seguridad: {{error}}",
+      "restoreIncomplete": "La restauración de la copia de seguridad quedó incompleta: {{error}}"
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
@@ -2891,7 +2982,6 @@
       "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
     },
     "cache": {
-      "fetchRemotesFailed": "Error al obtener los remotos",
       "fetchConfigFailed": "Error al obtener la configuración de los remotos",
       "refreshMountsFailed": "Error al refrescar los remotos montados",
       "refreshServesFailed": "Error al refrescar los servicios"
@@ -2926,16 +3016,27 @@
       "relaunchFailed": "Error al reiniciar la aplicación: {{error}}",
       "restartFailed": "Error al reiniciar: {{error}}",
       "notWritable": "La ruta de actualización no tiene permisos de escritura",
-      "ioError": "Error de E/S: {{error}}"
+      "ioError": "Error de E/S: {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Error al cargar configuraciones: {{error}}",
       "saveFailed": "Error al guardar la configuración: {{error}}",
       "resetFailed": "Error al restablecer la configuración: {{error}}",
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
-      "eventEmitFailed": "Error al emitir evento de configuraciones: {{error}}",
       "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
       "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "La contraseña de la bóveda no puede estar vacía",
+      "notEnabled": "La bóveda no está habilitada",
+      "invalidPassword": "Contraseña maestra de la bóveda incorrecta",
+      "operationFailed": "Operación de la bóveda fallida: {{error}}"
     }
   },
   "backendSuccess": {
@@ -2969,6 +3070,14 @@
       "unencrypted": "Configuración desencriptada exitosamente",
       "encrypted": "Configuración encriptada exitosamente",
       "passwordChanged": "Contraseña de configuración cambiada exitosamente"
+    },
+    "vault": {
+      "unlocked": "Bóveda desbloqueada con éxito",
+      "locked": "Bóveda bloqueada con éxito",
+      "enabled": "Cifrado de bóveda habilitado con éxito",
+      "disabled": "Cifrado de bóveda deshabilitado con éxito",
+      "passwordChanged": "Contraseña maestra cambiada con éxito",
+      "timeoutUpdated": "Tiempo de autobloqueo actualizado con éxito"
     }
   },
   "overviews": {
@@ -3188,7 +3297,6 @@
       "passwordRequired": "Su configuración de rclone está cifrada. Por favor, introduzca su contraseña.",
       "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Actualícela para continuar.",
       "defaultParams": "Un componente del sistema no funciona correctamente.",
-      "mountPluginStatusError": "Error al comprobar el estado",
       "authRequired": "El backend rechazó la conexión debido a un fallo de autenticación.",
       "remoteAuthRequired": "El backend remoto rechazó la conexión debido a un fallo de autenticación. Por favor, verifique sus credenciales.",
       "portInUse": "El puerto {{port}} ya está ocupado por otra aplicación o conexión. Elija un puerto diferente para continuar."
@@ -3202,6 +3310,10 @@
       "repairing": "Reparando...",
       "configuring": "Configurando..."
     },
+    "mountPreference": {
+      "title": "No utilizaré el montaje",
+      "desc": "Desactive las comprobaciones de controladores si no planea montar unidades."
+    },
     "actions": {
       "installRclone": "Instalar Rclone",
       "installPlugin": "Instalar complemento",
@@ -3210,7 +3322,8 @@
       "submitPassword": "Desbloquear",
       "changePort": "Aplicar puerto y reiniciar",
       "configureBackend": "Configurar backend",
-      "repair": "Reparar"
+      "repair": "Reparar",
+      "saveAndClose": "Guardar y cerrar"
     },
     "portConfig": {
       "portLabel": "Puerto local",
@@ -3394,7 +3507,6 @@
         "delete": "Eliminar nodo",
         "duplicateWorkflow": "Duplicar flujo",
         "deleteWorkflow": "Eliminar flujo",
-        "exportWorkflow": "Exportar JSON",
         "inspectJob": "Inspeccionar Tarea"
       },
       "canvas": {
@@ -3800,6 +3912,8 @@
     "title": "Plantillas",
     "presetTitle": "Ajustes preestablecidos y plantillas",
     "applyPresets": "Aplicar ajustes preestablecidos predeterminados",
+    "defaultPresets": "Valores predeterminados",
+    "defaultPresetsDesc": "Configuración base optimizada para este tipo de remoto y sistema.",
     "userTemplates": "Plantillas de usuario guardadas",
     "saveAsTemplate": "Guardar configuración actual como plantilla...",
     "manageTemplates": "Administrar plantillas...",
@@ -3814,6 +3928,7 @@
     "addKey": "Agregar clave",
     "removeKey": "Eliminar clave",
     "deleteTemplate": "Eliminar plantilla",
+    "deleteConfirm": "¿Está seguro de que desea eliminar la plantilla \"{{name}}\"?",
     "noCatKeys": "No hay configuraciones en {{category}} aún.",
     "visualView": "Inspector visual",
     "jsonView": "Editor JSON",
@@ -3829,7 +3944,21 @@
     "zeroKeys": "0 claves",
     "applySuccess": "Plantilla \"{{name}}\" aplicada correctamente.",
     "savedSuccess": "Plantilla \"{{name}}\" guardada correctamente.",
-    "deletedSuccess": "Plantilla eliminada correctamente."
+    "deletedSuccess": "Plantilla eliminada correctamente.",
+    "applyModalTitle": "Aplicar plantilla",
+    "applyStrategy": "Estrategia de aplicación",
+    "strategyOverwrite": "Sobrescribir todos los valores",
+    "strategyOverwriteDesc": "Los ajustes de la plantilla reemplazan los valores existentes",
+    "strategyFillEmpty": "Rellenar solo campos vacíos",
+    "strategyFillEmptyDesc": "Conserva los valores existentes y solo aplica los ausentes",
+    "addedCount": "{{count}} para agregar",
+    "modifiedCount": "{{count}} para cambiar",
+    "unchangedCount": "{{count}} sin cambios",
+    "diffCurrent": "Actual",
+    "diffNew": "Nuevo",
+    "apply": "Aplicar plantilla",
+    "noChangesDetected": "Todos los ajustes de esta plantilla ya coinciden con los valores actuales.",
+    "selectCategoriesToApply": "Categorías y ajustes"
   },
   "navigation": {
     "dashboard": "Panel de control",
@@ -3951,6 +4080,60 @@
       "hostShuttingDown": "El sistema operativo se está apagando...",
       "hostSleeping": "Poniendo el sistema en suspensión...",
       "hostLocking": "Bloqueando la sesión del usuario..."
+    }
+  },
+  "vault": {
+    "title": "Bóveda de Configuración",
+    "description": "Proteja sus configuraciones, credenciales y subajustes en reposo mediante cifrado AES-256-GCM.",
+    "status": {
+      "protected": "Protegido",
+      "unprotected": "Desprotegido"
+    },
+    "actions": {
+      "lockNow": "Bloquear bóveda",
+      "unlock": "Desbloquear bóveda",
+      "enable": "Habilitar bóveda",
+      "disable": "Deshabilitar bóveda",
+      "updatePassword": "Cambiar contraseña"
+    },
+    "enable": {
+      "title": "Habilitar protección de bóveda",
+      "description": "Ingrese una contraseña maestra para cifrar los ajustes y subajustes de su aplicación. Necesitará esta contraseña para desbloquearla."
+    },
+    "changePassword": {
+      "title": "Cambiar contraseña maestra"
+    },
+    "disable": {
+      "title": "Deshabilitar protección de bóveda",
+      "warning": "Deshabilitar la bóveda almacenará los ajustes y configuraciones en texto plano sin cifrar en el disco."
+    },
+    "settings": {
+      "autoLockTitle": "Tiempo de autobloqueo",
+      "autoLockDesc": "Bloquear automáticamente la bóveda tras un período de inactividad."
+    },
+    "fields": {
+      "masterPassword": "Contraseña maestra",
+      "confirmPassword": "Confirmar contraseña",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "autoLockTimeout": "Autobloquear después de"
+    },
+    "timeout": {
+      "never": "Nunca",
+      "5m": "5 minutos",
+      "15m": "15 minutos",
+      "30m": "30 minutos",
+      "1h": "1 hora"
+    },
+    "lockScreen": {
+      "title": "Bóveda bloqueada",
+      "subtitle": "Ingrese su contraseña maestra para desbloquear RClone Manager",
+      "awaitingAuthorization": "Esperando autorización",
+      "authorizing": "Autorizando…"
+    },
+    "errors": {
+      "passwordsMismatch": "Las contraseñas no coinciden",
+      "unlockFailed": "Error al desbloquear la bóveda"
     }
   }
 }

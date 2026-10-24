@@ -29,13 +29,8 @@ export class AndroidKeepAliveService extends TauriBaseService {
   private readonly serveManagement = inject(ServeManagementService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly isKeepAliveSettingEnabled = signal<boolean>(true);
+  private readonly isKeepAliveSettingEnabled = signal<boolean>(true);
   readonly isBatteryOptimizationIgnored = signal<boolean>(true);
-  private _isServiceRunning = false;
-
-  isServiceRunning(): boolean {
-    return this._isServiceRunning;
-  }
 
   private initialized = false;
   private lastSyncedShouldRun: boolean | null = null;
@@ -116,15 +111,6 @@ export class AndroidKeepAliveService extends TauriBaseService {
     }
   }
 
-  async toggleKeepAliveSetting(enabled: boolean): Promise<void> {
-    this.isKeepAliveSettingEnabled.set(enabled);
-    try {
-      await this.appSettingsService.saveSetting('general', 'keep_alive', enabled);
-    } catch (err) {
-      console.error('[AndroidKeepAliveService] Failed to save keep_alive setting:', err);
-    }
-  }
-
   private buildNotificationText(
     mountsCount: number,
     jobsCount: number,
@@ -194,7 +180,6 @@ export class AndroidKeepAliveService extends TauriBaseService {
       try {
         if (shouldRunChanged || keepAliveSettingChanged) {
           bridge.startKeepAliveService?.(keepAliveSetting);
-          this._isServiceRunning = true;
           this.lastSyncedKeepAliveSetting = keepAliveSetting;
         }
 
@@ -209,7 +194,6 @@ export class AndroidKeepAliveService extends TauriBaseService {
       try {
         if (shouldRunChanged) {
           bridge.stopKeepAliveService?.(true);
-          this._isServiceRunning = false;
           this.lastSyncedNotificationText = null;
           this.lastSyncedKeepAliveSetting = null;
         }

@@ -4,7 +4,7 @@ import { filter, map } from 'rxjs/operators';
 import { RCLONE_ENGINE_STATUS_CHANGED } from '@app/types';
 import { ApiClientService } from './api-client.service';
 
-export interface SseEvent {
+interface SseEvent {
   event: string;
   payload: unknown;
 }
@@ -15,7 +15,11 @@ export class SseClientService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly events$ = new Subject<SseEvent>();
 
+  private readonly connections = new Subject<void>();
+  readonly connected$ = this.connections.asObservable();
+
   private source: EventSource | null = null;
+  private pendingConnection: Promise<void> | null = null;
   private reconnectAttempt = 0;
   private readonly maxReconnectAttempts = 50;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -24,20 +28,31 @@ export class SseClientService {
     this.destroyRef.onDestroy(() => {
       this.disconnect();
       this.events$.complete();
+      this.connections.complete();
     });
   }
 
-  async connect(): Promise<void> {
-    if (this.source) return;
-    try {
-      await this.apiClient.invoke('auth_session', {});
-    } catch {
-      /* auth session is optional - continue to event source */
-    }
-    this.openSource(`${this.apiClient.getApiBase()}/events`);
+  connect(): Promise<void> {
+    if (this.source) return Promise.resolve();
+    if (this.pendingConnection) return this.pendingConnection;
+    this.disconnect();
+    const pending = this.apiClient
+      .invoke('auth_session', {})
+      .catch(() => {
+        /* The auth session request is optional. */
+      })
+      .then(() => {
+        if (this.pendingConnection !== pending) return;
+        this.pendingConnection = null;
+        this.openSource(`${this.apiClient.getApiBase()}/events`);
+      });
+    this.pendingConnection = pending;
+    return pending;
   }
 
   disconnect(): void {
+    this.pendingConnection = null;
+    this.reconnectAttempt = 0;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -53,29 +68,33 @@ export class SseClientService {
     );
   }
 
-  listenAll(): Observable<SseEvent> {
-    return this.events$.asObservable();
-  }
-
   private openSource(url: string): void {
-    this.source = new EventSource(url, { withCredentials: true });
+    const source = new EventSource(url, { withCredentials: true });
+    this.source = source;
 
-    this.source.onopen = (): void => {
+    source.onopen = (): void => {
+      if (this.source !== source) return;
       this.reconnectAttempt = 0;
+      this.connections.next();
       this.events$.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: { status: 'ready' } });
     };
 
-    this.source.onerror = (): void => {
-      this.source?.close();
+    source.onerror = (): void => {
+      if (this.source !== source) return;
+      source.close();
       this.source = null;
 
       if (this.reconnectAttempt >= this.maxReconnectAttempts) return;
 
       const delay = Math.min(5000, 1000 * Math.pow(1.5, Math.min(this.reconnectAttempt++, 10)));
-      this.reconnectTimer = setTimeout(() => this.openSource(url), delay);
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = null;
+        this.openSource(url);
+      }, delay);
     };
 
-    this.source.onmessage = ({ data }): void => {
+    source.onmessage = ({ data }): void => {
+      if (this.source !== source) return;
       if (data === 'keep-alive') return;
       try {
         const parsed = JSON.parse(data);

@@ -1,0 +1,141 @@
+<mat-expansion-panel
+  class="operation-panel"
+  (opened)="isExpanded.set(true)"
+  (closed)="isExpanded.set(false)"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
+      <div class="profile-info">
+        <span class="profile-name truncate" [attr.title]="config().profileName || 'default'">{{
+          config().profileName || 'default'
+        }}</span>
+        @if (dryRun() && isOperationsType()) {
+          <span
+            class="app-pill p-accent"
+            [attr.title]="'dashboard.appDetail.dryRunActive' | translate"
+          >
+            <mat-icon svgIcon="eye" class="accent"></mat-icon>
+            <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
+          </span>
+        }
+        @if (resync() && config().operationType === 'bisync') {
+          <span
+            class="app-pill p-warn"
+            [attr.title]="'dashboard.appDetail.resyncActive' | translate"
+          >
+            <mat-icon svgIcon="right-left" class="warn"></mat-icon>
+            <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
+          </span>
+        }
+      </div>
+    </mat-panel-title>
+
+    <mat-panel-description>
+      <div class="quick-action-wrapper" [class.hidden]="isExpanded()" [inert]="isExpanded()">
+        <button
+          matIconButton
+          class="quick-action"
+          [class]="buttonClass()"
+          (click)="handleQuickAction($event)"
+          [disabled]="config().isLoading"
+          [attr.title]="
+            (config().isActive && config().operationType === 'mount'
+              ? 'actions.unmount'
+              : config().isActive
+                ? 'actions.stop'
+                : 'actions.start'
+            ) | translate
+          "
+        >
+          @if (config().isLoading) {
+            <mat-icon svgIcon="spinner"></mat-icon>
+          } @else {
+            <mat-icon
+              [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+            ></mat-icon>
+          }
+        </button>
+      </div>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <div class="panel-content">
+    <app-path-display
+      [config]="config().pathConfig"
+      (openPath)="openPath.emit($event)"
+    ></app-path-display>
+
+    @if (shouldPollDiskUsage()) {
+      <div class="disk-usage-info">
+        @if (isDiskUsageLoading() && !diskUsage()) {
+          <div class="usage-loading">
+            <mat-icon svgIcon="spinner"></mat-icon>
+            <span class="stat-label">{{ 'detailShared.diskUsage.loading' | translate }}</span>
+          </div>
+        } @else if (diskUsage(); as usage) {
+          <div class="usage-stats">
+            <span class="stat-label">{{ 'detailShared.diskUsage.title' | translate }}</span>
+            <span class="stat-value">
+              {{ usage.used | formatFileSize }} / {{ usage.total | formatFileSize }}
+            </span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="diskUsagePercentage()"
+            class="usage-bar"
+            [color]="diskUsageColor()"
+          ></mat-progress-bar>
+        }
+      </div>
+    }
+
+    @if (isOperationsType()) {
+      <div class="controls">
+        <mat-slide-toggle
+          class="control"
+          [checked]="dryRun()"
+          (change)="toggleDryRun.emit()"
+          [disabled]="config().isActive || config().isLoading"
+        >
+          {{ 'dashboard.appDetail.dryRun' | translate }}
+        </mat-slide-toggle>
+
+        @if (config().operationType === 'bisync') {
+          <mat-slide-toggle
+            class="control"
+            [checked]="resync()"
+            (change)="toggleResync.emit()"
+            [disabled]="config().isActive || config().isLoading"
+          >
+            {{ 'dashboard.appDetail.resync' | translate }}
+          </mat-slide-toggle>
+        }
+      </div>
+    }
+
+    <button
+      matButton="filled"
+      [class]="buttonClass()"
+      (click)="
+        config().isActive
+          ? stopJob.emit(config().operationType)
+          : startJob.emit(config().operationType)
+      "
+      [disabled]="config().isLoading"
+      class="full-action-button"
+    >
+      @if (config().isLoading) {
+        <mat-icon svgIcon="spinner"></mat-icon>
+      } @else {
+        <mat-icon
+          [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+        ></mat-icon>
+      }
+      <span>{{
+        (config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel)
+          | translate
+      }}</span>
+    </button>
+  </div>
+</mat-expansion-panel>

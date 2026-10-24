@@ -1,18 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { WorkflowToolbarComponent } from './workflow-toolbar.component';
 import { WorkflowStateService } from '../../../../services/flow/workflow-state.service';
 import { WorkflowEngineService } from '../../../../services/flow/workflow-engine.service';
 import { WorkflowStorageService } from '../../../../services/flow/workflow-storage.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { provideTranslateService } from '@ngx-translate/core';
-import { WorkflowDefinition } from '../../types/workflow.types';
+import { WorkflowDefinition, WorkflowTemplate } from '../../types/workflow.types';
+import { BUILTIN_WORKFLOW_TEMPLATES } from '../../../../services/flow/recipes/workflow-recipes';
 
 describe('WorkflowToolbarComponent', () => {
   let fixture: ComponentFixture<WorkflowToolbarComponent>;
   let stateService: WorkflowStateService;
+  let presets: ReturnType<typeof signal<WorkflowTemplate[]>>;
 
   beforeEach(async () => {
+    presets = signal<WorkflowTemplate[]>([]);
     await TestBed.configureTestingModule({
       imports: [WorkflowToolbarComponent],
       providers: [
@@ -30,7 +34,7 @@ describe('WorkflowToolbarComponent', () => {
           provide: WorkflowStorageService,
           useValue: {
             workflows: (): WorkflowDefinition[] => [],
-            getPresetTemplates: (): WorkflowDefinition[] => [],
+            presetTemplates: presets.asReadonly(),
             saveWorkflow: vi.fn(),
             deleteWorkflow: vi.fn(),
             duplicateWorkflow: vi.fn(),
@@ -63,6 +67,24 @@ describe('WorkflowToolbarComponent', () => {
     expect(input.value).toBe('Toolbar Test');
     expect(el.querySelector('.run-workflow-btn')).toBeTruthy();
     expect(el.querySelector('.dry-run-workflow-btn')).toBeTruthy();
+  });
+
+  it('updates an open recipe menu when the shared template state arrives', async () => {
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button[title="flow.workflow.toolbar.presets"]'
+    );
+    expect(button).not.toBeNull();
+    button?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const recipe = { ...BUILTIN_WORKFLOW_TEMPLATES[0], name: 'Backup & 旅行', nameKey: undefined };
+    presets.set([recipe]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('.material-context-menu .option-label')?.textContent).toContain(
+      recipe.name
+    );
   });
 
   it('triggers runWorkflow and runWorkflowDryRun on button clicks', () => {

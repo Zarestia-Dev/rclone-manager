@@ -21,11 +21,9 @@ describe('FlowContainerComponent', () => {
     set: ReturnType<typeof vi.fn>;
   };
 
-  let requestedSubModeSignal = signal<FlowSubMode | null>(null);
   let isWorkspaceDrawerOpenSignal = signal<boolean>(false);
   let isMobileFocusModeSignal = signal<boolean>(false);
   let mockWorkflowState: {
-    requestedSubMode: typeof requestedSubModeSignal;
     isWorkspaceDrawerOpen: typeof isWorkspaceDrawerOpenSignal;
     isMobileFocusMode: typeof isMobileFocusModeSignal;
     createNewWorkflow: ReturnType<typeof vi.fn>;
@@ -38,7 +36,11 @@ describe('FlowContainerComponent', () => {
     openEditor: ReturnType<typeof vi.fn>;
   };
 
+  const flowSubMode = signal<FlowSubMode>('quick_run');
+
   let mockUiStateService: {
+    flowSubMode: typeof flowSubMode;
+    setFlowSubMode: ReturnType<typeof vi.fn>;
     selectedRemote: ReturnType<typeof vi.fn>;
     resetSelectedRemote: ReturnType<typeof vi.fn>;
     endLayoutEdit: ReturnType<typeof vi.fn>;
@@ -88,11 +90,9 @@ describe('FlowContainerComponent', () => {
       }),
     };
 
-    requestedSubModeSignal = signal<FlowSubMode | null>(null);
     isWorkspaceDrawerOpenSignal = signal<boolean>(false);
     isMobileFocusModeSignal = signal<boolean>(false);
     mockWorkflowState = {
-      requestedSubMode: requestedSubModeSignal,
       isWorkspaceDrawerOpen: isWorkspaceDrawerOpenSignal,
       isMobileFocusMode: isMobileFocusModeSignal,
       createNewWorkflow: vi.fn(),
@@ -105,7 +105,12 @@ describe('FlowContainerComponent', () => {
       openEditor: vi.fn(),
     };
 
+    flowSubMode.set('quick_run');
     mockUiStateService = {
+      flowSubMode,
+      setFlowSubMode: vi.fn((mode: FlowSubMode) => {
+        flowSubMode.set(mode);
+      }),
       selectedRemote: vi.fn().mockReturnValue(null),
       resetSelectedRemote: vi.fn(),
       endLayoutEdit: vi.fn(),
@@ -118,15 +123,14 @@ describe('FlowContainerComponent', () => {
     };
   });
 
-  it('should initialize activeSubMode from localStorage when valid stored value exists', async () => {
-    storageMap.set('ui.flowActiveSubMode', 'builder');
+  it('uses the shared sub-mode when recreated', async () => {
+    flowSubMode.set('builder');
     await createComponent();
 
     expect(component.activeSubMode()).toBe('builder');
   });
 
-  it('should fall back to quick_run if no valid sub-mode is in localStorage', async () => {
-    storageMap.set('ui.flowActiveSubMode', 'invalid_mode');
+  it('uses the shared default sub-mode', async () => {
     await createComponent();
 
     expect(component.activeSubMode()).toBe('quick_run');
@@ -138,21 +142,20 @@ describe('FlowContainerComponent', () => {
     component.setSubMode('builder');
     expect(component.activeSubMode()).toBe('builder');
     expect(mockUiStateService.endLayoutEdit).toHaveBeenCalled();
-    expect(mockLocalStorage.set).toHaveBeenCalledWith('ui.flowActiveSubMode', 'builder');
+    expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
 
     component.setSubMode('quick_run');
     expect(component.activeSubMode()).toBe('quick_run');
-    expect(mockLocalStorage.set).toHaveBeenCalledWith('ui.flowActiveSubMode', 'quick_run');
+    expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
   });
 
-  it('should update sub-mode when workflowState requests a sub-mode change', async () => {
+  it('reflects external navigation through the shared sub-mode', async () => {
     await createComponent();
 
-    requestedSubModeSignal.set('builder');
+    flowSubMode.set('builder');
     fixture.detectChanges();
 
     expect(component.activeSubMode()).toBe('builder');
-    expect(mockWorkflowState.requestedSubMode()).toBeNull();
   });
 
   it('should toggle and save sidebar state to localStorage', async () => {

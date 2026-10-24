@@ -40,6 +40,8 @@
 
 .nautilus-content {
   display: grid;
+  // Keep pane overlays (including lasso) below the selection summary.
+  isolation: isolate;
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -56,6 +58,7 @@
   width: var(--space-xs);
   background: var(--sidebar-bg-color);
   cursor: col-resize;
+  touch-action: none;
   position: relative;
   transition: var(--transition-fast);
   z-index: 20;

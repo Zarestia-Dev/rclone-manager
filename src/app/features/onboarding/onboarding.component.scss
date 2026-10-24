@@ -1,3 +1,5 @@
+@use "../../styles/mixins" as *;
+
 :host {
   --icon-size: 96px;
   --indicator-size: var(--space-xs);
@@ -176,6 +178,20 @@
       margin-top: var(--space-md);
     }
 
+    .mount-toggle-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      text-align: left;
+      box-shadow: 0 0 0 1px var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-elevated);
+      transition: var(--transition-standard);
+
+      @include mount-toggle-card;
+    }
+
     .ui-selection-grid {
       display: flex;
       flex-direction: column;
@@ -220,15 +236,7 @@
       }
 
       .option-icon-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
-        border-radius: var(--radius-sm);
-        background: rgba(var(--primary-color-rgb), 0.12);
-        color: var(--primary-color);
+        @include feature-icon-badge;
         transition: var(--transition-standard);
 
         &.accent {

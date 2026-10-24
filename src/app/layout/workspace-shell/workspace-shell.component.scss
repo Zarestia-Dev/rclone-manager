@@ -1,0 +1,232 @@
+.workspace-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-shell {
+  // Runtime geometry, measured from the floating navigation including its gutters.
+  --workspace-navigation-clearance: 0px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--window-bg-color);
+  color: var(--view-fg-color);
+
+  > app-titlebar,
+  > app-banner {
+    flex-shrink: 0;
+  }
+
+  .workspace-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .workspace-navigation {
+    display: contents;
+  }
+
+  app-home,
+  .flow-sidenav-container {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  app-home > mat-sidenav-container,
+  .flow-body,
+  app-quick-run-workspace,
+  app-workflow-workspace {
+    display: block;
+    height: 100%;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .workspace-sidenav {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg-color);
+  }
+
+  .workspace-scroll-region {
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+
+  .sidebar-button,
+  .ellipsis-button {
+    position: absolute;
+    top: var(--space-xs);
+    z-index: 10;
+  }
+
+  .sidebar-button {
+    left: var(--space-sm);
+    background: var(--window-bg-color);
+  }
+
+  .ellipsis-button {
+    right: var(--space-lg);
+  }
+
+  @media (max-width: 599.98px) {
+    .workspace-navigation {
+      position: absolute;
+      bottom: 0;
+      inset-inline: 0;
+      display: flex;
+      padding: var(--space-md);
+      pointer-events: none;
+      z-index: 100;
+
+      > app-tabs {
+        pointer-events: auto;
+      }
+
+      &:has(> .mobile-hidden) {
+        display: none;
+      }
+    }
+
+    .workspace-scroll-region {
+      // Extend the scroll range without shortening the viewport or its background.
+      scroll-padding-bottom: var(--workspace-navigation-clearance);
+
+      &::after {
+        content: "";
+        display: block;
+        height: var(--workspace-navigation-clearance);
+      }
+    }
+  }
+}
+
+// Slide overlays live outside app-wrapper, which normally owns the safe-area padding.
+@media (max-width: 599.98px) {
+  .cdk-overlay-pane .workspace-shell .workspace-navigation {
+    padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.workspace-shell app-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  // Shared button defaults
+  .tab-btn {
+    cursor: pointer;
+    color: var(--window-fg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+
+    .icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  // Desktop View (≥600px): Centered in titlebar
+  @media (min-width: 600px) {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: var(--space-xs);
+    padding: var(--space-xxs) var(--title-bar-padding);
+
+    .tab-btn {
+      width: var(--titlebar-height);
+      height: var(--titlebar-height);
+      padding: 0;
+      border-radius: var(--button-border-radius);
+      transition: var(--transition-fast);
+
+      .tab-label {
+        display: none;
+      }
+
+      &:hover,
+      &.selected {
+        background-color: var(--hover-bg-color);
+      }
+
+      &:active,
+      &:focus-visible {
+        outline: none;
+        background-color: var(--selected-bg-color);
+      }
+    }
+  }
+
+  // Mobile View (<600px): Modern Android Material 3 Floating Navigation Bar
+  @media (max-width: 599.98px) {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 440px;
+    margin: 0 auto;
+    justify-content: space-around;
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--headerbar-bg-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
+
+    .tab-btn {
+      flex: 1;
+      min-width: 0;
+      flex-direction: column;
+      gap: var(--space-xxs);
+      padding: var(--space-xxs) var(--space-xs);
+      opacity: 0.65;
+      transition: var(--transition-fast);
+
+      .icon-wrapper {
+        width: calc(var(--icon-size-lg) + var(--space-xxs));
+        height: calc(var(--icon-size-lg) + var(--space-xxs));
+        border-radius: var(--radius-circle);
+        transition: var(--transition-fast);
+      }
+
+      .tab-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      &.selected {
+        opacity: 1;
+
+        .icon-wrapper {
+          background-color: var(--accent-bg-color);
+          color: var(--accent-fg-color);
+        }
+
+        .tab-label {
+          font-weight: 600;
+        }
+      }
+    }
+  }
+}

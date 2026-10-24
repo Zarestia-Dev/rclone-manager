@@ -3,15 +3,14 @@ import { TranslateService } from '@ngx-translate/core';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
+const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
 
-export interface NautilusDragPayload {
+interface NautilusDragPayload {
   items: FileBrowserItem[];
   sourcePaneIndex: 0 | 1;
 }
@@ -53,6 +52,7 @@ interface HitResult {
   segmentIndex: number | null;
   tabIndex: number | null;
   sidebarItem: string | null;
+  isOverSidebar: boolean;
   paneIndex: number | null;
 }
 
@@ -74,12 +74,12 @@ const NULL_HIT: HitResult = {
   segmentIndex: null,
   tabIndex: null,
   sidebarItem: null,
+  isOverSidebar: false,
   paneIndex: null,
 };
 
 @Injectable()
 export class NautilusDragDropService {
-  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
@@ -88,10 +88,11 @@ export class NautilusDragDropService {
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly _isInternalDragging = signal(false);
-  readonly isInternalDragging = this._isInternalDragging.asReadonly();
+  private readonly _canBookmarkDrag = signal(false);
+  private readonly _isOverSidebar = signal(false);
+  readonly canBookmarkDrag = computed(() => this._canBookmarkDrag() && this._isOverSidebar());
 
   private readonly _isExternalDragging = signal(false);
-  readonly isExternalDragging = this._isExternalDragging.asReadonly();
 
   readonly isDragging = computed(() => this._isInternalDragging() || this._isExternalDragging());
 
@@ -143,28 +144,8 @@ export class NautilusDragDropService {
         );
         if (!target.remote) return;
 
-        const normalized = this._normalizeRemote(target.remote);
-        try {
-          const batchId = await this.remoteOps.uploadLocalDropPaths(
-            normalized,
-            target.path,
-            event.payload.paths,
-            'filemanager'
-          );
-
-          if (batchId) {
-            this.notifications.showInfo(
-              this.translate.instant('nautilus.notifications.uploadStarted', {
-                count: event.payload.paths.length,
-              })
-            );
-          }
-        } catch (err) {
-          console.error('[Nautilus] Native drop upload failed', err);
-          this.notifications.showError(
-            this.translate.instant('nautilus.errors.externalDropFailed')
-          );
-        }
+        await this.fileOps.uploadLocalPaths(target.remote, target.path, event.payload.paths);
+        this._cb.refresh(target.remote.name, target.path);
       });
 
       this.destroyRef.onDestroy(() => unlisten());
@@ -188,6 +169,8 @@ export class NautilusDragDropService {
     svgIcon: SVGElement | null = null
   ): void {
     this._isInternalDragging.set(true);
+    this._canBookmarkDrag.set(items.some(item => item.entry.IsDir));
+    this._isOverSidebar.set(false);
     this._isExternalDragging.set(false);
     this._lastHitKey = '';
     this._items = items;
@@ -326,7 +309,7 @@ export class NautilusDragDropService {
 
     if (resolved.sidebarItem === 'bookmarks-header') {
       this._internalPointerDrag.items.forEach(item => {
-        if (item.entry.IsDir) this._cb.toggleBookmark(item);
+        this._addBookmark(item);
       });
       this.cancelInternalPointerDrag();
       return;
@@ -359,6 +342,8 @@ export class NautilusDragDropService {
     }
     this._lastMovePoint = null;
     this._isInternalDragging.set(false);
+    this._canBookmarkDrag.set(false);
+    this._isOverSidebar.set(false);
     this._isExternalDragging.set(false);
     this._counter = 0;
     this._lastHitKey = '';
@@ -435,14 +420,13 @@ export class NautilusDragDropService {
     });
   }
 
-  dropToLocal(event: DragEvent): void {
-    event.stopPropagation();
-    const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
-    if (!data) return;
-    const { items } = JSON.parse(data) as NautilusDragPayload;
-    items.forEach(item => {
-      if (item.entry.IsDir) this._cb.toggleBookmark(item);
-    });
+  private _addBookmark(item: FileBrowserItem): void {
+    if (
+      item.entry.IsDir &&
+      !this.nautilusService.isSaved('bookmarks', item.meta.remote, item.entry.Path)
+    ) {
+      this._cb.toggleBookmark(item);
+    }
   }
 
   async dropToBookmark(event: DragEvent, bookmark: FileBrowserItem): Promise<void> {
@@ -462,9 +446,6 @@ export class NautilusDragDropService {
     event.stopPropagation();
     const pIdx = paneIndex as 0 | 1;
     const ctx = this._cb.getContext();
-    const targetRemote = ctx.panes[pIdx].remote;
-    if (!targetRemote) return;
-
     const resolved = this._resolveDropHit({ x: event.clientX, y: event.clientY }, ctx);
     const folder = resolved.folder ?? this.hoveredFolder();
     const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
@@ -478,6 +459,11 @@ export class NautilusDragDropService {
       }
       return;
     }
+
+    const targetRemote = folder
+      ? this.nautilusService.lookupRemoteByName(folder.meta.remote)
+      : ctx.panes[pIdx].remote;
+    if (!targetRemote) return;
 
     const targetPath = folder
       ? folder.entry.Path
@@ -507,8 +493,9 @@ export class NautilusDragDropService {
   private _onMove(point: { x: number; y: number }): void {
     const ctx = this._cb.getContext();
     const hit = this._resolveDropHit(point, ctx);
+    this._isOverSidebar.set(hit.isOverSidebar);
 
-    const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${hit.folder?.entry.Path}:${hit.sidebarItem}`;
+    const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${fileBrowserItemKey(hit.folder)}:${hit.sidebarItem}`;
     if (hitKey === this._lastHitKey) return;
     this._lastHitKey = hitKey;
 
@@ -538,7 +525,7 @@ export class NautilusDragDropService {
 
       const hitFolder = hit.folder;
       if (hitFolder?.entry.IsDir) {
-        if (!this._items.some(item => item.entry.Path === hitFolder.entry.Path)) {
+        if (!this._items.some(item => fileBrowserItemKey(item) === fileBrowserItemKey(hitFolder))) {
           this._cb.navigateTo(hitFolder);
         }
         return;
@@ -562,8 +549,8 @@ export class NautilusDragDropService {
         if (hit.sidebarItem === 'starred') {
           this._cb.selectStarred();
         } else if (hit.sidebarItem.startsWith('bookmark:')) {
-          const bmPath = hit.sidebarItem.replace('bookmark:', '');
-          const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
+          const bmKey = hit.sidebarItem.slice('bookmark:'.length);
+          const bm = ctx.bookmarks.find(b => fileBrowserItemKey(b) === bmKey);
           if (bm) this._cb.openBookmark(bm);
         } else if (hit.sidebarItem.startsWith('remote:')) {
           const remoteName = hit.sidebarItem.replace('remote:', '');
@@ -607,17 +594,28 @@ export class NautilusDragDropService {
   ): Promise<void> {
     if (!target.remote || !items.length) return;
 
-    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
-
     const normalizedTargetRemote = this.pathService.normalizeRemoteName(target.remote.name);
-    const isSameRemote = items.every(
+    if (
+      items.some(
+        item =>
+          item.entry.IsDir &&
+          item.entry.Path === target.path &&
+          this.pathService.normalizeRemoteName(item.meta.remote) === normalizedTargetRemote
+      )
+    )
+      return;
+
+    // A starred selection can contain items from different parent directories.
+    items = items.filter(
       item =>
-        this.pathService.normalizeRemoteName(item.meta.remote ?? '') === normalizedTargetRemote
+        this.pathService.normalizeRemoteName(item.meta.remote) !== normalizedTargetRemote ||
+        this.pathService.getParentPath(item.entry.Path) !== target.path.replace(/\/$/, '')
     );
+    if (!items.length) return;
 
-    const sourceParentPath = this.pathService.getParentPath(items[0].entry.Path);
-
-    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
+    const isSameRemote = items.every(
+      item => this.pathService.normalizeRemoteName(item.meta.remote) === normalizedTargetRemote
+    );
 
     await this.fileOps.performFileOperations(
       items,
@@ -627,7 +625,12 @@ export class NautilusDragDropService {
     );
     this._cb.refresh(target.remote.name, target.path);
     if (isSameRemote) {
-      this._cb.refresh(target.remote.name, sourceParentPath);
+      for (const item of items) {
+        this._cb.refresh(
+          item.meta.remote ?? target.remote.name,
+          this.pathService.getParentPath(item.entry.Path)
+        );
+      }
     }
   }
 
@@ -641,67 +644,40 @@ export class NautilusDragDropService {
     if (!dt) return;
 
     const fsEntries = providedFsEntries ?? this._snapshotEntries(dt.items);
-    if (!fsEntries.length) return;
 
-    const allEntries: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
-    for (const fsEntry of fsEntries) {
-      allEntries.push(...(await this._collectFileEntries(fsEntry)));
-    }
-    if (!allEntries.length) return;
-
-    const normalized = this._normalizeRemote(target.remote);
     const seen = new Set<string>();
-    const filesToUpload: { file: File; relativePath: string }[] = [];
+    const files: { file: File; relativePath: string }[] = [];
+    const emptyDirectories: string[] = [];
 
-    for (const item of allEntries) {
-      if (seen.has(item.relativePath)) continue;
-      seen.add(item.relativePath);
-
-      if (item.isDir) {
-        await this.remoteOps
-          .makeDirectory(normalized, `${target.path}/${item.relativePath}`, 'filemanager')
-          .catch(error => {
-            console.error(error);
-            this.notifications.showError(
-              this.translate.instant('nautilus.notifications.mkdirFailed', {
-                path: `${target.path}/${item.relativePath}`,
-              })
-            );
-          });
-      } else {
-        const file = await this._readFileEntry(item.entry as FileSystemFileEntry);
-        filesToUpload.push({ file, relativePath: item.relativePath });
+    if (!fsEntries.length && dt.files.length > 0) {
+      for (const file of Array.from(dt.files)) {
+        files.push({ file, relativePath: file.name });
+      }
+    } else if (fsEntries.length > 0) {
+      try {
+        for (const entry of fsEntries) {
+          for (const item of await this._collectFileEntries(entry)) {
+            if (seen.has(item.relativePath)) continue;
+            seen.add(item.relativePath);
+            if (item.isDir) {
+              emptyDirectories.push(item.relativePath);
+            } else if (item.file) {
+              files.push({
+                file: item.file,
+                relativePath: item.relativePath,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Nautilus] Failed to read dropped files:', error);
+        this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+        return;
       }
     }
-
-    if (filesToUpload.length === 0) return;
-
-    const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
-      normalized,
-      target.path,
-      filesToUpload,
-      'filemanager'
-    );
-
+    if (!files.length && !emptyDirectories.length) return;
+    await this.fileOps.uploadWebEntries(target.remote, target.path, files, emptyDirectories);
     this._cb.refresh(target.remote.name, target.path);
-
-    if (failedPaths.length === 0 && successCount > 0) {
-      this.notifications.showSuccess(
-        this.translate.instant('nautilus.notifications.uploadSuccess', { count: successCount })
-      );
-    } else if (failedPaths.length > 0 && successCount > 0) {
-      this.notifications.showWarning(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
-    } else if (failedPaths.length > 0) {
-      this.notifications.showError(
-        this.translate.instant('nautilus.notifications.uploadFailed', {
-          count: failedPaths.length,
-        })
-      );
-    }
   }
 
   private _resolveDropHit(point: { x: number; y: number }, ctx: DragDropContext): HitResult {
@@ -716,10 +692,10 @@ export class NautilusDragDropService {
     const paneIndex = paneIdxRaw != null ? parseInt(paneIdxRaw, 10) : null;
     const targetPaneIndex = paneIndex ?? ctx.activePaneIndex;
 
-    const folderPath = getAttr('[data-folder-path]', 'data-folder-path');
+    const folderKey = getAttr('[data-folder-key]', 'data-folder-key');
     const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
-    const folder = folderPath
-      ? (currentFiles.find(f => f.entry.Path === folderPath) ?? null)
+    const folder = folderKey
+      ? (currentFiles.find(f => fileBrowserItemKey(f) === folderKey) ?? null)
       : null;
 
     const segIdxRaw = getAttr('[data-segment-index]', 'data-segment-index');
@@ -734,16 +710,23 @@ export class NautilusDragDropService {
     } else if (hasTag('[data-sidebar-bookmarks-header]')) {
       sidebarItem = 'bookmarks-header';
     } else {
-      const bmPath = getAttr('[data-sidebar-bookmark-path]', 'data-sidebar-bookmark-path');
-      if (bmPath) {
-        sidebarItem = `bookmark:${bmPath}`;
+      const bmKey = getAttr('[data-sidebar-bookmark-key]', 'data-sidebar-bookmark-key');
+      if (bmKey) {
+        sidebarItem = `bookmark:${bmKey}`;
       } else {
         const remoteName = getAttr('[data-sidebar-remote-name]', 'data-sidebar-remote-name');
         if (remoteName) sidebarItem = `remote:${remoteName}`;
       }
     }
 
-    return { folder, segmentIndex, tabIndex, sidebarItem, paneIndex };
+    return {
+      folder,
+      segmentIndex,
+      tabIndex,
+      sidebarItem,
+      paneIndex,
+      isOverSidebar: hasTag('app-nautilus-sidebar'),
+    };
   }
 
   private _resolveDropTargetFromPoint(
@@ -772,8 +755,8 @@ export class NautilusDragDropService {
       }
 
       if (sidebarItem.startsWith('bookmark:')) {
-        const bmPath = sidebarItem.replace('bookmark:', '');
-        const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
+        const bmKey = sidebarItem.slice('bookmark:'.length);
+        const bm = ctx.bookmarks.find(b => fileBrowserItemKey(b) === bmKey);
         if (bm) {
           const remote = this.nautilusService.lookupRemoteByName(bm.meta.remote ?? '');
           if (remote) return { remote, path: bm.entry.Path };
@@ -784,11 +767,8 @@ export class NautilusDragDropService {
 
     if (resolved.paneIndex !== null) {
       const pane = ctx.panes[resolved.paneIndex as 0 | 1];
-      if (!pane.remote) return { remote: null, path: '' };
-
       if (folder?.entry.IsDir) {
-        const folderRemote =
-          this.nautilusService.lookupRemoteByName(folder.meta.remote) ?? pane.remote;
+        const folderRemote = this.nautilusService.lookupRemoteByName(folder.meta.remote);
         return { remote: folderRemote, path: folder.entry.Path };
       }
 
@@ -830,22 +810,16 @@ export class NautilusDragDropService {
   private _readDirEntries(entry: FileSystemDirectoryEntry): Promise<FileSystemEntry[]> {
     const reader = entry.createReader();
     const all: FileSystemEntry[] = [];
-    return new Promise(res => {
+    return new Promise((res, reject) => {
       const readBatch = (): void => {
-        reader.readEntries(
-          batch => {
-            if (!batch.length) {
-              res(all);
-              return;
-            }
-            all.push(...batch);
-            readBatch();
-          },
-          err => {
-            console.warn(`Failed to read directory entries for ${entry.name}:`, err);
+        reader.readEntries(batch => {
+          if (!batch.length) {
             res(all);
+            return;
           }
-        );
+          all.push(...batch);
+          readBatch();
+        }, reject);
       };
       readBatch();
     });
@@ -854,32 +828,29 @@ export class NautilusDragDropService {
   private async _collectFileEntries(
     entry: FileSystemEntry,
     prefix = ''
-  ): Promise<{ entry: FileSystemEntry; relativePath: string; isDir: boolean }[]> {
-    const results: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
+  ): Promise<{ file?: File; relativePath: string; isDir: boolean }[]> {
+    const results: { file?: File; relativePath: string; isDir: boolean }[] = [];
     const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
     if (entry.isFile) {
+      const file = await this._readFileEntry(entry as FileSystemFileEntry);
       results.push({
-        entry: entry as FileSystemFileEntry,
+        file,
         relativePath: currentPath,
         isDir: false,
       });
     } else if (entry.isDirectory) {
-      results.push({
-        entry: entry as FileSystemDirectoryEntry,
-        relativePath: currentPath,
-        isDir: true,
-      });
       const children = await this._readDirEntries(entry as FileSystemDirectoryEntry);
+      // File uploads create their parent directories. Explicit mkdir is only
+      // needed for empty leaves; creating a leaf also creates its ancestors.
+      if (children.length === 0) {
+        results.push({ relativePath: currentPath, isDir: true });
+      }
       for (const child of children) {
         results.push(...(await this._collectFileEntries(child, currentPath)));
       }
     }
 
     return results;
-  }
-
-  private _normalizeRemote(remote: ExplorerRoot): string {
-    return this.pathService.normalizeExplorerRoot(remote);
   }
 }

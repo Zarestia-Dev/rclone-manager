@@ -36,20 +36,20 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 
-export type PresetKey =
+type PresetKey =
   'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
 
-export interface PresetOption {
+interface PresetOption {
   key: PresetKey;
   cron: string;
 }
 
-export interface MonthOption {
+interface MonthOption {
   value: string;
   labelKey: string;
 }
 
-export const PRESET_OPTIONS: PresetOption[] = [
+const PRESET_OPTIONS: PresetOption[] = [
   { key: 'daily-9am', cron: '0 9 * * *' },
   { key: 'daily-6pm', cron: '0 18 * * *' },
   { key: 'weekday-9am', cron: '0 9 * * 1-5' },
@@ -58,7 +58,7 @@ export const PRESET_OPTIONS: PresetOption[] = [
   { key: 'monthly-1st', cron: '0 0 1 * *' },
 ];
 
-export const MONTH_OPTIONS: MonthOption[] = [
+const MONTH_OPTIONS: MonthOption[] = [
   { value: '1', labelKey: 'january' },
   { value: '2', labelKey: 'february' },
   { value: '3', labelKey: 'march' },
@@ -144,6 +144,10 @@ export class CronInputComponent {
     return formatCronHumanReadable(cron, this.translate.currentLang());
   });
 
+  readonly formattedNextRun = computed(() => {
+    return this.formatNextRun(this.validationResponse()?.nextRun ?? null);
+  });
+
   readonly userTimezone = this.getUserTimezoneFormatted();
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
   readonly presetOptions = PRESET_OPTIONS;
@@ -154,7 +158,7 @@ export class CronInputComponent {
     effect(() => {
       const val = this.initialValue() || '';
       if (val !== this.cronControl.value) {
-        this.updateCronSourceOfTruth(val, false);
+        this.updateCronSourceOfTruth(val);
       }
     });
 
@@ -205,18 +209,18 @@ export class CronInputComponent {
     });
   }
 
-  private updateCronSourceOfTruth(newValue: string | null, emitEvent: boolean): void {
+  private updateCronSourceOfTruth(newValue: string | null): void {
     const validValue = newValue || '';
-    this.setCronControlValue(validValue, emitEvent);
+    this.setCronControlValue(validValue);
 
     if (!this.isUpdatingForms) {
       this.syncViewsFromCron(validValue);
     }
   }
 
-  private setCronControlValue(value: string, emitEvent = true): void {
+  private setCronControlValue(value: string): void {
     if (this.cronControl.value !== value) {
-      this.cronControl.setValue(value, { emitEvent });
+      this.cronControl.setValue(value);
     }
   }
 

@@ -25,12 +25,10 @@ export class BackupRestoreUiService {
       if (!result) return;
 
       const { path, analysis } = result;
-      const dialogRef = this.modalService.openRestorePreview({
+      this.modalService.openRestorePreview({
         backupPath: path,
         analysis,
       });
-
-      dialogRef.afterClosed().subscribe();
     } catch (error) {
       console.error('Failed to launch restore flow:', error);
       this.notificationService.showError(this.translate.instant('backup.launchRestoreFailed'));

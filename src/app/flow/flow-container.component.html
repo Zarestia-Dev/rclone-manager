@@ -1,4 +1,4 @@
-<div class="flow-main-wrapper">
+<app-workspace-shell>
   <!-- Top Flow Header -->
   <app-titlebar
     overlayType="flow"
@@ -37,7 +37,7 @@
       (closedStart)="setSidebarOpen(false)"
       (openedChange)="setSidebarOpen($event)"
       [mode]="sidebarMode()"
-      class="flow-sidenav"
+      class="workspace-sidenav"
     >
       <app-sidebar
         mode="flow"
@@ -54,7 +54,6 @@
       <button
         matIconButton
         class="sidebar-button"
-        [class.is-open]="isSidebarOpen()"
         (click)="sidenav.toggle()"
         [attr.title]="'flow.toggleSidebar' | translate"
         [attr.aria-label]="'flow.toggleSidebar' | translate"
@@ -80,4 +79,4 @@
     [mobileHidden]="isMobileTabsHidden()"
     data-tauri-drag-region
   ></app-tabs>
-</div>
+</app-workspace-shell>

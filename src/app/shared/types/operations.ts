@@ -6,9 +6,6 @@ export type OperationDefinitionItem = (typeof OPERATION_REGISTRY)[number];
 export type SyncOperationType = Extract<OperationDefinitionItem, { isSyncType: true }>['key'];
 export type PrimaryActionType = Extract<OperationDefinitionItem, { isPrimary: true }>['key'];
 
-// ── Job-level types ─────────────────────────────────────────────────────────
-export type JobType = Extract<OperationDefinitionItem, { isJobType: true }>['key'];
-
 export type RemoteAction = PrimaryActionType | 'unmount' | 'stop' | 'open' | null;
 
 export type FileOperationType =
@@ -42,8 +39,6 @@ export interface ActionState {
   profileName?: string;
   operationType?: PrimaryActionType;
 }
-
-export type RemoteActionProgress = Record<string, ActionState[]>;
 
 /**
  * Checks if a given action state array has an in-flight operation matching `opType` and optional `profileName`.
@@ -178,13 +173,6 @@ export type BatchApiLabel = Extract<
  */
 export const OPERATION_TYPE_KEYS: ReadonlySet<string> = new Set<string>(ALL_PRIMARY_ACTIONS);
 
-/**
- * Type guard to check if a value is a PrimaryActionType.
- */
-export function isPrimaryActionType(type: string): type is PrimaryActionType {
-  return OPERATION_TYPE_KEYS.has(type);
-}
-
 // ── Operation Category Constants for unifying inline lists ──────────────────
 // Each list is typed as `readonly PrimaryActionType[]` so consumers can pass
 // them to APIs expecting `PrimaryActionType` without an `as` cast.
@@ -236,3 +224,22 @@ export interface RenameItem {
   dstPath: string;
   isDir: boolean;
 }
+
+/** Activity presentation categories; group names remain opaque identifiers. */
+export const CHECK_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  'check',
+  'cryptcheck',
+]);
+export const DELETE_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  'delete',
+  'cleanup',
+  'rmdirs',
+]);
+export const TRANSFER_OPERATIONS: ReadonlySet<JobActionType> = new Set<JobActionType>([
+  ...CORE_SYNC_OPS,
+  'bisync',
+  'upload',
+  'copyurl',
+  'archivecreate',
+  'archiveextract',
+]);

@@ -142,6 +142,20 @@ describe('config-entries.util', () => {
     expect(entries[0].key).toBe('validOpt');
   });
 
+  it('keeps path inputs out of the flag summary while preserving zero and false values', () => {
+    const paths = Object.fromEntries(
+      ['srcFs', 'dstFs', 'path1', 'path2', 'mountPoint', 'dest', 'fs', 'source', 'path'].map(
+        key => [key, 'drive:Arşiv & 旅行']
+      )
+    );
+    expect(
+      extractActiveConfigEntries({ config: { rclone: { ...paths, transfers: 0, dryRun: false } } })
+    ).toEqual([
+      { category: 'operation', key: 'transfers', value: '0', path: 'config.rclone.transfers' },
+      { category: 'operation', key: 'dryRun', value: 'false', path: 'config.rclone.dryRun' },
+    ]);
+  });
+
   it('should verify PRIMARY_EXCLUDED_KEYS set contains standard primary keys', () => {
     expect(PRIMARY_EXCLUDED_KEYS.has('remote')).toBe(true);
     expect(PRIMARY_EXCLUDED_KEYS.has('cronExpression')).toBe(true);

@@ -1,4 +1,4 @@
-<header class="overview-header" role="banner">
+<header class="overview-header">
   <button
     class="header-btn"
     (click)="openBackendModal.emit()"
@@ -17,13 +17,17 @@
 
     <!-- Title + backend name -->
     <div class="header-text">
-      <h2 class="header-title">{{ title() | translate }}</h2>
-      <span class="backend-label">{{ activeBackend() }}</span>
+      <h2 class="header-title truncate">{{ title() | translate }}</h2>
+      <span class="backend-label truncate">{{ activeBackend() }}</span>
     </div>
   </button>
 
   @if (showEditButton()) {
-    <div class="contextual-action-wrapper header-edit-wrapper" [class.visible]="!isEditingLayout()">
+    <div
+      class="contextual-action-wrapper header-edit-wrapper"
+      [class.visible]="!isEditingLayout()"
+      [inert]="isEditingLayout()"
+    >
       <button
         matIconButton
         class="header-edit-btn"

@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -125,20 +126,28 @@ export class PathDisplayComponent {
 
   readonly isMobile = signal(this.mediaQuery.matches);
 
-  readonly sourceIsMultiPath = computed<boolean>(() => this.isMultiPath(this.config().source));
+  readonly sourceIsMultiPath = computed<boolean>(() => pathUtils.isMultiPath(this.config().source));
   readonly sourcePathItems = computed<SourcePathItem[]>(() =>
-    this.getAsArray(this.config().source).map(p => ({
+    pathUtils.asPathArray(this.config().source).map(p => ({
       path: p,
-      isLocal: this.isLocal(p),
+      isLocal: this.pathService.isLocalPath(p),
     }))
   );
-  readonly sourcePrimaryPath = computed<string>(() => this.getPrimaryPath(this.config().source));
-  readonly sourcePrimaryPathIsLocal = computed<boolean>(() =>
-    this.isLocal(this.sourcePrimaryPath())
+  readonly sourcePrimaryPath = computed<string>(() =>
+    pathUtils.getPrimaryPath(this.config().source)
   );
-  readonly sourceDisplay = computed<string>(() => this.formatDisplay(this.config().source));
-  readonly sourceTooltip = computed<string>(() => this.formatTooltip(this.config().source));
-  readonly destinationIsLocal = computed<boolean>(() => this.isLocal(this.config().destination));
+  readonly sourcePrimaryPathIsLocal = computed<boolean>(() =>
+    this.pathService.isLocalPath(this.sourcePrimaryPath())
+  );
+  readonly sourceDisplay = computed<string>(() =>
+    pathUtils.formatPathDisplay(this.config().source)
+  );
+  readonly sourceTooltip = computed<string>(() =>
+    pathUtils.formatPathTooltip(this.config().source)
+  );
+  readonly destinationIsLocal = computed<boolean>(() =>
+    this.pathService.isLocalPath(this.config().destination)
+  );
 
   constructor() {
     afterNextRender(() => {
@@ -146,24 +155,5 @@ export class PathDisplayComponent {
       this.mediaQuery.addEventListener('change', handler);
       this.destroyRef.onDestroy(() => this.mediaQuery.removeEventListener('change', handler));
     });
-  }
-
-  isLocal(path: string): boolean {
-    return this.pathService.isLocalPath(path);
-  }
-  isMultiPath(path: string | string[]): boolean {
-    return this.pathService.isMultiPath(path);
-  }
-  getAsArray(path: string | string[]): string[] {
-    return this.pathService.asPathArray(path);
-  }
-  getPrimaryPath(path: string | string[]): string {
-    return this.pathService.getPrimaryPath(path);
-  }
-  formatDisplay(path: string | string[]): string {
-    return this.pathService.formatPathDisplay(path);
-  }
-  formatTooltip(path: string | string[]): string {
-    return this.pathService.formatPathTooltip(path);
   }
 }

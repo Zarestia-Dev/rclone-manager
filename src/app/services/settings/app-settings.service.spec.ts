@@ -8,7 +8,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { SseClientService } from '../infrastructure/platform/sse-client.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { SettingMetadata, SettingsChangeEvent } from '@app/types';
+import { SettingMetadata, SettingsChangeEvent, VaultStatePayload } from '@app/types';
 
 describe('AppSettingsService', () => {
   let service: AppSettingsService;
@@ -27,9 +27,11 @@ describe('AppSettingsService', () => {
   let sseClientMock: { listen: ReturnType<typeof vi.fn> };
   let settingsChanged$: Subject<SettingsChangeEvent>;
   let langChanged$: Subject<string>;
+  let vaultState$: Subject<VaultStatePayload>;
   let eventListenersMock: {
     listenToSystemSettingsChanged: ReturnType<typeof vi.fn>;
     listenToLanguageChanged: ReturnType<typeof vi.fn>;
+    listenToVaultState: ReturnType<typeof vi.fn>;
   };
 
   const createService = (): AppSettingsService => {
@@ -52,6 +54,7 @@ describe('AppSettingsService', () => {
     vi.restoreAllMocks();
     settingsChanged$ = new Subject<SettingsChangeEvent>();
     langChanged$ = new Subject<string>();
+    vaultState$ = new Subject<VaultStatePayload>();
 
     apiClientMock = { invoke: vi.fn() };
     notificationMock = {
@@ -71,6 +74,7 @@ describe('AppSettingsService', () => {
     eventListenersMock = {
       listenToSystemSettingsChanged: vi.fn().mockReturnValue(settingsChanged$.asObservable()),
       listenToLanguageChanged: vi.fn().mockReturnValue(langChanged$.asObservable()),
+      listenToVaultState: vi.fn().mockReturnValue(vaultState$.asObservable()),
     };
 
     // By default simulate desktop Tauri
@@ -82,12 +86,61 @@ describe('AppSettingsService', () => {
     service = createService();
   });
 
+  it('saves remote sections with their backend without a previous-profile payload', async () => {
+    const settings = { serveConfigs: { Default: { app: {}, rclone: { fs: 'drive:' } } } };
+    await service.saveRemoteSettings('drive', settings, 'Local');
+    expect(apiClientMock.invoke).toHaveBeenCalledWith('save_remote_settings', {
+      remoteName: 'drive',
+      settings,
+      backendName: 'Local',
+    });
+  });
+
   afterEach(() => {
     delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  it('shares an in-flight settings query and allows retry after failure', async () => {
+    let reject!: (error: Error) => void;
+    apiClientMock.invoke.mockReturnValueOnce(new Promise((_, fail) => (reject = fail)));
+    const first = service.loadSettings();
+    const second = service.loadSettings();
+    expect(apiClientMock.invoke).toHaveBeenCalledOnce();
+    reject(new Error('offline'));
+    await expect(first).rejects.toThrow('offline');
+    await expect(second).rejects.toThrow('offline');
+    expect(service.options()).toBeNull();
+
+    apiClientMock.invoke.mockResolvedValueOnce({ options: {} });
+    await service.loadSettings();
+    expect(service.options()).toEqual({});
+  });
+
+  it('discards settings from a request that outlives its vault session', async () => {
+    let resolve!: (value: { options: Record<string, SettingMetadata> }) => void;
+    apiClientMock.invoke.mockReturnValueOnce(new Promise(done => (resolve = done)));
+    const old = service.loadSettings();
+    vaultState$.next({ event: 'locked', isLocked: true, isEnabled: true });
+    apiClientMock.invoke.mockResolvedValueOnce({ options: {} });
+    await service.loadSettings();
+    resolve({ options: { private: { value: 'old' } as SettingMetadata } });
+    await expect(old).rejects.toThrow('Settings session ended');
+    expect(service.options()).toEqual({});
+  });
+
+  it('clears cached settings on lock and reloads an unlock wildcard even with an empty cache', async () => {
+    apiClientMock.invoke.mockResolvedValue({ options: {} });
+    await service.loadSettings();
+    vaultState$.next({ event: 'locked', isLocked: true, isEnabled: true });
+    expect(service.options()).toBeNull();
+    settingsChanged$.next({ category: '*', key: '*', value: null });
+    await service.loadSettings();
+    expect(apiClientMock.invoke).toHaveBeenCalledTimes(2);
+    expect(service.options()).toEqual({});
   });
 
   describe('isTrayAvailable', () => {
@@ -208,6 +261,7 @@ describe('AppSettingsService', () => {
         value: null,
       });
 
+      await service.loadSettings();
       expect(applyLangSpy).toHaveBeenCalled();
     });
   });

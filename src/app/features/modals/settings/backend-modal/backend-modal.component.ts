@@ -1,3 +1,4 @@
+import * as validationUtils from 'src/app/shared/validators';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,7 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
@@ -57,16 +58,15 @@ export class BackendModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly validatorRegistry = inject(ValidatorRegistryService);
 
   /** Cached validator factories — capture getters so the validator sees fresh state per CD cycle. */
-  private readonly duplicateNameValidator = this.validatorRegistry.createDuplicateNameValidator({
+  private readonly duplicateNameValidator = validationUtils.duplicateNameValidator({
     getExisting: () => this.backends(),
     getEditingName: () => this.editingName() ?? undefined,
     getMode: () =>
       (this.formMode() === 'add' ? 'create' : this.formMode()) as 'create' | 'edit' | null,
   });
-  private readonly duplicateHostValidator = this.validatorRegistry.createDuplicateHostValidator({
+  private readonly duplicateHostValidator = validationUtils.duplicateHostValidator({
     getExisting: () => this.backends(),
     getEditingName: () => this.editingName() ?? undefined,
   });
@@ -447,12 +447,8 @@ export class BackendModalComponent implements OnInit {
     }
   }
 
-  isConfigSelectionAllowed(): boolean {
-    return this.isActiveEditing();
-  }
-
   async selectConfigFile(): Promise<void> {
-    if (!this.isConfigSelectionAllowed()) return;
+    if (!this.isActiveEditing()) return;
 
     const editingName = this.editingName();
     const isLocalBackend = editingName === 'Local';

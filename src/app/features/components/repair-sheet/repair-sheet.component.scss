@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 .sheet-header {
   flex: 1;
   display: flex;
@@ -100,6 +102,19 @@
       gap: var(--space-sm);
       width: 100%;
     }
+  }
+
+  .mount-toggle-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    box-shadow: 0 0 0 1px var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    transition: var(--transition-standard);
+
+    @include mount-toggle-card;
   }
 }
 

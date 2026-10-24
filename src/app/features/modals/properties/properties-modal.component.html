@@ -32,7 +32,7 @@
     @let share = shareInfo();
     <div class="item-overview">
       <div class="item-icon">
-        <mat-icon [svgIcon]="getIcon(currentItem)"></mat-icon>
+        <mat-icon [svgIcon]="iconService.getIconForEntry(currentItem)"></mat-icon>
       </div>
       <div class="item-details">
         <code class="item-name truncate" [title]="currentItem?.Name ?? displayLocation">

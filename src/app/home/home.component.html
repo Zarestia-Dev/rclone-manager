@@ -2,6 +2,7 @@
   <!-- Sidebar -->
   <mat-sidenav
     #sidenav
+    class="workspace-sidenav"
     [opened]="isSidebarOpen()"
     (openedStart)="setSidebarOpen(true)"
     (closedStart)="setSidebarOpen(false)"
@@ -12,14 +13,9 @@
   </mat-sidenav>
 
   <!-- Main Content -->
-  <mat-sidenav-content class="main-content">
+  <mat-sidenav-content>
     <!-- Sidebar Toggle Button -->
-    <button
-      matIconButton
-      class="sidebar-button"
-      [class.is-open]="isSidebarOpen()"
-      (click)="sidenav.toggle()"
-    >
+    <button matIconButton class="sidebar-button" (click)="sidenav.toggle()">
       <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
 
@@ -31,121 +27,133 @@
       </button>
     }
 
-    <!-- Empty State -->
-    @if (remotes().length === 0 && !isLoading()) {
-      <div class="no-remotes">
-        <!-- Logo with integrated Backend Indicator -->
-        <button
-          class="icon-container interactive"
-          (click)="openBackendModal()"
-          [attr.title]="'shared.overviewHeader.manageBackends' | translate"
-        >
-          <img src="assets/rclone-manager.svg" alt="RClone Manager Logo" class="no-remotes-icon" />
-          <span class="status-dot" [class]="backendStatusClass()"></span>
-          <p class="backend-name">{{ activeBackend() }}</p>
-        </button>
+    <div class="main-content workspace-scroll-region">
+      <!-- Empty State -->
+      @if (remotes().length === 0 && !isLoading()) {
+        <div class="no-remotes">
+          <!-- Logo with integrated Backend Indicator -->
+          <button
+            class="icon-container interactive"
+            (click)="openBackendModal()"
+            [attr.title]="'shared.overviewHeader.manageBackends' | translate"
+          >
+            <img
+              src="assets/rclone-manager.svg"
+              alt="RClone Manager Logo"
+              class="no-remotes-icon"
+            />
+            <span class="status-dot" [class]="backendStatusClass()"></span>
+            <p class="backend-name">{{ activeBackend() }}</p>
+          </button>
 
-        <h2>{{ 'home.emptyState.title' | translate }}</h2>
-        <p>
-          {{ 'home.emptyState.description' | translate }}
-        </p>
-        <div class="no-remotes-actions">
-          <button matButton="filled" class="primary" (click)="openQuickAddRemoteModal()">
-            <mat-icon svgIcon="plus"></mat-icon>
-            {{ 'home.emptyState.addQuickRemote' | translate }}
-          </button>
-          <button matButton="filled" class="accent" (click)="openRemoteConfigModal()">
-            <mat-icon svgIcon="plus"></mat-icon>
-            {{ 'home.emptyState.addDetailedRemote' | translate }}
-          </button>
+          <h2>{{ 'home.emptyState.title' | translate }}</h2>
+          <p>
+            {{ 'home.emptyState.description' | translate }}
+          </p>
+          <div class="no-remotes-actions">
+            <button matButton="filled" class="primary" (click)="openQuickAddRemoteModal()">
+              <mat-icon svgIcon="plus"></mat-icon>
+              {{ 'home.emptyState.addQuickRemote' | translate }}
+            </button>
+            <button matButton="filled" class="accent" (click)="openRemoteConfigModal()">
+              <mat-icon svgIcon="plus"></mat-icon>
+              {{ 'home.emptyState.addDetailedRemote' | translate }}
+            </button>
+          </div>
         </div>
-      </div>
-    }
+      }
 
-    <!-- Overview Components -->
-    @if (remotes().length > 0 && !remote) {
-      @switch (currentTab()) {
-        @case ('general') {
-          <app-general-overview
-            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
-            (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-            (browseRemote)="
-              openRemoteInFiles(
-                $event.remoteName,
-                $event.path ?? 'mount',
-                $event.profileName,
-                $event.operationType
-              )
-            "
-            (selectRemote)="selectRemote($event)"
-            (openBackendModal)="openBackendModal()"
-          >
-          </app-general-overview>
-        }
-        @default {
-          <app-app-overview
-            [mode]="mainOperationType()"
-            (remoteSelected)="selectRemote($event)"
-            (openInFiles)="
-              openRemoteInFiles(
-                $event.remoteName,
-                $event.path ?? currentTab(),
-                $event.profileName,
-                $event.operationType
-              )
-            "
-            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
-            (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-            (openBackendModal)="openBackendModal()"
-          >
-          </app-app-overview>
+      <!-- Overview Components -->
+      @if (remotes().length > 0 && !remote) {
+        @switch (currentTab()) {
+          @case ('general') {
+            <app-general-overview
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
+              (browseRemote)="
+                openRemoteInFiles(
+                  $event.remoteName,
+                  $event.path ?? 'mount',
+                  $event.profileName,
+                  $event.operationType
+                )
+              "
+              (selectRemote)="selectRemote($event)"
+              (openBackendModal)="openBackendModal()"
+            >
+            </app-general-overview>
+          }
+          @default {
+            <app-app-overview
+              [mode]="mainOperationType()"
+              (remoteSelected)="selectRemote($event)"
+              (openInFiles)="
+                openRemoteInFiles(
+                  $event.remoteName,
+                  $event.path ?? currentTab(),
+                  $event.profileName,
+                  $event.operationType
+                )
+              "
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
+              (openBackendModal)="openBackendModal()"
+            >
+            </app-app-overview>
+          }
         }
       }
-    }
 
-    <!-- Remote Detail View -->
-    @if (remote) {
-      @switch (currentTab()) {
-        @case ('general') {
-          <app-general-detail
-            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
-            (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
-            (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget)"
-            (deleteJob)="deleteJob($event)"
-            (retryDiskUsage)="handleRetryDiskUsage(remote.name)"
-          >
-          </app-general-detail>
-        }
-        @default {
-          <app-app-detail
-            [mainOperationType]="mainOperationType()"
-            [selectedSyncOperation]="selectedSyncOperation()"
-            [remoteSettings]="selectedRemoteSettings()"
-            (selectedSyncOperationChange)="onSyncOperationChange($event)"
-            (openRemoteConfigModal)="
-              openRemoteConfigModal(
-                $event.editTarget,
-                $event.initialSection,
-                $event.targetProfile,
-                $event.remoteType,
-                $event.autoAddProfile
-              )
-            "
-            (openInFiles)="
-              openRemoteInFiles(
-                $event.remoteName,
-                $event.path,
-                $event.profileName,
-                $event.operationType
-              )
-            "
-            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
-            (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-          >
-          </app-app-detail>
+      <!-- Remote Detail View -->
+      @if (remote) {
+        @switch (currentTab()) {
+          @case ('general') {
+            <app-general-detail
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
+              (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget)"
+              (deleteJob)="deleteJob($event)"
+              (retryDiskUsage)="handleRetryDiskUsage(remote.name)"
+            >
+            </app-general-detail>
+          }
+          @default {
+            <app-app-detail
+              [mainOperationType]="mainOperationType()"
+              [selectedSyncOperation]="selectedSyncOperation()"
+              [remoteSettings]="selectedRemoteSettings()"
+              (selectedSyncOperationChange)="onSyncOperationChange($event)"
+              (openRemoteConfigModal)="
+                openRemoteConfigModal(
+                  $event.editTarget,
+                  $event.initialSection,
+                  $event.targetProfile,
+                  $event.remoteType,
+                  $event.autoAddProfile
+                )
+              "
+              (openInFiles)="
+                openRemoteInFiles(
+                  $event.remoteName,
+                  $event.path,
+                  $event.profileName,
+                  $event.operationType
+                )
+              "
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
+            >
+            </app-app-detail>
+          }
         }
       }
-    }
+    </div>
   </mat-sidenav-content>
 </mat-sidenav-container>
 

@@ -1119,33 +1119,13 @@
     "title": "Delete Empty Src Dirs",
     "help": "Delete empty source directories after move."
   },
-  "dryRun": {
-    "title": "Dry Run",
-    "help": "Perform a dry-run."
-  },
   "resync": {
     "title": "Resync",
     "help": "Performs the resync run."
   },
-  "checkAccess": {
-    "title": "Check Access",
-    "help": "Abort if RCLONE_TEST files are not found on both filesystems."
-  },
-  "checkFilename": {
-    "title": "Check Filename",
-    "help": "File name for --check-access."
-  },
-  "maxDelete": {
-    "title": "Max Delete",
-    "help": "Abort sync if percentage of deleted files is above this threshold."
-  },
   "force": {
     "title": "Force",
     "help": "Bypass --max-delete safety check and run the sync."
-  },
-  "checkSync": {
-    "title": "Check Sync",
-    "help": "Controls comparison of final listings."
   },
   "remove_empty_dirs": {
     "title": "Remove Empty Dirs",
@@ -1163,10 +1143,6 @@
     "title": "Resilient",
     "help": "Allow future runs to retry after certain less-serious errors."
   },
-  "work_dir": {
-    "title": "Work Dir",
-    "help": "Server directory for history files."
-  },
   "backup_dir1": {
     "title": "Backup Dir 1",
     "help": "--backup-dir for Path1."
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "Vfs Handle Caching",
     "help": "Time to keep file handle and downloaders alive after last close"
-  },
-  "mountType": {
-    "title": "Mount Type",
-    "help": "Mount type to use."
   },
   "type": {
     "title": "Serve Type",
@@ -1338,5 +1310,53 @@
   "conflict_suffix": {
     "title": "Conflict Suffix",
     "help": "Suffix to use when renaming a --conflict-loser. Can be either one string or two comma-separated strings to assign different suffixes to Path1/Path2. (default: 'conflict')"
+  },
+  "allow_idmap": {
+    "title": "Allow ID-mapped Mounts",
+    "help": "Allow id-mapped mounts (Linux 6.12+, mount2 only)"
+  },
+  "files_from0": {
+    "title": "Files From NUL-separated List",
+    "help": "Read list of source-file names from file using NUL as separator (use - to read from stdin)"
+  },
+  "response_header": {
+    "title": "Response Header",
+    "help": "Set HTTP header for all responses, overriding existing values"
+  },
+  "rc_response_header": {
+    "title": "RC Response Header",
+    "help": "Set HTTP header for all responses, overriding existing values"
+  },
+  "metrics_response_header": {
+    "title": "Metrics Response Header",
+    "help": "Set HTTP header for all responses, overriding existing values"
+  },
+  "metadata_max_objects": {
+    "title": "Maximum Metadata Objects",
+    "help": "Maximum number of objects of a user whose metadata is kept in memory, 0 for unlimited"
+  },
+  "multipart_expiry": {
+    "title": "Multipart Upload Expiry",
+    "help": "Abort incomplete multipart uploads idle for longer than this, 0 to keep forever"
+  },
+  "multipart_max_uploads": {
+    "title": "Maximum Streaming Multipart Uploads",
+    "help": "Maximum number of streamed multipart uploads a user can have in progress at once, 0 for unlimited"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Streaming Multipart Buffer Limit",
+    "help": "Maximum memory buffered per streamed multipart upload for parts arriving out of order, 0 for unlimited"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Total Streaming Multipart Buffer Limit",
+    "help": "Maximum memory buffered by all the streamed multipart uploads of a user for parts arriving out of order, 0 for unlimited"
+  },
+  "disable_multipart_streaming": {
+    "title": "Disable Multipart Streaming",
+    "help": "Buffer multipart uploads in memory instead of streaming them to the backend"
+  },
+  "mount_type": {
+    "title": "Mount Type",
+    "help": "Mount type to use."
   }
 }

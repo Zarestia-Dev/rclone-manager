@@ -4,7 +4,6 @@ import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
 
 export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
-export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
 export const BACKEND_SWITCHED = 'backend_switched' as const;
 export const REMOTE_CACHE_CHANGED = 'remote_cache_changed' as const;
 export const RCLONE_OAUTH_URL = 'rclone_oauth_url' as const;
@@ -27,16 +26,14 @@ export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const WORKFLOW_NODE_STATE_CHANGED = 'workflow_node_state_changed' as const;
 export const WORKFLOW_EXECUTION_STATE_CHANGED = 'workflow_execution_state_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+export const UPDATER_STATE_CHANGED = 'updater_state_changed' as const;
+export const VAULT_STATE_CHANGED = 'vault_state_changed' as const;
+
+export interface UpdaterStateChanged {
+  target: 'app' | 'rclone';
+}
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
-export const FILE_DOWNLOAD_PROGRESS = 'file_download_progress' as const;
-
-export interface FileDownloadProgressPayload {
-  destination: string;
-  downloaded: number;
-  total?: number;
-  percentage?: number;
-}
 
 export interface WorkflowNodeStatePayload {
   workflowId: string;
@@ -71,15 +68,24 @@ export interface SettingsChangeEvent {
   value: unknown;
 }
 
+export interface VaultStatePayload {
+  event: string;
+  isLocked: boolean;
+  isEnabled: boolean;
+  lockTimeout?: number | null;
+}
+
 export interface OAuthUrlEvent {
   url: string;
 }
 
 export interface JobChangeEvent {
   jobId: string;
+  backendName?: string;
   status: JobStatus;
   remote?: string;
   source?: string;
+  sources?: string[];
   destination?: string;
   profile?: string;
   quickRunId?: string;
@@ -89,6 +95,9 @@ export interface JobChangeEvent {
 
 export interface JobStatsUpdatedEvent {
   jobId: number;
+  backendName: string;
+  executeId?: string | null;
+  statsRevision?: number;
   stats: GlobalStats;
 }
 

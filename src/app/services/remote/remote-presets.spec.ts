@@ -1,11 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { RemotePresetsService } from './remote-presets';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 
 describe('RemotePresetsService', () => {
   let service: RemotePresetsService;
-  let mockBackendService: any;
+  let mockBackendService: {
+    backends: WritableSignal<{ name: string; isLocal: boolean; os: string }[]>;
+    activeBackend: WritableSignal<string>;
+  };
 
   beforeEach(() => {
     mockBackendService = {

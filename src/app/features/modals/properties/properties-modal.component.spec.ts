@@ -5,7 +5,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { PropertiesModalComponent } from './properties-modal.component';
 import { RemoteFileOperationsService } from '../../../services/remote/remote-file-operations.service';
 import { NautilusService } from '../../../services/ui/nautilus.service';
-import { RemoteFacadeService } from '../../../services/facade/remote-facade.service';
+import { RemoteDiskUsageService } from '../../../services/remote/remote-disk-usage.service';
 import { IconService } from '../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../services/remote/remote-management.service';
 import { PathService } from '../../../services/infrastructure/platform/path.service';
@@ -51,8 +51,8 @@ describe('PropertiesModalComponent', () => {
     toggleItem: vi.fn(),
   };
 
-  const mockRemoteFacadeService = {
-    getCachedOrFetchDiskUsage: vi.fn().mockResolvedValue({ total: 10000, used: 4000, free: 6000 }),
+  const mockRemoteDiskUsageService = {
+    load: vi.fn().mockResolvedValue({ total: 10000, used: 4000, free: 6000 }),
   };
 
   const mockIconService = {
@@ -102,7 +102,7 @@ describe('PropertiesModalComponent', () => {
         { provide: MAT_DIALOG_DATA, useValue: mockData },
         { provide: RemoteFileOperationsService, useValue: mockRemoteOps },
         { provide: NautilusService, useValue: mockNautilusService },
-        { provide: RemoteFacadeService, useValue: mockRemoteFacadeService },
+        { provide: RemoteDiskUsageService, useValue: mockRemoteDiskUsageService },
         { provide: IconService, useValue: mockIconService },
         { provide: RemoteManagementService, useValue: mockRemoteService },
         { provide: PathService, useValue: mockPathService },

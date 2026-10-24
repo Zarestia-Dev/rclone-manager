@@ -68,9 +68,7 @@ export class DeleteRemoteModalComponent {
 
   readonly isDeleting = signal(false);
 
-  readonly remote = computed(() =>
-    this.remoteFacade.orderedRemotes().find(r => r.name === this.remoteName)
-  );
+  readonly remote = computed(() => this.remoteFacade.getRemote(this.remoteName));
 
   readonly remoteType = computed(() => this.remote()?.type ?? 'generic');
 

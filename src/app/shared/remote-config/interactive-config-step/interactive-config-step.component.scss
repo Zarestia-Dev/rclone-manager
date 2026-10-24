@@ -1,3 +1,5 @@
+@use "../../../styles/mixins" as *;
+
 // =============================================
 // INTERACTIVE CONFIG STEP COMPONENT
 // =============================================
@@ -173,24 +175,9 @@
 }
 
 .divider {
-  display: flex;
-  align-items: center;
+  @include labeled-divider;
   margin: var(--space-xs) 0;
-  color: var(--dim-color);
   font-size: var(--font-size-sm);
-
-  &::before,
-  &::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--border-color);
-  }
-
-  span {
-    padding: 0 var(--space-md);
-    font-weight: 500;
-  }
 }
 
 .input-card {

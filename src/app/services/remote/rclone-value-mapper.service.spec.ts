@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { it } from 'vitest';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { RcConfigOption } from '@app/types';
 
@@ -21,6 +22,13 @@ describe('RcloneValueMapperService', () => {
 
     it('should format duration type correctly', () => {
       expect(service.machineToHuman(60000000000, 'Duration')).toBe('1m0s');
+    });
+
+    it('formats rclone DurationOff independently of the numeric ValueStr fallback', () => {
+      const durationOff = JSON.parse('9223372036854775807') as number;
+      expect(service.machineToHuman(durationOff, 'Duration', '9223372036854775807')).toBe('off');
+      expect(service.machineToHuman(durationOff, 'Duration')).toBe('off');
+      expect(service.machineToHuman(0, 'Duration', 'off')).toBe('0s');
     });
 
     it('should format size types correctly', () => {
@@ -153,41 +161,6 @@ describe('RcloneValueMapperService', () => {
     });
   });
 
-  describe('normalizeOption', () => {
-    it('should parse Tristate default and value if option type is Tristate', () => {
-      const opt: RcConfigOption = {
-        Name: 'test',
-        FieldName: 'test',
-        Help: '',
-        DefaultStr: 'true',
-        Type: 'Tristate',
-        Default: { Valid: true, Value: true },
-        Value: { Valid: true, Value: false },
-        Advanced: false,
-      };
-
-      const normalized = service.normalizeOption(opt);
-      expect(normalized.Default).toBe(true);
-      expect(normalized.Value).toBe(false);
-    });
-
-    it('should keep other option types identical', () => {
-      const opt: RcConfigOption = {
-        Name: 'test',
-        FieldName: 'test',
-        Help: '',
-        DefaultStr: 'def',
-        Type: 'string',
-        Default: 'def',
-        Value: 'val',
-        Advanced: false,
-      };
-
-      const normalized = service.normalizeOption(opt);
-      expect(normalized).toEqual(opt);
-    });
-  });
-
   describe('isDefaultValue', () => {
     it('should return true for null or undefined', () => {
       const field = { Type: 'string', Default: 'def' } as RcConfigOption;
@@ -278,13 +251,22 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should handle CommaSepList correctly', () => {
-      expect(service.humanToMachine(['a', 'b'], 'CommaSepList')).toBe('a,b');
-      expect(service.humanToMachine(' a , b ', 'CommaSepList')).toBe('a,b');
+      expect(service.humanToMachine(['a', 'b'], 'CommaSepList')).toEqual(['a', 'b']);
+      expect(service.humanToMachine(' a , b ', 'CommaSepList')).toEqual(['a', 'b']);
     });
 
     it('should handle SpaceSepList correctly', () => {
-      expect(service.humanToMachine(['a', 'b'], 'SpaceSepList')).toBe('a b');
-      expect(service.humanToMachine(' a   b ', 'SpaceSepList')).toBe('a b');
+      expect(service.humanToMachine(['a', 'b'], 'SpaceSepList')).toEqual(['a', 'b']);
+      expect(service.humanToMachine(' a   b ', 'SpaceSepList')).toEqual(['a', 'b']);
+    });
+
+    it.each(['CommaSepList', 'SpaceSepList'])('preserves %s JSON list items', type => {
+      const items = ['/path with spaces/helper', '旅行, Arşiv', 'a"b'];
+      expect(service.humanToMachine(items, type)).toEqual(items);
+      expect(service.humanToMachine([], type)).toEqual([]);
+      expect(service.humanToMachine('', type)).toEqual([]);
+      expect(service.humanToMachine(null, type)).toEqual([]);
+      expect(service.humanToMachine(undefined, type)).toEqual([]);
     });
 
     it('should return original value for unhandled types', () => {
