@@ -232,7 +232,7 @@
       "openInExplorer": "Ouvrir dans l’explorateur de fichiers"
     },
     "jobs": {
-      "title": "Jobs",
+      "title": "Tâches",
       "dryRun": "Simulation",
       "status": {
         "running": "En cours",
@@ -385,7 +385,7 @@
       "os_toast_info": "Aucune configuration supplémentaire requise pour les notifications système.",
       "mode": "Mode",
       "provider": "Fournisseur",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "API du bot",
       "telegram_botless": "Sans Bot (CallMeBot)",
       "botToken": "Jeton de bot (Token)",
       "chatId": "ID de discussion",
@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "Terminer l’onboarding",
         "description": "Si l'utilisateur a terminé le processus d'intégration"
+      },
+      "skip_mount_plugin_check": {
+        "label": "Ignorer la vérification du plugin de montage",
+        "description": "Ignorer la vérification et l'invite d'installation du plugin de montage au démarrage et lors de l'intégration"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "Avertissement Flatpak affiché"
       },
+      "mount_warn": {
+        "label": "Avertissement de montage affiché",
+        "description": "Afficher la bannière d'avertissement sur la vue de montage lorsque les vérifications du pilote sont désactivées"
+      },
       "dashboard_layout": {
         "label": "Disposition du tableau de bord",
         "description": "Configuration personnalisée de la mise en page du tableau de bord."
@@ -621,6 +629,12 @@
       "title": "Note Flatpak",
       "subtitle": "Certaines fonctionnalités peuvent nécessiter des ajustements manuels de permission.",
       "learnMore": "Plus d'informations",
+      "dismissTooltip": "Ne plus afficher"
+    },
+    "mountPlugin": {
+      "title": "Vérification du pilote de montage désactivée",
+      "description": "La vérification du pilote de montage a été ignorée. Le montage de disques distants nécessite un pilote compatible installé sur votre système.",
+      "install": "Installer le pilote",
       "dismissTooltip": "Ne plus afficher"
     },
     "metered": {
@@ -661,7 +675,7 @@
   },
   "titlebar": {
     "addRemoteMenu": "Menu Ajouter un dépôt distant",
-    "home": "Home",
+    "home": "Accueil",
     "internetStatus": "État de la connexion Internet",
     "appMenu": "Menu de l’application",
     "minimize": "Minimiser la fenêtre",
@@ -686,7 +700,9 @@
       "import": "Importer",
       "export": "Exporter",
       "preferences": "Préférences",
-      "flags": "Rclone Flags",
+      "advanced": "Paramètres avancés",
+      "flags": "Options Rclone",
+      "vault": "Coffre-fort",
       "fileBrowser": "Explorateur de fichiers",
       "flowWorkspace": "Espace de travail Flow",
       "shortcuts": "Raccourcis clavier",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "Initialisation rclone Manager",
-    "loadingMessage": "Vérification de la configuration du système...",
     "cards": {
       "welcome": {
         "title": "Bienvenue dans rclone Manager",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "Installer le plugin de montage",
-        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de rclone."
+        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de rclone.",
+        "skipMountTitle": "Je n'utiliserai pas le montage",
+        "skipMountDesc": "Ignorez l'installation si vous ne prévoyez pas de monter de lecteurs."
       },
       "selectConfig": {
         "title": "Sélectionnez la configuration de rclone",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "Tableau de bord classique",
-        "badge": "Par défaut",
         "description": "Aperçu avec connexions distantes, transferts actifs, actions rapides et état du système."
       },
       "nautilus": {
         "title": "Navigateur de fichiers (Nautilus)",
-        "badge": "Gestionnaire de fichiers",
         "description": "Interface dédiée à deux panneaux pour naviguer et transférer des fichiers distants."
       },
       "flow": {
         "title": "Espace de travail Flow",
-        "badge": "Flux de travail",
         "description": "Centre visuel interactif pour orchestrer des tâches automatisées et des exécutions rapides."
       }
     },
@@ -856,27 +869,25 @@
       "resetStats": "Réinitialiser les Statistiques",
       "tabs": {
         "active": "Actif ({{count}})",
-        "recent": "Récent ({{count}})",
-        "recentCheck": "Vérifié ({{count}})"
+        "recent": "Récent ({{count}})"
       },
       "table": {
         "size": "Taille",
-        "transferred": "transféré",
-        "alreadyExisted": "déjà existant"
+        "transferred": "transféré"
       },
       "status": {
         "failed": "Échec",
         "checked": "Vérifié",
         "partial": "Partiel",
         "completed": "Terminé",
-        "transferError": "Erreur de transfert",
-        "transferCompleted": "Transfert terminé",
         "preparing": "Préparation",
         "finalizing": "Finalisation...",
         "missingDst": "Manquant sur la destination",
         "missingSrc": "Manquant sur la source",
         "differ": "Le contenu des fichiers diffère",
-        "error": "Erreur"
+        "checking": "Vérification",
+        "deleting": "Suppression",
+        "processing": "Traitement"
       },
       "actions": {
         "resolveToDst": "Copier vers la destination",
@@ -899,12 +910,12 @@
         "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
       },
       "empty": {
-        "noActive": "Aucun transfert actif",
-        "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
-        "noRecent": "Aucun transfert récemment terminé",
-        "recentHint": "Les transferts terminés apparaîtront ici à la fin des jobs",
-        "noRecentCheck": "Aucun fichier vérifié",
-        "recentHintCheck": "Les fichiers vérifiés apparaîtront ici à la fin de la tâche"
+        "noRecent": "Aucune activité de fichier récente",
+        "recentHint": "Les activités de fichiers terminées apparaissent ici pendant les opérations.",
+        "noRecentCheck": "Aucun résultat de comparaison à afficher",
+        "recentHintCheck": "Consultez l’état de la tâche et les compteurs de vérification.",
+        "noActiveActivity": "Aucune activité de fichier en cours",
+        "waitingActivity": "En attente d’activité de fichiers. Certaines opérations ne signalent pas les fichiers individuellement."
       },
       "time": {
         "daysAgo": "Il y a {{count}} jour(s)",
@@ -917,7 +928,10 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      }
+      },
+      "titleDelete": "Activité de suppression",
+      "titleActivity": "Activité",
+      "loadMore": "Afficher plus"
     },
     "inputModal": {
       "name": "Nom",
@@ -955,7 +969,7 @@
       "aria": {
         "item": "{{name}} élément {{index}}",
         "removeItem": "Retirer un élément {{name}}",
-        "date": "{{name}} date",
+        "date": "Date : {{name}}",
         "time": "{{name}} temps"
       },
       "errors": {
@@ -1074,6 +1088,35 @@
       },
       "pollIntervalPlaceholder": "Entrez l'intervalle d'interrogation (secondes)"
     },
+    "codeEditor": {
+      "tools": "Outils de l’éditeur",
+      "find": "Rechercher",
+      "goToLine": "Aller à la ligne",
+      "go": "Aller",
+      "content": "Éditeur de code",
+      "wrap": "Retour à la ligne",
+      "lineNumbers": "Numéros de ligne",
+      "readOnly": "Lecture seule",
+      "editing": "Modification",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "view": "Affichage",
+      "fontSize": "Taille du texte",
+      "smallerFont": "Réduire la taille du texte",
+      "largerFont": "Agrandir le texte",
+      "position": "Ligne {{line}}, colonne {{column}}",
+      "previous": "Résultat précédent",
+      "next": "Résultat suivant",
+      "caseSensitive": "Respecter la casse",
+      "wholeWord": "Mot entier",
+      "regexp": "Expression régulière",
+      "replace": "Remplacer",
+      "replaceAll": "Tout remplacer",
+      "invalidRegexp": "Expression régulière invalide",
+      "noResults": "Aucun résultat",
+      "matches": "{{total}} résultats",
+      "matchPosition": "{{current}} / {{total}}"
+    },
     "jsonEditor": {
       "noFields": "Aucun champ à afficher en mode JSON",
       "parseError": "Syntaxe JSON invalide. Veuillez vérifier votre formatage.",
@@ -1145,7 +1188,6 @@
       "apply": "Appliquer au champ"
     },
     "presets": {
-      "applied": "Préréglages par défaut appliqués avec succès",
       "noRemoteSelected": "Veuillez d'abord sélectionner un remote"
     },
     "remoteConfig": {
@@ -1245,6 +1287,25 @@
           "label": "Aucune sortie",
           "description": "Supprimer toute sortie stdout de l'appel de configuration RC"
         }
+      },
+      "providerOverview": {
+        "title": "Fonctionnalités du fournisseur",
+        "supportTier": "Niveau de support rclone (pas votre forfait de stockage)",
+        "hashes": "Sommes de contrôle",
+        "noHashes": "Aucun algorithme de somme de contrôle indiqué",
+        "features": "Fonctionnalités indiquées",
+        "noFeatures": "Aucune fonctionnalité indiquée pour ce résumé",
+        "generalNote": "Informations générales du fournisseur fournies par rclone. La prise en charge réelle peut varier selon votre configuration.",
+        "virtualNote": "Les fonctionnalités dépendent du distant sous-jacent et de la configuration.",
+        "documentation": "Voir les fonctionnalités de rclone",
+        "copy": "Copie côté serveur",
+        "move": "Déplacement côté serveur",
+        "publicLink": "Partage de liens",
+        "emptyDirectories": "Dossiers vides",
+        "caseInsensitive": "Noms insensibles à la casse",
+        "duplicateFiles": "Noms de fichiers en double",
+        "readMetadata": "Lecture des métadonnées",
+        "writeMetadata": "Écriture des métadonnées"
       }
     },
     "appOperation": {
@@ -1474,6 +1535,7 @@
     "restoreFailed": "Échec de la restauration de la sauvegarde: {{error}}"
   },
   "updates": {
+    "discardDownload": "Supprimer le téléchargement",
     "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",
     "installSuccess": "Mise à jour installée. Veuillez redémarrer l'application.",
     "checkFailed": "Échec de la vérification des mises à jour: {{error}}",
@@ -1484,7 +1546,7 @@
     "skipVersion": "La mise à jour {{version}} sera ignorée",
     "confirmApply": {
       "title": "Appliquer la mise à jour",
-      "message": "Voulez-vous appliquer la mise à jour ? L'application va redémarrer pour appliquer les modifications.",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "Appliquer",
       "cancel": "Annuler"
     },
@@ -1520,6 +1582,28 @@
       "metadata": {
         "system": "Métadonnées système",
         "standard": "Métadonnées standard"
+      },
+      "supportInfo": "Le niveau de support rclone reflète la maintenance et la stabilité du fournisseur.",
+      "providerDocumentation": "Documentation du fournisseur",
+      "liveFeatures": "Fonctionnalités prises en charge par ce distant configuré.",
+      "featureLabels": {
+        "about": "Utilisation du stockage",
+        "bucketBased": "Stockage par compartiments",
+        "bucketRoot": "Accès depuis la racine du stockage",
+        "purge": "Supprimer des arborescences",
+        "dirMove": "Déplacer des dossiers côté serveur",
+        "cleanUp": "Nettoyage du stockage",
+        "listR": "Liste récursive",
+        "listP": "Liste paginée",
+        "putStream": "Envoi en flux",
+        "openChunkWriter": "Envoi en plusieurs parties",
+        "openWriterAt": "Envoi à accès aléatoire",
+        "readMimeType": "Lire les types de contenu",
+        "writeMimeType": "Écrire les types de contenu",
+        "changeNotify": "Notifications de modifications",
+        "setTier": "Modifier la classe de stockage",
+        "getTier": "Lire la classe de stockage",
+        "overlay": "Encapsule d’autres distants"
       }
     },
     "properties": {
@@ -1723,7 +1807,7 @@
       "unmount": "Démonter",
       "progress": "Progression",
       "speed": "Débit",
-      "eta": "ETA",
+      "eta": "Temps restant",
       "files": "Fichiers",
       "errors": "Erreurs",
       "duration": "Durée",
@@ -1773,6 +1857,7 @@
       "showShortcuts": "Afficher les raccourcis clavier",
       "openPreferences": "Ouvrir les préférences",
       "openFlags": "Flags de rclone Ouvert",
+      "openVault": "Ouvrir le coffre-fort",
       "forceCheck": "Forcer le contrôle des montages",
       "forceCheckServes": "Forcer la vérification des dépôts distants",
       "newRemoteDetailed": "Créer un nouveau dépôt distant (détaillé)",
@@ -1883,7 +1968,7 @@
         "finished": "Terminé",
         "duration": "Durée",
         "speed": "Débit",
-        "eta": "ETA",
+        "eta": "Temps restant",
         "files": "Fichiers",
         "checks": "Vérifié",
         "deleted": "Supprimé",
@@ -1988,7 +2073,7 @@
       "memAlloc": "Alloué",
       "memTotalAlloc": "Total alloué",
       "memSys": "Système",
-      "memMallocs": "Mallocs",
+      "memMallocs": "Allocations mémoire",
       "memFrees": "Libérations",
       "heapMemory": "Mémoire tas",
       "memHeapAlloc": "Tas alloué",
@@ -2009,7 +2094,8 @@
       "entries": "Entrées actives",
       "clear": "Effacer",
       "cacheCleared": "Cache effacé avec succès",
-      "cacheClearFailed": "Échec du vidage du cache"
+      "cacheClearFailed": "Échec du vidage du cache",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "Impossible de récupérer les logs de l'application.",
@@ -2056,8 +2142,9 @@
       },
       "tabs": {
         "general": "Général",
-        "core": "Core",
-        "developer": "Développeur"
+        "core": "Moteur",
+        "developer": "Développeur",
+        "vault": "Coffre-fort"
       },
       "aria": {
         "resetAll": "Réinitialiser les paramètres de l'application aux valeurs par défaut",
@@ -2090,6 +2177,8 @@
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
       "passwordHint": "Ce mot de passe sera requis pour restaurer la sauvegarde.",
+      "vaultWarningTitle": "Le coffre de configuration est ouvert",
+      "vaultWarningDesc": "Les sauvegardes exportées n'héritent pas du chiffrement du coffre. Utilisez l'option de chiffrement ci-dessous pour protéger les identifiants et les paramètres sensibles avec un mot de passe.",
       "exportNow": "Exporter maintenant",
       "exporting": "Exportation en cours...",
       "fullBackup": "Sauvegarde complète",
@@ -2462,14 +2551,16 @@
       "starred": "Favoris",
       "searchPlaceholder": "Rechercher des fichiers…",
       "local": "Local",
-      "cloud": "Cloud",
+      "cloud": "Stockage en ligne",
       "fileSystem": "Fichier Système",
       "bookmarks": "Signets",
       "localDisk": "Disque local",
       "internalStorage": "Stockage interne"
     },
     "bookmarks": {
-      "emptyHint": "Aucun signet"
+      "emptyHint": "Aucun signet",
+      "add": "Ajouter aux favoris",
+      "dropHint": "Déposez des dossiers ici pour les ajouter aux favoris"
     },
     "sort": {
       "az": "A-Z",
@@ -2575,6 +2666,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "Impossible d’ouvrir une nouvelle fenêtre. La vue actuelle reste ouverte.",
       "connectionFailed": "Échec de la Connexion",
       "bookmarkRemoteNotFound": "Le dépôt distant '{{remote}}' associé au signet est introuvable",
       "loadFailed": "Échec du chargement du répertoire",
@@ -2650,8 +2742,6 @@
       "increaseIconSize": "Agrandir la taille des icônes"
     },
     "notifications": {
-      "mkdirFailed": "Échec de la création du répertoire : {{path}}",
-      "uploadStarted": "Démarrage du téléchargement des fichiers {{count}}...",
       "uploadSuccess": "Les fichiers {{count}} ont été téléchargés avec succès.",
       "uploadFailed": "Échec du téléchargement des fichiers {{count}}.",
       "trashEmptied": "Opération de nettoyage terminée",
@@ -2721,9 +2811,6 @@
     "resetRemote": {
       "title": "Réinitialiser les paramètres du dépôt distant",
       "message": "Êtes-vous sûr de vouloir réinitialiser TOUS les paramètres pour {{name}}?"
-    },
-    "notifications": {
-      "settingsReset": "Les paramètres de {{name}} ont été réinitialisés."
     },
     "errors": {
       "generic": "Une erreur inattendue s'est produite. Veuillez vérifier les logs pour plus de détails.",
@@ -2872,10 +2959,10 @@
       "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}",
       "diskFull": "Le disque ou lecteur cible est plein. Espace disque insuffisant.",
       "fileLocked": "Le fichier est actuellement verrouillé ou utilisé par un autre processus.",
-      "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture."
+      "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture.",
+      "ioError": "IO erreur : {{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "Plateforme non supportée",
       "downloadCancelled": "Téléchargement annulé par l'utilisateur",
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
       "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",
@@ -2915,7 +3002,10 @@
       "unsupportedArchive": "Type d'archive non pris en charge. Doit être un fichier .rcman",
       "invalidArchive": "Format d'archive de sauvegarde invalide",
       "restoreFailed": "La restauration de la sauvegarde a échoué : {{error}}",
-      "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe"
+      "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe",
+      "exportFailed": "L'exportation de la sauvegarde a échoué : {{error}}",
+      "refreshFailed": "Échec de l'actualisation du système après la restauration de la sauvegarde : {{error}}",
+      "restoreIncomplete": "La restauration de la sauvegarde est incomplète : {{error}}"
     },
     "backend": {
       "nameEmpty": "Nom du dépôt distant ne peut pas être vide",
@@ -2932,7 +3022,6 @@
       "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide."
     },
     "cache": {
-      "fetchRemotesFailed": "Échec de récupération des dépôts distants",
       "fetchConfigFailed": "Échec de la récupération de la configuration des dépôts distants",
       "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montés",
       "refreshServesFailed": "Échec de l’actualisation des services de partage"
@@ -2967,16 +3056,27 @@
       "relaunchFailed": "La relance a échoué : {{error}}",
       "restartFailed": "Redémarrage échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
-      "ioError": "IO erreur : {{error}}"
+      "ioError": "IO erreur : {{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "Échec du chargement des paramètres : {{error}}",
       "saveFailed": "Échec de l'enregistrement du paramètre : {{error}}",
       "resetFailed": "Échec de la réinitialisation du paramètre : {{error}}",
       "resetAllFailed": "Échec de la réinitialisation de tous les paramètres : {{error}}",
-      "eventEmitFailed": "Échec de l'émission des paramètres d'événement : {{error}}",
       "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
       "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "Le mot de passe du coffre ne peut pas être vide",
+      "notEnabled": "Le coffre-fort n'est pas activé",
+      "invalidPassword": "Mot de passe maître du coffre incorrect",
+      "operationFailed": "L'opération du coffre-fort a échoué: {{error}}"
     }
   },
   "backendSuccess": {
@@ -3010,6 +3110,14 @@
       "unencrypted": "Configuration déchiffrée avec succès",
       "encrypted": "Configuration chiffrée avec succès",
       "passwordChanged": "Mot de passe de configuration modifié avec succès"
+    },
+    "vault": {
+      "unlocked": "Coffre-fort déverrouillé avec succès",
+      "locked": "Coffre-fort verrouillé avec succès",
+      "enabled": "Chiffrement du coffre-fort activé avec succès",
+      "disabled": "Chiffrement du coffre-fort désactivé avec succès",
+      "passwordChanged": "Mot de passe maître changé avec succès",
+      "timeoutUpdated": "Délai de verrouillage automatique mis à jour"
     }
   },
   "overviews": {
@@ -3080,8 +3188,8 @@
     "stop": "Arrêter",
     "browse": "Parcourir",
     "browseInApp": "Parcourir (dans l'application)",
-    "jobsCount": "Jobs [{{active}}/{{total}}]",
-    "jobsNone": "Jobs [-]",
+    "jobsCount": "Tâches [{{active}}/{{total}}]",
+    "jobsNone": "Tâches [-]",
     "mountCount": "Montage [{{active}}/{{total}}]",
     "syncCount": "Synchronisation [{{active}}/{{total}}]",
     "copyCount": "Copie [{{active}}/{{total}}]",
@@ -3229,7 +3337,6 @@
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
       "versionTooOld": "Votre version de rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
       "defaultParams": "Un composant système ne fonctionne pas correctement.",
-      "mountPluginStatusError": "Échec de la vérification du statut",
       "authRequired": "Le serveur a rejeté la connexion en raison d'un échec d'authentification.",
       "remoteAuthRequired": "Le backend distant a rejeté la connexion en raison d'un échec d'authentification. Veuillez vérifier vos identifiants.",
       "portInUse": "Le port {{port}} est déjà occupé par une autre application ou connexion. Choisissez un autre port pour continuer."
@@ -3243,6 +3350,10 @@
       "repairing": "Réparation ...",
       "configuring": "Configuration..."
     },
+    "mountPreference": {
+      "title": "Je n'utiliserai pas le montage",
+      "desc": "Désactivez les vérifications si vous ne prévoyez pas de monter de lecteurs."
+    },
     "actions": {
       "installRclone": "Installer rclone",
       "installPlugin": "Installer un plugin",
@@ -3251,7 +3362,8 @@
       "submitPassword": "Déverrouiller",
       "changePort": "Appliquer le port & Redémarrer",
       "configureBackend": "Configurer le backend",
-      "repair": "Réparer"
+      "repair": "Réparer",
+      "saveAndClose": "Enregistrer et fermer"
     },
     "portConfig": {
       "portLabel": "Port local",
@@ -3404,11 +3516,11 @@
       },
       "errors": {
         "remoteNotFound": "Le remote '{{remote}}' n'existe pas dans la configuration Rclone",
-        "failedStop": "Échec de l'arrêt du Lancement Rapide \"{{name}}\" : {{error}}",
-        "failedStart": "Échec du démarrage de Quick Run « {{name }} » : {{error}}"
+        "failedStop": "Échec de l’arrêt de l’exécution rapide « {{name}} » : {{error}}",
+        "failedStart": "Échec du démarrage de l’exécution rapide « {{name}} » : {{error}}"
       },
       "success": {
-        "started": "Quick Run « {{name }} » démarré avec succès"
+        "started": "Exécution rapide « {{name}} » démarrée avec succès"
       }
     },
     "tabs": {
@@ -3435,8 +3547,7 @@
         "delete": "Supprimer le nœud",
         "inspectJob": "Inspecter la Tâche",
         "duplicateWorkflow": "Dupliquer le flux",
-        "deleteWorkflow": "Supprimer le flux",
-        "exportWorkflow": "Exporter en JSON"
+        "deleteWorkflow": "Supprimer le flux"
       },
       "canvas": {
         "navigation": "Navigation du canevas",
@@ -3841,6 +3952,8 @@
     "title": "Modèles",
     "presetTitle": "Préréglages et modèles",
     "applyPresets": "Appliquer les préréglages par défaut",
+    "defaultPresets": "Préréglages par défaut",
+    "defaultPresetsDesc": "Configuration de base optimisée pour ce type de distant et le système.",
     "userTemplates": "Modèles utilisateur enregistrés",
     "saveAsTemplate": "Enregistrer les paramètres actuels comme modèle...",
     "manageTemplates": "Gérer les modèles...",
@@ -3855,6 +3968,7 @@
     "addKey": "Ajouter une clé",
     "removeKey": "Supprimer la clé",
     "deleteTemplate": "Supprimer le modèle",
+    "deleteConfirm": "Voulez-vous vraiment supprimer le modèle « {{name}} » ?",
     "noCatKeys": "Aucun paramètre configuré dans {{category}} pour le moment.",
     "visualView": "Inspecteur visuel",
     "jsonView": "Éditeur JSON",
@@ -3870,7 +3984,21 @@
     "zeroKeys": "0 clés",
     "applySuccess": "Modèle \"{{name}}\" appliqué avec succès.",
     "savedSuccess": "Modèle \"{{name}}\" enregistré avec succès.",
-    "deletedSuccess": "Modèle supprimé avec succès."
+    "deletedSuccess": "Modèle supprimé avec succès.",
+    "applyModalTitle": "Appliquer le modèle",
+    "applyStrategy": "Stratégie d'application",
+    "strategyOverwrite": "Écraser toutes les valeurs",
+    "strategyOverwriteDesc": "Les paramètres du modèle remplacent les valeurs existantes",
+    "strategyFillEmpty": "Remplir uniquement les champs vides",
+    "strategyFillEmptyDesc": "Conserve les valeurs existantes et applique uniquement les manquantes",
+    "addedCount": "{{count}} à ajouter",
+    "modifiedCount": "{{count}} à modifier",
+    "unchangedCount": "{{count}} inchangés",
+    "diffCurrent": "Actuel",
+    "diffNew": "Nouveau",
+    "apply": "Appliquer le modèle",
+    "noChangesDetected": "Tous les paramètres de ce modèle correspondent déjà à vos valeurs actuelles.",
+    "selectCategoriesToApply": "Catégories et paramètres"
   },
   "navigation": {
     "dashboard": "Tableau de bord",
@@ -3951,6 +4079,60 @@
         "false": "Désactivé (false)",
         "unset": "Non défini"
       }
+    }
+  },
+  "vault": {
+    "title": "Coffre de configuration",
+    "description": "Protégez vos configurations, identifiants et sous-paramètres au repos avec le chiffrement AES-256-GCM.",
+    "status": {
+      "protected": "Protégé",
+      "unprotected": "Non protégé"
+    },
+    "actions": {
+      "lockNow": "Verrouiller le coffre",
+      "unlock": "Déverrouiller le coffre",
+      "enable": "Activer le coffre",
+      "disable": "Désactiver le coffre",
+      "updatePassword": "Changer le mot de passe"
+    },
+    "enable": {
+      "title": "Activer la protection du coffre",
+      "description": "Saisissez un mot de passe maître pour chiffrer vos paramètres et sous-configurations. Vous en aurez besoin pour déverrouiller l’application."
+    },
+    "changePassword": {
+      "title": "Changer le mot de passe maître"
+    },
+    "disable": {
+      "title": "Désactiver la protection du coffre",
+      "warning": "La désactivation du coffre stockera les paramètres et configurations en texte brut non chiffré sur le disque."
+    },
+    "settings": {
+      "autoLockTitle": "Délai de verrouillage automatique",
+      "autoLockDesc": "Verrouiller automatiquement le coffre après une période d'inactivité."
+    },
+    "fields": {
+      "masterPassword": "Mot de passe maître",
+      "confirmPassword": "Confirmer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "autoLockTimeout": "Verrouiller après"
+    },
+    "timeout": {
+      "never": "Jamais",
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 heure"
+    },
+    "lockScreen": {
+      "title": "Coffre verrouillé",
+      "subtitle": "Entrez votre mot de passe maître pour déverrouiller RClone Manager",
+      "awaitingAuthorization": "En attente d’autorisation",
+      "authorizing": "Autorisation en cours…"
+    },
+    "errors": {
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "unlockFailed": "Échec du déverrouillage du coffre"
     }
   }
 }
