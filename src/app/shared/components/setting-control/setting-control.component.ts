@@ -53,7 +53,10 @@ import {
   isFloatType,
   deepEqual,
 } from 'src/app/shared/utils';
-import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
+import {
+  getConfigOptionFlags,
+  resolveOptionExamples,
+} from 'src/app/services/remote/utils/remote-config.utils';
 
 const DUMP_FLAGS_FALLBACK: readonly string[] = [
   'headers',
@@ -145,27 +148,7 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
 
   readonly flagNames = computed(() => {
     const opt = this.mergedOption();
-    if (!opt) return [];
-
-    // Exclude internal subcommand selection fields from displaying flags
-    if (opt.Name === 'mountType' || opt.Name === 'type') {
-      return [];
-    }
-
-    const optName = opt.Name.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-      .replace(/_/g, '-')
-      .toLowerCase();
-    const flags: string[] = [];
-
-    const providerVal = this.provider();
-    if (providerVal && !opt.NoPrefix) {
-      const providerLower = providerVal.toLowerCase().trim();
-      flags.push(`--${providerLower}-${optName}`);
-    } else {
-      flags.push(`--${optName}`);
-    }
-
-    return flags;
+    return opt ? getConfigOptionFlags(opt, this.provider()) : [];
   });
 
   readonly valueCommit = output<void>();

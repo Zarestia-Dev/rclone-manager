@@ -52,6 +52,7 @@ import { linter, lintGutter } from '@codemirror/lint';
 import { bracketMatching, indentOnInput } from '@codemirror/language';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
+import { matchesConfigSearchText } from 'src/app/services/remote/utils/remote-config.utils';
 
 export interface TemplateManagerModalData {
   mode: 'save' | 'manage';
@@ -167,7 +168,7 @@ export class TemplateManagerModalComponent {
 
   // === Memoized Category Views (Single O(N) pass for reactivity) ===
   readonly saveCategories = computed<SaveCategoryView[]>(() => {
-    const query = this.keySearchQuery().trim().toLowerCase();
+    const query = this.keySearchQuery().trim();
     const entries = this.settingEntries();
 
     const entriesByCat = new Map<TemplateCategory, SettingKeyEntry[]>();
@@ -184,7 +185,7 @@ export class TemplateManagerModalComponent {
       const selectedCount = allCatEntries.filter(e => e.selected).length;
       const filteredEntries = query
         ? allCatEntries.filter(e =>
-            `${e.key} ${e.category} ${e.displayValue}`.toLowerCase().includes(query)
+            matchesConfigSearchText(query, [e.key, e.category, e.displayValue])
           )
         : allCatEntries;
 
@@ -204,7 +205,7 @@ export class TemplateManagerModalComponent {
   );
 
   readonly manageCategories = computed<ManageCategoryView[]>(() => {
-    const query = this.keySearchQuery().trim().toLowerCase();
+    const query = this.keySearchQuery().trim();
     const values = this.draftValues();
 
     return this.availableCategories.map(catKey => {
@@ -218,9 +219,7 @@ export class TemplateManagerModalComponent {
       }));
 
       const filteredEntries = query
-        ? allEntries.filter(e =>
-            `${e.key} ${catKey} ${e.displayValue}`.toLowerCase().includes(query)
-          )
+        ? allEntries.filter(e => matchesConfigSearchText(query, [e.key, catKey, e.displayValue]))
         : allEntries;
 
       return {

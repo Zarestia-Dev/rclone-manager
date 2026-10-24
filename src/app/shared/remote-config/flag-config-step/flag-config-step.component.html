@@ -22,7 +22,7 @@
   }
 
   <!-- Dynamic flag fields -->
-  @if (dynamicFieldBindings().length) {
+  @if (dynamicFlagFields().length) {
     <div class="dynamic-fields-header">
       <span class="fields-count">
         {{ dynamicFieldBindings().length }}
@@ -54,7 +54,7 @@
         [currentRemoteName]="currentRemoteName()"
         [existingRemotes]="existingRemotes()"
       />
-    } @else {
+    } @else if (dynamicFieldBindings().length) {
       <div class="dynamic-fields" formGroupName="options">
         @for (binding of dynamicFieldBindings(); track binding.trackKey) {
           <app-setting-control
@@ -63,6 +63,12 @@
             [class.highlighted-field]="highlightedFields().has(binding.controlKey)"
           />
         }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <mat-icon svgIcon="search" />
+        <span>{{ 'shared.search.title' | translate }}</span>
+        <p>{{ 'shared.search.description' | translate }}</p>
       </div>
     }
   }

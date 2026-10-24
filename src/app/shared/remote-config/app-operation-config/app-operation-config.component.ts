@@ -56,6 +56,7 @@ import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/ale
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 import { UrlPreviewComponent } from 'src/app/shared/components/url-preview/url-preview.component';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -115,6 +116,7 @@ export class OperationConfigComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+  private readonly configSearch = inject(ConfigSearchService);
 
   readonly fullDestPath = computed(() => {
     this.formVersion();
@@ -211,29 +213,38 @@ export class OperationConfigComponent {
     FormControl,
     { path: string; context: string }
   >();
-  private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
-
-  private matchesSearch(keywords: string[]): boolean {
-    const terms = this.searchTerms();
-    return (terms.length === 1 && !terms[0]) || keywords.some(k => terms.some(t => k.includes(t)));
+  private matchesSearch(keywords: string[], translationKeys: string[] = []): boolean {
+    return this.configSearch.matchesText(this.searchQuery(), keywords, translationKeys);
   }
 
   readonly showAutoStart = computed(
-    () => this.showAutomations() && this.matchesSearch(['auto', 'start', 'enable'])
+    () =>
+      this.showAutomations() &&
+      this.matchesSearch(['auto', 'start', 'enable'], ['wizards.appOperation.enableAutoStart'])
   );
   readonly showCronSection = computed(
     () =>
       this.showAutomations() &&
-      this.matchesSearch([
-        'cron',
-        'schedule',
-        'automation',
-        'watch',
-        'real-time',
-        'realtime',
-        'monitor',
-        'filesystem',
-      ])
+      this.matchesSearch(
+        [
+          'cron',
+          'schedule',
+          'automation',
+          'watch',
+          'real-time',
+          'realtime',
+          'monitor',
+          'filesystem',
+        ],
+        [
+          'wizards.appOperation.enableScheduled',
+          'wizards.appOperation.scheduleSubtitle',
+          'wizards.appOperation.scheduleDescription',
+          'wizards.appOperation.enableWatch',
+          'wizards.appOperation.watchDelay',
+          'wizards.appOperation.watchChangedOnly',
+        ]
+      )
   );
   readonly isMobilePlatform = computed(() => isMobile());
   readonly selectedMountType = computed(() => {
@@ -257,12 +268,20 @@ export class OperationConfigComponent {
       this.selectedMountType() !== 'saf'
   );
   readonly showWatchSection = computed(() => this.isWatchSupported() && this.showCronSection());
-  readonly showSourcePath = computed(() => this.matchesSearch(['source', 'path', 'origin']));
+  readonly showSourcePath = computed(() =>
+    this.matchesSearch(
+      ['source', 'path', 'origin'],
+      ['wizards.appOperation.sourcePaths', 'wizards.appOperation.remotePathServe']
+    )
+  );
   readonly showDestPath = computed(
     () =>
       !['serve', 'delete'].includes(this.operationType() as string) &&
       !(this.isMount() && this.isLocalMobileSafMount()) &&
-      this.matchesSearch(['dest', 'output', 'target'])
+      this.matchesSearch(
+        ['dest', 'destination', 'path', 'output', 'target'],
+        ['wizards.appOperation.destinationPath']
+      )
   );
 
   readonly canAddSource = computed(() => this.isOperationInList(MULTI_SOURCE_OPS));

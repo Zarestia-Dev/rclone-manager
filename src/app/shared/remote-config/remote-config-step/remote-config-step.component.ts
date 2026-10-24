@@ -20,7 +20,7 @@ import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RcConfigOption, RemoteType, RemoteConfigStepVisibility, CommandOption } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
@@ -71,6 +71,7 @@ export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly iconService = inject(IconService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly configSearch = inject(ConfigSearchService);
 
   // ── Inputs ─────────────────
 
@@ -180,12 +181,27 @@ export class RemoteConfigStepComponent {
 
   readonly basicFields = computed(() => this.getFieldsByAdvanced(false));
   readonly advancedFields = computed(() => this.getFieldsByAdvanced(true));
+  readonly advancedOptionsVisible = computed(
+    () => this.showAdvancedOptions() || !!this.searchQuery().trim()
+  );
 
   readonly providerReady = computed(() =>
     isProviderReady(this.remoteTypeValue(), this.providerField(), this.selectedProvider())
   );
 
-  readonly jsonExcludeKeys = ['name', 'type'];
+  readonly jsonExcludeKeys = computed(() => {
+    const providerName = this.providerField()?.Name;
+    const provider = this.selectedProvider();
+    return [
+      'name',
+      'type',
+      ...this.remoteFields()
+        .filter(
+          field => field.Name === providerName || !matchesProviderRule(field.Provider, provider)
+        )
+        .map(field => field.Name || field.FieldName),
+    ];
+  });
 
   readonly showObscureButton = computed(() => {
     const options = this.commandOptions();
@@ -357,7 +373,7 @@ export class RemoteConfigStepComponent {
       .filter(f => f.Name !== providerName)
       .filter(f => matchesProviderRule(f.Provider, currentProvider))
       .map(f => this.getFilteredField(f, currentProvider))
-      .filter(f => matchesConfigSearch(f, query));
+      .filter(f => this.configSearch.matches(f, query, this.remoteTypeValue()));
   }
 
   private clearProviderDependentFields(

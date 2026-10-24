@@ -35,23 +35,60 @@ export function stripCliPrefix(query: string): string {
   return q;
 }
 
-function normalizeRcloneKey(val: string | undefined | null): string {
-  return val ? val.toLowerCase().replace(/[- ]/g, '_') : '';
+function normalizeSearchText(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_\s]+/g, ' ')
+    .toLowerCase()
+    .trim();
 }
 
-export function matchesConfigSearch(field: RcConfigOption, query: string): boolean {
-  if (!query) return true;
+export function matchesConfigSearchText(
+  query: string,
+  values: readonly (string | null | undefined)[]
+): boolean {
+  const terms = normalizeSearchText(query).split(' ').filter(Boolean);
+  const texts = values.flatMap(value =>
+    value ? [value.toLowerCase(), normalizeSearchText(value)] : []
+  );
+  return terms.every(term => texts.some(text => text.includes(term)));
+}
+
+export function getConfigOptionFlags(field: RcConfigOption, provider?: string | null): string[] {
+  if (!field.Name || field.Name === 'mountType' || field.Name === 'type') return [];
+
+  const name = field.Name.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/_/g, '-')
+    .toLowerCase();
+  const prefix = provider?.trim().toLowerCase();
+  return [`--${prefix && !field.NoPrefix ? `${prefix}-` : ''}${name}`];
+}
+
+export interface ConfigSearchContext {
+  provider?: string | null;
+  keywords?: readonly string[];
+}
+
+export function matchesConfigSearch(
+  field: RcConfigOption,
+  query: string,
+  context: ConfigSearchContext = {}
+): boolean {
+  if (!query.trim()) return true;
 
   const q = stripCliPrefix(query);
-  const flexQ = normalizeRcloneKey(q);
+  const names = [field.Name, field.FieldName, ...getConfigOptionFlags(field, context.provider)];
 
-  return (
-    (field.Name?.toLowerCase() ?? '').includes(q) ||
-    (field.FieldName?.toLowerCase() ?? '').includes(q) ||
-    (field.Help?.toLowerCase() ?? '').includes(q) ||
-    normalizeRcloneKey(field.Name).includes(flexQ) ||
-    normalizeRcloneKey(field.FieldName).includes(flexQ)
-  );
+  // A CLI flag names one option; do not match its words scattered through help text.
+  if (query.trim().startsWith('-')) {
+    const normalized = normalizeSearchText(q);
+    return names.some(
+      name =>
+        name && (name.toLowerCase().includes(q) || normalizeSearchText(name).includes(normalized))
+    );
+  }
+
+  return matchesConfigSearchText(query, [...names, field.Help, ...(context.keywords ?? [])]);
 }
 
 export function groupBy<T, K extends PropertyKey>(

@@ -9,7 +9,96 @@ import {
   FormToConfigContext,
   retargetProfilesRemote,
 } from './profile-mapper.utils';
-import { resolveOptionExamples } from './remote-config.utils';
+import {
+  getConfigOptionFlags,
+  matchesConfigSearch,
+  matchesConfigSearchText,
+  resolveOptionExamples,
+} from './remote-config.utils';
+
+describe('configuration search', () => {
+  const shared = {
+    Name: 'shared_with_me',
+    FieldName: '',
+    Help: 'Only show files that are shared with me in Google Drive.',
+    Type: 'bool',
+    DefaultStr: 'false',
+  };
+
+  it.each([
+    'shared with me',
+    'shared_with_me',
+    'shared-with-me',
+    '--shared-with-me',
+    '--drive-shared-with-me',
+    '  --DRIVE-SHARED-WITH-ME  ',
+    'shared  with\tme',
+    'drive shared me',
+  ])('finds provider options using %s', query => {
+    expect(matchesConfigSearch(shared, query, { provider: 'drive' })).toBe(true);
+  });
+
+  it.each(['--s3-shared-with-me', '--drive-unrelated', '--drive-shared-with-me=true'])(
+    'does not confuse other flags with %s',
+    query => expect(matchesConfigSearch(shared, query, { provider: 'drive' })).toBe(false)
+  );
+
+  it('respects NoPrefix and does not match CLI references in help', () => {
+    const field = { ...shared, NoPrefix: true, Help: 'See --drive-shared-with-me.' };
+    expect(getConfigOptionFlags(field, 'drive')).toEqual(['--shared-with-me']);
+    expect(matchesConfigSearch(field, '--shared-with-me', { provider: 'drive' })).toBe(true);
+    expect(matchesConfigSearch(field, '--drive-shared-with-me', { provider: 'drive' })).toBe(false);
+  });
+
+  it.each([
+    'createEmptySrcDirs',
+    'createemptysrcdirs',
+    'create_empty_src_dirs',
+    '--create-empty-src-dirs',
+    'create empty src dirs',
+  ])('finds camelCase options using %s', query => {
+    expect(matchesConfigSearch({ ...shared, Name: 'createEmptySrcDirs', Help: '' }, query)).toBe(
+      true
+    );
+  });
+
+  it('uses FieldName, help and extra context without requiring adjacent words', () => {
+    expect(matchesConfigSearch(shared, 'general shared', { keywords: ['General'] })).toBe(true);
+    expect(matchesConfigSearch({ ...shared, FieldName: 'SharedWithMe' }, 'sharedwithme')).toBe(
+      true
+    );
+    expect(matchesConfigSearch(shared, 'only files')).toBe(true);
+    expect(matchesConfigSearch(shared, 'shared unrelated')).toBe(false);
+  });
+
+  it('handles empty queries and missing metadata', () => {
+    expect(matchesConfigSearch(shared, '')).toBe(true);
+    expect(matchesConfigSearch(shared, ' \t\n ')).toBe(true);
+    expect(matchesConfigSearch({ ...shared, Name: '', FieldName: '', Help: '' }, 'shared')).toBe(
+      false
+    );
+    expect(matchesConfigSearchText('anything', [null, undefined, ''])).toBe(false);
+    expect(matchesConfigSearchText('', [])).toBe(true);
+  });
+
+  it('requires every nonempty word and preserves special characters', () => {
+    expect(matchesConfigSearchText('unrelated  query', ['source', 'path'])).toBe(false);
+    expect(matchesConfigSearchText(' source \t path ', ['source', 'path'])).toBe(true);
+    expect(matchesConfigSearchText('source unrelated', ['source', 'path'])).toBe(false);
+    expect(matchesConfigSearchText('C++', ['C++ options'])).toBe(true);
+    expect(matchesConfigSearchText('C++', ['C options'])).toBe(false);
+  });
+
+  it('shares exactly the displayed flag spelling and omits internal selectors', () => {
+    expect(getConfigOptionFlags(shared, ' DRIVE ')).toEqual(['--drive-shared-with-me']);
+    expect(getConfigOptionFlags({ ...shared, Name: 'createEmptySrcDirs' })).toEqual([
+      '--create-empty-src-dirs',
+    ]);
+    for (const Name of ['', 'type', 'mountType']) {
+      expect(getConfigOptionFlags({ ...shared, Name }, 'drive')).toEqual([]);
+    }
+  });
+});
 
 describe('remote-config.utils', () => {
   let pathService: PathService;

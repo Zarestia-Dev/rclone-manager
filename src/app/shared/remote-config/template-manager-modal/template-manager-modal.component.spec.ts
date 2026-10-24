@@ -286,6 +286,32 @@ describe('TemplateManagerModalComponent', () => {
     expect(component.hasAnyMatchingSaveCategory()).toBe(false);
   });
 
+  it.each(['--dir-cache-time', 'dirCacheTime', 'dir  cache\ttime', 'vfs time'])(
+    'uses consistent key matching for %s in save and manage views',
+    query => {
+      component.mode.set('manage');
+      component.selectedTemplateId.set('tpl-1');
+      fixture.detectChanges();
+      component.keySearchQuery.set(query);
+      expect(
+        component
+          .saveCategories()
+          .find(c => c.category === 'vfs')
+          ?.entries.map(e => e.key)
+      ).toEqual(['dir_cache_time']);
+      expect(
+        component
+          .manageCategories()
+          .find(c => c.category === 'vfs')
+          ?.entries.map(e => e.key)
+      ).toEqual(['dir_cache_time']);
+      component.keySearchQuery.set('');
+      expect(component.settingEntries()).toHaveLength(1);
+      expect(component.selectedKeysCount()).toBe(1);
+      expect(component.isManageDirty()).toBe(false);
+    }
+  );
+
   it('should reactively compute manageCategories and display values', () => {
     component.mode.set('manage');
     component.selectedTemplateId.set('tpl-1');

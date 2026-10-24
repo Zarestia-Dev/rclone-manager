@@ -19,7 +19,7 @@ import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
@@ -46,6 +46,7 @@ import { ConfigFormSkeletonComponent } from 'src/app/shared/remote-config/config
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly configSearch = inject(ConfigSearchService);
 
   readonly form = input.required<FormGroup>();
   readonly flagType = input.required<FlagType>();
@@ -73,7 +74,7 @@ export class FlagConfigStepComponent {
   readonly dynamicFieldBindings = computed(() => {
     const query = this.searchQuery();
     const fields = query
-      ? this.dynamicFlagFields().filter(field => matchesConfigSearch(field, query))
+      ? this.dynamicFlagFields().filter(field => this.configSearch.matches(field, query))
       : this.dynamicFlagFields();
 
     return fields.map(field => ({

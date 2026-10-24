@@ -786,6 +786,48 @@ describe('RemoteConfigStateService', () => {
     );
     expect(service.remoteConfigForm.get('serveConfig.options.user')?.value).toBe('alice');
   });
+  it('keeps the advanced section navigable when a full provider flag matches', () => {
+    service.remoteForm.get('type')?.setValue('drive');
+    service.dynamicRemoteFields.set([
+      {
+        Name: 'shared_with_me',
+        FieldName: '',
+        Help: '',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+      },
+    ]);
+    expect(service.remoteEditVisibleSections().has('section-advanced')).toBe(false);
+    service.searchQuery.set('--drive-shared-with-me');
+    expect(service.hasAdvancedFields()).toBe(true);
+    expect(service.remoteEditVisibleSections().has('section-advanced')).toBe(true);
+    service.searchQuery.set('');
+    expect(service.remoteEditVisibleSections().has('section-advanced')).toBe(false);
+  });
+
+  it('does not show an advanced section for a different provider search match', () => {
+    service.remoteForm.get('type')?.setValue('s3');
+    service.dynamicRemoteFields.set([
+      {
+        ...field('provider'),
+        Examples: [
+          { Value: 'aws', Help: '' },
+          { Value: 'other', Help: '' },
+        ],
+      },
+      { ...field('aws_only'), Provider: 'aws', Advanced: true },
+      { ...field('other_only'), Provider: 'other', Advanced: true },
+    ]);
+    service.remoteForm.addControl('provider', new FormControl('aws'));
+    service.searchQuery.set('--s3-other-only');
+    expect(service.hasAdvancedFields()).toBe(false);
+    expect(service.remoteEditVisibleSections().has('section-advanced')).toBe(false);
+    service.remoteForm.get('provider')?.setValue('other');
+    expect(service.hasAdvancedFields()).toBe(true);
+    expect(service.remoteEditVisibleSections().has('section-advanced')).toBe(true);
+  });
+
   it('preserves saved credentials when their initial metadata request needs a retry', async () => {
     vi.mocked(TestBed.inject(RemoteFacadeService).getRemote).mockReturnValue({
       name: 'drive',

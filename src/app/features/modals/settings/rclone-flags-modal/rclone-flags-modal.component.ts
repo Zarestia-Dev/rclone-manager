@@ -16,17 +16,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { ReactiveFormsModule, FormGroup, FormBuilder, FormControl } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RcloneBackendOptionsService } from 'src/app/services/settings/rclone-backend-options.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
-import {
-  matchesConfigSearch,
-  stripCliPrefix,
-} from 'src/app/services/remote/utils/remote-config.utils';
+import { stripCliPrefix } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import {
   RcConfigOption,
   SharedProfileType,
@@ -222,6 +220,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private readonly uiStateService = inject(UiStateService);
   private readonly fb = inject(FormBuilder);
+  private readonly configSearch = inject(ConfigSearchService);
   readonly translate = inject(TranslateService);
 
   readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
@@ -297,10 +296,8 @@ export class RcloneFlagsModalComponent implements OnInit {
   );
 
   readonly globalSearchResults = computed<RCloneFlagsSearchResult[]>(() => {
-    const query = this.searchQuery().trim().toLowerCase();
+    const query = this.searchQuery().trim();
     if (!query) return [];
-
-    const cleanQuery = stripCliPrefix(query);
 
     const results: RCloneFlagsSearchResult[] = [];
     const options = this.groupedOptions();
@@ -308,11 +305,7 @@ export class RcloneFlagsModalComponent implements OnInit {
     for (const service in options) {
       for (const category in options[service]) {
         for (const option of options[service][category]) {
-          if (
-            matchesConfigSearch(option, query) ||
-            service.toLowerCase().includes(cleanQuery) ||
-            category.toLowerCase().includes(cleanQuery)
-          ) {
+          if (this.configSearch.matches(option, query, null, [service, category])) {
             results.push({ service, category, option });
           }
         }
@@ -351,10 +344,10 @@ export class RcloneFlagsModalComponent implements OnInit {
     if (page === 'home' || !category) return [];
 
     const options = this.groupedOptions()[page]?.[category] ?? [];
-    const query = this.searchQuery().trim().toLowerCase();
+    const query = this.searchQuery().trim();
     if (!query) return options;
 
-    return options.filter(opt => matchesConfigSearch(opt, query));
+    return options.filter(opt => this.configSearch.matches(opt, query, null, [page, category]));
   });
 
   readonly filteredOptionsCount = computed(() => this.virtualScrollData().length);
@@ -458,8 +451,8 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   private setupSearchSubscription(): void {
     this.search$
-      .pipe(debounceTime(200), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe(text => this.searchQuery.set(text.toLowerCase().trim()));
+      .pipe(debounceTime(200), takeUntilDestroyed())
+      .subscribe(text => this.searchQuery.set(text.trim()));
   }
 
   private setupVirtualScrollEffect(): void {
@@ -562,6 +555,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   // ── Search ─────────────────────────────────────────────────────────────────
 
   onSearchInput(searchText: string): void {
+    if (!searchText.trim()) this.searchQuery.set('');
     this.search$.next(searchText);
   }
 
@@ -578,7 +572,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   toggleSearchVisibility(): void {
     this.isSearchVisible.update(v => !v);
     if (!this.isSearchVisible()) {
-      this.search$.next('');
+      this.onSearchInput('');
     }
   }
 

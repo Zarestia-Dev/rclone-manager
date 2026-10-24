@@ -217,36 +217,35 @@
         }}</small>
       }
 
-      @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
+      @if (showJsonMode()) {
+        <app-json-editor
+          [formGroup]="rcloneOptionsForm"
+          [fieldDefs]="categoryOptions()"
+          [searchQuery]="searchQuery()"
+          [searchKeywords]="[currentPage(), currentCategory() || '']"
+          [keyPrefix]="editorKeyPrefix()"
+          [preferFieldName]="true"
+        />
+      } @else if (filteredOptionsCount() === 0 && hasSearchQuery()) {
         <div class="empty-state">
           <mat-icon svgIcon="search"></mat-icon>
           <span>{{ 'modals.rcloneFlags.search.emptySettings' | translate }}</span>
           <p>{{ 'modals.rcloneFlags.search.adjustTerms' | translate }}</p>
         </div>
       } @else {
-        @if (showJsonMode()) {
-          <app-json-editor
-            [formGroup]="rcloneOptionsForm"
-            [fieldDefs]="categoryOptions()"
-            [searchQuery]="searchQuery()"
-            [keyPrefix]="editorKeyPrefix()"
-            [preferFieldName]="true"
-          />
-        } @else {
-          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-            <form [formGroup]="rcloneOptionsForm">
-              @for (vm of virtualScrollOptionViewModels(); track trackByOption($index, vm.option)) {
-                <app-setting-control
-                  [id]="'setting-' + vm.option.Name"
-                  [option]="vm.option"
-                  [formControlName]="vm.uniqueKey"
-                  (valueCommit)="saveRCloneOption(vm.uniqueKey)"
-                  (valueChanged)="onOptionValueChanged(vm.uniqueKey, $event)"
-                ></app-setting-control>
-              }
-            </form>
-          </cdk-virtual-scroll-viewport>
-        }
+        <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+          <form [formGroup]="rcloneOptionsForm">
+            @for (vm of virtualScrollOptionViewModels(); track trackByOption($index, vm.option)) {
+              <app-setting-control
+                [id]="'setting-' + vm.option.Name"
+                [option]="vm.option"
+                [formControlName]="vm.uniqueKey"
+                (valueCommit)="saveRCloneOption(vm.uniqueKey)"
+                (valueChanged)="onOptionValueChanged(vm.uniqueKey, $event)"
+              ></app-setting-control>
+            }
+          </form>
+        </cdk-virtual-scroll-viewport>
       }
     </main>
   </div>

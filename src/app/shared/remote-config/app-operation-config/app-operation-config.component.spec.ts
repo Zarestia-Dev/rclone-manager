@@ -160,6 +160,35 @@ describe('OperationConfigComponent', () => {
     expect(form.get('cronExpression')?.value).toBeNull();
   });
 
+  it.each(['mount', 'serve', 'sync'] as const)(
+    'removes the empty path container for an unmatched %s search',
+    operationType => {
+      const { form } = setupComponent(operationType, 'drive', false, '/tmp/destination');
+      const original = form.getRawValue();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      fixture.componentRef.setInput('searchQuery', 'rdf');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).toBeNull();
+      fixture.componentRef.setInput('searchQuery', '');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      expect(form.getRawValue()).toEqual(original);
+    }
+  );
+
+  it.each(['source', 'destination'])(
+    'keeps the path container when only the %s section matches',
+    query => {
+      setupComponent('sync', 'drive', false);
+      fixture.componentRef.setInput('searchQuery', query);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.paths-container')).not.toBeNull();
+      expect(
+        fixture.nativeElement.querySelectorAll('.paths-container .section-header')
+      ).toHaveLength(1);
+    }
+  );
+
   describe('automation visibility', () => {
     it.each(['mount', 'serve', 'sync', 'bisync'] as const)(
       'should show autostart during initial %s setup',
@@ -232,6 +261,28 @@ describe('OperationConfigComponent', () => {
 
       expect(component.showAutoStart()).toBe(false);
       expect(component.showCronSection()).toBe(false);
+    });
+
+    it('ignores extra whitespace and requires all search words to match', () => {
+      setupComponent('sync', 'new-remote');
+      for (const query of ['unrelated  query', 'unrelated ', 'source nonexistent']) {
+        fixture.componentRef.setInput('searchQuery', query);
+        fixture.detectChanges();
+        expect(component.showSourcePath()).toBe(false);
+        expect(component.showDestPath()).toBe(false);
+        expect(component.showAutoStart()).toBe(false);
+        expect(component.showCronSection()).toBe(false);
+      }
+      fixture.componentRef.setInput('searchQuery', ' source \t path ');
+      fixture.detectChanges();
+      expect(component.showSourcePath()).toBe(true);
+      expect(component.showDestPath()).toBe(false);
+      fixture.componentRef.setInput('searchQuery', 'destination path');
+      fixture.detectChanges();
+      expect(component.showDestPath()).toBe(true);
+      fixture.componentRef.setInput('searchQuery', 'auto-start');
+      fixture.detectChanges();
+      expect(component.showAutoStart()).toBe(true);
     });
 
     it('should keep file watching disabled without a local source during initial sync setup', () => {

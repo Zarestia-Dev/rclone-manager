@@ -29,6 +29,7 @@ import {
 import {
   getConfigCategories,
   isProviderReady,
+  matchesProviderRule,
   resolveProviderField,
 } from './utils/config-metadata.utils';
 import { ConfigResourceState } from './utils/config-resource-state';
@@ -52,7 +53,7 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteFacadeService } from '../facade/remote-facade.service';
 import { mapFormToConfigProfile, mapConfigToFormProfile } from './utils/profile-mapper.utils';
-import { matchesConfigSearch } from './utils/remote-config.utils';
+import { ConfigSearchService } from './config-search.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { PathInspectionService } from '../infrastructure/platform/path-inspection.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -103,6 +104,7 @@ const JOB_TYPES: ReadonlySet<SharedProfileType> = new Set(SYNC_TYPES);
 @Injectable()
 export class RemoteConfigStateService {
   private readonly fb = inject(FormBuilder);
+  private readonly configSearch = inject(ConfigSearchService);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly mountManagementService = inject(MountManagementService);
@@ -321,10 +323,15 @@ export class RemoteConfigStateService {
   );
 
   readonly hasAdvancedFields = computed(() => {
-    const term = (this.searchQuery() ?? '').toLowerCase().trim();
+    const term = this.searchQuery().trim();
+    const provider = this.providerValue();
     return this.dynamicRemoteFields().some(f => {
-      if (!f.Advanced) return false;
-      return matchesConfigSearch(f, term);
+      if (
+        !f.Advanced ||
+        !matchesProviderRule(f.Provider, typeof provider === 'string' ? provider : undefined)
+      )
+        return false;
+      return this.configSearch.matches(f, term, this.remoteTypeSignal());
     });
   });
 
@@ -336,7 +343,11 @@ export class RemoteConfigStateService {
     const visible = new Set<string>();
     visible.add('section-general');
     if (this.providerField()) visible.add('section-auth');
-    if (this.showAdvancedOptions() && this.hasAdvancedFields() && this.isProviderReady()) {
+    if (
+      (this.showAdvancedOptions() || this.searchQuery().trim()) &&
+      this.hasAdvancedFields() &&
+      this.isProviderReady()
+    ) {
       visible.add('section-advanced');
     }
     return visible;

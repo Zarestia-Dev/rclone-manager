@@ -35,10 +35,8 @@ import {
 } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
-import {
-  matchesConfigSearch,
-  resolveOptionExamples,
-} from 'src/app/services/remote/utils/remote-config.utils';
+import { resolveOptionExamples } from 'src/app/services/remote/utils/remote-config.utils';
+import { ConfigSearchService } from 'src/app/services/remote/config-search.service';
 import {
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
@@ -281,6 +279,7 @@ export class JsonEditorComponent {
   readonly fieldDefs = input<RcConfigOption[]>([]);
   readonly provider = input<string | null>(null);
   readonly searchQuery = input('');
+  readonly searchKeywords = input<readonly string[]>([]);
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
   readonly preferFieldName = input(false);
@@ -309,6 +308,7 @@ export class JsonEditorComponent {
   });
 
   private readonly destroyRef = inject(DestroyRef);
+  private readonly configSearch = inject(ConfigSearchService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
@@ -442,27 +442,32 @@ export class JsonEditorComponent {
     return excluded;
   });
 
+  private readonly matchingFields = computed(() => {
+    const query = this.searchQuery().trim();
+    const prefix = this.keyPrefix();
+    const excluded = this.excludedSet();
+    return this.fieldDefs().filter(
+      field =>
+        !excluded.has(prefix + this.fieldKey(field)) &&
+        (!query || this.configSearch.matches(field, query, this.provider(), this.searchKeywords()))
+    );
+  });
+
   readonly chips = computed<ChipDef[]>(() => {
+    this.formValue();
     const type = this.flagType();
     const optionsGroup = hasOptionsGroup(type)
       ? (this.formGroup().get('options') as FormGroup)
       : this.formGroup();
     const value = optionsGroup ? (optionsGroup.getRawValue() as Record<string, unknown>) : {};
-    const defs = this.fieldDefs();
-    const query = this.searchQuery().trim().toLowerCase();
+    const defs = this.matchingFields();
     const prefix = this.keyPrefix();
     const explicit = this.explicitKeys();
-    const excluded = this.excludedSet();
 
     const isSafMount =
       type === 'mount' &&
       (value['mountType'] === 'saf' || String(value['mountPoint'] ?? '').startsWith('saf://'));
-    const baseDefs = defs.filter(f => {
-      const key = this.fieldKey(f);
-      if (isSafMount && key === 'mountPoint') return false;
-      return !excluded.has(prefix + key);
-    });
-    const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
+    const filteredDefs = isSafMount ? defs.filter(f => this.fieldKey(f) !== 'mountPoint') : defs;
 
     return filteredDefs.map(field => {
       const controlKey = prefix + this.fieldKey(field);

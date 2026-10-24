@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatIconRegistry } from '@angular/material/icon';
+import { By } from '@angular/platform-browser';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { RemoteProviderOverview } from '@app/types';
@@ -10,12 +11,15 @@ import { RemoteConfigStepComponent } from './remote-config-step.component';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 
 describe('RemoteConfigStepComponent field state', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [RemoteConfigStepComponent],
       providers: [
+        provideTranslateService(),
         {
           provide: RemoteManagementService,
           useValue: { isInteractiveRemote: (): boolean => false },
@@ -79,6 +83,43 @@ describe('RemoteConfigStepComponent field state', () => {
     expect(form.invalid).toBe(true);
   });
 
+  it('finds the displayed provider flag and reveals advanced matches only while searching', () => {
+    const fixture = TestBed.createComponent(RemoteConfigStepComponent);
+    fixture.componentRef.setInput(
+      'form',
+      new FormGroup({
+        type: new FormControl('drive'),
+        shared_with_me: new FormControl(false),
+      })
+    );
+    fixture.componentRef.setInput('remoteFields', [
+      {
+        Name: 'shared_with_me',
+        FieldName: '',
+        Help: 'Only show shared files.',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+      },
+    ]);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    expect(component.advancedOptionsVisible()).toBe(false);
+
+    fixture.componentRef.setInput('searchQuery', '--drive-shared-with-me');
+    fixture.detectChanges();
+    expect(component.advancedFields().map(f => f.Name)).toEqual(['shared_with_me']);
+    expect(component.advancedOptionsVisible()).toBe(true);
+    expect(component.showAdvancedOptions()).toBe(false);
+
+    fixture.componentRef.setInput('searchQuery', '');
+    fixture.detectChanges();
+    expect(component.advancedOptionsVisible()).toBe(false);
+    fixture.componentRef.setInput('showAdvancedOptions', true);
+    fixture.detectChanges();
+    expect(component.advancedOptionsVisible()).toBe(true);
+  });
+
   it('accepts an explicitly empty command-options input', () => {
     const fixture = TestBed.createComponent(RemoteConfigStepComponent);
     fixture.componentRef.setInput('form', new FormGroup({ type: new FormControl('drive') }));
@@ -140,8 +181,10 @@ describe('RemoteConfigStepComponent provider overview', () => {
   let fixture: ComponentFixture<RemoteConfigStepComponent>;
   let form: FormGroup;
   let element: HTMLElement;
+  const jsonMode = signal(false);
 
   beforeEach(() => {
+    jsonMode.set(false);
     TestBed.configureTestingModule({
       imports: [RemoteConfigStepComponent],
       providers: [
@@ -151,7 +194,11 @@ describe('RemoteConfigStepComponent provider overview', () => {
           useValue: { isInteractiveRemote: (): boolean => false },
         },
         { provide: IconService, useValue: { getIconName: (): string => 'cloud' } },
-        { provide: UiStateService, useValue: { showJsonMode: signal(false) } },
+        { provide: UiStateService, useValue: { showJsonMode: jsonMode } },
+        {
+          provide: AppSettingsService,
+          useValue: { selectSetting: (): Observable<{ value: boolean }> => of({ value: false }) },
+        },
         {
           provide: MatIconRegistry,
           useValue: {
@@ -160,7 +207,7 @@ describe('RemoteConfigStepComponent provider overview', () => {
           },
         },
       ],
-    });
+    }).overrideComponent(JsonEditorComponent, { set: { template: '', imports: [] } });
     TestBed.inject(TranslateService).setTranslation('en', {
       wizards: { remoteConfig: { providerOverview: { title: 'Provider features' } } },
     });
@@ -192,6 +239,116 @@ describe('RemoteConfigStepComponent provider overview', () => {
     if (!found) throw new Error(`Missing element: ${selector}`);
     return found;
   }
+
+  it('renders the searched advanced flag and restores its visibility after clearing search', () => {
+    form.addControl('shared_with_me', new FormControl(false));
+    fixture.componentRef.setInput('remoteFields', [
+      {
+        Name: 'shared_with_me',
+        FieldName: '',
+        Help: '',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+      },
+    ]);
+    fixture.detectChanges();
+    expect(element.querySelector('#section-advanced')).toBeNull();
+    fixture.componentRef.setInput('searchQuery', '--drive-shared-with-me');
+    fixture.detectChanges();
+    expect(requiredElement('#section-advanced code').textContent).toBe('--drive-shared-with-me');
+    fixture.componentRef.setInput('searchQuery', '');
+    fixture.detectChanges();
+    expect(element.querySelector('#section-advanced')).toBeNull();
+    expect(form.get('shared_with_me')?.value).toBe(false);
+  });
+
+  it('shows the shared empty state only for a completed search without matching remote fields', () => {
+    form.addControl('shared_with_me', new FormControl(false));
+    fixture.componentRef.setInput('remoteFields', [
+      {
+        Name: 'shared_with_me',
+        FieldName: '',
+        Help: '',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+      },
+    ]);
+    fixture.componentRef.setInput('searchQuery', 'rdf');
+    fixture.detectChanges();
+    expect(element.querySelector('.provider-fields .empty-state')?.textContent).toContain(
+      'shared.search.title'
+    );
+    expect(element.querySelector('.provider-fields .empty-state')?.textContent).toContain(
+      'shared.search.description'
+    );
+    fixture.componentRef.setInput('isLoading', true);
+    fixture.detectChanges();
+    expect(element.querySelector('.provider-fields .empty-state')).toBeNull();
+    fixture.componentRef.setInput('isLoading', false);
+    fixture.componentRef.setInput('searchQuery', '--drive-shared-with-me');
+    fixture.detectChanges();
+    expect(element.querySelector('.provider-fields .empty-state')).toBeNull();
+    expect(element.querySelector('#section-advanced app-setting-control')).not.toBeNull();
+    fixture.componentRef.setInput('searchQuery', '  ');
+    fixture.detectChanges();
+    expect(element.querySelector('.provider-fields .empty-state')).toBeNull();
+    expect(form.get('shared_with_me')?.value).toBe(false);
+  });
+
+  it('uses the same provider scope for form results and JSON chips', () => {
+    form.get('type')?.setValue('s3');
+    form.addControl('provider', new FormControl('aws'));
+    form.addControl('aws_only', new FormControl(true));
+    form.addControl('other_only', new FormControl(false));
+    fixture.componentRef.setInput('remoteFields', [
+      {
+        Name: 'provider',
+        FieldName: '',
+        Help: '',
+        Type: 'string',
+        DefaultStr: '',
+        Examples: [{ Value: 'aws' }, { Value: 'other' }],
+      },
+      {
+        Name: 'aws_only',
+        FieldName: '',
+        Help: '',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+        Provider: 'aws',
+      },
+      {
+        Name: 'other_only',
+        FieldName: '',
+        Help: '',
+        Type: 'bool',
+        DefaultStr: 'false',
+        Advanced: true,
+        Provider: 'other',
+      },
+    ]);
+    fixture.componentRef.setInput('searchQuery', '--s3-other-only');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.advancedFields()).toEqual([]);
+    jsonMode.set(true);
+    fixture.detectChanges();
+    const editor = fixture.debugElement.query(By.directive(JsonEditorComponent))
+      .componentInstance as JsonEditorComponent;
+    expect(editor.chips()).toEqual([]);
+    fixture.componentRef.setInput('searchQuery', '--s3-aws-only');
+    fixture.detectChanges();
+    expect(editor.chips().map(chip => chip.displayKey)).toEqual(['aws_only']);
+    expect(form.getRawValue()).toMatchObject({ aws_only: true, other_only: false });
+    form.get('provider')?.setValue('other');
+    fixture.detectChanges();
+    expect(editor.chips()).toEqual([]);
+    fixture.componentRef.setInput('searchQuery', '--s3-other-only');
+    fixture.detectChanges();
+    expect(editor.chips().map(chip => chip.displayKey)).toEqual(['other_only']);
+  });
 
   it('opens a collapsed panel from the header without submitting the form', () => {
     setOverview({ Tier: 'Tier 1', Hashes: ['md5', 'sha1'], Features: ['Copy', 'PublicLink'] });

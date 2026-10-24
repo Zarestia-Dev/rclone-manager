@@ -156,7 +156,7 @@
       @let showAdvOpts = showAdvancedOptions();
       @let showJson = showJsonMode();
 
-      @let showAdv = (showAdvOpts || showJson) && advLen > 0;
+      @let showAdv = (advancedOptionsVisible() || showJson) && advLen > 0;
 
       <div class="fields-mode-header anim-fade">
         <div class="fields-count">
@@ -328,8 +328,16 @@
             [fieldDefs]="remoteFields()"
             [provider]="remoteType"
             [searchQuery]="searchQuery()"
-            [excludeKeys]="jsonExcludeKeys"
+            [excludeKeys]="jsonExcludeKeys()"
           />
+        </div>
+      } @else if (
+        searchQuery().trim() && !isLoading() && !basicFields().length && !advancedFields().length
+      ) {
+        <div class="empty-state">
+          <mat-icon svgIcon="search" />
+          <span>{{ 'shared.search.title' | translate }}</span>
+          <p>{{ 'shared.search.description' | translate }}</p>
         </div>
       } @else {
         @for (item of basicFields(); track item.Name; let i = $index) {
@@ -344,7 +352,7 @@
           ></app-setting-control>
         }
 
-        @if (showAdvancedOptions() && advancedFields().length > 0) {
+        @if (advancedOptionsVisible() && advancedFields().length > 0) {
           <div class="advanced-section anim-panel" id="section-advanced">
             <h3 class="section-heading">
               {{ 'wizards.remoteConfig.advancedOptions' | translate }}
