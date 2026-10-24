@@ -6,14 +6,7 @@ import { PathService } from '../infrastructure/platform/path.service';
 import { QuickRunService } from '../flow/quick-run.service';
 import { WorkflowStorageService } from '../flow/workflow-storage.service';
 import { WorkflowStateService } from '../flow/workflow-state.service';
-import {
-  JobInfo,
-  Remote,
-  ServeListItem,
-  Automation,
-  QuickRun,
-  DEFAULT_JOB_STATS,
-} from '@app/types';
+import { Remote, ServeListItem, Automation, QuickRun } from '@app/types';
 import { WorkflowDefinition } from '../../flow/workflow/types/workflow.types';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
 
@@ -105,88 +98,38 @@ describe('NavigationDispatcherService', () => {
     expect(service).toBeTruthy();
   });
 
-  describe('navigateToJob', () => {
-    it('should navigate to flow when origin is quickrun', (): void => {
-      const job: JobInfo = {
-        jobid: 1,
-        execute_id: 'exec-1',
-        job_type: 'sync',
-        source: '/local',
-        destination: 'test-remote:/backup',
-        start_time: '2026-01-01',
-        status: 'Running',
-        remote_name: 'test-remote',
-        stats: DEFAULT_JOB_STATS,
-        origin: 'quickrun',
-        profile: 'qr-1',
-      };
-
-      service.navigateToJob(job);
-
-      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
-      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('quick_run');
-      expect(mockQuickRunService.select).toHaveBeenCalledWith('qr-1');
-    });
-
-    it('should navigate to flow and load workflow when job origin is flow', (): void => {
-      const job: JobInfo = {
-        jobid: 3,
-        execute_id: 'exec-3',
-        job_type: 'sync',
-        source: '/local',
-        destination: 'test-remote:/backup',
-        start_time: '2026-01-01',
-        status: 'Running',
-        remote_name: 'Workflow',
-        stats: DEFAULT_JOB_STATS,
-        origin: 'flow',
-        profile: 'wf-1',
-      };
-
-      service.navigateToJob(job);
-
+  describe('navigateToWorkflow', () => {
+    it.each([
+      { id: 'wf-1', name: undefined },
+      { id: undefined, name: 'Nightly Sync' },
+    ])('loads a workflow by ID or name: $id / $name', ({ id, name }) => {
+      service.navigateToWorkflow(id, name);
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
       expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
       expect(mockWorkflowStateService.loadWorkflow).toHaveBeenCalledWith(mockWorkflow);
     });
 
-    it('should navigate to operations tab for standard job', (): void => {
-      const job: JobInfo = {
-        jobid: 1,
-        execute_id: 'exec-1',
-        job_type: 'sync',
-        source: '/local',
-        destination: 'test-remote:/backup',
-        start_time: '2026-01-01',
-        status: 'Running',
-        remote_name: 'test-remote',
-        stats: DEFAULT_JOB_STATS,
-        origin: 'dashboard',
-      };
+    it('opens the builder without replacing the canvas when no workflow matches', () => {
+      service.navigateToWorkflow('missing');
+      expect(mockUiStateService.setMainView).toHaveBeenCalledWith('flow');
+      expect(mockUiStateService.setFlowSubMode).toHaveBeenCalledWith('builder');
+      expect(mockWorkflowStateService.loadWorkflow).not.toHaveBeenCalled();
+    });
+  });
 
-      service.navigateToJob(job);
-
+  describe('navigateToRemote', () => {
+    it.each(['operations', 'mount', 'serve'] as const)('selects the %s tab', tab => {
+      service.navigateToRemote(mockRemote.name, tab);
       expect(mockUiStateService.setMainView).toHaveBeenCalledWith('main_menu');
-      expect(mockUiStateService.setTab).toHaveBeenCalledWith('operations');
+      expect(mockUiStateService.setTab).toHaveBeenCalledWith(tab);
       expect(mockUiStateService.setSelectedRemote).toHaveBeenCalledWith(mockRemote);
     });
 
-    it('should navigate to mount tab for mount job', (): void => {
-      const job: JobInfo = {
-        jobid: 2,
-        execute_id: 'exec-2',
-        job_type: 'mount',
-        source: 'test-remote:',
-        destination: '/mnt/test',
-        start_time: '2026-01-01',
-        status: 'Running',
-        remote_name: 'test-remote',
-        stats: DEFAULT_JOB_STATS,
-      };
-
-      service.navigateToJob(job);
-
-      expect(mockUiStateService.setTab).toHaveBeenCalledWith('mount');
+    it.each(['', 'missing'])('keeps the current view when remote %s is unavailable', name => {
+      service.navigateToRemote(name);
+      expect(mockUiStateService.setMainView).not.toHaveBeenCalled();
+      expect(mockUiStateService.setTab).not.toHaveBeenCalled();
+      expect(mockUiStateService.setSelectedRemote).not.toHaveBeenCalled();
     });
   });
 

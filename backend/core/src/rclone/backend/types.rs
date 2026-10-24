@@ -662,7 +662,6 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(error, BackendError::NotConnected(_)));
-        assert!(error.is_transport_failure());
     }
 
     #[test]

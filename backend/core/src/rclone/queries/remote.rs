@@ -3,13 +3,8 @@ use std::collections::HashMap;
 use crate::context::AppHandle;
 use serde_json::Value;
 
-use crate::rclone::backend::{BackendManager, routing_transport::RoutingTransport, types::Backend};
+use crate::rclone::backend::{routing_transport::RoutingTransport, types::Backend};
 use crate::rclone::endpoints::config;
-
-pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    get_all_remote_configs_for_backend(app, &backend).await
-}
 
 pub async fn get_all_remote_configs_for_backend(
     app: AppHandle,
@@ -34,39 +29,4 @@ pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Valu
         serde_json::from_value(json).map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(providers)
-}
-
-/// Fetch only OAuth-supported remotes
-pub async fn get_oauth_supported_remotes(
-    app: AppHandle,
-) -> Result<HashMap<String, Vec<Value>>, String> {
-    let providers = get_remote_types(app).await?;
-
-    // Extract all OAuth-supported remotes with their full information
-    let mut oauth_remotes = HashMap::new();
-
-    for (provider_type, remotes) in providers {
-        let supported_remotes: Vec<Value> = remotes
-            .into_iter()
-            .filter(|remote| {
-                remote
-                    .get("Options")
-                    .and_then(|options| options.as_array())
-                    .is_some_and(|opts| {
-                        opts.iter().any(|opt| {
-                            opt.get("Name").and_then(|n| n.as_str()) == Some("token")
-                                && opt.get("Help").and_then(|h| h.as_str()).is_some_and(|h| {
-                                    h.contains("OAuth Access Token as a JSON blob")
-                                })
-                        })
-                    })
-            })
-            .collect();
-
-        if !supported_remotes.is_empty() {
-            oauth_remotes.insert(provider_type, supported_remotes);
-        }
-    }
-
-    Ok(oauth_remotes)
 }

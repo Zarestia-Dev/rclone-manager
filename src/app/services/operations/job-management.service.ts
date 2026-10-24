@@ -154,13 +154,6 @@ export class JobManagementService extends TauriBaseService {
       : this._jobs().find(job => job.jobid === jobid && belongsToBackend(job));
   }
 
-  getActiveJobForWorkflowNode(workflowId: string, nodeId: string): JobInfo | null {
-    return findLatestJob(
-      this.activeJobs(),
-      job => job.parent_job_id == null && job.workflow_id === workflowId && job.node_id === nodeId
-    );
-  }
-
   getLatestJobForWorkflowNode(
     workflowId: string,
     nodeId: string,

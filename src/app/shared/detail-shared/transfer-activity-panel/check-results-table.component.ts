@@ -9,7 +9,6 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { TransferOperationsService } from './transfer-operations.service';
 import { BaseTransfersTableComponent } from './base-transfers-table.component';
-import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import {
   ActivityRow,
   activityBadge,
@@ -29,7 +28,6 @@ import {
     MatButtonModule,
     TranslatePipe,
     CopyToClipboardDirective,
-    AlertBannerComponent,
   ],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
@@ -40,7 +38,7 @@ import {
               <div class="card-info-left">
                 <mat-icon
                   svgIcon="file"
-                  class="card-primary-icon file-icon"
+                  class="card-primary-icon"
                   [attr.title]="item.name"
                 ></mat-icon>
                 <span
@@ -50,7 +48,7 @@ import {
                   >{{ item.name }}</span
                 >
               </div>
-              <div class="card-info-right actions-group">
+              <div class="card-info-right">
                 <span class="app-pill" [class]="item.badge.cssClass">
                   <mat-icon [svgIcon]="item.badge.icon"></mat-icon>
                   {{ item.badge.text | translate }}
@@ -86,19 +84,23 @@ import {
             }
             @if (item.relativeTime) {
               <div class="card-footer">
-                <span class="time-text">{{ item.relativeTime }}</span>
+                <span>{{ item.relativeTime }}</span>
               </div>
             }
             @if (item.displayError) {
-              <app-alert-banner
-                class="compact"
-                severity="error"
-                [description]="item.displayError"
-                [appCopyToClipboard]="item.displayError"
-                [attr.title]="'common.copy' | translate"
-                tabindex="0"
-                role="button"
-              />
+              <div class="error-entry">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                <span>{{ item.displayError }}</span>
+                <button
+                  type="button"
+                  class="action-button"
+                  [appCopyToClipboard]="item.displayError"
+                  [attr.title]="'common.copy' | translate"
+                  [attr.aria-label]="'common.copy' | translate"
+                >
+                  <mat-icon svgIcon="copy" aria-hidden="true"></mat-icon>
+                </button>
+              </div>
             }
           </div>
         }

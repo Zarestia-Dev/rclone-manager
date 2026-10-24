@@ -147,13 +147,13 @@
         </div>
 
         <!-- Template Quick-Pick -->
-        @if (presetTemplates().length > 0) {
+        @if (storageService.presetTemplates().length > 0) {
           <div class="workflow-empty-state-section">
             <span class="workflow-empty-state-section-label">
               {{ 'flow.workflow.toolbar.presets' | translate }}
             </span>
             <div class="workflow-empty-state-pill-group">
-              @for (tpl of presetTemplates(); track tpl.id) {
+              @for (tpl of storageService.presetTemplates(); track tpl.id) {
                 <button
                   type="button"
                   class="app-pill interactive {{ getTemplatePillClass(tpl.category) }}"

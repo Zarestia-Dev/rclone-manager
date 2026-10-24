@@ -122,21 +122,13 @@ describe('SystemHealthService', () => {
     expect(service.skipMountPluginCheck()).toBe(false);
   });
 
-  it('should compute problems including mount-plugin-missing only when not skipped', () => {
-    service.rcloneInstalled.set(true);
-    service.mountPluginInstalled.set(false);
+  it('requires a password only for an encrypted config that is still locked', () => {
     service.configEncrypted.set(false);
+    expect(service.passwordRequired()).toBe(false);
+    service.configEncrypted.set(true);
+    expect(service.passwordRequired()).toBe(true);
     service.markPasswordUnlocked();
-
-    // Not skipped
-    service.setSkipMountPluginCheck(false);
-    expect(service.problems()).toContain('mount-plugin-missing');
-    expect(service.hasProblems()).toBe(true);
-
-    // Skipped
-    service.setSkipMountPluginCheck(true);
-    expect(service.problems()).not.toContain('mount-plugin-missing');
-    expect(service.hasProblems()).toBe(false);
+    expect(service.passwordRequired()).toBe(false);
   });
 
   it('should treat isInitialized as true when mount plugin is skipped even if mountPluginInstalled is null', () => {

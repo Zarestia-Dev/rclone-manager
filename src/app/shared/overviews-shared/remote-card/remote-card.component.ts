@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { NgClass, TitleCasePipe } from '@angular/common';
 import { Component, computed, input, inject, output, ChangeDetectionStrategy } from '@angular/core';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
@@ -189,7 +190,7 @@ export class RemoteCardComponent {
             operation: op,
             profile,
             path,
-            shortName: this.pathService.getFilename(path) || '/',
+            shortName: pathUtils.getFilename(path) || '/',
             isOpening: this.isFolderOpeningFor(op, profile),
             isLocal: local,
             icon: local ? 'folder' : 'folder-open',

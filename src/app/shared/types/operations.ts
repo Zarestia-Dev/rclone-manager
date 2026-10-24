@@ -6,9 +6,6 @@ export type OperationDefinitionItem = (typeof OPERATION_REGISTRY)[number];
 export type SyncOperationType = Extract<OperationDefinitionItem, { isSyncType: true }>['key'];
 export type PrimaryActionType = Extract<OperationDefinitionItem, { isPrimary: true }>['key'];
 
-// ── Job-level types ─────────────────────────────────────────────────────────
-export type JobType = Extract<OperationDefinitionItem, { isJobType: true }>['key'];
-
 export type RemoteAction = PrimaryActionType | 'unmount' | 'stop' | 'open' | null;
 
 export type FileOperationType =
@@ -42,8 +39,6 @@ export interface ActionState {
   profileName?: string;
   operationType?: PrimaryActionType;
 }
-
-export type RemoteActionProgress = Record<string, ActionState[]>;
 
 /**
  * Checks if a given action state array has an in-flight operation matching `opType` and optional `profileName`.

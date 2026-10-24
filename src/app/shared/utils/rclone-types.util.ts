@@ -16,26 +16,14 @@ const JSON_ARRAY_TYPES: ReadonlySet<string> = new Set([
   'List',
   '[]int',
   '[]bool',
+  'CommaSepList',
+  'SpaceSepList',
 ]);
 
 /** Rclone option types that serialize as comma-delimited strings (e.g. "a,b,c"). */
-const COMMA_ARRAY_TYPES: ReadonlySet<string> = new Set([
-  'CommaSepList',
-  'Bits',
-  'Encoding',
-  'DumpFlags',
-]);
+const COMMA_ARRAY_TYPES: ReadonlySet<string> = new Set(['Bits', 'Encoding', 'DumpFlags']);
 
-/** Rclone option types that serialize as space-delimited strings (e.g. "a b c"). */
-const SPACE_ARRAY_TYPES: ReadonlySet<string> = new Set(['SpaceSepList']);
-
-/** All delimited-array types (both comma- and space-separated). */
-const DELIMITED_ARRAY_TYPES: ReadonlySet<string> = new Set([
-  ...COMMA_ARRAY_TYPES,
-  ...SPACE_ARRAY_TYPES,
-]);
-
-const ARRAY_TYPES: ReadonlySet<string> = new Set([...JSON_ARRAY_TYPES, ...DELIMITED_ARRAY_TYPES]);
+const ARRAY_TYPES: ReadonlySet<string> = new Set([...JSON_ARRAY_TYPES, ...COMMA_ARRAY_TYPES]);
 
 const CONVERTIBLE_TYPES: ReadonlySet<string> = new Set([
   'Duration',
@@ -53,11 +41,6 @@ export function isFloatType(type: string): boolean {
 }
 
 export function isArrayType(type: string): boolean {
-  return ARRAY_TYPES.has(type);
-}
-
-/** Alias kept for read-site clarity — same test as {@link isArrayType}. */
-export function isMultiselectType(type: string): boolean {
   return ARRAY_TYPES.has(type);
 }
 

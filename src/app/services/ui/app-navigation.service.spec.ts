@@ -69,13 +69,13 @@ describe('AppNavigationService', () => {
         },
         {
           provide: FlowOverlayService,
-          useValue: { closeFlowOverlay: vi.fn(), openFlowOverlay: vi.fn(() => view.set('flow')) },
+          useValue: { closeOverlay: vi.fn(), openOverlay: vi.fn(() => view.set('flow')) },
         },
         {
           provide: MainUiOverlayService,
           useValue: {
-            closeMainUiOverlay: vi.fn(),
-            openMainUiOverlay: vi.fn(() => view.set('main_menu')),
+            closeOverlay: vi.fn(),
+            openOverlay: vi.fn(() => view.set('main_menu')),
           },
         },
         {

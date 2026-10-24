@@ -2,7 +2,6 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { describe, it, expect } from 'vitest';
 import {
   remoteNameValidator,
-  passwordValidator,
   passwordMatchValidator,
   uniqueNameValidator,
   forbiddenCharsValidator,
@@ -31,19 +30,6 @@ describe('entity.validators', () => {
       const validator = remoteNameValidator([]);
       expect(validator(new FormControl('-invalid'))).not.toBeNull();
       expect(validator(new FormControl('invalid '))?.['invalidEnd']).toBeDefined();
-    });
-  });
-
-  describe('passwordValidator', () => {
-    it('should accept valid password', () => {
-      const validator = passwordValidator();
-      expect(validator(new FormControl('secret123'))).toBeNull();
-    });
-
-    it('should reject short passwords and invalid quotes', () => {
-      const validator = passwordValidator();
-      expect(validator(new FormControl('ab'))).not.toBeNull();
-      expect(validator(new FormControl('pass"word'))).not.toBeNull();
     });
   });
 

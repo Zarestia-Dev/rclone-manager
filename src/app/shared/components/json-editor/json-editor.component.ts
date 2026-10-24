@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -47,6 +48,8 @@ import { PathService } from '../../../services/infrastructure/platform/path.serv
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
+import { CodeEditorToolbarComponent } from '../code-editor-toolbar/code-editor-toolbar.component';
+import { codeEditorExtensions } from '../code-editor-toolbar/code-editor.extensions';
 import {
   EditorView,
   keymap,
@@ -260,6 +263,7 @@ function buildRcloneCompletionSource(
 @Component({
   selector: 'app-json-editor',
   imports: [
+    CodeEditorToolbarComponent,
     MatIconModule,
     MatDividerModule,
     CdkMenuModule,
@@ -330,6 +334,7 @@ export class JsonEditorComponent {
   readonly menuTrigger = viewChild<CdkMenuTrigger>(CdkMenuTrigger);
 
   private editorView: EditorView | null = null;
+  readonly codeEditor = signal<EditorView | null>(null);
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private isPushingToEditor = false;
   private readonly explicitKeys = signal<ReadonlySet<string>>(new Set());
@@ -668,7 +673,7 @@ export class JsonEditorComponent {
       rcloneLinter,
       exampleWidgetsExtension,
       autocompletion({ override: [completionSource] }),
-      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
+      codeEditorExtensions(this.translateService),
       EditorView.updateListener.of(update => {
         if (update.docChanged && this.activeExampleMenu()) {
           this.closeExampleMenu();
@@ -684,6 +689,7 @@ export class JsonEditorComponent {
       state: EditorState.create({ doc: this.serializeForm(), extensions }),
       parent: container.nativeElement,
     });
+    this.codeEditor.set(this.editorView);
   }
 
   private createExampleWidgetsExtension(): Extension {
@@ -1200,11 +1206,11 @@ export class JsonEditorComponent {
           if (raw['source']) {
             const srcPaths = Array.isArray(raw['source'])
               ? (raw['source'] as unknown[])
-                  .map(s => this.pathService.buildPathString(s as PathGroup, currentRemote))
+                  .map(s => pathUtils.buildPathString(s as PathGroup, currentRemote))
                   .filter(Boolean)
-              : [
-                  this.pathService.buildPathString(raw['source'] as PathGroup, currentRemote),
-                ].filter(Boolean);
+              : [pathUtils.buildPathString(raw['source'] as PathGroup, currentRemote)].filter(
+                  Boolean
+                );
 
             rclone[mapping.sourceKey] = mapping.isSourceArray
               ? srcPaths.length > 1
@@ -1215,10 +1221,7 @@ export class JsonEditorComponent {
 
           // 2. Map destination paths to dstFs / path2 / mountPoint
           if (mapping.destKey && raw['dest']) {
-            const dstPath = this.pathService.buildPathString(
-              raw['dest'] as PathGroup,
-              currentRemote
-            );
+            const dstPath = pathUtils.buildPathString(raw['dest'] as PathGroup, currentRemote);
             rclone[mapping.destKey] = dstPath;
           }
         }

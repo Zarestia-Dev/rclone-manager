@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Injectable, inject, signal, effect } from '@angular/core';
 import { outputToObservable } from '@angular/core/rxjs-interop';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
@@ -36,16 +37,12 @@ export class FileViewerService extends TauriBaseService {
     const overlayRef = this.overlayRef;
     this.overlayRef = null;
     overlayRef?.dispose();
-    this._isViewerOpen.set(false);
     this._activeFileName.set(null);
     releaseHistory?.();
   }
 
   private readonly overlay = inject(Overlay);
   private readonly pathService = inject(PathService);
-
-  private readonly _isViewerOpen = signal<boolean>(false);
-  public readonly isViewerOpen = this._isViewerOpen.asReadonly();
 
   private readonly _activeFileName = signal<string | null>(null);
   public readonly activeFileName = this._activeFileName.asReadonly();
@@ -118,7 +115,6 @@ export class FileViewerService extends TauriBaseService {
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
     });
     this.overlayRef = overlayRef;
-    this._isViewerOpen.set(true);
     // Register before the lazy import so Back also closes a viewer still loading.
     this.releaseHistory = this.navigationHistory.openLayer(() => this.close());
 
@@ -144,7 +140,7 @@ export class FileViewerService extends TauriBaseService {
     const path = item.Path;
 
     if (isLocal) {
-      const fullPath = this.pathService.joinPath(remoteName, path);
+      const fullPath = pathUtils.joinPath(remoteName, path);
 
       if (!this.isTauri) {
         const encodedPath = encodeURIComponent(fullPath);
@@ -177,9 +173,9 @@ export class FileViewerService extends TauriBaseService {
     if (/^(?:[a-z]+:|\/|#)/i.test(relativePath)) return relativePath;
 
     try {
-      const fileDir = this.pathService.getDirname(baseItem.Path);
-      const combined = this.pathService.joinPath(fileDir, relativePath);
-      const normalizedPath = this.pathService.normalizePath(combined);
+      const fileDir = pathUtils.getDirname(baseItem.Path);
+      const combined = pathUtils.joinPath(fileDir, relativePath);
+      const normalizedPath = pathUtils.normalizePath(combined);
 
       return this.generateUrlFromPath(normalizedPath, remoteName, isLocal);
     } catch (e) {
@@ -194,7 +190,7 @@ export class FileViewerService extends TauriBaseService {
     isLocal: boolean
   ): Promise<string> {
     if (isLocal) {
-      const fullPath = this.pathService.joinPath(remoteName, path);
+      const fullPath = pathUtils.joinPath(remoteName, path);
 
       if (!this.isTauri) {
         const encodedPath = encodeURIComponent(fullPath);

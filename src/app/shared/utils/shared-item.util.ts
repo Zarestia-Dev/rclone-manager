@@ -171,15 +171,3 @@ export function getShareInfo(
 
   return NOT_SHARED;
 }
-
-/**
- * Quick boolean check if an item is a shortcut or shared item.
- */
-export function isSharedOrShortcut(
-  itemOrEntry?: FileBrowserItem | Entry | null,
-  remoteType?: string | null,
-  remoteName?: string | null
-): boolean {
-  const info = getShareInfo(itemOrEntry, remoteType, remoteName);
-  return info.isShared || info.isShortcut;
-}

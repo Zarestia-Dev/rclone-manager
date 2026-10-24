@@ -6,6 +6,7 @@ use tokio::try_join;
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::backend::RcloneTransport;
+use crate::rclone::backend::routing_transport::RoutingTransport;
 use crate::rclone::endpoints::options;
 
 // ---------------------------------------------------------------------------
@@ -215,13 +216,14 @@ fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
 
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    let transport = crate::rclone::commands::common::transport(&app);
-    let active_name = backend_manager.get_active().await.name.clone();
+    let backend = backend_manager.get_active().await;
 
-    if let Some(payload) = backend_manager.options_cache.get(&active_name).await {
+    if let Some(payload) = backend_manager.options_cache.get(&backend.name).await {
         return Ok(payload);
     }
 
+    let active_name = backend.name.clone();
+    let transport = RoutingTransport::for_backend(app, backend);
     let (mut options_info, current_options) = try_join!(
         fetch_options(&transport, options::INFO),
         fetch_options(&transport, options::GET),
@@ -241,11 +243,6 @@ pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, St
     get_all_options_with_values(app)
         .await
         .map(|data| group_options(&data))
-}
-
-pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
-    let transport = crate::rclone::commands::common::transport(&app);
-    fetch_options(&transport, options::BLOCKS).await
 }
 
 fn get_flags_by_category_internal(

@@ -271,7 +271,7 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
 
     // Step 1: probe the API *before* touching any process. This is what lets
     // us connect to an existing rcd instead of always respawning.
-    let health = engine.probe_api_health(app).await;
+    let health = RcApiEngine::check_api_health_with_status(app).await;
     match health {
         HealthStatus::Healthy => {
             debug!("API is already healthy, skipping restart");
@@ -324,7 +324,7 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     if matches!(health, HealthStatus::AuthRequired) {
-        match engine.probe_api_health(app).await {
+        match RcApiEngine::check_api_health_with_status(app).await {
             HealthStatus::AuthRequired => {
                 let msg = format!(
                     "Port {} is still occupied by an rclone process we couldn't stop \

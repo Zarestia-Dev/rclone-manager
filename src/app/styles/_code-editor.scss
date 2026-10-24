@@ -1,0 +1,257 @@
+// Shared by file previews, configuration JSON, and preset templates.
+.code-mirror {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--view-bg-color);
+  font-family: var(--font-mono);
+
+  .cm-editor {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    color: var(--window-fg-color);
+    background: var(--view-bg-color);
+
+    &.cm-focused {
+      outline: none;
+    }
+
+    .cm-scroller {
+      overflow: auto;
+      font-family: var(--font-mono);
+      line-height: 1.6;
+    }
+
+    .cm-content {
+      padding-block: var(--space-sm);
+      caret-color: var(--accent-color);
+      user-select: text;
+    }
+
+    .cm-line {
+      padding-inline: var(--space-sm);
+    }
+
+    .cm-cursor {
+      border-left-color: var(--accent-color);
+    }
+
+    .cm-gutters {
+      color: var(--dim-color);
+      background: var(--bg-elevated-1);
+      border-right: thin solid var(--border-color);
+    }
+
+    &.cm-hide-line-numbers :is(.cm-lineNumbers, .cm-foldGutter) {
+      // CodeMirror sets .cm-gutter to display: flex !important.
+      display: none !important;
+    }
+
+    .cm-activeLine,
+    .cm-activeLineGutter {
+      background: var(--bg-elevated-2);
+    }
+
+    .cm-activeLineGutter {
+      color: var(--window-fg-color);
+    }
+
+    .cm-selectionBackground,
+    &.cm-focused .cm-selectionBackground,
+    .cm-content ::selection {
+      background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+    }
+
+    .cm-searchMatch {
+      background: color-mix(in srgb, var(--yellow) 20%, transparent);
+      outline: thin solid color-mix(in srgb, var(--yellow) 60%, transparent);
+      border-radius: var(--radius-xxs);
+    }
+
+    .cm-searchMatch-selected {
+      background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+      outline: var(--space-xxs) solid var(--accent-color);
+    }
+
+    .cm-matchingBracket {
+      background: var(--selected-bg-color);
+      outline: thin solid var(--accent-color);
+    }
+
+    .cm-panels {
+      color: var(--window-fg-color);
+      background: var(--view-bg-color);
+      font-family: system-ui, sans-serif;
+      font-size: var(--font-size-md);
+    }
+
+    .cm-panels-top {
+      border-bottom: thin solid var(--border-color);
+    }
+
+    .cm-panel.cm-search {
+      position: static;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      padding: var(--space-sm);
+
+      .cm-search-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-xs);
+        min-width: 0;
+      }
+
+      .action-button {
+        position: static;
+        flex-shrink: 0;
+        font-size: var(--font-size-xl);
+        color: var(--window-fg-color);
+        background: var(--bg-elevated-2);
+      }
+
+      .app-pill {
+        min-height: var(--icon-size-lg);
+      }
+
+      details {
+        min-width: 0;
+
+        &[hidden] {
+          display: none;
+        }
+      }
+
+      summary {
+        width: fit-content;
+        padding-block: var(--space-xs);
+        cursor: pointer;
+      }
+
+      details[open] > summary {
+        margin-bottom: var(--space-xs);
+      }
+    }
+
+    .cm-search-status {
+      font-size: var(--font-size-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cm-textfield {
+      box-sizing: border-box;
+      flex: 1;
+      min-width: 0;
+      min-height: var(--titlebar-height);
+      padding: var(--space-xs) var(--space-sm);
+      border: thin solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--window-fg-color);
+      background: var(--bg-elevated-1);
+      font: inherit;
+      user-select: text;
+      outline: none;
+
+      &[aria-invalid="true"] {
+        border-color: var(--warn-color);
+      }
+    }
+
+    .cm-panel.cm-goto-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-sm);
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        min-width: 0;
+        font: inherit;
+        flex: 1;
+      }
+
+      .app-pill {
+        min-height: var(--titlebar-height);
+      }
+    }
+
+    .cm-panels :is(button, summary):focus-visible {
+      outline: var(--space-xxs) solid var(--accent-color);
+      outline-offset: calc(-1 * var(--space-xxs));
+    }
+
+    .cm-tooltip {
+      border: thin solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--window-fg-color);
+      background: var(--card-bg-color);
+      box-shadow: var(--shadow-gnome);
+    }
+
+    .cm-tooltip-autocomplete ul li[aria-selected="true"] {
+      color: var(--window-fg-color);
+      background: var(--selected-bg-color);
+    }
+  }
+}
+
+@media (max-width: 40rem) {
+  .code-mirror .cm-editor {
+    .cm-foldGutter {
+      display: none !important;
+    }
+
+    .cm-lineNumbers .cm-gutterElement {
+      min-width: 0;
+      padding-inline: var(--space-xxs);
+      font-size: var(--font-size-sm);
+    }
+
+    .cm-line {
+      padding-inline: var(--space-xs);
+    }
+  }
+
+  .code-mirror .cm-editor .cm-panel.cm-search {
+    .cm-search-row > .cm-textfield {
+      flex-basis: 100%;
+    }
+
+    .cm-search-status {
+      flex: 1;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .code-mirror .cm-editor .cm-panel {
+    .action-button {
+      width: var(--icon-size-xl);
+      height: var(--icon-size-xl);
+    }
+
+    .app-pill,
+    .cm-textfield,
+    .cm-button,
+    summary {
+      min-height: var(--icon-size-xl);
+      box-sizing: border-box;
+      font-size: var(--font-size-base);
+    }
+
+    summary {
+      align-content: center;
+    }
+  }
+}

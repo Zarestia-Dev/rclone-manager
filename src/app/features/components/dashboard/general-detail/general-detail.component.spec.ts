@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideTranslateService, TranslatePipe } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Remote, RemoteActionProgress } from '@app/types';
+import { ActionState, Remote } from '@app/types';
 import { GeneralDetailComponent } from './general-detail.component';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -15,7 +15,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 describe('GeneralDetailComponent controls', () => {
   let fixture: ComponentFixture<GeneralDetailComponent>;
   const selectedRemote = signal<Remote>({} as Remote);
-  const actionInProgress = signal<RemoteActionProgress>({});
+  const actionInProgress = signal<Record<string, ActionState[]>>({});
   const automations = signal([
     { id: 'first', remoteName: 'remote', profileName: 'First' },
     { id: 'second', remoteName: 'remote', profileName: 'Second' },

@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { DecimalPipe, DatePipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -126,7 +127,7 @@ export class JobDetailModalComponent {
       activeTransfers: stats?.transferring ?? [],
       activeChecks: stats?.checking ?? [],
       completedTransfers: stats?.completed ?? [],
-      remoteName: this.pathService.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
+      remoteName: pathUtils.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
       jobType: job.job_type,
     };

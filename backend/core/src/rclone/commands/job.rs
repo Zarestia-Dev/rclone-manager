@@ -976,14 +976,6 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     Ok(())
 }
 
-pub async fn submit_batch_job(
-    app: AppHandle,
-    inputs: Vec<Value>,
-    metadata: JobMetadata,
-) -> Result<String, String> {
-    submit_batch_job_with_options(app, inputs, metadata, SubmitJobOptions::default()).await
-}
-
 pub async fn submit_batch_job_with_options(
     app: AppHandle,
     inputs: Vec<Value>,
@@ -999,56 +991,6 @@ pub async fn submit_batch_job_with_options(
     )
     .await
     .map(|submission| submission.job_id.to_string())
-}
-
-pub async fn register_preparing_job(
-    app: crate::context::AppHandle,
-    jobid: u64,
-    remote: String,
-    destination: String,
-    total_files: usize,
-    total_bytes: u64,
-    origin: Option<Origin>,
-) -> Result<(), String> {
-    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    let backend_name = backend_manager.get_active().await.name;
-    let job_cache = backend_manager.job_cache_for(&backend_name);
-
-    let metadata = JobMetadata::new(
-        remote,
-        JobType::Upload,
-        vec!["preparing".to_string()],
-        destination,
-    )
-    .with_origin(origin);
-
-    job_cache.create_job(jobid, metadata, backend_name).await;
-
-    let stats = json!({
-        "totalBytes": total_bytes,
-        "bytes": 0,
-        "transfers": 0,
-        "totalTransfers": total_files,
-        "completed": [],
-        "transferring": [],
-        "preparing": true
-    });
-
-    job_cache.update_job_stats(jobid, stats).await.ok();
-    Ok(())
-}
-
-pub async fn update_job_stats(
-    app: crate::context::AppHandle,
-    jobid: u64,
-    stats: Value,
-) -> Result<(), String> {
-    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
-    backend_manager
-        .job_cache()
-        .await
-        .update_job_stats(jobid, stats)
-        .await
 }
 
 #[cfg(test)]

@@ -118,8 +118,8 @@ export class AppComponent implements OnInit {
 
     // Wire overlay signals into UiStateService for mobile-sidebar computation.
     this.uiStateService.setOverlaySignals({
-      mainOverlay: this.mainUiOverlayService.isMainUiOverlayOpen,
-      flowOverlay: this.flowOverlayService.isFlowOverlayOpen,
+      mainOverlay: this.mainUiOverlayService.isOpen,
+      flowOverlay: this.flowOverlayService.isOpen,
       nautilusOverlay: this.nautilusService.isBrowserOverlayOpen,
     });
     this.setupDefaultViewListener();

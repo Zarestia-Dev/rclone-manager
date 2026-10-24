@@ -21,16 +21,6 @@ export class AutomationService extends TauriBaseService {
     void this.refreshAutomations();
   }
 
-  async getAutomations(): Promise<Automation[]> {
-    const automations = await this.invokeCommand<Automation[]>('get_automations');
-    this._automations.set(automations);
-    return automations;
-  }
-
-  async getAutomation(automationId: string): Promise<Automation | null> {
-    return this.invokeCommand<Automation | null>('get_automation', { automationId });
-  }
-
   async toggleAutomation(automationId: string): Promise<Automation> {
     return this.invokeCommand<Automation>('toggle_automation', { automationId });
   }
@@ -39,17 +29,10 @@ export class AutomationService extends TauriBaseService {
     return this.invokeCommand<CronValidationResponse>('validate_cron', { cronExpression });
   }
 
-  async reloadAutomations(): Promise<void> {
-    await this.invokeCommand('reload_automations');
-  }
-
-  async clearAllAutomations(): Promise<void> {
-    await this.invokeCommand('clear_all_automations');
-  }
-
   public async refreshAutomations(): Promise<void> {
     try {
-      await this.getAutomations();
+      const automations = await this.invokeCommand<Automation[]>('get_automations');
+      this._automations.set(automations);
     } catch (error) {
       console.error('Failed to refresh automations:', error);
     }

@@ -56,11 +56,6 @@ export interface MemoryStats {
   TotalAlloc: number;
 }
 
-export interface SystemStats {
-  memoryUsage: MemoryStats | null;
-  uptime: number;
-}
-
 export type RcloneStatus = 'active' | 'inactive' | 'error';
 
 export const SENSITIVE_KEYS = [
@@ -86,8 +81,6 @@ export interface AppEventPayload {
   language?: string;
   data?: unknown; // Replaced any
 }
-
-export type AppEventPayloadType = AppEventPayload;
 
 export enum BackendUpdateStatus {
   Idle = 'idle',

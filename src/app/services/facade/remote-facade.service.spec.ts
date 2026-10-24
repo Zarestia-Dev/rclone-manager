@@ -483,6 +483,7 @@ describe('RemoteFacadeService', () => {
     expect(service.getRemote(null)).toBeUndefined();
     expect(service.getRemote('missing')).toBeUndefined();
     expect(service.orderedVisibleRemotes().map(r => r.name)).toEqual(['b']);
+    expect(service.orderedRemotes().map(r => r.name)).toEqual(['b', 'a']);
   });
 
   it('preserves configured profiles, latest jobs and scope exclusions', async () => {

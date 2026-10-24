@@ -115,7 +115,7 @@ export class ShortcutHandlerDirective {
       !this.vaultService.isAccessible() ||
       this.isFileViewerOpen() ||
       this.dialog.openDialogs.length > 0 ||
-      this.isOnboardingActive()
+      !this.onboardingStateService.isCompleted()
     );
   }
 
@@ -131,13 +131,6 @@ export class ShortcutHandlerDirective {
    */
   private isFileViewerOpen(): boolean {
     return document.querySelector('app-file-viewer-modal') !== null;
-  }
-
-  /**
-   * Check if onboarding is currently active using centralized service
-   */
-  private isOnboardingActive(): boolean {
-    return this.onboardingStateService.isOnboardingActive();
   }
 
   private async quitApplication(): Promise<void> {
@@ -179,7 +172,7 @@ export class ShortcutHandlerDirective {
   }
 
   private showKeyboardShortcuts(): void {
-    if (this.flowOverlayService.isFlowOverlayOpen()) {
+    if (this.flowOverlayService.isOpen()) {
       this.modalService.openKeyboardShortcuts({ context: 'flow' });
     } else if (this.nautilusService.isBrowserOverlayOpen()) {
       this.modalService.openKeyboardShortcuts({ context: 'nautilus' });
@@ -221,6 +214,6 @@ export class ShortcutHandlerDirective {
   }
 
   private toggleFlowOverlay(): void {
-    this.flowOverlayService.toggleFlowOverlay();
+    this.flowOverlayService.toggleOverlay();
   }
 }

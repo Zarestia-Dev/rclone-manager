@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
 import { AndroidKeepAliveService } from './android-keep-alive.service';
@@ -15,10 +15,10 @@ describe('AndroidKeepAliveService', () => {
   let mountedRemotesSignal: ReturnType<typeof signal<MountedRemote[]>>;
   let activeJobsSignal: ReturnType<typeof signal<JobInfo[]>>;
   let runningServesSignal: ReturnType<typeof signal<ServeListItem[]>>;
+  let keepAliveSetting: BehaviorSubject<{ value: boolean }>;
 
   let mockAppSettings: {
     selectSetting: ReturnType<typeof vi.fn>;
-    saveSetting: ReturnType<typeof vi.fn>;
   };
   let mockTranslate: {
     instant: ReturnType<typeof vi.fn>;
@@ -28,7 +28,6 @@ describe('AndroidKeepAliveService', () => {
     requestIgnoreBatteryOptimizations: ReturnType<typeof vi.fn>;
     startKeepAliveService: ReturnType<typeof vi.fn>;
     stopKeepAliveService: ReturnType<typeof vi.fn>;
-    isKeepAliveServiceRunning: ReturnType<typeof vi.fn>;
     updateKeepAliveNotification: ReturnType<typeof vi.fn>;
   };
 
@@ -37,10 +36,10 @@ describe('AndroidKeepAliveService', () => {
     mountedRemotesSignal = signal<MountedRemote[]>([]);
     activeJobsSignal = signal<JobInfo[]>([]);
     runningServesSignal = signal<ServeListItem[]>([]);
+    keepAliveSetting = new BehaviorSubject<{ value: boolean }>({ value: true });
 
     mockAppSettings = {
-      selectSetting: vi.fn().mockReturnValue(of({ value: true })),
-      saveSetting: vi.fn().mockResolvedValue(undefined),
+      selectSetting: vi.fn().mockReturnValue(keepAliveSetting),
     };
 
     mockTranslate = {
@@ -52,7 +51,6 @@ describe('AndroidKeepAliveService', () => {
       requestIgnoreBatteryOptimizations: vi.fn(),
       startKeepAliveService: vi.fn(),
       stopKeepAliveService: vi.fn(),
-      isKeepAliveServiceRunning: vi.fn().mockReturnValue(true),
       updateKeepAliveNotification: vi.fn(),
     };
 
@@ -105,11 +103,18 @@ describe('AndroidKeepAliveService', () => {
     expect(mockBridge.requestIgnoreBatteryOptimizations).toHaveBeenCalled();
   });
 
-  it('should save keep_alive setting when toggled', async () => {
-    await service.toggleKeepAliveSetting(false);
+  it('reacts to persisted keep-alive setting changes', () => {
+    service.initialize();
+    TestBed.tick();
+    keepAliveSetting.next({ value: false });
+    TestBed.tick();
+    vi.advanceTimersByTime(500);
+    expect(mockBridge.stopKeepAliveService).toHaveBeenCalledWith(true);
 
-    expect(service.isKeepAliveSettingEnabled()).toBe(false);
-    expect(mockAppSettings.saveSetting).toHaveBeenCalledWith('general', 'keep_alive', false);
+    keepAliveSetting.next({ value: true });
+    TestBed.tick();
+    vi.advanceTimersByTime(500);
+    expect(mockBridge.startKeepAliveService).toHaveBeenLastCalledWith(true);
   });
 
   it('should start keep-alive service when initialized with keep-alive enabled', async () => {
@@ -121,7 +126,6 @@ describe('AndroidKeepAliveService', () => {
       'RClone Manager',
       'settings.general.keep_alive.label'
     );
-    expect(service.isServiceRunning()).toBe(true);
   });
 
   it('should debounce and update notification text when active jobs or mounts exist', () => {
@@ -222,6 +226,21 @@ describe('AndroidKeepAliveService', () => {
     TestBed.tick();
 
     expect(mockBridge.stopKeepAliveService).toHaveBeenCalledWith(true);
-    expect(service.isServiceRunning()).toBe(false);
+  });
+
+  it('keeps active jobs alive after disabling the preference and stops after they finish', () => {
+    service.initialize();
+    TestBed.tick();
+    activeJobsSignal.set([{ jobid: 1, status: 'Running' } as JobInfo]);
+    keepAliveSetting.next({ value: false });
+    TestBed.tick();
+    vi.advanceTimersByTime(500);
+    expect(mockBridge.startKeepAliveService).toHaveBeenLastCalledWith(false);
+    expect(mockBridge.stopKeepAliveService).not.toHaveBeenCalled();
+
+    activeJobsSignal.set([]);
+    TestBed.tick();
+    vi.advanceTimersByTime(500);
+    expect(mockBridge.stopKeepAliveService).toHaveBeenCalledWith(true);
   });
 });

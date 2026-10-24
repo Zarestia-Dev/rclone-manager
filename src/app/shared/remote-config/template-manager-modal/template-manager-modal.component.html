@@ -234,6 +234,7 @@
           }
         </div>
       } @else {
+        <app-code-editor-toolbar [editor]="saveCodeEditor()" language="JSON" />
         <div #saveEditorContainer class="code-mirror"></div>
       }
     </mat-tab>
@@ -441,6 +442,7 @@
             }
           </div>
         } @else {
+          <app-code-editor-toolbar [editor]="manageCodeEditor()" language="JSON" />
           <div #manageEditorContainer class="code-mirror"></div>
         }
       }

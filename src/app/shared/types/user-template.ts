@@ -36,8 +36,3 @@ export interface UserPresetTemplate {
   description?: string;
   values: Partial<Record<TemplateCategory, Record<string, unknown>>>;
 }
-
-export interface ApplyTemplateOptions {
-  categories?: TemplateCategory[];
-  overwriteExisting?: boolean;
-}

@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NautilusSelectionService } from './nautilus-selection.service';
 import { NautilusService } from './nautilus.service';
 import { NautilusTabService } from './nautilus-tab.service';
-import { Entry, FileBrowserItem, FilePickerConfig } from '@app/types';
+import { Entry, FileBrowserItem, FilePickerConfig, fileBrowserItemKey } from '@app/types';
 
 describe('NautilusSelectionService', () => {
   let service: NautilusSelectionService;
@@ -93,6 +93,25 @@ describe('NautilusSelectionService', () => {
     service = TestBed.inject(NautilusSelectionService);
   });
 
+  it('distinguishes selections by remote and entry ID for identical paths', () => {
+    const first: FileBrowserItem = {
+      ...fileItem,
+      meta: { ...fileItem.meta, remote: 'drive' },
+      entry: { ...fileItem.entry, Path: '旅行 & photos/report.pdf', ID: 'first' },
+    };
+    const second = { ...first, entry: { ...first.entry, ID: 'second' } };
+    const otherRemote = { ...first, meta: { ...first.meta, remote: 'backup' } };
+    activeSelectionSignal.set(
+      new Set(['drive:旅行 & photos/report.pdf:second', 'backup:旅行 & photos/report.pdf:first'])
+    );
+
+    expect(service.getSelectedItemsList([first, second, otherRemote])).toEqual([
+      second,
+      otherRemote,
+    ]);
+    expect(service.getSelectedItemsList([])).toEqual([]);
+  });
+
   describe('isItemSelectable', () => {
     it('returns true for all items when file picker is closed', () => {
       pickerStateSignal.set({ isOpen: false });
@@ -166,7 +185,7 @@ describe('NautilusSelectionService', () => {
       const event = new MouseEvent('click');
       service.handleItemClick(fileItem, event, 0, 0, [fileItem]);
 
-      expect(syncSelectionMock).toHaveBeenCalledWith(new Set([service.getItemKey(fileItem)]), 0);
+      expect(syncSelectionMock).toHaveBeenCalledWith(new Set([fileBrowserItemKey(fileItem)]), 0);
     });
 
     it('excludes folders from multi-selection range when selection is files', () => {
@@ -187,10 +206,10 @@ describe('NautilusSelectionService', () => {
       const lastCall = syncSelectionMock.mock.calls.at(-1);
       const selectedSet = lastCall ? (lastCall[0] as Set<string>) : new Set<string>();
 
-      expect(selectedSet.has(service.getItemKey(fileItem))).toBe(true);
-      expect(selectedSet.has(service.getItemKey(imageItem))).toBe(true);
+      expect(selectedSet.has(fileBrowserItemKey(fileItem))).toBe(true);
+      expect(selectedSet.has(fileBrowserItemKey(imageItem))).toBe(true);
       // Folder should not be in multi-file selection
-      expect(selectedSet.has(service.getItemKey(folderItem))).toBe(false);
+      expect(selectedSet.has(fileBrowserItemKey(folderItem))).toBe(false);
     });
   });
 
@@ -199,7 +218,7 @@ describe('NautilusSelectionService', () => {
     const files = [fileItem, imageItem];
     service.handleItemClick(fileItem, new MouseEvent('click'), 0, 0, files);
     service.handleItemClick(imageItem, new MouseEvent('click', { [modifier]: true }), 1, 0, files);
-    expect(selectedItemsSignal()).toEqual(new Set([service.getItemKey(imageItem)]));
+    expect(selectedItemsSignal()).toEqual(new Set([fileBrowserItemKey(imageItem)]));
   });
 
   it('filters disallowed extensions inside a Shift range', () => {
@@ -212,7 +231,7 @@ describe('NautilusSelectionService', () => {
     service.handleItemClick(imageItem, new MouseEvent('click'), 0, 0, files);
     service.handleItemClick(secondImage, new MouseEvent('click', { shiftKey: true }), 2, 0, files);
     expect(selectedItemsSignal()).toEqual(
-      new Set([service.getItemKey(imageItem), service.getItemKey(secondImage)])
+      new Set([fileBrowserItemKey(imageItem), fileBrowserItemKey(secondImage)])
     );
   });
 
@@ -228,7 +247,7 @@ describe('NautilusSelectionService', () => {
       fileItem,
     ]);
     expect(selectedItemsSignal()).toEqual(
-      new Set([service.getItemKey(folderItem), service.getItemKey(fileItem)])
+      new Set([fileBrowserItemKey(folderItem), fileBrowserItemKey(fileItem)])
     );
   });
 
@@ -237,7 +256,7 @@ describe('NautilusSelectionService', () => {
     service.handleItemClick(fileItem, new MouseEvent('click'), 0, 0, files);
     selectedItemsSignal.set(new Set());
     service.handleItemClick(imageItem, new MouseEvent('click', { shiftKey: true }), 2, 0, files);
-    expect(selectedItemsSignal()).toEqual(new Set([service.getItemKey(imageItem)]));
+    expect(selectedItemsSignal()).toEqual(new Set([fileBrowserItemKey(imageItem)]));
   });
 
   it('activates the pane when opening a context menu on empty space', () => {
@@ -264,11 +283,11 @@ describe('NautilusSelectionService', () => {
     });
     const files = [folderItem, fileItem, imageItem];
     service.updateSelection(
-      new Set([...files.map(item => service.getItemKey(item)), 'missing']),
+      new Set([...files.map(item => fileBrowserItemKey(item)), 'missing']),
       0,
       files
     );
-    expect(selectedItemsSignal()).toEqual(new Set([service.getItemKey(imageItem)]));
+    expect(selectedItemsSignal()).toEqual(new Set([fileBrowserItemKey(imageItem)]));
     service.updateSelection(new Set(), 0, files);
     expect(selectedItemsSignal().size).toBe(0);
   });
@@ -293,11 +312,11 @@ describe('NautilusSelectionService', () => {
       const selectedSet = lastCall ? (lastCall[0] as Set<string>) : new Set<string>();
 
       // imageItem matches .jpg
-      expect(selectedSet.has(service.getItemKey(imageItem))).toBe(true);
+      expect(selectedSet.has(fileBrowserItemKey(imageItem))).toBe(true);
       // fileItem is .pdf (unselectable)
-      expect(selectedSet.has(service.getItemKey(fileItem))).toBe(false);
+      expect(selectedSet.has(fileBrowserItemKey(fileItem))).toBe(false);
       // folderItem is a directory (excluded in files picker)
-      expect(selectedSet.has(service.getItemKey(folderItem))).toBe(false);
+      expect(selectedSet.has(fileBrowserItemKey(folderItem))).toBe(false);
     });
   });
 });

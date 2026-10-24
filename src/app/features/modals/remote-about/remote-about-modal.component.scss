@@ -64,15 +64,6 @@
   }
 }
 
-.count-badge {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: rgba(var(--primary-color-rgb), 0.1);
-  color: var(--primary-color);
-}
-
 /* --- Provider Summary --- */
 .provider-summary .card-section-header {
   flex-wrap: wrap;
@@ -226,10 +217,6 @@
     margin: 0;
     color: var(--dim-color);
     font-size: var(--font-size-sm);
-  }
-
-  .count-badge {
-    flex-shrink: 0;
   }
 }
 

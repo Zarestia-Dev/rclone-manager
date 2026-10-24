@@ -60,11 +60,15 @@
       </span>
       <div class="grid-item">
         <span class="label">{{ 'modals.jobDetail.fields.profile' | translate }}</span>
-        <span class="value">{{ identifiers().profile }}</span>
+        <span class="value truncate" [attr.title]="identifiers().profile">{{
+          identifiers().profile
+        }}</span>
       </div>
       <div class="grid-item">
         <span class="label">{{ 'modals.jobDetail.fields.backend' | translate }}</span>
-        <span class="value">{{ identifiers().backend }}</span>
+        <span class="value truncate" [attr.title]="identifiers().backend">{{
+          identifiers().backend
+        }}</span>
       </div>
       @if (identifiers().origin) {
         <div class="grid-item">

@@ -1,32 +1,22 @@
-import { Injectable, inject, DestroyRef } from '@angular/core';
-import { ValidatorFn, FormGroup } from '@angular/forms';
+import { Injectable, inject } from '@angular/core';
+import { ValidatorFn } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { REMOTE_NAME_REGEX } from '@app/types';
-import { setupOperationValidation } from '../../remote/utils/config-form.utils';
+
 import {
   ValidationMessageResolver,
-  arrayValidator,
   integerValidator,
   floatValidator,
   durationValidator,
   sizeSuffixValidator,
   tristateValidator,
   timeValidator,
-  spaceSepListValidator,
   bwTimetableValidator,
   fileModeValidator,
-  enumValidator,
   urlArrayValidator,
   bandwidthValidator,
-  passwordValidator,
   remoteNameValidator,
   passwordMatchValidator,
-  uniqueNameValidator,
-  forbiddenCharsValidator,
-  duplicateNameValidator,
-  duplicateHostValidator,
-  requiredIfCronEnabled,
-  requiredIfWatchEnabled,
 } from 'src/app/shared/validators';
 
 @Injectable({
@@ -40,21 +30,12 @@ export class ValidatorRegistryService {
     this.translate.instant(key, params);
 
   constructor() {
-    this.validators.set('urlList', this.urlArrayValidator());
-    this.validators.set('bandwidthFormat', this.bandwidthValidator());
-    this.validators.set('password', this.passwordValidator());
-  }
-
-  registerValidator(name: string, validator: ValidatorFn): void {
-    this.validators.set(name, validator);
+    this.validators.set('urlList', urlArrayValidator(this.resolver));
+    this.validators.set('bandwidthFormat', bandwidthValidator(this.resolver));
   }
 
   getValidator(name: string): ValidatorFn | null {
     return this.validators.get(name) ?? null;
-  }
-
-  arrayValidator(): ValidatorFn {
-    return arrayValidator();
   }
 
   integerValidator(
@@ -96,13 +77,6 @@ export class ValidatorRegistryService {
     return timeValidator(defaultValue, allowedExamples, this.resolver);
   }
 
-  spaceSepListValidator(
-    defaultValue?: string,
-    allowedExamples?: readonly (string | { Value?: unknown })[]
-  ): ValidatorFn {
-    return spaceSepListValidator(defaultValue, allowedExamples, this.resolver);
-  }
-
   bwTimetableValidator(
     defaultValue?: string,
     allowedExamples?: readonly (string | { Value?: unknown })[]
@@ -117,18 +91,6 @@ export class ValidatorRegistryService {
     return fileModeValidator(defaultValue, allowedExamples, this.resolver);
   }
 
-  enumValidator(allowedValues: unknown[]): ValidatorFn {
-    return enumValidator(allowedValues, this.resolver);
-  }
-
-  requiredIfCronEnabled(): ValidatorFn {
-    return requiredIfCronEnabled();
-  }
-
-  requiredIfWatchEnabled(): ValidatorFn {
-    return requiredIfWatchEnabled();
-  }
-
   createRemoteNameValidator(
     existingNames: string[],
     allowedPattern: RegExp = REMOTE_NAME_REGEX
@@ -138,44 +100,5 @@ export class ValidatorRegistryService {
 
   passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
     return passwordMatchValidator(passwordFieldName, confirmFieldName, this.resolver);
-  }
-
-  createUniqueNameValidator(config: { existingNames: string[]; typeLabel?: string }): ValidatorFn {
-    return uniqueNameValidator(config);
-  }
-
-  createForbiddenCharsValidator(forbidden: string[] = ['/', ':']): ValidatorFn {
-    return forbiddenCharsValidator(forbidden);
-  }
-
-  createDuplicateNameValidator(config: {
-    getExisting: () => { name: string }[];
-    getEditingName: () => string | undefined;
-    getMode: () => 'create' | 'edit' | null;
-  }): ValidatorFn {
-    return duplicateNameValidator(config);
-  }
-
-  createDuplicateHostValidator(config: {
-    getExisting: () => { name: string; host: string; port: number | string }[];
-    getEditingName: () => string | undefined;
-  }): ValidatorFn {
-    return duplicateHostValidator(config);
-  }
-
-  setupOperationValidation(opGroup: FormGroup, destroyRef: DestroyRef): void {
-    setupOperationValidation(opGroup, destroyRef);
-  }
-
-  private urlArrayValidator(): ValidatorFn {
-    return urlArrayValidator(this.resolver);
-  }
-
-  private bandwidthValidator(): ValidatorFn {
-    return bandwidthValidator(this.resolver);
-  }
-
-  private passwordValidator(): ValidatorFn {
-    return passwordValidator(this.resolver);
   }
 }

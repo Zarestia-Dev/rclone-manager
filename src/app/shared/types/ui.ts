@@ -104,13 +104,6 @@ export interface ExportModalData {
   defaultExportType?: ExportType;
 }
 
-export interface ExportOption {
-  readonly value: ExportType;
-  readonly label: string;
-  readonly description: string;
-  readonly icon: string;
-}
-
 export interface PasswordPromptResult {
   password: string;
   stored: boolean;

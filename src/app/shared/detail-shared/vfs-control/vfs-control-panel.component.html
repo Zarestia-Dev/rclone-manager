@@ -427,7 +427,7 @@
   </mat-card-content>
 
   @if (selectedVfs(); as vfs) {
-    <mat-card-actions>
+    <div class="quick-actions">
       @if (!changeNotify()) {
         <div class="poll-interval-container">
           <mat-icon svgIcon="circle-info"></mat-icon>
@@ -490,10 +490,10 @@
         @if (loading()) {
           <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
-          <mat-icon svgIcon="refresh" class="accent"></mat-icon>
+          <mat-icon svgIcon="rotate-right" class="accent"></mat-icon>
         }
       </button>
-    </mat-card-actions>
+    </div>
   }
 
   @if (loading() && vfsInstances().length > 0) {

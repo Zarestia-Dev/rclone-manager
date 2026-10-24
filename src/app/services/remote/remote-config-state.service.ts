@@ -422,7 +422,6 @@ export class RemoteConfigStateService {
     const t = this.activeStepType();
     return !t || t === 'remote' ? false : this.isStepInvalid(t);
   });
-  readonly isBackDisabled = computed(() => this.isAuthInProgress());
   readonly sharedReturnTarget = computed(() => this.editStack().at(-1) || null);
 
   readonly sharedSidebarTypes = computed(() => {
@@ -582,7 +581,6 @@ export class RemoteConfigStateService {
   ): Record<string, unknown> {
     return mapFormToConfigProfile(type, configData, {
       remoteName,
-      pathService: this.pathService,
       cleanData: (opts, fields) => this.valueMapper.cleanData(opts, fields),
       dynamicFields: this.getFieldsForStep(type),
     });

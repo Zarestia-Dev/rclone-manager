@@ -17,7 +17,6 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { BinaryInspectorService } from 'src/app/services/ui/binary-inspector.service';
 
 interface ComponentPrivateAccess {
   updateData: () => Promise<void>;
@@ -118,7 +117,6 @@ describe('FileViewerModalComponent', () => {
 
     pathServiceMock = {
       normalizeRemoteForRclone: vi.fn().mockImplementation((r: string) => r),
-      joinPath: vi.fn().mockImplementation((...parts: string[]) => parts.join('/')),
     };
 
     jobManagementServiceMock = {
@@ -141,7 +139,6 @@ describe('FileViewerModalComponent', () => {
         { provide: NotificationService, useValue: notificationServiceMock },
         { provide: PathService, useValue: pathServiceMock },
         { provide: JobManagementService, useValue: jobManagementServiceMock },
-        BinaryInspectorService,
       ],
     }).compileComponents();
 
@@ -232,6 +229,23 @@ describe('FileViewerModalComponent', () => {
   });
 
   describe('Navigation', () => {
+    it('does not navigate files when arrow keys are used in an input', () => {
+      const field = document.createElement('input');
+      const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
+      Object.defineProperty(event, 'target', { value: field });
+      const next = vi.spyOn(component, 'next');
+      component.handleKeyboardEvent(event);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('does not close the viewer for an Escape already handled by the editor', () => {
+      const close = vi.spyOn(component.closeViewer, 'emit');
+      const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+      event.preventDefault();
+      component.handleKeyboardEvent(event);
+      expect(close).not.toHaveBeenCalled();
+    });
+
     it('should navigate forward with next()', async () => {
       expect(component.currentIndex()).toBe(0);
       const priv = component as unknown as ComponentPrivateAccess;
@@ -336,6 +350,68 @@ describe('FileViewerModalComponent', () => {
       component.cancelEditing();
       expect(component.isEditing()).toBe(false);
       expect(component.editContent()).toBe('');
+    });
+  });
+
+  describe('HTML preview', () => {
+    function openHtml(name = 'page.html'): void {
+      component.data.items = [{ ...mockItems[0], Name: name, Path: `docs/${name}` }];
+      component.currentFileType.set('text');
+      component.textContent.set('<h1>Merhaba</h1>');
+    }
+
+    it('offers previews for HTML variants and keeps ordinary text in source mode', () => {
+      const names = ['page.html', 'PAGE.HTM', 'page.xhtml', 'page.xht', 'page.shtml', 'notes.txt'];
+      component.data.items = names.map(name => ({
+        ...mockItems[0],
+        Name: name,
+        Path: `docs/${name}`,
+      }));
+      for (let index = 0; index < names.length - 1; index++) {
+        component.currentIndex.set(index);
+        expect(component.isHtmlFile()).toBe(true);
+        expect(component.canPreviewText()).toBe(true);
+      }
+      component.currentIndex.set(names.length - 1);
+      expect(component.canPreviewText()).toBe(false);
+    });
+
+    it('opens HTML preview and toggles back to source', async () => {
+      openHtml();
+      await component.togglePreview();
+      expect(component.showHtmlPreview()).toBe(true);
+      expect(component.isPreviewing()).toBe(true);
+      expect(component.renderedHtml()).toBeTruthy();
+      await component.togglePreview();
+      expect(component.showHtmlPreview()).toBe(false);
+    });
+
+    it('preserves unsaved content while switching between source and preview', async () => {
+      openHtml();
+      component.startEditing();
+      component.editContent.set('<h1>Draft</h1>');
+      await component.togglePreview();
+      await component.togglePreview();
+      expect(component.isEditing()).toBe(true);
+      expect(component.editContent()).toBe('<h1>Draft</h1>');
+      expect(component.textContent()).toBe('<h1>Merhaba</h1>');
+    });
+
+    it('ignores an HTML preview that finishes after cancellation', async () => {
+      openHtml();
+      component.textContent.set('<img src="slow.png">');
+      let finish!: (url: string) => void;
+      vi.mocked(fileViewerServiceMock.resolveRelativePath).mockReturnValueOnce(
+        new Promise(resolve => {
+          finish = resolve;
+        })
+      );
+      const pending = component.togglePreview();
+      component.cancelEditing();
+      finish('https://example.test/slow.png');
+      await pending;
+      expect(component.showHtmlPreview()).toBe(false);
+      expect(component.isPreparingPreview()).toBe(false);
     });
   });
 

@@ -452,11 +452,11 @@ describe('NavigationHistoryService', () => {
         {
           provide: FlowOverlayService,
           useValue: {
-            closeFlowOverlay: (): void => flowOpen.set(false),
-            openFlowOverlay: async (): Promise<void> => flowOpen.set(true),
+            closeOverlay: (): void => flowOpen.set(false),
+            openOverlay: async (): Promise<void> => flowOpen.set(true),
           },
         },
-        { provide: MainUiOverlayService, useValue: { closeMainUiOverlay: vi.fn() } },
+        { provide: MainUiOverlayService, useValue: { closeOverlay: vi.fn() } },
         { provide: DOCUMENT, useValue: { defaultView: win } },
         {
           provide: UiStateService,
@@ -562,15 +562,15 @@ describe('Workspace restoration on startup', () => {
         {
           provide: FlowOverlayService,
           useValue: {
-            closeFlowOverlay: (): void => flowOpen.set(false),
-            openFlowOverlay: async (): Promise<void> => flowOpen.set(true),
+            closeOverlay: (): void => flowOpen.set(false),
+            openOverlay: async (): Promise<void> => flowOpen.set(true),
           },
         },
         {
           provide: MainUiOverlayService,
           useValue: {
-            closeMainUiOverlay: (): void => mainOpen.set(false),
-            openMainUiOverlay: async (): Promise<void> => mainOpen.set(true),
+            closeOverlay: (): void => mainOpen.set(false),
+            openOverlay: async (): Promise<void> => mainOpen.set(true),
           },
         },
         { provide: DOCUMENT, useValue: { defaultView: win } },

@@ -4,7 +4,6 @@ import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 import { WorkflowNodeExecutionState } from '../../flow/workflow/types/workflow.types';
 
 export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
-export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
 export const BACKEND_SWITCHED = 'backend_switched' as const;
 export const REMOTE_CACHE_CHANGED = 'remote_cache_changed' as const;
 export const RCLONE_OAUTH_URL = 'rclone_oauth_url' as const;
@@ -35,14 +34,6 @@ export interface UpdaterStateChanged {
 }
 export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
-export const FILE_DOWNLOAD_PROGRESS = 'file_download_progress' as const;
-
-export interface FileDownloadProgressPayload {
-  destination: string;
-  downloaded: number;
-  total?: number;
-  percentage?: number;
-}
 
 export interface WorkflowNodeStatePayload {
   workflowId: string;

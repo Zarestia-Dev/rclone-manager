@@ -186,8 +186,6 @@ export class RemoteFacadeService {
     this.orderedRemotes().filter(r => !this.hiddenSet().has(r.name))
   );
 
-  readonly allRemotesForEditor = this.orderedRemotes;
-
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
   private readonly catalogueRefresh = new CoalescedTask(() => this.fetchRemotes());

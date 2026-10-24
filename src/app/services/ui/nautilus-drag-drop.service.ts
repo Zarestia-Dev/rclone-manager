@@ -88,13 +88,11 @@ export class NautilusDragDropService {
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly _isInternalDragging = signal(false);
-  readonly isInternalDragging = this._isInternalDragging.asReadonly();
   private readonly _canBookmarkDrag = signal(false);
   private readonly _isOverSidebar = signal(false);
   readonly canBookmarkDrag = computed(() => this._canBookmarkDrag() && this._isOverSidebar());
 
   private readonly _isExternalDragging = signal(false);
-  readonly isExternalDragging = this._isExternalDragging.asReadonly();
 
   readonly isDragging = computed(() => this._isInternalDragging() || this._isExternalDragging());
 

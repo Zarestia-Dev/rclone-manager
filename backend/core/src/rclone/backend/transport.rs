@@ -29,13 +29,6 @@ pub enum BackendError {
 }
 
 impl BackendError {
-    pub fn is_transport_failure(&self) -> bool {
-        matches!(
-            self,
-            BackendError::NotConnected(_) | BackendError::Timeout(_) | BackendError::Stream(_)
-        )
-    }
-
     pub fn status_code(&self) -> Option<u16> {
         match self {
             BackendError::Rpc { status, .. } => Some(*status),

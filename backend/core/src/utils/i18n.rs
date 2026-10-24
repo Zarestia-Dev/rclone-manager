@@ -249,22 +249,6 @@ pub fn t_with_params(key: &str, params: &[(&str, &str)]) -> String {
     TRANSLATIONS.resolve_with_params(key, params)
 }
 
-#[cfg(test)]
-pub fn init_test_translations() {
-    init();
-}
-
-#[cfg(test)]
-pub fn set_test_translations(lang: &str, dict: Value) {
-    let mut cache = TRANSLATIONS.cache.write().unwrap();
-    cache.insert(lang.to_string(), Some(Arc::new(dict)));
-}
-
-/// Translates a backend error message (structured JSON, translation key, or raw string)
-pub fn resolve_error(error_str: &str) -> String {
-    TRANSLATIONS.resolve_param_value(error_str)
-}
-
 /// Macro for ergonomic translations
 ///
 /// # Usage
@@ -428,51 +412,50 @@ mod tests {
 
     #[test]
     fn test_nested_resolution() {
-        super::init_test_translations();
+        super::init();
         assert_eq!(super::t("tray.showApp"), "Show App");
         assert_eq!(super::t("tray.nonexistent"), "tray.nonexistent");
     }
 
     #[test]
-    fn test_resolve_error_structured_json() {
-        super::init_test_translations();
+    fn notification_parameters_resolve_structured_errors_keys_and_raw_text() {
+        super::init();
 
         let json_err = localized_error!(
             "backendErrors.job.executionFailed",
             "error" => "failed to mount FUSE fs: no such directory"
         );
-        let resolved = resolve_error(&json_err);
-        assert_eq!(
-            resolved,
-            "Job execution failed: failed to mount FUSE fs: no such directory"
-        );
-
         let key_err = localized_error!("backendErrors.mount.pointEmpty");
-        let resolved_key = resolve_error(&key_err);
-        assert_eq!(resolved_key, "Mount point cannot be empty");
-
         let multi_param_err = localized_error!(
             "backendErrors.mount.alreadyInUse",
             "mountPoint" => "/mnt/pcloud",
             "remote" => "pcloud:"
         );
-        let resolved_multi = resolve_error(&multi_param_err);
-        assert_eq!(
-            resolved_multi,
-            "Mount point /mnt/pcloud is already in use by remote pcloud:"
-        );
-
-        // Fallback to raw string
-        let raw_err = "failed to exec mount: no such file or directory";
-        assert_eq!(resolve_error(raw_err), raw_err);
-
-        // Empty string
-        assert_eq!(resolve_error(""), "");
+        for (input, expected) in [
+            (
+                json_err.as_str(),
+                "Job execution failed: failed to mount FUSE fs: no such directory",
+            ),
+            (key_err.as_str(), "Mount point cannot be empty"),
+            (
+                multi_param_err.as_str(),
+                "Mount point /mnt/pcloud is already in use by remote pcloud:",
+            ),
+            ("  Arşiv & 旅行  ", "Arşiv & 旅行"),
+            ("backendErrors.unknown", "backendErrors.unknown"),
+            ("{invalid JSON}", "{invalid JSON}"),
+            ("", ""),
+        ] {
+            assert_eq!(
+                t_with_params("notification.body.engineAuthFailed", &[("error", input)]),
+                format!("Failed to authenticate with rclone engine: {expected}")
+            );
+        }
     }
 
     #[test]
     fn test_resolve_unmount_failed() {
-        super::init_test_translations();
+        super::init();
         let rendered = t_with_params(
             "notification.body.unmountFailed",
             &[

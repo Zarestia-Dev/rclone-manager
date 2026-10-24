@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
@@ -78,7 +79,7 @@ export class TransferOperationsService {
         {
           remote: source,
           path: item.name,
-          name: this.pathService.extractName(item.name),
+          name: pathUtils.extractName(item.name),
           isDir: false,
         },
       ],
@@ -136,12 +137,7 @@ export class TransferOperationsService {
     const fs = this.getFs(item, target);
     if (!fs || !this.beginAction(key, 'download')) return;
     try {
-      await this.downloadService.download(
-        fs,
-        item.name,
-        this.pathService.extractName(item.name),
-        false
-      );
+      await this.downloadService.download(fs, item.name, pathUtils.extractName(item.name), false);
     } catch (error) {
       this.notifications.showError(
         this.translate.instant('shared.transferActivity.actions.failDownload') +
@@ -160,7 +156,7 @@ export class TransferOperationsService {
       const confirmed = await this.notifications.confirmModal(
         this.translate.instant('nautilus.modals.delete.title'),
         this.translate.instant('nautilus.modals.delete.messageSingle', {
-          name: this.pathService.extractName(item.name),
+          name: pathUtils.extractName(item.name),
         }),
         'common.delete',
         'common.cancel',

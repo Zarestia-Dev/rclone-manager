@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
 import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -32,7 +33,7 @@ export class ServeManagementService extends TauriBaseService {
       ...serve,
       params: {
         ...serve.params,
-        fs: this.pathService.normalizeFs(serve.params?.fs),
+        fs: pathUtils.normalizeFs(serve.params?.fs),
       },
     };
   }

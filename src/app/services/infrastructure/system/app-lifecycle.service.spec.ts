@@ -12,11 +12,6 @@ import { NautilusService } from '../../ui/nautilus.service';
 import { FlowOverlayService } from '../../ui/flow-overlay.service';
 import { MainUiOverlayService } from '../../ui/main-ui-overlay.service';
 import { ActiveOperationsSummary } from '@app/types';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-
-vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: vi.fn(() => ({ label: 'main' })),
-}));
 
 describe('AppLifecycleService', () => {
   let service: AppLifecycleService;
@@ -312,6 +307,14 @@ describe('AppLifecycleService', () => {
     expect(mockNotificationService.confirmModal).toHaveBeenCalledTimes(2);
   });
 
+  it('routes relaunch to the backend and propagates failures to its caller', async () => {
+    await service.relaunchApp();
+    expect(mockApiClient.invoke).toHaveBeenCalledWith('relaunch_app');
+    const error = new Error('relaunch failed');
+    mockApiClient.invoke.mockRejectedValueOnce(error);
+    await expect(service.relaunchApp()).rejects.toBe(error);
+  });
+
   it('should skip exit handling in standalone windows', () => {
     mockNautilusService.isStandaloneWindow.mockReturnValue(true);
     service.initialize();
@@ -341,10 +344,10 @@ describe('AppLifecycleService', () => {
   it('skips native secondary windows before their standalone services initialize', () => {
     const descriptor = Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__');
     try {
-      Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
-      vi.mocked(getCurrentWindow).mockReturnValue({ label: 'nautilus-remote' } as ReturnType<
-        typeof getCurrentWindow
-      >);
+      Object.defineProperty(window, '__TAURI_INTERNALS__', {
+        value: { metadata: { currentWindow: { label: 'nautilus-remote' } } },
+        configurable: true,
+      });
       service.initialize();
       expect(mockApiClient.invoke).not.toHaveBeenCalled();
     } finally {

@@ -64,8 +64,8 @@ impl ServeParams {
         Self {
             backend: None,
             remote_name,
-            source: common.first_source(),
-            rclone_config: common.rclone_config.clone(),
+            source: common.source.into_iter().next().unwrap_or_default(),
+            rclone_config: common.rclone_config,
             backend_options: common.backend_options,
             filter_options: common.filter_options,
             vfs_options: common.vfs_options,
@@ -426,6 +426,33 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    #[test]
+    fn serve_adapter_moves_the_first_source_and_defaults_to_http() {
+        let common = parse_common_config(
+            &json!({"fs": ["", "drive:旅行 & Arşiv", "drive:second"]}),
+            &json!({}),
+        )
+        .unwrap();
+        let source_pointer = common.source[0].as_ptr();
+        let params = ServeParams::from_common("drive".into(), common);
+        assert_eq!(params.source, "drive:旅行 & Arşiv");
+        assert_eq!(params.source.as_ptr(), source_pointer);
+        assert_eq!(params.serve_type, "http");
+        let body = params.to_rclone_body().unwrap();
+        assert_eq!(body["fs"], params.source);
+        assert_eq!(body["type"], "http");
+    }
+
+    #[test]
+    fn serve_adapter_keeps_empty_source_fallback_and_legacy_serve_type() {
+        let mut common =
+            parse_common_config(&json!({"fs": "drive:", "serveType": "webdav"}), &json!({}))
+                .unwrap();
+        common.source.clear();
+        let params = ServeParams::from_common("drive".into(), common);
+        assert!(params.source.is_empty());
+        assert_eq!(params.serve_type, "webdav");
+    }
     #[test]
     fn test_serve_params_from_config() {
         let config = json!({

@@ -6,10 +6,7 @@ use crate::context::AppHandle;
 use chrono::Utc;
 use log::info;
 
-use super::dag::validate_workflow as validate_dag;
-use super::types::{
-    WorkflowDefinition, WorkflowExecutionResult, WorkflowInput, WorkflowValidationResult,
-};
+use super::types::{WorkflowDefinition, WorkflowExecutionResult, WorkflowInput};
 use crate::services::settings::AppSettingsManager;
 use crate::utils::constants::SUB_WORKFLOWS;
 
@@ -17,16 +14,6 @@ use crate::utils::constants::SUB_WORKFLOWS;
 pub async fn list_workflows(app: AppHandle) -> Result<Vec<WorkflowDefinition>, String> {
     let manager = app.state::<AppSettingsManager>();
     get_all_workflows_sync(&manager)
-}
-
-/// Retrieves a single workflow by ID.
-pub async fn get_workflow(
-    app: AppHandle,
-    workflow_id: String,
-) -> Result<WorkflowDefinition, String> {
-    let manager = app.state::<AppSettingsManager>();
-    get_workflow_by_id(&manager, &workflow_id)?
-        .ok_or_else(|| format!("Workflow '{workflow_id}' not found"))
 }
 
 /// Creates a new workflow record.
@@ -147,13 +134,6 @@ pub async fn duplicate_workflow(
     Ok(duplicated)
 }
 
-/// Validates a workflow's DAG structure without executing it.
-pub async fn validate_workflow(
-    workflow: WorkflowDefinition,
-) -> Result<WorkflowValidationResult, String> {
-    Ok(validate_dag(&workflow))
-}
-
 /// Executes a workflow by ID, optionally in simulation (dry-run) mode.
 pub async fn execute_workflow(
     app: AppHandle,
@@ -170,48 +150,6 @@ pub async fn execute_workflow(
 /// Stops an actively running workflow.
 pub async fn stop_workflow(app: AppHandle, workflow_id: String) -> Result<(), String> {
     super::engine::stop_workflow(&app, &workflow_id).await
-}
-
-/// Exports a workflow definition as formatted JSON.
-pub async fn export_workflow(app: AppHandle, workflow_id: String) -> Result<String, String> {
-    let manager = app.state::<AppSettingsManager>();
-    let wf = get_workflow_by_id(&manager, &workflow_id)?
-        .ok_or_else(|| format!("Workflow '{workflow_id}' not found"))?;
-
-    serde_json::to_string_pretty(&wf).map_err(|e| format!("Failed to serialize workflow JSON: {e}"))
-}
-
-/// Imports and persists a workflow from a JSON string.
-pub async fn import_workflow(
-    app: AppHandle,
-    json_str: String,
-) -> Result<WorkflowDefinition, String> {
-    let mut parsed: WorkflowDefinition =
-        serde_json::from_str(&json_str).map_err(|e| format!("Invalid workflow JSON: {e}"))?;
-
-    let manager = app.state::<AppSettingsManager>();
-    let all = get_all_workflows_sync(&manager)?;
-    let existing_names: HashSet<String> = all.into_iter().map(|w| w.name).collect();
-
-    let base_name = if parsed.name.trim().is_empty() {
-        "Imported Workflow".to_string()
-    } else {
-        format!("{} (Imported)", parsed.name)
-    };
-    let new_name = find_unique_name(&existing_names, &base_name);
-
-    let now = Utc::now().to_rfc3339();
-    parsed.id = format!("wf-{}", uuid::Uuid::new_v4());
-    parsed.name = new_name;
-    parsed.created_at = Some(now.clone());
-    parsed.updated_at = Some(now);
-
-    save_workflow_record(&manager, &parsed)?;
-    if let Some(runtime) = app.try_state::<crate::services::automation::runtime::RuntimeTasks>() {
-        runtime.invalidate_workflow(&parsed.id);
-    }
-    sync_workflow_automations(&app).await?;
-    Ok(parsed)
 }
 
 /// Executes an arbitrary Rclone Remote Control (RC) command for testing and schema discovery.
@@ -361,14 +299,22 @@ mod tests {
     }
 
     #[test]
-    fn test_workflow_crud_operations() {
+    fn test_workflow_crud_and_invalid_update() {
         let (_temp, manager) = test_manager();
 
         let wf = WorkflowDefinition {
             id: "wf-test-1".to_string(),
-            name: "Test Flow".to_string(),
+            name: "Arşiv & 旅行".to_string(),
             description: Some("My flow".to_string()),
-            nodes: vec![],
+            nodes: vec![WorkflowNode {
+                id: "copy-1".into(),
+                node_type: "copy".into(),
+                config: serde_json::json!({
+                    "srcPaths": ["drive:Arşiv & 旅行", "/path with spaces"],
+                    "dstPaths": [],
+                }),
+                ..Default::default()
+            }],
             edges: vec![],
             viewport: CanvasViewport::default(),
             show_on_tray: false,
@@ -387,6 +333,16 @@ mod tests {
         // 3. Fetch by ID
         let fetched = get_workflow_by_id(&manager, "wf-test-1").unwrap();
         assert_eq!(fetched, Some(wf.clone()));
+
+        // Invalid schedule updates must leave the stored definition intact.
+        let mut invalid = wf.clone();
+        invalid.nodes[0].node_type = "cron".into();
+        invalid.nodes[0].config = serde_json::json!({ "cronExpression": "not-a-cron" });
+        assert!(save_workflow_record(&manager, &invalid).is_err());
+        assert_eq!(
+            get_workflow_by_id(&manager, "wf-test-1").unwrap(),
+            Some(wf.clone())
+        );
 
         // 4. List
         let list = get_all_workflows_sync(&manager).unwrap();

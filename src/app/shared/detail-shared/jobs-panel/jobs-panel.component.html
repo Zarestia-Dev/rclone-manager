@@ -26,7 +26,7 @@
               class="card-primary-icon job-type-icon"
               [class]="job.iconClass"
             ></mat-icon>
-            <span class="card-title-text job-type-text">
+            <span class="card-title-text truncate">
               {{ job.job_type | titlecase }}
             </span>
             <span
@@ -98,15 +98,15 @@
             </div>
             <div class="card-footer-right">
               @if (job.dry_run) {
-                <span class="app-pill p-accent dry-run-badge">
+                <span class="app-pill p-accent pill-sm">
                   {{ 'detailShared.jobs.dryRun' | translate }}
                 </span>
               }
               @if (job.durationSeconds > 0) {
-                <span class="duration-text">{{ job.durationSeconds | formatTime }}</span>
+                <span class="app-pill p-dim pill-sm">{{ job.durationSeconds | formatTime }}</span>
               }
               @if (job.relativeTime) {
-                <span class="time-text">{{ job.relativeTime }}</span>
+                <span>{{ job.relativeTime }}</span>
               }
             </div>
           </div>

@@ -327,9 +327,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     return this.nautilusService.isSaved('starred', item.meta.remote || '', item.entry.Path);
   }
 
-  protected getItemKey(item: FileBrowserItem): string {
-    return fileBrowserItemKey(item);
-  }
+  protected readonly getItemKey = fileBrowserItemKey;
 
   // ---------------------------------------------------------------------------
   // Lasso Selection

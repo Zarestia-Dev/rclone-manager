@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   RcConfigOption,
   OperationType,
@@ -85,10 +86,6 @@ export function getTopLevelKeysForProfile(type: string): string[] {
 
 export interface FormToConfigContext {
   remoteName: string;
-  pathService: {
-    buildPathString(p: PathGroup | string, remoteName: string): string;
-    buildPathStrings(p: PathGroup | PathGroup[] | null | undefined, remoteName: string): string[];
-  };
   cleanData?: (
     options: Record<string, unknown>,
     fields: RcConfigOption[]
@@ -144,7 +141,7 @@ function mapSourcePaths(
   }
 
   const sources = Array.isArray(formData['source']) ? formData['source'] : [formData['source']];
-  const sourcePaths = ctx.pathService.buildPathStrings(
+  const sourcePaths = pathUtils.buildPathStrings(
     sources as PathGroup | PathGroup[],
     ctx.remoteName
   );
@@ -209,7 +206,7 @@ export function mapFormToConfigProfile(
   };
 
   if (mapping.destKey && formData['dest'] !== undefined) {
-    rclone[mapping.destKey] = ctx.pathService.buildPathString(
+    rclone[mapping.destKey] = pathUtils.buildPathString(
       formData['dest'] as PathGroup | string,
       ctx.remoteName
     );
@@ -231,7 +228,6 @@ export interface ConfigToFormContext {
       remoteName?: string,
       existingRemotes?: string[]
     ): PathGroup;
-    getFilename(path: string): string;
     getParentPath(path: string): string;
   };
 }
@@ -254,7 +250,7 @@ function mapCopyUrlToForm(
 
   let legacyFilename = '';
   if (!filenames && !autoFilename && parsedDst.path) {
-    legacyFilename = ctx.pathService.getFilename(parsedDst.path);
+    legacyFilename = pathUtils.getFilename(parsedDst.path);
     parsedDst.path = ctx.pathService.getParentPath(parsedDst.path);
   }
 

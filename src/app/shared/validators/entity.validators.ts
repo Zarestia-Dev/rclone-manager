@@ -45,30 +45,6 @@ export function remoteNameValidator(
   };
 }
 
-export function passwordValidator(messageResolver?: ValidationMessageResolver): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    if (!value) return null;
-    if (value.length < 3) {
-      return {
-        minLength: {
-          message: resolveMessage(messageResolver, 'validators.password.minLength'),
-          actualLength: value.length,
-          requiredLength: 3,
-        },
-      };
-    }
-    if (/['"]/.test(value)) {
-      return {
-        invalidChars: {
-          message: resolveMessage(messageResolver, 'validators.password.invalidChars'),
-        },
-      };
-    }
-    return null;
-  };
-}
-
 export function passwordMatchValidator(
   passwordFieldName: string,
   confirmFieldName: string,

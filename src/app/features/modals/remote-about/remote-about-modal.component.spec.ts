@@ -9,6 +9,8 @@ import { Observable, of } from 'rxjs';
 import { ChangeDetectorRef, signal } from '@angular/core';
 import { RemoteAboutModalComponent } from './remote-about-modal.component';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { normalizeRemoteForRclone } from 'src/app/shared/utils/path.utils';
 import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -103,6 +105,7 @@ describe('RemoteAboutModalComponent', () => {
         { provide: MatDialogRef, useValue: dialogRefSpy },
         { provide: MAT_DIALOG_DATA, useValue: { remote: { ...mockRemoteData.remote } } },
         { provide: RemoteFileOperationsService, useValue: remoteOpsSpy },
+        { provide: PathService, useValue: { normalizeRemoteForRclone } },
         { provide: RemoteDiskUsageService, useValue: remoteFacadeSpy },
         { provide: RemoteManagementService, useValue: remoteManagementSpy },
         { provide: JobManagementService, useValue: jobManagementSpy },
@@ -142,6 +145,42 @@ describe('RemoteAboutModalComponent', () => {
     expect(component.root()).toBe('drive:/data');
     expect(component.precision()).toBe('1ms');
     expect(component.hashes()).toEqual(['md5', 'sha1']);
+  });
+
+  it.each([
+    ['my_drive', 'my_drive:'],
+    ['my_drive:', 'my_drive:'],
+    ['Arşiv yedek', 'Arşiv yedek:'],
+    ['/home/user/data', '/home/user/data'],
+  ])('requests size for %s using the filesystem %s', async (name, fs) => {
+    await fixture.whenStable();
+    component.data.remote.normalizedName = name;
+    remoteOpsSpy.getSize.mockClear();
+    recreate();
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(component.loadingSize()).toBe(false));
+
+    expect(remoteOpsSpy.getSize).toHaveBeenCalledWith(
+      fs,
+      undefined,
+      'dashboard',
+      expect.any(String)
+    );
+    expect(component.sizeInfo()).toEqual({ count: 42, bytes: 2048 });
+    expect(component.loadingSize()).toBe(false);
+  });
+
+  it('finishes loading when the size request fails', async () => {
+    await fixture.whenStable();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    remoteOpsSpy.getSize.mockRejectedValueOnce(new Error('backendErrors.remote.notFound'));
+    recreate();
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(component.loadingSize()).toBe(false));
+
+    expect(component.sizeInfo()).toBeNull();
+    expect(component.loadingSize()).toBe(false);
+    expect(component.aboutInfo()).toEqual(mockFsInfo);
   });
 
   it('should compute features excluding IsLocal and sort them alphabetically', async () => {

@@ -77,7 +77,7 @@ describe('WorkflowNodeComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('.node-title')?.textContent).toContain('Daily Sync');
     expect(el.querySelector('.node-subtitle')?.textContent).toContain('Local to GDrive');
-    expect(component.categoryPillClass()).toBe('p-primary');
+    expect(el.querySelector('.node-category-wrapper .app-pill')?.classList).toContain('p-primary');
   });
 
   it('emits select on card click', () => {

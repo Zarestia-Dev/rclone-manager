@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { LocalDrive, PathStyle, DefaultPathOp, PathInspectionStatus } from '@app/types';
-import { ApiClientService } from './api-client.service';
+import { LocalDrive, DefaultPathOp, PathInspectionStatus, PathStyle } from '@app/types';
+import { TauriBaseService } from './tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
 import { PathService } from './path.service';
@@ -11,8 +11,7 @@ const HOME_FALLBACK_POSIX = '/root/rclone-manager';
 const MAX_DEFAULT_PATH_ATTEMPTS = 10;
 
 @Injectable({ providedIn: 'root' })
-export class PathInspectionService {
-  private readonly apiClient = inject(ApiClientService);
+export class PathInspectionService extends TauriBaseService {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteFileOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
@@ -101,7 +100,7 @@ export class PathInspectionService {
 
   private async resolveHome(): Promise<string> {
     try {
-      const drives = await this.apiClient.invoke<LocalDrive[]>('get_local_drives');
+      const drives = await this.invokeCommand<LocalDrive[]>('get_local_drives');
       if (drives && drives.length > 0) {
         const first = drives[0];
         const candidate = first.name || first.mount_point || '';
@@ -140,25 +139,20 @@ export class PathInspectionService {
     throw new Error(JSON.stringify({ key: 'backendErrors.mount.directoryNotEmpty' }));
   }
 
-  isTrulyLocalPath(
-    path: string,
-    pathStyle: PathStyle = this.pathService.enginePathStyle()
-  ): boolean {
-    return this.pathService.isTrulyLocalPath(path, pathStyle);
-  }
-
-  async createLocalDirectory(
-    path: string,
-    parentOnly = false,
+  private async createLocalDirectory(
+    path: unknown,
+    pathStyle: PathStyle,
+    parentOnly: boolean,
     backendName?: string
   ): Promise<void> {
-    if (!path) return;
+    if (typeof path !== 'string' || !path || !this.pathService.isTrulyLocalPath(path, pathStyle))
+      return;
     let targetPath = path;
     if (parentOnly) {
-      targetPath = this.pathService.getParentPath(path);
+      targetPath = this.pathService.getParentPath(path, pathStyle);
       if (!targetPath) return;
     }
-    const { root, relative } = this.pathService.splitLocalForStat(targetPath);
+    const { root, relative } = this.pathService.splitLocalForStat(targetPath, pathStyle);
     await this.remoteFileOps.makeDirectory(root, relative, undefined, undefined, backendName);
   }
 
@@ -175,13 +169,7 @@ export class PathInspectionService {
       mountPoint?: string;
     }[]) {
       const mountPoint = config?.rclone?.mountPoint || config?.mountPoint;
-      if (
-        mountPoint &&
-        typeof mountPoint === 'string' &&
-        this.isTrulyLocalPath(mountPoint, pathStyle)
-      ) {
-        await this.createLocalDirectory(mountPoint, pathStyle === 'windows', backendName);
-      }
+      await this.createLocalDirectory(mountPoint, pathStyle, pathStyle === 'windows', backendName);
     }
 
     // 2. Handle Bisync Configs
@@ -194,12 +182,8 @@ export class PathInspectionService {
       const path1 = config?.rclone?.path1 || config?.path1;
       const path2 = config?.rclone?.path2 || config?.path2;
 
-      if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
-        await this.createLocalDirectory(path1, false, backendName);
-      }
-      if (path2 && typeof path2 === 'string' && this.isTrulyLocalPath(path2, pathStyle)) {
-        await this.createLocalDirectory(path2, false, backendName);
-      }
+      await this.createLocalDirectory(path1, pathStyle, false, backendName);
+      await this.createLocalDirectory(path2, pathStyle, false, backendName);
     }
   }
 
@@ -214,24 +198,13 @@ export class PathInspectionService {
     const pathStyle = this.pathService.enginePathStyle();
 
     if (opType === 'mount') {
-      const mountPoint = (rclone['mountPoint'] ?? rclone['dest']) as string | undefined;
-      if (
-        mountPoint &&
-        typeof mountPoint === 'string' &&
-        this.isTrulyLocalPath(mountPoint, pathStyle)
-      ) {
-        await this.createLocalDirectory(mountPoint, pathStyle === 'windows');
-      }
+      const mountPoint = rclone['mountPoint'] ?? rclone['dest'];
+      await this.createLocalDirectory(mountPoint, pathStyle, pathStyle === 'windows');
     } else if (opType === 'bisync') {
-      const path1 = (rclone['path1'] ?? rclone['source'] ?? rclone['srcFs']) as string | undefined;
-      const path2 = (rclone['path2'] ?? rclone['dest'] ?? rclone['dstFs']) as string | undefined;
-
-      if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
-        await this.createLocalDirectory(path1, false);
-      }
-      if (path2 && typeof path2 === 'string' && this.isTrulyLocalPath(path2, pathStyle)) {
-        await this.createLocalDirectory(path2, false);
-      }
+      const path1 = rclone['path1'] ?? rclone['source'] ?? rclone['srcFs'];
+      const path2 = rclone['path2'] ?? rclone['dest'] ?? rclone['dstFs'];
+      await this.createLocalDirectory(path1, pathStyle, false);
+      await this.createLocalDirectory(path2, pathStyle, false);
     }
   }
 }

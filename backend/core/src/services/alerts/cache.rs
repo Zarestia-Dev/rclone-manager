@@ -54,15 +54,6 @@ pub fn delete_rule(manager: &AppSettingsManager, id: &str) -> Result<(), String>
     Ok(())
 }
 
-pub async fn bump_rule_fired(
-    manager: &AppSettingsManager,
-    cache: &AlertRuleCache,
-    id: &str,
-    at: chrono::DateTime<chrono::Utc>,
-) {
-    cache.bump_fired(manager, id, at).await;
-}
-
 // Persist only runtime metadata; do not overwrite edited rules or recreate deleted ones.
 fn persist_firing(manager: &AppSettingsManager, fired: &AlertRule) -> rcman::Result<()> {
     let sub = manager.sub_settings(crate::utils::constants::SUB_ALERTS_RULES)?;
@@ -489,5 +480,23 @@ mod tests {
         assert_eq!(stored.fire_count, 1);
         cache.reload_rules(&manager).await;
         assert_eq!(cache.get_rules().await[0].fire_count, 1);
+    }
+
+    #[tokio::test]
+    async fn unknown_rule_firings_do_not_change_existing_rules_or_create_settings() {
+        let (_directory, manager, cache) = setup(false);
+        let original = cache.get_rules().await;
+        for id in ["", "missing", "旅行 & arşiv"] {
+            cache.bump_fired(&manager, id, chrono::Utc::now()).await;
+        }
+        let rules = cache.get_rules().await;
+        assert_eq!(rules.len(), original.len());
+        assert_eq!(rules[0].fire_count, original[0].fire_count);
+        assert_eq!(rules[0].last_fired, original[0].last_fired);
+        let stored = get_all_rules(&manager);
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].id, "rule");
+        assert_eq!(stored[0].fire_count, 0);
+        assert!(stored[0].last_fired.is_none());
     }
 }

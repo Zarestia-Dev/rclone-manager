@@ -47,21 +47,51 @@ describe('FlagConfigService cache scope', () => {
 
   it('loads lazily and invalidates all backend-specific flag caches', async () => {
     expect(invoke).not.toHaveBeenCalled();
-    await service.loadAllFlagFields();
+    const firstFields = await service.loadAllFlagFields();
     await service.getGroupedOptions();
-    await service.loadServeFlagFields('http');
+    const firstServeFields = await service.loadServeFlagFields('http');
     expect(service.mountTypes()).toEqual(['cmount']);
-    expect(service.serveFlagsMap().has('http')).toBe(true);
+    expect(firstServeFields.length).toBeGreaterThan(0);
     switched.next();
-    expect(service.allFlagFields()).toBeNull();
     expect(service.groupedOptions()).toBeNull();
     expect(service.mountTypes()).toBeNull();
-    expect(service.serveFlagsMap().size).toBe(0);
     getMountTypes.mockResolvedValue(['mount']);
     getServeTypes.mockResolvedValue(['webdav']);
-    await service.loadAllFlagFields();
+    const refreshedFields = await service.loadAllFlagFields();
+    const refreshedServeFields = await service.loadServeFlagFields('http');
+    expect(refreshedFields).not.toBe(firstFields);
+    expect(refreshedServeFields).not.toBe(firstServeFields);
+    expect(invoke.mock.calls.filter(([command]) => command === 'get_serve_flags')).toHaveLength(2);
     expect(service.mountTypes()).toEqual(['mount']);
     expect(service.availableServeTypes()).toEqual(['webdav']);
+  });
+
+  it.each([
+    { block: 'main', option: 'AskPassword', value: false },
+    { block: 'main', option: 'Retries', value: 0 },
+    { block: 'main', option: 'LogFile', value: '' },
+    { block: 'filter', option: 'ExcludeRule', value: ['Arşiv & 旅行', 'folder/path'] },
+  ])(
+    'applies the live option $block.$option using the backend command contract',
+    async ({ block, option, value }) => {
+      await service.applyOption(block, option, value);
+      expect(invoke).toHaveBeenCalledExactlyOnceWith('set_rclone_option', {
+        blockName: block,
+        optionName: option,
+        value,
+      });
+    }
+  );
+
+  it('propagates live option failures so the caller can retain unsaved changes', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = new Error('option rejected');
+    invoke.mockRejectedValueOnce(error);
+    try {
+      await expect(service.applyOption('main', 'LogLevel', 'DEBUG')).rejects.toBe(error);
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it('does not wait for a previous backend flag request that never completes', async () => {

@@ -21,7 +21,7 @@ import { RemoteCreationOrchestrator } from 'src/app/services/remote/remote-creat
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { IconService } from 'src/app/services/ui/icon.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+
 import { RemotePresetsService, PresetValues } from 'src/app/services/remote/remote-presets';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
@@ -90,7 +90,6 @@ export class QuickAddRemoteComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
-  private readonly pathService = inject(PathService);
   private readonly presetsService = inject(RemotePresetsService);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
 
@@ -302,7 +301,6 @@ export class QuickAddRemoteComponent {
     ): Record<string, unknown> => {
       return mapFormToConfigProfile(type, opData, {
         remoteName,
-        pathService: this.pathService,
       });
     };
 

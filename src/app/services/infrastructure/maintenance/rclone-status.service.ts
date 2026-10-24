@@ -46,11 +46,10 @@ export class RcloneStatusService {
   readonly isLoading = signal(true);
   readonly uptime = computed(() => this.jobStats().elapsedTime || 0);
 
-  private isManuallyPaused = signal(false);
   private isVisible = signal(!this.document.hidden);
 
   readonly isPollingActive = computed(() => {
-    return this.canLoad() && !this.isManuallyPaused() && this.isVisible();
+    return this.canLoad() && this.isVisible();
   });
 
   constructor() {
@@ -68,10 +67,6 @@ export class RcloneStatusService {
           void this.refreshStatus();
         }
       });
-  }
-
-  async refreshStatus(): Promise<void> {
-    await this.hydrateSystemStatus();
   }
 
   private setupPollingControl(): void {
@@ -94,7 +89,7 @@ export class RcloneStatusService {
           this.rcloneInfo.set(null);
           this.rclonePID.set(null);
         }),
-        switchMap(() => from(this.hydrateSystemStatus())),
+        switchMap(() => from(this.refreshStatus())),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
@@ -114,7 +109,7 @@ export class RcloneStatusService {
         const isVisible = !this.document.hidden;
         this.isVisible.set(isVisible);
         if (isVisible) {
-          void this.hydrateSystemStatus();
+          void this.refreshStatus();
         }
       });
 
@@ -129,11 +124,11 @@ export class RcloneStatusService {
       .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        void this.hydrateSystemStatus();
+        void this.refreshStatus();
       });
   }
 
-  private async hydrateSystemStatus(): Promise<void> {
+  async refreshStatus(): Promise<void> {
     if (!this.canLoad()) return;
     try {
       const snapshot = await this.systemInfoService.getSystemStatusSnapshot();
@@ -204,12 +199,5 @@ export class RcloneStatusService {
     const persistedValue = rate === 'off' ? '' : rate;
     await this.systemInfoService.bandwidthLimit(rate);
     await this.appSettingsService.saveSetting('core', 'bandwidth_limit', persistedValue);
-  }
-
-  pausePolling(): void {
-    this.isManuallyPaused.set(true);
-  }
-  resumePolling(): void {
-    this.isManuallyPaused.set(false);
   }
 }

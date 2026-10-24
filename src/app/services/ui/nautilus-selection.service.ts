@@ -37,13 +37,9 @@ export class NautilusSelectionService {
     return true;
   }
 
-  getItemKey(item: FileBrowserItem | null): string {
-    return fileBrowserItemKey(item);
-  }
-
   getSelectedItemsList(currentFiles: FileBrowserItem[]): FileBrowserItem[] {
     const selection = this.tabSvc.activeSelection();
-    return currentFiles.filter((item: FileBrowserItem) => selection.has(this.getItemKey(item)));
+    return currentFiles.filter((item: FileBrowserItem) => selection.has(fileBrowserItemKey(item)));
   }
 
   handleItemClick(
@@ -65,13 +61,13 @@ export class NautilusSelectionService {
     const isPicker = pickerState.isOpen;
     const multi = !isPicker || !!pickerState.options?.multi;
     const isFileOnlyPicker = isPicker && pickerState.options?.selection === 'files';
-    const itemKey = this.getItemKey(item);
+    const itemKey = fileBrowserItemKey(item);
     const newSel = new Set<string>();
 
     const anchor = this.lastSelectedKey[paneIndex];
     const lastIdx =
       anchor && currentSel.has(anchor)
-        ? currentFiles.findIndex(f => this.getItemKey(f) === anchor)
+        ? currentFiles.findIndex(f => fileBrowserItemKey(f) === anchor)
         : -1;
     if (event.shiftKey && lastIdx >= 0 && multi) {
       if (event.ctrlKey || event.metaKey) {
@@ -84,7 +80,7 @@ export class NautilusSelectionService {
       for (let i = start; i <= end; i++) {
         const f = currentFiles[i];
         if (f && this.isItemSelectable(f.entry) && (!isFileOnlyPicker || !f.entry.IsDir)) {
-          newSel.add(this.getItemKey(f));
+          newSel.add(fileBrowserItemKey(f));
         }
       }
     } else if ((event.ctrlKey || event.metaKey) && multi) {
@@ -114,12 +110,12 @@ export class NautilusSelectionService {
     if (item && this.isItemSelectable(item.entry)) {
       const currentSelection =
         paneIndex === 0 ? this.tabSvc.selectedItems() : this.tabSvc.selectedItemsRight();
-      if (!currentSelection.has(this.getItemKey(item))) {
-        this.tabSvc.syncSelection(new Set<string>([this.getItemKey(item)]), paneIndex);
+      if (!currentSelection.has(fileBrowserItemKey(item))) {
+        this.tabSvc.syncSelection(new Set<string>([fileBrowserItemKey(item)]), paneIndex);
         this.lastSelectedKey[paneIndex] = currentFiles.some(
-          f => this.getItemKey(f) === this.getItemKey(item)
+          f => fileBrowserItemKey(f) === fileBrowserItemKey(item)
         )
-          ? this.getItemKey(item)
+          ? fileBrowserItemKey(item)
           : null;
       }
     }
@@ -139,12 +135,12 @@ export class NautilusSelectionService {
     const picker = this.nautilusService.filePickerState();
     const items = files.filter(
       item =>
-        keys.has(this.getItemKey(item)) &&
+        keys.has(fileBrowserItemKey(item)) &&
         this.isItemSelectable(item.entry) &&
         !(picker.isOpen && picker.options?.selection === 'files' && item.entry.IsDir)
     );
     const allowed = picker.isOpen && !picker.options?.multi ? items.slice(0, 1) : items;
-    this.tabSvc.syncSelection(new Set(allowed.map(item => this.getItemKey(item))), paneIndex);
+    this.tabSvc.syncSelection(new Set(allowed.map(item => fileBrowserItemKey(item))), paneIndex);
     this.lastSelectedKey[paneIndex] = null;
   }
 
@@ -158,6 +154,6 @@ export class NautilusSelectionService {
     const selectableFiles = currentFiles.filter(
       f => this.isItemSelectable(f.entry) && (!isFileOnlyPicker || !f.entry.IsDir)
     );
-    this.tabSvc.syncSelection(new Set(selectableFiles.map(f => this.getItemKey(f))), paneIndex);
+    this.tabSvc.syncSelection(new Set(selectableFiles.map(f => fileBrowserItemKey(f))), paneIndex);
   }
 }

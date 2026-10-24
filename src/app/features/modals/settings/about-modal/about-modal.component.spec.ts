@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -8,6 +8,7 @@ import { SystemInfoService } from 'src/app/services/infrastructure/system/system
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { DebugService } from 'src/app/services/infrastructure/system/debug.service';
+import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -23,6 +24,7 @@ describe('AboutModalComponent', () => {
   let readyToRestart: WritableSignal<boolean>;
   let installationFailure: WritableSignal<string>;
   const cancelUpdate = vi.fn();
+  const relaunchApp = vi.fn();
 
   beforeEach(async () => {
     buildType = signal<string | null>(null);
@@ -30,6 +32,7 @@ describe('AboutModalComponent', () => {
     readyToRestart = signal(false);
     installationFailure = signal('');
     cancelUpdate.mockReset().mockResolvedValue(undefined);
+    relaunchApp.mockReset().mockResolvedValue(undefined);
     dialogRefSpy = { close: vi.fn() };
 
     const mockSystemInfoService = {
@@ -109,6 +112,7 @@ describe('AboutModalComponent', () => {
         { provide: AppUpdaterService, useValue: mockAppUpdaterService },
         { provide: RcloneUpdateService, useValue: mockRcloneUpdateService },
         { provide: DebugService, useValue: mockDebugService },
+        { provide: AppLifecycleService, useValue: { relaunchApp } },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: RcloneStatusService, useValue: mockRcloneStatusService },
         { provide: BackendService, useValue: mockBackendService },
@@ -119,6 +123,31 @@ describe('AboutModalComponent', () => {
     fixture = TestBed.createComponent(AboutModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('prevents duplicate restarts while relaunch is pending', async () => {
+    let resolve!: () => void;
+    relaunchApp.mockReturnValue(new Promise<void>(done => (resolve = done)));
+    const restarting = component.restartApp();
+    expect(component.restartingApp()).toBe(true);
+    await component.restartApp();
+    expect(relaunchApp).toHaveBeenCalledOnce();
+    resolve();
+    await restarting;
+    expect(component.restartingApp()).toBe(false);
+  });
+
+  it('reports restart failures and allows another attempt', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    relaunchApp.mockRejectedValueOnce(new Error('restart failed'));
+    await component.restartApp();
+    expect(TestBed.inject(NotificationService).showError).toHaveBeenCalled();
+    expect(component.restartingApp()).toBe(false);
+    await component.restartApp();
+    expect(relaunchApp).toHaveBeenCalledTimes(2);
+    expect(component.restartingApp()).toBe(false);
   });
 
   it.each(['flatpak', 'portable', 'container', null])(

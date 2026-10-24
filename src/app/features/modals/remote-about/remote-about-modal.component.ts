@@ -19,6 +19,7 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { RemoteDiskUsageService } from 'src/app/services/remote/remote-disk-usage.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -66,6 +67,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteOps = inject(RemoteFileOperationsService);
+  private readonly paths = inject(PathService);
   private readonly capacity = inject(RemoteDiskUsageService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly translate = inject(TranslateService);
@@ -236,7 +238,7 @@ export class RemoteAboutModalComponent implements OnInit {
   private async loadSizeInBackground(): Promise<void> {
     try {
       const sizeData = await this.remoteOps.getSize(
-        this.normalizedName,
+        this.paths.normalizeRemoteForRclone(this.normalizedName),
         undefined,
         'dashboard',
         this.readJobGroup

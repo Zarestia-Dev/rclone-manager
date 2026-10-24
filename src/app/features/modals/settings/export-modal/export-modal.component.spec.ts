@@ -161,6 +161,25 @@ describe('ExportModalComponent', () => {
     );
   });
 
+  it.each([true, false])(
+    'uses password protection to control exported secrets: %s',
+    async enabled => {
+      component.exportPath.set('/tmp/backup');
+      component.onPasswordProtectionChange(enabled);
+      if (enabled) component.password.set('  test password  ');
+      await component.onExport();
+      expect(backupRestoreSpy.backupSettings).toHaveBeenCalledWith(
+        '/tmp/backup',
+        ExportType.All,
+        enabled ? 'test password' : null,
+        '',
+        null,
+        ['default', 'test'],
+        enabled
+      );
+    }
+  );
+
   it('toggles type menu expansion', () => {
     expect(component.isTypeMenuExpanded()).toBe(false);
     component.toggleTypeMenu();

@@ -202,7 +202,7 @@ export class QuickRunEditorComponent implements OnInit {
     return this.valueMapper.extractSensitiveFields(fields);
   });
 
-  readonly remotes = computed(() => this.remoteFacade.remoteSummaries());
+  readonly remotes = this.remoteFacade.remoteSummaries;
   readonly existingRemoteNames = computed(() => this.remotes().map(r => r.name));
 
   /**
@@ -654,7 +654,6 @@ export class QuickRunEditorComponent implements OnInit {
     const group = this.getOpFormGroup(op);
     const existing = mapFormToConfigProfile(op, group.getRawValue(), {
       remoteName: this.currentRemoteName(),
-      pathService: this.pathService,
     });
     const merged = mergeImportedProfile(
       op,
@@ -726,7 +725,6 @@ export class QuickRunEditorComponent implements OnInit {
     const fields = this.dynamicFlagFields();
     const mapped = mapFormToConfigProfile(opType, rawValue, {
       remoteName,
-      pathService: this.pathService,
       cleanData: (options, definitions) => this.valueMapper.cleanData(options, definitions),
       dynamicFields: this.getFlagFields(opType),
     });
@@ -829,7 +827,6 @@ export class QuickRunEditorComponent implements OnInit {
       if (category === operation) {
         const current = mapFormToConfigProfile(operation, group.getRawValue(), {
           remoteName: this.currentRemoteName(),
-          pathService: this.pathService,
         });
         await this.applyOperationConfig(operation, {
           ...current,

@@ -154,7 +154,7 @@
     <ng-template #recipesMenu>
       <div class="material-context-menu limited" cdkMenu>
         <div class="menu-group-label">{{ 'flow.workflow.presetRecipes' | translate }}</div>
-        @for (tpl of presetTemplates(); track tpl.id) {
+        @for (tpl of storageService.presetTemplates(); track tpl.id) {
           <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="loadTemplate(tpl)">
             <mat-icon [svgIcon]="tpl.icon"></mat-icon>
             <div class="option-content">

@@ -5,7 +5,6 @@ import { generatePrefixedId } from 'src/app/shared/utils';
 import {
   Entry,
   FsInfo,
-  JobActionType,
   Origin,
   FsTransferItem,
   FsDeleteItem,
@@ -62,13 +61,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
+  /** fs must be an Rclone filesystem (e.g. "drive:") or a local path. */
   async getSize(
-    remote: string,
+    fs: string,
     path?: string,
     source?: Origin,
     group?: string
   ): Promise<{ count: number; bytes: number }> {
-    return this.invokeCommand('get_size', { remote, path, origin: source, group });
+    return this.invokeCommand('get_size', { remote: fs, path, origin: source, group });
   }
 
   async getStat(
@@ -261,28 +261,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  async uploadFileStream(
-    remote: string,
-    path: string,
-    file: File,
-    source?: Origin,
-    relativePath = file.name,
-    group?: string
-  ): Promise<string> {
-    group ||= generatePrefixedId('upload');
-    const body = new FormData();
-    body.append('remote', remote);
-    body.append('path', path);
-    if (source) body.append('origin', JSON.stringify(source));
-    if (group) body.append('group', group);
-    body.append('mtime', file.lastModified.toString());
-    body.append('file', file, relativePath || file.name);
-
-    const response = await this.sendWebUpload(body, { group, remote, path, origin: source });
-    if (!response.success) throw new Error(response.error || 'Upload failed');
-    return response.data;
-  }
-
   async uploadWebFilesBatch(
     remote: string,
     path: string,
@@ -326,20 +304,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
         failedPaths: files.length ? files.map(f => f.relativePath || f.file.name) : uniqueDirs,
       };
     }
-  }
-
-  async submitBatchJob(
-    inputs: Record<string, unknown>[],
-    jobType: JobActionType,
-    source?: Origin,
-    group?: string
-  ): Promise<string> {
-    return this.invokeCommand<string>('submit_batch_job', {
-      inputs,
-      job_type: jobType,
-      origin: source,
-      group,
-    });
   }
 
   async archiveCreate(

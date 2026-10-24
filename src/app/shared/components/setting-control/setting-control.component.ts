@@ -1,3 +1,4 @@
+import * as validationUtils from 'src/app/shared/validators';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -47,7 +48,6 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
 import {
   isConvertibleType,
   isJsonArrayType,
-  isMultiselectType,
   isArrayType,
   isIntType,
   isFloatType,
@@ -226,12 +226,6 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
     return Array.isArray(val) ? val.join(', ') || '[]' : String(val);
   });
 
-  // Constants
-  private readonly DEFAULT_OVERRIDES: Record<string, Partial<RcConfigOption>> = {
-    min_age: { DefaultStr: '0s', Default: 0 },
-    max_age: { DefaultStr: '0s', Default: 0 },
-  };
-
   readonly DUMP_FLAGS_FALLBACK = DUMP_FLAGS_FALLBACK;
   readonly encodingFlags = ENCODING_FLAGS;
 
@@ -240,9 +234,8 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
     () => {
       const opt = this.option();
       if (!opt) return null;
-      const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
       const caller = this.optionOverrides()[opt.Name] ?? {};
-      return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+      return { ...opt, ...caller } as RcConfigOption;
     },
     { equal: deepEqual }
   );
@@ -250,7 +243,7 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
   readonly isMultiselectOption = computed(() => {
     const opt = this.mergedOption();
     if (!opt) return false;
-    if (isMultiselectType(opt.Type)) return true;
+    if (isArrayType(opt.Type)) return true;
     return (
       (opt.Name === 'scope' || opt.Help?.toLowerCase().includes('comma separated list')) &&
       !!opt.Examples?.length
@@ -413,6 +406,7 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
     if (this.isMultiselectOption()) {
+      if (isJsonArrayType(option.Type) && Array.isArray(option.Default)) return option.Default;
       const delimiter = option.Type === 'SpaceSepList' ? /\s+/ : ',';
       return this.splitToArray(option.DefaultStr, delimiter);
     }
@@ -425,7 +419,6 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
         return this.valueMapper.parseTristate(option.Default ?? option.DefaultStr);
       case 'Bits':
         if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
-        if (!option.Examples?.length) return option.DefaultStr ?? '';
         return this.splitToArray(option.DefaultStr, ',');
       case 'Encoding':
       case 'CommaSepList':
@@ -572,10 +565,6 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
-      if (opt.Type === 'Bits' && !opt.Examples?.length) {
-        if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
-        return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
-      }
       if (typeof value === 'number') {
         const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
         return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', delimiter);
@@ -642,9 +631,7 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
     if (!opt) return;
 
     const validators = this.getValidators(opt);
-    const isArray =
-      !opt.Examples?.length &&
-      (isJsonArrayType(opt.Type) || opt.Type === 'CommaSepList' || opt.Type === 'SpaceSepList');
+    const isArray = this.controlType() === 'array';
 
     if (isArray) {
       const initial = this.getInitialArrayValue(opt);
@@ -679,14 +666,15 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
   }
 
   private getInitialArrayValue(opt: RcConfigOption): string[] {
-    if (opt.Type === 'CommaSepList') return this.splitToArray(opt.ValueStr || opt.DefaultStr, ',');
-    if (opt.Type === 'SpaceSepList')
-      return this.splitToArray(opt.ValueStr || opt.DefaultStr, /\s+/);
-    if (Array.isArray(opt.Value) && opt.Value.length > 0)
-      return opt.Value.filter((v): v is string => !!v);
-    if (Array.isArray(opt.Default) && opt.Default.length > 0)
-      return (opt.Default as unknown[]).filter((v): v is string => !!v);
-    return [];
+    if (isJsonArrayType(opt.Type)) {
+      if (Array.isArray(opt.Value) && opt.Value.length > 0)
+        return opt.Value.filter((v): v is string => !!v);
+      if (Array.isArray(opt.Default) && opt.Default.length > 0)
+        return (opt.Default as unknown[]).filter((v): v is string => !!v);
+      if (opt.Type !== 'CommaSepList' && opt.Type !== 'SpaceSepList') return [];
+    }
+    const initial = this.getInitialValue(opt);
+    return Array.isArray(initial) ? initial.map(String) : [];
   }
 
   private getInitialValue(opt: RcConfigOption): unknown {
@@ -698,11 +686,6 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
     if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return opt.ValueStr || opt.DefaultStr || '';
-      }
-      if (opt.Type === 'Bits' && !opt.Examples?.length) {
-        return typeof opt.Value === 'number'
-          ? opt.ValueStr || opt.DefaultStr || ''
-          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
       }
       const raw =
         typeof opt.Value === 'number'
@@ -867,7 +850,7 @@ export class SettingControlComponent implements ControlValueAccessor, Validator 
       const r = this.validatorRegistry;
       const examples = this.controlOptionsList();
       if (isMultiSelect || isJsonArrayType(opt.Type)) {
-        validators.push(r.arrayValidator());
+        validators.push(validationUtils.arrayValidator());
       } else {
         const vMap: Record<string, () => ValidatorFn> = {
           int: () => r.integerValidator(opt.DefaultStr, examples),

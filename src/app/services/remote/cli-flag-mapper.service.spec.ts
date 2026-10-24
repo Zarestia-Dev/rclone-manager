@@ -1,3 +1,4 @@
+import * as cliParser from 'src/app/shared/utils/cli-parser.util';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideHttpClient } from '@angular/common/http';
@@ -8,9 +9,9 @@ import { RemoteManagementService } from './remote-management.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { RcConfigOption, SharedProfileType } from '@app/types';
 import type { ParsedCLI } from 'src/app/shared/utils/cli-parser.util';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-// The spec exercises the pure-logic methods (tokenize / parse / classify /
-// buildLookupTable). None of them touch the network, so we stub out the two
+// The spec exercises flag classification and lookup-table construction. None of them touch the network, so we stub out the two
 // dependencies that would otherwise pull in HttpClient + TranslateService +
 // MatSnackBar + MatDialog.
 function stubFlagConfig(): Partial<FlagConfigService> {
@@ -56,157 +57,82 @@ describe('CliFlagMapperService', () => {
     expect(service).toBeTruthy();
   });
 
-  describe('tokenize', () => {
-    it('should split raw CLI by spaces', () => {
-      const tokens = service.tokenize('rclone sync source:path dest:path');
-      expect(tokens).toEqual(['rclone', 'sync', 'source:path', 'dest:path']);
-    });
-
-    it('should respect double and single quotes', () => {
-      const tokens = service.tokenize('rclone sync "source path" \'dest path\'');
-      expect(tokens).toEqual(['rclone', 'sync', 'source path', 'dest path']);
-    });
-
-    it('should handle backslash line continuations', () => {
-      const tokens = service.tokenize('rclone sync \\\n  source:path \\\n  dest:path');
-      expect(tokens).toEqual(['rclone', 'sync', 'source:path', 'dest:path']);
-    });
-
-    it('should not split on spaces inside subshells or backticks', () => {
-      const tokens = service.tokenize(
-        'rclone sync src: /backup/local_$(date +%Y-%m-%d_%H%M) --msg `hello world`'
-      );
-      expect(tokens).toEqual([
-        'rclone',
-        'sync',
-        'src:',
-        '/backup/local_$(date +%Y-%m-%d_%H%M)',
-        '--msg',
-        '`hello world`',
-      ]);
-    });
-  });
-
-  describe('hasMacro', () => {
-    it('should detect $(...) macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_$(date +%Y-%m-%d)')).toBe(true);
-    });
-
-    it('should detect `...` macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_`date`')).toBe(true);
-    });
-
-    it('should return false for strings without macros', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_normal')).toBe(false);
-    });
-  });
-
-  describe('parse', () => {
-    it('should parse verb, sourcePath, destPath and key/value flags', () => {
-      const existingBools = new Set(['track-renames']);
-      const parsed = service.parse(
-        'rclone sync source:path dest:path --max-delete 50 --track-renames',
-        existingBools
-      );
-
-      expect(parsed.verb).toBe('sync');
-      expect(parsed.sourcePath).toBe('source:path');
-      expect(parsed.destPath).toBe('dest:path');
-
-      expect(parsed.flags.length).toBe(2);
-      expect(parsed.flags[0]).toEqual({
-        raw: '--max-delete 50',
-        key: 'max-delete',
-        value: '50',
-        hasMacro: false,
-      });
-      expect(parsed.flags[1]).toEqual({
-        raw: '--track-renames',
-        key: 'track-renames',
-        value: true,
-        hasMacro: false,
-      });
-    });
-
-    it('should parse boolean flags with underscore-hyphen normalization', () => {
-      const existingBools = new Set(['track_renames']);
-      const parsed = service.parse(
-        'rclone sync source:path dest:path --track-renames',
-        existingBools
-      );
-      expect(parsed.flags[0]).toEqual({
-        raw: '--track-renames',
-        key: 'track-renames',
-        value: true,
-        hasMacro: false,
-      });
-    });
-
-    it('should handle equal sign in flags', () => {
-      const parsed = service.parse(
-        'rclone sync source:path dest:path --backup-dir=dest:/archive',
-        new Set()
-      );
-      expect(parsed.flags[0]).toEqual({
-        raw: '--backup-dir=dest:/archive',
-        key: 'backup-dir',
-        value: 'dest:/archive',
-        hasMacro: false,
-      });
-    });
-
-    it('should strip quotes from equal sign values in flags', () => {
-      const parsed = service.parse(
-        'rclone sync source:path dest:path --exclude-from="/path/to/exclude-list.txt"',
-        new Set()
-      );
-      expect(parsed.flags[0]).toEqual({
-        raw: '--exclude-from="/path/to/exclude-list.txt"',
-        key: 'exclude-from',
-        value: '/path/to/exclude-list.txt',
-        hasMacro: false,
-      });
-    });
-
-    it('should parse mount verb and its paths', () => {
-      const parsed = service.parse(
-        'rclone mount remote:path /mnt/point --vfs-cache-mode full',
-        new Set()
-      );
-      expect(parsed.verb).toBe('mount');
-      expect(parsed.mountSubtype).toBe('mount');
-      expect(parsed.sourcePath).toBe('remote:path');
-      expect(parsed.destPath).toBe('/mnt/point');
-      expect(parsed.flags[0].key).toBe('vfs-cache-mode');
-      expect(parsed.flags[0].value).toBe('full');
-    });
-
-    it('should parse mount2/cmount/nfsmount verbs mapping to mount operation', () => {
-      const parsed2 = service.parse('rclone mount2 remote:path /mnt/point', new Set());
-      expect(parsed2.verb).toBe('mount');
-      expect(parsed2.mountSubtype).toBe('mount2');
-
-      const parsedC = service.parse('rclone cmount remote:path /mnt/point', new Set());
-      expect(parsedC.verb).toBe('mount');
-      expect(parsedC.mountSubtype).toBe('cmount');
-
-      const parsedN = service.parse('rclone nfsmount remote:path /mnt/point', new Set());
-      expect(parsedN.verb).toBe('mount');
-      expect(parsedN.mountSubtype).toBe('nfsmount');
-    });
-
-    it('should parse serve verb, serveSubtype, and source path', () => {
-      const parsed = service.parse('rclone serve http remote:path --addr :8080', new Set());
-      expect(parsed.verb).toBe('serve');
-      expect(parsed.serveSubtype).toBe('http');
-      expect(parsed.sourcePath).toBe('remote:path');
-      expect(parsed.destPath).toBeUndefined();
-      expect(parsed.flags[0].key).toBe('addr');
-      expect(parsed.flags[0].value).toBe(':8080');
-    });
-  });
-
   describe('classify', () => {
+    it.each<{ type: string; value: string | boolean; expected: unknown }>([
+      { type: 'bool', value: true, expected: true },
+      { type: 'bool', value: false, expected: false },
+      { type: 'bool', value: ' TRUE ', expected: true },
+      { type: 'bool', value: ' FALSE ', expected: false },
+      { type: 'bool', value: '', expected: '' },
+      { type: 'bool', value: 'invalid', expected: 'invalid' },
+      { type: 'Tristate', value: true, expected: true },
+      { type: 'Tristate', value: false, expected: false },
+      { type: 'Tristate', value: ' TRUE ', expected: true },
+      { type: 'Tristate', value: ' FALSE ', expected: false },
+      { type: 'Tristate', value: '', expected: null },
+      { type: 'Tristate', value: 'unset', expected: null },
+      { type: 'Tristate', value: 'null', expected: null },
+      { type: 'Tristate', value: 'invalid', expected: null },
+      { type: 'int', value: '-10', expected: -10 },
+      { type: 'uint64', value: '0', expected: 0 },
+      { type: 'float64', value: '2.5', expected: 2.5 },
+      { type: 'FileMode', value: '0755', expected: 0o755 },
+      { type: 'CommaSepList', value: ' png, jpg , ', expected: ['png', 'jpg'] },
+      { type: 'SpaceSepList', value: ' png\t jpg ', expected: ['png', 'jpg'] },
+      { type: 'string', value: '旅行 & Arşiv', expected: '旅行 & Arşiv' },
+      { type: 'string', value: 'false', expected: 'false' },
+      { type: 'int', value: true, expected: true },
+      { type: 'string', value: false, expected: false },
+    ])('converts $type flag value $value to $expected', ({ type, value, expected }) => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [{ Name: 'example', FieldName: 'Example', Type: type, Help: '', DefaultStr: '' }],
+        })
+      );
+      const parsed: ParsedCLI = {
+        verb: 'sync',
+        flags: [{ raw: '--example', key: 'example', value, hasMacro: false }],
+      };
+      const result = service.classify(parsed, lookupTable);
+      expect(result.classified[0]).toMatchObject({
+        status: 'mapped',
+        flagType: 'sync',
+        fieldName: 'example',
+        coercedValue: expected,
+      });
+      expect(parsed.flags[0].value).toBe(value);
+    });
+
+    it.each(['bool', 'Tristate'])(
+      'keeps direct no-flag matches ahead of negation for %s fields',
+      type => {
+        const lookupTable = service.buildLookupTable(
+          fields({
+            sync: [
+              { Name: 'traverse', FieldName: 'Traverse', Type: type, Help: '', DefaultStr: '' },
+              { Name: 'check', FieldName: 'Check', Type: type, Help: '', DefaultStr: '' },
+              { Name: 'no_check', FieldName: 'NoCheck', Type: type, Help: '', DefaultStr: '' },
+            ],
+          })
+        );
+        const parsed = cliParser.parseCLI(
+          'rclone sync src: dst: --no-traverse --no-check',
+          new Set(['no-traverse', 'no-check'])
+        );
+        const result = service.classify(parsed, lookupTable);
+        expect(result.classified[0]).toMatchObject({
+          status: 'mapped',
+          fieldName: 'traverse',
+          coercedValue: false,
+        });
+        expect(result.classified[1]).toMatchObject({
+          status: 'mapped',
+          fieldName: 'no_check',
+          coercedValue: true,
+        });
+      }
+    );
+
     // Note: rclone RC API uses underscores in Name (e.g. "max_delete"), CLI uses hyphens (--max-delete)
     it('should match --max-delete (hyphen) against max_delete (underscore) from RC API', () => {
       const lookupTable = service.buildLookupTable(
@@ -330,7 +256,7 @@ describe('CliFlagMapperService', () => {
     it('should strip bash-style comments', () => {
       // Line continuation (\) + newline joins the lines, then # starts a comment
       // that runs to the end of the line.
-      const tokens = service.tokenize(
+      const tokens = cliParser.tokenize(
         'rclone sync src: dst: --filter "- /**" \\\n# comment\n --addr :8080'
       );
       expect(tokens).toEqual([
@@ -346,7 +272,7 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should consume flag values starting with hyphen but not forming valid flags', () => {
-      const parsed = service.parse(
+      const parsed = cliParser.parseCLI(
         'rclone sync src: dst: --filter "- /**" --max-delete -10',
         new Set()
       );
@@ -365,7 +291,7 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should not consume the next token when it is a valid flag', () => {
-      const parsed = service.parse('rclone sync src: dst: --verbose --dry-run', new Set());
+      const parsed = cliParser.parseCLI('rclone sync src: dst: --verbose --dry-run', new Set());
       expect(parsed.flags.length).toBe(2);
       expect(parsed.flags[0]).toEqual({
         raw: '--verbose',
@@ -382,16 +308,16 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should parse check, delete, copyurl and other rclone verbs correctly', () => {
-      const parsedCheck = service.parse('rclone check remote:path /local/path', new Set());
+      const parsedCheck = cliParser.parseCLI('rclone check remote:path /local/path', new Set());
       expect(parsedCheck.verb).toBe('check');
       expect(parsedCheck.sourcePath).toBe('remote:path');
       expect(parsedCheck.destPath).toBe('/local/path');
 
-      const parsedDelete = service.parse('rclone delete remote:path/folder', new Set());
+      const parsedDelete = cliParser.parseCLI('rclone delete remote:path/folder', new Set());
       expect(parsedDelete.verb).toBe('delete');
       expect(parsedDelete.sourcePath).toBe('remote:path/folder');
 
-      const parsedCopyurl = service.parse(
+      const parsedCopyurl = cliParser.parseCLI(
         'rclone copyurl https://example.com/file.zip remote:path',
         new Set()
       );
@@ -399,18 +325,18 @@ describe('CliFlagMapperService', () => {
       expect(parsedCopyurl.sourcePath).toBe('https://example.com/file.zip');
       expect(parsedCopyurl.destPath).toBe('remote:path');
 
-      const parsedPurge = service.parse('rclone purge remote:path/trash', new Set());
+      const parsedPurge = cliParser.parseCLI('rclone purge remote:path/trash', new Set());
       expect(parsedPurge.verb).toBe('delete');
       expect(parsedPurge.sourcePath).toBe('remote:path/trash');
     });
 
     it('should strip wrapper commands and binary paths like sudo, /usr/bin/rclone, wsl', () => {
-      const parsedSudo = service.parse('sudo /usr/bin/rclone sync src: dst:', new Set());
+      const parsedSudo = cliParser.parseCLI('sudo /usr/bin/rclone sync src: dst:', new Set());
       expect(parsedSudo.verb).toBe('sync');
       expect(parsedSudo.sourcePath).toBe('src:');
       expect(parsedSudo.destPath).toBe('dst:');
 
-      const parsedWsl = service.parse('wsl rclone copy src: dst:', new Set());
+      const parsedWsl = cliParser.parseCLI('wsl rclone copy src: dst:', new Set());
       expect(parsedWsl.verb).toBe('copy');
       expect(parsedWsl.sourcePath).toBe('src:');
       expect(parsedWsl.destPath).toBe('dst:');
@@ -437,7 +363,7 @@ describe('CliFlagMapperService', () => {
         })
       );
 
-      const parsed = service.parse('rclone sync src: dst: -P -v -n -u -L -c -I', new Set());
+      const parsed = cliParser.parseCLI('rclone sync src: dst: -P -v -n -u -L -c -I', new Set());
       const result = service.classify(parsed, lookupTable);
 
       expect(result.classified.length).toBe(7);
@@ -467,7 +393,7 @@ describe('CliFlagMapperService', () => {
         })
       );
 
-      const parsed = service.parse(
+      const parsed = cliParser.parseCLI(
         'rclone sync src: dst: --no-traverse --no-check-certificate',
         new Set()
       );
@@ -493,7 +419,7 @@ describe('CliFlagMapperService', () => {
         })
       );
 
-      const parsed = service.parse(
+      const parsed = cliParser.parseCLI(
         'rclone sync src: dst: --fast-list=false --dry-run=true',
         new Set()
       );
@@ -513,7 +439,7 @@ describe('CliFlagMapperService', () => {
         })
       );
 
-      const parsed = service.parse('rclone sync src: dst: --suffix -bak', new Set());
+      const parsed = cliParser.parseCLI('rclone sync src: dst: --suffix -bak', new Set());
       expect(parsed.flags.length).toBe(1);
       expect(parsed.flags[0].key).toBe('suffix');
       expect(parsed.flags[0].value).toBe('-bak');
@@ -561,7 +487,7 @@ describe('CliFlagMapperService', () => {
         })
       );
 
-      const parsed = service.parse(
+      const parsed = cliParser.parseCLI(
         'rclone sync src: dst: --checksum --backup-dir dst:_backup',
         new Set(['checksum'])
       );

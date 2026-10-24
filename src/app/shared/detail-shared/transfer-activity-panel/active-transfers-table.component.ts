@@ -47,7 +47,7 @@ import { matchesActivitySearch } from './activity.utils';
               <div class="card-info-left">
                 <mat-icon
                   svgIcon="file"
-                  class="card-primary-icon file-icon"
+                  class="card-primary-icon"
                   [attr.title]="transfer.name"
                 ></mat-icon>
                 <span class="card-title-text truncate" [title]="transfer.name">{{

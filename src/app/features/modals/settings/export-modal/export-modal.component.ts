@@ -110,7 +110,6 @@ export class ExportModalComponent implements OnInit {
   readonly selectedOptionDetails = computed(
     () => this.exportOptions().find(o => o.id === this.selectedOption()) ?? this.exportOptions()[0]
   );
-  readonly includeSecrets = computed(() => this.withPassword());
 
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
@@ -306,7 +305,7 @@ export class ExportModalComponent implements OnInit {
         selectedId === 'specific_remote' ? this.selectedRemoteName().trim() : '',
         this.userNote().trim() || null,
         this.selectedProfiles(),
-        this.includeSecrets()
+        this.withPassword()
       );
     } catch (error) {
       console.error('Export failed:', error);

@@ -112,17 +112,16 @@ export class NautilusSidebarComponent {
   );
 
   // Computed
-  private readonly _activeKey = computed<string | null>(() => {
+  readonly activeBookmarkKey = computed<string | null>(() => {
     const remote = this.nautilusRemote();
     if (this.starredMode() || !remote) return null;
     return `${this.pathService.normalizeRemoteName(remote.name)}::${this.currentPath()}`;
   });
 
-  readonly activeBookmarkKey = this._activeKey;
   protected readonly getItemKey = fileBrowserItemKey;
 
   readonly anyBookmarkSelected = computed(() => {
-    const active = this._activeKey();
+    const active = this.activeBookmarkKey();
     return active !== null && this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
   });
 

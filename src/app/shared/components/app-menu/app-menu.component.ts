@@ -110,8 +110,8 @@ export class AppMenuComponent {
 
   goBackToBaseWorkspace(): void {
     this.nautilusService.closeBrowserOverlay();
-    this.flowOverlayService.closeFlowOverlay();
-    this.mainUiOverlayService.closeMainUiOverlay();
+    this.flowOverlayService.closeOverlay();
+    this.mainUiOverlayService.closeOverlay();
     this.uiStateService.setMainView(this.baseWorkspace());
   }
 
@@ -123,12 +123,12 @@ export class AppMenuComponent {
 
     // Keep the current workspace visible until the target has finished loading.
     if (target === 'nautilus') await this.nautilusService.openBrowserOverlay(null, null);
-    else if (target === 'flow') await this.flowOverlayService.openFlowOverlay();
-    else await this.mainUiOverlayService.openMainUiOverlay();
+    else if (target === 'flow') await this.flowOverlayService.openOverlay();
+    else await this.mainUiOverlayService.openOverlay();
 
     if (target !== 'nautilus') this.nautilusService.closeBrowserOverlay();
-    if (target !== 'flow') this.flowOverlayService.closeFlowOverlay();
-    if (target !== 'main_menu') this.mainUiOverlayService.closeMainUiOverlay();
+    if (target !== 'flow') this.flowOverlayService.closeOverlay();
+    if (target !== 'main_menu') this.mainUiOverlayService.closeOverlay();
   }
 
   openPreferencesModal(): void {

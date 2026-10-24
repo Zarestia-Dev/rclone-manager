@@ -3,7 +3,7 @@ import { Observable, from, fromEvent, filter, map, Subject, share } from 'rxjs';
 import { listen } from '@tauri-apps/api/event';
 import { SseClientService } from '../platform/sse-client.service';
 import {
-  AppEventPayloadType,
+  AppEventPayload,
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_CHANGED,
   JOB_CACHE_CHANGED,
@@ -21,7 +21,6 @@ import {
   RCLONE_ENGINE_STATUS_CHANGED,
   BACKEND_SWITCHED,
   EngineStatus,
-  RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
   SYSTEM_THEME_CHANGED,
@@ -88,13 +87,6 @@ export class EventListenersService extends TauriBaseService {
   listenToRcloneEngineReady(): Observable<void> {
     return this.listenToEngineStatus().pipe(
       filter(event => event.status === 'ready'),
-      map(() => undefined)
-    );
-  }
-
-  listenToRcloneEngineUpdating(): Observable<void> {
-    return this.listenToEngineStatus().pipe(
-      filter(event => event.status === 'updating'),
       map(() => undefined)
     );
   }
@@ -234,12 +226,8 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<void>(MOUNT_PLUGIN_INSTALLED);
   }
 
-  listenToRclonePasswordStored(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_PASSWORD_STORED);
-  }
-
-  listenToAppEvents(): Observable<AppEventPayloadType> {
-    return this.listenToEvent<AppEventPayloadType>(APP_EVENT);
+  listenToAppEvents(): Observable<AppEventPayload> {
+    return this.listenToEvent<AppEventPayload>(APP_EVENT);
   }
 
   listenToNetworkStatusChanged(): Observable<{ isMetered: boolean }> {

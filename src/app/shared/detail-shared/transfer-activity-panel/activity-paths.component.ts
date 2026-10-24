@@ -12,7 +12,7 @@ const ACTIVITY_TARGETS: readonly ActivityTarget[] = ['src', 'dst'];
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, TranslatePipe],
   template: `
-    <div class="card-paths-v2">
+    <div class="card-paths">
       @for (path of paths(); track path.target; let first = $first) {
         <div class="path-segment">
           @if (!first) {

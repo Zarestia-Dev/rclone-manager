@@ -29,7 +29,6 @@ describe('remote-config.utils', () => {
     };
     formCtx = {
       remoteName: 'myremote',
-      pathService,
       cleanData: (opts: Record<string, unknown>): Record<string, unknown> => ({ ...opts }),
       dynamicFields: [],
     };

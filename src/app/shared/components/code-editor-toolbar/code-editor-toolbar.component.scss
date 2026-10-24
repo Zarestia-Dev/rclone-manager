@@ -1,0 +1,84 @@
+:host {
+  display: block;
+  flex-shrink: 0;
+  min-width: 0;
+  background: var(--bg-elevated-1);
+  border-bottom: thin solid var(--border-color);
+}
+
+.editor-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xxs);
+  padding: var(--space-xxs) var(--space-xs);
+
+  button[aria-pressed="true"] {
+    color: var(--accent-color);
+    background: var(--selected-bg-color);
+  }
+
+  button:focus-visible {
+    outline: var(--space-xxs) solid var(--accent-color);
+    outline-offset: calc(-1 * var(--space-xxs));
+  }
+
+  .action-button {
+    font-size: var(--font-size-xl);
+    background: transparent;
+  }
+}
+
+.editor-view-menu mat-slide-toggle {
+  pointer-events: none;
+}
+
+.editor-font-size {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.editor-font-actions {
+  display: flex;
+  gap: var(--space-xxs);
+
+  .action-button {
+    background: var(--bg-elevated-2);
+    color: var(--window-fg-color);
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      background: var(--hover-bg-color);
+    }
+  }
+}
+
+.editor-position {
+  margin-inline: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}
+
+@media (max-width: 40rem) {
+  .editor-mode {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .editor-tools .action-button,
+  .editor-font-actions .action-button {
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
+  }
+
+  .editor-view-menu .menu-item {
+    min-height: var(--icon-size-xl);
+  }
+}

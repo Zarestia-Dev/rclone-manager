@@ -34,6 +34,8 @@ import {
 import { parseTypedValue, formatValueDisplay, deepEqual } from 'src/app/shared/utils';
 import { UserTemplateService } from 'src/app/services/remote/user-template.service';
 import { SearchContainerComponent } from '../../components/search-container/search-container.component';
+import { CodeEditorToolbarComponent } from '../../components/code-editor-toolbar/code-editor-toolbar.component';
+import { codeEditorExtensions } from '../../components/code-editor-toolbar/code-editor.extensions';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 import { EditorView } from '@codemirror/view';
@@ -104,6 +106,7 @@ export interface ManageCategoryView {
     MatExpansionModule,
     TranslatePipe,
     SearchContainerComponent,
+    CodeEditorToolbarComponent,
   ],
   templateUrl: './template-manager-modal.component.html',
   styleUrls: ['./template-manager-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -240,6 +243,8 @@ export class TemplateManagerModalComponent {
     viewChild<ElementRef<HTMLElement>>('manageEditorContainer');
   private saveEditorView: EditorView | null = null;
   private manageEditorView: EditorView | null = null;
+  readonly saveCodeEditor = signal<EditorView | null>(null);
+  readonly manageCodeEditor = signal<EditorView | null>(null);
 
   constructor() {
     // CodeMirror lifecycle — single helper drives both Save and Manage tabs.
@@ -283,9 +288,11 @@ export class TemplateManagerModalComponent {
       } else if (which === 'save') {
         this.saveEditorView?.destroy();
         this.saveEditorView = null;
+        this.saveCodeEditor.set(null);
       } else {
         this.manageEditorView?.destroy();
         this.manageEditorView = null;
+        this.manageCodeEditor.set(null);
       }
     });
   }
@@ -594,7 +601,7 @@ export class TemplateManagerModalComponent {
       json(),
       lintGutter(),
       linter(jsonParseLinter()),
-      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
+      codeEditorExtensions(this.translate),
       EditorView.updateListener.of(update => {
         if (!update.docChanged) return;
         onContentChange(update.state.doc.toString());
@@ -614,6 +621,7 @@ export class TemplateManagerModalComponent {
       this.saveEditorView = this.createCodeMirror(container, initialJson, text =>
         this.handleSaveJsonInput(text)
       );
+      this.saveCodeEditor.set(this.saveEditorView);
       return;
     }
 
@@ -623,6 +631,7 @@ export class TemplateManagerModalComponent {
     this.manageEditorView = this.createCodeMirror(container, initialJson, text =>
       this.handleManageJsonInput(text)
     );
+    this.manageCodeEditor.set(this.manageEditorView);
   }
 
   private getEditorView(which: 'save' | 'manage'): EditorView | null {

@@ -15,12 +15,12 @@ use super::{
     types::{Backend, BackendInfo},
 };
 
-/// Live caches stay with their owner; only options are copied on backend selection.
+/// Live caches stay with their owner; backend selection shares immutable options snapshots.
 #[derive(Debug, Default)]
 struct BackendState {
     jobs: Arc<JobCache>,
     remotes: Arc<RemoteCache>,
-    options: Option<crate::rclone::state::options::OptionsCacheEntry>,
+    options: Option<Arc<crate::rclone::state::options::OptionsCacheEntry>>,
 }
 
 /// Inner state that must always be read/written together to avoid index drift.
@@ -447,8 +447,8 @@ impl BackendManager {
         log::debug!(
             "Backend '{name}' runtime: os={:?}, arch={:?}, go={:?}",
             info.os,
-            info.arch(),
-            info.go_version()
+            info.arch,
+            info.go_version
         );
         self.runtime_info
             .write()
@@ -507,7 +507,7 @@ impl BackendManager {
             .write()
             .await
             .entry(name.to_string())
-            .or_insert_with(RuntimeInfo::new)
+            .or_default()
             .status = status;
     }
 
@@ -602,20 +602,95 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn runtime_status_updates_initialize_missing_entries_and_preserve_existing_metadata() {
+        use super::super::runtime::RuntimeStatus;
+
+        let manager = BackendManager::new();
+        let name = "NAS & Cloud";
+        manager
+            .set_runtime_status(name, RuntimeStatus::Error("connection closed".into()))
+            .await;
+        let initial = manager.get_runtime_info(name).await.unwrap();
+        assert_eq!(
+            initial.error_message().as_deref(),
+            Some("connection closed")
+        );
+        assert!(initial.version.is_none());
+        assert!(initial.os.is_none());
+        assert!(manager.get_runtime_info("another backend").await.is_none());
+
+        manager
+            .set_runtime_info(
+                name,
+                RuntimeInfo {
+                    version: Some("v1.75.0".into()),
+                    os: Some("linux".into()),
+                    arch: Some("arm64".into()),
+                    go_version: Some("go1.26.0".into()),
+                    status: RuntimeStatus::Connected,
+                    ..Default::default()
+                },
+            )
+            .await;
+        manager
+            .set_runtime_status(name, RuntimeStatus::Error("authentication rejected".into()))
+            .await;
+        let updated = manager.get_runtime_info(name).await.unwrap();
+        assert_eq!(
+            updated.error_message().as_deref(),
+            Some("authentication rejected")
+        );
+        assert_eq!(updated.version.as_deref(), Some("v1.75.0"));
+        assert_eq!(updated.os.as_deref(), Some("linux"));
+        assert_eq!(updated.arch.as_deref(), Some("arm64"));
+        assert_eq!(updated.go_version.as_deref(), Some("go1.26.0"));
+    }
+
+    #[tokio::test]
     async fn options_restore_preserves_payload_and_expiry_and_clears_absent_backend() {
         let manager = BackendManager::new();
         let payload = serde_json::json!({"providers": {"drive": {"flag": "a'b,c"}}});
         manager.options_cache.set("A".into(), payload.clone()).await;
-        let cached_at = manager.options_cache.get_entry().await.unwrap().cached_at;
+        let original = manager.options_cache.get_entry().await.unwrap();
+        let cached_at = original.cached_at;
         manager.save_options("A").await;
         manager.restore_options("B").await;
         assert!(manager.options_cache.get_entry().await.is_none());
         manager.restore_options("A").await;
         assert_eq!(manager.options_cache.get("A").await, Some(payload));
+        assert!(Arc::ptr_eq(
+            &original,
+            &manager.options_cache.get_entry().await.unwrap()
+        ));
         assert_eq!(
             manager.options_cache.get_entry().await.unwrap().cached_at,
             cached_at
         );
+    }
+
+    #[tokio::test]
+    async fn restoring_an_expired_options_snapshot_does_not_renew_its_ttl() {
+        use crate::rclone::state::options::{OPTIONS_CACHE_TTL, OptionsCacheEntry};
+        let manager = BackendManager::new();
+        let original = Arc::new(OptionsCacheEntry {
+            backend_name: "旅行 & Arşiv".into(),
+            cached_at: std::time::Instant::now()
+                - OPTIONS_CACHE_TTL
+                - std::time::Duration::from_secs(1),
+            payload: serde_json::json!({"main": [{"Value": 0}]}),
+        });
+        manager
+            .options_cache
+            .set_entry(Some(original.clone()))
+            .await;
+        manager.save_options("旅行 & Arşiv").await;
+        manager.restore_options("another backend").await;
+        manager.restore_options("旅行 & Arşiv").await;
+        let restored = manager.options_cache.get_entry().await.unwrap();
+        assert!(Arc::ptr_eq(&original, &restored));
+        assert_eq!(restored.cached_at, original.cached_at);
+        assert!(manager.options_cache.get("旅行 & Arşiv").await.is_none());
+        assert!(manager.options_cache.get("another backend").await.is_none());
     }
 
     #[tokio::test]

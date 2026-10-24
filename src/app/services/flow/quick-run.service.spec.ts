@@ -109,7 +109,6 @@ describe('QuickRunService', () => {
     expect(service).toBeTruthy();
     expect(service.quickRuns()).toEqual([]);
     expect(service.selectedId()).toBeNull();
-    expect(service.isCreating()).toBe(false);
   });
 
   it('should refresh quick runs when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {

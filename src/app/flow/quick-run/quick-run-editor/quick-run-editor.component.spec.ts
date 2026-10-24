@@ -30,6 +30,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 describe('QuickRunEditorComponent', () => {
   let fixture: ComponentFixture<QuickRunEditorComponent>;
   let component: QuickRunEditorComponent;
+  let remoteSummaries: ReturnType<typeof signal<{ name: string; type: string }[]>>;
 
   const mockMountFields: RcConfigOption[] = [
     {
@@ -129,6 +130,11 @@ describe('QuickRunEditorComponent', () => {
   };
 
   beforeEach(async () => {
+    remoteSummaries = signal([
+      { name: 'test-remote', type: 'drive' },
+      { name: 'other', type: 'drive' },
+      { name: 'hidden', type: 's3' },
+    ]);
     dialogData = {};
     mountServiceMock = {
       getMountTypes: vi.fn().mockResolvedValue(['mount', 'cmount', 'saf']),
@@ -174,11 +180,7 @@ describe('QuickRunEditorComponent', () => {
         {
           provide: RemoteFacadeService,
           useValue: {
-            remoteSummaries: signal([
-              { name: 'test-remote', type: 'drive' },
-              { name: 'other', type: 'drive' },
-              { name: 'hidden', type: 's3' },
-            ]),
+            remoteSummaries,
           },
         },
         {
@@ -499,6 +501,13 @@ describe('QuickRunEditorComponent', () => {
       'test-remote': { region: 'eu' },
       other: { region: 'us' },
     });
+  });
+
+  it('updates available remote names when the catalogue changes after opening', () => {
+    remoteSummaries.set([{ name: 'Arşiv & 旅行', type: 's3' }]);
+    expect(component.existingRemoteNames()).toEqual(['Arşiv & 旅行']);
+    remoteSummaries.set([]);
+    expect(component.existingRemoteNames()).toEqual([]);
   });
 
   it('resolves provider metadata for hidden catalogue remotes', async () => {

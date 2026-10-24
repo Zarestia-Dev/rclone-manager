@@ -33,11 +33,11 @@ describe('ShortcutHandlerDirective', () => {
     isBrowserOverlayOpen: ReturnType<typeof vi.fn>;
   };
   let flowOverlayServiceSpy: {
-    isFlowOverlayOpen: ReturnType<typeof vi.fn>;
-    toggleFlowOverlay: ReturnType<typeof vi.fn>;
+    isOpen: ReturnType<typeof vi.fn>;
+    toggleOverlay: ReturnType<typeof vi.fn>;
   };
   let matDialogSpy: { openDialogs: unknown[] };
-  let onboardingStateServiceSpy: { isOnboardingActive: ReturnType<typeof vi.fn> };
+  let onboardingStateServiceSpy: { isCompleted: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     modalServiceSpy = {
@@ -50,11 +50,11 @@ describe('ShortcutHandlerDirective', () => {
       isBrowserOverlayOpen: vi.fn().mockReturnValue(false),
     };
     flowOverlayServiceSpy = {
-      isFlowOverlayOpen: vi.fn().mockReturnValue(false),
-      toggleFlowOverlay: vi.fn(),
+      isOpen: vi.fn().mockReturnValue(false),
+      toggleOverlay: vi.fn(),
     };
     matDialogSpy = { openDialogs: [] };
-    onboardingStateServiceSpy = { isOnboardingActive: vi.fn().mockReturnValue(false) };
+    onboardingStateServiceSpy = { isCompleted: vi.fn().mockReturnValue(true) };
 
     await TestBed.configureTestingModule({
       imports: [TestHostComponent],
@@ -119,6 +119,19 @@ describe('ShortcutHandlerDirective', () => {
     expect(nautilusServiceSpy.toggleNautilusOverlay).toHaveBeenCalled();
   });
 
+  it('blocks ordinary shortcuts until onboarding completes while allowing quit', () => {
+    onboardingStateServiceSpy.isCompleted.mockReturnValue(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+    expect(nautilusServiceSpy.toggleNautilusOverlay).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', ctrlKey: true }));
+    expect(windowServiceSpy.quitApplication).toHaveBeenCalledOnce();
+
+    onboardingStateServiceSpy.isCompleted.mockReturnValue(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+    expect(nautilusServiceSpy.toggleNautilusOverlay).toHaveBeenCalledOnce();
+  });
+
   it('triggers openVault on Ctrl+Alt+V', () => {
     const event = new KeyboardEvent('keydown', {
       key: 'v',
@@ -145,7 +158,7 @@ describe('ShortcutHandlerDirective', () => {
   });
 
   it('opens flow shortcuts modal on Ctrl+? when flow overlay is open', () => {
-    flowOverlayServiceSpy.isFlowOverlayOpen.mockReturnValue(true);
+    flowOverlayServiceSpy.isOpen.mockReturnValue(true);
 
     const event = new KeyboardEvent('keydown', {
       key: '?',

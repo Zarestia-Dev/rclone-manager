@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Injectable, inject, signal, WritableSignal, DestroyRef } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
@@ -50,7 +51,7 @@ export class PathSelectionService {
     if (existing) return existing;
 
     // FormControl.value can be string[] with multi-path forms — always coerce to string
-    const path = this.pathService.getPrimaryPath(initialPath) ?? '';
+    const path = pathUtils.getPrimaryPath(initialPath) ?? '';
     const stateSignal = signal<PathSelectionState>({
       id: fieldId,
       remoteName,
@@ -93,7 +94,7 @@ export class PathSelectionService {
     const entry = state.options.find(e => e.Name === entryName);
     if (!entry) return;
 
-    const newPath = this.pathService.joinPath(state.currentPath, entryName);
+    const newPath = pathUtils.joinPath(state.currentPath, entryName);
     formControl?.setValue(newPath);
 
     if (entry.IsDir) this.triggerLoad(fieldId, state.remoteName, newPath);
@@ -155,7 +156,7 @@ export class PathSelectionService {
     if (!stateSignal) return;
 
     // FormControl.value can be string[] — coerce to a single string
-    const path = this.pathService.getPrimaryPath(rawPath) ?? '';
+    const path = pathUtils.getPrimaryPath(rawPath) ?? '';
 
     this.abortControllers.get(fieldId)?.abort();
     const controller = new AbortController();

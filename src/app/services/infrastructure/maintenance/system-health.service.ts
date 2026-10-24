@@ -10,8 +10,6 @@ import { RclonePasswordService } from '../../security/rclone-password.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { BackendService } from '../system/backend.service';
 
-export type SystemProblem = 'rclone-missing' | 'mount-plugin-missing' | 'password-required';
-
 interface ActiveRepairSheet {
   ref: MatBottomSheetRef<unknown>;
   type: RepairSheetType | RepairData['type'];
@@ -44,18 +42,6 @@ export class SystemHealthService {
   readonly isCheckingRclone = signal(false);
   readonly isCheckingMountPlugin = signal(false);
   readonly isCheckingEncryption = signal(false);
-
-  readonly problems = computed<SystemProblem[]>(() => {
-    const list: SystemProblem[] = [];
-    if (this.rcloneInstalled() === false) list.push('rclone-missing');
-    if (!this.skipMountPluginCheck() && this.mountPluginInstalled() === false) {
-      list.push('mount-plugin-missing');
-    }
-    if (this.configEncrypted() === true && !this.passwordUnlocked()) list.push('password-required');
-    return list;
-  });
-
-  readonly hasProblems = computed(() => this.problems().length > 0);
 
   readonly isInitialized = computed(
     () =>
@@ -278,30 +264,6 @@ export class SystemHealthService {
       passwordDescription:
         'Your rclone configuration requires a password to access encrypted remotes.',
     });
-  }
-
-  async handleRcloneOAuthEvent(event: object, isOnboardingCompleted: boolean): Promise<void> {
-    if (!('status' in event)) {
-      console.warn('Unknown OAuth event format:', event);
-      return;
-    }
-
-    const { status, message } = event as { status: string; message?: string };
-
-    switch (status) {
-      case 'password_error':
-        if (isOnboardingCompleted) await this.handlePasswordRequired(false);
-        break;
-      case 'spawn_failed':
-      case 'startup_timeout':
-        console.error(`OAuth process error [${status}]:`, message);
-        break;
-      case 'success':
-        console.debug('OAuth process started successfully:', message);
-        break;
-      default:
-        console.debug(`Unhandled OAuth event status: ${status}`);
-    }
   }
 
   private setupMountPluginListener(): void {

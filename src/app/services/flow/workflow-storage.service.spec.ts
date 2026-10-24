@@ -55,22 +55,6 @@ describe('WorkflowStorageService', () => {
           backendWorkflows.push(copy);
           return Promise.resolve(copy);
         }
-        if (command === 'export_workflow') {
-          const id = args?.['workflowId'] as string;
-          const src = backendWorkflows.find(w => w.id === id);
-          return Promise.resolve(JSON.stringify(src, null, 2));
-        }
-        if (command === 'import_workflow') {
-          const jsonStr = args?.['jsonStr'] as string;
-          const parsed = JSON.parse(jsonStr) as WorkflowDefinition;
-          const imported = {
-            ...parsed,
-            id: `wf-imp-${Date.now()}`,
-            name: `${parsed.name} (Imported)`,
-          };
-          backendWorkflows.push(imported);
-          return Promise.resolve(imported);
-        }
         return Promise.resolve(null);
       }),
     };
@@ -97,7 +81,10 @@ describe('WorkflowStorageService', () => {
   });
 
   it('loads templates and provides preset templates', async () => {
+    expect(service.presetTemplates()).toEqual([]);
     const templates = await service.loadPresetTemplates();
+    expect(service.presetTemplates()).toBe(templates);
+    expect(await service.loadPresetTemplates()).toBe(templates);
     expect(templates.length).toBeGreaterThan(0);
     expect(templates.some(t => t.id === 'tpl-daily-backup-notify')).toBe(true);
     expect(templates.some(t => t.id === 'tpl-drift-check-sync')).toBe(true);
@@ -105,6 +92,23 @@ describe('WorkflowStorageService', () => {
     const instantiated = service.instantiateTemplate(templates[0]);
     expect(instantiated.id).toMatch(/^wf-/);
     expect(instantiated.name).toBe(templates[0].definition.name);
+  });
+
+  it('publishes the same templates for concurrent explicit loads', async () => {
+    const [first, second] = await Promise.all([
+      service.loadPresetTemplates(),
+      service.loadPresetTemplates(),
+    ]);
+    expect(first).toBe(second);
+    expect(service.presetTemplates()).toBe(first);
+  });
+
+  it('rejects template IDs before templates have been loaded', () => {
+    expect(service.presetTemplates()).toEqual([]);
+    expect(() => service.instantiateTemplate('missing-template')).toThrow(
+      'Template not loaded: missing-template'
+    );
+    expect(service.presetTemplates()).toEqual([]);
   });
 
   it('reloads workflows when SYSTEM_SETTINGS_CHANGED emits wildcard', () => {
@@ -196,35 +200,20 @@ describe('WorkflowStorageService', () => {
     expect(duplicated?.name).toBe('Original Flow (Copy)');
   });
 
-  it('exports and imports workflow JSON correctly', async () => {
-    const wf: WorkflowDefinition = {
-      id: 'export-wf',
-      name: 'Exportable Flow',
-      nodes: [
-        {
-          id: 'n1',
-          type: 'manual',
-          category: 'trigger',
-          title: 'T',
-          x: 0,
-          y: 0,
-          inputs: [],
-          outputs: [],
-          config: {},
-        },
-      ],
-      edges: [],
-      viewport: { x: 0, y: 0, zoom: 1 },
-      showOnTray: false,
-    };
+  it('keeps the loaded list and canvas unchanged when saving fails', async () => {
+    await service.loadAllWorkflows();
+    const state = TestBed.inject(WorkflowStateService);
+    const workflow = state.createNewWorkflow('Arşiv & 旅行');
+    await service.saveWorkflow(workflow);
+    const loaded = service.workflows();
+    const canvas = state.currentWorkflow();
+    mockApiClient.invoke.mockRejectedValueOnce(new Error('vault locked'));
 
-    await service.saveWorkflow(wf);
-    const json = await service.exportWorkflowJson(wf);
-    expect(json).toContain('Exportable Flow');
-
-    const imported = await service.importWorkflowJson(json);
-    expect(imported.name).toContain('Exportable Flow (Imported)');
-    expect(imported.nodes.length).toBe(1);
+    await expect(service.saveWorkflow({ ...workflow, name: 'Updated' })).rejects.toThrow(
+      'vault locked'
+    );
+    expect(service.workflows()).toBe(loaded);
+    expect(state.currentWorkflow()).toBe(canvas);
   });
 
   it('cleans duplicate workflows with the same name', async () => {

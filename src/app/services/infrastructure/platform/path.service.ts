@@ -4,7 +4,6 @@ import {
   FileBrowserItem,
   PathGroup,
   PathGroupType,
-  PathSegment,
   PathStyle,
   MountPathCollision,
 } from '@app/types';
@@ -31,32 +30,12 @@ export class PathService {
     return 'posix';
   }
 
-  normalizePath(p: string): string {
-    return pathUtils.normalizePath(p);
-  }
-
   normalizeForPlatform(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
     return pathUtils.normalizeForPlatform(path, pathStyle);
   }
 
-  joinPath(...segments: string[]): string {
-    return pathUtils.joinPath(...segments);
-  }
-
-  getFilename(path: string): string {
-    return pathUtils.getFilename(path);
-  }
-
-  getDirname(path: string): string {
-    return pathUtils.getDirname(path);
-  }
-
   getParentPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
     return pathUtils.getParentPath(path, pathStyle);
-  }
-
-  getPathSegments(path: string): PathSegment[] {
-    return pathUtils.getPathSegments(path);
   }
 
   normalizeRemoteForRclone(
@@ -100,77 +79,15 @@ export class PathService {
     return pathUtils.splitLocalForStat(path, pathStyle);
   }
 
-  normalizeFs(fs: unknown): string {
-    return pathUtils.normalizeFs(fs);
-  }
-
   getRemoteNameFromFs(fs: unknown): string {
-    const normalized = this.normalizeFs(fs);
+    const normalized = pathUtils.normalizeFs(fs);
     if (!normalized) return '';
     if (this.isLocalPath(normalized)) return 'local';
     return this.normalizeRemoteName(normalized.split(':')[0]);
   }
 
-  buildPathString(pathGroup: PathGroup | string, currentRemoteName: string): string {
-    return pathUtils.buildPathString(pathGroup, currentRemoteName);
-  }
-
-  buildPathStrings(
-    pathGroups: PathGroup | PathGroup[] | null | undefined,
-    currentRemoteName: string
-  ): string[] {
-    return pathUtils.buildPathStrings(pathGroups, currentRemoteName);
-  }
-
-  parsePathType(value: string): 'local' | 'currentRemote' | 'otherRemote' {
-    return pathUtils.parsePathType(value);
-  }
-
-  getRemoteNameFromValue(value: string, currentRemoteName: string): string | null {
-    return pathUtils.getRemoteNameFromValue(value, currentRemoteName);
-  }
-
   getFullDisplayPath(remote: ExplorerRoot | null, path: string, pathStyle?: PathStyle): string {
     return pathUtils.getFullDisplayPath(remote, path, pathStyle ?? this.pathStyleForRemote(remote));
-  }
-
-  getDisplaySegment(remote: ExplorerRoot | null, path: string, fallback = ''): string {
-    return pathUtils.getDisplaySegment(remote, path, fallback);
-  }
-
-  extractName(path: string, remoteName?: string): string {
-    return pathUtils.extractName(path, remoteName);
-  }
-
-  splitSegments(path: string): string[] {
-    return pathUtils.splitSegments(path);
-  }
-
-  isMultiPath(path: string | string[]): boolean {
-    return pathUtils.isMultiPath(path);
-  }
-
-  asPathArray(path: string | string[]): string[] {
-    return pathUtils.asPathArray(path);
-  }
-
-  getPrimaryPath(path: string | string[]): string {
-    return pathUtils.getPrimaryPath(path);
-  }
-
-  formatPathDisplay(path: string | string[]): string {
-    return pathUtils.formatPathDisplay(path);
-  }
-
-  formatPathTooltip(path: string | string[]): string {
-    return pathUtils.formatPathTooltip(path);
-  }
-
-  parseLocation(
-    rawInput: string,
-    knownRemotes: ExplorerRoot[]
-  ): { remote: ExplorerRoot; path: string } | null {
-    return pathUtils.parseLocation(rawInput, knownRemotes);
   }
 
   parseFsString(
@@ -216,7 +133,7 @@ export class PathService {
     const entryPath = item.entry.Path;
 
     if (isLocal) {
-      const fullPath = this.joinPath(remote, entryPath);
+      const fullPath = pathUtils.joinPath(remote, entryPath);
       return { type: 'local', path: fullPath, remote: '' };
     }
 

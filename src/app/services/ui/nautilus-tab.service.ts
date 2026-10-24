@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import type { NautilusNavigation } from './navigation-history.service';
 import { inject, Injectable, signal, computed, DestroyRef, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
@@ -123,7 +124,6 @@ export class NautilusTabService {
   readonly activeSelection = computed(() =>
     this.activePaneIndex() === 0 ? this.selectedItems() : this.selectedItemsRight()
   );
-  readonly activePaneRef = computed(() => this.getPaneRef(this.activePaneIndex()));
 
   readonly activeRemote = computed(() =>
     this.activePaneIndex() === 0 ? this.nautilusRemote() : this.nautilusRemoteRight()
@@ -133,12 +133,6 @@ export class NautilusTabService {
   );
   readonly activeFiles = computed(() =>
     this.activePaneIndex() === 0 ? this.rawFiles() : this.rawFilesRight()
-  );
-  readonly activeIsLoading = computed(() =>
-    this.activePaneIndex() === 0 ? this.isLoading() : this.isLoadingRight()
-  );
-  readonly activeErrorState = computed(() =>
-    this.activePaneIndex() === 0 ? this.errorState() : this.errorStateRight()
   );
 
   readonly starredMode = computed(
@@ -243,7 +237,7 @@ export class NautilusTabService {
     let initialLocationApplied = false;
 
     const tryParse = (loc: string): boolean => {
-      const parsed = this.pathService.parseLocation(loc, this.nautilusService.allRemotesLookup());
+      const parsed = pathUtils.parseLocation(loc, this.nautilusService.allRemotesLookup());
       if (parsed) {
         initialRemote = parsed.remote;
         initialPath = parsed.path;
@@ -417,7 +411,7 @@ export class NautilusTabService {
 
   private normalizeRefreshLocation(remote: string, path: string): { remote: string; path: string } {
     let name = this.pathService.normalizeRemoteName(remote);
-    let normalizedPath = this.pathService.normalizePath(path).replace(/^\/+|\/+$/g, '');
+    let normalizedPath = pathUtils.normalizePath(path).replace(/^\/+|\/+$/g, '');
     if (/^[a-zA-Z]:[\\/]*$/.test(name)) {
       name = name.slice(0, 2).toUpperCase();
       if (normalizedPath.slice(0, 2).toUpperCase() === name) {
@@ -447,7 +441,7 @@ export class NautilusTabService {
       ...this.tabs().map(tab => tab.id)
     );
     const id = ++this.interfaceTabCounter;
-    const displaySeg = this.pathService.getDisplaySegment(remote, path);
+    const displaySeg = pathUtils.getDisplaySegment(remote, path);
     const title = displaySeg
       ? this.translate.instant(displaySeg)
       : this.translate.instant(!remote ? 'nautilus.titles.starred' : 'nautilus.titles.files');
@@ -768,7 +762,7 @@ export class NautilusTabService {
 
     const currentStarredMode = pIdx === 0 ? this.starredMode() : this.starredModeRight();
     const targetStarredMode = !remote && path === '';
-    const displaySeg = this.pathService.getDisplaySegment(remote, path);
+    const displaySeg = pathUtils.getDisplaySegment(remote, path);
     const computedTitle =
       targetStarredMode || (currentStarredMode && !remote)
         ? this.translate.instant('nautilus.titles.starred')

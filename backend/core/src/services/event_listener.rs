@@ -38,15 +38,6 @@ use crate::utils::types::events::{
     WORKFLOW_EXECUTION_STATE_CHANGED,
 };
 
-#[cfg(feature = "tray")]
-fn trigger_tray_update(app: AppHandle) {
-    app.host().update_tray();
-}
-#[cfg(feature = "tray")]
-fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
-    app.host().set_tray_visible(enabled);
-}
-
 fn handle_termination_signals(app: &AppHandle) {
     let app_clone = app.clone();
     spawn(async move {
@@ -121,7 +112,7 @@ fn handle_remote_presence_changed(app: &AppHandle, payload: &Value) {
         }
 
         #[cfg(feature = "tray")]
-        trigger_tray_update(app);
+        app.host().update_tray();
     });
 }
 
@@ -145,12 +136,12 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
             #[cfg(feature = "tray")]
             ("general", "tray_enabled") => {
                 if let Some(enabled) = change.value.as_bool() {
-                    handle_tray_visibility_change(app, enabled);
+                    app.host().set_tray_visible(enabled);
                 }
             }
             #[cfg(feature = "tray")]
             ("general", "tray_icon_theme") => {
-                trigger_tray_update(app.clone());
+                app.host().update_tray();
             }
             ("general", "restrict") => {
                 if let Some(restrict) = change.value.as_bool() {
@@ -188,7 +179,8 @@ fn handle_settings_changed(app: &AppHandle, payload: &Value) {
             #[cfg(feature = "tray")]
             ("core", "max_tray_items") => {
                 if let Some(max) = change.value.as_u64() {
-                    handle_max_tray_items_change(app, max);
+                    debug!("Max tray items changed to: {max}");
+                    app.host().update_tray();
                 }
             }
             ("developer", "log_level") => {
@@ -320,7 +312,7 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
         {
             #[cfg(feature = "tray")]
             if job.job_type.is_tray_relevant() {
-                trigger_tray_update(app.clone());
+                app.host().update_tray();
             }
 
             if job.status.is_finished() {
@@ -337,12 +329,6 @@ fn handle_job_cache_changed(app: &AppHandle, payload: &Value) {
             crate::services::power::update_power_inhibition(&app).await;
         }
     });
-}
-
-#[cfg(feature = "tray")]
-fn handle_max_tray_items_change(app: &AppHandle, max: u64) {
-    debug!("Max tray items changed to: {max}");
-    trigger_tray_update(app.clone());
 }
 
 fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
@@ -367,7 +353,7 @@ fn dispatch_bridge_event(app: &AppHandle, event: BridgeEvent) {
         | WORKFLOW_EXECUTION_STATE_CHANGED
         | VAULT_STATE_CHANGED
         | UPDATE_TRAY_MENU => {
-            trigger_tray_update(app.clone());
+            app.host().update_tray();
         }
         _ => {}
     }
@@ -451,5 +437,129 @@ mod tests {
         assert_eq!(parse_setting_bandwidth_limit(&json!(null)), "off");
         assert_eq!(parse_setting_bandwidth_limit(&json!("10M")), "10M");
         assert_eq!(parse_setting_bandwidth_limit(&json!(5000)), "5000");
+    }
+
+    #[cfg(feature = "tray")]
+    mod tray {
+        use super::*;
+        use crate::context::{Host, ProductInfo};
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+
+        #[derive(Default)]
+        struct TrayHost {
+            updates: AtomicUsize,
+            visibility: parking_lot::Mutex<Vec<bool>>,
+        }
+
+        #[async_trait::async_trait]
+        impl Host for TrayHost {
+            fn resolve_paths(
+                &self,
+                _app: &AppHandle,
+            ) -> Result<crate::services::paths::AppPaths, String> {
+                Err("not used by tray events".into())
+            }
+
+            fn restart(&self, _app: &AppHandle) -> Result<(), String> {
+                Err("not used by tray events".into())
+            }
+
+            fn update_tray(&self) {
+                self.updates.fetch_add(1, Ordering::Relaxed);
+            }
+
+            fn set_tray_visible(&self, enabled: bool) {
+                self.visibility.lock().push(enabled);
+            }
+        }
+
+        #[test]
+        fn refresh_events_update_the_host_and_unknown_events_are_ignored() {
+            let host = Arc::new(TrayHost::default());
+            let app = AppHandle::new(host.clone(), ProductInfo::default());
+            dispatch_bridge_event(
+                &app,
+                BridgeEvent {
+                    event: UPDATE_TRAY_MENU.into(),
+                    payload: Value::Null,
+                },
+            );
+            dispatch_bridge_event(
+                &app,
+                BridgeEvent {
+                    event: BACKEND_SWITCHED.into(),
+                    payload: json!("NAS & 旅行"),
+                },
+            );
+            dispatch_bridge_event(
+                &app,
+                BridgeEvent {
+                    event: "unknown event & 旅行".into(),
+                    payload: Value::Null,
+                },
+            );
+            assert_eq!(host.updates.load(Ordering::Relaxed), 2);
+            assert!(host.visibility.lock().is_empty());
+        }
+
+        #[test]
+        fn valid_settings_apply_visibility_and_refresh_the_tray() {
+            let host = Arc::new(TrayHost::default());
+            let app = AppHandle::new(host.clone(), ProductInfo::default());
+            for enabled in [true, false] {
+                dispatch_bridge_event(
+                    &app,
+                    BridgeEvent {
+                        event: SYSTEM_SETTINGS_CHANGED.into(),
+                        payload: json!({"category": "general", "key": "tray_enabled", "value": enabled}),
+                    },
+                );
+            }
+            for (category, key, value) in [
+                ("general", "tray_icon_theme", json!("dark")),
+                ("core", "max_tray_items", json!(0)),
+                ("core", "max_tray_items", json!(20)),
+            ] {
+                dispatch_bridge_event(
+                    &app,
+                    BridgeEvent {
+                        event: SYSTEM_SETTINGS_CHANGED.into(),
+                        payload: json!({"category": category, "key": key, "value": value}),
+                    },
+                );
+            }
+            assert_eq!(*host.visibility.lock(), vec![true, false]);
+            assert_eq!(host.updates.load(Ordering::Relaxed), 3);
+        }
+
+        #[test]
+        fn invalid_or_unrelated_settings_do_not_call_tray_host_methods() {
+            let host = Arc::new(TrayHost::default());
+            let app = AppHandle::new(host.clone(), ProductInfo::default());
+            for payload in [
+                Value::Null,
+                json!({}),
+                json!([]),
+                json!({"category": "general", "key": "tray_enabled", "value": "true"}),
+                json!({"category": "general", "key": "tray_enabled", "value": null}),
+                json!({"category": "core", "key": "max_tray_items", "value": -1}),
+                json!({"category": "core", "key": "max_tray_items", "value": 1.5}),
+                json!({"category": "core", "key": "max_tray_items", "value": "20"}),
+                json!({"category": "unrelated", "key": "tray_enabled", "value": true}),
+            ] {
+                dispatch_bridge_event(
+                    &app,
+                    BridgeEvent {
+                        event: SYSTEM_SETTINGS_CHANGED.into(),
+                        payload,
+                    },
+                );
+            }
+            assert!(host.visibility.lock().is_empty());
+            assert_eq!(host.updates.load(Ordering::Relaxed), 0);
+        }
     }
 }

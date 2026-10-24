@@ -569,7 +569,7 @@ mod tests {
         assert_eq!(common.rclone_config.get("dry_run").unwrap(), true);
 
         let body = crate::rclone::commands::sync::GenericTransferParams {
-            source: common.first_source(),
+            source: common.source[0].clone(),
             dest: common.dest.clone(),
             rclone_config: common.rclone_config.clone(),
             filter_options: common.filter_options.clone(),

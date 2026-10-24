@@ -145,15 +145,6 @@ export class WorkflowStateService {
     return wf.nodes.find(n => n.id === firstId) ?? null;
   });
 
-  /** Currently selected single edge (if exactly one is selected) */
-  readonly selectedEdge = computed<WorkflowEdge | null>(() => {
-    const ids = this.selectedEdgeIds();
-    const wf = this.currentWorkflow();
-    if (!wf || ids.size !== 1) return null;
-    const [firstId] = ids;
-    return wf.edges.find(e => e.id === firstId) ?? null;
-  });
-
   /**
    * Loads a workflow definition into the active canvas state.
    */
@@ -750,10 +741,6 @@ export class WorkflowStateService {
 
   setPan(x: number, y: number): void {
     this.viewport.update(v => ({ ...v, x, y }));
-  }
-
-  panBy(dx: number, dy: number): void {
-    this.viewport.update(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
   }
 
   setZoom(zoom: number, centerX = 0, centerY = 0): void {

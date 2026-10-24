@@ -61,13 +61,13 @@ impl MountParams {
             .to_string();
 
         #[cfg(not(target_os = "android"))]
-        let mount_point = common.dest.clone();
+        let mount_point = common.dest;
 
         #[cfg(target_os = "android")]
         let mount_point = if mount_type == "saf" {
             format!("saf://{remote_name}")
         } else {
-            common.dest.clone()
+            common.dest
         };
 
         if mount_point.is_empty() {
@@ -79,10 +79,10 @@ impl MountParams {
         Ok(Self {
             backend: None,
             remote_name,
-            source: common.first_source(),
+            source: common.source.into_iter().next().unwrap_or_default(),
             mount_point,
             mount_type,
-            rclone_config: common.rclone_config.clone(),
+            rclone_config: common.rclone_config,
             vfs_options: common.vfs_options,
             filter_options: common.filter_options,
             backend_options: common.backend_options,
@@ -569,6 +569,46 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn mount_adapter_moves_the_first_source_and_destination_and_keeps_defaults() {
+        let common = parse_common_config(
+            &json!({
+                "fs": ["", "drive:旅行 & Arşiv", "drive:second"],
+                "mountPoint": "/mnt/旅行 & Arşiv"
+            }),
+            &json!({}),
+        )
+        .unwrap();
+        let source_pointer = common.source[0].as_ptr();
+        let destination_pointer = common.dest.as_ptr();
+        let params = MountParams::from_common("drive".into(), common).unwrap();
+        assert_eq!(params.source, "drive:旅行 & Arşiv");
+        assert_eq!(params.source.as_ptr(), source_pointer);
+        assert_eq!(params.mount_point, "/mnt/旅行 & Arşiv");
+        assert_eq!(params.mount_point.as_ptr(), destination_pointer);
+        assert_eq!(params.mount_type, "mount");
+        let body = params.to_rclone_body().unwrap();
+        assert_eq!(body["fs"], params.source);
+        assert_eq!(body["mountPoint"], params.mount_point);
+        assert_eq!(body["_async"], true);
+    }
+
+    #[test]
+    fn mount_adapter_keeps_empty_source_fallback_and_rejects_empty_mount_point() {
+        let config = json!({"fs": "drive:", "mountPoint": "/mnt/drive"});
+        let mut common = parse_common_config(&config, &json!({})).unwrap();
+        common.source.clear();
+        let params = MountParams::from_common("drive".into(), common).unwrap();
+        assert!(params.source.is_empty());
+        assert_eq!(params.mount_point, "/mnt/drive");
+
+        let mut common = parse_common_config(&config, &json!({})).unwrap();
+        common.dest.clear();
+        let error = MountParams::from_common("drive".into(), common).unwrap_err();
+        assert!(error.contains("backendErrors.rclone.invalidFlags"));
+        assert!(error.contains("Missing mountPoint"));
+    }
 
     #[test]
     fn saved_mount_with_empty_default_helper_profiles_builds_payload() {

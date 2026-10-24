@@ -124,26 +124,6 @@ describe('PathService', () => {
     });
   });
 
-  // ── Canonical POSIX normalization ─────────────────────────────────────────
-
-  describe('normalizePath (canonical POSIX form)', () => {
-    it('should resolve . and .. segments', () => {
-      expect(service.normalizePath('/a/b/./c/../d')).toBe('/a/b/d');
-    });
-
-    it('should collapse backslashes to forward slashes (canonical form is always POSIX)', () => {
-      expect(service.normalizePath('a\\b\\c')).toBe('a/b/c');
-    });
-
-    it('should NOT strip leading slash before a drive letter (POSIX has no drive letters)', () => {
-      // Old behavior sniffed drive letters and stripped the leading slash.
-      // Under the engine-driven model, drive-letter handling is the job of
-      // the Windows-native renderer (`normalizeForPlatform(path, 'windows')`),
-      // not the canonical normalizer.
-      expect(service.normalizePath('/C:/Users/hakan')).toBe('/C:/Users/hakan');
-    });
-  });
-
   // ── Native display rendering (pathStyle parameterized) ────────────────────
 
   describe('normalizeForPlatform (native display)', () => {
@@ -368,57 +348,6 @@ describe('PathService', () => {
       expect(service.getFullDisplayPath(localWindowsDrive, 'Users/Foo', 'windows')).toBe(
         'C:\\Users\\Foo'
       );
-    });
-  });
-
-  // ── Multi-path helpers (unchanged) ────────────────────────────────────────
-
-  describe('multi-path display helpers', () => {
-    it('should detect multi-path values', () => {
-      expect(service.isMultiPath('a')).toBe(false);
-      expect(service.isMultiPath([])).toBe(false);
-      expect(service.isMultiPath(['a'])).toBe(false);
-      expect(service.isMultiPath(['a', 'b'])).toBe(true);
-    });
-
-    it('should normalize path values into arrays', () => {
-      expect(service.asPathArray('a')).toEqual(['a']);
-      expect(service.asPathArray('')).toEqual(['']);
-      expect(service.asPathArray(['a', 'b'])).toEqual(['a', 'b']);
-    });
-
-    it('should return the primary path', () => {
-      expect(service.getPrimaryPath('a')).toBe('a');
-      expect(service.getPrimaryPath([])).toBe('');
-      expect(service.getPrimaryPath(['a', 'b'])).toBe('a');
-    });
-
-    it('should format compact display text', () => {
-      expect(service.formatPathDisplay('a')).toBe('a');
-      expect(service.formatPathDisplay([])).toBe('');
-      expect(service.formatPathDisplay(['a'])).toBe('a');
-      expect(service.formatPathDisplay(['a', 'b', 'c'])).toBe('a, b, c');
-    });
-
-    it('should format tooltip text', () => {
-      expect(service.formatPathTooltip('a')).toBe('a');
-      expect(service.formatPathTooltip(['a', 'b'])).toBe('a\nb');
-    });
-  });
-
-  // ── parsePathType / resolvePathGroup (unchanged) ──────────────────────────
-
-  describe('parsePathType', () => {
-    it('should parse local', () => {
-      expect(service.parsePathType('local')).toBe('local');
-    });
-
-    it('should parse currentRemote', () => {
-      expect(service.parsePathType('currentRemote')).toBe('currentRemote');
-    });
-
-    it('should parse otherRemote', () => {
-      expect(service.parsePathType('otherRemote:myremote')).toBe('otherRemote');
     });
   });
 

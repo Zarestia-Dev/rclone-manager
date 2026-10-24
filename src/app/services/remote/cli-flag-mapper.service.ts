@@ -5,7 +5,7 @@ import { RemoteManagementService } from './remote-management.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 
 import * as cliParser from '../../shared/utils/cli-parser.util';
-import { ParsedCLI } from '../../shared/utils/cli-parser.util';
+import { ParsedCLI, SHORT_FLAG_ALIASES } from '../../shared/utils/cli-parser.util';
 
 export type FlagStatus = 'mapped' | 'unknown';
 
@@ -27,8 +27,6 @@ export interface ImportResult {
   classified: ClassifiedFlag[];
 }
 
-const SHORT_FLAG_ALIASES = cliParser.SHORT_FLAG_ALIASES;
-
 export interface LookupEntry {
   option: RcConfigOption;
   flagType: SharedProfileType;
@@ -43,18 +41,6 @@ export class CliFlagMapperService {
 
   private booleanFlagsCache: Set<string> | null = null;
   private readonly lookupTablesCache = new Map<string, Record<string, LookupEntry>>();
-
-  tokenize(input: string): string[] {
-    return cliParser.tokenize(input);
-  }
-
-  hasMacro(val: string): boolean {
-    return cliParser.hasMacro(val);
-  }
-
-  parse(cliString: string, existingBools: Set<string>): cliParser.ParsedCLI {
-    return cliParser.parseCLI(cliString, existingBools);
-  }
 
   buildLookupTable(
     flagFields: Record<SharedProfileType, RcConfigOption[]>,
@@ -136,7 +122,9 @@ export class CliFlagMapperService {
       }
 
       if (match) {
-        const coercedValue = isNegated ? false : this.coerceValue(flag.value, match.option.Type);
+        const coercedValue = isNegated
+          ? false
+          : this.valueMapper.humanToMachine(flag.value, match.option.Type);
         const resolvedFlagType =
           targetPref && match.supportedFlagTypes.has(targetPref) ? targetPref : match.flagType;
 
@@ -152,17 +140,6 @@ export class CliFlagMapperService {
     });
 
     return { ...parsed, classified };
-  }
-
-  private coerceValue(val: string | boolean, type: string): unknown {
-    if (typeof val === 'boolean') return val;
-    if (typeof val === 'string') {
-      const lower = val.toLowerCase().trim();
-      if (lower === 'false' && (type === 'bool' || type === 'Tristate')) return false;
-      if (lower === 'true' && (type === 'bool' || type === 'Tristate')) return true;
-    }
-    if (type === 'Tristate') return this.valueMapper.parseTristate(val);
-    return this.valueMapper.humanToMachine(val, type);
   }
 
   async getGlobalLookupTable(remoteType?: string): Promise<Record<string, LookupEntry>> {
@@ -216,6 +193,6 @@ export class CliFlagMapperService {
       this.getBooleanFlags(),
       this.getGlobalLookupTable(remoteType),
     ]);
-    return this.classify(this.parse(cliString, boolFlags), lookupTable, preferredType);
+    return this.classify(cliParser.parseCLI(cliString, boolFlags), lookupTable, preferredType);
   }
 }

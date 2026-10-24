@@ -25,13 +25,11 @@ export class RcloneUpdateService extends TauriBaseService {
   private readonly _isCancelling = signal<boolean>(false);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _error = signal<string | null>(null);
-  private readonly _lastCheck = signal<Date | null>(null);
 
   public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly isCancelling = this._isCancelling.asReadonly();
   public readonly error = this._error.asReadonly();
-  public readonly lastCheck = this._lastCheck.asReadonly();
 
   public readonly updateAvailable = computed(() =>
     this.settings.computeAvailableUpdate(this._updateState())
@@ -80,7 +78,6 @@ export class RcloneUpdateService extends TauriBaseService {
       console.error('Failed to check for rclone updates:', error);
       this._isChecking.set(false);
       this._error.set(String(error));
-      this._lastCheck.set(new Date());
       return null;
     } finally {
       if (checkId === this._latestCheckId) {
@@ -160,7 +157,6 @@ export class RcloneUpdateService extends TauriBaseService {
     await this.settings.setChannel(channel);
     this._updateState.set(null);
     this._error.set(null);
-    this._lastCheck.set(null);
 
     this.notificationService.showInfo(
       this.translate.instant('rcloneUpdate.channelChanged', { channel })
@@ -257,6 +253,5 @@ export class RcloneUpdateService extends TauriBaseService {
     }
 
     this._isChecking.set(false);
-    this._lastCheck.set(new Date());
   }
 }

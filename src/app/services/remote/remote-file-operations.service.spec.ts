@@ -131,31 +131,23 @@ describe('RemoteFileOperationsService uploads', () => {
     expect(service.pendingWebUploads()).toEqual([]);
   });
 
-  it('tracks a single-file upload with an automatically generated group', async () => {
-    const result = service.uploadFileStream('drive:', 'destination', files[0].file, 'filemanager');
+  it('tracks a single-file batch with an automatically generated group', async () => {
+    const result = service.uploadWebFilesBatch('drive:', 'destination', [files[0]], 'filemanager');
     const request = http.expectOne('/api/upload');
     const group = request.request.body.get('group');
     expect(group).toMatch(/^upload-/);
     expect(service.pendingWebUploads()[0].group).toBe(group);
     request.flush({ success: true, data: '42' });
-    expect(await result).toBe('42');
+    expect(await result).toEqual({ successCount: 1, failedPaths: [] });
     expect(service.pendingWebUploads()).toEqual([]);
   });
 
-  it('preserves a supplied group and clears single-file preparation on failure', async () => {
-    const result = service.uploadFileStream(
-      'drive:',
-      '',
-      files[0].file,
-      'filemanager',
-      'folder/one.txt',
-      'custom-group'
-    );
-    const rejected = expect(result).rejects.toThrow('Transfer failed');
+  it('clears single-file batch preparation when the backend rejects the upload', async () => {
+    const result = service.uploadWebFilesBatch('drive:', '', [files[0]], 'filemanager');
     const request = http.expectOne('/api/upload');
-    expect(request.request.body.get('group')).toBe('custom-group');
+    expect(request.request.body.get('group')).toMatch(/^upload-/);
     request.flush({ success: false, error: 'Transfer failed' });
-    await rejected;
+    expect(await result).toEqual({ successCount: 0, failedPaths: ['folder/one.txt'] });
     expect(service.pendingWebUploads()).toEqual([]);
   });
 });

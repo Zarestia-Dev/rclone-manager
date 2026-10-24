@@ -203,7 +203,7 @@
                 }}</span>
               </div>
               @if (hashes().length > 0) {
-                <span class="count-badge">{{ hashes().length }}</span>
+                <span class="app-pill p-primary pill-sm">{{ hashes().length }}</span>
               }
             </div>
             <div class="hashes-content">
@@ -234,7 +234,7 @@
         } @else if (features().length > 0) {
           <div class="features-header">
             <p>{{ 'fileBrowser.remoteAbout.liveFeatures' | translate }}</p>
-            <span class="count-badge">
+            <span class="app-pill p-primary pill-sm">
               {{ supportedFeaturesCount() }} / {{ features().length }}
             </span>
           </div>

@@ -123,8 +123,6 @@ export const REMOTE_CONFIG_KEYS = Object.freeze({
   runtimeRemote: 'runtimeRemoteConfigs',
 }) as unknown as Readonly<RemoteConfigKeysRecord>;
 
-export type RemoteConfigKeyType = RemoteConfigKeysRecord[keyof RemoteConfigKeysRecord];
-
 export interface UIOperationMetadata {
   label: string;
   icon: string;
@@ -175,13 +173,6 @@ export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> =
     supportsProfiles: true,
   },
 });
-
-export interface LoadingState {
-  saving: boolean;
-  authDisabled: boolean;
-  cancelled: boolean;
-  [key: string]: boolean | undefined;
-}
 
 export interface RemoteType {
   value: string;
@@ -510,14 +501,6 @@ export const RCLONE_PATH_KEYS = [
   'source',
   'path',
 ] as const;
-
-export type RclonePathKey = (typeof RCLONE_PATH_KEYS)[number];
-
-const RCLONE_PATH_KEYS_SET: ReadonlySet<string> = new Set<string>(RCLONE_PATH_KEYS);
-
-export function isRclonePathKey(key: string): boolean {
-  return RCLONE_PATH_KEYS_SET.has(key);
-}
 
 export interface JobProfile {
   autoStart?: boolean;

@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -9,7 +10,7 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { AlertBannerComponent } from '../../shared/components/alert-banner/alert-banner.component';
 import {
@@ -79,7 +80,6 @@ interface JobViewModel {
 export class OperationsPanelComponent {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
 
   /** Tracks language changes so all derived labels reactively update on switch. */
@@ -178,7 +178,7 @@ export class OperationsPanelComponent {
 
     const resolvedSource = Array.isArray(job.source) ? (job.source[0] ?? '') : job.source || '';
     const path = job.destination || resolvedSource || '';
-    return this.pathService.getFilename(path) || resolvedSource || job.destination || '';
+    return pathUtils.getFilename(path) || resolvedSource || job.destination || '';
   }
 
   getJobTypeIcon(job: JobInfo): string {

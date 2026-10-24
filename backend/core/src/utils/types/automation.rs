@@ -29,19 +29,6 @@ pub struct AutomationArgs {
     pub dst_paths: Vec<String>,
 }
 
-impl AutomationArgs {
-    /// Returns a display string for the source paths (comma-joined).
-    #[must_use]
-    pub fn src_display(&self) -> String {
-        self.src_paths.join(", ")
-    }
-    /// Returns a display string for the dest paths (comma-joined).
-    #[must_use]
-    pub fn dst_display(&self) -> String {
-        self.dst_paths.join(", ")
-    }
-}
-
 fn default_watch_delay() -> u64 {
     5
 }
@@ -283,6 +270,27 @@ mod tests {
             watch_enabled: false,
             watch_delay: 5,
             watch_changed_only: false,
+        }
+    }
+
+    #[test]
+    fn automation_args_round_trip_empty_and_special_character_paths() {
+        for paths in [
+            Vec::<String>::new(),
+            vec!["drive:Arşiv & 旅行".into(), "/path with spaces".into()],
+        ] {
+            let mut args = create_test_automation().args;
+            args.src_paths = paths.clone();
+            args.dst_paths = vec!["backup:folder/#1".into()];
+            let serialized = serde_json::to_value(&args).unwrap();
+            assert_eq!(serialized["srcPaths"], serde_json::json!(paths));
+            assert_eq!(
+                serialized["dstPaths"],
+                serde_json::json!(["backup:folder/#1"])
+            );
+            assert_eq!(serialized["remoteName"], "remote");
+            let restored: AutomationArgs = serde_json::from_value(serialized).unwrap();
+            assert_eq!(restored, args);
         }
     }
 

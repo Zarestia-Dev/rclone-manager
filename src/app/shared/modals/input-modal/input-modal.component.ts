@@ -1,3 +1,5 @@
+import * as validationUtils from 'src/app/shared/validators';
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   inject,
@@ -21,8 +23,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+
 import { UrlPreviewComponent } from '../../components/url-preview/url-preview.component';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
@@ -76,8 +77,6 @@ export class InputModalComponent implements OnInit {
   public readonly dialogRef = inject(MatDialogRef<InputModalComponent>);
   public readonly data = inject<InputModalData>(MAT_DIALOG_DATA);
   protected readonly translate = inject(TranslateService);
-  private readonly pathService = inject(PathService);
-  private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly destroyRef = inject(DestroyRef);
 
   public form = new FormGroup<Record<string, FormControl>>({});
@@ -119,10 +118,8 @@ export class InputModalComponent implements OnInit {
     for (const field of this.fields) {
       const validators = [];
       if (field.required) validators.push(Validators.required);
-      if (field.uniqueness)
-        validators.push(this.validatorRegistry.createUniqueNameValidator(field.uniqueness));
-      if (field.forbiddenChars)
-        validators.push(this.validatorRegistry.createForbiddenCharsValidator());
+      if (field.uniqueness) validators.push(validationUtils.uniqueNameValidator(field.uniqueness));
+      if (field.forbiddenChars) validators.push(validationUtils.forbiddenCharsValidator());
 
       const control = new FormControl(field.initialValue || '', {
         nonNullable: true,
@@ -171,7 +168,7 @@ export class InputModalComponent implements OnInit {
     try {
       const parsed = new URL(url);
       const path = parsed.pathname || '';
-      const candidate = this.pathService.getFilename(path).trim();
+      const candidate = pathUtils.getFilename(path).trim();
       const filename = candidate.split('?')[0].split('#')[0];
       if (!filename) return null;
       if (filename.includes('.') && !filename.endsWith('.')) {

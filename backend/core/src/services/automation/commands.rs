@@ -66,23 +66,6 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
     }
 }
 
-/// Reload all automations
-pub async fn reload_automations(app: AppHandle) -> Result<(), String> {
-    info!("Reloading all automations");
-    super::runtime::refresh(&app).await?;
-    crate::services::automation::engine::apply_and_sync_automations(&app).await
-}
-
-/// Clear definitions, then reconcile actual scheduler jobs and watchers. Failed
-/// removals remain tracked by the scheduler for a subsequent retry.
-pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
-    app.state::<AutomationsCache>()
-        .clear_all_automations()
-        .await?;
-    super::runtime::refresh(&app).await?;
-    crate::services::automation::engine::apply_and_sync_automations(&app).await
-}
-
 /// Load all automation sources, then prepare and reconcile them once.
 pub async fn reload_automations_from_configs(app: &AppHandle) -> Result<usize, String> {
     info!("Reloading automations from configs...");

@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -522,9 +523,9 @@ export class OperationConfigComponent {
     return (controls as FormGroup[]).filter(Boolean).map((control, index) => {
       const typeValue =
         control.get('type')?.value || (group === 'source' ? 'currentRemote' : 'local');
-      const pathType = this.pathService.parsePathType(typeValue);
+      const pathType = pathUtils.parsePathType(typeValue);
       const remoteName =
-        this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
+        pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
       const pathControl = control.get('path') as FormControl;
 
       const itemKey = `${group}-${index}`;
@@ -633,10 +634,7 @@ export class OperationConfigComponent {
     item.pathControl.updateValueAndValidity();
 
     if (typeValue.startsWith('otherRemote:')) {
-      const remoteName = this.pathService.getRemoteNameFromValue(
-        typeValue,
-        this.currentRemoteName()
-      );
+      const remoteName = pathUtils.getRemoteNameFromValue(typeValue, this.currentRemoteName());
       item.control.get('remote')?.setValue(remoteName, { emitEvent: false });
     } else {
       item.control.get('remote')?.setValue('', { emitEvent: false });
@@ -749,7 +747,7 @@ export class OperationConfigComponent {
     const remote = restrict ? this.currentRemoteName() : item.remoteName;
     if (!remote) return undefined;
     return item.pathControl.value
-      ? this.pathService.joinPath(`${remote}:`, item.pathControl.value)
+      ? pathUtils.joinPath(`${remote}:`, item.pathControl.value)
       : `${remote}:`;
   }
 

@@ -15,7 +15,8 @@ export class WorkflowStorageService extends TauriBaseService {
 
   readonly workflows = signal<WorkflowDefinition[]>([]);
   readonly isLoading = signal<boolean>(false);
-  readonly presetTemplates = signal<WorkflowTemplate[]>([]);
+  private readonly _presetTemplates = signal<WorkflowTemplate[]>([]);
+  readonly presetTemplates = this._presetTemplates.asReadonly();
 
   private loadInFlight: Promise<WorkflowDefinition[]> | null = null;
   private nextLoadPromise: Promise<WorkflowDefinition[]> | null = null;
@@ -183,44 +184,12 @@ export class WorkflowStorageService extends TauriBaseService {
   }
 
   /**
-   * Serializes a workflow definition to formatted JSON via backend.
-   */
-  async exportWorkflowJson(workflow: WorkflowDefinition): Promise<string> {
-    if (workflow.id) {
-      return await this.invokeCommand<string>('export_workflow', {
-        workflowId: workflow.id,
-      });
-    }
-    return JSON.stringify(workflow, null, 2);
-  }
-
-  /**
-   * Parses, validates, and persists a JSON string into a WorkflowDefinition.
-   */
-  async importWorkflowJson(jsonStr: string): Promise<WorkflowDefinition> {
-    const imported = await this.invokeCommand<WorkflowDefinition>('import_workflow', { jsonStr });
-    await this.loadAllWorkflows();
-    return imported;
-  }
-
-  /**
    * Lazily loads and returns the list of pre-configured workflow templates.
    */
   async loadPresetTemplates(): Promise<WorkflowTemplate[]> {
     if (this.presetTemplates().length === 0) {
       const { BUILTIN_WORKFLOW_TEMPLATES } = await import('./recipes/workflow-recipes');
-      this.presetTemplates.set(BUILTIN_WORKFLOW_TEMPLATES);
-    }
-    return this.presetTemplates();
-  }
-
-  /**
-   * Returns the list of pre-configured workflow templates.
-   * If not yet loaded, triggers dynamic loading in the background.
-   */
-  getPresetTemplates(): WorkflowTemplate[] {
-    if (this.presetTemplates().length === 0) {
-      void this.loadPresetTemplates();
+      this._presetTemplates.set(BUILTIN_WORKFLOW_TEMPLATES);
     }
     return this.presetTemplates();
   }

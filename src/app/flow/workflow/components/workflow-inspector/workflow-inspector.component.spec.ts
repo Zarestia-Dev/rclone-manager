@@ -41,8 +41,10 @@ describe('WorkflowInspectorComponent', () => {
   };
   let mountedRemotesSignal: ReturnType<typeof signal<MountedRemote[]>>;
   let runningServesSignal: ReturnType<typeof signal<ServeListItem[]>>;
+  let visibleRemotes: ReturnType<typeof signal<{ name: string; type: string }[]>>;
 
   beforeEach(async () => {
+    visibleRemotes = signal([{ name: 'drive', type: 'drive' }]);
     modalServiceSpy = {
       openWorkflowNodeEditor: vi.fn(),
       openJobDetail: vi.fn(),
@@ -82,7 +84,7 @@ describe('WorkflowInspectorComponent', () => {
         },
         {
           provide: RemoteFacadeService,
-          useValue: { orderedVisibleRemotes: (): unknown[] => [{ name: 'drive', type: 'drive' }] },
+          useValue: { orderedVisibleRemotes: visibleRemotes },
         },
         {
           provide: ModalService,
@@ -131,6 +133,13 @@ describe('WorkflowInspectorComponent', () => {
     fixture = TestBed.createComponent(WorkflowInspectorComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('follows visible remote updates while the inspector stays open', () => {
+    visibleRemotes.set([{ name: 'Arşiv & 旅行', type: 's3' }]);
+    expect(component.remotes().map(remote => remote.name)).toEqual(['Arşiv & 旅行']);
+    visibleRemotes.set([]);
+    expect(component.remotes()).toEqual([]);
   });
 
   it('renders inspector with selected node properties', () => {

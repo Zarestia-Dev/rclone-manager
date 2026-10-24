@@ -1,5 +1,5 @@
 import { isAbortError } from 'src/app/shared/utils/abortable-request.util';
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import {
@@ -41,27 +41,13 @@ export class FlagConfigService extends TauriBaseService {
     memoizedLoader(
       async () => this.loadConfigFields(FLAG_TYPES) as Promise<Record<FlagType, RcConfigOption[]>>
     );
-  readonly allFlagFields = this.allFlagFieldsLoader.signal;
 
   private readonly groupedOptionsLoader: MemoizedLoader<GroupedRCloneOptions> = memoizedLoader(() =>
     this.invokeCommand<GroupedRCloneOptions>('get_grouped_options_with_values')
   );
   readonly groupedOptions = this.groupedOptionsLoader.signal;
 
-  // Per-serveType loader map kept inside a signal so the aggregate computed
-  // re-evaluates automatically when loaders are added — no synthetic version
-  // bump needed.
-  private readonly serveFlagsLoaders = signal<
-    ReadonlyMap<string, MemoizedLoader<RcConfigOption[]>>
-  >(new Map());
-  readonly serveFlagsMap = computed<Map<string, RcConfigOption[]>>(() => {
-    const map = new Map<string, RcConfigOption[]>();
-    for (const [serveType, loader] of this.serveFlagsLoaders()) {
-      const flags = loader.signal();
-      if (flags) map.set(serveType, flags);
-    }
-    return map;
-  });
+  private readonly serveFlagsLoaders = new Map<string, MemoizedLoader<RcConfigOption[]>>();
 
   constructor() {
     super();
@@ -84,12 +70,12 @@ export class FlagConfigService extends TauriBaseService {
     this.serveTypesLoader.invalidate();
     this.allFlagFieldsLoader.invalidate();
     this.groupedOptionsLoader.invalidate();
-    for (const loader of this.serveFlagsLoaders().values()) loader.invalidate();
+    for (const loader of this.serveFlagsLoaders.values()) loader.invalidate();
     for (const loader of this.fieldLoaders.values()) loader.invalidate();
   }
 
   private getOrCreateServeFlagsLoader(serveType: string): MemoizedLoader<RcConfigOption[]> {
-    const existing = this.serveFlagsLoaders().get(serveType);
+    const existing = this.serveFlagsLoaders.get(serveType);
     if (existing) return existing;
 
     const loader = memoizedLoader(async () => {
@@ -109,9 +95,7 @@ export class FlagConfigService extends TauriBaseService {
       }
     });
 
-    const next = new Map(this.serveFlagsLoaders());
-    next.set(serveType, loader);
-    this.serveFlagsLoaders.set(next);
+    this.serveFlagsLoaders.set(serveType, loader);
     return loader;
   }
 
@@ -127,17 +111,7 @@ export class FlagConfigService extends TauriBaseService {
     return this.groupedOptionsLoader.load();
   }
 
-  async getOptionBlocks(): Promise<string[]> {
-    try {
-      const response = await this.invokeCommand<{ options: string[] }>('get_option_blocks');
-      return response.options;
-    } catch (error) {
-      console.error('Failed to get RClone option blocks:', error);
-      return [];
-    }
-  }
-
-  async saveOption(block: string, fullFieldName: string, value: unknown): Promise<void> {
+  async applyOption(block: string, fullFieldName: string, value: unknown): Promise<void> {
     try {
       await this.invokeCommand('set_rclone_option', {
         blockName: block,

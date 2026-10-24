@@ -1,11 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, Subject } from 'rxjs';
+import { firstValueFrom, Subject, filter, map } from 'rxjs';
 import { provideTranslateService } from '@ngx-translate/core';
 import { EventListenersService } from './event-listeners.service';
 import { ApiClientService } from '../platform/api-client.service';
 import { SseClientService } from '../platform/sse-client.service';
-import { SettingsChangeEvent } from '@app/types';
+import {
+  AppEventPayload,
+  APP_EVENT,
+  EngineStatus,
+  RCLONE_ENGINE_STATUS_CHANGED,
+  SettingsChangeEvent,
+} from '@app/types';
 
 describe('EventListenersService', () => {
   let service: EventListenersService;
@@ -30,7 +36,12 @@ describe('EventListenersService', () => {
         {
           provide: SseClientService,
           useValue: {
-            listen: vi.fn(() => sseEventSubject.asObservable()),
+            listen: vi.fn((name: string) =>
+              sseEventSubject.pipe(
+                filter(event => event.event === name),
+                map(event => event.payload)
+              )
+            ),
           },
         },
       ],
@@ -73,6 +84,36 @@ describe('EventListenersService', () => {
       if (descriptor) Object.defineProperty(window, '__TAURI_INTERNALS__', descriptor);
       else Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
     }
+  });
+
+  it('shares engine events while the ready subscription filters other status changes', () => {
+    const statuses: EngineStatus[] = [];
+    const ready = vi.fn();
+    const all = service.listenToEngineStatus().subscribe(event => statuses.push(event));
+    const onlyReady = service.listenToRcloneEngineReady().subscribe(ready);
+    const updating: EngineStatus = { status: 'updating' };
+    const available: EngineStatus = { status: 'ready' };
+
+    sseEventSubject.next({ event: 'unrelated', payload: available });
+    sseEventSubject.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: updating });
+    expect(ready).not.toHaveBeenCalled();
+    sseEventSubject.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: available });
+    expect(statuses).toEqual([updating, available]);
+    expect(ready).toHaveBeenCalledExactlyOnceWith(undefined);
+    expect(TestBed.inject(SseClientService).listen).toHaveBeenCalledExactlyOnceWith(
+      RCLONE_ENGINE_STATUS_CHANGED
+    );
+    all.unsubscribe();
+    onlyReady.unsubscribe();
+  });
+
+  it('delivers the application event payload without reshaping its fields', () => {
+    const received: AppEventPayload[] = [];
+    const subscription = service.listenToAppEvents().subscribe(event => received.push(event));
+    const payload: AppEventPayload = { status: 'language_changed', language: 'tr-TR' };
+    sseEventSubject.next({ event: APP_EVENT, payload });
+    expect(received).toEqual([payload]);
+    subscription.unsubscribe();
   });
 
   describe('listenToSettingsCategory', () => {

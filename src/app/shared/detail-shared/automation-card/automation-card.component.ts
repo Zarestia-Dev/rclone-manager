@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import cronstrue from 'cronstrue';
 import { DatePipe } from '@angular/common';
@@ -142,7 +143,7 @@ export class AutomationCardComponent {
 
     const mapPathToIcon = (path: string): string => {
       const isLocal = this.pathService.isLocalPath(path);
-      const lastSegment = this.pathService.splitSegments(path).pop() ?? '';
+      const lastSegment = pathUtils.splitSegments(path).pop() ?? '';
       const isFile = lastSegment.includes('.') && !path.endsWith('/');
       if (isFile) {
         return 'file-lines';

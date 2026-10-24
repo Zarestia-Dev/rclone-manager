@@ -42,7 +42,6 @@ export class WorkflowToolbarComponent {
 
   readonly activeWorkflow = this.stateService.currentWorkflow;
 
-  readonly presetTemplates = computed(() => this.storageService.getPresetTemplates());
   readonly allWorkflows = this.storageService.workflows;
 
   readonly hasDuplicateWorkflows = computed(() => {

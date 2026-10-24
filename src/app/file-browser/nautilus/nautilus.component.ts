@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { NavigationHistoryService } from '../../services/ui/navigation-history.service';
 // Nautilus file manager – handles tabs, split-view, rich file operations.
 import {
@@ -31,6 +32,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import {
+  fileBrowserItemKey,
   Entry,
   ExplorerRoot,
   FileBrowserItem,
@@ -177,7 +179,7 @@ export class NautilusComponent implements OnInit {
 
   // ── Computed path / breadcrumbs ──────────────────────────────────────────────
   protected readonly pathSegments = computed(() =>
-    this.pathService.getPathSegments(this.tabSvc.activePath())
+    pathUtils.getPathSegments(this.tabSvc.activePath())
   );
 
   protected readonly fullPathInput = computed(() => {
@@ -433,7 +435,7 @@ export class NautilusComponent implements OnInit {
       const targetPath = this.nautilusService.targetPath();
       if (targetPath) {
         untracked(() => {
-          const parsed = this.pathService.parseLocation(targetPath, this.allRemotesLookup());
+          const parsed = pathUtils.parseLocation(targetPath, this.allRemotesLookup());
           if (parsed && this.tabSvc.tabs().length > 0) {
             this.navigate(parsed.remote, parsed.path, true);
             this.nautilusService.targetPath.set(null);
@@ -476,7 +478,7 @@ export class NautilusComponent implements OnInit {
       } else if (starred) {
         segment = this.translate.instant('nautilus.titles.starred');
       } else if (remote) {
-        const seg = this.pathService.getDisplaySegment(remote, path, remote.label || remote.name);
+        const seg = pathUtils.getDisplaySegment(remote, path, remote.label || remote.name);
         segment = this.translate.instant(seg);
       } else {
         segment = this.translate.instant('nautilus.titles.files');
@@ -591,13 +593,13 @@ export class NautilusComponent implements OnInit {
   navigateToPath(rawInput: string): void {
     this.isEditingPath.set(false);
 
-    const parsed = this.pathService.parseLocation(rawInput, this.allRemotesLookup());
+    const parsed = pathUtils.parseLocation(rawInput, this.allRemotesLookup());
     if (parsed) {
       this.navigate(parsed.remote, parsed.path, true);
       return;
     }
 
-    const normalized = this.pathService.normalizePath(rawInput);
+    const normalized = pathUtils.normalizePath(rawInput);
     const currentPath = this.tabSvc.activePath();
     this.updatePath(currentPath ? `${currentPath}/${normalized}` : normalized);
   }
@@ -639,7 +641,7 @@ export class NautilusComponent implements OnInit {
           return;
         }
         const pIdx = this.tabSvc.activePaneIndex();
-        this.tabSvc.syncSelection(new Set([this.selectionSvc.getItemKey(item)]), pIdx);
+        this.tabSvc.syncSelection(new Set([fileBrowserItemKey(item)]), pIdx);
         this.confirmSelection();
         return;
       }
@@ -763,8 +765,7 @@ export class NautilusComponent implements OnInit {
     this.selectionSvc.selectAll(this.tabSvc.activePaneIndex(), files);
   }
 
-  protected readonly getItemKey = (item: FileBrowserItem | null): string =>
-    this.selectionSvc.getItemKey(item);
+  protected readonly getItemKey = fileBrowserItemKey;
 
   isItemSelectable = (item: Entry): boolean => this.selectionSvc.isItemSelectable(item);
 
@@ -1005,7 +1006,7 @@ export class NautilusComponent implements OnInit {
       (this.pickerOptions().selection === 'folders' || this.pickerOptions().selection === 'both') &&
       remote
     ) {
-      const name = this.pathService.extractName(currentPath, remote.name);
+      const name = pathUtils.extractName(currentPath, remote.name);
       items = [
         {
           entry: {

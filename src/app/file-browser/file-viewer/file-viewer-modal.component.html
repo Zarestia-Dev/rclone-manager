@@ -10,24 +10,27 @@
     </div>
   </div>
   <div class="header-actions">
-    @if (!data.isDirectUrl && isMarkdownFile() && currentFileType() === 'text') {
+    @if (!data.isDirectUrl && canPreviewText() && currentFileType() === 'text') {
       <button
         matIconButton
         [attr.title]="
-          (showMarkdownPreview()
+          (isPreviewing()
             ? 'fileBrowser.fileViewer.showRawText'
             : 'fileBrowser.fileViewer.showPreview'
           ) | translate
         "
-        (click)="toggleMarkdownPreview(); $event.stopPropagation()"
+        (click)="togglePreview(); $event.stopPropagation()"
+        [disabled]="isPreparingPreview()"
         [attr.aria-label]="
-          (showMarkdownPreview()
+          (isPreviewing()
             ? 'fileBrowser.fileViewer.showRawText'
             : 'fileBrowser.fileViewer.showPreview'
           ) | translate
         "
       >
-        <mat-icon [svgIcon]="showMarkdownPreview() ? 'code' : 'eye'"></mat-icon>
+        <mat-icon
+          [svgIcon]="isPreparingPreview() ? 'spinner' : isPreviewing() ? 'code' : 'eye'"
+        ></mat-icon>
       </button>
     }
 
@@ -302,10 +305,21 @@
       }
     }
     @case ('text') {
-      @if (isMarkdownFile() && showMarkdownPreview()) {
+      @if (isHtmlFile() && showHtmlPreview()) {
+        <iframe
+          class="html-preview"
+          sandbox=""
+          referrerpolicy="no-referrer"
+          [title]="fileName()"
+          [srcdoc]="renderedHtml()"
+        ></iframe>
+      } @else if (isMarkdownFile() && showMarkdownPreview()) {
         <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
       } @else {
-        <div #editorContainer class="code-mirror"></div>
+        <div class="text-editor-surface">
+          <app-code-editor-toolbar [editor]="codeEditor()" [language]="codeLanguage()" />
+          <div #editorContainer class="code-mirror"></div>
+        </div>
       }
     }
     @case ('archive') {

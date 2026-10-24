@@ -805,7 +805,7 @@ mod tests {
 
     #[test]
     fn test_job_failed_resolves_structured_error() {
-        crate::utils::i18n::init_test_translations();
+        crate::utils::i18n::init();
 
         let err_json = localized_error!(
             "backendErrors.job.executionFailed",
@@ -833,7 +833,7 @@ mod tests {
 
     #[test]
     fn test_mount_failed_resolves_direct_key() {
-        crate::utils::i18n::init_test_translations();
+        crate::utils::i18n::init();
 
         let event = NotificationEvent::Mount(MountStage::Failed {
             backend: "Local".to_string(),
@@ -852,7 +852,7 @@ mod tests {
 
     #[test]
     fn test_mount_failed_without_profile() {
-        crate::utils::i18n::init_test_translations();
+        crate::utils::i18n::init();
 
         let event = NotificationEvent::Mount(MountStage::Failed {
             backend: "Local".to_string(),

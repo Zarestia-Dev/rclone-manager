@@ -175,10 +175,6 @@ export class VaultLockScreenComponent {
       if (background) {
         background.style.transform = `rotateX(${-position.y * 2}deg) rotateY(${position.x * 3}deg) translateZ(calc(var(--space-2xl) * -1)) scale(1.12)`;
       }
-      const panel = el.querySelector<HTMLElement>('.hud-panel-plane');
-      if (panel) {
-        panel.style.transform = `rotateX(${-position.y * 4}deg) rotateY(${position.x * 5}deg) translate3d(calc(${position.x} * var(--space-xs)), calc(${position.y} * var(--space-xxs)), 0)`;
-      }
     });
   }
 
@@ -187,7 +183,6 @@ export class VaultLockScreenComponent {
     this.pointerFrame = null;
     this.pointerPosition = null;
     const el = this.hostEl.nativeElement;
-    el.querySelector<HTMLElement>('.hud-panel-plane')?.style.removeProperty('transform');
     el.querySelector<HTMLElement>('.hud-background')?.style.removeProperty('transform');
   }
 

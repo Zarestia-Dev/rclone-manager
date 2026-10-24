@@ -82,7 +82,6 @@ pub async fn save_remote_settings(
                     &profile.app,
                     &profile.rclone,
                     &resolved_settings,
-                    "remotes",
                 )?;
             }
         }

@@ -269,11 +269,6 @@ impl OperationType {
         }
     }
 
-    /// Lookup OperationType from a config_key string like `"syncConfigs"`
-    pub fn from_config_key(key: &str) -> Option<Self> {
-        Self::ALL.iter().copied().find(|op| op.config_key() == key)
-    }
-
     /// Maps the operation to its corresponding `JobType`, if applicable.
     pub fn as_job_type(self) -> Option<JobType> {
         match self {
@@ -618,13 +613,32 @@ mod tests {
     }
 
     #[test]
-    fn test_operation_type_config_key_bidirectional() {
+    fn test_operation_config_keys_resolve_the_stored_profiles() {
+        let settings: RemoteSettings = serde_json::from_value(json!({
+            "syncConfigs": { "Arşiv & 旅行": { "rclone": { "srcFs": "drive:folder" } } },
+            "copyConfigs": {},
+        }))
+        .unwrap();
+        let serialized = serde_json::to_value(&settings).unwrap();
         for &op in OperationType::ALL {
-            let key = op.config_key();
-            assert_eq!(OperationType::from_config_key(key), Some(op));
+            let configs = settings.get_configs(op);
+            if let Some(configs) = configs {
+                assert_eq!(
+                    serde_json::to_value(configs).unwrap(),
+                    serialized[op.config_key()]
+                );
+            } else {
+                assert!(serialized[op.config_key()].is_null());
+            }
         }
-
-        assert_eq!(OperationType::from_config_key("unknownKey"), None);
+        let sync = settings.get_configs(OperationType::Sync).unwrap();
+        assert_eq!(sync["Arşiv & 旅行"].source_str(), Some("drive:folder"));
+        assert!(
+            settings
+                .get_configs(OperationType::Copy)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

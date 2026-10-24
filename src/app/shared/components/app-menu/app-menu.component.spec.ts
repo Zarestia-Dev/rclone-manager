@@ -94,17 +94,17 @@ describe('AppMenuComponent', () => {
         {
           provide: FlowOverlayService,
           useValue: {
-            isFlowOverlayOpen: vi.fn().mockReturnValue(false),
-            openFlowOverlay: vi.fn().mockResolvedValue(undefined),
-            closeFlowOverlay: vi.fn(),
+            isOpen: vi.fn().mockReturnValue(false),
+            openOverlay: vi.fn().mockResolvedValue(undefined),
+            closeOverlay: vi.fn(),
           },
         },
         {
           provide: MainUiOverlayService,
           useValue: {
-            isMainUiOverlayOpen: vi.fn().mockReturnValue(false),
-            openMainUiOverlay: vi.fn().mockResolvedValue(undefined),
-            closeMainUiOverlay: vi.fn(),
+            isOpen: vi.fn().mockReturnValue(false),
+            openOverlay: vi.fn().mockResolvedValue(undefined),
+            closeOverlay: vi.fn(),
           },
         },
       ],
@@ -174,13 +174,13 @@ describe('AppMenuComponent', () => {
     });
     const flow = TestBed.inject(FlowOverlayService);
     const nautilus = TestBed.inject(NautilusService);
-    vi.spyOn(flow, 'openFlowOverlay').mockReturnValue(loading);
+    vi.spyOn(flow, 'openOverlay').mockReturnValue(loading);
     const opening = component.openWorkspace('flow');
     expect(nautilus.closeBrowserOverlay).not.toHaveBeenCalled();
     finish();
     await opening;
     expect(nautilus.closeBrowserOverlay).toHaveBeenCalledOnce();
-    expect(flow.closeFlowOverlay).not.toHaveBeenCalled();
+    expect(flow.closeOverlay).not.toHaveBeenCalled();
   });
 
   it('handles keyboard navigation into and back from submenu', () => {

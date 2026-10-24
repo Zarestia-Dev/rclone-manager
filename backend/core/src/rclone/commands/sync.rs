@@ -419,22 +419,14 @@ pub async fn submit_transfer_batch(
     let windows = backend_os(&app, &backend).await? == "windows";
     let mut tasks = Vec::with_capacity(target_pairs.len());
     for (source, _) in &target_pairs {
-        let transport = transport.clone();
-        let source = source.clone();
-        let runtime_remote_options = common.runtime_remote_options.clone();
+        let transport = transport.as_ref();
+        let runtime_remote_options = common.runtime_remote_options.as_ref();
         tasks.push(async move {
-            let is_dir = if transfer_type == OperationType::Copyurl {
-                false
+            if transfer_type == OperationType::Copyurl {
+                Ok(false)
             } else {
-                is_directory(
-                    transport.as_ref(),
-                    &source,
-                    runtime_remote_options.as_ref(),
-                    windows,
-                )
-                .await?
-            };
-            Ok::<_, String>((source, is_dir))
+                is_directory(transport, source, runtime_remote_options, windows).await
+            }
         });
     }
 
@@ -448,7 +440,7 @@ pub async fn submit_transfer_batch(
         transfer_type,
         OperationType::Sync | OperationType::Bisync | OperationType::Check
     ) {
-        for (source, is_dir) in &dir_results {
+        for ((source, _), is_dir) in target_pairs.iter().zip(&dir_results) {
             if !*is_dir {
                 return Err(format!(
                     "{transfer_type:?} only supports directories, not files: {source}"
@@ -460,19 +452,12 @@ pub async fn submit_transfer_batch(
     let filenames = common
         .rclone_config
         .get("filenames")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .map(|v| v.as_str().unwrap_or("").to_string())
-                .collect::<Vec<String>>()
-        });
+        .and_then(Value::as_array);
 
     let mut inputs = Vec::new();
     let mut special_jobs = Vec::new();
 
-    for (i, ((source, mut dest), (_, is_dir))) in
-        target_pairs.into_iter().zip(dir_results).enumerate()
-    {
+    for (i, ((source, mut dest), is_dir)) in target_pairs.into_iter().zip(dir_results).enumerate() {
         let mut config = common.rclone_config.clone();
         if transfer_type == OperationType::Archivecreate {
             let format = config
@@ -482,8 +467,9 @@ pub async fn submit_transfer_batch(
             dest = build_archive_final_dest(&source, &dest, format);
         }
         if transfer_type == OperationType::Copyurl
-            && let Some(filename) = filenames.as_ref().and_then(|names| names.get(i))
+            && let Some(filename) = filenames.and_then(|names| names.get(i))
         {
+            let filename = filename.as_str().unwrap_or("");
             if !filename.is_empty() {
                 dest = format!(
                     "{}/{}",
@@ -649,6 +635,295 @@ pub(crate) async fn start_resolved_profile_batch(
         metadata,
     )
     .await
+}
+
+#[cfg(test)]
+mod batch_tests {
+    use super::*;
+    use crate::rclone::backend::{BackendManager, runtime::RuntimeInfo};
+    use crate::rclone::commands::common::{CommonConfigParams, parse_common_config};
+    use crate::utils::types::state::RcloneState;
+    use std::sync::{Arc, atomic::AtomicBool};
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::{TcpListener, TcpStream};
+
+    struct BatchBackend {
+        app: AppHandle,
+        backend: Backend,
+        server: tokio::task::JoinHandle<Vec<(String, Value)>>,
+    }
+
+    impl Drop for BatchBackend {
+        fn drop(&mut self) {
+            self.server.abort();
+        }
+    }
+
+    async fn read_rpc(listener: &TcpListener) -> (TcpStream, String, Value) {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = Vec::new();
+        let (header_end, content_length, path) = loop {
+            assert_ne!(stream.read_buf(&mut request).await.unwrap(), 0);
+            if let Some(index) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&request[..index]);
+                let path = headers.split_whitespace().nth(1).unwrap().to_string();
+                let length = headers
+                    .lines()
+                    .find_map(|line| {
+                        let (name, value) = line.split_once(':')?;
+                        name.eq_ignore_ascii_case("content-length")
+                            .then(|| value.trim().parse::<usize>().unwrap())
+                    })
+                    .unwrap();
+                break (index + 4, length, path);
+            }
+        };
+        while request.len() < header_end + content_length {
+            assert_ne!(stream.read_buf(&mut request).await.unwrap(), 0);
+        }
+        let body =
+            serde_json::from_slice(&request[header_end..header_end + content_length]).unwrap();
+        (stream, path, body)
+    }
+
+    async fn respond(mut stream: TcpStream, status: &str, body: Value) {
+        let body = body.to_string();
+        stream.write_all(format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        ).as_bytes()).await.unwrap();
+    }
+
+    impl BatchBackend {
+        async fn new(
+            stats: Vec<(&'static str, Result<bool, &'static str>)>,
+            expect_batch: bool,
+        ) -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let backend = Backend::new_remote(
+                "Captured NAS",
+                "127.0.0.1",
+                listener.local_addr().unwrap().port(),
+            );
+            let app = AppHandle::default();
+            let manager = BackendManager::new();
+            manager
+                .set_runtime_info(
+                    &backend.name,
+                    RuntimeInfo {
+                        os: Some("linux".into()),
+                        ..Default::default()
+                    },
+                )
+                .await;
+            app.manage(manager);
+            app.manage(RcloneState {
+                client: reqwest::Client::builder()
+                    .timeout(Duration::from_secs(3))
+                    .build()
+                    .unwrap(),
+                transport: Arc::new(RoutingTransport::new(app.clone())),
+                is_shutting_down: AtomicBool::new(false),
+                poller_running: AtomicBool::new(false),
+                poller_visible: AtomicBool::new(false),
+                initial_startup: AtomicBool::new(false),
+                updater_running: AtomicBool::new(false),
+                initialization_lock: tokio::sync::Mutex::new(()),
+                vault_operation_lock: tokio::sync::Mutex::new(()),
+            });
+            let server = crate::utils::spawn(async move {
+                let mut pending = Vec::new();
+                // Wait for every probe before replying, then finish in reverse source order.
+                // A sequential probe implementation cannot progress through this server.
+                for _ in &stats {
+                    let request = read_rpc(&listener).await;
+                    assert_eq!(request.1, "/operations/stat");
+                    pending.push(request);
+                }
+                let mut requests = Vec::new();
+                for (remote, result) in stats.into_iter().rev() {
+                    let index = pending
+                        .iter()
+                        .position(|(_, _, body)| body["remote"] == remote)
+                        .unwrap();
+                    let (stream, path, body) = pending.remove(index);
+                    let (status, response) = match result {
+                        Ok(is_dir) => ("200 OK", json!({"item": {"IsDir": is_dir}})),
+                        Err(error) => ("403 Forbidden", json!({"error": error})),
+                    };
+                    respond(stream, status, response).await;
+                    requests.push((path, body));
+                    tokio::task::yield_now().await;
+                }
+                if expect_batch {
+                    let (stream, path, body) = read_rpc(&listener).await;
+                    assert_eq!(path, "/job/batch");
+                    requests.push((path, body));
+                    // Capture encoded inputs without starting job monitoring or mutating files.
+                    respond(
+                        stream,
+                        "500 Internal Server Error",
+                        json!({"error": "batch captured"}),
+                    )
+                    .await;
+                }
+                requests
+            });
+            Self {
+                app,
+                backend,
+                server,
+            }
+        }
+
+        async fn submit(
+            &self,
+            operation: OperationType,
+            common: &CommonConfigParams,
+        ) -> Result<String, String> {
+            let pairs = common
+                .source
+                .iter()
+                .map(|source| (source.clone(), common.dest.clone()))
+                .collect();
+            let metadata = JobMetadata::new(
+                "drive",
+                operation.as_job_type().unwrap(),
+                common.source.clone(),
+                common.dest.clone(),
+            )
+            .with_no_cache(true);
+            tokio::time::timeout(
+                Duration::from_secs(5),
+                submit_transfer_batch(
+                    self.app.clone(),
+                    self.backend.clone(),
+                    operation,
+                    pairs,
+                    common,
+                    false,
+                    metadata,
+                ),
+            )
+            .await
+            .expect("batch preparation must finish")
+        }
+
+        async fn requests(&mut self) -> Vec<(String, Value)> {
+            tokio::time::timeout(Duration::from_secs(5), &mut self.server)
+                .await
+                .unwrap()
+                .unwrap()
+        }
+    }
+
+    fn common_config() -> CommonConfigParams {
+        parse_common_config(
+            &json!({
+                "srcFs": ["drive:first/旅行.txt", "drive:second/Arşiv"],
+                "dstFs": "target:backup",
+                "remotes": {"drive": {"region": "a'b,c"}}
+            }),
+            &json!({}),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn concurrent_probes_keep_file_and_directory_inputs_in_source_order() {
+        let mut backend = BatchBackend::new(
+            vec![("first/旅行.txt", Ok(false)), ("second/Arşiv", Ok(true))],
+            true,
+        )
+        .await;
+        let common = common_config();
+        assert!(
+            backend
+                .submit(OperationType::Copy, &common)
+                .await
+                .unwrap_err()
+                .contains("batch captured")
+        );
+        let requests = backend.requests().await;
+        assert_eq!(requests[0].1["remote"], "second/Arşiv");
+        assert_eq!(requests[1].1["remote"], "first/旅行.txt");
+        for (_, stat) in &requests[..2] {
+            assert_eq!(stat["fs"], "drive,region='a''b,c':");
+        }
+        let inputs = requests[2].1["inputs"].as_array().unwrap();
+        assert_eq!(inputs.len(), 2);
+        assert_eq!(inputs[0]["_path"], operations::COPYFILE);
+        assert_eq!(inputs[0]["srcFs"], "drive,region='a''b,c':");
+        assert_eq!(inputs[0]["srcRemote"], "first/旅行.txt");
+        assert_eq!(inputs[0]["dstRemote"], "backup/旅行.txt");
+        assert_eq!(inputs[1]["_path"], crate::rclone::endpoints::sync::COPY);
+        assert_eq!(inputs[1]["srcFs"], "drive,region='a''b,c':second/Arşiv");
+        assert_eq!(inputs[1]["dstFs"], "target:backup");
+    }
+
+    #[tokio::test]
+    async fn file_sources_reject_sync_before_job_submission() {
+        let mut backend = BatchBackend::new(
+            vec![("first/旅行.txt", Ok(false)), ("second/Arşiv", Ok(true))],
+            false,
+        )
+        .await;
+        let error = backend
+            .submit(OperationType::Sync, &common_config())
+            .await
+            .unwrap_err();
+        assert!(error.contains("only supports directories, not files: drive:first/旅行.txt"));
+        assert_eq!(backend.requests().await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn failed_source_probes_prevent_job_submission() {
+        let mut backend = BatchBackend::new(
+            vec![
+                ("first/旅行.txt", Ok(true)),
+                ("second/Arşiv", Err("source denied")),
+            ],
+            false,
+        )
+        .await;
+        let error = backend
+            .submit(OperationType::Copy, &common_config())
+            .await
+            .unwrap_err();
+        assert!(error.contains("source denied"));
+        assert_eq!(backend.requests().await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn copyurl_skips_probes_and_keeps_optional_filename_alignment() {
+        let mut backend = BatchBackend::new(vec![], true).await;
+        let common = parse_common_config(
+            &json!({
+                "srcFs": ["https://example.com/a", "https://example.com/b"],
+                "dstFs": "target:incoming",
+                "filenames": ["旅行.txt", null]
+            }),
+            &json!({}),
+        )
+        .unwrap();
+        assert!(
+            backend
+                .submit(OperationType::Copyurl, &common)
+                .await
+                .unwrap_err()
+                .contains("batch captured")
+        );
+        let requests = backend.requests().await;
+        assert_eq!(requests.len(), 1);
+        let inputs = requests[0].1["inputs"].as_array().unwrap();
+        assert_eq!(inputs[0]["url"], "https://example.com/a");
+        assert_eq!(inputs[0]["remote"], "incoming/旅行.txt");
+        assert_eq!(inputs[0]["autoFilename"], false);
+        assert_eq!(inputs[1]["url"], "https://example.com/b");
+        assert_eq!(inputs[1]["remote"], "incoming");
+        assert_eq!(inputs[1]["autoFilename"], true);
+    }
 }
 
 #[cfg(test)]

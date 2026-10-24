@@ -4,7 +4,7 @@ import { filter, map } from 'rxjs/operators';
 import { RCLONE_ENGINE_STATUS_CHANGED } from '@app/types';
 import { ApiClientService } from './api-client.service';
 
-export interface SseEvent {
+interface SseEvent {
   event: string;
   payload: unknown;
 }
@@ -66,10 +66,6 @@ export class SseClientService {
       filter(e => e.event === eventName),
       map(e => e.payload as T)
     );
-  }
-
-  listenAll(): Observable<SseEvent> {
-    return this.events$.asObservable();
   }
 
   private openSource(url: string): void {

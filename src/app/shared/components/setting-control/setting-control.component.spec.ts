@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { Component, ComponentRef } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { of } from 'rxjs';
@@ -62,6 +62,22 @@ describe('SettingControlComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it.each(['[]string', 'CommaSepList', 'SpaceSepList'])(
+    'uses an array editor for %s without predefined choices',
+    type => {
+      componentRef.setInput('option', {
+        Name: 'custom-array',
+        FieldName: 'CustomArray',
+        Help: '',
+        Type: type,
+        DefaultStr: '',
+      } satisfies RcConfigOption);
+      fixture.detectChanges();
+      expect(component.isMultiselectOption()).toBe(true);
+      expect(component.controlType()).toBe('array');
+    }
+  );
+
   it('should return select for exclusive options with Examples', () => {
     const opt: RcConfigOption = {
       Name: 'vfs_cache_mode',
@@ -80,6 +96,104 @@ describe('SettingControlComponent', () => {
     componentRef.setInput('option', opt);
     fixture.detectChanges();
     expect(component.controlType()).toBe('select');
+  });
+
+  it('edits log format Bits as a list when rclone supplies no examples', () => {
+    componentRef.setInput('option', {
+      Name: 'log_format',
+      FieldName: 'Format',
+      Help: 'Comma separated list of log format options',
+      Type: 'Bits',
+      DefaultStr: 'date,time',
+      Value: 'date,time',
+      ValueStr: 'date,time',
+    } satisfies RcConfigOption);
+    fixture.detectChanges();
+
+    expect(component.control()).toBeInstanceOf(FormArray);
+    expect(component.controlType()).toBe('array');
+    expect(component.control()?.value).toEqual(['date', 'time']);
+    expect(component.isValueChanged()).toBe(false);
+    expect(fixture.debugElement.queryAll(By.css('input')).length).toBe(2);
+
+    const onChange = vi.fn();
+    component.registerOnChange(onChange);
+    fixture.debugElement.query(By.css('.add-array-item-btn')).nativeElement.click();
+    fixture.detectChanges();
+    expect(fixture.debugElement.queryAll(By.css('input')).length).toBe(3);
+    component.formArrayControls()[2].setValue('UTC');
+    expect(onChange).toHaveBeenLastCalledWith('date,time,UTC');
+    expect(component.isValueChanged()).toBe(true);
+
+    component.removeArrayItem(0);
+    expect(onChange).toHaveBeenLastCalledWith('time,UTC');
+    component.resetToDefault();
+    expect(component.control()?.value).toEqual(['date', 'time']);
+    expect(onChange).toHaveBeenLastCalledWith('date,time');
+    expect(component.isValueChanged()).toBe(false);
+
+    component.writeValue('json,pid');
+    expect(component.control()?.value).toEqual(['json', 'pid']);
+    component.writeValue('');
+    expect(component.control()?.value).toEqual([]);
+    component.addArrayItem();
+    expect(component.control()?.value).toEqual(['']);
+    component.writeValue(null);
+    expect(component.control()?.value).toEqual(['date', 'time']);
+  });
+
+  it.each(['SpaceSepList', 'CommaSepList'])(
+    'sends %s to rclone as a JSON array while preserving individual arguments',
+    type => {
+      const defaults = ['/path with spaces/helper', '--vault', '旅行, Arşiv'];
+      componentRef.setInput('option', {
+        Name: 'password_command',
+        FieldName: 'PasswordCommand',
+        Help: '',
+        Type: type,
+        Default: defaults,
+        DefaultStr: '"/path with spaces/helper" --vault "旅行, Arşiv"',
+        Value: defaults,
+      } satisfies RcConfigOption);
+      fixture.detectChanges();
+      expect(component.control()?.value).toEqual(defaults);
+      expect(component.isValueChanged()).toBe(false);
+
+      const onChange = vi.fn();
+      component.registerOnChange(onChange);
+      component.addArrayItem();
+      component.formArrayControls()[3].setValue('secret name');
+      expect(onChange).toHaveBeenLastCalledWith([...defaults, 'secret name']);
+      component.resetToDefault();
+      expect(onChange).toHaveBeenLastCalledWith(defaults);
+      expect(component.isValueChanged()).toBe(false);
+      component.writeValue([]);
+      component.addArrayItem();
+      component.formArrayControls()[0].setValue('helper');
+      expect(onChange).toHaveBeenLastCalledWith(['helper']);
+      component.removeArrayItem(0);
+      expect(onChange).toHaveBeenLastCalledWith([]);
+    }
+  );
+
+  it.each([
+    { examples: [{ Value: 'date' }, { Value: 'time' }], editor: 'multiSelect' },
+    { examples: [{ Value: 'date,time' }, { Value: 'json' }], editor: 'select' },
+  ])('preserves the $editor editor for Bits with examples', ({ examples, editor }) => {
+    componentRef.setInput('option', {
+      Name: 'log_format',
+      FieldName: 'Format',
+      Help: '',
+      Type: 'Bits',
+      DefaultStr: 'date,time',
+      Examples: examples.map(example => ({ ...example, Help: '' })),
+    } satisfies RcConfigOption);
+    fixture.detectChanges();
+    expect(component.controlType()).toBe(editor);
+    expect(component.control()).toBeInstanceOf(FormControl);
+    expect(component.control()?.value).toEqual(
+      editor === 'select' ? 'date,time' : ['date', 'time']
+    );
   });
 
   it('should return autocomplete for options with Exclusive: false to allow custom input', () => {
@@ -127,6 +241,48 @@ describe('SettingControlComponent', () => {
     expect(ctrl?.valid).toBe(false);
     expect(ctrl?.hasError('duration')).toBe(true);
   });
+
+  it.each(['min_age', 'max_age'])(
+    'displays and resets %s to rclone’s disabled default while preserving explicit zero',
+    name => {
+      const durationOff = JSON.parse('9223372036854775807') as number;
+      componentRef.setInput('option', {
+        Name: name,
+        FieldName: name === 'min_age' ? 'MinAge' : 'MaxAge',
+        Help: '',
+        Type: 'Duration',
+        Default: durationOff,
+        DefaultStr: 'off',
+        Value: durationOff,
+        ValueStr: '9223372036854775807',
+      } satisfies RcConfigOption);
+      fixture.detectChanges();
+
+      expect(component.control()?.value).toBe('off');
+      expect(component.displayDefault()).toBe('off');
+      expect(component.isValueChanged()).toBe(false);
+      expect(component.control()?.valid).toBe(true);
+      expect(component.controlType()).toBe('autocomplete');
+
+      component.writeValue(durationOff);
+      expect(component.control()?.value).toBe('off');
+      component.writeValue(null);
+      expect(component.control()?.value).toBe('off');
+
+      const onChange = vi.fn();
+      component.registerOnChange(onChange);
+      component.writeValue(0);
+      expect(component.control()?.value).toBe('0s');
+      expect(component.isValueChanged()).toBe(true);
+      component.control()?.setValue('7d');
+      expect(onChange).toHaveBeenLastCalledWith('7d');
+      expect(component.control()?.valid).toBe(true);
+      component.resetToDefault();
+      expect(component.control()?.value).toBe('off');
+      expect(onChange).toHaveBeenLastCalledWith('off');
+      expect(component.isValueChanged()).toBe(false);
+    }
+  );
 
   it('retains the field control when new metadata is structurally unchanged', () => {
     const option: RcConfigOption = {

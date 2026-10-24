@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClientService } from './api-client.service';
-import { SseClientService, SseEvent } from './sse-client.service';
+import { SseClientService } from './sse-client.service';
+import { EngineStatus, RCLONE_ENGINE_STATUS_CHANGED } from '@app/types';
 
 class MockEventSource {
   static instances: MockEventSource[] = [];
@@ -93,8 +94,10 @@ describe('SseClientService connection ownership', () => {
   it('retries once after repeated errors and ignores stale source callbacks', async () => {
     await service.connect();
     const old = MockEventSource.instances[0];
-    const received: SseEvent[] = [];
-    service.listenAll().subscribe(event => received.push(event));
+    const received: number[] = [];
+    const ready = vi.fn();
+    service.listen<number>('current').subscribe(payload => received.push(payload));
+    service.listen<EngineStatus>(RCLONE_ENGINE_STATUS_CHANGED).subscribe(ready);
     old.onerror?.();
     old.onerror?.();
     vi.advanceTimersByTime(1000);
@@ -102,12 +105,15 @@ describe('SseClientService connection ownership', () => {
     const current = MockEventSource.instances[1];
     old.onerror?.();
     old.onopen?.();
-    old.onmessage?.({ data: '{"event":"stale","payload":1}' });
+    old.onmessage?.({ data: '{"event":"current","payload":1}' });
     expect(old.close).toHaveBeenCalledOnce();
     expect(current.close).not.toHaveBeenCalled();
     expect(received).toEqual([]);
+    expect(ready).not.toHaveBeenCalled();
+    current.onmessage?.({ data: '{"event":"unrelated","payload":99}' });
+    expect(received).toEqual([]);
     current.onmessage?.({ data: '{"event":"current","payload":2}' });
-    expect(received).toEqual([{ event: 'current', payload: 2 }]);
+    expect(received).toEqual([2]);
   });
 
   it('cancels scheduled retries when explicitly connecting or disconnecting', async () => {
@@ -124,16 +130,16 @@ describe('SseClientService connection ownership', () => {
 
   it('ignores malformed and keep-alive frames while forwarding valid payloads', async () => {
     await service.connect();
-    const received: SseEvent[] = [];
-    service.listenAll().subscribe(event => received.push(event));
+    const ready: null[] = [];
+    const messages: number[] = [];
+    service.listen<null>('ready').subscribe(payload => ready.push(payload));
+    service.listen<number>('message').subscribe(payload => messages.push(payload));
     const source = MockEventSource.instances[0];
     for (const data of ['keep-alive', '{invalid', '{"event":"ready","payload":null}', '42']) {
       source.onmessage?.({ data });
     }
-    expect(received).toEqual([
-      { event: 'ready', payload: null },
-      { event: 'message', payload: 42 },
-    ]);
+    expect(ready).toEqual([null]);
+    expect(messages).toEqual([42]);
   });
 
   it('cancels authentication and completes event streams when destroyed', async () => {
@@ -145,7 +151,7 @@ describe('SseClientService connection ownership', () => {
         })
     );
     const completed = vi.fn();
-    service.listenAll().subscribe({ complete: completed });
+    service.listen('message').subscribe({ complete: completed });
     const pending = service.connect();
     TestBed.resetTestingModule();
     resolve();

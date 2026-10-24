@@ -97,10 +97,9 @@ describe('FileViewerService media URLs', () => {
     const { service, overlayRef } = setupViewer();
     await service.openDirectUrl('https://example.com/video.mp4');
     expect(openLayer).toHaveBeenCalledTimes(1);
-    expect(service.isViewerOpen()).toBe(true);
+    expect(overlayRef.attach).toHaveBeenCalledOnce();
     openLayer.mock.calls[0][0]();
     expect(overlayRef.dispose).toHaveBeenCalledTimes(1);
-    expect(service.isViewerOpen()).toBe(false);
     expect(releaseHistory).toHaveBeenCalledTimes(1);
   });
 
@@ -133,7 +132,7 @@ describe('FileViewerService media URLs', () => {
     await service.openDirectUrl('https://example.com/second.mp4');
     closeViewer.emit();
     backdrop.next(new MouseEvent('click'));
-    expect(service.isViewerOpen()).toBe(true);
+    expect(replacement.attach).toHaveBeenCalledOnce();
     expect(replacement.dispose).not.toHaveBeenCalled();
     expect(releaseHistory).toHaveBeenCalledTimes(1);
   });
@@ -147,10 +146,10 @@ describe('FileViewerService media URLs', () => {
   });
 
   it('releases history when the viewer closes through its own control', async () => {
-    const { service, closeViewer } = setupViewer();
+    const { service, closeViewer, overlayRef } = setupViewer();
     await service.openDirectUrl('https://example.com/video.mp4');
     closeViewer.emit();
-    expect(service.isViewerOpen()).toBe(false);
+    expect(overlayRef.dispose).toHaveBeenCalledOnce();
     expect(releaseHistory).toHaveBeenCalledTimes(1);
   });
 
@@ -160,7 +159,6 @@ describe('FileViewerService media URLs', () => {
     openLayer.mock.calls[0][0]();
     await opening;
     expect(overlayRef.attach).not.toHaveBeenCalled();
-    expect(service.isViewerOpen()).toBe(false);
     expect(releaseHistory).toHaveBeenCalledTimes(1);
   });
 

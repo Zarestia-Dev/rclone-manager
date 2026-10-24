@@ -44,10 +44,6 @@ export class DebugService extends TauriBaseService {
     this.setupContextMenu();
   }
 
-  restartApp(): Promise<void> {
-    return this.invokeCommand<void>('relaunch_app');
-  }
-
   getDebugInfo(): Promise<DebugInfo> {
     return this.invokeCommand<DebugInfo>('get_debug_info');
   }

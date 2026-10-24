@@ -129,7 +129,7 @@ describe('VaultLockScreenComponent', () => {
     vi.unstubAllGlobals();
   });
 
-  it('should batch mouse movement and reset perspective when the pointer leaves', () => {
+  it('should keep the card stationary while preserving background pointer movement', () => {
     let frame!: FrameRequestCallback;
     const request = vi.fn((callback: FrameRequestCallback) => {
       frame = callback;
@@ -153,9 +153,7 @@ describe('VaultLockScreenComponent', () => {
     expect(host.querySelector<HTMLElement>('.hud-background')?.style.transform).toContain(
       'rotateY(3deg)'
     );
-    expect(host.querySelector<HTMLElement>('.hud-panel-plane')?.style.transform).toContain(
-      'rotateY(5deg)'
-    );
+    expect(host.querySelector<HTMLElement>('.hud-panel-plane')?.style.transform).toBe('');
     component.onPointerMove({ pointerType: 'mouse', clientX: 0, clientY: 0 } as PointerEvent);
     component.onPointerLeave();
     expect(cancel).toHaveBeenCalledWith(7);

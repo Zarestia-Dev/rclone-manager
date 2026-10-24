@@ -69,13 +69,16 @@ export class WorkflowWorkspaceComponent {
 
   readonly hasWorkflow = computed(() => !!this.stateService.currentWorkflow());
   readonly hasSelectedNode = computed(() => !!this.stateService.selectedNode());
-  readonly presetTemplates = computed(() => this.storageService.getPresetTemplates());
 
   readonly isAnyDrawerOpenOnMobile = computed(() => {
     return this.isSidebarOver() && (this.isPaletteOpen() || this.isInspectorOpen());
   });
 
   constructor() {
+    void this.storageService.loadPresetTemplates().catch(error => {
+      console.error('[WorkflowWorkspace] Failed to load preset templates:', error);
+    });
+
     afterNextRender(() => {
       syncResponsiveSidebar(960, this.sidebarMode, undefined, this.destroyRef);
       if (typeof window !== 'undefined' && window.innerWidth < 960) {

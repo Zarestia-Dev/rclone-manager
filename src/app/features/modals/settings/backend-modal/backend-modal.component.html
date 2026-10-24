@@ -383,9 +383,9 @@
                     matSuffix
                     (click)="selectConfigFile()"
                     type="button"
-                    [disabled]="!isConfigSelectionAllowed()"
+                    [disabled]="!isActiveEditing()"
                     [attr.title]="
-                      isConfigSelectionAllowed()
+                      isActiveEditing()
                         ? ('modals.backend.selectConfigFile' | translate)
                         : ('modals.backend.notifications.onlyActiveBackend' | translate)
                     "

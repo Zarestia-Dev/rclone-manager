@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use crate::context::AppHandle;
 use serde_json::json;
 
-use crate::rclone::backend::BackendManager;
 use crate::rclone::endpoints::config;
 use crate::rclone::endpoints::core;
 
@@ -25,12 +24,6 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
         let app_paths = crate::services::paths::AppPaths::from_app_handle(&app)?;
         Ok(app_paths.config_dir.join(path))
     }
-}
-
-pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    Ok(backend.api_url())
 }
 
 #[derive(serde::Deserialize)]

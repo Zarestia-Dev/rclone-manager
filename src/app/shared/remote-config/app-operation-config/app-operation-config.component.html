@@ -223,12 +223,7 @@
           }}
         </span>
         @if (canAddSource()) {
-          <button
-            matButton="text"
-            class="app-pill interactive p-primary"
-            (click)="addPath('source')"
-            type="button"
-          >
+          <button class="app-pill interactive p-primary" (click)="addPath('source')" type="button">
             <mat-icon svgIcon="plus"></mat-icon>
             {{ 'wizards.appOperation.addSource' | translate }}
           </button>

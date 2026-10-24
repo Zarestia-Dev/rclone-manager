@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { RemoteManagementService } from '../remote/remote-management.service';
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
@@ -49,7 +50,7 @@ export class NautilusActionsService {
     this.nautilusService.toggleItem('bookmarks', {
       entry: {
         ID: '',
-        Name: path ? this.pathSvc.extractName(path) : remote.label || remote.name,
+        Name: path ? pathUtils.extractName(path) : remote.label || remote.name,
         Path: path,
         IsDir: true,
         Size: -1,
@@ -156,7 +157,7 @@ export class NautilusActionsService {
     const files = activePaneFiles.filter(
       f => f.meta.remote === actualRemoteName && f.meta.isLocal === isLocal
     );
-    const idx = files.findIndex(f => this._itemKey(f) === this._itemKey(item));
+    const idx = files.findIndex(f => fileBrowserItemKey(f) === fileBrowserItemKey(item));
     if (idx === -1) return;
 
     this.fileViewerSvc.open(
@@ -203,7 +204,7 @@ export class NautilusActionsService {
 
   getSelectedOrContextItems(): FileBrowserItem[] {
     const selection = this.tabSvc.activeSelection();
-    const selected = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
+    const selected = this.tabSvc.activeFiles().filter(f => selection.has(fileBrowserItemKey(f)));
     if (selected.length > 0) return selected;
     const ctx = this.contextMenuItem();
     return ctx ? [ctx] : [];
@@ -233,7 +234,7 @@ export class NautilusActionsService {
 
     const selection = this.tabSvc.activeSelection();
     const item =
-      this.tabSvc.activeFiles().find(f => selection.has(this._itemKey(f)) && f.entry.IsDir) ??
+      this.tabSvc.activeFiles().find(f => selection.has(fileBrowserItemKey(f)) && f.entry.IsDir) ??
       this.contextMenuItem();
     if (!item) return;
 
@@ -353,7 +354,7 @@ export class NautilusActionsService {
       folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
 
-      const newPath = this.pathSvc.joinPath(path, folderName);
+      const newPath = pathUtils.joinPath(path, folderName);
       const normalizedRemote = this.pathSvc.normalizeExplorerRoot(remote);
 
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
@@ -395,10 +396,6 @@ export class NautilusActionsService {
 
   private _refresh(remote: ExplorerRoot, path: string): void {
     this.tabSvc.refreshPath(remote.name, path);
-  }
-
-  private _itemKey(item: FileBrowserItem): string {
-    return fileBrowserItemKey(item);
   }
 
   private _resolveBookmarkRemote(bookmark: FileBrowserItem): ExplorerRoot | null {

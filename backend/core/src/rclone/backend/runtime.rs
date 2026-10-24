@@ -52,11 +52,6 @@ pub struct RuntimeInfo {
 }
 
 impl RuntimeInfo {
-    /// Create a new empty `RuntimeInfo`
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Create a `RuntimeInfo` with error status
     pub fn with_error(error: impl Into<String>) -> Self {
         Self {
@@ -80,18 +75,6 @@ impl RuntimeInfo {
             None
         }
     }
-
-    /// Get architecture string if available
-    #[must_use]
-    pub fn arch(&self) -> Option<&str> {
-        self.arch.as_deref()
-    }
-
-    /// Get Go version string if available
-    #[must_use]
-    pub fn go_version(&self) -> Option<&str> {
-        self.go_version.as_deref()
-    }
 }
 
 #[cfg(test)]
@@ -99,13 +82,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_runtime_info_new() {
-        let info = RuntimeInfo::new();
+    fn test_runtime_info_default() {
+        let info = RuntimeInfo::default();
         assert_eq!(info.status, RuntimeStatus::Unknown);
         assert!(info.version.is_none());
         assert!(info.os.is_none());
-        assert!(info.arch().is_none());
-        assert!(info.go_version().is_none());
+        assert!(info.arch.is_none());
+        assert!(info.go_version.is_none());
+        assert!(!info.is_connected());
+        assert!(info.error_message().is_none());
     }
 
     #[test]
@@ -114,19 +99,5 @@ mod tests {
         assert!(matches!(info.status, RuntimeStatus::Error(_)));
         assert!(!info.is_connected());
         assert_eq!(info.error_message(), Some("Connection timeout".to_string()));
-    }
-
-    #[test]
-    fn test_struct_fields() {
-        let mut info = RuntimeInfo::new();
-        info.version = Some("v1.66.0".to_string());
-        info.os = Some("linux".to_string());
-        info.arch = Some("amd64".to_string());
-        info.go_version = Some("go1.22.1".to_string());
-
-        assert_eq!(info.version, Some("v1.66.0".to_string()));
-        assert_eq!(info.os, Some("linux".to_string()));
-        assert_eq!(info.arch(), Some("amd64"));
-        assert_eq!(info.go_version(), Some("go1.22.1"));
     }
 }

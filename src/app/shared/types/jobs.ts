@@ -180,19 +180,6 @@ export interface JobInfo {
   parent_job_id?: number;
 }
 
-export interface BatchMasterJob {
-  batch_id: string;
-  job_type: JobActionType;
-  total_jobs: number;
-  completed_jobs: number;
-  failed_jobs: number;
-  start_time: string;
-  end_time?: string;
-  status: JobStatus;
-  origin?: Origin;
-  group?: string;
-}
-
 export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   completed: 'p-primary',
   failed: 'p-warn',

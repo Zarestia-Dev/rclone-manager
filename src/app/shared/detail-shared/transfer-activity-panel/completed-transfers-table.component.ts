@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import { ActivityProgressComponent } from './activity-progress.component';
 import { ActivityPathsComponent } from './activity-paths.component';
 import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
@@ -7,10 +8,9 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
 import { CompletedTransfer, JobActionType } from '@app/types';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+
 import { TransferOperationsService } from './transfer-operations.service';
 import { BaseTransfersTableComponent } from './base-transfers-table.component';
-import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import {
   ActivityRow,
@@ -31,7 +31,6 @@ import {
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
-    AlertBannerComponent,
     CopyToClipboardDirective,
   ],
   template: `
@@ -43,14 +42,14 @@ import {
               <div class="card-info-left">
                 <mat-icon
                   svgIcon="file"
-                  class="card-primary-icon file-icon"
+                  class="card-primary-icon"
                   [attr.title]="transfer.name"
                 ></mat-icon>
                 <span class="card-title-text truncate" [title]="transfer.name">{{
                   transfer.name
                 }}</span>
               </div>
-              <div class="card-info-right actions-group">
+              <div class="card-info-right">
                 <span
                   class="app-pill"
                   [class]="transfer.badge.cssClass"
@@ -101,10 +100,10 @@ import {
               </div>
               <div class="card-footer-right">
                 @if (transfer.completedAt) {
-                  <span class="time-text">{{ transfer.relativeTime }}</span>
+                  <span>{{ transfer.relativeTime }}</span>
                 }
                 @if (transfer.duration) {
-                  <span class="duration-badge">{{ transfer.duration }}</span>
+                  <span class="app-pill pill-sm p-primary">{{ transfer.duration }}</span>
                 }
               </div>
             </div>
@@ -113,15 +112,19 @@ import {
               <app-activity-progress [state]="transfer.resolveState"></app-activity-progress>
             }
             @if (transfer.displayError) {
-              <app-alert-banner
-                class="compact"
-                severity="error"
-                [description]="transfer.displayError"
-                [appCopyToClipboard]="transfer.displayError"
-                [attr.title]="'common.copy' | translate"
-                tabindex="0"
-                role="button"
-              />
+              <div class="error-entry">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                <span>{{ transfer.displayError }}</span>
+                <button
+                  type="button"
+                  class="action-button"
+                  [appCopyToClipboard]="transfer.displayError"
+                  [attr.title]="'common.copy' | translate"
+                  [attr.aria-label]="'common.copy' | translate"
+                >
+                  <mat-icon svgIcon="copy" aria-hidden="true"></mat-icon>
+                </button>
+              </div>
             }
           </div>
         }
@@ -158,7 +161,6 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
 
   private readonly ops = inject(TransferOperationsService);
   private readonly notifications = inject(NotificationService);
-  private readonly pathService = inject(PathService);
 
   protected readonly processedItems = computed(() => {
     this.lang();
@@ -225,7 +227,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
 
       this.notifications.showSuccess(
         this.translate.instant('shared.transferActivity.messages.resolveStarted', {
-          name: this.pathService.extractName(item.name),
+          name: pathUtils.extractName(item.name),
         })
       );
     } catch (e) {

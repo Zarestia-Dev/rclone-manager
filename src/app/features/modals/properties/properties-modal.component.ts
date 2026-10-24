@@ -1,3 +1,4 @@
+import * as pathUtils from 'src/app/shared/utils/path.utils';
 import {
   Component,
   HostListener,
@@ -63,7 +64,7 @@ export class PropertiesModalComponent implements OnInit {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly nautilusService = inject(NautilusService);
   private readonly capacity = inject(RemoteDiskUsageService);
-  private readonly iconService = inject(IconService);
+  protected readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
@@ -91,7 +92,7 @@ export class PropertiesModalComponent implements OnInit {
     : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
   readonly hashPath: string = this.data.isLocal
-    ? this.pathService.joinPath(
+    ? pathUtils.joinPath(
         this.data.remoteName,
         this.data.path || this.data.item?.Path || this.data.item?.Name || ''
       )
@@ -217,7 +218,7 @@ export class PropertiesModalComponent implements OnInit {
       let statPath = this.data.path;
 
       if (this.data.isLocal) {
-        const localPath = this.pathService.joinPath(
+        const localPath = pathUtils.joinPath(
           this.data.remoteName,
           this.data.path || this.data.item?.Path || this.data.item?.Name || ''
         );
@@ -427,7 +428,7 @@ export class PropertiesModalComponent implements OnInit {
   toggleStar(): void {
     const item: FileBrowserItem = {
       entry: this.item() ?? {
-        Name: this.pathService.extractName(this.data.path, this.data.remoteName),
+        Name: pathUtils.extractName(this.data.path, this.data.remoteName),
         Path: this.data.path,
         IsDir: true,
         Size: 0,
@@ -466,10 +467,6 @@ export class PropertiesModalComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  getIcon(item?: Entry | null): string {
-    return this.iconService.getIconForEntry(item);
-  }
-
   /**
    * Calculate hash for all files in the directory
    */
@@ -487,7 +484,7 @@ export class PropertiesModalComponent implements OnInit {
       if (this.data.isLocal) {
         fsRemote = this.pathService.isLocalPath(hashPath)
           ? hashPath
-          : this.pathService.joinPath(this.data.remoteName, hashPath);
+          : pathUtils.joinPath(this.data.remoteName, hashPath);
 
         hashPath = '';
       }

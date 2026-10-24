@@ -7,16 +7,6 @@ use serde_json::json;
 
 use crate::rclone::engine::lifecycle::restart_for_config_change;
 
-/// Load all `RClone` backend options from rcman sub-settings (single file)
-pub async fn load_rclone_backend_options(app: AppHandle) -> Result<serde_json::Value, String> {
-    debug!("Loading RClone backend options via rcman sub-settings");
-    let manager = app.state::<AppSettingsManager>();
-    let backend = load_backend_options_sync(manager.inner());
-
-    info!("RClone backend options loaded successfully");
-    Ok(backend)
-}
-
 /// Sync version for use in initialization
 pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Value {
     let sub = match manager.sub_settings(crate::utils::constants::SUB_BACKEND) {
@@ -26,29 +16,6 @@ pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Va
 
     let all = sub.get_all_values().unwrap_or_default();
     json!(all)
-}
-
-/// Save all `RClone` backend options
-pub async fn save_rclone_backend_options(
-    app: AppHandle,
-    options: serde_json::Value,
-) -> Result<(), String> {
-    debug!("Saving RClone backend options via rcman sub-settings");
-    let manager = app.state::<AppSettingsManager>();
-
-    let sub = manager
-        .sub_settings(crate::utils::constants::SUB_BACKEND)
-        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
-
-    if let Some(obj) = options.as_object() {
-        for (block_name, block_value) in obj {
-            sub.set(block_name, block_value)
-                .map_err(|e| format!("Failed to save block '{block_name}': {e}"))?;
-        }
-    }
-
-    info!("RClone backend options saved successfully");
-    Ok(())
 }
 
 /// Save a single `RClone` backend option (block.option format)
@@ -141,17 +108,97 @@ pub async fn remove_rclone_backend_option(
     Ok(())
 }
 
-/// Get `RClone` backend store path for backup/export
-pub async fn get_rclone_backend_store_path(app: AppHandle) -> Result<String, String> {
-    let manager = app.state::<AppSettingsManager>();
-    let sub = manager
-        .inner()
-        .sub_settings(crate::utils::constants::SUB_BACKEND)
-        .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::settings::schema::AppSettings;
+    use tempfile::TempDir;
 
-    let path = sub
-        .file_path()
-        .ok_or_else(|| "Backend settings is not in single-file mode".to_string())?;
+    fn test_app() -> (TempDir, AppHandle) {
+        let directory = TempDir::new().unwrap();
+        let config = rcman::SettingsConfig::builder("backend-options-test", "1.0.0")
+            .with_config_dir(directory.path())
+            .with_schema::<AppSettings>()
+            .build();
+        let manager: AppSettingsManager = rcman::SettingsManager::new(config).unwrap();
+        manager
+            .register_sub_settings(rcman::SubSettingsConfig::singlefile(
+                crate::utils::constants::SUB_BACKEND,
+            ))
+            .unwrap();
+        let app = AppHandle::default();
+        app.manage(manager);
+        (directory, app)
+    }
 
-    Ok(path.to_string_lossy().to_string())
+    #[tokio::test]
+    async fn persists_exact_values_for_the_initialization_loader() {
+        let (_directory, app) = test_app();
+        assert_eq!(
+            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            json!({})
+        );
+        let values = json!({
+            "AskPassword": false,
+            "Retries": 0,
+            "LogFile": "",
+            "HTTP.ListenAddr": "旅行 & Arşiv/özel",
+            "ExcludeRule": ["folder/path", "space & symbols"],
+            "Nullable": null
+        });
+        for (option, value) in values.as_object().unwrap() {
+            save_rclone_backend_option(app.clone(), "main".into(), option.clone(), value.clone())
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            json!({"main": values})
+        );
+    }
+
+    #[tokio::test]
+    async fn removes_only_the_requested_override_and_drops_empty_blocks() {
+        let (_directory, app) = test_app();
+        for (option, value) in [("Retries", json!(0)), ("AskPassword", json!(false))] {
+            save_rclone_backend_option(app.clone(), "main".into(), option.into(), value)
+                .await
+                .unwrap();
+        }
+        remove_rclone_backend_option(app.clone(), "main".into(), "Retries".into())
+            .await
+            .unwrap();
+        assert_eq!(
+            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            json!({"main": {"AskPassword": false}})
+        );
+        remove_rclone_backend_option(app.clone(), "main".into(), "AskPassword".into())
+            .await
+            .unwrap();
+        assert_eq!(
+            load_backend_options_sync(app.state::<AppSettingsManager>().inner()),
+            json!({})
+        );
+    }
+
+    #[tokio::test]
+    async fn removing_missing_or_non_object_blocks_is_a_no_op() {
+        let (_directory, app) = test_app();
+        remove_rclone_backend_option(app.clone(), "missing".into(), "Retries".into())
+            .await
+            .unwrap();
+        let manager = app.state::<AppSettingsManager>();
+        manager
+            .sub_settings(crate::utils::constants::SUB_BACKEND)
+            .unwrap()
+            .set("main", &json!(false))
+            .unwrap();
+        remove_rclone_backend_option(app.clone(), "main".into(), "Retries".into())
+            .await
+            .unwrap();
+        assert_eq!(
+            load_backend_options_sync(manager.inner()),
+            json!({"main": false})
+        );
+    }
 }

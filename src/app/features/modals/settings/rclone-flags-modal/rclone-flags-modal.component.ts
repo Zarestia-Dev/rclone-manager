@@ -658,7 +658,7 @@ export class RcloneFlagsModalComponent implements OnInit {
         );
       }
 
-      await this.flagConfigService.saveOption(service, fullFieldName, valueToSave);
+      await this.flagConfigService.applyOption(service, fullFieldName, valueToSave);
       control.markAsPristine();
     } catch (error) {
       this.notificationService.showError(

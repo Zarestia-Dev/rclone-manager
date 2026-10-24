@@ -168,7 +168,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         }
 
         let fired_at = Utc::now();
-        cache::bump_rule_fired(manager, &alert_cache, &rule.id, fired_at).await;
+        alert_cache.bump_fired(manager, &rule.id, fired_at).await;
 
         debug!(
             "Rule '{}' matched - dispatching {} action(s)",

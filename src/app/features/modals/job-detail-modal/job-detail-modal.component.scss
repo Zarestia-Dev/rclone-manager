@@ -72,14 +72,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-2xl);
     padding: 6px var(--space-xs);
     font-size: var(--font-size-sm);
 
     .label {
       color: var(--dim-color);
+      flex-shrink: 0;
     }
     .value {
       font-weight: 600;
+      min-width: 0;
+      text-align: right;
 
       &.status-tag {
         padding: 2px var(--space-xs);

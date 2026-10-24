@@ -264,7 +264,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   getNautilusUrl(remote: string | null, path: string | null): string {
-    const remoteRoot = remote ? this.lookupRemote(remote) : null;
+    const remoteRoot = remote ? this.lookupRemoteByName(remote) : null;
     const pathStyle = this.pathService.pathStyleForRemote(remoteRoot);
     const canonical = pathStyle === 'windows' ? (path ?? '').replace(/\\/g, '/') : (path ?? '');
     return new URL(buildNautilusPath(remote, canonical), window.location.origin).href;
@@ -386,10 +386,6 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  openForRemote(remoteName: string): void {
-    void this.newNautilusWindow(remoteName, null);
-  }
-
   openPath(path: string): void {
     const { remote, path: relativePath } = this.pathService.splitFsPath(path);
     void this.newNautilusWindow(remote || null, relativePath || null);
@@ -427,7 +423,7 @@ export class NautilusService extends TauriBaseService {
       cancelled: result === null,
       items,
       paths: items.map(i => {
-        const remoteRoot = this.lookupRemote(i.meta.remote);
+        const remoteRoot = this.lookupRemoteByName(i.meta.remote);
         return this.pathService.getFullDisplayPath(
           remoteRoot ?? {
             name: i.meta.remote,
@@ -445,12 +441,6 @@ export class NautilusService extends TauriBaseService {
     this.animateAndDisposeOverlay(this.pickerComponentRef, this.pickerOverlayRef);
     this.pickerComponentRef = null;
     this.pickerOverlayRef = null;
-  }
-
-  closeBrowser(): void {
-    if (this._isStandaloneWindow()) {
-      this.getCurrentTauriWindow()?.close();
-    }
   }
 
   isSaved(type: CollectionType, remote: string, path: string): boolean {
@@ -505,10 +495,6 @@ export class NautilusService extends TauriBaseService {
     if (byName) return byName;
     const normalized = this.pathService.normalizeRemoteName(remoteName);
     return all.find(r => this.pathService.normalizeRemoteName(r.name) === normalized) ?? null;
-  }
-
-  private lookupRemote(remoteName: string): ExplorerRoot | null {
-    return this.lookupRemoteByName(remoteName);
   }
 
   private setupBrowseListener(): void {

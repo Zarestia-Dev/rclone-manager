@@ -1,0 +1,256 @@
+// Shared by transfer activity tables and the jobs panel.
+// Included once at its original cascade position in custom-theme.scss.
+@mixin styles {
+  .card-list-container {
+    background: var(--window-bg-color);
+    max-height: clamp(300px, 50vh, 600px);
+    overflow-y: auto;
+    position: relative;
+    padding: 0 !important;
+    width: 100%;
+    contain: layout style paint; // Isolates row renders to protect frame updates in zoneless modes
+  }
+
+  .infinite-scroll-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    border-top: 1px solid var(--border-color);
+    background: var(--window-bg-color);
+    color: var(--dim-color);
+    font-size: var(--font-size-sm);
+
+    mat-icon {
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      font-size: var(--icon-size-sm);
+    }
+  }
+
+  .card-row-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition-fast);
+
+    &[role="button"],
+    &.interactive {
+      cursor: pointer;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: var(--hover-bg-color);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .error-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-xs);
+      color: var(--warn-color);
+      font-size: var(--font-size-sm);
+      line-height: 1.5;
+
+      > mat-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+      }
+
+      > span {
+        flex: 1;
+        min-width: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        user-select: text;
+      }
+    }
+
+    .percentage-text {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--window-fg-color);
+      min-width: var(--space-2xl);
+
+      &.preparing,
+      &.finalizing {
+        color: var(--dim-color);
+        font-style: italic;
+      }
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .card-info-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      min-width: 0;
+      flex: 1;
+
+      .card-primary-icon {
+        width: calc(var(--icon-size-sm) + var(--space-xxs) / 2);
+        height: calc(var(--icon-size-sm) + var(--space-xxs) / 2);
+        color: var(--dim-color);
+      }
+
+      .card-title-text {
+        font-weight: 600;
+        color: var(--window-fg-color);
+        font-size: var(--font-size-md);
+      }
+    }
+
+    .card-info-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .card-paths,
+    .card-progress,
+    .card-footer {
+      margin-left: calc(var(--icon-size-sm) + var(--space-xs) + var(--space-xxs) / 2);
+    }
+
+    .card-paths {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      font-size: var(--font-size-sm);
+      color: var(--dim-color);
+
+      .path-segment {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .path-endpoint {
+        min-width: 0;
+        max-width: 100%;
+        min-height: var(--space-2xl);
+        padding: 0;
+        gap: 0;
+        border-radius: var(--radius-xs);
+
+        code {
+          font-family: var(--font-mono);
+          font-size: inherit;
+          font-weight: 500;
+          min-width: 0;
+          padding-inline: var(--space-xs);
+        }
+
+        &.src code {
+          color: var(--primary-color);
+        }
+        &.dst code {
+          color: var(--accent-color);
+        }
+      }
+
+      .path-actions {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        border-inline-start: calc(var(--space-xxs) / 4) solid var(--border-color);
+      }
+
+      .arrow-icon {
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        color: var(--dim-color);
+      }
+    }
+
+    .card-progress {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+
+      mat-progress-bar {
+        flex: 1;
+        height: var(--space-xxs);
+        border-radius: calc(var(--radius-xxs) / 2);
+      }
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      font-size: var(--font-size-xs);
+      color: var(--dim-color);
+
+      .card-footer-left {
+        .size-text {
+          font-weight: 500;
+        }
+
+        .size-transferred {
+          opacity: 0.8;
+          margin-left: var(--space-xs);
+        }
+      }
+
+      .card-footer-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+
+        .speed-text {
+          font-family: var(--font-mono);
+        }
+
+        .eta-text {
+          font-weight: 600;
+          color: var(--primary-color);
+        }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .card-list-container {
+      max-height: clamp(250px, 45vh, 500px);
+    }
+
+    .card-row-item {
+      padding: var(--space-xs) var(--space-sm);
+
+      .card-paths,
+      .card-progress,
+      .card-footer {
+        margin-left: 0;
+      }
+
+      .card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-xxs);
+
+        .card-footer-left,
+        .card-footer-right {
+          width: 100%;
+          text-align: center;
+        }
+      }
+    }
+  }
+}

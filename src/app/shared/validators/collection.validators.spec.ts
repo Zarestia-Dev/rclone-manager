@@ -1,12 +1,6 @@
 import { FormControl } from '@angular/forms';
 import { describe, it, expect } from 'vitest';
-import {
-  arrayValidator,
-  tristateValidator,
-  spaceSepListValidator,
-  enumValidator,
-  urlArrayValidator,
-} from './collection.validators';
+import { arrayValidator, tristateValidator, urlArrayValidator } from './collection.validators';
 
 describe('collection.validators', () => {
   describe('arrayValidator', () => {
@@ -35,33 +29,6 @@ describe('collection.validators', () => {
       const validator = tristateValidator();
       expect(validator(new FormControl('maybe'))).not.toBeNull();
       expect(validator(new FormControl(123))).not.toBeNull();
-    });
-  });
-
-  describe('spaceSepListValidator', () => {
-    it('should validate space separated list', () => {
-      const validator = spaceSepListValidator();
-      expect(validator(new FormControl(''))).toBeNull();
-      expect(validator(new FormControl('item1 item2 item3'))).toBeNull();
-      expect(validator(new FormControl('   '))).not.toBeNull();
-    });
-  });
-
-  describe('enumValidator', () => {
-    it('should allow allowed values case-insensitively', () => {
-      const validator = enumValidator(['OptionA', 'OptionB']);
-      expect(validator(new FormControl(''))).toBeNull();
-      expect(validator(new FormControl(null))).toBeNull();
-      expect(validator(new FormControl('optiona'))).toBeNull();
-      expect(validator(new FormControl('OPTIONB'))).toBeNull();
-    });
-
-    it('should reject invalid values', () => {
-      const validator = enumValidator(['OptionA', 'OptionB']);
-      const res = validator(new FormControl('OptionC'));
-      expect(res).not.toBeNull();
-      expect(res?.['enum']).toBeDefined();
-      expect(res?.['enum'].allowedValues).toEqual(['OptionA', 'OptionB']);
     });
   });
 

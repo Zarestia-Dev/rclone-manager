@@ -98,9 +98,3 @@ export interface NodePaletteItem {
   defaultConfig: Record<string, unknown>;
   hideOnMobile?: boolean;
 }
-
-export interface WorkflowValidationResult {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-}

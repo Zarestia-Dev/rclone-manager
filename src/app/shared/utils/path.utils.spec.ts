@@ -1,3 +1,4 @@
+import * as pathUtils from './path.utils';
 import {
   normalizePath,
   normalizeForPlatform,
@@ -321,5 +322,68 @@ describe('path.utils', () => {
       );
       expect(res).toEqual([]);
     });
+  });
+});
+
+describe('normalizePath (canonical POSIX form)', () => {
+  it('should resolve . and .. segments', () => {
+    expect(pathUtils.normalizePath('/a/b/./c/../d')).toBe('/a/b/d');
+  });
+
+  it('should collapse backslashes to forward slashes (canonical form is always POSIX)', () => {
+    expect(pathUtils.normalizePath('a\\b\\c')).toBe('a/b/c');
+  });
+
+  it('should NOT strip leading slash before a drive letter (POSIX has no drive letters)', () => {
+    // Old behavior sniffed drive letters and stripped the leading slash.
+    // Under the engine-driven model, drive-letter handling is the job of
+    // the Windows-native renderer (`normalizeForPlatform(path, 'windows')`),
+    // not the canonical normalizer.
+    expect(pathUtils.normalizePath('/C:/Users/hakan')).toBe('/C:/Users/hakan');
+  });
+});
+describe('multi-path display helpers', () => {
+  it('should detect multi-path values', () => {
+    expect(pathUtils.isMultiPath('a')).toBe(false);
+    expect(pathUtils.isMultiPath([])).toBe(false);
+    expect(pathUtils.isMultiPath(['a'])).toBe(false);
+    expect(pathUtils.isMultiPath(['a', 'b'])).toBe(true);
+  });
+
+  it('should normalize path values into arrays', () => {
+    expect(pathUtils.asPathArray('a')).toEqual(['a']);
+    expect(pathUtils.asPathArray('')).toEqual(['']);
+    expect(pathUtils.asPathArray(['a', 'b'])).toEqual(['a', 'b']);
+  });
+
+  it('should return the primary path', () => {
+    expect(pathUtils.getPrimaryPath('a')).toBe('a');
+    expect(pathUtils.getPrimaryPath([])).toBe('');
+    expect(pathUtils.getPrimaryPath(['a', 'b'])).toBe('a');
+  });
+
+  it('should format compact display text', () => {
+    expect(pathUtils.formatPathDisplay('a')).toBe('a');
+    expect(pathUtils.formatPathDisplay([])).toBe('');
+    expect(pathUtils.formatPathDisplay(['a'])).toBe('a');
+    expect(pathUtils.formatPathDisplay(['a', 'b', 'c'])).toBe('a, b, c');
+  });
+
+  it('should format tooltip text', () => {
+    expect(pathUtils.formatPathTooltip('a')).toBe('a');
+    expect(pathUtils.formatPathTooltip(['a', 'b'])).toBe('a\nb');
+  });
+});
+describe('parsePathType', () => {
+  it('should parse local', () => {
+    expect(pathUtils.parsePathType('local')).toBe('local');
+  });
+
+  it('should parse currentRemote', () => {
+    expect(pathUtils.parsePathType('currentRemote')).toBe('currentRemote');
+  });
+
+  it('should parse otherRemote', () => {
+    expect(pathUtils.parsePathType('otherRemote:myremote')).toBe('otherRemote');
   });
 });

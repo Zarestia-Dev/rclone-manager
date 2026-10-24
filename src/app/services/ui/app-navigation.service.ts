@@ -89,21 +89,20 @@ export class AppNavigationService {
     try {
       if (view !== this.ui.selectedMainView()) {
         if (view === 'nautilus') await this.nautilus.openBrowserOverlay(null, null);
-        else if (view === 'flow') await this.flowOverlay.openFlowOverlay();
-        else await this.mainOverlay.openMainUiOverlay();
+        else if (view === 'flow') await this.flowOverlay.openOverlay();
+        else await this.mainOverlay.openOverlay();
       }
       if (request !== this.workspaceRequest) return;
       if (view !== 'nautilus' || view === this.ui.selectedMainView())
         this.nautilus.closeBrowserOverlay();
-      if (view !== 'flow' || view === this.ui.selectedMainView())
-        this.flowOverlay.closeFlowOverlay();
+      if (view !== 'flow' || view === this.ui.selectedMainView()) this.flowOverlay.closeOverlay();
       if (view !== 'main_menu' || view === this.ui.selectedMainView())
-        this.mainOverlay.closeMainUiOverlay();
+        this.mainOverlay.closeOverlay();
     } catch (error) {
       if (request === this.workspaceRequest) {
         this.nautilus.closeBrowserOverlay();
-        this.flowOverlay.closeFlowOverlay();
-        this.mainOverlay.closeMainUiOverlay();
+        this.flowOverlay.closeOverlay();
+        this.mainOverlay.closeOverlay();
         this.ui.setMainView(view);
         console.error('Failed to restore workspace overlay:', error);
       }

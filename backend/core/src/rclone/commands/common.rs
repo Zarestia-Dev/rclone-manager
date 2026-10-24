@@ -165,12 +165,6 @@ pub struct CommonConfigParams {
     pub profile: Option<String>,
 }
 
-impl CommonConfigParams {
-    pub fn first_source(&self) -> String {
-        self.source.first().cloned().unwrap_or_default()
-    }
-}
-
 /// Builder for constructing rclone RC command payloads with uniform config layering.
 ///
 /// Handles:
@@ -249,12 +243,14 @@ impl RclonePayloadBuilder {
                     && let Some(opts) = v.as_object()
                 {
                     insert_normalized_block(opts, &mut legacy_config);
-                } else if crate::utils::json_helpers::is_flat_option_key(k) {
-                    let norm_k = crate::utils::json_helpers::normalize_option_key(k);
-                    self.body.insert(norm_k.into_owned(), v.clone());
                 } else {
                     let norm_k = crate::utils::json_helpers::normalize_option_key(k);
-                    legacy_config.insert(norm_k.into_owned(), v.clone());
+                    let target = if crate::utils::json_helpers::is_flat_option_key(k) {
+                        &mut self.body
+                    } else {
+                        &mut legacy_config
+                    };
+                    target.insert(norm_k.into_owned(), v.clone());
                 }
             }
 
@@ -345,12 +341,10 @@ impl RclonePayloadBuilder {
         let Some(opts) = opts else {
             return;
         };
-        let mut nested_map = self
-            .body
-            .get(block_name)
-            .and_then(|v| v.as_object())
-            .cloned()
-            .unwrap_or_default();
+        let mut nested_map = match self.body.remove(block_name) {
+            Some(Value::Object(options)) => options,
+            _ => serde_json::Map::new(),
+        };
 
         for (k, v) in opts {
             if filter_empty && (v.is_null() || matches!(v, Value::String(s) if s.is_empty())) {
@@ -551,11 +545,13 @@ pub fn split_file_path(path: &str, windows: bool) -> Option<(String, String)> {
 
 /// Flatten legacy UI section maps while preserving RC option blocks and their
 /// precedence. `_config`, `_filter`, `mountOpt` and `vfsOpt` are RC data, not UI sections.
+/// Inline runtime remote options are resolved separately and never forwarded as flags.
 pub fn flatten_rclone_config(val: &Value) -> Value {
     if let Value::Object(map) = val {
         let mut flat = serde_json::Map::new();
         for (k, v) in map {
-            if k == "app" || crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&k.as_str())
+            if matches!(k.as_str(), "app" | "remotes" | "runtimeRemote")
+                || crate::utils::types::remotes::APP_PARTITION_KEYS.contains(&k.as_str())
             {
                 continue;
             }
@@ -612,12 +608,7 @@ pub(crate) fn parse_profile_config(
         *reference = interpolate_shell_commands(reference).into_owned();
     }
     let rclone = interpolate_value(&profile.rclone);
-    let mut execution_config = rclone.clone();
-    if let Some(config) = execution_config.as_object_mut() {
-        config.remove("remotes");
-        config.remove("runtimeRemote");
-    }
-    let rclone_config = flatten_rclone_config(&execution_config);
+    let rclone_config = flatten_rclone_config(&rclone);
 
     let get_paths = |key: &str| -> Vec<String> {
         match rclone_config.get(key) {
@@ -650,18 +641,26 @@ pub(crate) fn parse_profile_config(
         .find_map(|&key| get_paths(key).into_iter().next())
         .unwrap_or_default();
 
-    let get_opts = |profile_name: Option<&str>, section: &str| {
-        resolve_profile_options(settings, profile_name, section)
-    };
-
     Ok(CommonConfigParams {
         source,
         dest,
-        rclone_config: rclone_config.clone(),
-        vfs_options: get_opts(app.vfs_profile.as_deref(), helper_config_keys::VFS)?,
-        filter_options: get_opts(app.filter_profile.as_deref(), helper_config_keys::FILTER)?,
-        backend_options: get_opts(app.backend_profile.as_deref(), helper_config_keys::BACKEND)?,
-        runtime_remote_options: resolve_runtime_remote_options(&app, &rclone, settings, "remotes")?,
+        rclone_config,
+        vfs_options: resolve_profile_options(
+            settings,
+            app.vfs_profile.as_deref(),
+            helper_config_keys::VFS,
+        )?,
+        filter_options: resolve_profile_options(
+            settings,
+            app.filter_profile.as_deref(),
+            helper_config_keys::FILTER,
+        )?,
+        backend_options: resolve_profile_options(
+            settings,
+            app.backend_profile.as_deref(),
+            helper_config_keys::BACKEND,
+        )?,
+        runtime_remote_options: resolve_runtime_remote_options(&app, &rclone, settings)?,
         profile: name,
     })
 }
@@ -670,7 +669,6 @@ pub fn resolve_runtime_remote_options(
     app: &crate::utils::types::remotes::AppConfig,
     rclone_config: &Value,
     settings: &Value,
-    inline_remotes_key: &str,
 ) -> Result<Option<HashMap<String, Value>>, String> {
     let configs = settings.get(helper_config_keys::RUNTIME_REMOTE);
     let profile = app.runtime_remote_profile.as_deref().unwrap_or("Default");
@@ -686,7 +684,7 @@ pub fn resolve_runtime_remote_options(
         );
     };
     if let Some(inline) = rclone_config
-        .get(inline_remotes_key)
+        .get("remotes")
         .or_else(|| rclone_config.get("runtimeRemote"))
     {
         for (remote, values) in scoped_runtime_options(inline, settings)? {
@@ -939,6 +937,112 @@ mod tests {
     }
 
     #[test]
+    fn helper_options_preserve_existing_blocks_and_override_only_supplied_values() {
+        let mut builder = RclonePayloadBuilder::from_rclone_config(&json!({
+            "_config": {"Transfers": 4, "Checkers": 8, "LogFile": "旅行 & Arşiv/log.txt"},
+            "_filter": {"IncludeRule": ["*.jpg"], "ExcludeRule": ["*.bak"]},
+            "vfsOpt": {"CacheMode": "off"}
+        }));
+        let log_path_pointer = builder.get("_config").unwrap()["LogFile"]
+            .as_str()
+            .unwrap()
+            .as_ptr();
+        builder
+            .with_backend_options(None)
+            .with_backend_options(Some(&HashMap::from([
+                ("Transfers".into(), json!(0)),
+                ("Checkers".into(), Value::Null),
+                ("LogFile".into(), json!("")),
+                ("--check-first".into(), json!(false)),
+            ])))
+            .with_filter_options(Some(&HashMap::from([(
+                "IncludeRule".into(),
+                json!(["旅行/**"]),
+            )])))
+            .with_vfs_options(Some(&HashMap::from([
+                ("CacheMode".into(), json!("full")),
+                ("vfs-cache-mode".into(), json!("writes")),
+            ])));
+        let body = builder.build();
+        assert_eq!(body["_config"]["Transfers"], 0);
+        assert_eq!(body["_config"]["Checkers"], 8);
+        assert_eq!(body["_config"]["LogFile"], "旅行 & Arşiv/log.txt");
+        assert_eq!(
+            body["_config"]["LogFile"].as_str().unwrap().as_ptr(),
+            log_path_pointer
+        );
+        assert_eq!(body["check_first"], false);
+        assert_eq!(body["_filter"]["IncludeRule"], json!(["旅行/**"]));
+        assert_eq!(body["_filter"]["ExcludeRule"], json!(["*.bak"]));
+        assert_eq!(body["vfsOpt"]["CacheMode"], "full");
+        assert_eq!(body["vfs_cache_mode"], "writes");
+    }
+
+    #[test]
+    fn inline_runtime_options_override_profiles_without_leaking_into_flags() {
+        let config = json!({
+            "app": {},
+            "rclone": {
+                "srcFs": "drive:旅行 & Arşiv",
+                "dstFs": "/backup",
+                "vfs": {"vfs-cache-mode": "full"},
+                "_config": {"Transfers": 2},
+                "remotes": {"drive": {"region": "eu"}},
+                "runtimeRemote": {"drive": {"region": "ignored"}}
+            }
+        });
+        let original = config.clone();
+        let settings = json!({
+            "runtimeRemoteConfigs": {"Default": {"drive": {"region": "us", "env_auth": true}}}
+        });
+        let common = parse_common_config(&config, &settings).unwrap();
+        assert_eq!(config, original);
+        assert_eq!(
+            common.rclone_config,
+            json!({
+                "srcFs": "drive:旅行 & Arşiv",
+                "dstFs": "/backup",
+                "vfs_cache_mode": "full",
+                "_config": {"Transfers": 2}
+            })
+        );
+        assert_eq!(
+            common.runtime_remote_options.as_ref().unwrap()["drive"],
+            json!({"region": "eu", "env_auth": true})
+        );
+        let body = RclonePayloadBuilder::from_rclone_config(&common.rclone_config)
+            .insert("srcFs", common.source[0].as_str())
+            .insert("dstFs", common.dest)
+            .with_runtime_remote_options(common.runtime_remote_options.as_ref())
+            .unwrap()
+            .build();
+        assert_eq!(
+            body["srcFs"],
+            "drive,env_auth='true',region='eu':旅行 & Arşiv"
+        );
+        assert_eq!(body["dstFs"], "/backup");
+        assert_eq!(body["_config"]["Transfers"], 2);
+        assert!(body.get("remotes").is_none());
+        assert!(body.get("runtimeRemote").is_none());
+    }
+
+    #[test]
+    fn invalid_inline_options_preserve_source_and_helper_profile_error_priority() {
+        let mut config = json!({
+            "app": {"vfsProfile": "Missing profile"},
+            "rclone": {"remotes": null}
+        });
+        let error = parse_common_config(&config, &json!({})).err().unwrap();
+        assert!(error.contains("Missing source path"));
+        config["rclone"]["fs"] = json!("drive:");
+        let error = parse_common_config(&config, &json!({})).err().unwrap();
+        assert!(error.contains("Missing profile: vfsConfigs.Missing profile"));
+        config["app"] = json!({});
+        let error = parse_common_config(&config, &json!({})).err().unwrap();
+        assert!(error.contains("runtime remote options"));
+    }
+
+    #[test]
     fn legacy_and_scoped_inline_runtime_options_encode_the_same_payload() {
         let settings = json!({"name": "drive"});
         let paths = json!({"srcFs": "drive:photos", "dstFs": "/backup"});
@@ -966,6 +1070,68 @@ mod tests {
                 "drive,env_auth='true',region='a''b,c':photos"
             );
             assert_eq!(body["dstFs"], "/backup");
+        }
+    }
+
+    #[test]
+    fn mount_and_serve_adapters_preserve_resolved_config_and_profiles() {
+        let config = json!({
+            "app": {
+                "vfsProfile": "Custom",
+                "filterProfile": "Custom",
+                "backendProfile": "Custom"
+            },
+            "rclone": {
+                "fs": "drive:Arşiv & 旅行",
+                "mountPoint": "/mnt/drive",
+                "mountType": "cmount",
+                "type": "webdav",
+                "transfers": 0,
+                "read_only": false,
+                "headers": ["X-Test: a,b", "X-Empty:"],
+                "nested": {"empty": null, "paths": []}
+            }
+        });
+        let settings = json!({
+            "vfsConfigs": {"Custom": {"vfs_cache_mode": "full"}},
+            "filterConfigs": {"Custom": {"IncludeRule": ["Arşiv/**", "旅行/**"]}},
+            "backendConfigs": {"Custom": {"buffer_size": 0}}
+        });
+        let mount = crate::rclone::commands::mount::MountParams::from_common(
+            "drive".into(),
+            parse_common_config(&config, &settings).unwrap(),
+        )
+        .unwrap();
+        let serve = crate::rclone::commands::serve::ServeParams::from_common(
+            "drive".into(),
+            parse_common_config(&config, &settings).unwrap(),
+        );
+        assert_eq!(mount.source, "drive:Arşiv & 旅行");
+        assert_eq!(serve.source, mount.source);
+        assert_eq!(mount.mount_point, "/mnt/drive");
+        assert_eq!(mount.mount_type, "cmount");
+        assert_eq!(serve.serve_type, "webdav");
+        for (rclone, vfs, filter, backend) in [
+            (
+                &mount.rclone_config,
+                &mount.vfs_options,
+                &mount.filter_options,
+                &mount.backend_options,
+            ),
+            (
+                &serve.rclone_config,
+                &serve.vfs_options,
+                &serve.filter_options,
+                &serve.backend_options,
+            ),
+        ] {
+            assert_eq!(rclone, &config["rclone"]);
+            assert_eq!(vfs.as_ref().unwrap()["vfs_cache_mode"], "full");
+            assert_eq!(
+                filter.as_ref().unwrap()["IncludeRule"],
+                json!(["Arşiv/**", "旅行/**"])
+            );
+            assert_eq!(backend.as_ref().unwrap()["buffer_size"], 0);
         }
     }
 
@@ -1059,12 +1225,12 @@ mod tests {
             };
             for settings in [json!({}), json!({"runtimeRemoteConfigs": {}})] {
                 assert!(
-                    resolve_runtime_remote_options(&app, &json!({}), &settings, "remotes")
+                    resolve_runtime_remote_options(&app, &json!({}), &settings)
                         .unwrap()
                         .is_none()
                 );
                 let inline = json!({"remotes": {"drive": {"region": "a'b,c"}}});
-                let options = resolve_runtime_remote_options(&app, &inline, &settings, "remotes")
+                let options = resolve_runtime_remote_options(&app, &inline, &settings)
                     .unwrap()
                     .unwrap();
                 assert_eq!(options["drive"], inline["remotes"]["drive"]);
@@ -1087,8 +1253,7 @@ mod tests {
                 runtime_remote_profile: Some(profile.into()),
                 ..Default::default()
             };
-            let error =
-                resolve_runtime_remote_options(&app, &json!({}), &settings, "remotes").unwrap_err();
+            let error = resolve_runtime_remote_options(&app, &json!({}), &settings).unwrap_err();
             assert!(error.contains("backendErrors.rclone.invalidFlags"));
         }
     }
@@ -1129,7 +1294,7 @@ mod tests {
             );
             assert_eq!(resolved.params.profile.as_deref(), Some("Daily"));
             assert_eq!(
-                resolved.params.first_source(),
+                resolved.params.source[0],
                 if operation == OperationType::Sync {
                     "drive:photos"
                 } else {
@@ -1180,7 +1345,7 @@ mod tests {
             OperationType::Cryptcheck,
         ] {
             let body = GenericTransferParams {
-                source: common.first_source(),
+                source: common.source[0].clone(),
                 dest: common.dest.clone(),
                 rclone_config: common.rclone_config.clone(),
                 filter_options: common.filter_options.clone(),
@@ -1214,8 +1379,8 @@ mod tests {
         let flat = json!({"name":"drive", "runtimeRemoteConfigs":{"Default":{"region":"us", "env_auth":true}}});
         let migrated =
             crate::services::settings::remote::manager::migrate_to_multi_profile(flat.clone());
-        let before = resolve_runtime_remote_options(&app, &json!({}), &flat, "remotes").unwrap();
-        let after = resolve_runtime_remote_options(&app, &json!({}), &migrated, "remotes").unwrap();
+        let before = resolve_runtime_remote_options(&app, &json!({}), &flat).unwrap();
+        let after = resolve_runtime_remote_options(&app, &json!({}), &migrated).unwrap();
         assert_eq!(before, after);
         let mut builder = RclonePayloadBuilder::new();
         builder
@@ -1226,7 +1391,7 @@ mod tests {
         assert_eq!(body["srcFs"], "/local");
         assert_eq!(body["dstFs"], "drive,env_auth='true',region='us':folder");
         let inline = json!({"remotes":{"drive":{"region":"eu"}}});
-        let resolved = resolve_runtime_remote_options(&app, &inline, &migrated, "remotes")
+        let resolved = resolve_runtime_remote_options(&app, &inline, &migrated)
             .unwrap()
             .unwrap();
         assert_eq!(resolved["drive"], json!({"env_auth":true,"region":"eu"}));
@@ -1234,7 +1399,7 @@ mod tests {
             runtime_remote_profile: Some("missing".into()),
             ..Default::default()
         };
-        assert!(resolve_runtime_remote_options(&missing, &json!({}), &flat, "remotes").is_err());
+        assert!(resolve_runtime_remote_options(&missing, &json!({}), &flat).is_err());
     }
 
     #[test]

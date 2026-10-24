@@ -93,7 +93,7 @@ export class WorkflowInspectorComponent {
   readonly isTrayAvailable = this.uiStateService.isTrayAvailable;
   readonly selectedNode = this.stateService.selectedNode;
   readonly activeWorkflow = this.stateService.currentWorkflow;
-  readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes());
+  readonly remotes = this.remoteFacade.orderedVisibleRemotes;
   readonly quickRuns = computed(() => this.quickRunService?.quickRuns() ?? []);
 
   readonly allProfiles = computed(() => {

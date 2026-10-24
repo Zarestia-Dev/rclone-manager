@@ -21,7 +21,7 @@ pub const RCLONE_ENGINE_STATUS_CHANGED: &str = "rclone_engine_status_changed";
 
 /// Emitted when the rclone configuration password has been saved or unlocked.
 /// - Emitted by: `services::security::commands`
-/// - Handled by: `services::event_listener` (re-initializes engine), `AuthStateService`
+/// - Handled by: `services::event_listener` (re-initializes engine)
 pub const RCLONE_PASSWORD_STORED: &str = "rclone_password_stored";
 
 /// Emitted when the active backend switches (e.g. between local rclone, docker, or remote daemon).

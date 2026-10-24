@@ -104,14 +104,6 @@ pub fn is_flat_option_key(key: &str) -> bool {
         .is_some_and(|c| c.is_lowercase() || c == '_')
 }
 
-/// Safely converts a JSON object to a `HashMap`.
-/// Returns None if the input is not a JSON object.
-#[must_use]
-pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
-    let obj = json?.as_object()?;
-    Some(obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
-}
-
 /// Resolve profile options from a settings object.
 /// Looks up `settings[configs_key][profile_name]` and returns its options.
 /// An absent built-in Default means no overrides; a missing custom profile is an error.
@@ -124,11 +116,23 @@ pub fn resolve_profile_options(
 ) -> Result<Option<HashMap<String, Value>>, String> {
     // Omitted references use the same Default selection as the configuration form.
     let name = profile_name.unwrap_or("Default");
-    match settings.get(configs_key).and_then(|configs| configs.get(name)) {
-        Some(profile) => json_to_hashmap(Some(profile)).map(Some).ok_or_else(||
-            crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}"))),
+    match settings
+        .get(configs_key)
+        .and_then(|configs| configs.get(name))
+    {
+        Some(Value::Object(options)) => Ok(Some(
+            options
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect(),
+        )),
+        Some(_) => Err(
+            crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("{configs_key}.{name}")),
+        ),
         None if name == "Default" => Ok(None),
-        None => Err(crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("Missing profile: {configs_key}.{name}"))),
+        None => Err(
+            crate::localized_error!("backendErrors.rclone.invalidFlags", "error" => format!("Missing profile: {configs_key}.{name}")),
+        ),
     }
 }
 
@@ -265,15 +269,39 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_json_to_hashmap() {
-        assert!(json_to_hashmap(None).is_none());
-        assert!(json_to_hashmap(Some(&json!(123))).is_none());
-        assert!(json_to_hashmap(Some(&json!("string"))).is_none());
+    fn profile_options_preserve_empty_and_nested_values() {
+        for options in [
+            json!({}),
+            json!({
+                "enabled": false,
+                "count": 0,
+                "empty": "",
+                "nullable": null,
+                "rules": ["Arşiv/**", "旅行 & photos/**"],
+                "nested": {"list": [], "value": 42}
+            }),
+        ] {
+            let settings = json!({"vfsConfigs": {"旅行 & Arşiv": options}});
+            let resolved = resolve_profile_options(&settings, Some("旅行 & Arşiv"), "vfsConfigs")
+                .unwrap()
+                .unwrap();
+            assert_eq!(serde_json::to_value(resolved).unwrap(), options);
+        }
+    }
 
-        let v = json!({ "a": 1, "b": "hello" });
-        let map = json_to_hashmap(Some(&v)).unwrap();
-        assert_eq!(map.get("a").unwrap(), &json!(1));
-        assert_eq!(map.get("b").unwrap(), &json!("hello"));
+    #[test]
+    fn profile_options_reject_non_object_profiles_including_default() {
+        for section in ["vfsConfigs", "filterConfigs", "backendConfigs"] {
+            for name in ["Default", "旅行 & Arşiv"] {
+                for options in [json!(null), json!([]), json!(0), json!(false), json!("")] {
+                    let settings = json!({section: {name: options}});
+                    let error =
+                        resolve_profile_options(&settings, Some(name), section).unwrap_err();
+                    assert!(error.contains("backendErrors.rclone.invalidFlags"));
+                    assert!(error.contains(&format!("{section}.{name}")));
+                }
+            }
+        }
     }
 
     #[test]

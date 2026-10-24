@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal, resource } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { filter, firstValueFrom, merge } from 'rxjs';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { EventListenersService } from './event-listeners.service';
@@ -36,7 +36,8 @@ export class BackendService extends TauriBaseService {
 
   // Derived signals replacing manual state
   readonly backends = computed(() => this.backendData.value() ?? []);
-  readonly isLoading = computed(() => this.backendData.isLoading());
+  readonly isLoading = this.backendData.isLoading;
+  private readonly backendLoading$ = toObservable(this.isLoading);
 
   constructor() {
     super();
@@ -75,24 +76,27 @@ export class BackendService extends TauriBaseService {
     return active?.os?.toLowerCase().includes('windows') ?? false;
   });
 
-  // Legacy API support for components expecting a Promise
   async loadBackends(): Promise<void> {
-    await this.backendData.reload();
+    this.backendData.reload();
+    // Check current state so a replayed completion cannot finish a new reload early.
+    await firstValueFrom(this.backendLoading$.pipe(filter(() => !this.isLoading())));
+    const error = this.backendData.error();
+    if (error) throw error;
   }
 
   async runStartupChecks(): Promise<void> {
-    await this.backendData.reload();
-    await Promise.all([this.checkStartupConnectivity(), this.checkAllBackends()]);
+    await this.loadBackends();
+    const activeName = await this.getActiveBackend();
+    const names = new Set([activeName, ...this.backends().map(b => b.name)]);
+    await Promise.allSettled(
+      [...names].filter(name => name !== 'Local').map(name => this.testConnection(name))
+    );
   }
 
   async getActiveBackend(): Promise<string> {
     const name = await this.invokeCommand<string>('get_active_backend');
     this.activeBackend.set(name);
     return name;
-  }
-
-  async getActiveConfigPathFromBackend(): Promise<string> {
-    return this.invokeCommand<string>('get_rclone_config_file');
   }
 
   async switchBackend(name: string): Promise<void> {
@@ -242,31 +246,6 @@ export class BackendService extends TauriBaseService {
         message: this.backendTranslation.translateBackendMessage(error),
       };
     }
-  }
-
-  async checkStartupConnectivity(): Promise<void> {
-    const activeName = await this.getActiveBackend();
-    if (activeName === 'Local') return;
-    try {
-      await this.testConnection(activeName);
-    } catch (error) {
-      console.error(`Failed to check connectivity for '${activeName}':`, error);
-    }
-  }
-
-  async checkAllBackends(): Promise<void> {
-    await Promise.allSettled(
-      this.backends()
-        .filter(b => b.name !== 'Local')
-        .map(b => this.testConnection(b.name))
-    );
-  }
-
-  getStatusClass(status?: RuntimeStatus): string {
-    if (!status) return 'disconnected';
-    if (status.type === 'connected') return 'connected';
-    if (status.type === 'inactive') return 'inactive';
-    return 'disconnected';
   }
 
   updateActiveBackendStatus(

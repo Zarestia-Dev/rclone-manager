@@ -134,13 +134,9 @@ describe('JobManagementService', () => {
       expect(result?.jobid).toBe(104);
     });
 
-    it('getActiveJobForWorkflowNode only returns running job and ignores sub-jobs', () => {
-      const active = service.getActiveJobForWorkflowNode('wf-1', 'node-sync-1');
-      expect(active).not.toBeNull();
-      expect(active?.jobid).toBe(102);
-
-      const noActive = service.getActiveJobForWorkflowNode('wf-1', 'node-copy-2');
-      expect(noActive).toBeNull();
+    it('does not use a different workflow or a child job for the same node ID', () => {
+      expect(service.getLatestJobForWorkflowNode('other-workflow', 'node-sync-1')).toBeNull();
+      expect(service.getLatestJobForWorkflowNode('wf-1', 'node-sync-1')?.jobid).toBe(102);
     });
   });
 

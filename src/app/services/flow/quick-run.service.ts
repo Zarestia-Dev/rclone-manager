@@ -32,7 +32,6 @@ export class QuickRunService extends TauriBaseService {
 
   private readonly _quickRuns = signal<QuickRun[]>([]);
   private readonly _selectedId = signal<string | null>(null);
-  private readonly _isCreating = signal(false);
   private readonly _isLoading = signal(false);
   private readonly _isSaving = signal(false);
   private readonly _runningIds = signal<Set<string>>(new Set());
@@ -43,16 +42,8 @@ export class QuickRunService extends TauriBaseService {
 
   readonly quickRuns = this._quickRuns.asReadonly();
 
-  /** Sorted view of quick runs — only use when you actually need alphabetical order. */
-  readonly sortedQuickRuns = computed(() =>
-    this._quickRuns()
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-  );
   /** Id of the quick run currently shown in the inspect view, if any. */
   readonly selectedId = this._selectedId.asReadonly();
-  /** True while the editor panel is open in "create" mode. */
-  readonly isCreating = this._isCreating.asReadonly();
   /** True while the initial list is being fetched from the backend. */
   readonly isLoading = this._isLoading.asReadonly();
   /** True while a create/update is in flight. */
@@ -65,16 +56,6 @@ export class QuickRunService extends TauriBaseService {
   /** The currently-selected quick run, or `null`. */
   readonly selected = computed<QuickRun | null>(
     () => this._quickRuns().find(qr => qr.id === this._selectedId()) ?? null
-  );
-
-  /** Quick runs that are currently running — shown first in the card grid. */
-  readonly runningQuickRuns = computed(() =>
-    this.quickRuns().filter(qr => this._runningIds().has(qr.id) || qr.status === 'running')
-  );
-
-  /** Quick runs that are not currently running — shown after the running ones. */
-  readonly idleQuickRuns = computed(() =>
-    this.quickRuns().filter(qr => !this._runningIds().has(qr.id) && qr.status !== 'running')
   );
 
   constructor() {

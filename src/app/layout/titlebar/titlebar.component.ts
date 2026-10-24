@@ -55,9 +55,9 @@ export class TitlebarComponent implements OnInit {
   readonly isOverlayOpen = computed(() => {
     switch (this.overlayType()) {
       case 'main':
-        return this.mainUiOverlayService.isMainUiOverlayOpen();
+        return this.mainUiOverlayService.isOpen();
       case 'flow':
-        return this.flowOverlayService.isFlowOverlayOpen();
+        return this.flowOverlayService.isOpen();
       default:
         return false;
     }
@@ -101,9 +101,9 @@ export class TitlebarComponent implements OnInit {
 
   closeOverlay(): void {
     if (this.overlayType() === 'flow') {
-      this.flowOverlayService.closeFlowOverlay();
+      this.flowOverlayService.closeOverlay();
     } else if (this.overlayType() === 'main') {
-      this.mainUiOverlayService.closeMainUiOverlay();
+      this.mainUiOverlayService.closeOverlay();
     }
   }
 

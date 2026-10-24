@@ -40,22 +40,6 @@ export class OnboardingStateService {
     this.setupPostOnboardingTasks();
   }
 
-  isOnboardingActive(): boolean {
-    return !this._isCompleted();
-  }
-
-  isOnboardingCompleted(): boolean {
-    return this._isCompleted();
-  }
-
-  getOnboardingStatus(): boolean {
-    return this.isCompleted();
-  }
-
-  isInitializedSnapshot(): boolean {
-    return this._isInitialized();
-  }
-
   async completeOnboarding(): Promise<void> {
     try {
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
@@ -67,39 +51,15 @@ export class OnboardingStateService {
     }
   }
 
-  async resetOnboarding(): Promise<void> {
-    try {
-      await this.appSettingsService.saveSetting('core', 'completed_onboarding', false);
-      this._isCompleted.set(false);
-      this.systemHealthService.setOnboardingCompleted(false);
-    } catch (error) {
-      console.error('Failed to reset onboarding:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Force update the onboarding state without persisting to settings.
-   * Useful for immediate UI updates before async operations complete.
-   */
-  setOnboardingState(completed: boolean): void {
-    this._isCompleted.set(completed);
-    this.systemHealthService.setOnboardingCompleted(completed);
-  }
-
   private setupPostOnboardingTasks(): void {
     effect(() => {
       if (this.isCompleted()) {
         untracked(() => {
-          this.runPostOnboardingSetup().catch(error => {
+          this.systemHealthService.checkMountPluginAndPromptRepair().catch(error => {
             console.error('Failed to run post-onboarding setup:', error);
           });
         });
       }
     });
-  }
-
-  private async runPostOnboardingSetup(): Promise<void> {
-    await this.systemHealthService.checkMountPluginAndPromptRepair();
   }
 }

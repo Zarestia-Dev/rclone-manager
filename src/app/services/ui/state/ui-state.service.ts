@@ -229,10 +229,6 @@ export class UiStateService {
     }
   }
 
-  startLayoutEdit(context: LayoutEditContext): void {
-    this._activeEditContext.set(context);
-  }
-
   endLayoutEdit(): void {
     this._activeEditContext.set(null);
   }
@@ -270,10 +266,6 @@ export class UiStateService {
     this.endLayoutEdit();
     this._currentTab.set(tab);
     this.localStorage.set('ui.currentTab', tab);
-  }
-
-  getCurrentTab(): AppTab {
-    return this._currentTab();
   }
 
   // === JSON Editor Mode ===

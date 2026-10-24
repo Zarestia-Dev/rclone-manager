@@ -15,8 +15,8 @@ use crate::{
     },
     utils::{
         constants::{
-            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
-            AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED,
+            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_BULK_UPDATE,
+            AUTOMATIONS_REMOTE_REMOVED,
         },
         types::{
             automation::{Automation, AutomationArgs, AutomationStatus},
@@ -718,12 +718,6 @@ impl AutomationsCache {
         Ok(automation)
     }
 
-    pub async fn clear_all_automations(&self) -> Result<(), String> {
-        self.automations.write().await.clear();
-        bridge::emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_ALL_CLEARED);
-        Ok(())
-    }
-
     /// Add or update automations derived from a single remote's settings, removing
     /// automations for profiles that no longer have cron/watch enabled.
     pub async fn add_or_update_automation_for_remote(
@@ -838,14 +832,6 @@ impl Default for AutomationsCache {
 pub async fn get_automations(app: AppHandle) -> Result<Vec<Automation>, String> {
     let cache = app.state::<AutomationsCache>();
     Ok(cache.get_all_automations().await)
-}
-
-pub async fn get_automation(
-    app: AppHandle,
-    automation_id: String,
-) -> Result<Option<Automation>, String> {
-    let cache = app.state::<AutomationsCache>();
-    Ok(cache.get_automation(&automation_id).await)
 }
 
 #[cfg(test)]
@@ -1647,14 +1633,6 @@ mod tests {
 
         let all = cache.get_all_automations().await;
         assert_eq!(all.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_clear_all_automations() {
-        let cache = make_cache();
-        cache.add_automation(base_automation()).await.unwrap();
-        cache.clear_all_automations().await.unwrap();
-        assert!(cache.get_all_automations().await.is_empty());
     }
 
     // clear_backend_automations

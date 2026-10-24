@@ -27,6 +27,7 @@ import { SystemInfoService } from 'src/app/services/infrastructure/system/system
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { DebugService, DebugInfo } from 'src/app/services/infrastructure/system/debug.service';
+import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -78,6 +79,7 @@ export class AboutModalComponent implements OnInit {
   protected readonly appUpdaterService = inject(AppUpdaterService);
   protected readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly debugService = inject(DebugService);
+  private readonly appLifecycle = inject(AppLifecycleService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translate = inject(TranslateService);
   private readonly backendTranslation = inject(BackendTranslationService);
@@ -346,7 +348,7 @@ export class AboutModalComponent implements OnInit {
     if (this.restartingApp()) return;
     this.restartingApp.set(true);
     try {
-      await this.debugService.restartApp();
+      await this.appLifecycle.relaunchApp();
     } catch (error) {
       console.error('Failed to restart app:', error);
       const translated = this.backendTranslation.translateBackendMessage(error);
