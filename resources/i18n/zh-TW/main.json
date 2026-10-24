@@ -371,7 +371,7 @@
       "mqtt": "MQTT",
       "email": "電子郵件",
       "placeholderName": "輸入操作名稱",
-      "url": "Webhook URL",
+      "url": "Webhook 網址",
       "method": "HTTP/S 方法",
       "timeout": "逾時時間（秒）",
       "bodyTemplate": "正文模板 (JSON)",
@@ -385,7 +385,7 @@
       "os_toast_info": "作業系統原生通知不需要額外設定。它將使用標準的系統通知子系統。",
       "mode": "模式",
       "provider": "服務商",
-      "telegram_bot": "Bot API",
+      "telegram_bot": "機器人 API",
       "telegram_botless": "無 Bot 模式 (CallMeBot)",
       "botToken": "機器人權杖 (Token) (Bot Token)",
       "chatId": "會話 ID (Chat ID)",
@@ -523,6 +523,10 @@
       "completed_onboarding": {
         "label": "已完成引導",
         "description": "標記是否已完成初始化引導"
+      },
+      "skip_mount_plugin_check": {
+        "label": "略過掛載外掛程式檢查",
+        "description": "在啟動和初始設定時略過掛載外掛程式檢查與安裝提示"
       }
     },
     "developer": {
@@ -584,6 +588,10 @@
       "flatpak_warn": {
         "label": "已顯示 Flatpak 提示"
       },
+      "mount_warn": {
+        "label": "顯示掛載警告",
+        "description": "當停用掛載驅動檢查時，在掛載檢視中顯示警告橫幅"
+      },
       "dashboard_layout": {
         "label": "儀錶板佈局",
         "description": "儀錶板自定義佈局設定"
@@ -621,6 +629,12 @@
       "title": "Flatpak 注意",
       "subtitle": "部分功能可能需要手動調整許可權",
       "learnMore": "瞭解更多",
+      "dismissTooltip": "不再顯示"
+    },
+    "mountPlugin": {
+      "title": "掛載驅動檢查已停用",
+      "description": "已略過掛載驅動檢查。掛載遠端儲存需要系統上安裝相容的掛載驅動。",
+      "install": "安裝驅動",
       "dismissTooltip": "不再顯示"
     },
     "metered": {
@@ -686,7 +700,9 @@
       "import": "匯入",
       "export": "匯出",
       "preferences": "偏好設定",
+      "advanced": "進階設定",
       "flags": "Rclone 旗標",
+      "vault": "保存庫",
       "fileBrowser": "檔案瀏覽器",
       "flowWorkspace": "Flow 工作區",
       "shortcuts": "鍵盤快速鍵",
@@ -696,8 +712,6 @@
     }
   },
   "onboarding": {
-    "loadingTitle": "正在初始化 RClone Manager",
-    "loadingMessage": "正在檢查系統設定...",
     "cards": {
       "welcome": {
         "title": "歡迎使用 RClone Manager",
@@ -713,7 +727,9 @@
       },
       "installPlugin": {
         "title": "安裝掛載外掛程式",
-        "content": "掛載外掛程式可將雲端儲存對映為本機磁碟，可選元件，增強使用體驗。"
+        "content": "掛載外掛程式可將雲端儲存對映為本機磁碟，可選元件，增強使用體驗。",
+        "skipMountTitle": "我不會使用掛載",
+        "skipMountDesc": "如果您不打算掛載磁碟機，可以跳過安裝掛載驅動程式。"
       },
       "selectConfig": {
         "title": "選擇 Rclone 設定",
@@ -735,17 +751,14 @@
     "uiOptions": {
       "main_menu": {
         "title": "經典控制檯",
-        "badge": "預設",
         "description": "包含遠端連線、傳輸監控、快捷操作和系統狀態的分頁總覽。"
       },
       "nautilus": {
         "title": "檔案瀏覽器 (Nautilus)",
-        "badge": "檔案瀏覽器",
         "description": "雙面板檔案管理介面，專門用於瀏覽和傳輸遠端檔案。"
       },
       "flow": {
         "title": "Flow 工作區",
-        "badge": "工作流",
         "description": "互動式視覺化工作區，用於編排自動化任務與快捷執行。"
       }
     },
@@ -856,27 +869,25 @@
       "resetStats": "重設統計",
       "tabs": {
         "active": "進行中（{{count}}）",
-        "recent": "最近完成（{{count}}）",
-        "recentCheck": "已校驗（{{count}}）"
+        "recent": "最近完成（{{count}}）"
       },
       "table": {
         "size": "大小",
-        "transferred": "已傳輸",
-        "alreadyExisted": "已存在"
+        "transferred": "已傳輸"
       },
       "status": {
         "failed": "失敗",
         "checked": "已檢查",
         "partial": "部分完成",
         "completed": "已完成",
-        "transferError": "傳輸錯誤",
-        "transferCompleted": "傳輸完成",
         "preparing": "正在準備",
         "finalizing": "正在完成...",
         "missingDst": "目的地缺失",
         "missingSrc": "源中缺失",
         "differ": "檔案內容存在差異",
-        "error": "錯誤"
+        "checking": "正在檢查",
+        "deleting": "正在刪除",
+        "processing": "正在處理"
       },
       "actions": {
         "resolveToDst": "複製到目的地",
@@ -899,12 +910,12 @@
         "resolveFailed": "解決檔案不匹配失敗：{{error}}"
       },
       "empty": {
-        "noActive": "無正在進行的傳輸",
-        "activeHint": "操作開始後，傳輸項將顯示在此處",
-        "noRecent": "無最近完成的傳輸",
-        "recentHint": "任務完成後，已完成的傳輸將顯示在此處",
-        "noRecentCheck": "無被檢查的檔案",
-        "recentHintCheck": "任務完成後，被檢查的檔案將顯示在這裡"
+        "noRecent": "沒有最近的檔案活動",
+        "recentHint": "操作過程中已完成的檔案活動會顯示在此處。",
+        "noRecentCheck": "沒有可顯示的比較結果",
+        "recentHintCheck": "請查看工作狀態和檢查計數以瞭解結果。",
+        "noActiveActivity": "目前沒有檔案活動",
+        "waitingActivity": "正在等待檔案活動。某些操作不會回報個別檔案的資訊。"
       },
       "time": {
         "daysAgo": "{{count}} 天前",
@@ -917,7 +928,10 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "<1秒"
         }
-      }
+      },
+      "titleDelete": "刪除活動",
+      "titleActivity": "活動",
+      "loadMore": "顯示更多"
     },
     "inputModal": {
       "name": "名稱",
@@ -1074,6 +1088,35 @@
       },
       "pollIntervalPlaceholder": "輸入輪詢間隔（秒）"
     },
+    "codeEditor": {
+      "tools": "編輯器工具",
+      "find": "尋找",
+      "goToLine": "跳至行",
+      "go": "跳轉",
+      "content": "程式碼編輯器",
+      "wrap": "自動換行",
+      "lineNumbers": "行號",
+      "readOnly": "唯讀",
+      "editing": "編輯中",
+      "undo": "復原",
+      "redo": "重做",
+      "view": "檢視",
+      "fontSize": "字級",
+      "smallerFont": "縮小字級",
+      "largerFont": "放大字級",
+      "position": "第 {{line}} 行，第 {{column}} 欄",
+      "previous": "上一個符合項目",
+      "next": "下一個符合項目",
+      "caseSensitive": "區分大小寫",
+      "wholeWord": "全字匹配",
+      "regexp": "規則運算式",
+      "replace": "取代",
+      "replaceAll": "全部取代",
+      "invalidRegexp": "無效的規則運算式",
+      "noResults": "沒有結果",
+      "matches": "{{total}} 個符合項目",
+      "matchPosition": "{{current}} / {{total}}"
+    },
     "jsonEditor": {
       "noFields": "JSON 模式下沒有可顯示的欄位",
       "parseError": "JSON 語法錯誤，請檢查格式。",
@@ -1145,8 +1188,7 @@
       "apply": "應用到欄位"
     },
     "presets": {
-      "applied": "Default presets applied successfully",
-      "noRemoteSelected": "Please select a remote first"
+      "noRemoteSelected": "請先選擇遠端"
     },
     "remoteConfig": {
       "remoteName": "遠端連線名稱",
@@ -1245,6 +1287,25 @@
           "label": "無輸出",
           "description": "禁止來自 RC 設定呼叫的任何標準輸出"
         }
+      },
+      "providerOverview": {
+        "title": "提供者功能",
+        "supportTier": "rclone 支援等級（非儲存方案）",
+        "hashes": "校驗和",
+        "noHashes": "未回報校驗和演算法",
+        "features": "已回報的功能",
+        "noFeatures": "此摘要未回報任何功能",
+        "generalNote": "由 rclone 提供的提供者一般資訊。實際支援情況可能因設定而異。",
+        "virtualNote": "功能取決於底層遠端儲存和設定。",
+        "documentation": "檢視 rclone 功能概覽",
+        "copy": "伺服器端複製",
+        "move": "伺服器端移動",
+        "publicLink": "連結分享",
+        "emptyDirectories": "空資料夾",
+        "caseInsensitive": "名稱不區分大小寫",
+        "duplicateFiles": "同名檔案",
+        "readMetadata": "讀取中繼資料",
+        "writeMetadata": "寫入中繼資料"
       }
     },
     "appOperation": {
@@ -1474,6 +1535,7 @@
     "restoreFailed": "恢復備份失敗: {{error}}"
   },
   "updates": {
+    "discardDownload": "捨棄下載",
     "cancelFailed": "取消更新下載失敗。",
     "installSuccess": "更新已安裝，請重新啟動應用",
     "checkFailed": "檢查更新失敗：{{error}}",
@@ -1484,7 +1546,7 @@
     "skipVersion": "將跳過更新 {{version}}",
     "confirmApply": {
       "title": "應用程式更新",
-      "message": "是否應用程式更新？應用將重新啟動以使更改生效。",
+      "message": "Apply the update? The application may restart. Active transfers, mounts, serves, and workflows may be interrupted.",
       "confirm": "應用",
       "cancel": "取消"
     },
@@ -1520,6 +1582,28 @@
       "metadata": {
         "system": "系統中繼資料",
         "standard": "標準中繼資料"
+      },
+      "supportInfo": "rclone 支援等級反映提供者的維護狀況和穩定性。",
+      "providerDocumentation": "提供者文件",
+      "liveFeatures": "此已設定遠端儲存的功能支援情況。",
+      "featureLabels": {
+        "about": "儲存使用情況",
+        "bucketBased": "以儲存桶為基礎的儲存",
+        "bucketRoot": "從儲存根目錄存取",
+        "purge": "刪除目錄樹",
+        "dirMove": "伺服器端移動資料夾",
+        "cleanUp": "清理儲存",
+        "listR": "遞迴列出",
+        "listP": "分頁列出",
+        "putStream": "串流上傳",
+        "openChunkWriter": "分段上傳",
+        "openWriterAt": "隨機存取上傳",
+        "readMimeType": "讀取內容類型",
+        "writeMimeType": "寫入內容類型",
+        "changeNotify": "變更通知",
+        "setTier": "變更儲存層級",
+        "getTier": "讀取儲存層級",
+        "overlay": "封裝其他遠端儲存"
       }
     },
     "properties": {
@@ -1773,6 +1857,7 @@
       "showShortcuts": "顯示鍵盤快速鍵",
       "openPreferences": "開啟偏好設定",
       "openFlags": "開啟 Rclone 旗標",
+      "openVault": "開啟保存庫",
       "forceCheck": "強制檢查掛載",
       "forceCheckServes": "強制檢查已服務遠端",
       "newRemoteDetailed": "新增遠端連線（詳細）",
@@ -2009,7 +2094,8 @@
       "entries": "活動條目",
       "clear": "清除",
       "cacheCleared": "快取已清除",
-      "cacheClearFailed": "清除快取失敗"
+      "cacheClearFailed": "清除快取失敗",
+      "openAur": "Open AUR"
     },
     "logs": {
       "fetchError": "取得應用日誌失敗。",
@@ -2057,7 +2143,8 @@
       "tabs": {
         "general": "通用",
         "core": "核心",
-        "developer": "開發者"
+        "developer": "開發者",
+        "vault": "保存庫"
       },
       "aria": {
         "resetAll": "將所有設定恢復為預設值",
@@ -2090,6 +2177,8 @@
       "passwordLabel": "加密密碼",
       "passwordPlaceholder": "輸入密碼",
       "passwordHint": "恢復備份時需要使用此密碼。",
+      "vaultWarningTitle": "設定保存庫已開啟",
+      "vaultWarningDesc": "匯出的備份不繼承保存庫加密。若要使用密碼保護機密認證與設定，請啟用下方的加密選項。",
       "exportNow": "立即匯出",
       "exporting": "正在匯出...",
       "fullBackup": "完整備份",
@@ -2469,7 +2558,9 @@
       "internalStorage": "內部儲存空間"
     },
     "bookmarks": {
-      "emptyHint": "暫無書籤"
+      "emptyHint": "暫無書籤",
+      "add": "加入書籤",
+      "dropHint": "將資料夾拖放至此處以加入書籤"
     },
     "sort": {
       "az": "按名稱升序",
@@ -2575,6 +2666,7 @@
       }
     },
     "errors": {
+      "windowOpenFailed": "無法開啟新視窗。目前的檢視保持開啟。",
       "connectionFailed": "連線失敗",
       "bookmarkRemoteNotFound": "未找到書籤對應的遠端連線 '{{remote}}'",
       "loadFailed": "載入目錄失敗",
@@ -2650,8 +2742,6 @@
       "increaseIconSize": "放大圖示大小"
     },
     "notifications": {
-      "mkdirFailed": "建立目錄失敗: {{path}}",
-      "uploadStarted": "正在開始上傳 {{count}} 個檔案...",
       "uploadSuccess": "成功上傳 {{count}} 個檔案。",
       "uploadFailed": "上傳 {{count}} 個檔案失敗。",
       "trashEmptied": "清理操作完成",
@@ -2721,9 +2811,6 @@
     "resetRemote": {
       "title": "重設遠端連線設定",
       "message": "確定要重設 {{name}} 的**所有**設定嗎？"
-    },
-    "notifications": {
-      "settingsReset": "{{name}} 的設定已重設。"
     },
     "errors": {
       "generic": "發生意外錯誤。請檢查日誌取得更多詳細資訊。",
@@ -2872,10 +2959,10 @@
       "failedToOpen": "開啟檔案瀏覽器失敗：{{error}}",
       "diskFull": "目標磁碟空間不足。",
       "fileLocked": "檔案當前已被鎖定或被其他處理程式佔用。",
-      "readOnly": "目標檔案系統為只讀或受防寫。"
+      "readOnly": "目標檔案系統為只讀或受防寫。",
+      "ioError": "IO 錯誤：{{error}}"
     },
     "rclone": {
-      "unsupportedPlatform": "不支援的平臺",
       "downloadCancelled": "使用者已取消下載",
       "mountPluginInstallFailed": "安裝掛載外掛程式失敗: {{error}}",
       "mountPluginVerificationFailed": "安裝成功但驗證失敗。可能需要重新啟動。",
@@ -2915,7 +3002,10 @@
       "unsupportedArchive": "不支援的壓縮包型別，必須是 .rcman 檔案",
       "invalidArchive": "無效的備份存檔格式",
       "restoreFailed": "備份恢復失敗: {{error}}",
-      "secretRequirePassword": "此備份受密碼保護，需要輸入密碼"
+      "secretRequirePassword": "此備份受密碼保護，需要輸入密碼",
+      "exportFailed": "備份匯出失敗: {{error}}",
+      "refreshFailed": "備份恢復後重新整理系統失敗: {{error}}",
+      "restoreIncomplete": "備份恢復未完成: {{error}}"
     },
     "backend": {
       "nameEmpty": "後端名稱不能為空",
@@ -2932,7 +3022,6 @@
       "corruptedTransfer": "傳輸過程中檔案損壞或總和檢查碼 (Checksum)驗證失敗。"
     },
     "cache": {
-      "fetchRemotesFailed": "取得遠端連線失敗",
       "fetchConfigFailed": "取得遠端連線設定失敗",
       "refreshMountsFailed": "重新整理已掛載遠端連線失敗",
       "refreshServesFailed": "重新整理服務失敗"
@@ -2967,16 +3056,27 @@
       "relaunchFailed": "重新啟動失敗：{{error}}",
       "restartFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
-      "ioError": "IO 錯誤：{{error}}"
+      "ioError": "IO 錯誤：{{error}}",
+      "externallyManaged": "This installation is updated by its package manager or deployment system.",
+      "disabledByAdministrator": "Application updates have been disabled by the administrator.",
+      "unsupportedInstallation": "Automatic installation is not supported for this installation.",
+      "missingArtifact": "This release does not contain a signed update package for this installation.",
+      "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
+      "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
     "settings": {
       "loadFailed": "載入設定失敗：{{error}}",
       "saveFailed": "儲存設定失敗：{{error}}",
       "resetFailed": "重設設定失敗：{{error}}",
       "resetAllFailed": "重設所有設定失敗：{{error}}",
-      "eventEmitFailed": "傳送設定事件失敗：{{error}}",
       "subSettingsFailed": "取得子設定失敗：{{error}}",
       "deleteFailed": "刪除遠端連線設定失敗：{{error}}"
+    },
+    "vault": {
+      "passwordEmpty": "保存庫密碼不能為空",
+      "notEnabled": "保存庫未啟用",
+      "invalidPassword": "保存庫主密碼不正確",
+      "operationFailed": "保存庫操作失敗：{{error}}"
     }
   },
   "backendSuccess": {
@@ -3010,6 +3110,14 @@
       "unencrypted": "設定已解密",
       "encrypted": "設定已加密",
       "passwordChanged": "設定密碼已修改"
+    },
+    "vault": {
+      "unlocked": "保存庫解鎖成功",
+      "locked": "保存庫已成功鎖定",
+      "enabled": "保存庫加密已成功啟用",
+      "disabled": "保存庫加密已停用",
+      "passwordChanged": "保存庫主密碼已成功變更",
+      "timeoutUpdated": "自動鎖定逾時已更新"
     }
   },
   "overviews": {
@@ -3229,7 +3337,6 @@
       "passwordRequired": "rclone 設定已加密，請輸入密碼。",
       "versionTooOld": "您的 rclone 版本低於 {{required}}。請更新以繼續。",
       "defaultParams": "系統元件執行異常。",
-      "mountPluginStatusError": "狀態檢查失敗",
       "authRequired": "由於身分驗證失敗，後端拒絕了連線。",
       "remoteAuthRequired": "由於身份驗證失敗，遠端後端拒絕了連線。請檢查您的憑證。",
       "portInUse": "連線埠 {{port}} 已被其他應用程式或連線佔用。請選擇其他連線埠以繼續。"
@@ -3243,6 +3350,10 @@
       "repairing": "正在修復…",
       "configuring": "正在設定…"
     },
+    "mountPreference": {
+      "title": "我不會使用掛載",
+      "desc": "如果您不打算掛載磁碟機，請停用掛載驅動程式檢查。"
+    },
     "actions": {
       "installRclone": "安裝 Rclone",
       "installPlugin": "安裝外掛程式",
@@ -3251,7 +3362,8 @@
       "submitPassword": "解鎖",
       "changePort": "套用連線埠並重新啟動",
       "configureBackend": "設定後端",
-      "repair": "修復"
+      "repair": "修復",
+      "saveAndClose": "儲存並關閉"
     },
     "portConfig": {
       "portLabel": "本機連線埠",
@@ -3344,7 +3456,7 @@
     "cleared": "資料已清除"
   },
   "flow": {
-    "title": "Flow",
+    "title": "流程",
     "search": "搜尋流程...",
     "toggleSearch": "切換搜尋",
     "loading": "正在載入流程...",
@@ -3354,52 +3466,52 @@
       "description": "建立快捷執行或工作流以開始快速操作和管道。"
     },
     "quickRun": {
-      "title": "Quick Runs",
-      "new": "New Quick Run",
+      "title": "快速執行",
+      "new": "新增快速執行",
       "actions": {
-        "start": "Start",
-        "stop": "Stop",
+        "start": "啟動",
+        "stop": "停止",
         "createRemote": "建立遠程存儲 '{{remote}}'",
         "changeRemote": "更改遠程存儲"
       },
       "badges": {
-        "scheduled": "Scheduled Task",
-        "watcher": "Folder Watcher Active",
-        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
-        "autostart": "Auto-Start Enabled",
+        "scheduled": "排程工作",
+        "watcher": "資料夾監控已啟用",
+        "watcherChangedOnly": "資料夾監控已啟用（僅限子目錄）",
+        "autostart": "自動啟動已啟用",
         "missingRemote": "Rclone 中缺少該遠程存儲"
       },
       "missingRemoteTitle": "Rclone 中未找到該遠程存儲",
       "missingRemoteDesc": "與此快捷執行關聯的遠程存儲 '{{remote}}' 在 Rclone 中不存在，但其設定已保留。",
       "status": {
-        "running": "Running"
+        "running": "執行中"
       },
       "overview": {
         "stats": {
-          "total": "Total Quick Runs"
+          "total": "快速執行總數"
         },
-        "quickLaunch": "Quick Launch",
-        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "quickLaunch": "快速啟動",
+        "createFirst": "建立第一個快速執行，即可開始無需設定檔的快速操作。",
         "noRunsForRemote": "未為 {{remote}} 設定快速執行。",
         "createForRemote": "為 {{remote}} 建立快速執行"
       },
       "detail": {
-        "configuration": "Configuration"
+        "configuration": "設定"
       },
       "editor": {
-        "createTitle": "Create Quick Run",
-        "editTitle": "Edit Quick Run",
-        "name": "Name",
-        "nameRequired": "Name is required",
-        "description": "Description (optional)",
-        "remote": "Remote",
-        "noRemotes": "No remotes configured",
-        "remoteRequired": "Remote is required",
-        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "createTitle": "建立快速執行",
+        "editTitle": "編輯快速執行",
+        "name": "名稱",
+        "nameRequired": "名稱為必填",
+        "description": "說明（選填）",
+        "remote": "遠端",
+        "noRemotes": "尚未設定遠端",
+        "remoteRequired": "遠端為必填",
+        "selectRemoteFirst": "請先選擇遠端以顯示自動完成建議",
         "tabVfs": "VFS",
-        "tabFilter": "Filter",
-        "tabBackend": "Backend",
-        "tabRuntimeRemote": "Runtime Remote",
+        "tabFilter": "篩選器",
+        "tabBackend": "後端",
+        "tabRuntimeRemote": "執行階段遠端",
         "noProfiles": "沒有可用的設定檔案"
       },
       "errors": {
@@ -3435,8 +3547,7 @@
         "delete": "刪除節點",
         "inspectJob": "檢查任務",
         "duplicateWorkflow": "複製工作流",
-        "deleteWorkflow": "刪除工作流",
-        "exportWorkflow": "導出 JSON"
+        "deleteWorkflow": "刪除工作流"
       },
       "canvas": {
         "navigation": "畫布導航",
@@ -3530,11 +3641,11 @@
         "targetServeNode": "目標服務節點",
         "targetServeNodePlaceholder": "選擇服務節點",
         "unmountPlaceholder": "/mnt/remote 或 C:\\Mount",
-        "delayPreset5s": "5s",
-        "delayPreset15s": "15s",
-        "delayPreset30s": "30s",
-        "delayPreset1m": "1m",
-        "delayPreset5m": "5m",
+        "delayPreset5s": "5 秒",
+        "delayPreset15s": "15 秒",
+        "delayPreset30s": "30 秒",
+        "delayPreset1m": "1 分鐘",
+        "delayPreset5m": "5 分鐘",
         "openDetailed": "詳細設置",
         "openDetailedTooltip": "打開完整引數與旗標編輯器底欄",
         "activeConfig": "當前有效設定與旗標",
@@ -3841,6 +3952,8 @@
     "title": "模板",
     "presetTitle": "預設與模板",
     "applyPresets": "應用預設預設",
+    "defaultPresets": "預設配置",
+    "defaultPresetsDesc": "針對此遠端類型和系統最佳化的基準設定。",
     "userTemplates": "已儲存的使用者模板",
     "saveAsTemplate": "將當前設定儲存為模板...",
     "manageTemplates": "管理模板...",
@@ -3855,6 +3968,7 @@
     "addKey": "新增鍵",
     "removeKey": "移除鍵",
     "deleteTemplate": "刪除模板",
+    "deleteConfirm": "確定要刪除模板「{{name}}」嗎？",
     "noCatKeys": "{{category}} 分類中尚未設定任何設定。",
     "visualView": "視覺化檢查器",
     "jsonView": "JSON 編輯器",
@@ -3870,7 +3984,21 @@
     "zeroKeys": "0 個鍵",
     "applySuccess": "已成功應用模板 \"{{name}}\"。",
     "savedSuccess": "已成功儲存模板 \"{{name}}\"。",
-    "deletedSuccess": "已成功刪除模板。"
+    "deletedSuccess": "已成功刪除模板。",
+    "applyModalTitle": "套用模板",
+    "applyStrategy": "套用策略",
+    "strategyOverwrite": "覆蓋所有現有值",
+    "strategyOverwriteDesc": "模板設定將取代表單中的現有值",
+    "strategyFillEmpty": "僅填入空白欄位",
+    "strategyFillEmptyDesc": "保留現有值，僅套用缺少的設定",
+    "addedCount": "{{count}} 項待新增",
+    "modifiedCount": "{{count}} 項待變更",
+    "unchangedCount": "{{count}} 項未變更",
+    "diffCurrent": "目前值",
+    "diffNew": "新值",
+    "apply": "套用模板",
+    "noChangesDetected": "該模板中的所有設定已與目前值完全一致。",
+    "selectCategoriesToApply": "分類與設定"
   },
   "navigation": {
     "dashboard": "儀錶板",
@@ -3951,6 +4079,60 @@
         "false": "已停用 (false)",
         "unset": "未設置"
       }
+    }
+  },
+  "vault": {
+    "title": "設定保存庫",
+    "description": "使用 AES-256-GCM 加密保護靜態設定、認證資訊和子設定。",
+    "status": {
+      "protected": "受保護",
+      "unprotected": "未保護"
+    },
+    "actions": {
+      "lockNow": "立即鎖定",
+      "unlock": "解鎖保存庫",
+      "enable": "啟用保存庫",
+      "disable": "停用保存庫",
+      "updatePassword": "變更密碼"
+    },
+    "enable": {
+      "title": "啟用保存庫保護",
+      "description": "輸入主密碼以加密應用程式設定與子組態。您需要此密碼才能解鎖應用程式。"
+    },
+    "changePassword": {
+      "title": "變更主密碼"
+    },
+    "disable": {
+      "title": "停用保存庫保護",
+      "warning": "停用保存庫會將設定與組態以未加密的明文形式儲存在磁碟上。"
+    },
+    "settings": {
+      "autoLockTitle": "自動鎖定逾時",
+      "autoLockDesc": "在閒置一段時間後自動鎖定保存庫。"
+    },
+    "fields": {
+      "masterPassword": "主密碼",
+      "confirmPassword": "確認密碼",
+      "currentPassword": "目前密碼",
+      "newPassword": "新密碼",
+      "autoLockTimeout": "自動鎖定時間"
+    },
+    "timeout": {
+      "never": "永不",
+      "5m": "5 分鐘",
+      "15m": "15 分鐘",
+      "30m": "30 分鐘",
+      "1h": "1 小時"
+    },
+    "lockScreen": {
+      "title": "保存庫已鎖定",
+      "subtitle": "輸入主密碼以解鎖 RClone Manager",
+      "awaitingAuthorization": "等待授權",
+      "authorizing": "正在授權…"
+    },
+    "errors": {
+      "passwordsMismatch": "密碼不相符",
+      "unlockFailed": "解鎖保存庫失敗"
     }
   }
 }
