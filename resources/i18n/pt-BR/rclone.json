@@ -196,7 +196,7 @@
     "help": "Reino para autenticação"
   },
   "salt": {
-    "title": "Salt",
+    "title": "Sal criptográfico",
     "help": "O armazenamento de senha com sal de hash"
   },
   "user_from_header": {
@@ -260,7 +260,7 @@
     "help": "Número de transferências de arquivo para executar em paralelo"
   },
   "checksum": {
-    "title": "Checksum",
+    "title": "Soma de verificação",
     "help": "Verificar as alterações com tamanho & checksum (se disponível, ou recorra ao tamanho apenas)."
   },
   "size_only": {
@@ -288,7 +288,7 @@
     "help": "Modo interativo habilitado"
   },
   "links": {
-    "title": "Links",
+    "title": "Links simbólicos",
     "help": "Criar links simbólicos para arquivos regulares com extensão '.rclonelink'."
   },
   "contimeout": {
@@ -316,7 +316,7 @@
     "help": "Comando para fornecer senha para configuração criptografada"
   },
   "max_delete": {
-    "title": "Max Delete",
+    "title": "Máximo de exclusões",
     "help": "Ao sincronizar, limite o número de exclusões"
   },
   "max_delete_size": {
@@ -376,7 +376,7 @@
     "help": "Force a renomeação do destino insensível a maiúsculas e minúsculas para corresponder à origem"
   },
   "no_traverse": {
-    "title": "No Traverse",
+    "title": "Não percorrer o destino",
     "help": "Não percorra o sistema de arquivos do destino na cópia"
   },
   "check_first": {
@@ -436,7 +436,7 @@
     "help": "Limite de transações em surto para --tpslimit"
   },
   "user_agent": {
-    "title": "User Agent",
+    "title": "Agente de usuário",
     "help": "Defina o User-Agent para uma string especificada"
   },
   "immutable": {
@@ -496,7 +496,7 @@
     "help": "Modo para parar as transferências quando atingir o limite de transferência máximo HARD|SOFT|CAUTIOUS"
   },
   "max_backlog": {
-    "title": "Max Backlog",
+    "title": "Limite de operações pendentes",
     "help": "Número máximo de objetos em backlog de sincronização ou verificação"
   },
   "max_stats_groups": {
@@ -696,11 +696,11 @@
     "help": "Usar leituras assíncronas (não suportadas em Windows)"
   },
   "max_read_ahead": {
-    "title": "Max Read Ahead",
+    "title": "Máximo de leitura antecipada",
     "help": "O número de bytes que podem ser pré-carregados para leituras sequenciais (não suportado no Windows)"
   },
   "write_back_cache": {
-    "title": "Write Back Cache",
+    "title": "Cache de gravação adiada",
     "help": "Faz escritas no buffer do kernel antes de enviá-las para o rclone (sem isso, é usada o cache de writethrough) (não suportado em Windows)"
   },
   "devname": {
@@ -720,11 +720,11 @@
     "help": "Defina o nome do volume (suportado apenas no Windows e no OSX)"
   },
   "noappledouble": {
-    "title": "Noappledouble",
+    "title": "Ignorar arquivos AppleDouble",
     "help": "Ignorar Apple Double (._) e .DS_Store (suportados apenas em OSX)"
   },
   "noapplexattr": {
-    "title": "Noapplexattr",
+    "title": "Ignorar atributos estendidos da Apple",
     "help": "Ignorar todos os atributos estendidos \"com.apple.*\" (suportados apenas no OSX)"
   },
   "network_mode": {
@@ -988,7 +988,7 @@
     "help": "Não compare os checksums em upload/download"
   },
   "no_seek": {
-    "title": "No Seek",
+    "title": "Desativar posicionamento no arquivo",
     "help": "Não permitir busca em arquivos"
   },
   "dir_cache_time": {
@@ -1064,19 +1064,19 @@
     "help": "Se existirem nomes de arquivo duplicados no mesmo diretório (após normalização), registre um erro e oculte os duplicados (pode ter custo de desempenho)"
   },
   "vfs_write_wait": {
-    "title": "VFS Write Wait",
+    "title": "Espera de gravação do VFS",
     "help": "Tempo de espera para escrita em sequência antes de fornecer erro"
   },
   "vfs_read_wait": {
-    "title": "VFS Read Wait",
+    "title": "Espera de leitura do VFS",
     "help": "Tempo de espera para leitura em sequência antes da busca"
   },
   "vfs_write_back": {
-    "title": "VFS Write Back",
+    "title": "Atraso de gravação do VFS",
     "help": "Tempo para gravar arquivos de volta (writeback) após o último uso ao utilizar cache"
   },
   "vfs_read_ahead": {
-    "title": "VFS Read Ahead",
+    "title": "Leitura antecipada do VFS",
     "help": "Leia o conteúdo adicional antes do desligamento da variável --buffer-size ao usar a opção de modo cache completo"
   },
   "vfs_used_is_size": {
@@ -1084,7 +1084,7 @@
     "help": "Usar o algoritmo `rclone size` para tamanho usado"
   },
   "vfs_fast_fingerprint": {
-    "title": "VFS Fast Fingerprint",
+    "title": "Impressão digital rápida do VFS",
     "help": "Usar impressões digitais rápidas (menos precisas) para detecção de alterações"
   },
   "vfs_disk_space_total_size": {
@@ -1119,33 +1119,13 @@
     "title": "Deletar Diretórios de Origem Vazias",
     "help": "Excluir diretórios vazios após mover."
   },
-  "dryRun": {
-    "title": "Teste de Simulação (Dry Run)",
-    "help": "Realizar um teste de simulação (dry-run)."
-  },
   "resync": {
     "title": "Ressincronizar",
     "help": "Executa a ressincronização."
   },
-  "checkAccess": {
-    "title": "Verificar o Acesso",
-    "help": "Abra se os arquivos RCLONE_TEST não forem encontrados em ambos os sistemas de arquivo."
-  },
-  "checkFilename": {
-    "title": "Verificar Nome do Arquivo",
-    "help": "Nome do arquivo para --check-acessos."
-  },
-  "maxDelete": {
-    "title": "Máximo de Exclusões",
-    "help": "Abortar sincronização se o percentual de arquivos excluídos for acima deste limiar."
-  },
   "force": {
     "title": "Forçar",
     "help": "Ignorar a verificação de segurança --max-delete e executar a sincronização."
-  },
-  "checkSync": {
-    "title": "Verificar Sincronismo",
-    "help": "Controle da comparação das listagens finais."
   },
   "remove_empty_dirs": {
     "title": "Remover Diretórios Vazios",
@@ -1163,10 +1143,6 @@
     "title": "Resistente",
     "help": "Permitir que os futuros executores tentem novamente após certos erros menos graves."
   },
-  "work_dir": {
-    "title": "Diretório de Trabalho",
-    "help": "Diretório do servidor para arquivos de histórico."
-  },
   "backup_dir1": {
     "title": "Diretório de Backup 1",
     "help": "--backup-dir para Path1."
@@ -1182,10 +1158,6 @@
   "vfs_handle_caching": {
     "title": "Cache de Manipulador do VFS",
     "help": "Tempo para manter o endereço de arquivo e os downloads vivos após o último fechamento"
-  },
-  "mountType": {
-    "title": "Tipo de Montagem",
-    "help": "Tipo de montagem a usar."
   },
   "type": {
     "title": "Tipo de Serviço",
@@ -1208,7 +1180,7 @@
     "help": "Montar usando o protocolo NFS"
   },
   "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
+    "title": "Estrutura de acesso ao armazenamento (SAF)",
     "help": "Montagem nativa do Android Storage Access Framework"
   },
   "serve_type_http": {
@@ -1256,7 +1228,7 @@
     "help": "Trate o arquivo checkFileFs:checkFileRemote como um arquivo SUM com hashes."
   },
   "one_way": {
-    "title": "One Way Check",
+    "title": "Verificação em um sentido",
     "help": "Verificar uma direção apenas - encontre arquivos no local de origem que não existem no destino."
   },
   "auto_filename": {
@@ -1296,7 +1268,7 @@
     "help": "Calcule o hash baixando quando não estiver disponível (aviso: pode ser lento e usar muitos dados!)"
   },
   "max_lock": {
-    "title": "Max Lock",
+    "title": "Duração máxima do bloqueio",
     "help": "Considerar arquivos de bloqueio mais antigos do que isso como expirados (padrão: 0 (nunca expirar)) (mínimo: 2m)"
   },
   "no_slow_hash": {
@@ -1338,5 +1310,53 @@
   "conflict_suffix": {
     "title": "Sufixo de Conflito",
     "help": "Sufixo a usar quando renomear um --conflict-loser. Pode ser uma string ou duas comas separadas de strings para atribuir diferentes sufixos a Path1 e Path2. (padrão: 'conflicto')"
+  },
+  "allow_idmap": {
+    "title": "Permitir montagens com mapeamento de IDs",
+    "help": "Permitir montagens com mapeamento de IDs (Linux 6.12 ou posterior, apenas mount2)"
+  },
+  "files_from0": {
+    "title": "Arquivos de lista separada por NUL",
+    "help": "Ler os nomes dos arquivos de origem de um arquivo separado por NUL (use - para ler da entrada padrão)"
+  },
+  "response_header": {
+    "title": "Cabeçalho de resposta",
+    "help": "Definir um cabeçalho HTTP para todas as respostas, substituindo os valores existentes"
+  },
+  "rc_response_header": {
+    "title": "Cabeçalho de resposta RC",
+    "help": "Definir um cabeçalho HTTP para todas as respostas, substituindo os valores existentes"
+  },
+  "metrics_response_header": {
+    "title": "Cabeçalho de resposta de métricas",
+    "help": "Definir um cabeçalho HTTP para todas as respostas, substituindo os valores existentes"
+  },
+  "metadata_max_objects": {
+    "title": "Máximo de objetos com metadados em memória",
+    "help": "Número máximo de objetos de um usuário cujos metadados são mantidos em memória; 0 para ilimitado"
+  },
+  "multipart_expiry": {
+    "title": "Expiração de envios em várias partes",
+    "help": "Cancelar envios incompletos em várias partes que estejam inativos por mais que este tempo; 0 para manter indefinidamente"
+  },
+  "multipart_max_uploads": {
+    "title": "Máximo de envios em várias partes por streaming",
+    "help": "Número máximo de envios simultâneos em várias partes por streaming por usuário; 0 para ilimitado"
+  },
+  "multipart_streaming_buffer_limit": {
+    "title": "Limite de buffer por envio em várias partes por streaming",
+    "help": "Memória máxima de buffer por envio em várias partes por streaming para partes recebidas fora de ordem; 0 para ilimitado"
+  },
+  "multipart_streaming_buffer_total": {
+    "title": "Limite total de buffer de envios em várias partes por streaming",
+    "help": "Memória máxima total de buffer de todos os envios em várias partes por streaming de um usuário para partes recebidas fora de ordem; 0 para ilimitado"
+  },
+  "disable_multipart_streaming": {
+    "title": "Desativar streaming de envios em várias partes",
+    "help": "Armazenar envios em várias partes em um buffer de memória em vez de transmiti-los por streaming ao backend"
+  },
+  "mount_type": {
+    "title": "Tipo de Montagem",
+    "help": "Tipo de montagem a usar."
   }
 }
