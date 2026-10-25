@@ -50,6 +50,16 @@ describe('PathService', () => {
     expect(service).toBeTruthy();
   });
 
+  it('uses the backend path style when detecting mount collisions', () => {
+    setEngineOs('windows');
+    const settings = {
+      drive: { mountConfigs: { mount: { rclone: { mountPoint: 'D:\\Mount\\Arşiv' } } } },
+    };
+    expect(service.checkMountPathCollision('d:/mount/Arşiv', 'other', settings).length).toBe(1);
+    setEngineOs('linux');
+    expect(service.checkMountPathCollision('d:/mount/Arşiv', 'other', settings)).toEqual([]);
+  });
+
   it('updates path classification reactively without invalidating unchanged name sets', () => {
     let reads = 0;
     const local = computed(() => {
@@ -217,7 +227,7 @@ describe('PathService', () => {
     it('Windows: returns drive root as parent of top-level path', () => {
       // Input here is in canonical POSIX form (forward slashes) — the
       // drive-letter check still recognizes `C:` as a root prefix.
-      expect(service.getParentPath('C:/Users', 'windows')).toBe('C:');
+      expect(service.getParentPath('C:/Users', 'windows')).toBe('C:/');
     });
   });
 
@@ -265,10 +275,9 @@ describe('PathService', () => {
       });
     });
 
-    it('Windows: falls back to C: drive when path lacks drive prefix', () => {
-      // rclone itself applies this same fallback on Windows.
+    it('Windows: resolves relative paths from the daemon working directory', () => {
       expect(service.splitLocalForStat('relative/path', 'windows')).toEqual({
-        root: 'C:/',
+        root: '.',
         relative: 'relative/path',
       });
     });
@@ -352,6 +361,57 @@ describe('PathService', () => {
   });
 
   describe('resolvePathGroup', () => {
+    it('preserves POSIX folder and file names containing backslashes', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'a\\b/file.txt' } as FileBrowserItem['entry'],
+        meta: { remote: '/archive\\', isLocal: true },
+      };
+      expect(service.resolvePathGroup(item, 'myremote')).toEqual({
+        type: 'local',
+        path: '/archive\\/a\\b/file.txt',
+        remote: '',
+      });
+    });
+    it('preserves the UNC prefix when a Windows network folder is selected', () => {
+      setEngineOs('windows');
+      const item: FileBrowserItem = {
+        entry: { Path: 'Arşiv 2026/file.txt' } as FileBrowserItem['entry'],
+        meta: { remote: '\\\\server\\share', isLocal: true },
+      };
+      expect(service.resolvePathGroup(item, 'myremote')).toEqual({
+        type: 'local',
+        path: '\\\\server\\share\\Arşiv 2026\\file.txt',
+        remote: '',
+      });
+    });
+    it('preserves a selected Windows drive root with no relative path', () => {
+      setEngineOs('windows');
+      for (const root of ['C:/', 'D:\\']) {
+        const item: FileBrowserItem = {
+          entry: { Path: '' } as FileBrowserItem['entry'],
+          meta: { remote: root, isLocal: true },
+        };
+        expect(service.resolvePathGroup(item, 'myremote')).toEqual({
+          type: 'local',
+          path: root.replace(/\//g, '\\'),
+          remote: '',
+        });
+      }
+    });
+
+    it('resolves a selected Windows folder without a leading slash', () => {
+      setEngineOs('windows');
+      const item: FileBrowserItem = {
+        entry: { Path: 'Users/hakan/Arşiv 2026' } as FileBrowserItem['entry'],
+        meta: { remote: 'C:\\', isLocal: true },
+      };
+      expect(service.resolvePathGroup(item, 'myremote')).toEqual({
+        type: 'local',
+        path: 'C:\\Users\\hakan\\Arşiv 2026',
+        remote: '',
+      });
+    });
+
     it('should resolve local items correctly by joining root and path', () => {
       const item: FileBrowserItem = {
         entry: { Path: 'Documents/test' } as unknown as FileBrowserItem['entry'],

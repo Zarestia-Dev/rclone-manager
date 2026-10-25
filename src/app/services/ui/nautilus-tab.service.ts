@@ -237,7 +237,11 @@ export class NautilusTabService {
     let initialLocationApplied = false;
 
     const tryParse = (loc: string): boolean => {
-      const parsed = pathUtils.parseLocation(loc, this.nautilusService.allRemotesLookup());
+      const parsed = pathUtils.parseLocation(
+        loc,
+        this.nautilusService.allRemotesLookup(),
+        this.pathService.enginePathStyle()
+      );
       if (parsed) {
         initialRemote = parsed.remote;
         initialPath = parsed.path;
@@ -298,7 +302,10 @@ export class NautilusTabService {
         const stat = await this.remoteOps.getStat(fsName, initialPath);
         if (stat && stat.item && !stat.item.IsDir) {
           this.pendingPreviewFilePath.set(initialPath);
-          initialPath = this.pathService.getParentPath(initialPath);
+          initialPath = this.pathService.getParentPath(
+            initialPath,
+            this.pathService.pathStyleForRemote(initialRemote)
+          );
         }
       } catch (err) {
         console.debug('Failed to getStat for initial path:', err);
@@ -310,15 +317,15 @@ export class NautilusTabService {
   }
 
   isLocationAllowedByConfig(loc: string, cfg: FilePickerConfig): boolean {
-    const hasColon = loc.includes(':');
-    if (cfg.mode === 'local' && hasColon) return false;
+    const isLocal = this.pathService.isTrulyLocalPath(loc);
+    if (cfg.mode === 'local') return isLocal;
     if (cfg.mode === 'remote') {
-      if (!hasColon) return false;
+      if (isLocal) return false;
       const remote = this.pathService.getRemoteNameFromFs(loc);
       if (cfg.allowedRemotes?.length) return cfg.allowedRemotes.includes(remote);
       return true;
     }
-    if (hasColon && cfg.allowedRemotes?.length) {
+    if (!isLocal && cfg.allowedRemotes?.length) {
       return cfg.allowedRemotes.includes(this.pathService.getRemoteNameFromFs(loc));
     }
     return true;
@@ -329,10 +336,8 @@ export class NautilusTabService {
     localDrives: ExplorerRoot[],
     cloudRemotes: ExplorerRoot[]
   ): boolean {
-    const hasColon = !!cfg.initialLocation && cfg.initialLocation.includes(':');
-
     if (cfg.initialLocation) {
-      if (hasColon) {
+      if (!this.pathService.isTrulyLocalPath(cfg.initialLocation)) {
         if (cloudRemotes.length === 0) return false;
         if (cfg.allowedRemotes?.length) {
           const r = this.pathService.getRemoteNameFromFs(cfg.initialLocation);
@@ -725,7 +730,10 @@ export class NautilusTabService {
         const stat = await this.remoteOps.getStat(fsName, path);
         if (!isCurrent()) return;
         if (stat && stat.item && !stat.item.IsDir) {
-          const parentPath = this.pathService.getParentPath(path);
+          const parentPath = this.pathService.getParentPath(
+            path,
+            this.pathService.pathStyleForRemote(remote)
+          );
           this.pendingPreviewFilePath.set(path);
           this.executeNavigate(remote, parentPath, newHistory);
           return;

@@ -24,10 +24,10 @@ import { RemoteManagementService } from '../../../services/remote/remote-managem
 import { PathService } from '../../../services/infrastructure/platform/path.service';
 import { JobManagementService } from '../../../services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
-import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption, ExplorerRoot } from '@app/types';
+import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { getShareInfo, ItemShareInfo } from '../../../shared/utils';
+import { generatePrefixedId, getShareInfo, ItemShareInfo } from '../../../shared/utils';
 
 @Component({
   selector: 'app-properties-modal',
@@ -69,7 +69,7 @@ export class PropertiesModalComponent implements OnInit {
   private readonly remoteService = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly readJobGroup = generatePrefixedId('filemanager/properties');
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -78,25 +78,21 @@ export class PropertiesModalComponent implements OnInit {
   }
 
   // Derived properties (pure data derivations)
-  readonly displayLocation: string = this.pathService.getFullDisplayPath(
-    {
-      name: this.data.remoteName,
-      isLocal: this.data.isLocal,
-      type: this.data.remoteType ?? '',
-    } as ExplorerRoot,
-    this.data.path
-  );
-
   readonly fsRemote: string = this.data.isLocal
-    ? '/'
+    ? this.data.remoteName
     : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
   readonly hashPath: string = this.data.isLocal
-    ? pathUtils.joinPath(
-        this.data.remoteName,
-        this.data.path || this.data.item?.Path || this.data.item?.Name || ''
-      )
+    ? this.data.path ||
+      this.data.item?.Path ||
+      (this.data.item?.IsDir ? '' : this.data.item?.Name) ||
+      ''
     : this.data.path;
+
+  readonly displayLocation: string = this.pathService.getFullDisplayPath(
+    { name: this.data.remoteName, isLocal: this.data.isLocal },
+    this.hashPath
+  );
 
   // Separate loading states
   readonly loadingStat = signal(false);
@@ -148,7 +144,7 @@ export class PropertiesModalComponent implements OnInit {
 
   // Reactive Star State derived from Service
   readonly isStarred = computed(() =>
-    this.nautilusService.isSaved('starred', this.data.remoteName, this.data.path)
+    this.nautilusService.isSaved('starred', this.data.remoteName, this.hashPath)
   );
 
   /** Get hash entries as array for template iteration */
@@ -175,36 +171,32 @@ export class PropertiesModalComponent implements OnInit {
   readonly bulkHashError = signal<string | null>(null);
 
   ngOnInit(): void {
-    const { remoteName, path, isLocal } = this.data;
+    const stat = this.loadStat();
+    void this.loadSize(stat);
+    void this.loadDiskUsage();
+    void this.loadRemoteFeatures(stat);
+  }
 
-    // Load full stat with metadata
-    void this.loadStat();
-
-    const currentItem = this.item();
-    const targetIsDir = currentItem ? !!currentItem.IsDir : true;
-
-    // 1. Get Size/Count (if directory)
-    if (targetIsDir) {
-      this.loadingSize.set(true);
-      this.remoteOps
-        .getSize(remoteName, path, 'filemanager', this.readJobGroup)
-        .then(size => {
-          this.size.set(size);
-          this.loadingSize.set(false);
-        })
-        .catch(err => {
-          console.error('Failed to load size', err);
-          this.loadingSize.set(false);
-        });
-    } else if (currentItem) {
-      this.size.set({ count: 1, bytes: currentItem.Size });
+  private async loadSize(stat: Promise<void>): Promise<void> {
+    this.loadingSize.set(true);
+    try {
+      if (!this.item()) await stat;
+      const item = this.item();
+      if (!item || this.destroyRef.destroyed) return;
+      const size = !item.IsDir
+        ? { count: 1, bytes: item.Size }
+        : await this.remoteOps.getSize(
+            this.fsRemote,
+            this.hashPath,
+            'filemanager',
+            this.readJobGroup
+          );
+      this.size.set(size);
+    } catch (err) {
+      console.error('Failed to load size', err);
+    } finally {
+      this.loadingSize.set(false);
     }
-
-    // 2. Get Disk Usage - try cache first for remote roots
-    this.loadDiskUsage(remoteName, path, isLocal);
-
-    // 3. Load remote features (hashes, public links, etc.)
-    this.loadRemoteFeatures();
   }
 
   private async loadStat(): Promise<void> {
@@ -214,22 +206,9 @@ export class PropertiesModalComponent implements OnInit {
     }
     this.loadingMetadata.set(true);
     try {
-      let statRemote = this.fsRemote;
-      let statPath = this.data.path;
-
-      if (this.data.isLocal) {
-        const localPath = pathUtils.joinPath(
-          this.data.remoteName,
-          this.data.path || this.data.item?.Path || this.data.item?.Name || ''
-        );
-        const split = this.pathService.splitLocalForStat(localPath);
-        statRemote = split.root;
-        statPath = split.relative;
-      }
-
       const res = await this.remoteOps.getStat(
-        statRemote,
-        statPath,
+        this.fsRemote,
+        this.hashPath,
         { metadata: true },
         'filemanager',
         this.readJobGroup
@@ -248,29 +227,22 @@ export class PropertiesModalComponent implements OnInit {
     }
   }
 
-  private async loadDiskUsage(remoteName: string, path: string, isLocal: boolean): Promise<void> {
+  private async loadDiskUsage(): Promise<void> {
     try {
-      // For remote paths, use centralized caching method on the remote root
-      if (!isLocal) {
-        const diskUsage = await this.capacity.load(remoteName, {
-          source: 'filemanager',
-          group: this.readJobGroup,
-        });
-
-        if (diskUsage) {
-          this.diskUsage.set(diskUsage);
-        }
-        return;
+      const diskUsage = this.data.isLocal
+        ? await this.remoteOps.getDiskUsage(
+            this.fsRemote,
+            this.hashPath,
+            'filemanager',
+            this.readJobGroup
+          )
+        : await this.capacity.load(this.data.remoteName, {
+            source: 'filemanager',
+            group: this.readJobGroup,
+          });
+      if (diskUsage) {
+        this.diskUsage.set(diskUsage);
       }
-
-      // Fall back to direct API call for local paths (resolved by backend if it's a file)
-      const diskUsage = await this.remoteOps.getDiskUsage(
-        remoteName,
-        path,
-        'filemanager',
-        this.readJobGroup
-      );
-      this.diskUsage.set(diskUsage);
     } catch (err) {
       console.error('Failed to load disk usage', err);
     } finally {
@@ -278,7 +250,7 @@ export class PropertiesModalComponent implements OnInit {
     }
   }
 
-  private async loadRemoteFeatures(): Promise<void> {
+  private async loadRemoteFeatures(stat: Promise<void>): Promise<void> {
     const { remoteName } = this.data;
 
     this.loadingHashes.set(true);
@@ -302,10 +274,9 @@ export class PropertiesModalComponent implements OnInit {
 
       this.supportsPublicLink.set(!!features?.PublicLink);
 
+      await stat;
       // Auto-calculate only the first hash (usually md5) for single files
-      const currentItem = this.item();
-      const isFile = currentItem && !currentItem.IsDir;
-      if (hashes.length > 0 && isFile) {
+      if (!this.destroyRef.destroyed && hashes.length > 0 && this.isFile()) {
         await this.calculateHash(hashes[0]);
       }
     } catch (err) {
@@ -427,14 +398,16 @@ export class PropertiesModalComponent implements OnInit {
 
   toggleStar(): void {
     const item: FileBrowserItem = {
-      entry: this.item() ?? {
-        Name: pathUtils.extractName(this.data.path, this.data.remoteName),
-        Path: this.data.path,
-        IsDir: true,
-        Size: 0,
-        ModTime: new Date().toISOString(),
-        ID: '',
-        MimeType: 'inode/directory',
+      entry: {
+        ...(this.item() ?? {
+          Name: pathUtils.extractName(this.hashPath, this.data.remoteName),
+          IsDir: true,
+          Size: 0,
+          ModTime: new Date().toISOString(),
+          ID: '',
+          MimeType: 'inode/directory',
+        }),
+        Path: this.hashPath,
       },
       meta: {
         remote: this.data.remoteName,
@@ -479,20 +452,10 @@ export class PropertiesModalComponent implements OnInit {
     this.bulkHashType.set(hashType);
 
     try {
-      let fsRemote = this.fsRemote;
-      let hashPath = this.hashPath;
-      if (this.data.isLocal) {
-        fsRemote = this.pathService.isLocalPath(hashPath)
-          ? hashPath
-          : pathUtils.joinPath(this.data.remoteName, hashPath);
-
-        hashPath = '';
-      }
-
       // For directories, we use getHashsum (bulk)
       const result = await this.remoteOps.getHashsum(
-        fsRemote,
-        hashPath,
+        this.fsRemote,
+        this.hashPath,
         hashType,
         'filemanager',
         this.readJobGroup

@@ -68,6 +68,17 @@ describe('path.utils', () => {
       expect(joinPath('root', 'sub', 'file.txt')).toBe('root/sub/file.txt');
       expect(joinPath('/base', 'sub/')).toBe('/base/sub');
     });
+
+    it('ignores empty segments without turning relative paths into absolute paths', () => {
+      expect(joinPath('', 'C:/Users/hakan')).toBe('C:/Users/hakan');
+      expect(joinPath('', 'Photos', '', 'Arşiv 2026')).toBe('Photos/Arşiv 2026');
+      expect(joinPath('', '/home/hakan', '')).toBe('/home/hakan');
+      expect(joinPath('', '')).toBe('');
+      expect(joinPath()).toBe('');
+      expect(joinPath(null as unknown as string, undefined as unknown as string, 'docs')).toBe(
+        'docs'
+      );
+    });
   });
 
   describe('getFilename & getDirname', () => {
@@ -86,6 +97,36 @@ describe('path.utils', () => {
       expect(getParentPath('/a')).toBe('/');
       expect(getParentPath('/')).toBe('');
       expect(getParentPath('C:\\', 'windows')).toBe('');
+    });
+
+    it('preserves the separator when navigating to a Windows drive root', () => {
+      expect(getParentPath('C:/Users', 'windows')).toBe('C:/');
+      expect(getParentPath('d:\\Arşiv 2026', 'windows')).toBe('d:/');
+      expect(getParentPath('C:/Users', 'posix')).toBe('C:');
+    });
+
+    it('preserves the Windows network share and stops at its root', () => {
+      expect(getParentPath('\\\\server\\share\\folder', 'windows')).toBe('//server/share');
+      expect(getParentPath('//server/share/', 'windows')).toBe('');
+      expect(getParentPath('\\\\server\\share', 'windows')).toBe('');
+    });
+
+    it('keeps namespace and current-drive roots when navigating upwards on Windows', () => {
+      expect(getParentPath('\\\\?\\UNC\\server\\share\\folder', 'windows')).toBe(
+        '//?/UNC/server/share'
+      );
+      expect(getParentPath('//?/unc/server/share', 'windows')).toBe('');
+      expect(getParentPath('\\\\?\\C:\\folder', 'windows')).toBe('//?/C:/');
+      expect(getParentPath('//?/C:/', 'windows')).toBe('');
+      expect(getParentPath('\\Users\\hakan', 'windows')).toBe('/Users');
+      expect(getParentPath('\\Users', 'windows')).toBe('/');
+      expect(getParentPath('\\', 'windows')).toBe('');
+    });
+
+    it('preserves literal backslashes in POSIX filenames', () => {
+      expect(getParentPath('photos/a\\b.txt', 'posix')).toBe('photos');
+      expect(getParentPath('photos/a\\b/file.txt', 'posix')).toBe('photos/a\\b');
+      expect(getParentPath('a\\b.txt', 'posix')).toBe('');
     });
   });
 
@@ -116,13 +157,62 @@ describe('path.utils', () => {
       expect(normalizeRemoteForRclone('/local/path')).toBe('/local/path');
       expect(normalizeRemoteForRclone('C:\\local', 'windows')).toBe('C:\\local');
     });
+
+    it('keeps Windows UNC, rooted and drive-relative filesystem names intact', () => {
+      for (const path of [
+        '\\\\server\\share',
+        '//server/share',
+        '\\Windows',
+        '/Windows',
+        'D:folder',
+      ]) {
+        expect(normalizeRemoteForRclone(path, 'windows')).toBe(path);
+      }
+      expect(normalizeRemoteForRclone('drive', 'windows')).toBe('drive:');
+    });
   });
 
   describe('splitLocalPath & splitLocalForStat', () => {
+    it('splits Windows UNC and namespace paths without inventing a C: drive', () => {
+      const cases: [string, string, string][] = [
+        ['\\\\server\\share\\Arşiv\\file.txt', '//server/share', 'Arşiv/file.txt'],
+        ['//server/share/', '//server/share', ''],
+        ['\\\\server\\share', '//server/share', ''],
+        ['\\\\?\\UNC\\server\\share\\file.txt', '//?/UNC/server/share', 'file.txt'],
+        ['\\\\?\\C:\\Users\\hakan', '//?/C:/', 'Users/hakan'],
+        ['\\\\server', '//server', ''],
+      ];
+      for (const [path, root, relative] of cases) {
+        expect(splitLocalForStat(path, 'windows')).toEqual({ root, relative });
+      }
+    });
+
+    it('preserves drive-relative and root-relative Windows path semantics', () => {
+      expect(splitLocalForStat('D:folder\\file.txt', 'windows')).toEqual({
+        root: 'D:',
+        relative: 'folder/file.txt',
+      });
+      expect(splitLocalForStat('\\Users\\hakan', 'windows')).toEqual({
+        root: '/',
+        relative: 'Users/hakan',
+      });
+      for (const style of ['windows', 'posix'] as const) {
+        expect(splitLocalForStat('relative/file.txt', style)).toEqual({
+          root: '.',
+          relative: 'relative/file.txt',
+        });
+        expect(splitLocalForStat('', style)).toEqual({ root: '.', relative: '' });
+      }
+    });
     it('splits windows paths', () => {
       const res = splitLocalPath('C:\\Users\\test', 'windows');
       expect(res.remote).toBe('C:\\');
       expect(res.remainder).toBe('Users\\test');
+      expect(splitLocalPath('C:', 'windows')).toEqual({ remote: 'C:\\', remainder: '' });
+      expect(splitLocalPath('D:folder\\child', 'windows')).toEqual({
+        remote: 'D:',
+        remainder: 'folder\\child',
+      });
 
       const stat = splitLocalForStat('D:/data/file.txt', 'windows');
       expect(stat.root).toBe('D:/');
@@ -216,6 +306,8 @@ describe('path.utils', () => {
       expect(isTrulyLocalPath('/var/log', remoteNames)).toBe(true);
       expect(isTrulyLocalPath('C:\\data', remoteNames, 'windows')).toBe(true);
       expect(isTrulyLocalPath('s3:bucket', remoteNames)).toBe(false);
+      expect(isTrulyLocalPath('/home/hakan/Arşiv:2026', remoteNames)).toBe(true);
+      expect(isTrulyLocalPath('\\\\server\\share', remoteNames, 'windows')).toBe(true);
 
       expect(splitFsPath('/home/test', remoteNames)).toEqual({ remote: '', path: '/home/test' });
       expect(splitFsPath('s3:bucket/data', remoteNames)).toEqual({
@@ -252,6 +344,126 @@ describe('path.utils', () => {
       expect(res?.remote.name).toBe('C:/');
       expect(res?.path).toBe('Users/Admin');
     });
+
+    const windowsRoots: ExplorerRoot[] = [
+      { name: 'C:\\Users\\hakan', label: 'Home', isLocal: true, type: 'local' },
+      { name: 'C:\\', label: 'C:', isLocal: true, type: 'local' },
+      { name: 'C:\\Users\\hakan\\Downloads', label: 'Downloads', isLocal: true, type: 'local' },
+    ];
+
+    it('matches local folder boundaries instead of partial names', () => {
+      expect(parseLocation('C:\\Users\\hakan-old\\file.txt', windowsRoots, 'windows')).toEqual({
+        remote: windowsRoots[1],
+        path: 'Users/hakan-old/file.txt',
+      });
+      expect(
+        parseLocation('C:/Users/hakan/Downloads-old/file.txt', windowsRoots, 'windows')
+      ).toEqual({
+        remote: windowsRoots[0],
+        path: 'Downloads-old/file.txt',
+      });
+    });
+
+    it('chooses the most specific local root regardless of drive list order', () => {
+      for (const roots of [windowsRoots, [...windowsRoots].reverse()]) {
+        expect(
+          parseLocation('c:/users/HAKAN/downloads/Arşiv 2026/旅行.txt', roots, 'windows')
+        ).toEqual({
+          remote: windowsRoots[2],
+          path: 'Arşiv 2026/旅行.txt',
+        });
+      }
+    });
+
+    it('preserves path boundaries for Unicode root names whose lowercase length changes', () => {
+      const root: ExplorerRoot = {
+        name: 'C:\\Users\\İİsmail',
+        label: 'Home',
+        isLocal: true,
+        type: 'local',
+      };
+      expect(
+        parseLocation('C:\\Users\\İİsmail\\Arşiv.txt', [root, ...windowsRoots], 'windows')
+      ).toEqual({
+        remote: root,
+        path: 'Arşiv.txt',
+      });
+    });
+
+    it('handles drive and directory roots with or without a trailing separator', () => {
+      for (const path of ['C:', 'C:/', 'C:\\']) {
+        expect(parseLocation(path, windowsRoots, 'windows')).toEqual({
+          remote: windowsRoots[1],
+          path: '',
+        });
+      }
+      for (const path of ['C:/Users/hakan/Downloads', 'C:\\Users\\hakan\\Downloads\\']) {
+        expect(parseLocation(path, windowsRoots, 'windows')).toEqual({
+          remote: windowsRoots[2],
+          path: '',
+        });
+      }
+    });
+
+    it('prefers mounted POSIX roots and preserves colons within local filenames', () => {
+      const mount: ExplorerRoot = {
+        name: '/mnt/archive',
+        label: 'Archive',
+        isLocal: true,
+        type: 'local',
+      };
+      expect(parseLocation('/mnt/archive/:report.txt', [...knownRemotes, mount])).toEqual({
+        remote: mount,
+        path: ':report.txt',
+      });
+      expect(parseLocation('/mnt/archive-old/report.txt', [...knownRemotes, mount])).toEqual({
+        remote: knownRemotes[0],
+        path: 'mnt/archive-old/report.txt',
+      });
+    });
+
+    it('keeps POSIX root matching case sensitive and preserves literal backslashes', () => {
+      const mount: ExplorerRoot = {
+        name: '/mnt/Archive',
+        label: 'Archive',
+        isLocal: true,
+        type: 'local',
+      };
+      const roots = [knownRemotes[0], mount];
+      expect(parseLocation('/mnt/archive/file.txt', roots)).toEqual({
+        remote: knownRemotes[0],
+        path: 'mnt/archive/file.txt',
+      });
+      expect(parseLocation('/mnt/Archive/a\\b.txt', roots)).toEqual({
+        remote: mount,
+        path: 'a\\b.txt',
+      });
+    });
+
+    it('keeps cloud filenames unchanged when the engine is Windows', () => {
+      expect(parseLocation('gdrive:photos/a\\b.txt', knownRemotes, 'windows')).toEqual({
+        remote: knownRemotes[2],
+        path: 'photos/a\\b.txt',
+      });
+    });
+
+    it('resolves local paths outside the enumerated drives without inventing cloud remotes', () => {
+      for (const [input, root, path] of [
+        ['\\\\server\\share\\docs', '//server/share', 'docs'],
+        ['E:\\folder', 'E:/', 'folder'],
+        ['D:folder\\file.txt', 'D:.', 'folder/file.txt'],
+        ['\\Users\\hakan', '/', 'Users/hakan'],
+      ]) {
+        expect(parseLocation(input, windowsRoots, 'windows')).toEqual({
+          remote: { name: root, label: root, type: 'local', isLocal: true },
+          path,
+        });
+      }
+      expect(parseLocation('/archive/notes:2026', [])).toEqual({
+        remote: { name: '/', label: '/', type: 'local', isLocal: true },
+        path: 'archive/notes:2026',
+      });
+    });
   });
 
   describe('checkMountPathCollision', () => {
@@ -278,6 +490,63 @@ describe('path.utils', () => {
         },
       },
     };
+
+    it('checks current mount and bisync profile schemas as well as legacy records', () => {
+      const settings = {
+        drive: {
+          mountConfigs: { mount: { rclone: { mountPoint: '/mnt/archive' } } },
+          bisyncConfigs: {
+            sync: { rclone: { path1: '/home/user/sync', path2: 'remote:backup' } },
+          },
+        },
+      };
+      expect(checkMountPathCollision('/mnt/archive', 'other', settings, isLocalMock)).toEqual([
+        { remoteName: 'drive', profileName: 'mount', opType: 'mount', path: '/mnt/archive' },
+      ]);
+      expect(checkMountPathCollision('/home/user/sync', 'other', settings, isLocalMock)).toEqual([
+        { remoteName: 'drive', profileName: 'sync', opType: 'bisync', path: '/home/user/sync' },
+      ]);
+      expect(
+        checkMountPathCollision('/mnt/archive', 'drive', settings, isLocalMock, 'mount')
+      ).toEqual([]);
+    });
+
+    it('compares Windows paths across native and canonical separator forms', () => {
+      const settings = {
+        drive: { mountConfigs: { mount: { rclone: { mountPoint: 'C:\\Mount\\Arşiv' } } } },
+      };
+      expect(
+        checkMountPathCollision('c:/mount/Arşiv/', 'other', settings, isLocalMock, undefined, {
+          pathStyle: 'windows',
+        }).length
+      ).toBe(1);
+    });
+
+    it('keeps POSIX mount paths case sensitive', () => {
+      const settings = {
+        drive: { mountConfigs: { mount: { rclone: { mountPoint: '/mnt/Archive' } } } },
+      };
+      expect(checkMountPathCollision('/mnt/archive', 'other', settings, isLocalMock)).toEqual([]);
+      expect(checkMountPathCollision('/mnt/Archive/', 'other', settings, isLocalMock).length).toBe(
+        1
+      );
+    });
+
+    it('excludes only the edited operation when another operation has the same profile name', () => {
+      const settings = {
+        drive: {
+          mountConfigs: { Shared: { rclone: { mountPoint: '/shared' } } },
+          bisyncConfigs: { Shared: { rclone: { path1: '/shared' } } },
+        },
+      };
+      expect(
+        checkMountPathCollision('/shared', 'drive', settings, isLocalMock, 'Shared', {
+          currentOperation: 'mount',
+        })
+      ).toEqual([
+        { remoteName: 'drive', profileName: 'Shared', opType: 'bisync', path: '/shared' },
+      ]);
+    });
 
     it('returns empty array when proposed path is empty', () => {
       expect(checkMountPathCollision('', 'remote1', mockSettings, isLocalMock)).toEqual([]);

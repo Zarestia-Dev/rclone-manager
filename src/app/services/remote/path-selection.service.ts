@@ -94,8 +94,24 @@ export class PathSelectionService {
     const entry = state.options.find(e => e.Name === entryName);
     if (!entry) return;
 
-    const newPath = pathUtils.joinPath(state.currentPath, entryName);
-    formControl?.setValue(newPath);
+    let newPath: string;
+    if (state.remoteName) {
+      newPath = state.currentPath
+        ? `${state.currentPath.replace(/\/+$/, '')}/${entryName}`
+        : entryName;
+    } else if (this.backendService.isWindows() && !state.currentPath) {
+      newPath = entry.Path;
+    } else {
+      newPath = this.pathService.getFullDisplayPath(
+        { name: state.currentPath || '/', isLocal: true },
+        entryName
+      );
+    }
+    formControl?.setValue(
+      !state.remoteName && this.backendService.isWindows()
+        ? this.pathService.normalizeForPlatform(newPath)
+        : newPath
+    );
 
     if (entry.IsDir) this.triggerLoad(fieldId, state.remoteName, newPath);
   }
@@ -104,8 +120,13 @@ export class PathSelectionService {
     const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
-    const parentPath = this.pathService.getParentPath(state.currentPath);
-    formControl?.setValue(parentPath);
+    const pathStyle = state.remoteName ? 'posix' : this.pathService.enginePathStyle();
+    const parentPath = this.pathService.getParentPath(state.currentPath, pathStyle);
+    formControl?.setValue(
+      !state.remoteName && this.backendService.isWindows()
+        ? this.pathService.normalizeForPlatform(parentPath)
+        : parentPath
+    );
     this.triggerLoad(fieldId, state.remoteName, parentPath);
   }
 
@@ -165,7 +186,7 @@ export class PathSelectionService {
     const isLocal = remoteName === '';
 
     if (isLocal && this.backendService.isWindows() && !path) {
-      stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
+      stateSignal.update(s => ({ ...s, remoteName, isLoading: true, currentPath: path }));
       try {
         const drives = await this.remoteManagement.getLocalDrives();
         if (controller.signal.aborted) return;
@@ -189,7 +210,7 @@ export class PathSelectionService {
       }
     }
 
-    stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
+    stateSignal.update(s => ({ ...s, remoteName, isLoading: true, currentPath: path }));
 
     try {
       let normalizedRemote = '/';
@@ -198,7 +219,9 @@ export class PathSelectionService {
       if (isLocal) {
         const split = this.pathService.splitLocalPath(path);
         normalizedRemote = split.remote || '/';
-        subPath = split.remainder;
+        subPath = this.backendService.isWindows()
+          ? split.remainder.replace(/\\/g, '/')
+          : split.remainder;
       } else {
         normalizedRemote = this.pathService.normalizeRemoteForRclone(remoteName);
       }

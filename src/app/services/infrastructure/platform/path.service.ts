@@ -6,6 +6,7 @@ import {
   PathGroupType,
   PathStyle,
   MountPathCollision,
+  DefaultPathOp,
 } from '@app/types';
 import { BackendService } from '../system/backend.service';
 import * as pathUtils from '../../../shared/utils/path.utils';
@@ -86,7 +87,11 @@ export class PathService {
     return this.normalizeRemoteName(normalized.split(':')[0]);
   }
 
-  getFullDisplayPath(remote: ExplorerRoot | null, path: string, pathStyle?: PathStyle): string {
+  getFullDisplayPath(
+    remote: Pick<ExplorerRoot, 'name' | 'isLocal'> | null,
+    path: string,
+    pathStyle?: PathStyle
+  ): string {
     return pathUtils.getFullDisplayPath(remote, path, pathStyle ?? this.pathStyleForRemote(remote));
   }
 
@@ -133,8 +138,12 @@ export class PathService {
     const entryPath = item.entry.Path;
 
     if (isLocal) {
-      const fullPath = pathUtils.joinPath(remote, entryPath);
-      return { type: 'local', path: fullPath, remote: '' };
+      const fullPath = this.getFullDisplayPath({ name: remote, isLocal }, entryPath);
+      return {
+        type: 'local',
+        path: this.enginePathStyle() === 'windows' ? this.normalizeForPlatform(fullPath) : fullPath,
+        remote: '',
+      };
     }
 
     const normalizedRemote = this.normalizeRemoteName(remote);
@@ -150,14 +159,16 @@ export class PathService {
     proposedPath: string,
     currentRemoteName: string,
     allSettings: Record<string, unknown> | undefined | null,
-    currentProfileName?: string
+    currentProfileName?: string,
+    currentOperation?: DefaultPathOp
   ): MountPathCollision[] {
     return pathUtils.checkMountPathCollision(
       proposedPath,
       currentRemoteName,
       allSettings,
       p => this.isLocalPath(p),
-      currentProfileName
+      currentProfileName,
+      { pathStyle: this.enginePathStyle(), currentOperation }
     );
   }
 }

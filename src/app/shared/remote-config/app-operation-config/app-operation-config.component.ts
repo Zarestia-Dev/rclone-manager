@@ -39,6 +39,7 @@ import {
   FILE_SOURCE_OPS,
   type PathGroup,
   type PathInspectionStatus,
+  type DefaultPathOp,
 } from '@app/types';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -101,6 +102,7 @@ export class OperationConfigComponent {
   readonly opFormGroup = input.required<FormGroup>();
   readonly operationType = input.required<EditTarget>();
   readonly currentRemoteName = input.required<string>();
+  readonly currentProfileName = input<string | null>(null);
   readonly existingRemotes = input<string[]>([]);
   readonly description = input('');
   readonly isNewRemote = input(true);
@@ -495,6 +497,8 @@ export class OperationConfigComponent {
     effect(() => {
       const opType = this.operationType();
       const needsInspection = opType === 'mount' || opType === 'bisync';
+      const remoteName = this.currentRemoteName();
+      const profileName = this.currentProfileName() ?? undefined;
       const dest = this.destItem();
       const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
 
@@ -512,8 +516,10 @@ export class OperationConfigComponent {
             this.triggerPathInspection(
               itemKey,
               item.pathControl.value,
-              item.remoteName,
-              item.inspectionStatus
+              remoteName,
+              item.inspectionStatus,
+              profileName,
+              opType === 'mount' ? 'mount' : 'bisync'
             );
           } else {
             this.cancelAndClearInspection(itemKey, item.inspectionStatus);
@@ -588,7 +594,9 @@ export class OperationConfigComponent {
     itemKey: string,
     path: string | null | undefined,
     remoteName: string,
-    statusSignal: WritableSignal<PathInspectionStatus | null>
+    statusSignal: WritableSignal<PathInspectionStatus | null>,
+    profileName: string | undefined,
+    operation: DefaultPathOp
   ): void {
     const trimmedPath = path?.trim() || '';
     if (!trimmedPath) {
@@ -596,7 +604,7 @@ export class OperationConfigComponent {
       return;
     }
 
-    const inspectionKey = `${remoteName}::${trimmedPath}`;
+    const inspectionKey = JSON.stringify([remoteName, profileName, operation, trimmedPath]);
     if (this.lastInspectedPaths.get(itemKey) === inspectionKey) {
       return;
     }
@@ -623,7 +631,7 @@ export class OperationConfigComponent {
       });
 
       this.pathInspectionService
-        .inspect(trimmedPath, remoteName)
+        .inspect(trimmedPath, remoteName, profileName, operation)
         .then(status => {
           if (this.inspectionTokens.get(itemKey) === token) {
             statusSignal.set(status);

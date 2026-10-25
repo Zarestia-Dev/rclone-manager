@@ -428,8 +428,6 @@ export class NautilusService extends TauriBaseService {
           remoteRoot ?? {
             name: i.meta.remote,
             isLocal: i.meta.isLocal,
-            label: i.meta.remote,
-            type: i.meta.remoteType ?? '',
           },
           i.entry.Path
         );

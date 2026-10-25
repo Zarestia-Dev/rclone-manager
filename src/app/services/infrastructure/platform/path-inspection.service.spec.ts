@@ -22,6 +22,7 @@ describe('PathInspectionService', () => {
   let mockRemoteFileOps: {
     getStat: ReturnType<typeof vi.fn>;
     getSize: ReturnType<typeof vi.fn>;
+    getRemotePaths: ReturnType<typeof vi.fn>;
     makeDirectory: ReturnType<typeof vi.fn>;
   };
   let mockPathService: {
@@ -42,6 +43,7 @@ describe('PathInspectionService', () => {
     mockRemoteFileOps = {
       getStat: vi.fn().mockResolvedValue({ item: null }),
       getSize: vi.fn().mockResolvedValue({ count: 0 }),
+      getRemotePaths: vi.fn().mockResolvedValue({ list: [] }),
       makeDirectory: vi.fn().mockResolvedValue(undefined),
     };
     mockPathService = {
@@ -70,6 +72,16 @@ describe('PathInspectionService', () => {
   });
 
   describe('inspect', () => {
+    it('forwards the edited profile and operation so it can exclude itself from collisions', async () => {
+      await service.inspect('/mnt/drive', 'drive', 'Shared', 'mount');
+      expect(mockPathService.checkMountPathCollision).toHaveBeenCalledWith(
+        '/mnt/drive',
+        'drive',
+        {},
+        'Shared',
+        'mount'
+      );
+    });
     it('should return colliding if mount collision is detected', async () => {
       mockPathService.checkMountPathCollision.mockReturnValue([
         { remoteName: 'otherRemote', opType: 'mount' },
@@ -99,11 +111,11 @@ describe('PathInspectionService', () => {
         labelKey: 'remoteConfig.pathStatus.willCreate',
       });
       expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
+      expect(mockRemoteFileOps.getRemotePaths).not.toHaveBeenCalled();
     });
 
     it('should resolve to clean if directory exists and has 0 items', async () => {
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'clean-path', IsDir: true } });
-      mockRemoteFileOps.getSize.mockResolvedValue({ count: 0, bytes: 0 });
 
       const status = await service.inspect('/home/user/clean-path', 'remote1');
 
@@ -113,11 +125,29 @@ describe('PathInspectionService', () => {
         badgeClass: 'clean',
         labelKey: 'remoteConfig.pathStatus.clean',
       });
+      expect(mockRemoteFileOps.getRemotePaths).toHaveBeenCalledExactlyOnceWith(
+        '/',
+        'home/user/path',
+        { recurse: false }
+      );
+      expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
     });
+
+    it.each([false, undefined])(
+      'rejects a non-directory or incomplete stat response: %s',
+      async isDir => {
+        mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'file.txt', IsDir: isDir } });
+        expect(await service.inspect('/home/user/file.txt', 'drive')).toMatchObject({
+          state: 'unavailable',
+        });
+        expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
+        expect(mockRemoteFileOps.getRemotePaths).not.toHaveBeenCalled();
+      }
+    );
 
     it('should resolve to nonEmpty if directory exists and has files', async () => {
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'non-empty', IsDir: true } });
-      mockRemoteFileOps.getSize.mockResolvedValue({ count: 3, bytes: 1024 });
+      mockRemoteFileOps.getRemotePaths.mockResolvedValue({ list: [{ IsDir: false }] });
 
       const status = await service.inspect('/home/user/non-empty', 'remote1');
 
@@ -129,11 +159,20 @@ describe('PathInspectionService', () => {
       });
     });
 
-    it.each(['stat', 'size'])('reports an unavailable path on %s failure', async operation => {
+    it('treats a directory containing only an empty subdirectory as non-empty', async () => {
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      mockRemoteFileOps.getRemotePaths.mockResolvedValue({
+        list: [{ Name: 'empty', IsDir: true }],
+      });
+      expect(await service.inspect('/parent', 'drive')).toMatchObject({ state: 'nonEmpty' });
+      expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
+    });
+
+    it.each(['stat', 'list'])('reports an unavailable path on %s failure', async operation => {
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
       (operation === 'stat'
         ? mockRemoteFileOps.getStat
-        : mockRemoteFileOps.getSize
+        : mockRemoteFileOps.getRemotePaths
       ).mockRejectedValue(new Error('Permission denied'));
       expect(await service.inspect('/unreadable', 'drive')).toMatchObject({
         state: 'unavailable',
@@ -147,7 +186,7 @@ describe('PathInspectionService', () => {
       mockRemoteFileOps.getStat.mockResolvedValue({});
       expect(await service.inspect('/path', 'drive')).toMatchObject({ state: 'unavailable' });
       mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
-      mockRemoteFileOps.getSize.mockResolvedValue({});
+      mockRemoteFileOps.getRemotePaths.mockResolvedValue({});
       expect(await service.inspect('/path', 'drive')).toMatchObject({ state: 'unavailable' });
     });
 
@@ -170,14 +209,36 @@ describe('PathInspectionService', () => {
 
     it('should increment candidate suffix if default path is occupied', async () => {
       mockApiClient.invoke.mockResolvedValue([{ name: '/home/user' }]);
-      mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'existing' } });
-      mockRemoteFileOps.getSize
-        .mockResolvedValueOnce({ count: 5 })
-        .mockResolvedValueOnce({ count: 0 });
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { Path: 'existing', IsDir: true } });
+      mockRemoteFileOps.getRemotePaths
+        .mockResolvedValueOnce({ list: [{ IsDir: true }] })
+        .mockResolvedValueOnce({ list: [] });
 
       const result = await service.resolveDefaultPath('drive', 'mount');
 
       expect(result).toBe('/home/user/rclone-manager/drive-2');
+    });
+
+    it('skips an occupied file without trying to list it as a directory', async () => {
+      mockApiClient.invoke.mockResolvedValue([{ name: '/home/user' }]);
+      mockRemoteFileOps.getStat.mockResolvedValueOnce({ item: { IsDir: false } });
+      expect(await service.resolveDefaultPath('drive', 'mount')).toBe(
+        '/home/user/rclone-manager/drive-2'
+      );
+      expect(mockRemoteFileOps.getRemotePaths).not.toHaveBeenCalled();
+      expect(mockRemoteFileOps.getSize).not.toHaveBeenCalled();
+    });
+
+    it('rejects incomplete metadata and malformed listings when selecting a default path', async () => {
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: {} });
+      await expect(service.resolveDefaultPath('drive', 'mount')).rejects.toThrow(
+        'Invalid path stat response'
+      );
+      mockRemoteFileOps.getStat.mockResolvedValue({ item: { IsDir: true } });
+      mockRemoteFileOps.getRemotePaths.mockResolvedValue({ list: null });
+      await expect(service.resolveDefaultPath('drive', 'mount')).rejects.toThrow(
+        'Invalid directory listing response'
+      );
     });
   });
 
@@ -314,6 +375,39 @@ describe('PathInspectionService', () => {
       mockPathService.isTrulyLocalPath.mockImplementation((path: string, style: PathStyle) =>
         pathUtils.isTrulyLocalPath(path, new Set(['remote']), style)
       );
+    });
+
+    it('keeps UNC shares and relative working directories when preparing Windows operations', async () => {
+      mockPathService.enginePathStyle.mockReturnValue('windows');
+      await service.createRequiredDirectories(
+        {
+          mountConfigs: {
+            share: { rclone: { mountPoint: '\\\\server\\share\\Mount\\drive' } },
+          },
+          bisyncConfigs: {
+            share: { rclone: { path1: '\\\\server\\share\\Sync\\one', path2: 'relative-sync' } },
+            drive: { rclone: { path1: 'D:Sync\\two' } },
+          },
+        },
+        'Windows NAS'
+      );
+      expect(mockRemoteFileOps.makeDirectory.mock.calls).toEqual([
+        ['//server/share', 'Mount', undefined, undefined, 'Windows NAS'],
+        ['//server/share', 'Sync/one', undefined, undefined, 'Windows NAS'],
+        ['.', 'relative-sync', undefined, undefined, 'Windows NAS'],
+        ['D:', 'Sync/two', undefined, undefined, 'Windows NAS'],
+      ]);
+    });
+
+    it('inspects a Windows share through its own filesystem root', async () => {
+      mockPathService.enginePathStyle.mockReturnValue('windows');
+      mockPathService.splitLocalForStat.mockImplementation((path: string) =>
+        pathUtils.splitLocalForStat(path, 'windows')
+      );
+      expect(await service.inspect('\\\\server\\share\\Arşiv', 'drive')).toMatchObject({
+        state: 'willCreate',
+      });
+      expect(mockRemoteFileOps.getStat).toHaveBeenCalledExactlyOnceWith('//server/share', 'Arşiv');
     });
 
     it('keeps profile fallback precedence, directory order, and backend ownership', async () => {

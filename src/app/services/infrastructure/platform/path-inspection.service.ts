@@ -20,10 +20,21 @@ export class PathInspectionService extends TauriBaseService {
    * Freshly inspects the given local path and returns its status.
    * No caching — callers are responsible for managing reactive state.
    */
-  async inspect(path: string, remoteName: string): Promise<PathInspectionStatus> {
-    // 1. Collision check (highest priority, synchronous)
+  async inspect(
+    path: string,
+    remoteName: string,
+    currentProfileName?: string,
+    currentOperation?: DefaultPathOp
+  ): Promise<PathInspectionStatus> {
+    // Saved path collisions take precedence over filesystem inspection.
     const allSettings = await this.appSettingsService.getRemoteSettings();
-    const collisions = this.pathService.checkMountPathCollision(path, remoteName, allSettings);
+    const collisions = this.pathService.checkMountPathCollision(
+      path,
+      remoteName,
+      allSettings,
+      currentProfileName,
+      currentOperation
+    );
     if (collisions.length > 0) {
       const c = collisions[0];
       return {
@@ -35,7 +46,6 @@ export class PathInspectionService extends TauriBaseService {
       };
     }
 
-    // 2. Async check via Rclone API
     const { root, relative } = this.pathService.splitLocalForStat(path);
     try {
       const statRes = await this.remoteFileOps.getStat(root, relative);
@@ -50,12 +60,11 @@ export class PathInspectionService extends TauriBaseService {
           labelKey: 'remoteConfig.pathStatus.willCreate',
         };
       }
-
-      const sizeRes = await this.remoteFileOps.getSize(root, relative);
-      if (!sizeRes || !Number.isFinite(sizeRes.count) || sizeRes.count < 0) {
-        throw new Error('Invalid directory size response');
+      if (statRes.item.IsDir !== true) {
+        throw new Error('Path is not a directory');
       }
-      if (sizeRes.count > 0) {
+
+      if (!(await this.isDirectoryEmpty(root, relative))) {
         return {
           state: 'nonEmpty',
           icon: 'folder-open',
@@ -120,6 +129,14 @@ export class PathInspectionService extends TauriBaseService {
     return template.replace('{home}', home).replace('{remote}', remote);
   }
 
+  private async isDirectoryEmpty(root: string, relative: string): Promise<boolean> {
+    const response = await this.remoteFileOps.getRemotePaths(root, relative, { recurse: false });
+    if (!Array.isArray(response?.list)) {
+      throw new Error('Invalid directory listing response');
+    }
+    return response.list.length === 0;
+  }
+
   private async ensureMountableDefault(path: string): Promise<string> {
     const { root, relative } = this.pathService.splitLocalForStat(path);
 
@@ -133,8 +150,8 @@ export class PathInspectionService extends TauriBaseService {
         throw new Error('Invalid path stat response');
       }
       if (!stat?.item) return candidate;
-      const size = await this.remoteFileOps.getSize(root, candidateRel);
-      if (size && size.count === 0) return candidate;
+      if (typeof stat.item.IsDir !== 'boolean') throw new Error('Invalid path stat response');
+      if (stat.item.IsDir && (await this.isDirectoryEmpty(root, candidateRel))) return candidate;
     }
     throw new Error(JSON.stringify({ key: 'backendErrors.mount.directoryNotEmpty' }));
   }

@@ -19,6 +19,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 
 interface SourcePathItem {
   path: string;
+  displayPath: string;
   isLocal: boolean;
 }
 
@@ -48,10 +49,10 @@ interface SourcePathItem {
                     class="menu-item"
                     cdkMenuItem
                     (cdkMenuItemTriggered)="openPath.emit(item.path)"
-                    [attr.title]="item.path"
+                    [attr.title]="item.displayPath"
                   >
                     <mat-icon [svgIcon]="item.isLocal ? 'folder' : 'folder-open'"></mat-icon>
-                    <span class="menu-path-text">{{ item.path }}</span>
+                    <span class="menu-path-text">{{ item.displayPath }}</span>
                   </button>
                 }
               </div>
@@ -108,8 +109,8 @@ interface SourcePathItem {
           <div class="path-label">
             {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
           </div>
-          <code class="path-value" [attr.title]="config().destination">{{
-            config().destination
+          <code class="path-value" [attr.title]="destinationDisplay()">{{
+            destinationDisplay()
           }}</code>
         </div>
       }
@@ -130,6 +131,7 @@ export class PathDisplayComponent {
   readonly sourcePathItems = computed<SourcePathItem[]>(() =>
     pathUtils.asPathArray(this.config().source).map(p => ({
       path: p,
+      displayPath: this.formatDisplayPath(p),
       isLocal: this.pathService.isLocalPath(p),
     }))
   );
@@ -140,14 +142,22 @@ export class PathDisplayComponent {
     this.pathService.isLocalPath(this.sourcePrimaryPath())
   );
   readonly sourceDisplay = computed<string>(() =>
-    pathUtils.formatPathDisplay(this.config().source)
+    pathUtils.formatPathDisplay(this.sourcePathItems().map(item => item.displayPath))
   );
   readonly sourceTooltip = computed<string>(() =>
-    pathUtils.formatPathTooltip(this.config().source)
+    pathUtils.formatPathTooltip(this.sourcePathItems().map(item => item.displayPath))
   );
   readonly destinationIsLocal = computed<boolean>(() =>
     this.pathService.isLocalPath(this.config().destination)
   );
+  readonly destinationDisplay = computed(() => this.formatDisplayPath(this.config().destination));
+
+  private formatDisplayPath(path: string): string {
+    return this.pathService.enginePathStyle() === 'windows' &&
+      this.pathService.isTrulyLocalPath(path)
+      ? this.pathService.normalizeForPlatform(path)
+      : path;
+  }
 
   constructor() {
     afterNextRender(() => {

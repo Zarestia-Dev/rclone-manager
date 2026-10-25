@@ -119,8 +119,6 @@ export class NautilusContextMenuComponent {
       {
         name: item.meta.remote,
         isLocal: item.meta.isLocal,
-        label: item.meta.remote,
-        type: item.meta.remoteType ?? '',
       },
       item.entry.Path
     );

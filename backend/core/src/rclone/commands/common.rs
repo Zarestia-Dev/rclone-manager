@@ -520,13 +520,28 @@ pub fn split_file_path(path: &str, windows: bool) -> Option<(String, String)> {
         ));
     }
     let path = normalize_fs_path(path, windows);
+    if windows && let Some(unc) = path.strip_prefix("//") {
+        let mut parts = unc.split('/');
+        let server = parts.next();
+        let share = parts.next();
+        if server == Some("?") && share.is_some_and(|part| part.eq_ignore_ascii_case("UNC")) {
+            parts.next();
+            parts.next();
+        }
+        if parts.next().is_none() {
+            return Some((path, String::new()));
+        }
+    }
     if path.ends_with('/') {
         return Some((path, String::new()));
     }
     match path.rfind('/') {
         Some(index) => {
-            let parent_end = if index == 0 || (windows && index == 2 && path.as_bytes()[1] == b':')
-            {
+            let drive_root = windows
+                && (index == 2 || (index == 6 && path.starts_with("//?/")))
+                && path.as_bytes()[index - 1] == b':'
+                && path.as_bytes()[index - 2].is_ascii_alphabetic();
+            let parent_end = if index == 0 || drive_root {
                 index + 1
             } else {
                 index
@@ -914,6 +929,10 @@ mod tests {
             (r"C:\file.txt", "C:/", "file.txt"),
             (r"C:\folder\file.txt", "C:/folder", "file.txt"),
             (r"\\server\share\file.txt", "//server/share", "file.txt"),
+            (r"\\server\share", "//server/share", ""),
+            (r"\\?\UNC\server\share", "//?/UNC/server/share", ""),
+            (r"\\?\unc\server\share", "//?/unc/server/share", ""),
+            (r"\\?\C:\file.txt", "//?/C:/", "file.txt"),
             ("/", "/", ""),
             ("C:foo.txt", "C:", "foo.txt"),
         ] {

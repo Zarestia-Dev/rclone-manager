@@ -18,7 +18,9 @@ describe('Nautilus context menu paths', () => {
         },
         meta: { remote, isLocal: remote !== 'drive', remoteType: 'test' },
       };
-      const format = vi.fn((_root: ExplorerRoot, _path: string): string => 'full path');
+      const format = vi.fn(
+        (_root: Pick<ExplorerRoot, 'name' | 'isLocal'>, _path: string): string => 'full path'
+      );
       const context = { pathService: { getFullDisplayPath: format } };
       expect(
         NautilusContextMenuComponent.prototype['getFormattedPath'].call(
@@ -27,7 +29,7 @@ describe('Nautilus context menu paths', () => {
         )
       ).toBe('full path');
       expect(format).toHaveBeenCalledExactlyOnceWith(
-        { name: remote, isLocal: item.meta.isLocal, label: remote, type: 'test' },
+        { name: remote, isLocal: item.meta.isLocal },
         item.entry.Path
       );
     }

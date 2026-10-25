@@ -399,7 +399,40 @@ describe('OperationConfigComponent', () => {
       expect(pathInspectionServiceMock.inspect).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(300);
-      expect(pathInspectionServiceMock.inspect).toHaveBeenCalledWith('/home/user/test-mount', '');
+      expect(pathInspectionServiceMock.inspect).toHaveBeenCalledWith(
+        '/home/user/test-mount',
+        'my-drive',
+        undefined,
+        'mount'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rechecks an unchanged path when the edited profile changes', () => {
+    vi.useFakeTimers();
+    try {
+      setupComponent('mount', 'my-drive', false, '/mnt/shared');
+      fixture.componentRef.setInput('currentProfileName', 'First');
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      expect(pathInspectionServiceMock.inspect).toHaveBeenLastCalledWith(
+        '/mnt/shared',
+        'my-drive',
+        'First',
+        'mount'
+      );
+      fixture.componentRef.setInput('currentProfileName', 'Second');
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      expect(pathInspectionServiceMock.inspect).toHaveBeenCalledTimes(2);
+      expect(pathInspectionServiceMock.inspect).toHaveBeenLastCalledWith(
+        '/mnt/shared',
+        'my-drive',
+        'Second',
+        'mount'
+      );
     } finally {
       vi.useRealTimers();
     }

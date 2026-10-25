@@ -227,6 +227,7 @@
                           [opFormGroup]="state.getOperationConfigGroup(flagType)"
                           [operationType]="flagType"
                           [currentRemoteName]="state.currentRemoteName()"
+                          [currentProfileName]="state.selectedProfileName()[flagType]"
                           [existingRemotes]="state.existingRemotes()"
                           [isNewRemote]="!state.editTarget()"
                           [searchQuery]="state.searchQuery()"

@@ -3,19 +3,23 @@ import { signal } from '@angular/core';
 import { EMPTY } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslateService } from '@ngx-translate/core';
-import { createMinimalEntry, ExplorerRoot } from '@app/types';
+import { createMinimalEntry, ExplorerRoot, FilePickerConfig } from '@app/types';
 import { NautilusNavigation } from './navigation-history.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { NautilusService } from './nautilus.service';
 import { LocalStorageService } from './state/local-storage.service';
 import { NotificationService } from './notification.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { BackendService } from '../infrastructure/system/backend.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { FileViewerService } from './file-viewer.service';
 
 const remote: ExplorerRoot = { name: 'drive', label: 'Drive', isLocal: false, type: 'drive' };
+const localDrive: ExplorerRoot = { name: 'C:\\', label: 'C:', isLocal: true, type: 'local' };
+const otherDrive: ExplorerRoot = { name: 'D:\\', label: 'D:', isLocal: true, type: 'local' };
+const posixRoot: ExplorerRoot = { name: '/', label: '/', isLocal: true, type: 'local' };
 
 function deferredStat(): {
   promise: Promise<{ item: { IsDir: boolean } }>;
@@ -38,10 +42,14 @@ describe('NautilusTabService navigation', () => {
   let service: NautilusTabService;
   const getStat = vi.fn();
   const getRemotePaths = vi.fn();
+  const isWindows = vi.fn();
+  const pickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({ isOpen: false });
   beforeEach(() => {
     TestBed.resetTestingModule();
     getStat.mockReset().mockResolvedValue({ item: { IsDir: true } });
     getRemotePaths.mockReset().mockResolvedValue({ list: [] });
+    isWindows.mockReset().mockReturnValue(false);
+    pickerState.set({ isOpen: false });
     TestBed.configureTestingModule({
       providers: [
         NautilusTabService,
@@ -55,15 +63,8 @@ describe('NautilusTabService navigation', () => {
           },
         },
         { provide: NotificationService, useValue: { showError: vi.fn() } },
-        {
-          provide: PathService,
-          useValue: {
-            getDisplaySegment: (_: unknown, path: string): string => path,
-            normalizeRemoteForRclone: (name: string): string => name,
-            normalizeRemoteName: (name: string): string => name,
-            getParentPath: (path: string): string => path.split('/').slice(0, -1).join('/'),
-          },
-        },
+        PathService,
+        { provide: BackendService, useValue: { isWindows } },
         {
           provide: RemoteFileOperationsService,
           useValue: { getStat, getRemotePaths },
@@ -80,15 +81,109 @@ describe('NautilusTabService navigation', () => {
         {
           provide: NautilusService,
           useValue: {
-            allRemotesLookup: signal([remote]),
+            allRemotesLookup: signal([remote, localDrive, otherDrive, posixRoot]),
             lookupRemoteByName: (name: string): ExplorerRoot | null =>
-              name === remote.name ? remote : null,
+              [remote, localDrive, otherDrive, posixRoot].find(root => root.name === name) ?? null,
+            loadRemoteData: vi.fn().mockResolvedValue(undefined),
+            filePickerState: pickerState,
+            localDrives: signal([localDrive, otherDrive]),
+            targetPath: signal(null),
+            selectedNautilusRemote: signal(null),
           },
         },
       ],
     });
+    TestBed.inject(PathService).setRemoteNames(['drive']);
     service = TestBed.inject(NautilusTabService);
     service.createTab(null);
+  });
+
+  it.each(['C:/Users/hakan', 'D:\\Arşiv 2026', 'C:/'])(
+    'allows the Windows local picker to reopen %s without cloud remotes',
+    initialLocation => {
+      isWindows.mockReturnValue(true);
+      const config: FilePickerConfig = { mode: 'local', selection: 'folders', initialLocation };
+      expect(service.isLocationAllowedByConfig(initialLocation, config)).toBe(true);
+      expect(service.isDataReadyForConfig(config, [localDrive, otherDrive], [])).toBe(true);
+      expect(service.isDataReadyForConfig(config, [], [remote])).toBe(false);
+      expect(
+        service.isLocationAllowedByConfig(initialLocation, { ...config, mode: 'remote' })
+      ).toBe(false);
+    }
+  );
+
+  it('reopens the selected Windows drive and folder instead of the first drive', async () => {
+    isWindows.mockReturnValue(true);
+    pickerState.set({
+      isOpen: true,
+      options: { mode: 'local', selection: 'folders', initialLocation: 'D:\\Arşiv 2026' },
+    });
+    expect(await service.setupInitialTab([localDrive, otherDrive], [])).toBe(true);
+    expect(service.activeRemote()).toEqual(otherDrive);
+    expect(service.activePath()).toBe('Arşiv 2026');
+    expect(getStat).toHaveBeenCalledWith('D:\\', 'Arşiv 2026');
+  });
+
+  it.each([
+    ['C:/file.txt', 'C:'],
+    ['photos/a\\b.txt', 'photos'],
+  ])('uses cloud path rules to find the parent of %s on Windows', async (path, parent) => {
+    isWindows.mockReturnValue(true);
+    getStat.mockResolvedValueOnce({ item: { IsDir: false } });
+    await service.navigate(remote, path, true);
+    expect(service.activePath()).toBe(parent);
+    expect(service.pendingPreviewFilePath()).toBe(path);
+  });
+
+  it('preserves the cloud file location when reopening a picker on Windows', async () => {
+    isWindows.mockReturnValue(true);
+    getStat.mockResolvedValueOnce({ item: { IsDir: false } });
+    pickerState.set({
+      isOpen: true,
+      options: {
+        mode: 'remote',
+        selection: 'files',
+        initialLocation: 'drive:photos/a\\b.txt',
+      },
+    });
+    expect(await service.setupInitialTab([], [remote])).toBe(true);
+    expect(getStat).toHaveBeenCalledWith('drive:', 'photos/a\\b.txt');
+    expect(service.activeRemote()).toEqual(remote);
+    expect(service.activePath()).toBe('photos');
+    expect(service.pendingPreviewFilePath()).toBe('photos/a\\b.txt');
+  });
+
+  it('keeps local paths containing colons local on POSIX engines', () => {
+    const config: FilePickerConfig = {
+      mode: 'local',
+      selection: 'folders',
+      initialLocation: '/home/hakan/Arşiv:2026',
+    };
+    expect(service.isLocationAllowedByConfig(config.initialLocation ?? '', config)).toBe(true);
+    expect(service.isDataReadyForConfig(config, [posixRoot], [])).toBe(true);
+  });
+
+  it('retains remote restrictions and waits for cloud data for remote paths', () => {
+    const config: FilePickerConfig = {
+      mode: 'remote',
+      selection: 'folders',
+      allowedRemotes: ['drive'],
+      initialLocation: 'drive:photos',
+    };
+    expect(service.isLocationAllowedByConfig('drive:photos', config)).toBe(true);
+    expect(service.isLocationAllowedByConfig('other:photos', config)).toBe(false);
+    expect(service.isLocationAllowedByConfig('/home/hakan', config)).toBe(false);
+    expect(service.isLocationAllowedByConfig('drive:photos', { ...config, mode: 'local' })).toBe(
+      false
+    );
+    expect(service.isDataReadyForConfig(config, [localDrive], [])).toBe(false);
+    expect(service.isDataReadyForConfig(config, [], [remote])).toBe(true);
+    expect(service.isLocationAllowedByConfig('drive:photos', { ...config, mode: 'both' })).toBe(
+      true
+    );
+    expect(service.isLocationAllowedByConfig('other:photos', { ...config, mode: 'both' })).toBe(
+      false
+    );
   });
 
   it('deduplicates panel navigation and truncates the forward branch', async () => {

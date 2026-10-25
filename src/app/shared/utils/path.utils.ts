@@ -1,4 +1,12 @@
-import { ExplorerRoot, MountPathCollision, PathGroup, PathSegment, PathStyle } from '@app/types';
+import {
+  ExplorerRoot,
+  MountPathCollision,
+  PathGroup,
+  PathSegment,
+  PathStyle,
+  REMOTE_CONFIG_KEYS,
+  DefaultPathOp,
+} from '@app/types';
 
 /**
  * Splits a path into non-empty segments by forward or back slash.
@@ -44,7 +52,7 @@ export function normalizeForPlatform(path: string, pathStyle: PathStyle = 'posix
  * Joins path segments into a canonical normalized POSIX path.
  */
 export function joinPath(...segments: string[]): string {
-  return normalizePath(segments.filter(s => s != null).join('/'));
+  return normalizePath(segments.filter(Boolean).join('/'));
 }
 
 /**
@@ -70,14 +78,26 @@ export function getDirname(path: string): string {
  * Returns the parent path respecting platform style.
  */
 export function getParentPath(path: string, pathStyle: PathStyle = 'posix'): string {
-  if (!path || path === '/') return '';
+  if (!path || path === '/' || (pathStyle === 'windows' && path === '\\')) return '';
   if (pathStyle === 'windows' && /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
 
-  const segments = splitSegments(path);
-  if (segments.length <= 1) return path.startsWith('/') ? '/' : '';
+  const segments = (pathStyle === 'windows' ? path.replace(/\\/g, '/') : path)
+    .split('/')
+    .filter(Boolean);
+  const rooted = path.startsWith('/') || (pathStyle === 'windows' && path.startsWith('\\'));
+  if (pathStyle === 'windows' && /^[\\/]{2}/.test(path)) {
+    const rootSegments = segments[0] === '?' && segments[1]?.toUpperCase() === 'UNC' ? 4 : 2;
+    if (segments.length <= rootSegments) return '';
+    const parent = `//${segments.slice(0, -1).join('/')}`;
+    return /^\/\/\?\/[a-zA-Z]:$/.test(parent) ? `${parent}/` : parent;
+  }
+  if (segments.length <= 1) return rooted ? '/' : '';
 
   segments.pop();
-  return (path.startsWith('/') ? '/' : '') + segments.join('/');
+  if (pathStyle === 'windows' && segments.length === 1 && /^[a-zA-Z]:$/.test(segments[0])) {
+    return `${segments[0]}/`;
+  }
+  return (rooted ? '/' : '') + segments.join('/');
 }
 
 /**
@@ -104,17 +124,17 @@ export function normalizeRemoteName(remoteName?: string, pathStyle: PathStyle = 
 }
 
 /**
- * Appends a trailing colon if missing, unless it represents an absolute local path.
+ * Appends a trailing colon to remote names, preserving rooted paths and Windows drive paths.
  */
 export function normalizeRemoteForRclone(
   remoteName?: string,
   pathStyle: PathStyle = 'posix'
 ): string {
   if (!remoteName) return '';
-  const isAbsoluteLocal =
-    pathStyle === 'windows' ? /^[A-Za-z]:[\\/]/.test(remoteName) : remoteName.startsWith('/');
+  const isLocal =
+    pathStyle === 'windows' ? /^(?:[A-Za-z]:|[\\/])/.test(remoteName) : remoteName.startsWith('/');
 
-  if (isAbsoluteLocal) return remoteName;
+  if (isLocal) return remoteName;
   return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
 }
 
@@ -138,7 +158,10 @@ export function splitLocalPath(
 ): { remote: string; remainder: string } {
   if (pathStyle === 'windows') {
     const match = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
-    if (match) return { remote: match[1] + (match[2] ?? '\\'), remainder: match[3] };
+    if (match) {
+      const separator = match[2] || (match[3] ? '' : '\\');
+      return { remote: match[1] + separator, remainder: match[3] };
+    }
   } else if (path.startsWith('/')) {
     return { remote: '/', remainder: path.substring(1) };
   }
@@ -153,15 +176,19 @@ export function splitLocalForStat(
   pathStyle: PathStyle = 'posix'
 ): { root: string; relative: string } {
   if (pathStyle === 'windows') {
-    const match = path.match(/^([A-Za-z]:)(.*)$/);
-    const root = match ? match[1] + '/' : 'C:/';
-    const remainder = match ? match[2] : path;
-    let relative = remainder.replace(/\\/g, '/');
-    if (relative.startsWith('/')) relative = relative.substring(1);
-    return { root, relative };
+    const normalized = path.replace(/\\/g, '/');
+    const drive = normalized.match(/^((?:\/\/\?\/)?[A-Za-z]:)(\/?)(.*)$/);
+    if (drive) return { root: drive[1] + drive[2], relative: drive[3] };
+    const unc = normalized.match(/^(\/\/(?:\?\/UNC\/)?[^/]+\/[^/]+)(?:\/(.*))?$/i);
+    if (unc) return { root: unc[1], relative: unc[2] ?? '' };
+    if (normalized.startsWith('//')) return { root: normalized, relative: '' };
+    return {
+      root: normalized.startsWith('/') ? '/' : '.',
+      relative: normalized.replace(/^\/+/, ''),
+    };
   }
   const relative = path.startsWith('/') ? path.substring(1) : path;
-  return { root: '/', relative };
+  return { root: path.startsWith('/') ? '/' : '.', relative };
 }
 
 /**
@@ -241,7 +268,7 @@ export function getRemoteNameFromValue(value: string, currentRemoteName: string)
  * Returns a user-friendly full display path.
  */
 export function getFullDisplayPath(
-  remote: ExplorerRoot | null,
+  remote: Pick<ExplorerRoot, 'name' | 'isLocal'> | null,
   path: string,
   pathStyle: PathStyle = 'posix'
 ): string {
@@ -252,7 +279,8 @@ export function getFullDisplayPath(
     if (pathStyle === 'windows' && path) {
       cleanPath = path.replace(/^[\\/]+/, '').replace(/\//g, '\\');
     }
-    const hasSep = remote.name.endsWith('/') || remote.name.endsWith('\\');
+    const hasSep =
+      remote.name.endsWith('/') || (pathStyle === 'windows' && remote.name.endsWith('\\'));
     const sep = hasSep ? '' : slash;
     return cleanPath ? `${remote.name}${sep}${cleanPath}` : remote.name;
   }
@@ -331,6 +359,9 @@ export function isTrulyLocalPath(
   pathStyle: PathStyle = 'posix'
 ): boolean {
   if (!path) return false;
+  if (path.startsWith('/') || (pathStyle === 'windows' && path.startsWith('\\'))) {
+    return isLocalPath(path, remoteNames, pathStyle);
+  }
   const colonIdx = path.indexOf(':');
   if (colonIdx > -1) {
     if (pathStyle === 'windows' && /^[a-zA-Z]:/.test(path)) {
@@ -366,23 +397,44 @@ export function splitFsPath(
  */
 export function parseLocation(
   rawInput: string,
-  knownRemotes: ExplorerRoot[]
+  knownRemotes: ExplorerRoot[],
+  pathStyle: PathStyle = 'posix'
 ): { remote: ExplorerRoot; path: string } | null {
   if (!rawInput) return null;
 
-  let normalized = rawInput.replace(/\\/g, '/');
+  const windows = pathStyle === 'windows';
+  const localInput = rawInput.startsWith('/') || (windows && /^(?:[a-zA-Z]:|\\)/.test(rawInput));
+  let normalized = windows && localInput ? rawInput.replace(/\\/g, '/') : rawInput;
   if (normalized.length > 1 && normalized.endsWith('/')) normalized = normalized.slice(0, -1);
 
-  const driveMatch = knownRemotes.find(r => {
-    if (!r.isLocal) return false;
-    const rNorm = r.name.replace(/\\/g, '/').toLowerCase();
-    const inputNorm = normalized.toLowerCase();
-    return inputNorm.startsWith(rNorm) || (rNorm.endsWith('/') && inputNorm === rNorm.slice(0, -1));
-  });
+  const inputNorm = windows ? normalized.toLowerCase() : normalized;
+  let driveMatch: ExplorerRoot | undefined;
+  let matchedLength = -1;
+  for (const remote of knownRemotes) {
+    if (!remote.isLocal || !remote.name) continue;
+    const root = (windows ? remote.name.replace(/\\/g, '/') : remote.name).replace(/\/+$/, '');
+    const rootNorm = windows ? root.toLowerCase() : root;
+    if (
+      root.length > matchedLength &&
+      (inputNorm === rootNorm || inputNorm.startsWith(`${rootNorm}/`))
+    ) {
+      driveMatch = remote;
+      matchedLength = root.length;
+    }
+  }
 
   if (driveMatch) {
-    const rNorm = driveMatch.name.replace(/\\/g, '/');
-    return { remote: driveMatch, path: normalized.substring(rNorm.length).replace(/^[/:]+/, '') };
+    return { remote: driveMatch, path: normalized.substring(matchedLength).replace(/^\/+/, '') };
+  }
+
+  if (localInput) {
+    const { root, relative } = splitLocalForStat(normalized, pathStyle);
+    // Keep drive-relative roots relative when another segment is appended.
+    const name = windows && /^[a-zA-Z]:$/.test(root) ? `${root}.` : root;
+    return {
+      remote: { name, label: name, type: 'local', isLocal: true },
+      path: relative,
+    };
   }
 
   const colonIdx = normalized.indexOf(':');
@@ -397,11 +449,6 @@ export function parseLocation(
       isLocal: false,
     };
     return { remote: targetRemote, path: rPath.startsWith('/') ? rPath.substring(1) : rPath };
-  }
-
-  if (normalized.startsWith('/')) {
-    const root = knownRemotes.find(r => r.name === '/');
-    if (root) return { remote: root, path: normalized.substring(1) };
   }
 
   const exactMatch = knownRemotes.find(r => r.name === normalized || r.name === rawInput);
@@ -424,14 +471,18 @@ export function checkMountPathCollision(
   currentRemoteName: string,
   allSettings: Record<string, unknown> | undefined | null,
   isLocalPathFn: (path: string) => boolean,
-  currentProfileName?: string
+  currentProfileName?: string,
+  options: { pathStyle?: PathStyle; currentOperation?: DefaultPathOp } = {}
 ): MountPathCollision[] {
   if (!proposedPath || !proposedPath.trim()) return [];
 
-  const normTarget = proposedPath
-    .trim()
-    .replace(/[/\\]+$/, '')
-    .toLowerCase();
+  const normalize = (value: string): string => {
+    const path = (options.pathStyle === 'windows' ? value.replace(/\\/g, '/') : value)
+      .trim()
+      .replace(/\/+$/, '');
+    return options.pathStyle === 'windows' ? path.toLowerCase() : path;
+  };
+  const normTarget = normalize(proposedPath);
   const collisions: MountPathCollision[] = [];
   if (!allSettings) return [];
   const opKeys = ['mount', 'bisync'] as const;
@@ -440,20 +491,26 @@ export function checkMountPathCollision(
     if (!rConfig || typeof rConfig !== 'object') continue;
 
     for (const opType of opKeys) {
-      const profilesMap = (rConfig as Record<string, unknown>)[opType] as
+      const remoteConfig = rConfig as Record<string, unknown>;
+      const profilesMap = (remoteConfig[REMOTE_CONFIG_KEYS[opType]] ?? remoteConfig[opType]) as
         Record<string, Record<string, unknown>> | undefined;
       if (!profilesMap || typeof profilesMap !== 'object') continue;
 
       for (const [pName, pConfig] of Object.entries(profilesMap)) {
         if (!pConfig || typeof pConfig !== 'object') continue;
-        if (rName === currentRemoteName && pName === currentProfileName) continue;
+        if (
+          rName === currentRemoteName &&
+          pName === currentProfileName &&
+          (!options.currentOperation || options.currentOperation === opType)
+        )
+          continue;
 
         const pathsToCheck: string[] = [];
+        const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
         if (opType === 'mount') {
           if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
           const dest = pConfig['dest'] as { path?: string } | undefined;
           if (dest?.path) pathsToCheck.push(dest.path);
-          const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
           if (typeof rclone?.['mountPoint'] === 'string') {
             pathsToCheck.push(rclone['mountPoint']);
           }
@@ -462,16 +519,17 @@ export function checkMountPathCollision(
           if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
           const dest = pConfig['dest'] as { path?: string } | undefined;
           if (dest?.path) pathsToCheck.push(dest.path);
+          for (const key of ['path1', 'path2']) {
+            const value = rclone?.[key];
+            if (typeof value === 'string') pathsToCheck.push(value);
+          }
         }
 
         for (const rawPath of pathsToCheck) {
           if (!rawPath || typeof rawPath !== 'string') continue;
           if (!isLocalPathFn(rawPath)) continue;
 
-          const normPath = rawPath
-            .trim()
-            .replace(/[/\\]+$/, '')
-            .toLowerCase();
+          const normPath = normalize(rawPath);
           if (normPath === normTarget) {
             collisions.push({
               remoteName: rName,

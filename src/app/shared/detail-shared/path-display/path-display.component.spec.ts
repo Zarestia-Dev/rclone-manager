@@ -9,8 +9,10 @@ describe('PathDisplayComponent path state', () => {
   let fixture: ComponentFixture<PathDisplayComponent>;
   let component: PathDisplayComponent;
   let paths: PathService;
+  const isWindows = signal(false);
 
   beforeEach(() => {
+    isWindows.set(false);
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockReturnValue({
@@ -21,7 +23,7 @@ describe('PathDisplayComponent path state', () => {
     );
     TestBed.configureTestingModule({
       imports: [PathDisplayComponent],
-      providers: [{ provide: BackendService, useValue: { isWindows: signal(false) } }],
+      providers: [{ provide: BackendService, useValue: { isWindows } }],
     }).overrideComponent(PathDisplayComponent, { set: { template: '', imports: [] } });
     paths = TestBed.inject(PathService);
     paths.setRemoteNames(['drive']);
@@ -52,8 +54,8 @@ describe('PathDisplayComponent path state', () => {
     expect(component.sourcePrimaryPath()).toBe(remote);
     expect(component.sourcePrimaryPathIsLocal()).toBe(false);
     expect(component.sourcePathItems()).toEqual([
-      { path: remote, isLocal: false },
-      { path: local, isLocal: true },
+      { path: remote, displayPath: remote, isLocal: false },
+      { path: local, displayPath: local, isLocal: true },
     ]);
     expect(component.sourceDisplay()).toBe(`${remote}, ${local}`);
     expect(component.sourceTooltip()).toBe(`${remote}\n${local}`);
@@ -68,5 +70,44 @@ describe('PathDisplayComponent path state', () => {
     expect(component.sourceIsMultiPath()).toBe(false);
     expect(component.sourcePrimaryPath()).toBe(local);
     expect(component.destinationIsLocal()).toBe(false);
+  });
+
+  it('renders Windows local paths with native separators while retaining operation paths', () => {
+    isWindows.set(true);
+    const source = 'C:/Users/hakan/Arşiv 2026';
+    const remote = 'drive:photos/旅行';
+    fixture.componentRef.setInput('config', {
+      source: [source, remote],
+      destination: 'D:/Yedek/Arşiv',
+    });
+    expect(component.sourceDisplay()).toBe(`C:\\Users\\hakan\\Arşiv 2026, ${remote}`);
+    expect(component.sourceTooltip()).toBe(`C:\\Users\\hakan\\Arşiv 2026\n${remote}`);
+    expect(component.destinationDisplay()).toBe('D:\\Yedek\\Arşiv');
+    expect(component.sourcePrimaryPath()).toBe(source);
+    expect(component.sourcePathItems()).toEqual([
+      { path: source, displayPath: 'C:\\Users\\hakan\\Arşiv 2026', isLocal: true },
+      { path: remote, displayPath: remote, isLocal: false },
+    ]);
+    expect(component.config().destination).toBe('D:/Yedek/Arşiv');
+  });
+
+  it.each(['drive:folder/file', 'https://example.com/path', 'saf://drive/folder', 'HTTP at :8080'])(
+    'preserves non-local destinations on Windows: %s',
+    destination => {
+      isWindows.set(true);
+      fixture.componentRef.setInput('config', { source: 'drive:folder/file', destination });
+      expect(component.sourceDisplay()).toBe('drive:folder/file');
+      expect(component.destinationDisplay()).toBe(destination);
+    }
+  );
+
+  it('updates local path rendering when the backend OS changes', () => {
+    fixture.componentRef.setInput('config', { source: 'C:/Users/hakan', destination: 'D:/backup' });
+    expect(component.sourceDisplay()).toBe('C:/Users/hakan');
+    isWindows.set(true);
+    expect(component.sourceDisplay()).toBe('C:\\Users\\hakan');
+    expect(component.destinationDisplay()).toBe('D:\\backup');
+    isWindows.set(false);
+    expect(component.destinationDisplay()).toBe('D:/backup');
   });
 });
