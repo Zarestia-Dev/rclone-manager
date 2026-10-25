@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dev-dependencies]
-rcman = { version = "0.2", default-features = false }
+rcman = { version = "0.2.5", default-features = false }
 
 [dependencies]
 rclone-manager-core = { path = "../core", default-features = false }

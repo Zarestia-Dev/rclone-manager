@@ -35,5 +35,5 @@ tempfile = "3"
 percent-encoding = "2"
 
 [dev-dependencies]
-rcman = "0.2"
+rcman = "0.2.5"
 tower = { version = "0.5", features = ["util"] }
