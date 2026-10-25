@@ -126,6 +126,19 @@ jobs:
         with:
           pattern: server-*
           path: artifacts
+      - name: Ensure release tag exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: headless-v${{ needs.release-metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release tag $TAG already exists"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$GITHUB_SHA"
+          fi
       - name: Prepare shared draft release
         uses: actions/github-script@v8
         env:

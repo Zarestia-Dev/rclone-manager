@@ -85,6 +85,20 @@ jobs:
         id: release_version
         run: node scripts/release-version.cjs backend/desktop/tauri.conf.headless.json
 
+      - name: Ensure release tag exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: headless-v${{ steps.release_version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release tag $TAG already exists"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$GITHUB_SHA"
+          fi
+
       - name: Build and Release Headless
         uses: tauri-apps/tauri-action@v1
         env:

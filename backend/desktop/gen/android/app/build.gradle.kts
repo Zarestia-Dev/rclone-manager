@@ -72,13 +72,13 @@ val rustlsAndroidPackage = providers.exec {
 
 repositories {
     maven {
-        url = uri(File(rustlsAndroidPackage.get()["manifest_path"] as String).parentFile.resolve("maven"))
+        url = uri("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/")
         metadataSources { mavenPom(); artifact() }
     }
 }
 
 dependencies {
-    implementation("rustls:rustls-platform-verifier:${rustlsAndroidPackage.get()["version"]}")
+    implementation("org.rustls:rustls-platform-verifier:${rustlsAndroidPackage.get()["version"]}")
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity-ktx:1.10.1")
