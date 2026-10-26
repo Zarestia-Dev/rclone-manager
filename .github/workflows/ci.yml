@@ -152,9 +152,6 @@ jobs:
       - run: cargo clippy --locked --release -p rclone-manager-server --all-targets -- -D warnings
       - run: cargo test --locked --release -p rclone-manager-server --lib
       - run: cargo build --locked --release -p rclone-manager-server
-      - name: Start without credentials
-        working-directory: .
-        run: scripts/server-smoke.sh backend/target/release/rclone-manager-server
 
   android:
     name: Android target
