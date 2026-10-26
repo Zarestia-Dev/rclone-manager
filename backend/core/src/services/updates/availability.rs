@@ -11,12 +11,9 @@ pub(super) fn external_asset(
     if os != "linux" {
         return None;
     }
+    // A release tag only carries its own product's packages, so the product
+    // name is not part of the match and renaming it cannot hide an update.
     let version = super::clean_app_version(&release.tag_name);
-    let product = if release.tag_name.starts_with("headless-v") {
-        "RClone.Manager.Headless"
-    } else {
-        "RClone.Manager"
-    };
     let deb_arch = match arch {
         "x86_64" => "amd64",
         "aarch64" => "arm64",
@@ -30,12 +27,15 @@ pub(super) fn external_asset(
                 asset.name == format!("server-linux-{arch}-{version}.zip")
             }
             InstallationKind::Flatpak | InstallationKind::Pacman | InstallationKind::Deb => {
-                asset.name == format!("{product}_{version}_{deb_arch}.deb")
+                asset.name.ends_with(&format!("_{version}_{deb_arch}.deb"))
             }
-            InstallationKind::Rpm => {
-                asset.name.starts_with(&format!("{product}-{version}-"))
-                    && asset.name.ends_with(&format!(".{arch}.rpm"))
-            }
+            InstallationKind::Rpm => asset
+                .name
+                .strip_suffix(&format!(".{arch}.rpm"))
+                .and_then(|stem| stem.rsplit_once('-'))
+                .is_some_and(|(name_version, _release)| {
+                    name_version.ends_with(&format!("-{version}"))
+                }),
             _ => false,
         })
         .map(|asset| asset.name.clone())
@@ -86,7 +86,7 @@ mod tests {
                     for wrong in [
                         format!("{product}_1.2.2_{deb_arch}.deb"),
                         format!("{product}_1.2.3-beta.1_other.deb"),
-                        format!("Other_1.2.3-beta.1_{deb_arch}.deb"),
+                        format!("{product}_1.2.3-beta.1_{deb_arch}.rpm"),
                         rpm.clone(),
                     ] {
                         assert!(
@@ -103,6 +103,49 @@ mod tests {
                         .is_none()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn packages_are_found_whatever_the_product_is_called() {
+        for product in ["Renamed", "RClone.Manager.Pro", "A-B"] {
+            let deb = format!("{product}_1.2.3_amd64.deb");
+            let rpm = format!("{product}-1.2.3-1.x86_64.rpm");
+            assert_eq!(
+                external_asset(
+                    &release("v1.2.3", &[&deb]),
+                    InstallationKind::Deb,
+                    "linux",
+                    "x86_64"
+                ),
+                Some(deb)
+            );
+            assert_eq!(
+                external_asset(
+                    &release("v1.2.3", &[&rpm]),
+                    InstallationKind::Rpm,
+                    "linux",
+                    "x86_64"
+                ),
+                Some(rpm)
+            );
+        }
+        for wrong in [
+            "Renamed-1.2.30-1.x86_64.rpm",
+            "Renamed-1.2.3-beta.1-1.x86_64.rpm",
+            "Renamed-1.2.3.x86_64.rpm",
+            "Renamed-1.2.3-1.aarch64.rpm",
+        ] {
+            assert!(
+                external_asset(
+                    &release("v1.2.3", &[wrong]),
+                    InstallationKind::Rpm,
+                    "linux",
+                    "x86_64"
+                )
+                .is_none(),
+                "{wrong}"
+            );
         }
     }
 
