@@ -24,6 +24,13 @@ independent Tauri signatures from a separate disposable key. Tests check both
 verification stages and full macOS bundle replacement/rollback, including
 `Info.plist` and signature resources. The private key was discarded.
 
+`server-catalog.json`, `server-public.key`, and the three `server-*.zip` archives
+are the equivalent for standalone server packages: each ZIP holds the harmless
+`payload.txt` as `rclone-manager-server/rclone-manager-server[.exe]` beside a sample
+README (and a unit stub on Linux), including the macOS ZIP, which is not an app
+bundle. They were signed by `publish()` in `scripts/create-update-manifest.cjs`
+with a separate disposable key whose private half was discarded.
+
 `process-app.sh`, `process-99.0.0.json`, `process-99.0.1.json`, their manifest
 signatures, and `process-public.key` form a second fixture set. Linux x86_64
 process tests install this signed shell script and exercise startup commitment,

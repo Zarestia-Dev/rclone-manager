@@ -48,7 +48,7 @@ function validateArtifact({ size, sha256, signature }) {
 
 function validateArchivePath({ kind, target, asset }, binaryPath) {
   if (
-    kind !== 'portable' ||
+    !['portable', 'server'].includes(kind) ||
     !/^(windows|linux|macos)-/.test(target) ||
     !asset.endsWith('.zip') ||
     typeof binaryPath !== 'string' ||
@@ -56,7 +56,8 @@ function validateArchivePath({ kind, target, asset }, binaryPath) {
     binaryPath.includes(':') ||
     /[\p{Cc}]/u.test(binaryPath) ||
     binaryPath.split('/').some(part => ['', '.', '..'].includes(part)) ||
-    (target.startsWith('macos-') &&
+    (kind === 'portable' &&
+      target.startsWith('macos-') &&
       !/^[^/]+\.app\/Contents\/MacOS\/rclone-manager$/.test(binaryPath))
   )
     throw new Error('Invalid portable archive metadata');

@@ -70,7 +70,7 @@ pub(super) struct ArchiveInfo {
 
 impl ArchiveInfo {
     fn validate(&self, manifest: &Manifest) -> Result<(), String> {
-        if manifest.kind != "portable"
+        if !matches!(manifest.kind.as_str(), "portable" | "server")
             || !manifest.asset.ends_with(".zip")
             || !["windows-", "linux-", "macos-"]
                 .iter()
@@ -78,9 +78,11 @@ impl ArchiveInfo {
             || !valid_artifact(self.size, &self.sha256, &self.signature)
             || !safe_member_path(&self.binary_path)
             || self.binary_path.ends_with('/')
-            || (manifest.target.starts_with("macos-") && manifest.bundle_root().is_none())
+            || (manifest.kind == "portable"
+                && manifest.target.starts_with("macos-")
+                && manifest.bundle_root().is_none())
         {
-            return Err("Invalid portable ZIP metadata".into());
+            return Err("Invalid update ZIP metadata".into());
         }
         Ok(())
     }
@@ -345,6 +347,88 @@ mod tests {
         }
     }
 
+    fn server_manifest(target: &str) -> Manifest {
+        select_manifest(
+            include_bytes!("fixtures/server-catalog.json"),
+            "99.0.0",
+            "server",
+            target,
+            include_str!("fixtures/server-public.key"),
+        )
+        .unwrap()
+        .unwrap()
+        .0
+    }
+
+    #[test]
+    fn server_zips_install_only_their_authenticated_executable_on_every_platform() {
+        let key = include_str!("fixtures/server-public.key");
+        for (target, bytes) in [
+            (
+                "linux-x86_64",
+                include_bytes!("fixtures/server-linux-x86_64-99.0.0.zip").as_slice(),
+            ),
+            (
+                "windows-x86_64",
+                include_bytes!("fixtures/server-windows-x86_64-99.0.0.zip").as_slice(),
+            ),
+            (
+                "macos-aarch64",
+                include_bytes!("fixtures/server-macos-aarch64-99.0.0.zip").as_slice(),
+            ),
+        ] {
+            let manifest = server_manifest(target);
+            assert_eq!(manifest.asset, format!("server-{target}-99.0.0.zip"));
+            // A server ZIP never carries an app bundle, even on macOS.
+            assert!(manifest.bundle_root().is_none());
+            assert_eq!(manifest.download_size(), bytes.len() as u64);
+            let payload = manifest.prepare_download(bytes.to_vec(), key).unwrap();
+            assert_eq!(payload, include_bytes!("fixtures/payload.txt"));
+            assert_eq!(manifest.install_size(), payload.len() as u64);
+            manifest.verify_install_payload(&payload, key).unwrap();
+            assert!(
+                manifest
+                    .prepare_download(bytes.to_vec(), PUBLIC_KEY)
+                    .is_err()
+            );
+            let mut tampered = bytes.to_vec();
+            tampered[0] ^= 1;
+            assert!(manifest.prepare_download(tampered, key).is_err());
+        }
+    }
+
+    #[test]
+    fn server_zip_metadata_rejects_unsafe_member_paths_and_bad_names() {
+        let manifest = server_manifest("linux-x86_64");
+        let archive = manifest.archive.as_ref().unwrap();
+        archive.validate(&manifest).unwrap();
+        for path in [
+            "",
+            "../rclone-manager-server",
+            "/rclone-manager-server",
+            "a//b",
+            "dir/",
+        ] {
+            let mut invalid = archive.clone();
+            invalid.binary_path = path.into();
+            assert!(invalid.validate(&manifest).is_err());
+        }
+        let mut invalid = manifest.clone();
+        invalid.asset = "server-linux-x86_64-99.0.0".into();
+        assert!(archive.validate(&invalid).is_err());
+        // Archives remain limited to the products that package them.
+        let mut invalid = manifest;
+        invalid.target = "android-aarch64".into();
+        assert!(
+            invalid
+                .archive
+                .as_ref()
+                .unwrap()
+                .validate(&invalid)
+                .is_err()
+        );
+    }
+
     #[test]
     fn archive_metadata_rejects_paths_wrong_products_and_missing_authentication() {
         let manifest = test_portable_manifest("linux-x86_64");
@@ -363,7 +447,7 @@ mod tests {
         invalid.signature.clear();
         assert!(invalid.validate(&manifest).is_err());
         let mut invalid = manifest.clone();
-        invalid.kind = "server".into();
+        invalid.kind = "android".into();
         assert!(archive.validate(&invalid).is_err());
         let mut invalid = manifest.clone();
         invalid.asset = "portable.tar.gz".into();

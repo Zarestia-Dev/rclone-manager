@@ -16,19 +16,20 @@ The desktop executable is `rclone-manager`. The pure server is
 Windows adds `.exe`.
 
 Two independent workflows upload to the same `headless-v<version>` release:
-`release-server.yml` builds Server executables; `release-headless.yml` builds
+`release-server.yml` builds Server packages; `release-headless.yml` builds
 Server + Tray installers. A failure in one does not block the other.
 
-- **Server:** `server-<os>-<arch>-<version>` (Linux/macOS) or
-  `server-windows-<arch>-<version>.exe` (Windows). The executable embeds the UI,
-  translations, and HTML templates. The same file is used for downloads and updates.
+- **Server:** `server-<os>-<arch>-<version>.zip`. It contains the
+  `rclone-manager-server` executable (`.exe` on Windows), `LICENSE`, a short
+  `README.txt` and, on Linux, the systemd service template. The executable embeds
+  the UI, translations, and HTML templates. The same ZIP is used for downloads and
+  updates; the updater extracts only the executable.
 - **Server + Tray:** native installers named `rclone-manager-headless`.
 
-Server executables target Linux, Windows, and macOS on x86_64 and aarch64.
-Download the file for your operating system and processor. You can run it under its
-downloaded name, or rename it to `rclone-manager-server` (`.exe` on Windows) to use
-the commands and service template below. On Linux/macOS, grant execute permission
-with `chmod +x ./rclone-manager-server`, then run `./rclone-manager-server`.
+Server packages target Linux, Windows, and macOS on x86_64 and aarch64.
+Download the ZIP for your operating system and processor and extract it. On
+Linux/macOS, make sure the executable is runnable with
+`chmod +x ./rclone-manager-server`, then run `./rclone-manager-server`.
 Linux executables require glibc 2.35+ and the D-Bus runtime library; mounting also
 requires FUSE. They are not static binaries for Alpine/musl.
 The Dockerfile builds the pure server. Existing published releases are unchanged.

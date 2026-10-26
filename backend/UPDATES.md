@@ -29,7 +29,7 @@ Read-only or administratively disabled installations still check artifact
 availability, while installation remains disabled.
 
 External installations announce upstream availability using a matching Linux
-server executable for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
+server ZIP for Docker, a matching DEB for Flatpak/AUR/DEB, or a matching RPM
 for RPM installations. Desktop and headless products and package architecture
 names are matched separately. This does not confirm that the corresponding
 container image, Flathub build, or AUR package has already been published there.
@@ -48,7 +48,7 @@ grants privileges.
 
 Portable, server, and APK release workflows run
 `scripts/create-update-manifest.cjs`. They publish a shared signed catalog
-(`updater.json`) and versioned ZIPs, executables, or APKs. Signatures are embedded
+(`updater.json`) and versioned ZIPs or APKs. Signatures are embedded
 in the catalog rather than published as sidecars. See
 [release update manifests](../scripts/UPDATER.md) for the schema and packaging.
 
