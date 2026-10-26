@@ -2964,6 +2964,7 @@
     },
     "rclone": {
       "downloadCancelled": "Загрузка отменена пользователем",
+      "noUpdateAvailable": "Нет доступных обновлений",
       "mountPluginInstallFailed": "Не удалось установить компонент подключения дисков: {{error}}",
       "mountPluginVerificationFailed": "Установка завершена, но проверка не пройдена. Может потребоваться перезапуск.",
       "configEncrypted": "Конфигурация зашифрована, но пароль не указан",
@@ -3056,11 +3057,18 @@
       "relaunchFailed": "Не удалось повторно запустить приложение: {{error}}",
       "restartFailed": "Не удалось перезапустить: {{error}}",
       "notWritable": "Нет прав на запись в папку обновления",
+      "rollback": {
+        "exited": "Обновлённое приложение завершилось до подтверждения запуска (код {{code}}).",
+        "couldNotStart": "Не удалось запустить обновлённое приложение: {{error}}",
+        "interrupted": "Запуск обновлённого приложения был прерван завершением работы.",
+        "notConfirmed": "Обновлённое приложение не подтвердило запуск вовремя.",
+        "installFailed": "Не удалось установить обновление: {{error}}"
+      },
+      "rolledBack": "Обновление {{version}} было отменено: {{reason}}",
       "ioError": "Ошибка ввода-вывода: {{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
