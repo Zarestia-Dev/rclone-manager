@@ -23,8 +23,16 @@ pub fn apply_linux_graphics_quirks() {
         .iter()
         .filter_map(|key| std::env::var(key).ok())
         .any(|value| is_strict_wayland_compositor(&value));
+    // The KWin version gate below only applies to KDE/Plasma sessions:
+    // Hyprland has no kwin_wayland binary, and its version would be
+    // meaningless if one happened to be installed.
+    let kde_plasma = ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
+        .iter()
+        .filter_map(|key| std::env::var(key).ok())
+        .any(|value| is_kde_plasma_compositor(&value));
+    let kwin = if kde_plasma { kwin_version() } else { None };
 
-    for key in webkit_workarounds(wayland, strict_compositor, nvidia_driver_version()) {
+    for key in webkit_workarounds(wayland, strict_compositor, nvidia_driver_version(), kwin) {
         if std::env::var_os(key).is_none() {
             // SAFETY: runs single-threaded before GTK and the async runtime start.
             unsafe { std::env::set_var(key, "1") };
@@ -34,13 +42,33 @@ pub fn apply_linux_graphics_quirks() {
 
 /// Selects overrides without mutating the environment, so the platform policy
 /// can be regression-tested independently of the host GPU and display server.
+///
+/// `kwin_version` is `Some` only on KDE/Plasma sessions where `kwin_wayland
+/// --version` could be parsed; it is `None` everywhere else (Hyprland,
+/// unparseable output, binary absent), which keeps the previous behavior.
 fn webkit_workarounds(
     wayland: bool,
     strict_compositor: bool,
     driver_major: Option<u32>,
+    kwin_version: Option<(u32, u32)>,
 ) -> &'static [&'static str] {
     if !wayland {
         return &[];
+    }
+
+    // KWin 6.8 fixed the explicit-sync interop that required disabling
+    // compositing on 6.7 and older; forcing software compositing there now
+    // prevents the window from mapping. Verified matrices:
+    // - KWin 6.7.5 / webkit2gtk-4.1 2.54.1 / NVIDIA 615: quirk required.
+    // - Plasma 6.8.1 / webkit2gtk-4.1 2.54.2 / NVIDIA 615.78: quirk breaks
+    //   mapping; a clean environment renders correctly.
+    const KWIN_FIXED_SINCE: (u32, u32) = (6, 8);
+    if strict_compositor && kwin_version.is_some_and(|version| version >= KWIN_FIXED_SINCE) {
+        return if driver_major.is_some_and(|v| v < 515) {
+            &["WEBKIT_DISABLE_DMABUF_RENDERER"]
+        } else {
+            &[]
+        };
     }
 
     // Retain the existing Wayland behavior: compositing off for the explicit-sync
@@ -96,6 +124,39 @@ fn is_strict_wayland_compositor(value: &str) -> bool {
     })
 }
 
+/// Returns true for KDE/Plasma desktop values. Used to scope the KWin
+/// version gate: only KWin itself reports a meaningful KWin version.
+fn is_kde_plasma_compositor(value: &str) -> bool {
+    value
+        .split(':')
+        .any(|entry| matches!(entry.trim().to_ascii_lowercase().as_str(), "kde" | "plasma"))
+}
+
+/// Returns the running KWin version as `(major, minor)`, or `None` when the
+/// `kwin_wayland` binary is absent, fails, or reports an unparseable version.
+/// Unknown means "keep the conservative workaround" to the caller.
+fn kwin_version() -> Option<(u32, u32)> {
+    let output = std::process::Command::new("kwin_wayland")
+        .arg("--version")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    parse_kwin_version(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// Parses `(major, minor)` from a `"<name> <major>.<minor>.<patch>"` version
+/// line such as the `kwin 6.8.1` reported by `kwin_wayland --version`.
+fn parse_kwin_version(output: &str) -> Option<(u32, u32)> {
+    output.split_whitespace().find_map(|token| {
+        let mut parts = token.split('.');
+        let major = parts.next()?.parse::<u32>().ok()?;
+        let minor = parts.next()?.parse::<u32>().ok()?;
+        Some((major, minor))
+    })
+}
+
 /// Returns the major version number of the loaded NVIDIA driver, parsed from
 /// `/proc/driver/nvidia/version`.
 ///
@@ -130,7 +191,10 @@ fn nvidia_proprietary_driver_loaded() -> bool {
 
 #[cfg(test)]
 mod graphics_quirks_tests {
-    use super::{is_strict_wayland_compositor, is_wayland_session, webkit_workarounds};
+    use super::{
+        is_kde_plasma_compositor, is_strict_wayland_compositor, is_wayland_session,
+        parse_kwin_version, webkit_workarounds,
+    };
 
     #[test]
     fn compositor_detection_handles_lists_case_and_empty_values() {
@@ -169,7 +233,9 @@ mod graphics_quirks_tests {
     fn x11_never_forces_a_renderer_even_with_old_nvidia_and_kde() {
         for strict in [false, true] {
             for driver in [None, Some(470), Some(514), Some(515), Some(580)] {
-                assert!(webkit_workarounds(false, strict, driver).is_empty());
+                for kwin in [None, Some((6, 7)), Some((6, 8))] {
+                    assert!(webkit_workarounds(false, strict, driver, kwin).is_empty());
+                }
             }
         }
     }
@@ -177,24 +243,76 @@ mod graphics_quirks_tests {
     #[test]
     fn wayland_retains_existing_workarounds_and_driver_boundary() {
         for driver in [None, Some(515), Some(580)] {
-            assert!(webkit_workarounds(true, false, driver).is_empty());
+            assert!(webkit_workarounds(true, false, driver, None).is_empty());
             assert_eq!(
-                webkit_workarounds(true, true, driver),
+                webkit_workarounds(true, true, driver, None),
                 &["WEBKIT_DISABLE_COMPOSITING_MODE"]
             );
         }
         for driver in [Some(470), Some(514)] {
             assert_eq!(
-                webkit_workarounds(true, false, driver),
+                webkit_workarounds(true, false, driver, None),
                 &["WEBKIT_DISABLE_DMABUF_RENDERER"]
             );
             assert_eq!(
-                webkit_workarounds(true, true, driver),
+                webkit_workarounds(true, true, driver, None),
                 &[
                     "WEBKIT_DISABLE_COMPOSITING_MODE",
                     "WEBKIT_DISABLE_DMABUF_RENDERER"
                 ]
             );
         }
+    }
+
+    #[test]
+    fn kde_plasma_scopes_the_kwin_version_gate() {
+        for value in ["KDE", "plasma", "GNOME:KDE", " gnome : PLASMA "] {
+            assert!(is_kde_plasma_compositor(value), "{value}");
+        }
+        for value in ["", "GNOME", "ubuntu", "niri", "Hyprland", "not-kde"] {
+            assert!(!is_kde_plasma_compositor(value), "{value}");
+        }
+    }
+
+    #[test]
+    fn kwin_version_parses_major_minor() {
+        assert_eq!(parse_kwin_version("kwin 6.8.1"), Some((6, 8)));
+        assert_eq!(parse_kwin_version("kwin 6.7.5"), Some((6, 7)));
+        assert_eq!(parse_kwin_version("plasmashell 5.27.11"), Some((5, 27)));
+        assert_eq!(parse_kwin_version(""), None);
+        assert_eq!(parse_kwin_version("kwin"), None);
+        assert_eq!(parse_kwin_version("not a version"), None);
+    }
+
+    #[test]
+    fn compositing_quirk_skipped_on_kwin_68_and_newer() {
+        // Verified on Plasma 6.8.1 / NVIDIA 615 / webkit2gtk-4.1 2.54.2:
+        // WEBKIT_DISABLE_COMPOSITING_MODE=1 prevents the window from
+        // mapping, while a clean environment renders correctly.
+        for driver in [None, Some(515), Some(615)] {
+            assert!(
+                webkit_workarounds(true, true, driver, Some((6, 8))).is_empty(),
+                "KWin 6.8 must not force software compositing"
+            );
+            assert!(
+                webkit_workarounds(true, true, driver, Some((6, 9))).is_empty(),
+                "newer KWin must not force software compositing"
+            );
+        }
+        // Older KWin keeps the existing workaround.
+        assert_eq!(
+            webkit_workarounds(true, true, Some(615), Some((6, 7))),
+            &["WEBKIT_DISABLE_COMPOSITING_MODE"]
+        );
+        // Unknown version keeps the conservative workaround.
+        assert_eq!(
+            webkit_workarounds(true, true, Some(615), None),
+            &["WEBKIT_DISABLE_COMPOSITING_MODE"]
+        );
+        // The old-driver DMABUF rule is orthogonal to the KWin gate.
+        assert_eq!(
+            webkit_workarounds(true, true, Some(470), Some((6, 8))),
+            &["WEBKIT_DISABLE_DMABUF_RENDERER"]
+        );
     }
 }
