@@ -237,6 +237,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
+          target_commitish: ${{ github.sha }}
           name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}

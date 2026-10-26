@@ -1,4 +1,4 @@
-name: 'Release Server'
+name: "Release Server"
 
 on:
   workflow_dispatch:
@@ -12,30 +12,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-22.04'
-            os: 'linux'
-            arch: 'x86_64'
-            rust_target: 'x86_64-unknown-linux-gnu'
-          - platform: 'ubuntu-22.04-arm'
-            os: 'linux'
-            arch: 'aarch64'
-            rust_target: 'aarch64-unknown-linux-gnu'
-          - platform: 'windows-latest'
-            os: 'windows'
-            arch: 'x86_64'
-            rust_target: 'x86_64-pc-windows-msvc'
-          - platform: 'windows-11-arm'
-            os: 'windows'
-            arch: 'aarch64'
-            rust_target: 'aarch64-pc-windows-msvc'
-          - platform: 'macos-15-intel'
-            os: 'macos'
-            arch: 'x86_64'
-            rust_target: 'x86_64-apple-darwin'
-          - platform: 'macos-15'
-            os: 'macos'
-            arch: 'aarch64'
-            rust_target: 'aarch64-apple-darwin'
+          - platform: "ubuntu-22.04"
+            os: "linux"
+            arch: "x86_64"
+            rust_target: "x86_64-unknown-linux-gnu"
+          - platform: "ubuntu-22.04-arm"
+            os: "linux"
+            arch: "aarch64"
+            rust_target: "aarch64-unknown-linux-gnu"
+          - platform: "windows-latest"
+            os: "windows"
+            arch: "x86_64"
+            rust_target: "x86_64-pc-windows-msvc"
+          - platform: "windows-11-arm"
+            os: "windows"
+            arch: "aarch64"
+            rust_target: "aarch64-pc-windows-msvc"
+          - platform: "macos-15-intel"
+            os: "macos"
+            arch: "x86_64"
+            rust_target: "x86_64-apple-darwin"
+          - platform: "macos-15"
+            os: "macos"
+            arch: "aarch64"
+            rust_target: "aarch64-apple-darwin"
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
@@ -48,7 +48,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.os == 'linux'
@@ -64,7 +64,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './backend -> target'
+          workspaces: "./backend -> target"
           key: server-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install frontend dependencies
@@ -179,7 +179,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: headless-v${{ steps.get_version.outputs.VERSION }}
-          name: 'RClone Manager Headless v${{ steps.get_version.outputs.VERSION }}'
+          target_commitish: ${{ github.sha }}
+          name: "RClone Manager Headless v${{ steps.get_version.outputs.VERSION }}"
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
           files: artifacts/**/*.zip

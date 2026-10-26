@@ -104,6 +104,31 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.4" date="2026-10-26">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Standalone Web Server: Added a dedicated server executable with independent Linux, Windows, and macOS builds, plus a Linux systemd service template.</li>
+          <li>Configuration Vault: Added master-password protection for application settings and sub-settings, including locking, password changes, inactivity auto-lock, and backup guidance.</li>
+          <li>Empty Directory Uploads: Nautilus and web server uploads now preserve empty directories.</li>
+          <li>Optional Mount Driver Checks: Added an option to skip mount plugin checks and related setup warnings.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Separate Rust Desktop, Server, and Shared Core: Reorganized the backend into a Cargo workspace with dedicated desktop, server, and shared core packages.</li>
+          <li>Embedded Release Resources: Release binaries now embed the Angular interface, backend translations, and shared templates.</li>
+          <li>Server Build and Distribution: Server builds now embed the frontend, and Docker uses the standalone server executable.</li>
+          <li>Frontend Maintenance: Consolidated shared frontend components and styles and expanded regression coverage.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Cryptcheck and Quick Run delete operations now respect task filters and preserve nonmatching files and directories.</li>
+          <li>Linux X11 rendering no longer disables WebKitGTK compositing and DMABUF automatically on NVIDIA systems.</li>
+          <li>Improved update cancellation, navigation history, file browser state, template context handling, upload cleanup, typed server errors, and standalone server shutdown.</li>
+          <li>Fixed macOS packaging metadata and Android bisync workdir permissions.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.3" date="2026-09-23">
       <description>
         <p>Added</p>
