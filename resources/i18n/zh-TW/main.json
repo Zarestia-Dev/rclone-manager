@@ -2964,6 +2964,7 @@
     },
     "rclone": {
       "downloadCancelled": "使用者已取消下載",
+      "noUpdateAvailable": "沒有可用的更新",
       "mountPluginInstallFailed": "安裝掛載外掛程式失敗: {{error}}",
       "mountPluginVerificationFailed": "安裝成功但驗證失敗。可能需要重新啟動。",
       "configEncrypted": "設定已加密，未提供密碼",
@@ -3056,11 +3057,18 @@
       "relaunchFailed": "重新啟動失敗：{{error}}",
       "restartFailed": "重新啟動失敗：{{error}}",
       "notWritable": "更新路徑不可寫",
+      "rollback": {
+        "exited": "更新後的應用程式在確認啟動前結束（代碼 {{code}}）。",
+        "couldNotStart": "無法啟動更新後的應用程式：{{error}}",
+        "interrupted": "更新後應用程式的啟動被關機中斷。",
+        "notConfirmed": "更新後的應用程式未能及時確認啟動。",
+        "installFailed": "無法安裝更新：{{error}}"
+      },
+      "rolledBack": "更新 {{version}} 已還原：{{reason}}",
       "ioError": "IO 錯誤：{{error}}",
       "externallyManaged": "This installation is updated by its package manager or deployment system.",
       "disabledByAdministrator": "Application updates have been disabled by the administrator.",
       "unsupportedInstallation": "Automatic installation is not supported for this installation.",
-      "missingArtifact": "This release does not contain a signed update package for this installation.",
       "androidInstallPermission": "Allow this app to install updates in Android settings, then retry installation.",
       "invalidAndroidPackage": "The APK must be a newer version of this application signed by the same publisher."
     },
